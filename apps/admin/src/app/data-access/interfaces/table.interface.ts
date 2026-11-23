@@ -44,6 +44,10 @@ export interface IBaseRow {
 	id: number | string;
 	/** `danger`: the row is drawn red (Bootstrap `table-danger`), e.g. an order waiting for its invoice address. */
 	rowTone?: 'danger';
+	/** `'1'` on the theme's built-in rows, which cannot be ticked or deleted. */
+	system_reserve?: string | number;
+	/** Set by the table while the row's box is ticked. */
+	isChecked?: boolean;
 }
 
 export interface ITableColumn {
@@ -85,8 +89,14 @@ export interface ITableAction {
 	rowStatuses?: string[];
 }
 
+/**
+ * A table or modal action as a screen receives it. What `data` holds depends on the action: the row for a row button,
+ * the ticked ids for a bulk action, or what the screen passed when it opened the modal; the screen that named the
+ * action knows which, and says so where it reads it.
+ */
 export interface ITableClickedAction {
 	actionToPerform?: string;
-	data?: any;
-	value?: any;
+	data?: unknown;
+	/** The new value of a switch or a field changed in the row. */
+	value?: unknown;
 }

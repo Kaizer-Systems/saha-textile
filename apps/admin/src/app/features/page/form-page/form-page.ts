@@ -15,7 +15,7 @@ import { type AdminLegalPage, LegalPagesGateway } from '@core/legal-pages/legal-
 import { NotificationService } from '@data-access/services/notification.service';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { PickedAttachment, ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { PickedAttachment, ImageUpload, ImageUploadValue, onePicture } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 
 const LANGUAGE_FIELDS = ['title', 'content', 'meta_title', 'meta_description'];
@@ -114,7 +114,8 @@ export class FormPage {
 			: null;
 	}
 
-	selectMetaImage(data: PickedAttachment | null): void {
+	selectMetaImage(value: ImageUploadValue): void {
+		const data = onePicture(value);
 		this.metaImageAssetId = data ? String(data.id) : null;
 		this.metaImageVersionId = data?.versionId ?? null;
 	}

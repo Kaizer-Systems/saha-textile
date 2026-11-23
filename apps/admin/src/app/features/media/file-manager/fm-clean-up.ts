@@ -1,10 +1,10 @@
 import { DatePipe } from '@angular/common';
 import { Component, TemplateRef, computed, effect, inject, output, signal, untracked, viewChild } from '@angular/core';
 
+import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient } from '@tanstack/angular-query-experimental';
-import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { lastValueFrom } from 'rxjs';
 
 import {

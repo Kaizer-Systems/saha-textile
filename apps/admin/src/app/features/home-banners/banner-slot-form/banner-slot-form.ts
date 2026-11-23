@@ -11,7 +11,7 @@ import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { NotificationService } from '@data-access/services/notification.service';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload, type PickedAttachment } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload, type PickedAttachment, ImageUploadValue, onePicture } from '@shared/ui/image-upload/image-upload';
 
 type Band = 'desktop' | 'tablet' | 'phone';
 const WIDE_SLOTS = new Set([
@@ -110,7 +110,8 @@ export class BannerSlotForm implements OnInit {
 		this.previews.set(previews);
 	}
 
-	pick(band: Band, selection: IAttachment | IAttachment[] | null): void {
+	pick(band: Band, value: ImageUploadValue): void {
+		const selection = Array.isArray(value) ? value : onePicture(value);
 		const image = Array.isArray(selection) ? (selection[0] ?? null) : selection;
 		this.form.controls[band].setValue(image ? String(image.id) : null);
 		this.previews.update((current) => ({ ...current, [band]: image }));

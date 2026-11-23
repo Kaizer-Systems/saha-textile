@@ -6,7 +6,8 @@ import { Injectable } from '@angular/core';
 export class LoggingService {
 	constructor() {}
 
+	/** An error goes to the browser's error output, where errors are looked for. */
 	logError(message: string) {
-		console.log('LoggingService: ' + message);
+		console.error('LoggingService: ' + message);
 	}
 }

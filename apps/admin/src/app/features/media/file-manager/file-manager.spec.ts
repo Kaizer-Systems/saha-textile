@@ -13,11 +13,11 @@ import { MediaUploads } from '@core/media-library/media-uploads';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { fileExtension, fileKind, fileTypeLabel } from './file-kinds';
-import { FmUploadPopups } from './fm-upload-popups';
 import { FileManager, MEDIA_DRAG_TYPE, SEARCH_PAUSE_MS, UNDO_SECONDS } from './file-manager';
 import { NO_SELECTION, blockedTargets, commonPlace, pickHow, pickItem, stepItem } from './fm-selection';
 import { buildTree, parentsOf } from './fm-sidebar';
 import { FmUndoToast } from './fm-undo-toast';
+import { FmUploadPopups } from './fm-upload-popups';
 
 // The upload flow reads image profiles; the page's own tests need none.
 vi.mock('@data-access/queries/media-profiles.queries', async (original) => ({

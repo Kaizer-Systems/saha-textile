@@ -550,4 +550,46 @@ describe('a folder download as .zip (A30, A48, media step 5)', () => {
 		click.mockRestore();
 		vi.useRealTimers();
 	});
+
+	it('marks a zip the worker could not finish as failed, without its Cancel button, and drops a cancelled one', async () => {
+		vi.useFakeTimers();
+		const failed = {
+			id: 'zip_2',
+			name: 'Banners.zip',
+			state: 'failed',
+			files: { done: 1, total: 2 },
+			bytes: { done: 10, total: 10 },
+			createdAt: '2026-11-16T10:00:00.000Z',
+			readyAt: null,
+			expiresAt: null,
+			error: 'gone',
+		};
+		// Another zip in the tray keeps going while this one fails.
+		const adding = { ...failed, id: 'zip_3', name: 'Logos.zip', state: 'adding' };
+		const cancelled = { ...failed, id: 'zip_4', name: 'Old.zip', state: 'cancelled' };
+		const answers: Record<string, unknown> = { zip_2: failed, zip_3: adding, zip_4: cancelled };
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [
+				MediaUploads,
+				{
+					provide: MediaLibraryGateway,
+					useValue: { zip: vi.fn((id: string) => of(answers[id])) },
+				},
+				{ provide: TranslocoService, useValue: { translate: (key: string) => key, getActiveLang: () => 'en' } },
+				{ provide: QueryClient, useValue: { invalidateQueries: vi.fn() } },
+			],
+		});
+		const uploads = TestBed.inject(MediaUploads);
+		uploads.watchZip(adding as never);
+		uploads.watchZip({ ...failed, state: 'adding' } as never);
+		uploads.watchZip({ ...cancelled, state: 'adding' } as never);
+		await vi.advanceTimersByTimeAsync(2100);
+		const row = uploads.operations().find((op) => op.id === 'zip_zip_2');
+		expect(row).toMatchObject({ state: 'failed', error: 'fm_zip_failed' });
+		expect(row?.action).toBeUndefined();
+		expect(uploads.operations().find((op) => op.id === 'zip_zip_3')).toMatchObject({ state: 'running' });
+		expect(uploads.operations().some((op) => op.id === 'zip_zip_4')).toBe(false);
+		vi.useRealTimers();
+	});
 });

@@ -58,7 +58,8 @@ export class MediaModal {
 	public closeResult: string;
 	public modalOpen: boolean = false;
 
-	public media: IAttachment;
+	/** The pictures chosen when choosing several; otherwise the one chosen. */
+	public media: IAttachment[] | IAttachment;
 	public files: File[] = [];
 
 	readonly selectMedia = input<boolean>(true);
@@ -69,7 +70,7 @@ export class MediaModal {
 
 	readonly MediaModal = viewChild<TemplateRef<string>>('mediaModal');
 
-	readonly selectImage = output<IAttachment>();
+	readonly selectImage = output<IAttachment[] | IAttachment>();
 
 	async openModal() {
 		this.modalOpen = true;
@@ -149,7 +150,7 @@ export class MediaModal {
 		}
 	}
 
-	setImage(data: IAttachment) {
+	setImage(data: IAttachment[] | IAttachment) {
 		this.media = data;
 	}
 

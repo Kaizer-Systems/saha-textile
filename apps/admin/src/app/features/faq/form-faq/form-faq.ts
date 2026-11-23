@@ -6,6 +6,7 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { Select2, type Select2Data, type Select2SearchEvent } from 'ng-select2-component';
 import { map, of, Subject, switchMap, takeUntil } from 'rxjs';
 
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import {
 	focusField,
 	gapsByLocale,
@@ -13,10 +14,9 @@ import {
 	LocalizedFields,
 	SOURCE_LOCALE,
 } from '@core/i18n/localized-fields';
-import { ActiveLanguages } from '@core/i18n/active-languages';
 import { FaqScope, IFaq } from '@data-access/interfaces/faq.interface';
-import { injectCatalogProductsQuery } from '@data-access/queries/product.queries';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
+import { injectCatalogProductsQuery } from '@data-access/queries/product.queries';
 import { FaqService } from '@data-access/services/faq.service';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';

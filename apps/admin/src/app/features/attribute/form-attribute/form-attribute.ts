@@ -1,4 +1,3 @@
-import { type PickedAttachment } from '@shared/ui/image-upload/image-upload';
 import { Component, computed, DOCUMENT, effect, inject, input, type Signal, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -11,6 +10,9 @@ import { Select2 } from 'ng-select2-component';
 import { Subject, of } from 'rxjs';
 import { map, startWith, switchMap, takeUntil } from 'rxjs/operators';
 
+import { OPTION_LOOKS, usesColour, usesPicture } from '@core/catalog/option-looks';
+import { SwatchPictures } from '@core/catalog/swatch-pictures';
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import {
 	focusField,
 	gapsByLocale,
@@ -18,18 +20,17 @@ import {
 	LocalizedFields,
 	SOURCE_LOCALE,
 } from '@core/i18n/localized-fields';
-import { OPTION_LOOKS, usesColour, usesPicture } from '@core/catalog/option-looks';
-import { SwatchPictures } from '@core/catalog/swatch-pictures';
-import { ActiveLanguages } from '@core/i18n/active-languages';
 import { MediaGateway } from '@core/media/media.gateway';
 import { AttributeService } from '@data-access/services/attribute.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
+import { type PickedAttachment, ImageUploadValue, onePicture } from '@shared/ui/image-upload/image-upload';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 import { LookPreview, type LookPreviewValue } from '@shared/ui/look-preview/look-preview';
 import { SwatchCut, type SwatchCutResult } from '@shared/ui/swatch-cut/swatch-cut';
+import { omit } from '@shared/util/omit';
 
 import type { IAttachment } from '@data-access/interfaces/attachment.interface';
 import type { AdminAttributeWrite, AttributeDefinition, AttributeDefinitionTerm } from '@saha-textile/contracts';
@@ -225,7 +226,7 @@ export class FormAttribute {
 		this.terms.update((rows) =>
 			rows.map((row, position) => {
 				if (position !== index) return row;
-				const { swatchVersionId: _version, ...rest } = row;
+				const rest = omit(row, 'swatchVersionId');
 				return {
 					...rest,
 					swatchAssetId: id,
@@ -235,13 +236,14 @@ export class FormAttribute {
 		);
 	}
 
-	setPicture(index: number, picked: IAttachment | IAttachment[] | null) {
+	setPicture(index: number, value: ImageUploadValue) {
+		const picked = Array.isArray(value) ? value : onePicture(value);
 		const row = Array.isArray(picked) ? picked[0] : picked;
 		if (row) this.pictures.update((map) => new Map([...map, [String(row.id), row]]));
 		this.terms.update((rows) =>
 			rows.map((term, position) => {
 				if (position !== index) return term;
-				const { swatchAssetId: _dropped, swatchVersionId: _droppedVersion, ...rest } = term;
+				const rest = omit(term, 'swatchAssetId', 'swatchVersionId');
 				const versionId = (row as PickedAttachment | undefined)?.versionId;
 				// The swatch keeps the version chosen in the picker (media brief: a place stores the photo and its version).
 				return row
@@ -318,7 +320,7 @@ export class FormAttribute {
 	/** The value's optional second line in the language on screen ("Medium" under "M"); empty clears it there. */
 	setNote(index: number, term: AttributeDefinitionTerm, text: string) {
 		const locale = this.fields.locale();
-		const { [locale]: _dropped, ...others } = term.subLabel ?? {};
+		const others = omit<Record<string, string>, string>(term.subLabel ?? {}, locale);
 		const subLabel = text.trim() ? { ...others, [locale]: text.trim() } : others;
 		if (Object.keys(subLabel).length) {
 			this.change(index, { subLabel });
@@ -327,8 +329,7 @@ export class FormAttribute {
 		this.terms.update((rows) =>
 			rows.map((row, position) => {
 				if (position !== index) return row;
-				const { subLabel: _cleared, ...rest } = row;
-				return rest;
+				return omit(row, 'subLabel');
 			}),
 		);
 	}

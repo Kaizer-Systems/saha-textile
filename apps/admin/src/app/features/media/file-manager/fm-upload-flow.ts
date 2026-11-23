@@ -2,6 +2,7 @@ import { Injectable, type TemplateRef, computed, inject, signal } from '@angular
 
 import { TranslocoService } from '@jsverse/transloco';
 import { NgbModal, type NgbModalOptions } from '@ng-bootstrap/ng-bootstrap';
+import { CAMERA_RAW } from '@saha-textile/core-domain/media-files';
 import { readApiErrorMessage } from '@saha-textile/http-transport';
 import { lastValueFrom } from 'rxjs';
 
@@ -34,8 +35,6 @@ import {
 	suggestedPicks,
 	versionsOf,
 } from './fm-upload-plan';
-
-import { CAMERA_RAW } from '@saha-textile/core-domain/media-files';
 
 import type { MediaFill, StorageOperation } from '@saha-textile/contracts';
 

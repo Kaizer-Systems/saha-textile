@@ -7,7 +7,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AttributeService } from '@data-access/services/attribute.service';
 import { BlogService } from '@data-access/services/blog.service';
-import { StoreLocationService } from '@data-access/services/store-location.service';
 import { CategoryService } from '@data-access/services/category.service';
 import { CountryService } from '@data-access/services/country.service';
 import { CouponService } from '@data-access/services/coupon.service';
@@ -23,13 +22,13 @@ import { QuestionsAnswersService } from '@data-access/services/questions-answers
 import { RefundService } from '@data-access/services/refund.service';
 import { ReviewService } from '@data-access/services/review.service';
 import { StateService } from '@data-access/services/state.service';
+import { StoreLocationService } from '@data-access/services/store-location.service';
 import { TagService } from '@data-access/services/tag.service';
 import { WalletService } from '@data-access/services/wallet.service';
 
 import { injectAttributesQuery } from './attribute.queries';
 import { bannerSrc, bannerSrcset, injectBannersQuery } from './banner.queries';
 import { injectBlogBySlugQuery, injectBlogTermsQuery, injectBlogsQuery, injectRecentBlogsQuery } from './blog.queries';
-import { injectStoreLocationsQuery } from './store-location.queries';
 import { injectCategoriesQuery } from './category.queries';
 import { injectCountriesQuery } from './country.queries';
 import { injectCouponsQuery } from './coupon.queries';
@@ -53,6 +52,7 @@ import { injectQuestionAnswersQuery } from './questions-answers.queries';
 import { injectRefundsQuery } from './refund.queries';
 import { injectMyReviewQuery, injectReviewQuery } from './review.queries';
 import { injectStatesQuery } from './state.queries';
+import { injectStoreLocationsQuery } from './store-location.queries';
 import { injectTagsQuery } from './tag.queries';
 import { injectWalletTransactionsQuery } from './wallet.queries';
 

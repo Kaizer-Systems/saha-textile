@@ -11,8 +11,8 @@ import { switchMap, map, takeUntil } from 'rxjs/operators';
 
 import { BLOG_GO_LIVE_WORDS, gapsFromError, goLiveToast } from '@core/catalog/go-live-report';
 import { ActiveLanguages } from '@core/i18n/active-languages';
-import { ShippingGateway } from '@core/shipping/shipping.gateway';
 import { focusField, gapsByLocale, type LanguageGap, LocalizedFields } from '@core/i18n/localized-fields';
+import { ShippingGateway } from '@core/shipping/shipping.gateway';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { ICategory } from '@data-access/interfaces/category.interface';
 import { BlogService } from '@data-access/services/blog.service';
@@ -23,7 +23,7 @@ import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload, type PickedAttachment } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload, type PickedAttachment, ImageUploadValue, onePicture } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 
 import type { AdminCategoryRow, AdminCategoryWrite, BlogCategory } from '@saha-textile/contracts';
@@ -287,15 +287,17 @@ export class FormCategory {
 		if (data && versionId) this.imageVersions = { ...this.imageVersions, [String(data.id)]: versionId };
 	}
 
-	selectCategoryImage(data: IAttachment) {
-		if (!Array.isArray(data)) {
+	selectCategoryImage(value: ImageUploadValue) {
+		const data = onePicture(value);
+		if (!Array.isArray(value)) {
 			this.keepVersion(data);
 			this.form.controls['category_image_id'].setValue(data ? data.id : '');
 		}
 	}
 
-	selectCategoryIcon(data: IAttachment) {
-		if (!Array.isArray(data)) {
+	selectCategoryIcon(value: ImageUploadValue) {
+		const data = onePicture(value);
+		if (!Array.isArray(value)) {
 			this.keepVersion(data);
 			this.form.controls['category_icon_id'].setValue(data ? data.id : '');
 		}

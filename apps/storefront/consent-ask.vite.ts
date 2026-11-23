@@ -1,11 +1,11 @@
-import type { Plugin } from 'vite';
-
 import {
 	CONSENT_ASK_CLASS,
 	CONSENT_BUTTONS,
 	CONSENT_TAP_ATTRIBUTE,
 	COOKIE_POLICY_VERSION,
 } from './src/app/core/consent/cookie-catalogue';
+
+import type { Plugin } from 'vite';
 
 /*
  * The cookie box drawn with the page (decision D1, 17 Nov 2026).

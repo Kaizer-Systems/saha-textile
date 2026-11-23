@@ -1,10 +1,10 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
+import { runtimeConfig } from '@core/config/runtime-config';
+
 import type { AdminLegalPage, LegalPageWrite } from '@saha-textile/contracts';
 import type { Observable } from 'rxjs';
-
-import { runtimeConfig } from '@core/config/runtime-config';
 
 export type { AdminLegalPage, LegalPageWrite };
 

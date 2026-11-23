@@ -2,7 +2,7 @@ import { Location } from '@angular/common';
 import { signal, type Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormGroup } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient } from '@tanstack/angular-query-experimental';
@@ -17,7 +17,6 @@ import { ShippingService } from '@data-access/services/shipping.service';
 import { Category } from './category/category';
 import { EditCategory } from './category/edit-category/edit-category';
 import { Tree } from './category/tree/tree';
-import { TreeNode } from './category/tree/tree-node/tree-node';
 import { Error403 } from './errors/error403/error403';
 import { Error404 } from './errors/error404/error404';
 import { Media } from './media/media';

@@ -101,8 +101,8 @@ export class Events {
 	}
 
 	onActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform === 'edit') this.edit(action.data);
-		else if (action.actionToPerform === 'delete') this.delete(action.data);
+		if (action.actionToPerform === 'edit') this.edit(action.data as IShopEventRow);
+		else if (action.actionToPerform === 'delete') this.delete(action.data as IShopEventRow);
 	}
 
 	edit(row: IShopEventRow) {

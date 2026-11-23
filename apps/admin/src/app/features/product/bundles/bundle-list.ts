@@ -14,6 +14,7 @@ import { BundleService } from '@data-access/services/bundle.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { Table } from '@shared/ui/table/table';
+import { searchOf } from '@shared/util/search-of';
 
 import type { AdminProductRow } from '@saha-textile/contracts';
 
@@ -50,16 +51,18 @@ export class BundleList {
 	private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 	private readonly params = signal<Params>({});
 
+	/** The list the table asks for: its search, page and page size, 30 to a page unless chosen. */
+	listRequest() {
+		return {
+			search: searchOf(this.params()),
+			page: Number(this.params()['page']) || 1,
+			pageSize: Number(this.params()['paginate']) || 30,
+		};
+	}
+
 	readonly listQuery = injectQuery(() => ({
 		queryKey: ['bundles', this.params()],
-		queryFn: () =>
-			firstValueFrom(
-				this.bundles.list({
-					search: typeof this.params()['search'] === 'string' ? this.params()['search'] : undefined,
-					page: Number(this.params()['page']) || 1,
-					pageSize: Number(this.params()['paginate']) || 30,
-				}),
-			),
+		queryFn: () => firstValueFrom(this.bundles.list(this.listRequest())),
 		enabled: this.isBrowser,
 	}));
 

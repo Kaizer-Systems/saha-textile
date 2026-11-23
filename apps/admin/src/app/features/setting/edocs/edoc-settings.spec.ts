@@ -1,9 +1,8 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-
 import { provideRouter } from '@angular/router';
+
 import { TranslocoTestingModule } from '@jsverse/transloco';
-import type { EDocSettings } from '@saha-textile/contracts';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
@@ -13,6 +12,8 @@ import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { EDocSettingsPage } from './edoc-settings';
+
+import type { EDocSettings } from '@saha-textile/contracts';
 
 const view = (patch: Partial<EDocSettings> = {}): EDocSettingsView => ({
 	gstin: '19DBYPS6736R1ZZ',

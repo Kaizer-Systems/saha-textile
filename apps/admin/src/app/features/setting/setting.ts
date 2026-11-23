@@ -18,7 +18,6 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { SettingStore } from '@core/state/setting.store';
-import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { IDayInterval, IValues } from '@data-access/interfaces/setting.interface';
 import { injectCurrenciesQuery } from '@data-access/queries/currency.queries';
 import { SettingService } from '@data-access/services/setting.service';
@@ -27,7 +26,7 @@ import * as data from '@shared/data/time-zone';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload, ImageUploadValue, onePicture } from '@shared/ui/image-upload/image-upload';
 
 import { PaymentRouting } from './payment-routing/payment-routing';
 
@@ -338,8 +337,9 @@ export class Setting {
 			});
 	}
 
-	selectMaintenance(data: IAttachment) {
-		if (!Array.isArray(data)) {
+	selectMaintenance(value: ImageUploadValue) {
+		const data = onePicture(value);
+		if (!Array.isArray(value)) {
 			(<FormGroup>this.form.controls['maintenance']).controls['maintenance_image_id'].setValue(
 				data ? data?.id : null,
 			);

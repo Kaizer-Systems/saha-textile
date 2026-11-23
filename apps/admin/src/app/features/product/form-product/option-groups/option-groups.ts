@@ -9,10 +9,11 @@ import { Select2, type Select2UpdateEvent } from 'ng-select2-component';
 import { OPTION_LOOKS, usesPicture } from '@core/catalog/option-looks';
 import { SwatchPictures } from '@core/catalog/swatch-pictures';
 import { MediaGateway } from '@core/media/media.gateway';
+import { FmPicker, type FmPicked } from '@features/media/file-manager/fm-picker';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { LookPreview, type LookPreviewValue } from '@shared/ui/look-preview/look-preview';
 import { SwatchCut, type SwatchCutResult } from '@shared/ui/swatch-cut/swatch-cut';
-import { FmPicker, type FmPicked } from '@features/media/file-manager/fm-picker';
+import { omit } from '@shared/util/omit';
 
 import type { IAttachment } from '@data-access/interfaces/attachment.interface';
 import type { AddonTemplateRow } from '@data-access/services/addon-template.service';
@@ -232,7 +233,7 @@ export class OptionGroups {
 		const amount = value === '' ? undefined : Math.max(0, Math.round(Number(value)));
 		const terms = group.terms.map((term) => {
 			if (term.code !== code) return term;
-			const { priceDeltaINR: _dropped, ...rest } = term;
+			const rest = omit(term, 'priceDeltaINR');
 			return amount === undefined ? rest : { ...rest, priceDeltaINR: amount };
 		});
 		this.update(index, { terms });
@@ -256,8 +257,8 @@ export class OptionGroups {
 	chooseSwatch(index: number, group: ProductOptionGroup, code: string, assetId: string): void {
 		const terms = group.terms.map((term) => {
 			if (term.code !== code) return term;
-			const { swatchAssetId: current, swatchVersionId: _version, ...rest } = term;
-			return current === assetId ? rest : { ...rest, swatchAssetId: assetId };
+			const rest = omit(term, 'swatchAssetId', 'swatchVersionId');
+			return term.swatchAssetId === assetId ? rest : { ...rest, swatchAssetId: assetId };
 		});
 		this.update(index, { terms });
 	}
@@ -289,7 +290,7 @@ export class OptionGroups {
 		if (shown && !this.tiles().has(id)) this.tiles.update((tiles) => new Map([...tiles, [id, shown]]));
 		const terms = group.terms.map((row) => {
 			if (row.code !== term.code) return row;
-			const { swatchVersionId: _version, ...rest } = row;
+			const rest = omit(row, 'swatchVersionId');
 			return {
 				...rest,
 				swatchAssetId: id,
@@ -333,7 +334,7 @@ export class OptionGroups {
 		this.tiles.update((tiles) => new Map([...tiles, [id, row.original_url]]));
 		const terms = group.terms.map((term) => {
 			if (term.code !== target.code) return term;
-			const { swatchVersionId: _version, ...rest } = term;
+			const rest = omit(term, 'swatchVersionId');
 			return { ...rest, swatchAssetId: id, ...(versionId ? { swatchVersionId: versionId } : {}) };
 		});
 		this.update(target.index, { terms });

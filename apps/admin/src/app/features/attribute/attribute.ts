@@ -30,7 +30,7 @@ export class Attribute {
 	private readonly params = signal<Params>({});
 	readonly attributesQuery = injectAttributesQuery(() => this.params());
 
-	readonly tableConfig = signal<ITableConfig>({
+	readonly tableConfig = signal<ITableConfig<IAttribute>>({
 		columns: [
 			{ title: 'No.', dataField: 'no', type: 'no' },
 			{ title: 'name', dataField: 'name', sortable: true, sort_direction: 'desc' },
@@ -83,9 +83,9 @@ export class Attribute {
 	}
 
 	onActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform == 'edit') this.edit(action.data);
-		else if (action.actionToPerform == 'delete') this.delete(action.data);
-		else if (action.actionToPerform == 'deleteAll') this.deleteAll(action.data);
+		if (action.actionToPerform == 'edit') this.edit(action.data as IAttribute);
+		else if (action.actionToPerform == 'delete') this.delete(action.data as IAttribute);
+		else if (action.actionToPerform == 'deleteAll') this.deleteAll(action.data as string[]);
 	}
 
 	edit(data: IAttribute) {

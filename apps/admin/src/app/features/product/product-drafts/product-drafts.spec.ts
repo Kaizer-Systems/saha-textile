@@ -13,9 +13,9 @@ import { MenuStore } from '@core/state/menu.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { ProductDraftService } from '@data-access/services/product-draft.service';
 
+import { ProductDrafts } from './product-drafts';
 import { DRAFT_MARKS, DraftMarkDirective } from '../form-product/draft-mark';
 import { ProductConflictPopup, ProductLeavePopup } from '../form-product/draft-popups';
-import { ProductDrafts } from './product-drafts';
 
 const listData = signal<unknown>(undefined);
 let lastBuild: (() => { queryKey: unknown[]; queryFn: () => unknown }) | undefined;

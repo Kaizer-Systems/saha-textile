@@ -123,6 +123,13 @@ describe('Product list bulk actions', () => {
 		expect(toasts.showError).toHaveBeenCalledWith('bulk_failed');
 	});
 
+	it('runs nothing for a bulk action that arrives with no ids', async () => {
+		const { page, service } = make();
+		page.onActionClicked({ actionToPerform: 'bulk_duplicate' });
+		await Promise.resolve();
+		expect(service.bulk).not.toHaveBeenCalled();
+	});
+
 	it('runs the row switch: on is Go Live, off is Take off shop', () => {
 		const { page, service, toasts } = make();
 		page.onActionClicked({ actionToPerform: 'status_switch', data: { id: 'p1', status_switch: 1 } });

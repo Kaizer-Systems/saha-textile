@@ -4,7 +4,6 @@ import { Router } from '@angular/router';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 
 import { LocaleSeo } from '@core/i18n/locale-seo';
-
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
 import { injectStaticPageQuery } from '@data-access/queries/page.queries';
 import { ShopDatePipe } from '@shared/pipes/shop-date.pipe';

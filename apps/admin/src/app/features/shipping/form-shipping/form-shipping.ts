@@ -11,7 +11,7 @@ import { Observable } from 'rxjs';
 
 import { SettingStore } from '@core/state/setting.store';
 import { IValues } from '@data-access/interfaces/setting.interface';
-import { IShipping, IShippingRule } from '@data-access/interfaces/shipping.interface';
+import { IShippingRule } from '@data-access/interfaces/shipping.interface';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { DeleteModal } from '@shared/ui/modal/delete-modal/delete-modal';
@@ -116,7 +116,7 @@ export class FormShipping {
 		}
 	}
 
-	delete(_actionType: string, _data: IShipping) {
+	delete(_actionType: string, _data: unknown) {
 		// Mock: delete has no backend yet.
 	}
 }

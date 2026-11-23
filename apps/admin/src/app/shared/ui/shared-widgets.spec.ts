@@ -13,13 +13,12 @@ import { YouTubeGateway } from '@core/media/content-blocks.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { LoaderStore } from '@core/state/loader.store';
 import { NotificationService } from '@data-access/services/notification.service';
+import { FmPicker } from '@features/media/file-manager/fm-picker';
 
 import { Alert } from './alert/alert';
 import { Button } from './button/button';
 import { FeatherIcons } from './feather-icons/feather-icons';
 import { FormFields } from './form-fields/form-fields';
-import { FmPicker } from '@features/media/file-manager/fm-picker';
-
 import { ImageUpload, PROFILE_FOR_PURPOSE } from './image-upload/image-upload';
 import { Link } from './link/link';
 import { MediaBox } from './media-box/media-box';
@@ -424,6 +423,10 @@ describe('MediaBox', () => {
 		expect(box.selectedImages).toEqual([{ id: 1 }]);
 		box.selectImage(event(false), one, false);
 		expect(box.selectedImages).toEqual([]);
+		// Holding one picture from a single-picture start, ticking begins a list.
+		box.selectedImages = { id: 9 } as never;
+		box.selectImage(event(true), one, false);
+		expect(box.selectedImages).toEqual([{ id: 1 }]);
 	});
 
 	it('takes the image itself in URL mode', () => {
@@ -673,6 +676,23 @@ describe('ImageUpload opens the Media picker (media step 4d, R4-2, E01–E04)', 
 			}),
 		);
 		expect((seen.at(-1) as { id: string }[]).map((row) => row.id)).toEqual(['med_z', 'med_a', 'med_c']);
+	});
+
+	it('a many-picture field with no room set takes the default; one bound to nothing starts empty', async () => {
+		const { fixture, start } = imageField([{ assetId: 'med_n', versionId: null, name: 'n.jpg' }]);
+		const widget = fixture.componentInstance;
+		expect(widget.left).toBeNull();
+		expect(widget.versionBadge({ id: 'med_n' } as never)).toBeNull();
+		fixture.componentRef.setInput('multipleImage', true);
+		widget.images = undefined as never;
+		widget.ngOnChanges();
+		expect(widget.left).toBe(40);
+		const seen: unknown[] = [];
+		widget.selectedFiles.subscribe((value) => seen.push(value));
+		await widget.openPicker();
+		expect(start).toHaveBeenCalledWith(expect.objectContaining({ max: 40, already: 0 }));
+		// A picked file without a thumbnail shows an empty address.
+		expect(seen.at(-1)).toEqual([expect.objectContaining({ id: 'med_n', original_url: '' })]);
 	});
 
 	it('a share picture takes any photo; an icon names its fills as icons; closing the picker changes nothing', async () => {

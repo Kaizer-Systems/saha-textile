@@ -19,13 +19,13 @@ import { AdminAuthGateway, type AdminSecurityState, type AdminSessionSummary } f
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { translateCount } from '@shared/pipes/language.pipes';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 import { ConfirmationModal } from '@shared/ui/modal/confirmation-modal/confirmation-modal';
 import { PinPad } from '@shared/ui/pin-pad/pin-pad';
 import { CustomValidators } from '@shared/validators/password-match';
-import { translateCount } from '@shared/pipes/language.pipes';
 
 /** Owner lock 2026-06-29 / UX lock 2026-07-23. Mirrors the login screen rather than redefining. */
 const PIN_LENGTH = 6;

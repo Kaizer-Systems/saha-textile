@@ -9,8 +9,6 @@ import {
 import { effect, inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { Observable, catchError, firstValueFrom, from, switchMap, tap, throwError } from 'rxjs';
-
 import {
 	CSRF_HEADER_NAME,
 	RefreshCoordinator,
@@ -21,6 +19,7 @@ import {
 	readRefusalReason,
 	withBrowserLock,
 } from '@saha-textile/http-transport';
+import { Observable, catchError, firstValueFrom, from, switchMap, tap, throwError } from 'rxjs';
 
 import { StorefrontAuthGateway } from '@core/auth/auth-gateway';
 import { CsrfTokens } from '@core/auth/csrf-tokens';

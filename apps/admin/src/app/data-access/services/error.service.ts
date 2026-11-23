@@ -1,5 +1,5 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 
 import { readApiErrorMessage } from '@saha-textile/http-transport';

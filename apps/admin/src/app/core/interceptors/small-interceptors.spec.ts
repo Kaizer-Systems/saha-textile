@@ -1,5 +1,4 @@
-import { HttpContext, HttpErrorResponse, HttpRequest, HttpResponse } from '@angular/common/http';
-import { PLATFORM_ID } from '@angular/core';
+import { HttpContext, HttpErrorResponse, HttpRequest } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 
 import { firstValueFrom, map, of, throwError, timer } from 'rxjs';

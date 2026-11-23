@@ -4,8 +4,8 @@ import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } 
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { Select2 } from 'ng-select2-component';
 import { injectMutation, injectQueryClient } from '@tanstack/angular-query-experimental';
+import { Select2 } from 'ng-select2-component';
 import { lastValueFrom } from 'rxjs';
 
 import { AdminUsersGateway, type AdminUserRoleSummary } from '@core/admin-users/admin-users.gateway';

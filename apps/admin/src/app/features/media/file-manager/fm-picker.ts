@@ -16,15 +16,15 @@ import {
 } from '@data-access/queries/media-library.queries';
 import { FileSizePipe, PluralPipe } from '@shared/pipes/language.pipes';
 
-import { fillKey } from '../../setting/image-profiles/profile-words';
-import { FmDetails } from './fm-details';
-import { FmSidebar, type FmNav } from './fm-sidebar';
 import { fileExtension, fileKind } from './file-kinds';
+import { FmDetails } from './fm-details';
 import { FmNewFolder } from './fm-new-folder';
 import { FmReprocess, type FmReprocessChoice } from './fm-reprocess';
+import { FmSidebar, type FmNav } from './fm-sidebar';
 import { FmUploadFlow } from './fm-upload-flow';
 import { planUpload } from './fm-upload-plan';
 import { FmUploadPopups } from './fm-upload-popups';
+import { fillKey } from '../../setting/image-profiles/profile-words';
 
 /** What an image field asks of the picker (R4-2, D01–D17). */
 export interface FmPickRules {

@@ -77,9 +77,9 @@ export class Role {
 	}
 
 	onActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform == 'edit') this.edit(action.data);
-		else if (action.actionToPerform == 'delete') this.delete(action.data);
-		else if (action.actionToPerform == 'deleteAll') this.deleteAll(action.data);
+		if (action.actionToPerform == 'edit') this.edit(action.data as IRole);
+		else if (action.actionToPerform == 'delete') this.delete(action.data as IRole);
+		else if (action.actionToPerform == 'deleteAll') this.deleteAll(action.data as (string | number)[]);
 	}
 
 	edit(data: IRole) {

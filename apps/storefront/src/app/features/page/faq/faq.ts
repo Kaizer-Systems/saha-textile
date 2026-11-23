@@ -4,9 +4,9 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
+import { LocaleSeo } from '@core/i18n/locale-seo';
 import { IFaqModel } from '@data-access/interfaces/page.interface';
 import { injectFaqsQuery } from '@data-access/queries/page.queries';
-import { LocaleSeo } from '@core/i18n/locale-seo';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { FaqAccordion } from '@shared/ui/faq-accordion/faq-accordion';
 import { translatedBreadcrumb } from '@shared/util/breadcrumb-i18n';

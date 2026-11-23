@@ -3,8 +3,8 @@ import { Injectable, inject } from '@angular/core';
 
 import { Observable, map } from 'rxjs';
 
-import { IFaqModel } from '@data-access/interfaces/page.interface';
 import { runtimeConfig } from '@core/config/runtime-config';
+import { IFaqModel } from '@data-access/interfaces/page.interface';
 import { IStaticPage } from '@data-access/interfaces/static-page.interface';
 
 import { environment } from '../../../../public/environments/environment';

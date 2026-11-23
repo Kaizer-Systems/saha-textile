@@ -5,8 +5,8 @@ import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { Select2, Select2Data, Select2UpdateEvent } from 'ng-select2-component';
 
 import { goLiveLabels } from '@core/catalog/go-live-report';
-import { PluralPipe } from '@shared/pipes/language.pipes';
 import { ProductBulkAction } from '@data-access/services/product.service';
+import { PluralPipe } from '@shared/pipes/language.pipes';
 
 import type { ProductBulkResult, ProductBulkRow } from '@saha-textile/contracts';
 

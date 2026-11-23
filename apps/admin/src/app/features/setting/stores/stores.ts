@@ -14,6 +14,7 @@ import {
 	StoreLocationGateway,
 	injectStoreLocationsQuery,
 } from '@core/stores/store-location.gateway';
+import { ITableClickedAction } from '@data-access/interfaces/table.interface';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
@@ -110,6 +111,11 @@ export class StoresSettings {
 			}
 			void this.queryClient.invalidateQueries({ queryKey: STORE_LOCATIONS_KEY });
 		});
+	}
+
+	/** After the delete modal, which was opened with the store's row. */
+	removeFromModal(action: ITableClickedAction) {
+		this.remove(action.data as AdminStoreLocationRow);
 	}
 
 	remove(row: AdminStoreLocationRow) {

@@ -1,12 +1,8 @@
-import { HttpErrorResponse, HttpRequest, HttpResponse } from '@angular/common/http';
-import { ErrorHandler, PLATFORM_ID } from '@angular/core';
+import { HttpRequest } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 
 import { firstValueFrom, of, throwError, TimeoutError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
-
-import { ErrorService } from '@data-access/services/error.service';
-import { NotificationService } from '@data-access/services/notification.service';
 
 import { ACTIVE_LOCALE } from '@core/i18n/active-locale';
 

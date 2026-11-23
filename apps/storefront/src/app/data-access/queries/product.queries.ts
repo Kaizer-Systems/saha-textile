@@ -4,7 +4,6 @@ import { cleanListingParams } from '@saha-textile/core-domain/listing';
 import { injectQuery, keepPreviousData } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
-import { ICatalogResponse } from '@data-access/interfaces/catalog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { homeProducts, ProductService } from '@data-access/services/product.service';

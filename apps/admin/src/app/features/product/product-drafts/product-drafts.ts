@@ -15,6 +15,7 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { ProductDraftService } from '@data-access/services/product-draft.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { Table } from '@shared/ui/table/table';
+import { searchOf } from '@shared/util/search-of';
 
 import type { ProductDraftRow } from '@saha-textile/contracts';
 
@@ -64,7 +65,7 @@ export class ProductDrafts {
 			firstValueFrom(
 				this.drafts.list({
 					scope: this.who(),
-					search: typeof this.params()['search'] === 'string' ? this.params()['search'] : undefined,
+					search: searchOf(this.params()),
 					page: Number(this.params()['page']) || 1,
 					pageSize: Number(this.params()['paginate']) || 30,
 				}),
@@ -147,8 +148,8 @@ export class ProductDrafts {
 	}
 
 	onActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform === 'edit') this.open(action.data);
-		else if (action.actionToPerform === 'delete') void this.discard(action.data);
+		if (action.actionToPerform === 'edit') this.open(action.data as DraftTableRow);
+		else if (action.actionToPerform === 'delete') void this.discard(action.data as DraftTableRow);
 	}
 
 	/** Opens the form exactly as it was left. */

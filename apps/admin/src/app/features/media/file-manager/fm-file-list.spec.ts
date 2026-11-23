@@ -2,9 +2,9 @@ import { TestBed } from '@angular/core/testing';
 
 import { describe, expect, it } from 'vitest';
 
-import type { MediaFileRow } from '@core/media-library/media-library.gateway';
-
 import { FmFileList } from './fm-file-list';
+
+import type { MediaFileRow } from '@core/media-library/media-library.gateway';
 
 const list = () => {
 	TestBed.resetTestingModule();

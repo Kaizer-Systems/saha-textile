@@ -8,8 +8,8 @@ import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ActiveLanguages } from '@core/i18n/active-languages';
-import { AuthStore } from '@core/state/auth.store';
 import { type AdminBuilderPage, PageBuilderGateway } from '@core/page-builder/page-builder.gateway';
+import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { PageBuilderHome, STATUS_CLASS } from './page-builder-home';

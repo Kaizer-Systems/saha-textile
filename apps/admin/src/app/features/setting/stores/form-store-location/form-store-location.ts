@@ -9,6 +9,7 @@ import { Select2, type Select2Data } from 'ng-select2-component';
 import { forkJoin } from 'rxjs';
 
 import { STORE_GO_LIVE_WORDS, goLiveToast } from '@core/catalog/go-live-report';
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import {
 	focusField,
 	gapsByLocale,
@@ -16,20 +17,19 @@ import {
 	LocalizedFields,
 	SOURCE_LOCALE,
 } from '@core/i18n/localized-fields';
-import { ActiveLanguages } from '@core/i18n/active-languages';
 import { MediaGateway } from '@core/media/media.gateway';
 import { WEEKDAYS, summariseStoreHours } from '@core/stores/store-hours';
 import { STORE_LOCATIONS_KEY, StoreLocationGateway } from '@core/stores/store-location.gateway';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { LanguageListPipe } from '@shared/pipes/language.pipes';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload, type PickedAttachment } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload, type PickedAttachment, ImageUploadValue, onePicture } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 
 import type { AdminStoreLocationRow, StoreDayHours, StoreLocationWrite, Weekday } from '@saha-textile/contracts';
-import { LanguageListPipe } from '@shared/pipes/language.pipes';
 
 /** 06:00 to 23:30 in half hours: the times the opens and closes pickers offer. */
 export const STORE_TIMES: Select2Data = Array.from({ length: 36 }, (_, index) => {
@@ -151,7 +151,8 @@ export class FormStoreLocation {
 			.forEach((day) => day.patchValue({ open: monday.open, opens: monday.opens, closes: monday.closes }));
 	}
 
-	selectPhotos(selection: IAttachment[] | IAttachment | null | undefined) {
+	selectPhotos(value: ImageUploadValue) {
+		const selection = Array.isArray(value) ? value : onePicture(value);
 		const list = Array.isArray(selection) ? selection : selection ? [selection] : [];
 		this.photos.set(list.slice(0, 8));
 	}

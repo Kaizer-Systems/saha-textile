@@ -13,11 +13,6 @@ import { ActiveLanguages } from '@core/i18n/active-languages';
 import { type AdminLayoutView, type PageSection, PageBuilderGateway } from '@core/page-builder/page-builder.gateway';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 
-import { PbAddSection, type PbAddChoice } from './pb-add-section';
-import { type GoLiveOutcome, PbGoLive } from './pb-go-live';
-import { PbHistory, type SessionLine } from './pb-history';
-import { PbPreview } from './pb-preview';
-import { PbSectionForm } from './pb-section-form';
 import {
 	UndoHistory,
 	duplicateSection,
@@ -27,6 +22,11 @@ import {
 	removeSection,
 	replaceSection,
 } from './builder-state';
+import { PbAddSection, type PbAddChoice } from './pb-add-section';
+import { type GoLiveOutcome, PbGoLive } from './pb-go-live';
+import { PbHistory, type SessionLine } from './pb-history';
+import { PbPreview } from './pb-preview';
+import { PbSectionForm } from './pb-section-form';
 
 /** The save line in the top bar (FX-23): saved, saving, or not saved and retrying; or why it cannot save. */
 export type SaveState = 'saved' | 'saving' | 'retrying' | 'conflict' | 'locked' | 'refused';

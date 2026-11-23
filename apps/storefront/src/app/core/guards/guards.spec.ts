@@ -1,9 +1,7 @@
-import { ViewportScroller } from '@angular/common';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { NavigationEnd, Router, Scroll } from '@angular/router';
+import { Router } from '@angular/router';
 
-import { Subject } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ScrollMemory } from '@core/navigation/scroll-memory';

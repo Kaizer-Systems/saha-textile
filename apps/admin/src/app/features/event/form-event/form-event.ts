@@ -6,6 +6,35 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal, NgbNavModule } from '@ng-bootstrap/ng-bootstrap';
+import { QueryClient } from '@tanstack/angular-query-experimental';
+import { Select2, Select2Data, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
+import { Editor, NgxEditorModule } from 'ngx-editor';
+import { Subject, catchError, debounceTime, forkJoin, map, of, switchMap, takeUntil } from 'rxjs';
+
+import { goLiveLabels } from '@core/catalog/go-live-report';
+import { runtimeConfig } from '@core/config/runtime-config';
+import { ActiveLanguages } from '@core/i18n/active-languages';
+import { istInputToUtc, utcToIstInput } from '@core/i18n/ist-time';
+import { focusField, gapsByLocale, type LanguageGap, LocalizedFields } from '@core/i18n/localized-fields';
+import { MediaGateway } from '@core/media/media.gateway';
+import { IAttachment } from '@data-access/interfaces/attachment.interface';
+import { ICategory } from '@data-access/interfaces/category.interface';
+import { ITableClickedAction } from '@data-access/interfaces/table.interface';
+import { injectCategoriesQuery } from '@data-access/queries/category.queries';
+import { NotificationService } from '@data-access/services/notification.service';
+import { ProductService } from '@data-access/services/product.service';
+import { ShopEventService } from '@data-access/services/shop-event.service';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { LanguageNamePipe, PluralPipe } from '@shared/pipes/language.pipes';
+import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
+import { Button } from '@shared/ui/button/button';
+import { FormFields } from '@shared/ui/form-fields/form-fields';
+import { ImageUpload, type PickedAttachment, ImageUploadValue, onePicture } from '@shared/ui/image-upload/image-upload';
+import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
+import { ConfirmationModal } from '@shared/ui/modal/confirmation-modal/confirmation-modal';
+
+import { istLabel } from '../events';
+
 import type {
 	PopupImageSide,
 	SaleCategoryLine,
@@ -19,34 +48,6 @@ import type {
 	ShopEventType,
 	ShopEventWrite,
 } from '@saha-textile/contracts';
-import { QueryClient } from '@tanstack/angular-query-experimental';
-import { Select2, Select2Data, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
-import { Editor, NgxEditorModule } from 'ngx-editor';
-import { Subject, catchError, debounceTime, forkJoin, map, of, switchMap, takeUntil } from 'rxjs';
-
-import { goLiveLabels } from '@core/catalog/go-live-report';
-import { MediaGateway } from '@core/media/media.gateway';
-import { runtimeConfig } from '@core/config/runtime-config';
-import { istInputToUtc, utcToIstInput } from '@core/i18n/ist-time';
-import { focusField, gapsByLocale, type LanguageGap, LocalizedFields } from '@core/i18n/localized-fields';
-import { ActiveLanguages } from '@core/i18n/active-languages';
-import { IAttachment } from '@data-access/interfaces/attachment.interface';
-import { ICategory } from '@data-access/interfaces/category.interface';
-import { ITableClickedAction } from '@data-access/interfaces/table.interface';
-import { injectCategoriesQuery } from '@data-access/queries/category.queries';
-import { NotificationService } from '@data-access/services/notification.service';
-import { ProductService } from '@data-access/services/product.service';
-import { ShopEventService } from '@data-access/services/shop-event.service';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
-import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
-import { Button } from '@shared/ui/button/button';
-import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload, type PickedAttachment } from '@shared/ui/image-upload/image-upload';
-import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
-import { ConfirmationModal } from '@shared/ui/modal/confirmation-modal/confirmation-modal';
-
-import { istLabel } from '../events';
-import { LanguageNamePipe, PluralPipe } from '@shared/pipes/language.pipes';
 
 const LANGUAGE_FIELDS = ['title', 'message'];
 
@@ -391,7 +392,8 @@ export class FormEvent {
 	}
 
 	/** The picker hands back the whole list, a single picture, or nothing. */
-	selectPopupImages(selection: IAttachment[] | IAttachment | null | undefined) {
+	selectPopupImages(value: ImageUploadValue) {
+		const selection = Array.isArray(value) ? value : onePicture(value);
 		const list = Array.isArray(selection) ? selection : selection ? [selection] : [];
 		const kept = list.slice(0, MAX_POPUP_PICTURES);
 		this.popupImages.set(kept);

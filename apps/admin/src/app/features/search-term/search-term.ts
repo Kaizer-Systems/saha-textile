@@ -116,12 +116,13 @@ export class SearchTermList {
 	}
 
 	onActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform == 'edit') this.edit(action.data);
-		else if (action.actionToPerform == 'status') this.status(action.data);
-		else if (action.actionToPerform == 'delete') this.delete(action.data);
-		else if (action.actionToPerform == 'deleteAll') this.deleteAll(action.data);
-		else if (action.actionToPerform == 'bulk_go_live') this.bulk(action.data, 'live');
-		else if (action.actionToPerform == 'bulk_take_down') this.bulk(action.data, 'draft');
+		if (action.actionToPerform == 'edit') this.edit(action.data as ISearchTermRow);
+		else if (action.actionToPerform == 'status')
+			this.status(action.data as Omit<ISearchTermRow, 'status'> & { status: number | string });
+		else if (action.actionToPerform == 'delete') this.delete(action.data as ISearchTermRow);
+		else if (action.actionToPerform == 'deleteAll') this.deleteAll(action.data as string[]);
+		else if (action.actionToPerform == 'bulk_go_live') this.bulk(action.data as (string | number)[], 'live');
+		else if (action.actionToPerform == 'bulk_take_down') this.bulk(action.data as (string | number)[], 'draft');
 	}
 
 	edit(data: ISearchTermRow) {

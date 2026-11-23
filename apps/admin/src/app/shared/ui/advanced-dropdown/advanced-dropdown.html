@@ -11,7 +11,7 @@
 				@if (selectedPills.length) { @for (pills of selectedPills; track pills) {
 				<li class="breadcrumb-pills">
 					<span class="badge badge-pill badge-primary">
-						{{ pills[displayKey()] }}
+						{{ label(pills) }}
 						<i
 							[title]="'remove' | transloco"
 							class="ri-close-line"
@@ -84,7 +84,7 @@
 								href="javascript:void(0)"
 								(click)="changeTo(breadCrumb)"
 							>
-								{{ breadCrumb[displayKey()] }}
+								{{ label(breadCrumb) }}
 							</a>
 						</li>
 						}

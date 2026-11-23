@@ -30,7 +30,7 @@ export class Faq {
 	/** Opened from Settings › Languages: only items still missing one language's text. */
 	readonly missing = injectMissingLanguage('faqs');
 
-	readonly tableConfig = signal<ITableConfig>({
+	readonly tableConfig = signal<ITableConfig<IFaq>>({
 		columns: [
 			{ title: 'No.', dataField: 'no', type: 'no' },
 			{ title: 'title', dataField: 'title', sortable: true, sort_direction: 'desc' },
@@ -82,10 +82,10 @@ export class Faq {
 	}
 
 	onActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform == 'edit') this.edit(action.data);
-		else if (action.actionToPerform == 'status') this.status(action.data);
-		else if (action.actionToPerform == 'delete') this.delete(action.data);
-		else if (action.actionToPerform == 'deleteAll') this.deleteAll(action.data);
+		if (action.actionToPerform == 'edit') this.edit(action.data as IFaq);
+		else if (action.actionToPerform == 'status') this.status(action.data as IFaq);
+		else if (action.actionToPerform == 'delete') this.delete(action.data as IFaq);
+		else if (action.actionToPerform == 'deleteAll') this.deleteAll(action.data as number[]);
 	}
 
 	edit(data: IFaq) {

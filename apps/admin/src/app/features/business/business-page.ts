@@ -17,10 +17,10 @@ import {
 } from '@core/business/businesses.gateway';
 import { RupeesPipe, ShortDatePipe, rupees, shortDate } from '@core/purchasing/purchasing-format';
 import { PurchasingGateway, injectSupplierSummaryQuery } from '@core/purchasing/purchasing.gateway';
-import { statementLink } from '@features/purchasing/supplier/supplier-page';
-import { exportSupplierStatement, recordSupplierPayment } from '@features/purchasing/shared/supplier-actions';
 import { NotificationService } from '@data-access/services/notification.service';
 import { askReason } from '@features/purchasing/shared/popups';
+import { exportSupplierStatement, recordSupplierPayment } from '@features/purchasing/shared/supplier-actions';
+import { statementLink } from '@features/purchasing/supplier/supplier-page';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
 import { BusinessReceiptPopup } from './business-receipt-popup';

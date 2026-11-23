@@ -3,15 +3,15 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { of, throwError } from 'rxjs';
-
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { LegalPagesGateway } from '@core/legal-pages/legal-pages.gateway';
 
 import { Coupon } from './coupon/coupon';
 import { OrderStatus } from './order-status/order-status';
 import { Page } from './page/page';
 import { Refund } from './refund/refund';
 import { Tax } from './tax/tax';
-import { LegalPagesGateway } from '@core/legal-pages/legal-pages.gateway';
 
 const data = signal<unknown>(undefined);
 const query = (params?: () => unknown) => {

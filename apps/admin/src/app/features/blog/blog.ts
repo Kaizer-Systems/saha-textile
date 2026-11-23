@@ -93,13 +93,14 @@ export class Blog {
 	}
 
 	onActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform == 'edit') this.edit(action.data);
-		else if (action.actionToPerform == 'go_live') this.goLive(action.data);
-		else if (action.actionToPerform == 'status') this.status(action.data);
-		else if (action.actionToPerform == 'delete') this.delete(action.data);
-		else if (action.actionToPerform == 'deleteAll') this.deleteAll(action.data);
-		else if (action.actionToPerform == 'bulk_go_live') this.bulkGoLive(action.data);
-		else if (action.actionToPerform == 'bulk_take_down') this.bulkTakeDown(action.data);
+		if (action.actionToPerform == 'edit') this.edit(action.data as IBlog);
+		else if (action.actionToPerform == 'go_live') this.goLive(action.data as IBlog);
+		else if (action.actionToPerform == 'status')
+			this.status(action.data as Omit<IBlog, 'status'> & { status: number | string });
+		else if (action.actionToPerform == 'delete') this.delete(action.data as IBlog);
+		else if (action.actionToPerform == 'deleteAll') this.deleteAll(action.data as string[]);
+		else if (action.actionToPerform == 'bulk_go_live') this.bulkGoLive(action.data as (string | number)[]);
+		else if (action.actionToPerform == 'bulk_take_down') this.bulkTakeDown(action.data as (string | number)[]);
 	}
 
 	edit(data: IBlog) {

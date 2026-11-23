@@ -11,6 +11,7 @@ import { Observable, Subject, of } from 'rxjs';
 import { switchMap, takeUntil } from 'rxjs/operators';
 
 import { BLOG_GO_LIVE_WORDS, gapsFromError, goLiveLabels, goLiveToast } from '@core/catalog/go-live-report';
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import {
 	focusField,
 	gapsByLocale,
@@ -18,7 +19,6 @@ import {
 	LocalizedFields,
 	type LocalizedText,
 } from '@core/i18n/localized-fields';
-import { ActiveLanguages } from '@core/i18n/active-languages';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { ICategoryModel } from '@data-access/interfaces/category.interface';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
@@ -28,7 +28,7 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload, type PickedAttachment } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload, type PickedAttachment, ImageUploadValue, onePicture } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 
 import type { AdminBlogPostRow, BlogPostWrite, GoLiveGap, GoLiveResult } from '@saha-textile/contracts';
@@ -251,16 +251,18 @@ export class FormBlog {
 		if (data && versionId) this.imageVersions = { ...this.imageVersions, [String(data.id)]: versionId };
 	}
 
-	selectThumbnail(data: IAttachment) {
-		if (!Array.isArray(data)) {
+	selectThumbnail(value: ImageUploadValue) {
+		const data = onePicture(value);
+		if (!Array.isArray(value)) {
 			this.keepVersion(data);
 			this.cover = data ?? null;
 			this.form.controls['blog_thumbnail_id'].setValue(data ? String(data.id) : '');
 		}
 	}
 
-	selectMetaImage(data: IAttachment) {
-		if (!Array.isArray(data)) {
+	selectMetaImage(value: ImageUploadValue) {
+		const data = onePicture(value);
+		if (!Array.isArray(value)) {
 			this.keepVersion(data);
 			this.shareImage = data ?? null;
 			this.form.controls['blog_meta_image_id'].setValue(data ? String(data.id) : null);
@@ -273,7 +275,7 @@ export class FormBlog {
 		}
 	}
 
-	selectTagItem(data: string[]) {
+	selectTagItem(data: (string | number)[]) {
 		if (Array.isArray(data)) {
 			this.form.controls['tags'].setValue(data.map(String));
 		}

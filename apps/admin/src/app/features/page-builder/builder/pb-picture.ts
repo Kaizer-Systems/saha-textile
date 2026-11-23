@@ -2,13 +2,14 @@ import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
-import type { PiecePicture } from '@saha-textile/contracts';
 import { lastValueFrom } from 'rxjs';
 
 import { PageBuilderGateway, type WordsMapBand } from '@core/page-builder/page-builder.gateway';
 
 import { WORD_SPOTS, linkAllowed } from './builder-state';
 import { fromLocalInput, toLocalInput } from './pb-section-form';
+
+import type { PiecePicture } from '@saha-textile/contracts';
 
 /** The nine word spots in reading order (SG-3), drawn as a 3 × 3 grid. */
 export const SPOTS = WORD_SPOTS;

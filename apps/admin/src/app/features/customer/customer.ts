@@ -154,9 +154,10 @@ export class Customer {
 	}
 
 	onActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform === 'edit') this.edit(action.data);
-		else if (action.actionToPerform === 'delete') this.remove(action.data);
-		else if (action.actionToPerform === 'restore') this.restoreMutation.mutate(String(action.data.id));
+		if (action.actionToPerform === 'edit') this.edit(action.data as CustomerRow);
+		else if (action.actionToPerform === 'delete') this.remove(action.data as CustomerRow);
+		else if (action.actionToPerform === 'restore')
+			this.restoreMutation.mutate(String((action.data as CustomerRow).id));
 	}
 
 	edit(data: CustomerRow) {

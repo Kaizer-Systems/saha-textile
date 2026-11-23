@@ -39,7 +39,7 @@ import { ORDER_STATUS_PILL } from '@core/orders/order-format';
 import { pill } from '@core/purchasing/purchasing-format';
 import { AuthStore } from '@core/state/auth.store';
 import { injectStoreLocationsQuery } from '@core/stores/store-location.gateway';
-import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
+import { IBaseRow, ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { injectBlogsQuery } from '@data-access/queries/blog.queries';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 import {
@@ -229,7 +229,7 @@ export class Dashboard {
 	 * never reached a table when no other widget on the page happened to redraw it. Each update
 	 * carries `rowActions` over because the table clears them for a role without the action.
 	 */
-	readonly orderTableConfig = signal<ITableConfig>({
+	readonly orderTableConfig = signal<ITableConfig<IBaseRow & { order_number: string }>>({
 		columns: [
 			{ title: 'number', dataField: 'order_id' },
 			{ title: 'date', dataField: 'created_at', type: 'date', date_format: 'dd MMM yyyy' },
@@ -242,7 +242,7 @@ export class Dashboard {
 		total: 0,
 	});
 
-	readonly productStockTableConfig = signal<ITableConfig>({
+	readonly productStockTableConfig = signal<ITableConfig<IBaseRow & { id: string }>>({
 		columns: [
 			{
 				title: 'image',
@@ -486,7 +486,7 @@ export class Dashboard {
 	// For Order
 
 	onOrderActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform == 'view') this.orderView(action.data);
+		if (action.actionToPerform == 'view') this.orderView(action.data as { order_number: string });
 	}
 
 	orderView(data: { order_number: string }) {
@@ -501,7 +501,7 @@ export class Dashboard {
 	}
 
 	onProductActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform == 'edit') this.productEdit(action.data);
+		if (action.actionToPerform == 'edit') this.productEdit(action.data as { id: string });
 	}
 
 	productEdit(data: { id: string }) {

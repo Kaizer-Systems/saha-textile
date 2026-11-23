@@ -1,6 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
+import { Observable } from 'rxjs';
+
+import { IStatisticsCount, IRevenueChart } from '@data-access/interfaces/dashboard.interface';
+
+import { environment } from '../../../../public/environments/environment';
+
 import type {
 	DashboardCustomersResponse,
 	DashboardMonthlyRevenueResponse,
@@ -12,11 +18,6 @@ import type {
 	DashboardStockResponse,
 	DashboardTopProductsResponse,
 } from '@saha-textile/contracts';
-import { Observable } from 'rxjs';
-
-import { IStatisticsCount, IRevenueChart } from '@data-access/interfaces/dashboard.interface';
-
-import { environment } from '../../../../public/environments/environment';
 
 /** Drops the fields a preset does not use, so the query string carries only what was chosen. */
 function periodParams(query: DashboardPeriodQuery): Record<string, string> {

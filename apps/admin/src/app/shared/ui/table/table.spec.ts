@@ -160,9 +160,9 @@ describe('Table changes', () => {
 
 	it('changes the page size and the page', () => {
 		const { table } = render();
-		table.onChangeTable({ target: { value: '50' } }, 'paginate');
-		expect(table.tableData['paginate']).toBe('50');
-		table.onChangeTable({ target: null }, 'paginate');
+		table.onChangeTable({ target: { value: '50' } } as unknown as Event, 'paginate');
+		expect(table.tableData['paginate']).toBe(50);
+		table.onChangeTable({ target: null } as unknown as Event, 'paginate');
 		expect(table.tableData['paginate']).toBeUndefined();
 		table.onChangeTable(2, 'page');
 		expect(table.tableData['page']).toBe(2);
@@ -185,7 +185,8 @@ describe('Table changes', () => {
 	it('passes an unknown change through', () => {
 		const { table, changed } = render();
 		const before = changed.length;
-		table.onChangeTable(null, 'other');
+		// Not a change the table knows: passed on as it is.
+		table.onChangeTable(null, 'other' as never);
 		expect(changed.length).toBe(before + 1);
 	});
 });
@@ -383,6 +384,24 @@ describe('Table picks', () => {
 		expect(table.selected).toEqual(['p2']);
 	});
 
+	it('copes with what a page can lack: a tick from elsewhere, no rows, picks without a status, an action on nothing', () => {
+		const { table, actions } = withRows();
+		// A tick on a row this page does not show keeps only its id until its page shows it.
+		table.setSelectedItem(true, 'elsewhere');
+		expect(table.pickList.find((pick) => pick.id === 'elsewhere')?.row).toEqual({ id: 'elsewhere' });
+		// Picks named without a status are left out of the counts; one an action did not mention has no problem.
+		expect(table.pickCounts).toEqual([]);
+		table.markPicks(new Map());
+		expect(table.pickList.map((pick) => pick.problem)).toEqual([null]);
+		// A page with no rows: nothing to tick on it, and the picks from elsewhere stay.
+		table.tableConfig = { ...table.tableConfig, data: undefined } as never;
+		expect(table.pickedOnPage).toBe(0);
+		expect(table.selected).toEqual(['elsewhere']);
+		// An action that carries nothing still goes out as it is.
+		table.onActionClicked('view', null);
+		expect(actions.at(-1)).toEqual({ actionToPerform: 'view', data: null });
+	});
+
 	it('keeps the picks for this browser tab under the list’s name', () => {
 		const make = () => {
 			TestBed.resetTestingModule();
@@ -414,6 +433,12 @@ describe('Table picks', () => {
 		expect(make().selected).toEqual([]);
 		sessionStorage.setItem('saha-textile:table-picks:products', JSON.stringify([{ id: 'x' }, null]));
 		expect(make().selected).toEqual([]);
+		// A saved tick from before a problem or a time was kept: none, and the oldest.
+		sessionStorage.setItem(
+			'saha-textile:table-picks:products',
+			JSON.stringify([{ id: 'p9', row: { id: 'p9' }, view: { title: 'p9' }, problem: 5 }]),
+		);
+		expect(make().pickList[0]).toMatchObject({ id: 'p9', problem: null, at: 0 });
 	});
 });
 

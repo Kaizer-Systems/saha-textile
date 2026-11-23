@@ -6,8 +6,8 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal, type NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 import { firstValueFrom } from 'rxjs';
 
-import { gapsByLocale, LocalizedFields, type LanguageGap } from '@core/i18n/localized-fields';
 import { ActiveLanguages } from '@core/i18n/active-languages';
+import { gapsByLocale, LocalizedFields, type LanguageGap } from '@core/i18n/localized-fields';
 import { MediaGateway } from '@core/media/media.gateway';
 import { MediaUploads } from '@core/media-library/media-uploads';
 import { NotificationService } from '@data-access/services/notification.service';

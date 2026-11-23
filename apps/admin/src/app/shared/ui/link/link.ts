@@ -1,7 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject, input, output } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
-import { ReactiveFormsModule } from '@angular/forms';
+import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { Select2, Select2Data, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
@@ -20,7 +20,7 @@ import { FormFields } from '../form-fields/form-fields';
 	imports: [ReactiveFormsModule, FormFields, Select2, TranslocoModule],
 })
 export class Link {
-	readonly linkForm = input<any>(undefined);
+	readonly linkForm = input<FormGroup | undefined>(undefined);
 	readonly products = input<Select2Data>([]);
 
 	readonly productFilter = output<Params>();

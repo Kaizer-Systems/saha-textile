@@ -1,19 +1,19 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, effect, inject, input, model, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, inject, input, model, signal } from '@angular/core';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbAccordionModule, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { lastValueFrom } from 'rxjs';
 
 import { MediaGateway } from '@core/media/media.gateway';
+import { PluralPipe } from '@shared/pipes/language.pipes';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 
-import type { ProductContentWrite } from '@saha-textile/contracts';
-import { PluralPipe } from '@shared/pipes/language.pipes';
-
-import { FmPicker, type FmPicked } from '../../../media/file-manager/fm-picker';
 import { ProductPhoto, type ProductPhotoResult } from './product-photo';
+import { FmPicker, type FmPicked } from '../../../media/file-manager/fm-picker';
 import { fillKey, profileNameKey } from '../../../setting/image-profiles/profile-words';
+
+import type { ProductContentWrite } from '@saha-textile/contracts';
 
 type ImagesValue = Pick<ProductContentWrite, 'imageMode' | 'gallery' | 'compound' | 'altOverrides' | 'versions'>;
 

@@ -8,10 +8,10 @@ import { NgbRatingConfig } from '@ng-bootstrap/ng-bootstrap';
 import { Observable, filter } from 'rxjs';
 
 import { ThemeModeStore } from '@core/brand/theme-mode';
-import { ScrollMemory } from '@core/navigation/scroll-memory';
 import { countdownKey } from '@core/events/event-popup-rules';
 import { ShopEvents } from '@core/events/shop-events';
 import { LocaleSeo } from '@core/i18n/locale-seo';
+import { ScrollMemory } from '@core/navigation/scroll-memory';
 import { SettingStore } from '@core/state/setting.store';
 import { SiteConfigStore } from '@core/state/site-config.store';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';

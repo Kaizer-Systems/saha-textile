@@ -26,10 +26,7 @@ export class TreeNode {
 	private notifier = inject(NotificationService);
 	private transloco = inject(TranslocoService);
 
-	// TODO: Skipped for migration because:
-	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
-	//  and migrating would break narrowing currently.
-	readonly node = input<any>(undefined);
+	readonly node = input.required<ICategory>();
 	// TODO: Skipped for migration because:
 	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
 	//  and migrating would break narrowing currently.
@@ -50,10 +47,18 @@ export class TreeNode {
 	/** The name in the language on screen, or the English one until it has a translation. */
 	label(): string {
 		const node = this.node();
-		return (node.row ?? node.blog)?.name[this.locale()] || node[this.displayKey()] || node.name;
+		const shown = (node as object as Record<string, unknown>)[this.displayKey()];
+		return (node.row ?? node.blog)?.name[this.locale()] || (typeof shown === 'string' ? shown : '') || node.name;
 	}
 
-	delete(_actionType: string, data: ICategory) {
+	/** The categories under this one, under the key the tree was given (`subcategories`). */
+	children(): ICategory[] {
+		const value = (this.node() as object as Record<string, unknown>)[this.recursionKey()];
+		return Array.isArray(value) ? (value as ICategory[]) : [];
+	}
+
+	/** After the delete modal: it was opened for this node. */
+	delete(data: ICategory) {
 		const post = data.type == 'post';
 		const call = post ? this.blogs.deleteTerm('categories', data.id) : this.categories.deleteCategory(data.id);
 		call.subscribe({

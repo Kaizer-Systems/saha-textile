@@ -10,6 +10,7 @@ import { Subject, lastValueFrom } from 'rxjs';
 
 import { MEDIA_LIBRARY_KEY } from '@data-access/queries/media-library.queries';
 import { translateCount } from '@shared/pipes/language.pipes';
+import { omit } from '@shared/util/omit';
 
 import { MediaLibraryGateway } from './media-library.gateway';
 
@@ -374,11 +375,11 @@ export class MediaUploads {
 				} else if (now.state === 'cancelled') {
 					this.operations.update((ops) => ops.filter((op) => op.id !== id));
 				} else {
-					const { action: _cancel, ...rest } = this.operations().find((op) => op.id === id) ?? {};
+					// The failed row loses its Cancel button.
 					this.operations.update((ops) =>
 						ops.map((op) =>
 							op.id === id
-								? { ...(rest as MediaOperation), state: 'failed', error: words('fm_zip_failed') }
+								? { ...omit(op, 'action'), state: 'failed', error: words('fm_zip_failed') }
 								: op,
 						),
 					);

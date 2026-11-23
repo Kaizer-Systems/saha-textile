@@ -6,9 +6,9 @@ import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 
+import { AuthStore } from '@core/state/auth.store';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { QuestionsAnswersService } from '@data-access/services/questions-answers.service';
-import { AuthStore } from '@core/state/auth.store';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 
 import { Button } from '../../button/button';

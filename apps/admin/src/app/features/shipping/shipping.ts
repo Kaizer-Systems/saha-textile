@@ -1,12 +1,12 @@
 import { AsyncPipe } from '@angular/common';
-import { Component, inject, viewChild } from '@angular/core';
+import { Component, viewChild } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterModule } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
-import { IShipping, IShippingModel } from '@data-access/interfaces/shipping.interface';
+import { IShippingModel } from '@data-access/interfaces/shipping.interface';
 import { injectShippingsQuery } from '@data-access/queries/shipping.queries';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
@@ -38,7 +38,7 @@ export class Shipping {
 	readonly CountryShippingModal = viewChild<ShippingCountryModal>('countryShippingModal');
 	readonly DeleteModal = viewChild<DeleteModal>('deleteModal');
 
-	delete(_actionType: string, _data: IShipping) {
+	delete(_actionType: string, _data: unknown) {
 		// Mock: delete has no backend yet.
 	}
 }

@@ -22,8 +22,11 @@ import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 import { MissingLanguageNotice } from '@shared/ui/missing-language-notice/missing-language-notice';
 import { Table } from '@shared/ui/table/table';
+import { omit } from '@shared/util/omit';
 
 type Measure = AddonTemplateRow['fields'][number];
+/** A template as its table shows it: its code stands as the row's id, its source-language label as the name. */
+type AddonTemplateTableRow = AddonTemplateRow & { id: string; name: string };
 
 const codeOf = (text: string): string =>
 	text
@@ -90,7 +93,7 @@ export class AddonTemplate {
 		]),
 	);
 
-	readonly tableConfig = signal<ITableConfig>({
+	readonly tableConfig = signal<ITableConfig<AddonTemplateTableRow>>({
 		columns: [
 			{ title: 'name', dataField: 'name', sortable: true },
 			{ title: 'code', dataField: 'code', sortable: true },
@@ -177,7 +180,7 @@ export class AddonTemplate {
 		this.sizeGuide.update((rows) =>
 			rows.map((row, position) => {
 				if (position !== index) return row;
-				const { [code]: _old, ...others } = row.values;
+				const others = omit(row.values, code);
 				return { ...row, values: value ? { ...others, [code]: value } : others };
 			}),
 		);

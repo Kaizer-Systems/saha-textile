@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
+
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import type { FeatureKey } from '@saha-textile/contracts';
 import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
@@ -8,6 +8,8 @@ import { COMPANY_KEYS, CompanyGateway } from '@core/company/company.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+
+import type { FeatureKey } from '@saha-textile/contracts';
 
 /**
  * Settings › Features (accounts brief J3, owner-approved 2026-11-23): each part of the software on

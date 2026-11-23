@@ -9,10 +9,10 @@ import { NgbDate, NgbDateParserFormatter, NgbModal } from '@ng-bootstrap/ng-boot
 import { BehaviorSubject, firstValueFrom, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { MenuStore } from '@core/state/menu.store';
 import { AddonTemplateService } from '@data-access/services/addon-template.service';
 import { AttributeService } from '@data-access/services/attribute.service';
 import { NotificationService } from '@data-access/services/notification.service';
-import { MenuStore } from '@core/state/menu.store';
 import { ProductDraftService } from '@data-access/services/product-draft.service';
 import { ProductService } from '@data-access/services/product.service';
 
@@ -381,6 +381,9 @@ describe('FormProduct search', () => {
 		page.product = { related_products: [1] } as never;
 		page.productFilter({ search: 'x' });
 		expect(page.filter).toMatchObject({ paginate: 15, ids: '' });
+		// No search text: an empty search.
+		page.productFilter({});
+		expect(page.filter.search).toBe('');
 	});
 
 	it('leaves the body alone on the server', () => {

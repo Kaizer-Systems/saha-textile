@@ -26,9 +26,8 @@ import { withLocale } from '@core/i18n/locale';
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { roleSrcset } from '@core/media/resolved-image';
 import { SiteConfigStore } from '@core/state/site-config.store';
-import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
-import { Params } from '@data-access/interfaces/core.interface';
+import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import {

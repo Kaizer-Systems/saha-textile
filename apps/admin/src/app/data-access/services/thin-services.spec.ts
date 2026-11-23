@@ -396,8 +396,8 @@ describe('ErrorService', () => {
 });
 
 describe('LoggingService', () => {
-	it('logs', () => {
-		const logged = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+	it('logs an error as an error', () => {
+		const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 		TestBed.inject(LoggingService).logError('boom');
 		expect(logged).toHaveBeenCalledWith('LoggingService: boom');
 		logged.mockRestore();

@@ -4,21 +4,19 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { Meta, Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { cleanListingParams } from '@saha-textile/core-domain/listing';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-
+import { cleanListingParams } from '@saha-textile/core-domain/listing';
 import { combineLatest, Observable } from 'rxjs';
 
-import { LocaleSeo } from '@core/i18n/locale-seo';
 import { listingRobots } from '@core/catalog/listing-robots';
+import { LocaleSeo } from '@core/i18n/locale-seo';
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
 import { ICatalogResponse } from '@data-access/interfaces/catalog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { injectCatalogQuery } from '@data-access/queries/product.queries';
 import { AttributeService } from '@data-access/services/attribute.service';
-import * as data from '@shared/data/owl-carousel';
-import { FaqAccordion } from '@shared/ui/faq-accordion/faq-accordion';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
+import { FaqAccordion } from '@shared/ui/faq-accordion/faq-accordion';
 
 import { CollectionCategories } from './widgets/collection-categories/collection-categories';
 import { CollectionProducts } from './widgets/collection-products/collection-products';

@@ -9,7 +9,6 @@ import { Select2Data, Select2 } from 'ng-select2-component';
 import { Editor, NgxEditorModule } from 'ngx-editor';
 import { map, of, Observable } from 'rxjs';
 
-import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { ICategoryModel } from '@data-access/interfaces/category.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import {
@@ -31,7 +30,7 @@ import { HasPermissionDirective } from '@shared/directives/has-permission.direct
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload, ImageUploadValue, onePicture, pictureAddress } from '@shared/ui/image-upload/image-upload';
 
 @Component({
 	selector: 'app-theme-option',
@@ -704,32 +703,37 @@ export class ThemeOption {
 		);
 	}
 
-	selectHeaderLogo(data: IAttachment) {
-		if (!Array.isArray(data)) {
+	selectHeaderLogo(value: ImageUploadValue) {
+		const data = onePicture(value);
+		if (!Array.isArray(value)) {
 			(<FormGroup>this.form.controls['logo']).controls['header_logo_id'].setValue(data ? data?.id : null);
 		}
 	}
 
-	selectFooterLogo(data: IAttachment) {
-		if (!Array.isArray(data)) {
+	selectFooterLogo(value: ImageUploadValue) {
+		const data = onePicture(value);
+		if (!Array.isArray(value)) {
 			(<FormGroup>this.form.controls['logo']).controls['footer_logo_id']?.setValue(data ? data?.id : null);
 		}
 	}
 
-	selectFaviconIcon(data: IAttachment) {
-		if (!Array.isArray(data)) {
+	selectFaviconIcon(value: ImageUploadValue) {
+		const data = onePicture(value);
+		if (!Array.isArray(value)) {
 			(<FormGroup>this.form.controls['logo']).controls['favicon_icon_id']?.setValue(data ? data?.id : null);
 		}
 	}
 
-	selectOgImage(data: IAttachment) {
-		if (!Array.isArray(data)) {
+	selectOgImage(value: ImageUploadValue) {
+		const data = onePicture(value);
+		if (!Array.isArray(value)) {
 			(<FormGroup>this.form.controls['seo']).controls['og_image_id']?.setValue(data ? data?.id : null);
 		}
 	}
 
-	selectSellerImage(data: string, key: string) {
-		if (!Array.isArray(data)) {
+	selectSellerImage(value: ImageUploadValue, key: string) {
+		const data = pictureAddress(value);
+		if (!Array.isArray(value)) {
 			this.form.get(key)?.setValue(data ? data : null);
 		}
 	}
@@ -750,38 +754,43 @@ export class ThemeOption {
 		}
 	}
 
-	selectCategoryItem(data: []) {
+	selectCategoryItem(data: string[]) {
 		if (Array.isArray(data)) {
 			(<FormGroup>this.form.controls['footer']).controls['footer_categories']?.setValue(data);
 		}
 	}
 
-	selectBanner(url: string, key: string) {
+	selectBanner(value: ImageUploadValue, key: string) {
+		const url = pictureAddress(value);
 		this.form.get(key)?.setValue(url ? url : null);
 	}
 
-	selectFutures(url: string, index: number) {
+	selectFutures(value: ImageUploadValue, index: number) {
+		const url = pictureAddress(value);
 		this.futuresContent
 			.at(index)
 			.get('icon')
 			?.setValue(url ? url : null);
 	}
 
-	selectIcon(url: string, index: number) {
+	selectIcon(value: ImageUploadValue, index: number) {
+		const url = pictureAddress(value);
 		this.clientsContent
 			.at(index)
 			.get('icon')
 			?.setValue(url ? url : null);
 	}
 
-	selectMemberProfile(url: string, index: number) {
+	selectMemberProfile(value: ImageUploadValue, index: number) {
+		const url = pictureAddress(value);
 		this.members
 			.at(index)
 			.get('profile_image_url')
 			?.setValue(url ? url : null);
 	}
 
-	selectReviewProfile(url: string, index: number) {
+	selectReviewProfile(value: ImageUploadValue, index: number) {
+		const url = pictureAddress(value);
 		this.testimonials
 			.at(index)
 			.get('profile_image_url')

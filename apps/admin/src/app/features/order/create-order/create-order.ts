@@ -14,10 +14,10 @@ import { OrderDraftStore } from '@core/orders/order-draft.store';
 import { money } from '@core/orders/order-format';
 import { injectAdminCardsQuery, injectAdminCartQuery, OrdersGateway } from '@core/orders/orders.gateway';
 import { apiProblem } from '@core/purchasing/purchasing-format';
-import { NotificationService } from '@data-access/services/notification.service';
 import { LoaderStore } from '@core/state/loader.store';
 import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
+import { NotificationService } from '@data-access/services/notification.service';
 import { Loader } from '@layout/loader/loader';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
@@ -233,7 +233,8 @@ export class CreateOrder {
 		this.page.set(1);
 	}
 
-	selectCategoryItem(ids: number[]): void {
+	/** Category ids are words such as `cat_2051`. */
+	selectCategoryItem(ids: string[]): void {
 		this.activeCategory = null;
 		this.categoryId.set(ids.length ? String(ids[0]) : null);
 		this.page.set(1);

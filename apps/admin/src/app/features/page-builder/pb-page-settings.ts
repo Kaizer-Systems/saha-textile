@@ -15,7 +15,7 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload, type PickedAttachment } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload, type PickedAttachment, ImageUploadValue, onePicture } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 
 /** The form's controls, by the API's field names (contract `PAGE_SETTINGS_FIELDS`). */
@@ -127,7 +127,8 @@ export class PbPageSettings {
 			: null;
 	}
 
-	selectShareImage(data: PickedAttachment | null): void {
+	selectShareImage(value: ImageUploadValue): void {
+		const data = onePicture(value);
 		this.shareImage = data ? { assetId: String(data.id), versionId: data.versionId ?? null } : null;
 	}
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { readRecentViews, rememberRecentView } from './recent-views';
 import { readNotifyIntent, rememberNotifyIntent } from './notify-intent';
+import { readRecentViews, rememberRecentView } from './recent-views';
 
 describe('recent views', () => {
 	it('stores a slug and a time and nothing else', () => {

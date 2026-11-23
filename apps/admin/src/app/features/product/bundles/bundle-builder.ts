@@ -16,12 +16,11 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { ProductService } from '@data-access/services/product.service';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload, type PickedAttachment } from '@shared/ui/image-upload/image-upload';
-
-import { type FaqValue, ProductFaq } from '../form-product/product-faq/product-faq';
+import { ImageUpload, type PickedAttachment, ImageUploadValue, onePicture } from '@shared/ui/image-upload/image-upload';
 
 import { BundleRuleRows } from './bundle-rule-rows';
 import { ruleSentence } from './rule-words';
+import { type FaqValue, ProductFaq } from '../form-product/product-faq/product-faq';
 
 import type {
 	AdminProductRow,
@@ -489,8 +488,9 @@ export class BundleBuilder {
 	}
 
 	/** The styled photo (A08 suggestion): a picture of the whole set, shown before the pieces' photos. */
-	pickStyled(data: PickedAttachment | PickedAttachment[] | null): void {
-		if (Array.isArray(data)) return;
+	pickStyled(value: ImageUploadValue): void {
+		if (Array.isArray(value)) return;
+		const data = onePicture(value);
 		this.styledTile.set(data);
 		this.change((draft) => ({
 			...draft,

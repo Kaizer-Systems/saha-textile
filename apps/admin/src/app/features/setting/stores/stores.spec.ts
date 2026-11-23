@@ -112,6 +112,9 @@ describe('StoresSettings', () => {
 		const { page, gateway, notifier } = setup();
 		page.remove(page.rows()[0] as never);
 		expect(gateway.remove).toHaveBeenCalledWith('a');
+		// The delete modal hands back the row it was opened with.
+		page.removeFromModal({ actionToPerform: 'delete', data: page.rows()[0] });
+		expect(gateway.remove).toHaveBeenCalledTimes(2);
 		expect(notifier.showSuccess).toHaveBeenCalledWith('store_deleted');
 	});
 

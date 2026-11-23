@@ -45,9 +45,27 @@ import { DeleteModal } from '../modal/delete-modal/delete-modal';
 import { Pagination } from '../pagination/pagination';
 
 /** A ticked row as last seen, so it stays picked on other pages and searches. */
-export interface TablePick {
+/** The table's own query: search, sort, page, page size and an optional date range, sent on with every change. */
+export interface TableState extends Params {
+	search: string;
+	field: string;
+	sort: string;
+	page: number;
+	paginate: number;
+	start_date?: string;
+	end_date?: string;
+}
+
+/** The date range a list is narrowed to; the end is left out until it is picked. */
+export interface TableDateRange {
+	start_date: string;
+	end_date?: string;
+}
+
+export interface TablePick<T extends IBaseRow = IBaseRow> {
 	id: number | string;
-	row: IBaseRow & Record<string, unknown>;
+	/** The row as it was when ticked, kept for this tab, so its chip opens it from any page. */
+	row: T;
 	view: ITablePickView;
 	/** Why the last action could not do it; the chip turns amber. */
 	problem: string | null;
@@ -78,7 +96,7 @@ const STORE_PREFIX = 'saha-textile:table-picks:';
 		DatePipe,
 	],
 })
-export class Table {
+export class Table<T extends IBaseRow = IBaseRow> {
 	private document = inject<Document>(DOCUMENT);
 	private renderer = inject(Renderer2);
 	private calendar = inject(NgbCalendar);
@@ -89,15 +107,15 @@ export class Table {
 	private authStore = inject(AuthStore);
 	private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
-	private config: ITableConfig;
+	private config: ITableConfig<T>;
 	// TODO: Skipped for migration because:
 	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
 	//  and migrating would break narrowing currently.
-	@Input() set tableConfig(config: ITableConfig) {
+	@Input() set tableConfig(config: ITableConfig<T>) {
 		this.config = config;
 		this.refreshPicks();
 	}
-	get tableConfig(): ITableConfig {
+	get tableConfig(): ITableConfig<T> {
 		return this.config;
 	}
 	// TODO: Skipped for migration because:
@@ -117,7 +135,7 @@ export class Table {
 
 	readonly tableChanged = output<Params>();
 	readonly action = output<ITableClickedAction>();
-	readonly rowClicked = output<any>();
+	readonly rowClicked = output<T>();
 	readonly selectedItems = output<(number | string)[]>();
 
 	readonly DeleteModal = viewChild<DeleteModal>('deleteModal');
@@ -125,7 +143,7 @@ export class Table {
 
 	public term = new FormControl();
 	public rows = [30, 50, 100];
-	public tableData: Params = {
+	public tableData: TableState = {
 		search: '',
 		field: '',
 		sort: '', // current Sorting Order
@@ -138,7 +156,7 @@ export class Table {
 	 * A tick belongs to the row, not the page: it stays through search, page, sort and page-size changes.
 	 */
 	public selected: (number | string)[] = [];
-	private picks = new Map<string, TablePick>();
+	private picks = new Map<string, TablePick<T>>();
 	public permissions: string[] = [];
 
 	public hoveredDate: NgbDate | null = null;
@@ -169,7 +187,10 @@ export class Table {
 				const permissions = this.tableConfig?.rowActions
 					?.map((action) => action?.permission)
 					.filter((item) => item != undefined);
-				if (permissions?.length && !permissions.some((action) => this.permissions?.includes(<any>action))) {
+				if (
+					permissions?.length &&
+					!permissions.some((action) => typeof action === 'string' && this.permissions?.includes(action))
+				) {
 					this.tableConfig['rowActions'] = [];
 				}
 				if (!this.hasPermission(['delete']) && !this.hasDuplicate() && !this.permittedBulk().length) {
@@ -191,56 +212,69 @@ export class Table {
 		}
 	}
 
-	onChangeTable(data: ITableColumn | any, type: string) {
-		if (type === 'sort' && data && data.sortable !== false) {
-			switch (data.sort_direction) {
+	onChangeTable(data: ITableColumn, type: 'sort'): void;
+	onChangeTable(data: Event, type: 'paginate'): void;
+	onChangeTable(data: number, type: 'page'): void;
+	onChangeTable(data: string, type: 'search'): void;
+	onChangeTable(data: TableDateRange | null, type: 'daterange'): void;
+	onChangeTable(data: unknown, type: 'sort' | 'paginate' | 'page' | 'search' | 'daterange'): void {
+		if (type === 'sort') {
+			const column = data as ITableColumn | null;
+			if (!column || column.sortable === false) return this.emitChange();
+			switch (column.sort_direction) {
 				case 'asc':
-					data.sort_direction = 'desc';
+					column.sort_direction = 'desc';
 					break;
 				case 'desc':
-					data.sort_direction = 'asc';
+					column.sort_direction = 'asc';
 					break;
 				default:
-					data.sort_direction = 'desc';
+					column.sort_direction = 'desc';
 					break;
 			}
-			this.tableData['field'] = data.dataField!;
+			this.tableData['field'] = column.dataField!;
 			this.tableData['sort'] = this.tableData['sort'] === 'desc' ? 'asc' : 'desc';
 		} else if (type === 'paginate') {
-			this.tableData['paginate'] = (<HTMLInputElement>data.target)?.value;
+			// The page-size box's text, kept as the number it is.
+			const size = (<HTMLInputElement>(data as Event).target)?.value;
+			this.tableData['paginate'] = size === undefined ? undefined : Number(size);
 		} else if (type === 'page') {
-			this.tableData['page'] = data;
+			this.tableData['page'] = data as number;
 		} else if (type === 'search') {
-			this.tableData['search'] = data;
+			this.tableData['search'] = data as string;
 			// New filter → always restart at page 1 so server skip/limit matches the new result set.
 			this.tableData['page'] = 1;
 		} else if (type === 'daterange') {
-			if (data?.start_date && data?.end_date && !String(data.end_date).includes('undefined')) {
-				this.tableData['start_date'] = data.start_date;
-				this.tableData['end_date'] = data.end_date;
+			const range = data as TableDateRange | null;
+			if (range?.start_date && range?.end_date && !String(range.end_date).includes('undefined')) {
+				this.tableData['start_date'] = range.start_date;
+				this.tableData['end_date'] = range.end_date;
 			} else {
 				delete this.tableData['start_date'];
 				delete this.tableData['end_date'];
 				// Incomplete range (only from-date picked) — do not emit yet.
-				if (data?.start_date && !data?.end_date) return;
+				if (range?.start_date && !range?.end_date) return;
 			}
 		}
+		this.emitChange();
+	}
+
+	private emitChange() {
 		this.renderer.addClass(this.document.body, 'loader-none');
 		this.tableChanged.emit(this.tableData);
 	}
 
-	onActionClicked(actionType: string, rowData: any, value?: number) {
+	/**
+	 * A row button, or what a modal hands back: a row, or the ticked ids for a bulk action. A switch's new value is put on
+	 * the row under the action's name (`status`) before it is passed on.
+	 */
+	onActionClicked(actionType: string, rowData: unknown, value?: unknown) {
 		this.renderer.addClass(this.document.body, 'loader-none');
-		if (this.hasPermission([actionType])) {
-			rowData[actionType] = value;
-			this.action.emit({ actionToPerform: actionType, data: rowData });
-		} else {
-			rowData[actionType] = value;
-			this.action.emit({ actionToPerform: actionType, data: rowData });
-		}
+		if (rowData && typeof rowData === 'object') (rowData as Record<string, unknown>)[actionType] = value;
+		this.action.emit({ actionToPerform: actionType, data: rowData });
 	}
 
-	onRowClicked(rowData: any): void {
+	onRowClicked(rowData: T): void {
 		if (this.hasPermission(['edit', 'view'])) {
 			this.rowClicked.emit(rowData);
 		}
@@ -249,7 +283,7 @@ export class Table {
 	/** The header box ticks or unticks the rows on this page only; picks on other pages stay. */
 	checkUncheckAll(event: Event) {
 		const checked = Boolean((<HTMLInputElement>event?.target)?.checked);
-		this.tableConfig?.data!.forEach((item: any) => {
+		this.tableConfig?.data!.forEach((item) => {
 			if (item.system_reserve != '1') {
 				item.isChecked = checked;
 				this.setSelectedItem(checked, item?.id);
@@ -270,9 +304,8 @@ export class Table {
 		const key = String(value);
 		if (checked) {
 			if (!this.picks.has(key)) {
-				const row = (this.tableConfig?.data?.find((item) => String(item.id) === key) ?? {
-					id: value,
-				}) as TablePick['row'];
+				// A row that is not on this page keeps only its id until its page shows it (refreshPicks).
+				const row = this.tableConfig?.data?.find((item) => String(item.id) === key) ?? ({ id: value } as T);
 				this.picks.set(key, { id: row.id, row, view: this.viewOf(row), problem: null, at: Date.now() });
 			}
 		} else {
@@ -288,9 +321,7 @@ export class Table {
 
 	/** The rows on this page that can be ticked. */
 	private pageRows(): IBaseRow[] {
-		return (this.tableConfig?.data ?? []).filter(
-			(row) => (row as unknown as Record<string, unknown>)['system_reserve'] !== '1',
-		);
+		return (this.tableConfig?.data ?? []).filter((row) => row.system_reserve !== '1');
 	}
 
 	/** How many ticked rows are on this page. */
@@ -311,12 +342,12 @@ export class Table {
 	}
 
 	/** Every pick, newest first. */
-	get pickList(): TablePick[] {
+	get pickList(): TablePick<T>[] {
 		return [...this.picks.values()].sort((a, b) => b.at - a.at);
 	}
 
 	/** The chips shown above the table; the rest fold into "+N more". */
-	get chips(): TablePick[] {
+	get chips(): TablePick<T>[] {
 		return this.pickList.slice(0, CHIP_LIMIT);
 	}
 
@@ -366,15 +397,16 @@ export class Table {
 	}
 
 	/** A chip or a list name opens its row, as clicking the row does. */
-	openPick(pick: TablePick) {
+	openPick(pick: TablePick<T>) {
 		this.onRowClicked(pick.row);
 	}
 
-	private viewOf(row: TablePick['row']): ITablePickView {
-		const fromConfig = this.tableConfig?.pickView?.(row as never);
+	private viewOf(row: T): ITablePickView {
+		const fromConfig = this.tableConfig?.pickView?.(row);
 		if (fromConfig) return fromConfig;
+		const fields = row as object as Record<string, unknown>;
 		const text = (value: unknown) => (typeof value === 'string' ? value.replace(/<[^>]*>/g, '').trim() : '');
-		return { title: text(row['name']) || text(row['title']) || String(row.id) };
+		return { title: text(fields['name']) || text(fields['title']) || String(row.id) };
 	}
 
 	/** Rows on the page refresh their picks, so a status change shows at once. */
@@ -384,7 +416,7 @@ export class Table {
 		for (const row of this.config?.data ?? []) {
 			const pick = this.picks.get(String(row.id));
 			if (pick) {
-				pick.row = row as TablePick['row'];
+				pick.row = row;
 				pick.view = this.viewOf(pick.row);
 				changed = true;
 			}
@@ -420,7 +452,8 @@ export class Table {
 		try {
 			const saved: unknown = JSON.parse(sessionStorage.getItem(key) ?? '[]');
 			if (!Array.isArray(saved)) return;
-			for (const item of saved as Partial<TablePick>[]) {
+			// This tab's own saved ticks: rows of this table, as they were when ticked.
+			for (const item of saved as Partial<TablePick<T>>[]) {
 				if (item?.id === undefined || !item.row || !item.view?.title) continue;
 				this.picks.set(String(item.id), {
 					id: item.id,

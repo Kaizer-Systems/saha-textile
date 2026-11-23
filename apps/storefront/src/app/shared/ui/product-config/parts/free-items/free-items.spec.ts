@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { freeWith } from '../../set-test-data';
 import { freePicksValid, givenFreePicks } from './free-items';
+import { freeWith } from '../../set-test-data';
 
 describe('free items (P8)', () => {
 	const two = (over = {}) =>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { ApiCartLine, cartItem, lineChoice } from './cart-view';
 import { cartChildCounts, cartChildRows, cartSetSaving } from './cart-children';
+import { ApiCartLine, cartItem, lineChoice } from './cart-view';
 
 type Child = NonNullable<ApiCartLine['children']>[number];
 

@@ -4,7 +4,6 @@ import {
 	Component,
 	DOCUMENT,
 	effect,
-	Injector,
 	Input,
 	Renderer2,
 	computed,
@@ -66,7 +65,8 @@ export class MediaBox {
 
 	// TODO: Skipped for migration because:
 	//  Your application code writes to the input. This prevents migration.
-	@Input() selectedImages: IAttachment[] = [];
+	/** The ticked pictures when choosing several; otherwise the one chosen. */
+	@Input() selectedImages: IAttachment[] | IAttachment = [];
 	readonly multiple = input<boolean>(false);
 	readonly url = input<boolean>(false);
 	// TODO: Skipped for migration because:
@@ -74,7 +74,7 @@ export class MediaBox {
 	@Input() loading: boolean = true;
 	readonly deleteAction = input<boolean>(true);
 
-	readonly setImage = output<[] | any>();
+	readonly setImage = output<IAttachment[] | IAttachment>();
 	readonly setDeleteImage = output<number | string>();
 
 	public term = new FormControl();
@@ -116,29 +116,31 @@ export class MediaBox {
 		this.getAttachments(this.filter);
 	}
 
-	onActionClicked(action: string, data: IAttachment) {
+	/** After the delete modal, which was opened with the attachment. */
+	onActionClicked(action: string, data: unknown) {
 		if (action == 'delete') {
 			// Delete has no backend yet — notify the parent to drop it locally.
-			this.setDeleteImage.emit(data.id!);
+			this.setDeleteImage.emit((data as IAttachment).id!);
 		}
 	}
 
 	selectImage(event: Event, attachment: IAttachment, url: boolean) {
 		if (this.multiple()) {
-			const index = this.selectedImages.indexOf(attachment);
+			const chosen = Array.isArray(this.selectedImages) ? this.selectedImages : [];
 			if ((<HTMLInputElement>event.target).checked) {
-				if (index == -1) this.selectedImages.push(attachment);
+				if (chosen.indexOf(attachment) == -1) chosen.push(attachment);
+				this.selectedImages = chosen;
 			} else {
-				this.selectedImages = this.selectedImages.filter(
+				this.selectedImages = chosen.filter(
 					(image) => image.id != parseInt((<HTMLInputElement>event.target).value),
 				);
 			}
 		} else {
-			this.selectedImages = <any>attachment;
+			this.selectedImages = attachment;
 		}
 
 		if (url) {
-			this.selectedImages = <any>attachment;
+			this.selectedImages = attachment;
 		}
 		this.setImage.emit(this.selectedImages);
 	}

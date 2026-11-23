@@ -50,6 +50,7 @@ import {
 	NgbNavOutlet,
 	NgbModal,
 } from '@ng-bootstrap/ng-bootstrap';
+import { languageName } from '@saha-textile/core-domain/languages';
 import { chargeableGrams, volumetricGrams } from '@saha-textile/core-domain/shipping';
 import { Select2, Select2Data, Select2SearchEvent } from 'ng-select2-component';
 import { Editor, NgxEditorModule } from 'ngx-editor';
@@ -69,7 +70,7 @@ import {
 } from '@core/i18n/localized-fields';
 import { StockGateway } from '@core/purchasing/stock.gateway';
 import { injectShippingExceptionsQuery, injectShippingOverviewQuery } from '@core/shipping/shipping.gateway';
-import { IAttachment } from '@data-access/interfaces/attachment.interface';
+import { MenuStore } from '@core/state/menu.store';
 import {
 	CATALOG_BADGE_CODES,
 	CatalogBadgeCode,
@@ -97,7 +98,7 @@ import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload, type PickedAttachment } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload, type PickedAttachment, ImageUploadValue, onePicture } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 import { YouTubeVideosField } from '@shared/ui/youtube-videos-field/youtube-videos-field';
 import { priceValidator } from '@shared/validators/price-validator';
@@ -117,9 +118,6 @@ import {
 } from './inventory-fields';
 import { OptionGroups } from './option-groups/option-groups';
 import { ProductBundleForm } from './product-bundle/product-bundle';
-import { FaqValue, ProductFaq } from './product-faq/product-faq';
-import { ImageCombination, ProductImages } from './product-images/product-images';
-import { categoryChain, inheritedCharge, type InheritedCharge, productExceptions } from './shipping-tab';
 import {
 	DRAFT_VERSION,
 	changedPaths,
@@ -130,11 +128,10 @@ import {
 	type ProductFormSnapshot,
 	stable,
 } from './product-draft-state';
+import { FaqValue, ProductFaq } from './product-faq/product-faq';
+import { ImageCombination, ProductImages } from './product-images/product-images';
+import { categoryChain, inheritedCharge, type InheritedCharge, productExceptions } from './shipping-tab';
 import { variantCombinations } from './variant-combinations';
-import { environment } from '../../../../../public/environments/environment';
-
-import { MenuStore } from '@core/state/menu.store';
-import { languageName } from '@saha-textile/core-domain/languages';
 
 import type {
 	AttributeDefinition,
@@ -993,7 +990,8 @@ export class FormProduct implements DraftMarks {
 	}
 
 	productFilter(filter: Params) {
-		this.filter['search'] = filter['search'];
+		const search = filter['search'];
+		this.filter['search'] = typeof search === 'string' ? search : '';
 		this.filter['ids'] = this.filter['search'].length ? '' : this.product?.related_products?.join();
 		this.filter['paginate'] =
 			this.product?.related_products?.length >= 15 ? this.product?.related_products?.length : 15;
@@ -1186,15 +1184,16 @@ export class FormProduct implements DraftMarks {
 		}
 	}
 
-	selectTagItem(data: Number[]) {
+	selectTagItem(data: (string | number)[]) {
 		if (Array.isArray(data)) {
 			this.form.controls['tags'].setValue(data);
 		}
 	}
 
 	/** "Meta image": the link-preview picture and the version chosen, kept for the save (owner, 17 Nov). */
-	selectMetaImage(data: PickedAttachment | null) {
-		if (Array.isArray(data)) return;
+	selectMetaImage(value: ImageUploadValue) {
+		if (Array.isArray(value)) return;
+		const data = onePicture(value);
 		this.form.controls['product_meta_image_id'].setValue(data ? data.id : null);
 		this.rememberTile(data);
 		this.images.update((images) => ({
@@ -1204,7 +1203,8 @@ export class FormProduct implements DraftMarks {
 	}
 
 	/** "Variation image": the variant's own picture and version, shown first when it is chosen (owner, 17 Nov). */
-	selectVariationImage(data: PickedAttachment | null, index: number) {
+	selectVariationImage(value: ImageUploadValue, index: number) {
+		const data = onePicture(value);
 		const variationControl = this.form.get('variations') as FormArray;
 		const control = variationControl.at(+index);
 		control.patchValue({ variation_image_id: data ? data.id : '' });

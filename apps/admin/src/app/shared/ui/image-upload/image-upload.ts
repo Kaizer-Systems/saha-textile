@@ -32,6 +32,22 @@ const DEFAULT_MAX = 40;
 export type PickedAttachment = IAttachment & { versionId?: string | null };
 
 /**
+ * What an image field hands back on every change: the address in `url` mode, the pictures in `multiple` mode,
+ * otherwise the one picture; null once it is emptied.
+ */
+export type ImageUploadValue = string | PickedAttachment | PickedAttachment[] | null;
+
+/** The one picture a single-picture field holds; null for an address, a list or an empty field. */
+export function onePicture(value: ImageUploadValue): PickedAttachment | null {
+	return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+}
+
+/** The address an `url`-mode field holds; null for anything else. */
+export function pictureAddress(value: ImageUploadValue): string | null {
+	return typeof value === 'string' ? value : null;
+}
+
+/**
  * An image field (E01–E04): its pictures as tiles, a “+” that opens the Media picker (media step 4d) with the
  * place's profile and room, and the version a tile shows named on it when it isn't “As is”. The forms keep their
  * inputs and `selectedFiles`; each chosen picture also carries its `versionId`.
@@ -78,7 +94,7 @@ export class ImageUpload {
 	/** The picker's title, a translation key. */
 	readonly pickTitle = input<string | null>(null);
 
-	readonly selectedFiles = output<any>();
+	readonly selectedFiles = output<ImageUploadValue>();
 
 	public showImages: IAttachment[] = [];
 	public showImage: IAttachment | null;
@@ -103,9 +119,11 @@ export class ImageUpload {
 
 	/** E04: a tile names its version when it isn't “As is”. */
 	versionBadge(image: PickedAttachment | null | undefined): string | null {
-		const fill = image?.versionId?.split('.')[1];
+		const version = image?.versionId;
+		if (!version) return null;
+		const fill = version.split('.')[1];
 		return fill && fill !== 'as_is'
-			? this.transloco.translate(fillKey(fill as never, image?.versionId?.startsWith('browser_icon') ?? false))
+			? this.transloco.translate(fillKey(fill as never, version.startsWith('browser_icon')))
 			: null;
 	}
 

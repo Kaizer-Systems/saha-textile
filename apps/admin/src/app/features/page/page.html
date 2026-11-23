@@ -13,7 +13,7 @@
 	<app-table
 		[tableConfig]="tableConfig()"
 		[hasCheckbox]="false"
-		(rowClicked)="edit($any($event))"
+		(rowClicked)="edit($event)"
 		(action)="onActionClicked($event)"
 	/>
 </app-page-wrapper>

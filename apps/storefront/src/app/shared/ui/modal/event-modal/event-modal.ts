@@ -16,6 +16,7 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbCarousel, NgbModal, NgbSlide } from '@ng-bootstrap/ng-bootstrap';
 import { formatIst } from '@saha-textile/core-domain/ist-time';
 
+import { ThemeModeStore } from '@core/brand/theme-mode';
 import { ConsentStore } from '@core/consent/consent.store';
 import {
 	EVENTS_COOKIE,
@@ -28,7 +29,6 @@ import {
 } from '@core/events/event-popup-rules';
 import { ShopEvents } from '@core/events/shop-events';
 import { injectBrandQuery } from '@data-access/queries/brand.queries';
-import { ThemeModeStore } from '@core/brand/theme-mode';
 
 import { Button } from '../../button/button';
 

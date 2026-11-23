@@ -108,15 +108,15 @@
 									<div class="checkout-title">
 										<h4>{{ 'delivery_options' | transloco }}</h4>
 									</div>
-									@if (!(selectedUser$ | async )) {
-									<div class="empty-box">
-										<h2>{{ 'no_delivery_options_found' | transloco }}</h2>
-									</div>
-									} @if ((selectedUser$ | async)) {
+									@if (selectedUser$ | async) {
 									<app-delivery-block
 										[setting]="(setting$ | async)"
 										(selectDelivery)="selectDelivery($event)"
 									/>
+									} @else {
+									<div class="empty-box">
+										<h2>{{ 'no_delivery_options_found' | transloco }}</h2>
+									</div>
 									}
 								</div>
 							</li>
@@ -128,12 +128,12 @@
 									<div class="checkout-title">
 										<h4>{{ 'payment_options' | transloco }}</h4>
 									</div>
-									@if (!(selectedUser$ | async)) {
+									@if (selectedUser$ | async) {
+									<app-payment-block (selectPaymentMethod)="selectPaymentMethod($event)" />
+									} @else {
 									<div class="empty-box">
 										<h2>{{ 'no_payment_options_found' | transloco }}</h2>
 									</div>
-									} @if ((selectedUser$ | async)) {
-									<app-payment-block (selectPaymentMethod)="selectPaymentMethod($event)" />
 									}
 								</div>
 							</li>

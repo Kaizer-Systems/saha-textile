@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { resetSupportedLocales, setRetiredLocales, setSupportedLocales } from './locale';
 import {
 	isLiveStorefrontPath,
 	legacyCatalogReady,
@@ -10,6 +9,7 @@ import {
 	setLiveCatalog,
 	storefrontAddress,
 } from './legacy-address';
+import { resetSupportedLocales, setRetiredLocales, setSupportedLocales } from './locale';
 
 describe('storefrontAddress', () => {
 	afterEach(() => {

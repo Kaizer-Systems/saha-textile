@@ -100,7 +100,7 @@
 				[pickTitle]="'fm_pick_title_share'"
 				[multipleImage]="false"
 				[image]="shareImageTile()"
-				(selectedFiles)="selectShareImage($any($event))"
+				(selectedFiles)="selectShareImage($event)"
 			/>
 			<p class="help-text">{{ 'pb_settings_share_help' | transloco }}</p>
 		</app-form-fields>

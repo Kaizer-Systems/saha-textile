@@ -7,7 +7,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { CompareStore } from '@core/state/compare/compare.store';
 import { SettingStore } from '@core/state/setting.store';
-import { SiteConfigStore } from '@core/state/site-config.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { Categorie } from '@features/themes/widgets/categorie/categorie';
 import { WalletOffer } from '@features/themes/widgets/wallet-offer/wallet-offer';

@@ -8,20 +8,16 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 import { BehaviorSubject, firstValueFrom, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { AttributeService } from '@data-access/services/attribute.service';
+import { ActiveLanguages } from '@core/i18n/active-languages';
+import { LegalPagesGateway } from '@core/legal-pages/legal-pages.gateway';
 import { BlogService } from '@data-access/services/blog.service';
-import { CategoryService } from '@data-access/services/category.service';
 import { CurrencyService } from '@data-access/services/currency.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { TaxService } from '@data-access/services/tax.service';
 
-import { FormAttribute } from './attribute/form-attribute/form-attribute';
 import { FormBlog, fromShopDate, shopDate } from './blog/form-blog/form-blog';
-import { FormCategory } from './category/form-category/form-category';
 import { FormCurrency } from './currency/form-currency/form-currency';
 import { FormPage, refusedFields } from './page/form-page/form-page';
-import { LegalPagesGateway } from '@core/legal-pages/legal-pages.gateway';
-import { ActiveLanguages } from '@core/i18n/active-languages';
 import { FormTax } from './tax/form-tax/form-tax';
 
 const categories = signal<unknown>(undefined);

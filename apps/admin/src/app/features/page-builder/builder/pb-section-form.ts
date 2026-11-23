@@ -2,14 +2,10 @@ import { Component, inject, input, output, signal } from '@angular/core';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import type { BannerArrangement } from '@saha-textile/contracts';
 
 import { ActiveLanguages } from '@core/i18n/active-languages';
-import type { PageSection } from '@core/page-builder/page-builder.gateway';
 import { LanguageNamePipe } from '@shared/pipes/language.pipes';
 
-import { FmPicker, type FmPicked } from '../../media/file-manager/fm-picker';
-import { profileNameKey } from '../../setting/image-profiles/profile-words';
 import {
 	ARRANGEMENT_PIECES,
 	PIECE_MAX_PICTURES,
@@ -20,6 +16,11 @@ import {
 	piecesFor,
 } from './builder-state';
 import { PbPicture } from './pb-picture';
+import { FmPicker, type FmPicked } from '../../media/file-manager/fm-picker';
+import { profileNameKey } from '../../setting/image-profiles/profile-words';
+
+import type { PageSection } from '@core/page-builder/page-builder.gateway';
+import type { BannerArrangement } from '@saha-textile/contracts';
 
 type Piece = Extract<PageSection, { pieces: unknown }>['pieces'][number];
 type WithPieces = Extract<PageSection, { pieces: unknown }>;

@@ -1,8 +1,8 @@
 import { Routes } from '@angular/router';
 
+import { PbBuilder } from './builder/pb-builder';
 import { PageBuilderHome } from './page-builder-home';
 import { PageBuilderPages } from './page-builder-pages';
-import { PbBuilder } from './builder/pb-builder';
 import { PbPageSettings } from './pb-page-settings';
 
 export default [

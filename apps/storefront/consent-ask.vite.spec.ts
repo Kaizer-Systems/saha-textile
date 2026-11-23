@@ -2,12 +2,12 @@ import { runInNewContext } from 'node:vm';
 
 import { describe, expect, it } from 'vitest';
 
+import { consentAskScript, withConsentAsk } from './consent-ask.vite';
 import {
 	CONSENT_ASK_CLASS,
 	CONSENT_TAP_ATTRIBUTE,
 	COOKIE_POLICY_VERSION,
 } from './src/app/core/consent/cookie-catalogue';
-import { consentAskScript, withConsentAsk } from './consent-ask.vite';
 
 /** Runs the head script against a page with these cookies; answers whether it marked the page. */
 const run = (cookie: string, version = COOKIE_POLICY_VERSION) => {

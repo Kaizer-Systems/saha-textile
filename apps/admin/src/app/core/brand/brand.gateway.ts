@@ -1,6 +1,11 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 
+import { injectQuery } from '@tanstack/angular-query-experimental';
+import { firstValueFrom, Observable } from 'rxjs';
+
+import { runtimeConfig } from '@core/config/runtime-config';
+
 import type {
 	BrandAppLinkResult,
 	BrandAppStore,
@@ -8,10 +13,6 @@ import type {
 	ResolvedBrandLogos,
 	StorefrontBrand,
 } from '@saha-textile/contracts';
-import { injectQuery } from '@tanstack/angular-query-experimental';
-import { firstValueFrom, Observable } from 'rxjs';
-
-import { runtimeConfig } from '@core/config/runtime-config';
 
 const NO_LOGOS: ResolvedBrandLogos = {
 	logo: null,

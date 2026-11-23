@@ -116,8 +116,9 @@ export interface IVariationOption {
 export interface IVariant {
 	id: number | null;
 	attribute_values: number[] | null;
-	options: any;
-	variant_option: any;
+	/** Carried from the old catalogue shape; nothing here reads them. */
+	options: unknown;
+	variant_option: unknown;
 }
 
 export interface IVariationCombination {

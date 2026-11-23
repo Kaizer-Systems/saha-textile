@@ -7,11 +7,11 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { firstValueFrom } from 'rxjs';
 
+import { ThemeModeStore } from '@core/brand/theme-mode';
 import { runtimeConfig, runtimeConfigReady } from '@core/config/runtime-config';
 import { ConsentStore } from '@core/consent/consent.store';
 import { ShopEvents } from '@core/events/shop-events';
 import { injectBrandQuery } from '@data-access/queries/brand.queries';
-import { ThemeModeStore } from '@core/brand/theme-mode';
 
 import { Button } from '../../button/button';
 

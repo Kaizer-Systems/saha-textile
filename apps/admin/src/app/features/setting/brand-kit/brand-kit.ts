@@ -13,7 +13,7 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload, type PickedAttachment } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload, type PickedAttachment, ImageUploadValue, onePicture } from '@shared/ui/image-upload/image-upload';
 
 import type { BrandAppStore, BrandLogoSet, BrandSettings, BrandSocialNetwork } from '@saha-textile/contracts';
 
@@ -167,13 +167,15 @@ export class BrandKit implements OnDestroy {
 	}
 
 	/** Sets or clears one logo slot of the shop's or the admin's set. */
-	select(set: LogoSetName, slot: SetSlot, image: IAttachment | null | undefined) {
+	select(set: LogoSetName, slot: SetSlot, value: ImageUploadValue) {
+		const image = onePicture(value);
 		const control = set === 'shop' ? this.form.controls[slot] : this.form.controls.admin.controls[slot];
 		control.setValue(image ? String(image.id) : null);
 		this.keepVersion(image);
 	}
 
-	selectShareImage(image: IAttachment | null | undefined) {
+	selectShareImage(value: ImageUploadValue) {
+		const image = onePicture(value);
 		this.form.controls.shareImageAssetId.setValue(image ? String(image.id) : null);
 		this.keepVersion(image);
 	}

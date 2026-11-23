@@ -1,6 +1,5 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-
 import { Router } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';

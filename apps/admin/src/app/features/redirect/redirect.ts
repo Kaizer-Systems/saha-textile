@@ -54,7 +54,7 @@ export class Redirect {
 		reason: ['manual', Validators.required],
 	});
 
-	readonly tableConfig = signal<ITableConfig>({
+	readonly tableConfig = signal<ITableConfig<RedirectRow>>({
 		columns: [
 			{ title: 'path', dataField: 'sourcePath', sortable: true },
 			{ title: 'status', dataField: 'statusCode' },

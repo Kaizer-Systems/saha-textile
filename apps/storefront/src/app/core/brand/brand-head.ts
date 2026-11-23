@@ -1,6 +1,5 @@
-import type { StorefrontBrand } from '@data-access/queries/brand.queries';
-
 import type { ThemeMode } from './theme-mode';
+import type { StorefrontBrand } from '@data-access/queries/brand.queries';
 
 const LARGEST_ICON = '512';
 

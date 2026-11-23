@@ -37,7 +37,7 @@ export class Page {
 	readonly missing = (inject(ActivatedRoute).snapshot.queryParams['missing'] as string | undefined) ?? null;
 	readonly pages = signal<AdminLegalPage[]>([]);
 
-	readonly tableConfig = computed<ITableConfig>(() => {
+	readonly tableConfig = computed<ITableConfig<PageRow>>(() => {
 		const rows: PageRow[] = this.pages()
 			.filter((row) => !this.missing || (row.gaps[this.missing]?.length ?? 0) > 0)
 			.map((row) => ({

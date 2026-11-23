@@ -10,6 +10,7 @@ import { firstValueFrom } from 'rxjs';
 import { BundleService } from '@data-access/services/bundle.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { omit } from '@shared/util/omit';
 
 import { BundleRuleRows } from './bundle-rule-rows';
 
@@ -81,8 +82,7 @@ export class PriceMethodBuilder {
 
 	private async load(): Promise<void> {
 		const row = await firstValueFrom(this.bundles.method(this.id));
-		const { id: _id, seeded: _s, version: _v, usedBy: _u, createdAt: _c, updatedAt: _up, ...write } = row;
-		this.method.set(write);
+		this.method.set(omit(row, 'id', 'seeded', 'version', 'usedBy', 'createdAt', 'updatedAt'));
 	}
 
 	set(patch: Partial<BundlePriceMethodWrite>): void {

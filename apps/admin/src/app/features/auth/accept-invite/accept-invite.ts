@@ -3,9 +3,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { firstValueFrom } from 'rxjs';
 
 import { AdminAuthGateway } from '@core/auth/auth-gateway';
 import { NotificationService } from '@data-access/services/notification.service';

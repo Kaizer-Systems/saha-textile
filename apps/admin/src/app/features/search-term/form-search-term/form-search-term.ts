@@ -8,8 +8,8 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 import { Select2, Select2Data, Select2SearchEvent } from 'ng-select2-component';
 
 import { SEARCH_TERM_GO_LIVE_WORDS, gapsFromError, goLiveToast } from '@core/catalog/go-live-report';
-import { focusField, gapsByLocale, type LanguageGap, LocalizedFields } from '@core/i18n/localized-fields';
 import { ActiveLanguages } from '@core/i18n/active-languages';
+import { focusField, gapsByLocale, type LanguageGap, LocalizedFields } from '@core/i18n/localized-fields';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 import { injectCatalogProductsQuery } from '@data-access/queries/product.queries';
 import { injectSearchTermQuery } from '@data-access/queries/search-term.queries';

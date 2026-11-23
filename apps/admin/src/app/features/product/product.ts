@@ -22,6 +22,7 @@ import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { MissingLanguageNotice } from '@shared/ui/missing-language-notice/missing-language-notice';
 import { Table } from '@shared/ui/table/table';
+import { searchOf } from '@shared/util/search-of';
 
 import { ProductBulkPopup } from './bulk/product-bulk-popup';
 import { ProductSalePopup, SaleClosed, SalePick } from './bulk/product-sale-popup';
@@ -83,7 +84,7 @@ export class Product {
 	/** Opened from Settings › Languages: only live products still missing one language's text. */
 	readonly missing = injectMissingLanguage('products');
 	readonly productsQuery = injectCatalogProductsQuery(() => ({
-		search: typeof this.params()['search'] === 'string' ? this.params()['search'] : undefined,
+		search: searchOf(this.params()),
 		page: Number(this.params()['page']) || 1,
 		pageSize: Number(this.params()['paginate']) || 15,
 		missing: this.missing.code(),
@@ -249,13 +250,16 @@ export class Product {
 
 	onActionClicked(action: ITableClickedAction) {
 		const name = action.actionToPerform ?? '';
-		if (name == 'edit') this.edit(action.data);
-		else if (name == 'go_live') this.goLive(action.data);
+		// A row button hands over its row; a bulk action, the ticked ids.
+		const row = action.data as ProductTableRow;
+		const ids = (action.data ?? []) as (string | number)[];
+		if (name == 'edit') this.edit(row);
+		else if (name == 'go_live') this.goLive(row);
 		// The table puts the switch's new value on the row itself: 1 to go live, 0 to come off.
-		else if (name == 'status_switch') this.statusSwitch(action.data, Number(action.data?.status_switch));
-		else if (name == 'remove') void this.runBulk('delete', [String(action.data?.id)]);
-		else if (name == 'bulk_sale') void this.openSale(action.data);
-		else if (BULK[name]) void this.runBulk(BULK[name], (action.data ?? []).map(String));
+		else if (name == 'status_switch') this.statusSwitch(row, Number(row.status_switch));
+		else if (name == 'remove') void this.runBulk('delete', [String(row.id)]);
+		else if (name == 'bulk_sale') void this.openSale(ids);
+		else if (BULK[name]) void this.runBulk(BULK[name], ids.map(String));
 	}
 
 	edit(data: ProductTableRow) {

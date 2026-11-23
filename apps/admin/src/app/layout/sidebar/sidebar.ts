@@ -1,13 +1,11 @@
 import { isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, input, PLATFORM_ID } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { Observable } from 'rxjs';
 
-import { AuthStore } from '@core/state/auth.store';
 import { injectBrandQuery } from '@core/brand/brand.gateway';
+import { AuthStore } from '@core/state/auth.store';
 import { MenuStore } from '@core/state/menu.store';
 import { IMenu } from '@data-access/interfaces/menu.interface';
 import { NavService } from '@data-access/services/nav.service';

@@ -9,8 +9,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { OrderDraftStore } from '@core/orders/order-draft.store';
 import { OrdersGateway } from '@core/orders/orders.gateway';
-import { NotificationService } from '@data-access/services/notification.service';
 import { LoaderStore } from '@core/state/loader.store';
+import { NotificationService } from '@data-access/services/notification.service';
 
 import { CreateOrder } from './create-order';
 import { buyerLabel } from './order-buyer-card';
@@ -99,7 +99,7 @@ describe('Create order (oc01–oc03)', () => {
 		});
 		draft.setCurrency('USD');
 		page.search.set('jamdani');
-		page.selectCategoryItem([7]);
+		page.selectCategoryItem(['7']);
 		expect(query()).toMatchObject({ currency: 'USD', businessId: 'biz_1', q: 'jamdani', categoryId: '7', page: 1 });
 	});
 

@@ -1,8 +1,8 @@
 import { PLATFORM_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TranslocoService } from '@jsverse/transloco';
+import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SiteConfigStore } from '@core/state/site-config.store';

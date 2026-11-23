@@ -1146,22 +1146,43 @@ describe('TreeNode', () => {
 		expect(label({ name: 'Guides', blog: { name: { en: 'Guides', bn: 'গাইড' } } }, 'bn')).toBe('গাইড');
 	});
 
+	it('names a row by the field the tree names, and lists its children under the tree’s key', () => {
+		render();
+		const fixture = TestBed.createComponent(TreeNode);
+		const child = { id: 'c2', name: 'Silk' };
+		fixture.componentRef.setInput('node', {
+			id: 'c1',
+			name: 'Sarees',
+			title: 'All sarees',
+			subcategories: [child],
+		});
+		fixture.componentRef.setInput('displayKey', 'title');
+		fixture.componentRef.setInput('recursionKey', 'subcategories');
+		expect(fixture.componentInstance.label()).toBe('All sarees');
+		expect(fixture.componentInstance.children()).toEqual([child]);
+		// A field that is not text falls back to the name; a leaf, or a key holding something else, has no children.
+		fixture.componentRef.setInput('displayKey', 'subcategories');
+		fixture.componentRef.setInput('recursionKey', 'name');
+		expect(fixture.componentInstance.label()).toBe('Sarees');
+		expect(fixture.componentInstance.children()).toEqual([]);
+	});
+
 	it('reads the selected id, and deletes through the API', () => {
 		const { node, router, service } = render();
 		expect(node.id).toBe('c4');
-		node.delete('delete', { id: 'c1', type: 'product' } as never);
+		node.delete({ id: 'c1', type: 'product' } as never);
 		expect(service.deleteCategory).toHaveBeenCalledWith('c1');
 		expect(router.navigateByUrl).toHaveBeenLastCalledWith('/category');
 	});
 
 	it('deletes blog categories through the blog API, and says when a delete is refused', () => {
 		const blog = render();
-		blog.node.delete('delete', { id: 'b', type: 'post' } as never);
+		blog.node.delete({ id: 'b', type: 'post' } as never);
 		expect(blog.service.deleteCategory).not.toHaveBeenCalled();
 		expect(blog.blogs.deleteTerm).toHaveBeenCalledWith('categories', 'b');
 		expect(blog.router.navigateByUrl).toHaveBeenCalledWith('/blog/category');
 		const refused = render(() => throwError(() => new Error('no')) as never);
-		refused.node.delete('delete', { id: 'c', type: 'product' } as never);
+		refused.node.delete({ id: 'c', type: 'product' } as never);
 		expect(refused.toasts.showError).toHaveBeenCalledWith('category_rejected');
 	});
 });

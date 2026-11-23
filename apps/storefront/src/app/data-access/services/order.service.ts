@@ -4,13 +4,12 @@ import { Injectable, inject } from '@angular/core';
 import { from, Observable, switchMap } from 'rxjs';
 
 import { runtimeConfig, runtimeConfigReady } from '@core/config/runtime-config';
-
-import type { ShopOrderPage, ShopOrderView } from '@saha-textile/contracts';
-
 import { Params } from '@data-access/interfaces/core.interface';
 import { IOrderModel } from '@data-access/interfaces/order.interface';
 
 import { environment } from '../../../../public/environments/environment';
+
+import type { ShopOrderPage, ShopOrderView } from '@saha-textile/contracts';
 
 @Injectable({
 	providedIn: 'root',

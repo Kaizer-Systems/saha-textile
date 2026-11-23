@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+
 import { TranslocoTestingModule } from '@jsverse/transloco';
-import type { CompanyProfile } from '@saha-textile/contracts';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
@@ -11,6 +11,8 @@ import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { CompanyProfileSettings } from './company-profile';
+
+import type { CompanyProfile } from '@saha-textile/contracts';
 
 const profile = (patch: Partial<CompanyProfile> = {}): CompanyProfile => ({
 	kind: 'proprietorship',

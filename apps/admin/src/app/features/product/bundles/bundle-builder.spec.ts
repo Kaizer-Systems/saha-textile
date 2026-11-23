@@ -73,6 +73,15 @@ function render() {
 }
 
 describe('the bundle builder’s item and level settings (brief S8, S10)', () => {
+	it('keeps one styled photo, and ignores a list', () => {
+		const page = render();
+		page.pickStyled([{ id: 'med_1' }] as never);
+		expect(page.styledTile()).toBeNull();
+		page.pickStyled({ id: 'med_2', versionId: 'ver_2' } as never);
+		expect(page.styledTile()).toMatchObject({ id: 'med_2' });
+		expect(page.draft()?.styledPhoto).toEqual({ assetId: 'med_2', versionId: 'ver_2' });
+	});
+
 	it('keeps metres in tenths, pins a size or leaves it to the shopper', () => {
 		const page = render();
 		const [fabric, petti] = page.draft()!.levels[0]!.items;

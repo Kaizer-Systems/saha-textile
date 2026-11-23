@@ -143,10 +143,17 @@ function open(key: Buffer, sealed: Sealed): string | null {
 export class MongoEDocKeyStore implements EDocKeyStore {
 	readonly available = true;
 	private readonly key: Buffer;
+	private readonly previousKey: Buffer | null;
 
-	constructor(key: Uint8Array) {
+	/**
+	 * `previousKey` (EDOC_KEYS_KEY_PREVIOUS) serves a planned key change, as the mailbox key does: keys that open
+	 * only with it are sealed again under the new key when read, so no path needs its keys entered again.
+	 */
+	constructor(key: Uint8Array, previousKey?: Uint8Array) {
 		if (key.length !== 32) throw new Error('EDOC_KEYS_KEY must be 32 bytes');
+		if (previousKey && previousKey.length !== 32) throw new Error('EDOC_KEYS_KEY_PREVIOUS must be 32 bytes');
 		this.key = Buffer.from(key);
+		this.previousKey = previousKey ? Buffer.from(previousKey) : null;
 	}
 
 	async put(gstin: string, path: string, secrets: EDocSecrets): Promise<void> {
@@ -160,8 +167,14 @@ export class MongoEDocKeyStore implements EDocKeyStore {
 	async get(gstin: string, path: string): Promise<EDocSecrets | null> {
 		const doc = await EDocKeysModel.findById(`${gstin}:${path}`).lean<AggregateDoc>().exec();
 		const sealed = doc?.['sealed'] as Sealed | undefined;
-		const text = sealed ? open(this.key, sealed) : null;
-		return text ? (JSON.parse(text) as EDocSecrets) : null;
+		if (!sealed) return null;
+		const current = open(this.key, sealed);
+		if (current !== null) return JSON.parse(current) as EDocSecrets;
+		const previous = this.previousKey ? open(this.previousKey, sealed) : null;
+		if (previous === null) return null;
+		const secrets = JSON.parse(previous) as EDocSecrets;
+		await this.put(gstin, path, secrets);
+		return secrets;
 	}
 
 	async remove(gstin: string, path: string): Promise<void> {

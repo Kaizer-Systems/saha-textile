@@ -21,7 +21,12 @@ import { EDocsService } from './edocs.service';
 			inject: [APP_CONFIG],
 			useFactory: (config: AppConfig) =>
 				config.edocs.keysKey
-					? new MongoEDocKeyStore(new Uint8Array(Buffer.from(config.edocs.keysKey, 'base64')))
+					? new MongoEDocKeyStore(
+							new Uint8Array(Buffer.from(config.edocs.keysKey, 'base64')),
+							config.edocs.keysKeyPrevious
+								? new Uint8Array(Buffer.from(config.edocs.keysKeyPrevious, 'base64'))
+								: undefined,
+						)
 					: new UnavailableEDocKeyStore(),
 		},
 	],

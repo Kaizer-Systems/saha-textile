@@ -100,4 +100,18 @@ describe.skipIf(!hasMongoEnv())('e-document persistence (integration, rs0)', () 
 		expect(JSON.stringify(raw)).not.toContain('sec');
 		expect(await new MongoEDocKeyStore(randomBytes(32)).get(GSTIN, 'irpDirect')).toBeNull();
 	});
+
+	it('reads keys sealed with the previous key during a planned change, and seals them again under the new one', async () => {
+		const oldKey = randomBytes(32);
+		const newKey = randomBytes(32);
+		await new MongoEDocKeyStore(oldKey).put(GSTIN, 'ewbProvider', {
+			password: 'p2',
+			clientId: 'c2',
+			clientSecret: 's2',
+			publicKeyPem: null,
+		});
+		const rotated = new MongoEDocKeyStore(newKey, oldKey);
+		expect(await rotated.get(GSTIN, 'ewbProvider')).toMatchObject({ clientSecret: 's2' });
+		expect(await new MongoEDocKeyStore(newKey).get(GSTIN, 'ewbProvider')).toMatchObject({ clientSecret: 's2' });
+	});
 });

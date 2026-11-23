@@ -428,6 +428,17 @@ const ConfigSchema = z.object({
 				.refine((value) => value === undefined || Buffer.from(value, 'base64').length === 32, {
 					message: 'EDOC_KEYS_KEY must be 32 bytes, base64',
 				}),
+			/** The key before the last planned change: keys sealed with it are sealed again under the new one when read. */
+			keysKeyPrevious: z
+				.string()
+				.optional()
+				.refine((value) => value === undefined || Buffer.from(value, 'base64').length === 32, {
+					message: 'EDOC_KEYS_KEY_PREVIOUS must be 32 bytes, base64',
+				}),
+		})
+		.refine((edocs) => !edocs.keysKeyPrevious || !!edocs.keysKey, {
+			message: 'EDOC_KEYS_KEY_PREVIOUS goes only with EDOC_KEYS_KEY.',
+			path: ['keysKeyPrevious'],
 		})
 		.default({}),
 	media: z
@@ -608,7 +619,7 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 			adminUrl: env.ADMIN_APP_URL || undefined,
 			domain: env.MAILBOX_DOMAIN || undefined,
 		},
-		edocs: { keysKey: env.EDOC_KEYS_KEY || undefined },
+		edocs: { keysKey: env.EDOC_KEYS_KEY || undefined, keysKeyPrevious: env.EDOC_KEYS_KEY_PREVIOUS || undefined },
 		media: {
 			workerConcurrency: env.MEDIA_WORKER_CONCURRENCY || undefined,
 			gcLive: env.MEDIA_GC_LIVE || undefined,

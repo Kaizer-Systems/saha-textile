@@ -57,3 +57,4 @@ export * from './env-labels.js';
 export * from './rotation.js';
 export * from './traces.js';
 export * from './products.js';
+export * from './coverage.js';

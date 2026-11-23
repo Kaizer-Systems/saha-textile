@@ -26,7 +26,7 @@
     "check:permission-registry": "node scripts/check-permission-registry.mjs",
     "check:icon-titles": "node scripts/check-icon-titles.mjs",
     "check:infisical-names": "node scripts/check-infisical-names.mjs",
-    "test:scripts": "node --test scripts/secrets/*.test.mjs scripts/pipeline/*.test.mjs scripts/release-console/*.test.mjs scripts/server/*.test.mjs scripts/deploy/*.test.mjs scripts/spaces/*.test.mjs scripts/db/*.test.mjs",
+    "test:scripts": "node --test scripts/test-report/*.test.mjs scripts/secrets/*.test.mjs scripts/pipeline/*.test.mjs scripts/release-console/*.test.mjs scripts/server/*.test.mjs scripts/deploy/*.test.mjs scripts/spaces/*.test.mjs scripts/db/*.test.mjs",
     "secrets:status": "node scripts/secrets/cli.mjs status",
     "secrets:pull": "node scripts/secrets/cli.mjs pull",
     "secrets:setup-local": "node scripts/secrets/cli.mjs setup-local",

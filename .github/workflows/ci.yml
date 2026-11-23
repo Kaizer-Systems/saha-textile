@@ -76,6 +76,21 @@ jobs:
       - name: Tests and coverage
         run: pnpm coverage
 
+      # What the Release Console's Coverage screen reads for this commit: every workspace's line data,
+      # each test's outcome and the run's description. Kept when tests fail too, since that is when it helps.
+      - name: Keep the coverage reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage
+          path: |
+            coverage/meta.json
+            coverage/*/coverage-final.json
+            coverage/*/coverage-summary.json
+            coverage/*/tests.json
+          if-no-files-found: ignore
+          retention-days: 90
+
   build:
     name: Production builds
     runs-on: ubuntu-latest

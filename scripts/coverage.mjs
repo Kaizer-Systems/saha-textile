@@ -17,10 +17,11 @@
  * The Mongo adapter suite needs the replica set: `pnpm mongo:up`. It runs on `saha_textile_it`.
  */
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { coverageMeta } from './test-report/meta.mjs';
 import { localMongoTarget, testDatabaseUri } from './secrets/test-login.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -106,11 +107,19 @@ function measure(name, { dir, angular, mongo, generated }) {
 		'--coverage.reporter=json-summary',
 		'--coverage.reporter=json',
 		`--coverage.reportsDirectory=${report}`,
+		// The usual output, plus each test's outcome for the Release Console's Coverage screen.
+		'--reporter=default',
+		`--reporter=${join(ROOT, 'scripts/test-report/tests-reporter.mjs')}`,
 	];
 	// Where the suite's MongoDB is: CI's environment, else this Mac's apps/api/.env (port 27018).
 	const target = mongo ? localMongoTarget('saha_textile_it') : null;
+	const testsFile = join(report, 'tests.json');
+	rmSync(testsFile, { force: true });
 	const env = {
 		...process.env,
+		COVERAGE_TESTS_FILE: testsFile,
+		COVERAGE_ROOT: ROOT,
+		COVERAGE_TESTS_SKIP: angular ? DENOMINATOR : '',
 		...(target
 			? {
 					RUN_DB_IT: '1',
@@ -173,7 +182,7 @@ function measure(name, { dir, angular, mongo, generated }) {
 			}
 		}
 	}
-	return { ok, full, line };
+	return { ok, full, line, passed: run.status === 0, dir };
 }
 
 /** Where a file lost its statements and branches, so a CI failure names the line. */
@@ -205,6 +214,18 @@ const verdict = [
 	short ? `${short} workspace(s) not yet at 100%.` : 'All workspaces at 100%.',
 ].join(' ');
 console.log(`\n${verdict}`);
+// What the Release Console's Coverage screen reads beside the reports (commit, branch, run, results).
+const metaFile = join(ROOT, 'coverage', 'meta.json');
+const previous = existsSync(metaFile) ? JSON.parse(readFileSync(metaFile, 'utf8')) : null;
+mkdirSync(join(ROOT, 'coverage'), { recursive: true });
+writeFileSync(
+	metaFile,
+	JSON.stringify(
+		coverageMeta({ root: ROOT, env: process.env, results, floor: COVERAGE_FLOOR, previous }),
+		null,
+		'\t',
+	),
+);
 if (process.env.GITHUB_STEP_SUMMARY)
 	appendFileSync(
 		process.env.GITHUB_STEP_SUMMARY,

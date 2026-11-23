@@ -13,6 +13,8 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { FmPicker, type FmPicked } from '@features/media/file-manager/fm-picker';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 
+import { CatchUpCard } from './catch-up-card';
+
 import type { BookPart, PeriodLock, PeriodState, VoucherAttachment } from '@saha-textile/contracts';
 
 /** T1's columns: "Cash and bank" is one column over the two parts. */
@@ -40,7 +42,7 @@ export function columnState(locks: readonly PeriodLock[], month: string, parts: 
  */
 @Component({
 	selector: 'app-periods',
-	imports: [PageWrapper, TranslocoModule, FormsModule],
+	imports: [PageWrapper, TranslocoModule, FormsModule, CatchUpCard],
 	templateUrl: './periods.html',
 })
 export class PeriodsPage {

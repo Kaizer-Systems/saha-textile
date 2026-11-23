@@ -264,6 +264,35 @@ describe('receipts in the books', () => {
 		});
 	});
 
+	it('after the invoice, fills first what the invoice took from an advance never received', async () => {
+		const { service, posted } = setup({
+			invoices: [{ id: 'ti_1', status: 'issued' }],
+			vouchers: {
+				'taxInvoice:ti_1': {
+					lines: [{ ledgerId: 'led_adv', locationId: 'loc_shop', debitPaise: 300_000, creditPaise: 0 }],
+				},
+			},
+		});
+		await service.paymentReceived(payment as never, order, ctx, null);
+		expect(posted()[0]?.lines.slice(1)).toMatchObject([
+			{ ledger: { role: 'customer_advances' }, creditPaise: 300_000 },
+			{ ledger: { role: 'debtors_control' }, creditPaise: 168_000 },
+		]);
+	});
+
+	it('gives "Post them" the failure of a payment the customer made, to list it', async () => {
+		const gateway = { ...payment, method: 'gateway', recordedBy: null };
+		await expect(
+			setup({ postFails: new Error('voucher_problem:period_locked') }).service.paymentReceived(
+				gateway as never,
+				order,
+				ctx,
+				null,
+				{ keepCustomerPayment: false },
+			),
+		).rejects.toThrow('period_locked');
+	});
+
 	it('posts nothing for a payment not received or one that moves no money', async () => {
 		const { service, ledger } = setup();
 		expect(await service.paymentReceived({ ...payment, state: 'pending' } as never, order, ctx, null)).toBeNull();

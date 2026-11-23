@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { AuditFieldDiff } from './audit';
+import { BusinessKind } from './company';
 import { Id, IsoDateTime } from './common';
 import { IsoDate } from './purchasing';
 
@@ -446,3 +447,69 @@ export type MoneyLanding = z.infer<typeof MoneyLanding>;
 
 export const MoneyLandingWrite = MoneyLanding.omit({ updatedAt: true, updatedBy: true });
 export type MoneyLandingWrite = z.infer<typeof MoneyLandingWrite>;
+
+/** "Post them" on Accounts › Periods and locks (Postings and Convert brief AP3, AP-D3): documents saved before the books took them. */
+export const CatchUpKind = z.enum([
+	'receipts',
+	'purchaseEntries',
+	'supplierPayments',
+	'purchaseReturns',
+	'returnRefunds',
+	'businessReceipts',
+]);
+export type CatchUpKind = z.infer<typeof CatchUpKind>;
+
+const Count = z.number().int().nonnegative();
+const CatchUpCounts = z.object({
+	receipts: Count,
+	purchaseEntries: Count,
+	supplierPayments: Count,
+	purchaseReturns: Count,
+	returnRefunds: Count,
+	businessReceipts: Count,
+});
+
+export const BooksCatchUp = z.object({ waiting: CatchUpCounts });
+export type BooksCatchUp = z.infer<typeof BooksCatchUp>;
+
+export const BooksCatchUpResult = z.object({
+	posted: CatchUpCounts,
+	/** Each one the books couldn't take, with why (a locked month, a missing bank account…); never unlocked by this. */
+	skipped: z.array(z.object({ kind: CatchUpKind, number: z.string().nullable(), date: IsoDate, reason: z.string() })),
+});
+export type BooksCatchUpResult = z.infer<typeof BooksCatchUpResult>;
+
+/** Convert (Postings and Convert brief AC1, AC2): the kind of business changed once the books exist. */
+export const ConvertQuery = z.object({ kind: BusinessKind, lastDay: IsoDate });
+export type ConvertQuery = z.infer<typeof ConvertQuery>;
+
+/** Where an owners' account (or the profit so far, `from: 'profit'`) goes: a ledger, the new kind's ledger by key, or a new one. */
+export const ConvertTarget = z.union([
+	z.object({ ledgerId: Id }),
+	z.object({ key: z.string().regex(/^[a-z][a-z0-9_]{1,59}$/) }),
+	z.object({ newName: z.string().trim().min(2).max(120) }),
+]);
+export type ConvertTarget = z.infer<typeof ConvertTarget>;
+
+export const ConvertPreview = z.object({
+	from: BusinessKind,
+	to: BusinessKind,
+	lastDay: IsoDate,
+	openingDate: IsoDate,
+	rows: z.array(z.object({ from: z.string(), name: z.string(), balancePaise: z.number().int() })),
+	/** What a row can go to: owners' ledgers in the books, and the new kind's that the books don't have yet. */
+	targets: z.array(z.object({ ledgerId: Id.nullable(), key: z.string().nullable(), name: z.string() })),
+	/** Codes the admin puts in words; a row not yet mapped is shown on the row instead. */
+	problems: z.array(z.string()),
+	/** Months the conversion locks (all parts). */
+	months: z.array(z.string()),
+});
+export type ConvertPreview = z.infer<typeof ConvertPreview>;
+
+export const ConvertWrite = ConvertQuery.extend({
+	mapping: z.array(z.object({ from: z.string().min(1).max(60), to: ConvertTarget })).max(200),
+});
+export type ConvertWrite = z.infer<typeof ConvertWrite>;
+
+export const ConvertResult = z.object({ voucherId: Id.nullable(), months: z.number().int().nonnegative() });
+export type ConvertResult = z.infer<typeof ConvertResult>;

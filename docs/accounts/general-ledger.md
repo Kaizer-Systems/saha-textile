@@ -118,9 +118,17 @@ A bank receipt or payment with no bank account set is refused with `money_lands_
 
 A bill whose input tax can't be claimed carries that tax in the stock cost. Purchases and supplier money post against the default stock location.
 
+After an order's tax invoice, a received payment first fills whatever advance the invoice took with no receipt behind it (an invoice issued before receipts were posted), then the customer's account.
+
 A tax invoice uses the advance its order still holds (receipts credited to Customer advance, less earlier invoices and refund vouchers) before charging the customer's account.
 
 When the books can't take a posting, the step is refused with a code the admin puts in words (`money_lands_not_set:*`, `books_need_a_location`, `voucher_problem:*`), in the error notice and in Record payment on an order.
+
+## Documents saved before the books took them
+
+Accounts › Periods and locks shows the super admin a **Saved before the books took them** card: how many receipts, purchase entries, supplier payments, debit notes, refunds on debit notes and business receipts have no voucher yet. **Post them** posts each on its own date, in its own transaction, under the same key the inline posting uses, so a second press posts nothing new. A document the books can't take (a locked month, no bank account set, a missing ledger) is skipped and listed with why; no month is unlocked. Voided purchase entries and reversed payments net to nothing and are left out.
+
+Anyone else holding `accounts.lock` sees that only the super admin can do this (the API refuses with `catch_up_super_admin_only`).
 
 ## Periods and locks
 
@@ -144,13 +152,13 @@ Every change to the books (vouchers posted or reversed, ledgers, groups and mont
 
 ## Permissions
 
-| Code                     | Allows                                                             |
-| ------------------------ | ------------------------------------------------------------------ |
-| `accounts.index`         | read the chart, vouchers, statements and periods                   |
-| `accounts.post`          | post vouchers by hand (reversal also needs the Administrator role) |
-| `accounts.edit`          | add and change groups and ledgers, and set where money lands       |
-| `accounts.lock`          | close or lock months, and post into a month closed for staff       |
-| `accounts_template.edit` | make, publish and install accounts templates                       |
+| Code                     | Allows                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------- |
+| `accounts.index`         | read the chart, vouchers, statements and periods                                      |
+| `accounts.post`          | post vouchers by hand (reversal also needs the Administrator role)                    |
+| `accounts.edit`          | add and change groups and ledgers, and set where money lands                          |
+| `accounts.lock`          | close or lock months, post into a month closed for staff, and (super admin) Post them |
+| `accounts_template.edit` | make, publish and install accounts templates                                          |
 
 ## API
 
@@ -164,3 +172,4 @@ Every change to the books (vouchers posted or reversed, ledgers, groups and mont
 | `POST /admin/accounts/vouchers`, `POST …/vouchers/:id/reverse`                         | post and reverse               |
 | `GET /admin/accounts/periods`, `POST /admin/accounts/periods`                          | month states and locks         |
 | `GET /admin/accounts/money-landing`, `PUT /admin/accounts/money-landing`               | where money lands              |
+| `GET /admin/accounts/catch-up`, `POST /admin/accounts/catch-up`                        | what waits, and Post them      |

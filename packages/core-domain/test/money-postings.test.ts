@@ -59,15 +59,24 @@ describe('where money lands (P2)', () => {
 });
 
 describe('postings (P1)', () => {
-	it('posts a receipt against the advance before the invoice, and against the debt after', () => {
-		expect(receiptPosting(2_600, { role: 'gateway_clearing' }, false)).toEqual([
+	it('posts a receipt to the advance for the part given and to the customer’s debt for the rest', () => {
+		expect(receiptPosting(2_600, { role: 'gateway_clearing' }, 2_600)).toEqual([
 			{ ledger: { role: 'gateway_clearing' }, debitPaise: 260_000 },
 			{ ledger: { role: 'customer_advances' }, creditPaise: 260_000 },
 		]);
-		expect(receiptPosting(48_000, { id: 'led_hdfc' }, true)[1]).toEqual({
-			ledger: { role: 'debtors_control' },
-			creditPaise: 4_800_000,
+		expect(receiptPosting(48_000, { id: 'led_hdfc' }, 0)).toEqual([
+			{ ledger: { id: 'led_hdfc' }, debitPaise: 4_800_000 },
+			{ ledger: { role: 'debtors_control' }, creditPaise: 4_800_000 },
+		]);
+		expect(receiptPosting(100, { id: 'led_hdfc' }, 30).slice(1)).toEqual([
+			{ ledger: { role: 'customer_advances' }, creditPaise: 3_000 },
+			{ ledger: { role: 'debtors_control' }, creditPaise: 7_000 },
+		]);
+		expect(receiptPosting(100, { id: 'led_hdfc' }, 500)[1]).toEqual({
+			ledger: { role: 'customer_advances' },
+			creditPaise: 10_000,
 		});
+		expect(receiptPosting(100, { id: 'led_hdfc' }, -5)).toHaveLength(2);
 	});
 
 	it('posts a bill as stock and input tax against the supplier, rounding either way, and a return the other way', () => {

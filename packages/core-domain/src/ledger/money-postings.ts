@@ -47,12 +47,17 @@ export function bankLanding(landing: MoneyLanding): LedgerRef {
 	return { id: landing.receivedByBank };
 }
 
-/** A payment received: where it landed against the customer's advance, or their debt once invoiced. */
-export function receiptPosting(amountINR: number, landed: LedgerRef, invoiced: boolean): MoneyRow[] {
-	return [
-		{ ledger: landed, debitPaise: paise(amountINR) },
-		{ ledger: { role: invoiced ? 'debtors_control' : 'customer_advances' }, creditPaise: paise(amountINR) },
-	];
+/**
+ * A payment received: where it landed, against the customer's advance for the part given (all of it before the
+ * invoice; after it, what the invoice already took from the advance) and their debt for the rest.
+ */
+export function receiptPosting(amountINR: number, landed: LedgerRef, toAdvanceINR: number): MoneyRow[] {
+	const total = paise(amountINR);
+	const advance = Math.min(total, Math.max(0, paise(toAdvanceINR)));
+	const rows: MoneyRow[] = [{ ledger: landed, debitPaise: total }];
+	if (advance > 0) rows.push({ ledger: { role: 'customer_advances' }, creditPaise: advance });
+	if (total > advance) rows.push({ ledger: { role: 'debtors_control' }, creditPaise: total - advance });
+	return rows;
 }
 
 /** Where a payment to a supplier left from: cash, or the bank account set (refused when none is). */

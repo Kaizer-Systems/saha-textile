@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { AccountsTemplatesModule } from '../accounts-templates/accounts-templates.module';
 import { LocationsModule } from '../locations/locations.module';
 import { OrdersSetupModule } from '../orders-setup/orders-setup.module';
+import { BooksCatchUpController, BooksCatchUpService } from './books-catch-up';
 import { BooksPostingService } from './books-posting';
 import { DocumentLockAsksController, EditLogService } from './edit-log';
 import { DocumentLocksController, LedgerController } from './ledger.controller';
@@ -12,8 +13,14 @@ import { MoneyLandingController, MoneyLandingService } from './money-landing';
 /** The general ledger (accounts brief Q, T, D10): later documents post through LedgerService.post. */
 @Module({
 	imports: [AccountsTemplatesModule, LocationsModule, OrdersSetupModule],
-	controllers: [LedgerController, DocumentLocksController, DocumentLockAsksController, MoneyLandingController],
-	providers: [LedgerService, EditLogService, MoneyLandingService, BooksPostingService],
+	controllers: [
+		LedgerController,
+		DocumentLocksController,
+		DocumentLockAsksController,
+		MoneyLandingController,
+		BooksCatchUpController,
+	],
+	providers: [LedgerService, EditLogService, MoneyLandingService, BooksPostingService, BooksCatchUpService],
 	exports: [LedgerService, EditLogService, MoneyLandingService, BooksPostingService],
 })
 export class LedgerModule {}

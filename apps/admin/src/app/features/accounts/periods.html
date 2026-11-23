@@ -96,6 +96,9 @@
 			</div>
 		</div>
 	</div>
+	@if (canLock()) {
+	<app-catch-up-card />
+	}
 </app-page-wrapper>
 
 <ng-template

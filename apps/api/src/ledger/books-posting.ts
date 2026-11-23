@@ -270,14 +270,25 @@ export class BooksPostingService {
 	 * account and set off post nothing. A payment the customer made through the gateway is kept even when the books
 	 * can't take it; it stays unposted for "Post them" (AP-D2).
 	 */
-	async paymentReceived(payment: OrderPayment, order: ReceiptOrder, context: TransactionContext, by: string | null) {
+	async paymentReceived(
+		payment: OrderPayment,
+		order: ReceiptOrder,
+		context: TransactionContext,
+		by: string | null,
+		/** "Post them" wants every failure back, to list it. */
+		options: { keepCustomerPayment: boolean } = { keepCustomerPayment: true },
+	) {
 		if (payment.state !== 'received') return null;
 		const work = async () => {
 			const landed = await this.lands((landing) => receiptLanding(payment.method, landing));
 			if (!landed) return null;
 			const locationId = order.shipsFromLocationId ?? (await this.stockLocation());
 			return this.post(
-				receiptPosting(payment.amountINR, landed, await this.invoiced(order.id)),
+				receiptPosting(
+					payment.amountINR,
+					landed,
+					(await this.invoiced(order.id)) ? await this.advanceOwedINR(order.id) : payment.amountINR,
+				),
 				{
 					date: payment.receivedOn ?? istDay(payment.recordedAt),
 					narration: `Payment received on order ${order.orderNumber}`,
@@ -293,7 +304,8 @@ export class BooksPostingService {
 				by,
 			);
 		};
-		if (payment.method !== 'gateway' || payment.recordedBy !== null) return work();
+		const customerPaid = payment.method === 'gateway' && payment.recordedBy === null;
+		if (!customerPaid || !options.keepCustomerPayment) return work();
 		return work().catch((error: unknown) => {
 			this.logger.warn(`Payment ${payment.id} kept unposted for staff: ${(error as Error).message}`);
 			return null;
@@ -327,7 +339,7 @@ export class BooksPostingService {
 				? { role: 'cash' }
 				: await this.lands((landing) => (input.method === 'upi' ? upiLanding(landing) : bankLanding(landing)));
 		return this.post(
-			receiptPosting(input.amountINR, landed, true),
+			receiptPosting(input.amountINR, landed, 0),
 			{
 				date: input.receivedOn,
 				narration: `Receipt ${receipt.number} · ${receipt.businessName}`,
@@ -351,10 +363,10 @@ export class BooksPostingService {
 	}
 
 	/**
-	 * What an order's customer still has as an advance in the books: its receipts' credits to Customer advance, less what
-	 * its invoices and refund vouchers took from it. A tax invoice uses this much of the advance; the rest is debt.
+	 * An order's Customer advance in the books, in paise: its receipts' credits less what its invoices and refund
+	 * vouchers took. Below zero when an invoice took an advance whose receipt was never posted (saved before the books).
 	 */
-	async advanceHeldINR(orderId: string): Promise<number> {
+	private async advanceBalancePaise(orderId: string): Promise<number> {
 		const advances = await this.advancesLedger();
 		if (!advances) return 0;
 		const [payments, invoices, refunds] = await Promise.all([
@@ -368,10 +380,19 @@ export class BooksPostingService {
 			...refunds.map((r) => `refundVoucher:${r.id}`),
 		];
 		const vouchers = await Promise.all(keys.map((key) => this.ledger.voucherByKey(key)));
-		const paise = vouchers
+		return vouchers
 			.flatMap((voucher) => voucher?.lines ?? [])
 			.filter((line) => line.ledgerId === advances)
 			.reduce((sum, line) => sum + line.creditPaise - line.debitPaise, 0);
-		return Math.max(0, paise) / 100;
+	}
+
+	/** What an order's customer still has as an advance: a tax invoice uses this much of it; the rest is debt. */
+	async advanceHeldINR(orderId: string): Promise<number> {
+		return Math.max(0, await this.advanceBalancePaise(orderId)) / 100;
+	}
+
+	/** What an order's invoices took from the advance with no receipt behind it: a late receipt fills this first. */
+	private async advanceOwedINR(orderId: string): Promise<number> {
+		return Math.max(0, -(await this.advanceBalancePaise(orderId))) / 100;
 	}
 }

@@ -239,15 +239,17 @@ jobs:
             tar -C "$RELEASE_DIR" -czf - .
           } | ssh -F "$SSH_DIR/config" server
 
+      # deploy.sh already checked readiness on the server; this proves the way in through Cloudflare.
+      # /health/live, because the edge answers /health/ready only to callers inside the server (404 here).
       - name: Health through Cloudflare
         env:
           API_HOST: ${{ vars.API_HOST }}
         run: |
           for attempt in 1 2 3 4 5 6; do
-            curl -fsS --max-time 20 -o /dev/null "https://$API_HOST/health/ready" && { echo 'Healthy.'; exit 0; }
+            curl -fsS --max-time 20 -o /dev/null "https://$API_HOST/health/live" && { echo 'Reachable.'; exit 0; }
             sleep 10
           done
-          echo 'FAILED: the API did not answer healthy through Cloudflare.' >&2
+          echo 'FAILED: the API did not answer through Cloudflare.' >&2
           exit 1
 
       - name: Remove the release folder and keys from the runner

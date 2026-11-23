@@ -140,7 +140,7 @@ the repository runs them by itself.
    them first when they are missing (never for production), waits for the owner's approval, writes
    the release from Infisical, checks it, ships it through the tunnel to the deploy user, whose key
    can only run `bin/receive-release.sh`: it signs in to GHCR with the job's own token, runs
-   `bin/deploy.sh` and signs out. Then the workflow checks `/health/ready` through Cloudflare.
+   `bin/deploy.sh` (which checks readiness on the server) and signs out. Then the workflow checks that `/health/live` answers through Cloudflare; the edge answers `/health/ready` only from inside the server.
 7. **First administrator:** the one manual step, over SSH, as below.
 
 ## Back-in-a-moment pages

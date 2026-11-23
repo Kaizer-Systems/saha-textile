@@ -19,7 +19,7 @@
  */
 import { exportFolder, exportProject } from './infisical.mjs';
 import { SERVER_TIERS, TIERS, ROOT, SecretsError, describeError, loadInventory } from './inventory.mjs';
-import { setupLocal } from './local-setup.mjs';
+import { setupLocal, setupLocalMonitor } from './local-setup.mjs';
 import { formatServerPlan, planServerSecrets, SERVER_ONLY } from './server-secrets.mjs';
 import { applySecretChanges } from './write.mjs';
 import { pullDevEnv, refreshBeforeDev } from './pull.mjs';
@@ -120,8 +120,12 @@ function stackEnv() {
 	);
 }
 
-function setupLocalCommand() {
-	console.log(setupLocal({ root: ROOT }).join('\n'));
+/** @param {string[]} args */
+function setupLocalCommand(args = []) {
+	const flags = args.filter((arg) => arg !== '--');
+	if (flags.some((flag) => flag !== '--monitor-only')) throw new SecretsError('The one option is --monitor-only.');
+	const lines = flags.includes('--monitor-only') ? setupLocalMonitor({ root: ROOT }) : setupLocal({ root: ROOT });
+	console.log(lines.join('\n'));
 }
 
 /**

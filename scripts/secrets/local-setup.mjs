@@ -91,12 +91,67 @@ export function fillBlanks(text, values) {
 	return { text: next, filled, kept };
 }
 
+/** The Release Console's read-only database login (Release Path brief Q9), as deploy.sh makes it on a server. */
+export const MONITOR_USER = 'saha_textile_monitor';
+
+/**
+ * mongosh lines that keep the monitor login: clusterMonitor plus a role that may only find in
+ * system.profile and read stats and index use. No shop data, no writes. Needs the administrator.
+ * @param {string} database
+ * @param {string} password
+ */
+export function monitorLoginLines(database, password) {
+	const json = JSON.stringify;
+	return `
+{
+	const admin = db.getSiblingDB('admin');
+	const role = 'saha_textile_monitor_role';
+	const privileges = [
+		{ resource: { db: ${json(database)}, collection: 'system.profile' }, actions: ['find'] },
+		{ resource: { db: ${json(database)}, collection: '' }, actions: ['collStats', 'dbStats', 'indexStats', 'listCollections', 'listIndexes'] },
+	];
+	if (admin.getRole(role)) admin.updateRole(role, { privileges, roles: [] });
+	else admin.createRole({ role, privileges, roles: [] });
+	const roles = [{ role, db: 'admin' }, { role: 'clusterMonitor', db: 'admin' }];
+	if (admin.getUser(${json(MONITOR_USER)})) admin.updateUser(${json(MONITOR_USER)}, { pwd: ${json(password)}, roles });
+	else admin.createUser({ user: ${json(MONITOR_USER)}, pwd: ${json(password)}, roles });
+}
+`;
+}
+
+/**
+ * Only the monitor login on this Mac's MongoDB (`pnpm secrets:setup-local -- --monitor-only`): logs in
+ * as the administrator, keeps the login, proves it. Passed on standard input.
+ * @param {{ database: string, rootUser: string, rootPassword: string, monitorPassword: string }} logins
+ */
+export function monitorOnlyScript({ database, rootUser, rootPassword, monitorPassword }) {
+	const json = JSON.stringify;
+	return `
+db.getSiblingDB('admin').auth(${json(rootUser)}, ${json(rootPassword)});
+${monitorLoginLines(database, monitorPassword)}
+let ok = false;
+try {
+	const uri = 'mongodb://' + encodeURIComponent(${json(MONITOR_USER)}) + ':' + encodeURIComponent(${json(monitorPassword)}) + '@127.0.0.1:27017/admin?directConnection=true';
+	ok = connect(uri).getSiblingDB(${json(database)}).stats().ok === 1;
+} catch (error) {}
+print(ok ? 'monitor-ok' : 'monitor-failed');
+`;
+}
+
 /**
  * The mongosh script that creates or updates both logins, as deploy.sh's ensure_database does, then
  * logs in as the app to prove it. Passed on standard input, so no password reaches a command line.
- * @param {{ database: string, rootUser: string, rootPassword: string, appUser: string, appPassword: string, testPassword: string }} logins
+ * @param {{ database: string, rootUser: string, rootPassword: string, appUser: string, appPassword: string, testPassword: string, monitorPassword?: string }} logins
  */
-export function mongoLoginScript({ database, rootUser, rootPassword, appUser, appPassword, testPassword }) {
+export function mongoLoginScript({
+	database,
+	rootUser,
+	rootPassword,
+	appUser,
+	appPassword,
+	testPassword,
+	monitorPassword,
+}) {
 	const json = JSON.stringify;
 	return `
 function keep(database, user, pwd, roles) {
@@ -123,6 +178,7 @@ keep('admin', ${json(rootUser)}, ${json(rootPassword)}, [{ role: 'root', db: 'ad
 keep(${json(database)}, ${json(appUser)}, ${json(appPassword)}, [{ role: 'readWrite', db: ${json(database)} }]);
 // This Mac only: the test runners' login for their own databases (see test-login.mjs).
 keep('admin', ${json(TEST_DATABASE_USER)}, ${json(testPassword)}, ${json(TEST_ROLES)});
+${monitorPassword ? monitorLoginLines(database, monitorPassword) : ''}
 const all = logsIn(${json(rootUser)}, ${json(rootPassword)}, 'admin') && logsIn(${json(appUser)}, ${json(appPassword)}, ${json(database)}) && logsIn(${json(TEST_DATABASE_USER)}, ${json(testPassword)}, 'admin');
 print(all ? 'logins-ok' : 'logins-failed');
 `;
@@ -200,6 +256,7 @@ export function setupLocal({
 			appUser: /** @type {string} */ (after.get('MONGODB_USERNAME')),
 			appPassword: /** @type {string} */ (after.get('MONGODB_PASSWORD')),
 			testPassword,
+			monitorPassword: infrastructure.get('mongo-monitor-password')?.trim(),
 		}),
 	);
 	if (outcome.status !== 0 || !outcome.stdout.includes('logins-ok')) {
@@ -251,4 +308,50 @@ function runInMongoContainer(script) {
 		timeout: 60_000,
 	});
 	return { status: result.status, stdout: String(result.stdout ?? '') };
+}
+
+/**
+ * `pnpm secrets:setup-local -- --monitor-only`: the Release Console's read-only database login on this
+ * Mac (Release Path brief Q9), and nothing else. Its password is made once in
+ * `docker/dev-secrets/mongo-monitor-password`, like the test login's: never in Infisical.
+ * @param {object} options
+ * @param {string} options.root
+ * @param {(script: string) => { status: number | null, stdout: string }} [options.runMongo]
+ * @param {() => string} [options.makePassword]
+ * @returns {string[]} names-only lines
+ */
+export function setupLocalMonitor({
+	root,
+	runMongo = runInMongoContainer,
+	makePassword = () => randomBytes(32).toString('hex'),
+}) {
+	const dir = join(root, DEV_SECRETS_DIR);
+	const rootUser = readIfPresent(join(dir, 'mongo-root-username'))?.trim();
+	const rootPassword = readIfPresent(join(dir, 'mongo-root-password'))?.trim();
+	if (!rootUser || !rootPassword) {
+		throw new SecretsError(
+			'The administrator files are missing from docker/dev-secrets. Run pnpm secrets:setup-local first.',
+		);
+	}
+	const lines = [];
+	const passwordPath = join(dir, 'mongo-monitor-password');
+	if (!existsSync(passwordPath)) {
+		writeFileSync(passwordPath, makePassword(), { mode: 0o600, flag: 'wx' });
+		lines.push('Made docker/dev-secrets/mongo-monitor-password (this Mac only).');
+	}
+	const env = parseEnvText(readIfPresent(join(root, 'apps/api/.env')) ?? '');
+	const database = env.get('MONGODB_DB_NAME') || 'saha_textile_local';
+	const outcome = runMongo(
+		monitorOnlyScript({
+			database,
+			rootUser,
+			rootPassword,
+			monitorPassword: /** @type {string} */ (readIfPresent(passwordPath)).trim(),
+		}),
+	);
+	if (outcome.status !== 0 || !outcome.stdout.includes('monitor-ok')) {
+		throw new SecretsError(`The monitor login could not be made or did not work (is ${MONGO_CONTAINER} running?).`);
+	}
+	lines.push(`The monitor login ${MONITOR_USER} reads ${database}'s figures; it reads no shop data.`);
+	return lines;
 }

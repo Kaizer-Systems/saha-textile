@@ -14,6 +14,7 @@ import {
 	fillBlanks,
 	mongoLoginScript,
 	setupLocal,
+	setupLocalMonitor,
 } from './local-setup.mjs';
 import { buildRelease } from './render.mjs';
 import { TEST_DATABASE_USER, TEST_PASSWORD_FILE } from './test-login.mjs';
@@ -252,4 +253,41 @@ test('a failed login step leaves apps/api/.env as it was, and a missing file is 
 	withRoot(null, (root) => {
 		assert.throws(() => setupLocal({ root }), /apps\/api\/.env is missing/);
 	});
+});
+
+test('--monitor-only makes the read-only monitor login on this Mac, its password made once and never echoed', () => {
+	const root = mkdtempSync(join(tmpdir(), 'monitor-'));
+	try {
+		mkdirSync(join(root, 'docker/dev-secrets'), { recursive: true });
+		mkdirSync(join(root, 'apps/api'), { recursive: true });
+		writeFileSync(join(root, 'docker/dev-secrets/mongo-root-username'), 'saha_textile_root');
+		writeFileSync(join(root, 'docker/dev-secrets/mongo-root-password'), 'zz-root-made-up');
+		writeFileSync(join(root, 'apps/api/.env'), 'MONGODB_DB_NAME=saha_textile_local\n');
+		const scripts = [];
+		const lines = setupLocalMonitor({
+			root,
+			makePassword: () => 'zz-monitor-made-up',
+			runMongo: (script) => (scripts.push(script), { status: 0, stdout: 'monitor-ok\n' }),
+		});
+		assert.match(lines.join('\n'), /saha_textile_monitor reads saha_textile_local/);
+		assert.ok(!lines.join('\n').includes('zz-'), 'names only');
+		assert.match(scripts[0], /system\.profile/);
+		assert.match(scripts[0], /clusterMonitor/);
+		assert.ok(!/readWrite|dbOwner|\broot'/.test(scripts[0].replace(/role: 'root'/g, '')), 'no write role');
+		assert.equal(
+			readFileSync(join(root, 'docker/dev-secrets/mongo-monitor-password'), 'utf8'),
+			'zz-monitor-made-up',
+		);
+		assert.throws(
+			() => setupLocalMonitor({ root, runMongo: () => ({ status: 0, stdout: 'monitor-failed' }) }),
+			/monitor login could not be made/,
+		);
+		rmSync(join(root, 'docker/dev-secrets/mongo-root-password'));
+		assert.throws(
+			() => setupLocalMonitor({ root, runMongo: () => ({ status: 0, stdout: '' }) }),
+			/administrator files are missing/,
+		);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
 });

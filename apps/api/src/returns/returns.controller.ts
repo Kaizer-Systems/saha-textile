@@ -3,10 +3,10 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	CreditNoteCancel,
 	CreditNoteDraftWrite,
+	CreditNoteIssue,
+	CreditNoteListQuery,
 	CreditNoteRefundWrite,
-	CreditNoteStatus,
 	DebitNoteWrite,
-	IsoDate,
 	PriceAdjustmentWrite,
 	ReturnCheck,
 	ReturnStart,
@@ -24,16 +24,6 @@ import { previewDocument } from '../documents/document-previews';
 import { EditLogService } from '../ledger/edit-log';
 import { API_TAGS } from '../openapi-tags';
 import { ReturnsService } from './returns.service';
-
-const IssueBody = z.object({ version: z.number().int().nonnegative() });
-const CreditNoteListQuery = z.object({
-	from: IsoDate,
-	to: IsoDate,
-	search: z.string().trim().max(80).default(''),
-	status: CreditNoteStatus.nullable().default(null),
-	page: z.coerce.number().int().min(1).default(1),
-	pageSize: z.coerce.number().int().min(1).max(100).default(25),
-});
 
 /** The order page's returns, price adjustments and undelivered parcels (accounts brief B1–B3, B10, B11). */
 @ApiTags(API_TAGS.orders)
@@ -254,7 +244,7 @@ export class CreditNotesController {
 	@ApiOperation({ operationId: 'issueCreditNote', summary: 'Issue: the number, stock, the books (one transaction)' })
 	issue(
 		@Param('id') id: string,
-		@Body(new ZodValidationPipe(IssueBody)) body: z.infer<typeof IssueBody>,
+		@Body(new ZodValidationPipe(CreditNoteIssue)) body: CreditNoteIssue,
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
 		return this.returns.issue(id, body.version, principal?.userId ?? null);

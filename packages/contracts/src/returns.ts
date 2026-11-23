@@ -209,6 +209,21 @@ export type CreditNoteRefundWrite = z.infer<typeof CreditNoteRefundWrite>;
 export const CreditNoteCancel = z.object({ reason: z.string().trim().min(5).max(300) });
 export type CreditNoteCancel = z.infer<typeof CreditNoteCancel>;
 
+/** Issuing a draft credit note: the version the screen last read, so a change made meanwhile is never issued unseen. */
+export const CreditNoteIssue = z.object({ version: z.number().int().nonnegative() });
+export type CreditNoteIssue = z.infer<typeof CreditNoteIssue>;
+
+/** Accounts › Credit notes: the period, a search, a status and the page. */
+export const CreditNoteListQuery = z.object({
+	from: IsoDate,
+	to: IsoDate,
+	search: z.string().trim().max(80).default(''),
+	status: CreditNoteStatus.nullable().default(null),
+	page: z.coerce.number().int().min(1).default(1),
+	pageSize: z.coerce.number().int().min(1).max(100).default(25),
+});
+export type CreditNoteListQuery = z.infer<typeof CreditNoteListQuery>;
+
 /** B8's checks: why a credit note may (or may not) be cancelled. */
 export const CreditNoteCancelChecks = z.object({
 	monthFiled: z.boolean(),

@@ -96,7 +96,7 @@ describe('note prints (Rule 53)', () => {
 		expect(data.rows?.map((r) => r.cells['item'])).toEqual(['Banarasi Silk Saree', 'Delivery charge share']);
 		expect(data.rows?.[1]?.cells['qty']).toBe('—');
 		expect(data.hsnSummary).toHaveLength(1);
-		expect(data.totals?.totals.at(-1)).toEqual({ label: 'Credited', value: '₹4,680.00' });
+		expect(data.totals?.totals?.at(-1)).toEqual({ label: 'Credited', value: '₹4,680.00' });
 		expect(creditNoteData({ ...note, number: null, refundTo: 'customer_account' }, seller)).toMatchObject({
 			number: 'Draft',
 			values: { refundTo: 'Kept on the customer’s account' },

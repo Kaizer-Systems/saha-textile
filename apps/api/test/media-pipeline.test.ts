@@ -279,7 +279,7 @@ describe('YouTubeService', () => {
 	it('rejects a non-YouTube link before calling the API', async () => {
 		const youtube = { findVideo: vi.fn() };
 		await expect(
-			new YouTubeService(youtube as never, {} as never, {} as never).validate('https://vimeo.com/1'),
+			new YouTubeService(youtube as never, {} as never, {} as never, {} as never).validate('https://vimeo.com/1'),
 		).rejects.toMatchObject({ status: 422 });
 		expect(youtube.findVideo).not.toHaveBeenCalled();
 	});
@@ -294,7 +294,8 @@ describe('YouTubeService', () => {
 		const settings = {
 			get: vi.fn(async (key: string) => (key === 'youtube.feed' ? { videos, fetchedAt: null } : null)),
 		};
-		const service = new YouTubeService({} as never, settings as never, {} as never);
+		// No video here has a stored poster, so storage is never asked for an address.
+		const service = new YouTubeService({} as never, settings as never, {} as never, {} as never);
 		expect((await service.rail('home')).videos).toHaveLength(8);
 		expect((await service.rail('pdp')).videos).toHaveLength(0);
 	});

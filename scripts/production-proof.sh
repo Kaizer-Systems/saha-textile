@@ -251,6 +251,13 @@ in_release "$FIRST" exec -T mongo mongosh --quiet --eval 'db.getSiblingDB("saha_
 	fail 'MongoDB answered without a login' || pass 'MongoDB refuses an anonymous reader'
 PUBLISHED="$(in_release "$FIRST" ps --format '{{.Service}} {{.Ports}}' | grep -E '[0-9.:\]]+:[0-9]+->' | awk '$1 != "edge"' || true)"
 expect 'only the edge publishes a port' "$PUBLISHED" ''
+# Every secret file of the database, Redis and search comes from the server's own folder, never from a
+# release folder that a later cleanup deletes (they could not start again after a reboot).
+# shellcheck disable=SC2046
+DATA_MOUNTS="$(docker inspect --format '{{range .Mounts}}{{.Destination}} {{.Source}}{{"\n"}}{{end}}' \
+	$(in_release "$FIRST" ps -q mongo redis meilisearch) | awk '$1 ~ "^/run/secrets/" { print $2 }')"
+expect 'the data services read six secret files' "$(printf '%s\n' "$DATA_MOUNTS" | grep -c .)" 6
+expect "none of them from a release folder" "$(printf '%s\n' "$DATA_MOUNTS" | grep -v -c -F "$SAHA_TEXTILE_ROOT/data-secrets/" || true)" 0
 # Saved first: under pipefail, `grep -q` closing the pipe early would fail the logs command.
 in_release "$FIRST" logs --no-color >"$PROOF/stack.log" 2>&1
 grep -q 'hardening checks passed' "$PROOF/stack.log" && pass 'the API passed its startup checks' || fail 'no hardening line in the logs'
@@ -333,6 +340,18 @@ grep -q 'do not belong together' "$PROOF/mismatch-deploy.log" && pass "a certifi
 	|| fail "the half pair was refused for another reason: $(tail -n 1 "$PROOF/mismatch-deploy.log")"
 cmp -s "$SAHA_TEXTILE_ROOT/certs/origin.pem" "$PROOF/origin.pem" && pass 'a refused release changes no certificate' || fail 'a refused release changed a certificate'
 
+echo 'A release that would change a data-service password'
+ROTATE="$(write_release rotate)"
+openssl rand -hex 24 | tr -d '\n' >"$ROTATE/secrets/redis-password"
+sed -i.bak "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=$(cat "$ROTATE/secrets/redis-password")/" "$ROTATE/secrets/api.env"
+rm "$ROTATE/secrets/api.env.bak"
+if "$ROTATE/bin/deploy.sh" "$ROTATE" >"$PROOF/rotate.log" 2>&1; then fail 'a release with a new Redis password went live'; fi
+grep -q 'already run with: redis-password\. .*nothing was changed' "$PROOF/rotate.log" &&
+	pass 'it is refused before anything starts, naming the file' || fail "it was refused for another reason: $(tail -n 1 "$PROOF/rotate.log")"
+cmp -s "$SAHA_TEXTILE_ROOT/data-secrets/redis-password" "$PROOF/secrets/redis-password" &&
+	pass "the server keeps the data services' own password" || fail "the refused release changed the server's Redis password"
+expect 'the working release stays current after the refusal' "$(readlink "$SAHA_TEXTILE_ROOT/current")" "$FIRST"
+
 echo 'A good second deploy, then manual rollback'
 SECOND="$(write_release second)"
 cp "$PROOF/renewed/origin.pem" "$PROOF/renewed/origin.key" "$SECOND/secrets/"
@@ -342,8 +361,8 @@ load_stop
 no_visible_gap 'no request failed during the deploy'
 expect 'the second release is current' "$(readlink "$SAHA_TEXTILE_ROOT/current")" "$SECOND"
 cmp -s "$SAHA_TEXTILE_ROOT/certs/origin.pem" "$PROOF/renewed/origin.pem" && pass "a live release's certificates are installed" || fail "the live release's certificates were not installed"
-# Four release folders now (first, bad, mismatch, second): the cleanup keeps three, but never the
-# release a rollback returns to.
+# Five release folders now (first, bad, mismatch, rotate, second): the cleanup keeps three, but never
+# the release a rollback returns to.
 [[ -f "$FIRST/release.env" ]] && pass 'the previous release is kept however many failed ones came after it' || fail 'the cleanup deleted the previous release'
 SERVED="$(openssl s_client -connect "127.0.0.1:$EDGE_PORT" -servername "$SITE_HOST" -cert "$PROOF/client/client.pem" -key "$PROOF/client/client.key" </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256 2>/dev/null)"
 expect 'the edge serves the new certificate' "$SERVED" "$(openssl x509 -noout -fingerprint -sha256 -in "$PROOF/renewed/origin.pem")"
@@ -407,6 +426,32 @@ pass 'restore refuses without confirmation'
 CONFIRM_REPLACE_DATA=yes "$FIRST/bin/restore.sh" "$STAMP" "$PROOF/backup-identity.txt"
 expect 'the restore brought the row back' "$(mongo_eval 'db.proofMarker.countDocuments()')" 1
 expect 'the shop answers after the restore' "$(with_pull_cert "$SITE_HOST" /en/)" 200
+
+echo 'A server restart'
+# A reboot restarts every container from its saved mounts; the data services must find their files.
+# shellcheck disable=SC2207
+DATA_IDS=($(in_release "$FIRST" ps -q mongo redis meilisearch))
+docker restart "${DATA_IDS[@]}" >/dev/null
+for container in "${DATA_IDS[@]}"; do
+	for _ in $(seq 1 60); do
+		[[ "$(docker inspect --format '{{.State.Health.Status}}' "$container")" == healthy ]] && break
+		sleep 2
+	done
+done
+expect 'the database, Redis and search come back healthy' \
+	"$(docker inspect --format '{{.State.Health.Status}}' "${DATA_IDS[@]}" | sort -u)" healthy
+for _ in $(seq 1 60); do [[ "$(mongo_eval 'db.hello().isWritablePrimary' 2>/dev/null)" == true ]] && break; sleep 2; done
+expect 'the data survived the restart' "$(mongo_eval 'db.proofMarker.countDocuments()')" 1
+# Readiness is private: asked from inside, as deploy.sh's own health check does.
+api_ready() {
+	in_release "$FIRST" --profile ops run --rm --no-deps -T ops sh -c \
+		'curl -fsS --cacert /certs/origin-ca.pem --max-time 10 "$1/health/ready" | jq -e "[.dependencies[] | select(.name != \"search\") | .status] | all(. == \"up\")" >/dev/null' \
+		sh "https://$API_HOST:$EDGE_PORT" >/dev/null 2>&1
+}
+READY=no
+for _ in $(seq 1 60); do api_ready && READY=yes && break; sleep 2; done
+expect 'the API is ready again, database and Redis up' "$READY" yes
+expect 'the shop answers after the restart' "$(with_pull_cert "$SITE_HOST" /en/)" 200
 
 echo
 echo "Passed $PASSED checks. The stack is still running: pnpm production:proof clean removes it."

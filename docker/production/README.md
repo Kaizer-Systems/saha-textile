@@ -38,6 +38,19 @@ the new release does not come up healthy; once the release is live the kept copi
 Each file is rewritten in place, never replaced, because the edge mounts each one as a single file
 and would not see a new one.
 
+## Data-service secrets
+
+`data-secrets/` also sits beside the releases. It holds the six files the database, Redis and search
+containers read: `mongo-keyfile`, `mongo-root-username`, `mongo-root-password`, `mongo-app-password`,
+`redis-password` and `meilisearch.toml`. Those containers keep running from one release to the next,
+and Compose never re-reads a running container's mounts. A release folder would not do: a later
+cleanup deletes it, and the containers could not start again after a reboot.
+
+The first deploy copies the six files from its release. Every later release must carry the same
+files. One that changes any of them stops before anything changes and names the file: the apps
+would get the new password while the database, Redis or search kept the old one. Changing one of
+these is a planned rotation, which a deploy does not do yet.
+
 ## Files in `secrets/`
 
 | File                  | Holds                                                                                                                          |

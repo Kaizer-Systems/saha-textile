@@ -205,18 +205,22 @@ services:
 secrets:
   api_env:
     file: ./secrets/api.env
+  # The database, Redis and search containers outlive every release, and Compose never re-reads a
+  # running container's mounts. So their files come from the server's own folder, which deploy.sh
+  # fills from the first release: a release folder is deleted by a later cleanup, and a container
+  # whose file is gone cannot start again after a reboot.
   mongo-keyfile:
-    file: ./secrets/mongo-keyfile
+    file: ${SAHA_TEXTILE_ROOT:?set by bin/lib.sh}/data-secrets/mongo-keyfile
   mongo-root-username:
-    file: ./secrets/mongo-root-username
+    file: ${SAHA_TEXTILE_ROOT:?set by bin/lib.sh}/data-secrets/mongo-root-username
   mongo-root-password:
-    file: ./secrets/mongo-root-password
+    file: ${SAHA_TEXTILE_ROOT:?set by bin/lib.sh}/data-secrets/mongo-root-password
   mongo-app-password:
-    file: ./secrets/mongo-app-password
+    file: ${SAHA_TEXTILE_ROOT:?set by bin/lib.sh}/data-secrets/mongo-app-password
   redis-password:
-    file: ./secrets/redis-password
+    file: ${SAHA_TEXTILE_ROOT:?set by bin/lib.sh}/data-secrets/redis-password
   meilisearch.toml:
-    file: ./secrets/meilisearch.toml
+    file: ${SAHA_TEXTILE_ROOT:?set by bin/lib.sh}/data-secrets/meilisearch.toml
 
 networks:
   private:

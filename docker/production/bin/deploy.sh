@@ -4,7 +4,8 @@
 #   settings, secret files, required names, the payment host, addresses that must agree); nothing
 #   starts. The local pipeline runs it on a folder made from the dev project (plan step 6).
 #
-#   check inputs → back up (production) → pull by digest → data services → database and search
+#   check inputs → the data services' own secrets (same as before, or the first copy) →
+#   back up (production) → pull by digest → data services → database and search
 #   keys → release steps (roles, indexes, migrations, search; all before the switch) → the
 #   release's certificates → apps → health and config checks
 #
@@ -29,6 +30,10 @@ CERT_FILES='origin.pem origin.key origin-ca.pem cloudflare-client-ca.pem'
 CERTS="$SAHA_TEXTILE_ROOT/certs"
 # The server's own copies a deploy replaced, kept until the new release is live (private, 0700).
 CERTS_BEFORE="$RELEASE/certs-before"
+
+# Read by the database, Redis and search containers from the server's own folder (compose.yaml).
+DATA_SECRET_FILES='mongo-keyfile mongo-root-username mongo-root-password mongo-app-password redis-password meilisearch.toml'
+DATA_SECRETS="$SAHA_TEXTILE_ROOT/data-secrets"
 
 check_inputs() {
 	check_release
@@ -87,6 +92,25 @@ put_cert() {
 	else
 		install -m "$mode" "$from" "$to"
 	fi
+}
+
+# The first deploy copies the release's data-service files into the server's folder. Later releases
+# must carry the same files: the running data services were started with them, so a changed password
+# would reach the apps but not the database, Redis or search. Such a release stops here, before
+# anything changes; changing one of these is a planned rotation (README, "Data-service secrets").
+sync_data_secrets() {
+	local name changed=''
+	install -d -m 0700 "$DATA_SECRETS"
+	for name in $DATA_SECRET_FILES; do
+		[[ -e "$DATA_SECRETS/$name" ]] || continue
+		cmp -s "$SECRETS/$name" "$DATA_SECRETS/$name" || changed+=" $name"
+	done
+	[[ -z "$changed" ]] || die "This release changes secrets the database, Redis or search already run with:$changed. A deploy does not rotate these yet; nothing was changed."
+	for name in $DATA_SECRET_FILES; do
+		[[ -e "$DATA_SECRETS/$name" ]] && continue
+		cp -p "$SECRETS/$name" "$DATA_SECRETS/$name"
+		say "data-secrets/$name from the release"
+	done
 }
 
 # Installs the release's certificates right before the switch. Each server copy it changes is kept
@@ -393,6 +417,7 @@ if [[ "$CHECK_ONLY" == 1 ]]; then
 	exit 0
 fi
 check_inputs
+sync_data_secrets
 mkdir -p "$PUBLIC"
 touch "$PUBLIC/storefront.env" "$PUBLIC/storefront.config.json" "$PUBLIC/admin.config.json"
 if [[ "$(release_value "$RELEASE" DEPLOY_ENV)" == production && -L "$CURRENT" ]]; then

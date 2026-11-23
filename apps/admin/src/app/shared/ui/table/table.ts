@@ -237,7 +237,7 @@ export class Table<T extends IBaseRow = IBaseRow> {
 		} else if (type === 'paginate') {
 			// The page-size box's text, kept as the number it is.
 			const size = (<HTMLInputElement>(data as Event).target)?.value;
-			this.tableData['paginate'] = size === undefined ? undefined : Number(size);
+			if (size !== undefined) this.tableData['paginate'] = Number(size);
 		} else if (type === 'page') {
 			this.tableData['page'] = data as number;
 		} else if (type === 'search') {

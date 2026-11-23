@@ -163,7 +163,7 @@ describe('Table changes', () => {
 		table.onChangeTable({ target: { value: '50' } } as unknown as Event, 'paginate');
 		expect(table.tableData['paginate']).toBe(50);
 		table.onChangeTable({ target: null } as unknown as Event, 'paginate');
-		expect(table.tableData['paginate']).toBeUndefined();
+		expect(table.tableData['paginate']).toBe(50);
 		table.onChangeTable(2, 'page');
 		expect(table.tableData['page']).toBe(2);
 	});

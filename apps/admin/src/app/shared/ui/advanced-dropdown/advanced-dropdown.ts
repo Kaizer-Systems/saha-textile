@@ -15,7 +15,7 @@ import { childrenOf, type DropdownOption, type DropdownOptionId, labelOf } from 
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	imports: [ClickOutsideDirective, ReactiveFormsModule, DropdownList, TranslocoModule],
 })
-export class AdvancedDropdown<T extends DropdownOption> {
+export class AdvancedDropdown<T extends DropdownOption = DropdownOption> {
 	readonly dropdownContainer = viewChild.required<ElementRef>('dropdownContainer');
 	readonly toggleButton = viewChild<ElementRef>('toggleButton');
 	readonly items = viewChild<ElementRef>('items');

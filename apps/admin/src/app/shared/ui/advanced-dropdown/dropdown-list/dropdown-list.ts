@@ -10,7 +10,7 @@ import { childrenOf, type DropdownOption, labelOf } from '../dropdown-option';
 	styleUrls: ['./dropdown-list.scss'],
 	imports: [TranslocoPipe],
 })
-export class DropdownList<T extends DropdownOption> {
+export class DropdownList<T extends DropdownOption = DropdownOption> {
 	readonly data = input.required<T>();
 	readonly selectedPillIds = input<readonly unknown[]>([]);
 	readonly key = input<string>('');

@@ -135,6 +135,9 @@ export const ORDER_RETURN_REPOSITORY = Symbol('OrderReturnRepository');
 export const CREDIT_NOTE_REPOSITORY = Symbol('CreditNoteRepository');
 export const DEBIT_NOTE_REPOSITORY = Symbol('DebitNoteRepository');
 export const REFUND_VOUCHER_REPOSITORY = Symbol('RefundVoucherRepository');
+/** Accounts templates and what the books were installed from (accounts templates T2). */
+export const ACCOUNTS_TEMPLATE_REPOSITORY = Symbol('AccountsTemplateRepository');
+export const TEMPLATE_INSTALL_REPOSITORY = Symbol('TemplateInstallRepository');
 export const STOCK_MOVEMENT = Symbol('StockMovementPort');
 export const STOCK_READ_REPOSITORY = Symbol('StockReadRepository');
 export const INVENTORY_COST_LAYER_REPOSITORY = Symbol('InventoryCostLayerRepository');

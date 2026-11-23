@@ -41,6 +41,7 @@ import { z } from 'zod';
  * would fit any other code with the name swapped, the entry does not belong here yet.
  */
 export const PermissionCode = z.enum([
+	'accounts_template.edit',
 	'accounts.edit',
 	'accounts.index',
 	'accounts.lock',
@@ -412,6 +413,8 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 		'Add ledgers and groups and rename or switch off ledgers on Accounts › Chart of accounts (Q1); POST/PUT /admin/accounts/chart/*. System groups and ledgers keep their place.',
 	'accounts.lock':
 		'Close a month for staff or lock it, part by part, with a reason, and reopen it, on Accounts › Periods and locks (T1, T2); POST /admin/accounts/periods. Held by the Administrator role.',
+	'accounts_template.edit':
+		'Make, edit, publish and install accounts templates (charts of accounts, tax rule sets, report layouts) on Settings › Accounts templates (accounts templates AT-D4). Reading the library is accounts.index. Held by the Administrator role and the CA login.',
 	'location.edit':
 		'Add, edit and switch off locations (warehouses, stores, offices) and set where each admin user works (accounts brief K, L). Held by the Administrator role.',
 	'edocs.generate':
@@ -436,6 +439,7 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 /** The resource half of a code — the noun a permission is about. */
 export const PermissionResource = z.enum([
 	'accounts',
+	'accounts_template',
 	'admin_user',
 	'admin_user_role',
 	'attachment',

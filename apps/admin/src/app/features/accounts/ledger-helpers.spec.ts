@@ -10,6 +10,7 @@ const chart: ChartOfAccounts = {
 		{
 			id: 'g_ca',
 			systemKey: 'current_assets',
+			roles: [],
 			name: 'Current assets',
 			parentId: null,
 			nature: 'asset',
@@ -21,6 +22,7 @@ const chart: ChartOfAccounts = {
 		{
 			id: 'g_cash',
 			systemKey: 'cash_in_hand',
+			roles: [],
 			name: 'Cash in hand',
 			parentId: 'g_ca',
 			nature: 'asset',
@@ -32,6 +34,7 @@ const chart: ChartOfAccounts = {
 		{
 			id: 'g_cap',
 			systemKey: 'capital_account',
+			roles: [],
 			name: 'Capital account',
 			parentId: null,
 			nature: 'equity',
@@ -45,6 +48,7 @@ const chart: ChartOfAccounts = {
 		{
 			id: 'cash',
 			systemKey: 'cash',
+			roles: [],
 			name: 'Cash',
 			groupId: 'g_cash',
 			nature: 'asset',
@@ -57,6 +61,7 @@ const chart: ChartOfAccounts = {
 		{
 			id: 'gw',
 			systemKey: 'gateway_clearing',
+			roles: [],
 			name: 'Gateway clearing',
 			groupId: 'g_ca',
 			nature: 'asset',
@@ -69,6 +74,7 @@ const chart: ChartOfAccounts = {
 		{
 			id: 'cap',
 			systemKey: 'capital',
+			roles: [],
 			name: 'Capital',
 			groupId: 'g_cap',
 			nature: 'equity',

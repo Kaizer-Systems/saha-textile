@@ -1,5 +1,6 @@
 import {
 	AccountGroup,
+	AccountsTemplate,
 	type ChartOfAccounts,
 	DocumentLock,
 	GstReturnFiling,
@@ -7,10 +8,12 @@ import {
 	Ledger,
 	PeriodLock,
 	TaxInvoice,
+	TemplateInstall,
 	VoucherDraft,
 	type VoucherKind,
 } from '@saha-textile/contracts';
 import {
+	type AccountsTemplateRepository,
 	type DocumentLockClaim,
 	type DocumentLockRepository,
 	type GeneralLedgerRepository,
@@ -19,11 +22,13 @@ import {
 	StaleRevisionError,
 	type StatementLine,
 	type TaxInvoiceRepository,
+	type TemplateInstallRepository,
 	type TransactionContext,
 } from '@saha-textile/core-domain';
 
 import {
 	AccountGroupModel,
+	AccountsTemplateModel,
 	DocumentLockModel,
 	GstReturnModel,
 	JournalLineModel,
@@ -31,6 +36,7 @@ import {
 	LedgerModel,
 	PeriodLockModel,
 	TaxInvoiceModel,
+	TemplateInstallModel,
 	VoucherDraftModel,
 } from '../models/ledger.model';
 import type { AggregateDoc } from '../models/purchasing.model';
@@ -422,5 +428,53 @@ export class MongoTaxInvoiceRepository implements TaxInvoiceRepository {
 			{ session: sessionFrom(context) },
 		).exec();
 		if (result.matchedCount !== 1) throw new Error('invoice_not_cancellable');
+	}
+}
+
+/** The accounts templates library (T2). */
+export class MongoAccountsTemplateRepository implements AccountsTemplateRepository {
+	private of = (doc: AggregateDoc): AccountsTemplate => AccountsTemplate.parse({ ...strip(doc), id: doc._id });
+
+	async list(): Promise<AccountsTemplate[]> {
+		const docs = await AccountsTemplateModel.find({}).sort({ code: 1 }).lean<AggregateDoc[]>().exec();
+		return docs.map(this.of);
+	}
+
+	async findByCode(code: string): Promise<AccountsTemplate | null> {
+		const doc = await AccountsTemplateModel.findOne({ code }).lean<AggregateDoc>().exec();
+		return doc ? this.of(doc) : null;
+	}
+
+	async insert(template: AccountsTemplate): Promise<void> {
+		const { id, ...rest } = template;
+		try {
+			await AccountsTemplateModel.create({ _id: id, ...rest });
+		} catch (error) {
+			if ((error as { code?: number }).code === 11000)
+				throw new Error('duplicate_template_code', { cause: error });
+			throw error;
+		}
+	}
+
+	async save(template: AccountsTemplate, expectedUpdatedAt: string): Promise<void> {
+		const { id, ...rest } = template;
+		const result = await AccountsTemplateModel.replaceOne({ _id: id, updatedAt: expectedUpdatedAt }, rest).exec();
+		if (result.matchedCount !== 1) throw new Error('template_changed');
+	}
+}
+
+/** Which version of each template the books were installed from (T2). */
+export class MongoTemplateInstallRepository implements TemplateInstallRepository {
+	async list(): Promise<TemplateInstall[]> {
+		const docs = await TemplateInstallModel.find({}).sort({ _id: 1 }).lean<AggregateDoc[]>().exec();
+		return docs.map((doc) => TemplateInstall.parse(strip(doc)));
+	}
+
+	async save(install: TemplateInstall): Promise<void> {
+		await TemplateInstallModel.replaceOne(
+			{ _id: install.code },
+			{ _id: install.code, ...install },
+			{ upsert: true },
+		).exec();
 	}
 }

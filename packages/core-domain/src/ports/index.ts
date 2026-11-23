@@ -64,3 +64,4 @@ export * from './location.repository';
 export * from './ledger.repository';
 export * from './tax-invoice.repository';
 export * from './returns.repository';
+export * from './accounts-templates.repository';

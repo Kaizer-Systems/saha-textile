@@ -40,7 +40,6 @@ import {
 	type AdminUserRoleAssignmentRepository,
 	type AuditLogRepository,
 	type CompanyRepository,
-	defaultChart,
 	type DocumentLockRepository,
 	fiscalYearOf,
 	type GeneralLedgerRepository,
@@ -63,6 +62,7 @@ import {
 	resolveRole,
 } from '@saha-textile/core-domain';
 
+import { AccountsTemplatesService } from '../accounts-templates/accounts-templates.service';
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import {
 	ADJUSTMENT_REQUEST_REPOSITORY,
@@ -135,6 +135,7 @@ export class LedgerService {
 		@Inject(GST_RETURN_REPOSITORY) private readonly gstReturns: GstReturnRepository,
 		private readonly numbers: DocumentNumbersService,
 		private readonly locations: LocationsService,
+		private readonly templates: AccountsTemplatesService,
 	) {}
 
 	/** The name others see on a lock: display name, else e-mail, else username. */
@@ -150,42 +151,47 @@ export class LedgerService {
 		return !!role && !!(await this.assignments.findActive(principal.userId, role.id));
 	}
 
-	/** First read: the chart for the kind of business on Settings › Company (proprietorship when not set yet). */
+	/**
+	 * First read: the books are installed from the accounts templates the company's kind unlocks (the shared chart and
+	 * its own, accounts templates T2). Books that already exist are kept and recorded as installed from them.
+	 */
 	private ensureChart(): Promise<void> {
 		this.seeding ??= (async () => {
-			const kind = (await this.company.getProfile())?.kind ?? 'proprietorship';
+			const { chart, picks } = await this.templates.startingChart();
 			const now = new Date().toISOString();
-			const seed = defaultChart(kind);
 			const groupId = (key: string) => `grp_${key}`;
-			// A seed ledger always sits in a seed group; a broken seed fails Ledger.parse loudly.
-			const natureOf = new Map(seed.groups.map((group) => [group.systemKey, group.nature]));
+			// mergeCharts has checked every ledger's group is in the chart; a broken one fails Ledger.parse loudly.
+			const natureOf = new Map(chart.groups.map((group) => [group.key, group.nature]));
 			await this.books.seedChart({
-				groups: seed.groups.map((group, index) =>
+				groups: chart.groups.map((group, index) =>
 					AccountGroup.parse({
-						id: groupId(group.systemKey),
-						systemKey: group.systemKey,
+						id: groupId(group.key),
+						systemKey: group.key,
 						name: group.name,
 						parentId: group.parentKey ? groupId(group.parentKey) : null,
 						nature: group.nature,
-						tradingAccount: group.tradingAccount ?? false,
+						tradingAccount: group.tradingAccount,
+						roles: group.roles,
 						order: index,
 						createdAt: now,
 						updatedAt: now,
 					}),
 				),
-				ledgers: seed.ledgers.map((ledger) =>
+				ledgers: chart.ledgers.map((ledger) =>
 					Ledger.parse({
-						id: `led_${ledger.systemKey}`,
-						systemKey: ledger.systemKey,
+						id: `led_${ledger.key}`,
+						systemKey: ledger.key,
 						name: ledger.name,
 						groupId: groupId(ledger.groupKey),
 						nature: natureOf.get(ledger.groupKey),
 						handPosting: ledger.handPosting,
+						roles: ledger.roles,
 						createdAt: now,
 						updatedAt: now,
 					}),
 				),
 			});
+			await this.templates.recordInstalls(picks);
 		})().catch((error: unknown) => {
 			this.seeding = null;
 			throw error;

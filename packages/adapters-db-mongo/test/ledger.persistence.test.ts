@@ -47,6 +47,7 @@ describe.skipIf(!hasMongoEnv())('general ledger persistence (integration, rs0)',
 	const ledger = (id: string, systemKey: string | null): Ledger => ({
 		id,
 		systemKey,
+		roles: systemKey ? [systemKey] : [],
 		name: id,
 		groupId: 'g_cash',
 		nature: 'asset',
@@ -89,6 +90,7 @@ describe.skipIf(!hasMongoEnv())('general ledger persistence (integration, rs0)',
 				{
 					id: 'g_cash',
 					systemKey: 'cash_in_hand',
+					roles: ['cash_in_hand'],
 					name: 'Cash in hand',
 					parentId: null,
 					nature: 'asset' as const,
@@ -103,6 +105,9 @@ describe.skipIf(!hasMongoEnv())('general ledger persistence (integration, rs0)',
 		expect(await repo.seedChart(chart)).toBe(true);
 		expect(await repo.seedChart(chart)).toBe(false);
 		expect((await repo.chart()).ledgers.map((l) => l.id).sort()).toEqual(['cash', 'rent']);
+		// Roles (accounts templates T1) are kept with the books.
+		expect((await repo.chart()).groups[0]?.roles).toEqual(['cash_in_hand']);
+		expect((await repo.chart()).ledgers.find((l) => l.id === 'cash')?.roles).toEqual(['cash']);
 		const renamed = { ...ledger('rent', null), name: 'Shop rent', updatedAt: '2026-11-23T11:00:00.000Z' };
 		await repo.saveLedger(renamed, at);
 		await expect(repo.saveLedger({ ...renamed, name: 'Again' }, at)).rejects.toBeInstanceOf(StaleRevisionError);
@@ -305,6 +310,7 @@ describe.skipIf(!hasMongoEnv())('general ledger persistence (integration, rs0)',
 		await repo.saveGroup({
 			id: 'g_bank',
 			systemKey: null,
+			roles: ['bank_accounts'],
 			name: 'Bank accounts',
 			parentId: null,
 			nature: 'asset',

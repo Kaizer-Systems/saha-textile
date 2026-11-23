@@ -123,3 +123,20 @@ TaxInvoiceSchema.index({ orderId: 1 });
 TaxInvoiceSchema.index({ date: -1, number: -1 });
 export const TaxInvoiceModel: Model<AggregateDoc> =
 	(models.TaxInvoice as Model<AggregateDoc>) ?? model<AggregateDoc>('TaxInvoice', TaxInvoiceSchema);
+
+/** Accounts templates (T2): one document per template, its versions inside; `code` is unique. */
+const AccountsTemplateSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true }, code: { type: String, required: true } },
+	{ ...loose, collection: COLLECTION_NAMES.AccountsTemplate },
+);
+AccountsTemplateSchema.index({ code: 1 }, { unique: true });
+export const AccountsTemplateModel: Model<AggregateDoc> =
+	(models.AccountsTemplate as Model<AggregateDoc>) ?? model<AggregateDoc>('AccountsTemplate', AccountsTemplateSchema);
+
+/** Which version of each template the books were installed from; `_id` is the template code. */
+const TemplateInstallSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true } },
+	{ ...loose, collection: COLLECTION_NAMES.TemplateInstall },
+);
+export const TemplateInstallModel: Model<AggregateDoc> =
+	(models.TemplateInstall as Model<AggregateDoc>) ?? model<AggregateDoc>('TemplateInstall', TemplateInstallSchema);

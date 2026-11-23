@@ -17,6 +17,7 @@ const at = '2026-11-23T00:00:00.000Z';
 const group = (id: string, systemKey: string | null, parentId: string | null = null): AccountGroup => ({
 	id,
 	systemKey,
+	roles: [],
 	name: id,
 	parentId,
 	nature: 'asset',
@@ -28,6 +29,7 @@ const group = (id: string, systemKey: string | null, parentId: string | null = n
 const ledger = (id: string, groupId: string, patch: Partial<Ledger> = {}): Ledger => ({
 	id,
 	systemKey: null,
+	roles: [],
 	name: id,
 	groupId,
 	nature: 'asset',

@@ -11,7 +11,10 @@ import type {
 import { StaleRevisionError, type StatementLine } from '@saha-textile/core-domain';
 import { describe, expect, it } from 'vitest';
 
+import { LedgerModule } from '../src/ledger/ledger.module';
 import { LedgerService } from '../src/ledger/ledger.service';
+
+import { templatesFor } from './accounts-templates-memory';
 
 class MemoryBooks {
 	groups: AccountGroup[] = [];
@@ -136,6 +139,11 @@ const setup = (
 	const documentLocks = new Map<string, DocumentLock>();
 	let counter = 0;
 	const audit: { action: string; retentionTier?: string }[] = [];
+	const company = {
+		getProfile: async () => (options.noProfile ? null : { kind: options.kind ?? 'proprietorship' }),
+		getRegistration: async (id: string) => (id === 'reg_wb' ? { id, gstin: '19DBYPS6736R1ZZ' } : null),
+	};
+	const templates = templatesFor(company);
 	const service = new LedgerService(
 		books as never,
 		{
@@ -162,10 +170,7 @@ const setup = (
 			touch: async () => true,
 			release: async () => undefined,
 		} as never,
-		{
-			getProfile: async () => (options.noProfile ? null : { kind: options.kind ?? 'proprietorship' }),
-			getRegistration: async (id: string) => (id === 'reg_wb' ? { id, gstin: '19DBYPS6736R1ZZ' } : null),
-		} as never,
+		company as never,
 		{
 			list: async () => [
 				{ id: 'loc_bar', active: true, gstRegistrationId: 'reg_wb' },
@@ -191,8 +196,9 @@ const setup = (
 					? { all: true, ids: ['loc_bar', 'loc_aga'], current: null }
 					: { all: false, ids: ['loc_bar'], current: 'loc_bar' },
 		} as never,
+		templates.service,
 	);
-	return { service, books, audit, gst, getLocks: () => locks };
+	return { service, books, audit, gst, templates, getLocks: () => locks };
 };
 
 const owner = {
@@ -225,11 +231,24 @@ const rentPaid = (patch: Record<string, unknown> = {}) => ({
 });
 
 describe('general ledger (accounts brief Q, T, D10)', () => {
-	it('seeds the chart for the kind of business on first read', async () => {
-		const { service } = setup({ kind: 'private_limited' });
+	it('installs the chart from the templates the kind of business unlocks, on first read (T2)', async () => {
+		const { service, templates } = setup({ kind: 'private_limited' });
 		const chart = await service.chart();
-		expect(chart.ledgers.find((l) => l.systemKey === 'share_capital')?.groupId).toBe('grp_capital_account');
-		expect(chart.groups.find((g) => g.id === 'grp_cash_in_hand')?.parentId).toBe('grp_current_assets');
+		expect(chart.ledgers.find((l) => l.systemKey === 'share_capital')).toMatchObject({
+			groupId: 'grp_capital_account',
+			roles: ['share_capital'],
+		});
+		expect(chart.groups.find((g) => g.id === 'grp_cash_in_hand')).toMatchObject({
+			parentId: 'grp_current_assets',
+			roles: ['cash_in_hand'],
+		});
+		expect(templates.installs.rows.map(({ code, version }) => [code, version])).toEqual([
+			['CH-COMMON', 1],
+			['CH-PVT', 1],
+		]);
+		await service.chart();
+		expect(templates.installs.rows).toHaveLength(2);		// The ledger module brings the templates library with it.
+		expect(new LedgerModule()).toBeInstanceOf(LedgerModule);
 	});
 
 	it('posts a payment typed by hand, stamps the GSTIN, and returns the same voucher for a repeated key', async () => {

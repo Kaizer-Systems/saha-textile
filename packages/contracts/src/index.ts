@@ -83,3 +83,4 @@ export * from './order-routing';
 export * from './tax-invoice';
 export * from './returns';
 export * from './refund-vouchers';
+export * from './accounts-templates';

@@ -234,7 +234,7 @@ export class DropletJobs {
 		job.dropletId = target.id;
 		job.ipv4 = target.ipv4;
 		this.store.audit(projectId, 'droplet-destroy', `${target.name} (${target.id}): destroy started with the PIN`);
-		void this.runDestroy(job, target, envName, env?.domains ?? [], keys, projectId);
+		void this.runDestroy(job, target, envName, env?.domains ?? [], keys, projectId, repoId);
 		return this.view(job);
 	}
 
@@ -581,6 +581,7 @@ export class DropletJobs {
 		domains: string[],
 		keys: Keys,
 		projectId: string,
+		repoId: string,
 	): Promise<void> {
 		const { deps } = this;
 		const zoneName = zoneFor(domains[0] ?? '', keys.zones) ?? keys.zones[0];
@@ -608,6 +609,8 @@ export class DropletJobs {
 			});
 			await this.step(job, 'droplet', async () => {
 				await deps.do.deleteDroplet(keys.doKey, target.id);
+				// Its environment tag goes with it (owner, 23 Nov).
+				this.projects.setEnvTag(projectId, repoId, `do:droplet:${target.id}`, null);
 				return `DELETE /v2/droplets/${target.id} · billing stops`;
 			});
 			await this.step(job, 'access', async () => {

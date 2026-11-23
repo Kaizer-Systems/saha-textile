@@ -284,4 +284,28 @@ describe('projects and key links', () => {
 		process.env['CONSOLE_KEYS_FILE'] = join(dir, 'missing.env');
 		expect(new KeySourceService().describe()).toMatchObject({ present: false, names: [], readAt: null });
 	});
+
+	it('tags a resource with one of the repository’s own environments, clears it, and drops tags of gone resources', () => {
+		const p = 'saha-textile';
+		expect(projects.envTags(p, p)).toEqual({});
+		projects.setEnvTag(p, p, 'do:droplet:42', 'staging');
+		projects.setEnvTag(p, p, 'do:droplet:43', 'production');
+		projects.setEnvTag(p, p, 'do:database:abc-1', 'staging');
+		expect(projects.envTags(p, p)).toEqual({
+			'do:droplet:42': 'staging',
+			'do:droplet:43': 'production',
+			'do:database:abc-1': 'staging',
+		});
+		// Only the repository's own environments, and only resources the console tags.
+		expect(() => projects.setEnvTag(p, p, 'do:droplet:42', 'development')).toThrow('not an environment');
+		expect(() => projects.setEnvTag(p, p, 'do:volume:1', 'staging')).toThrow('Not a resource');
+		// Survives a restart: kept in the console's file.
+		expect(new ProjectsService(new ConsoleStore(), new KeySourceService()).envTags(p, p)).toMatchObject({
+			'do:droplet:42': 'staging',
+		});
+		projects.setEnvTag(p, p, 'do:droplet:42', null);
+		// Droplet 43 is gone from the account: its tag goes; other kinds stay.
+		projects.pruneEnvTags(p, p, 'droplet', ['7']);
+		expect(projects.envTags(p, p)).toEqual({ 'do:database:abc-1': 'staging' });
+	});
 });

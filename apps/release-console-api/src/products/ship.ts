@@ -1044,17 +1044,28 @@ interface Freeze {
 	from: string;
 	to: string;
 	why: string;
+	/** The environment it holds (owner, 23 Nov: labels on pages without the switch); older ones hold every one. */
+	env: string;
 }
 const freezesOf = (ctx: ProductCtx): Freeze[] =>
 	ctx
 		.recent('calendar-freeze')
 		.map((e) => {
-			const m = /^Freeze (\d{4}-\d{2}-\d{2}) to (\d{4}-\d{2}-\d{2}): (.*)$/.exec(
+			const m = /^Freeze (\d{4}-\d{2}-\d{2}) to (\d{4}-\d{2}-\d{2})(?: on ([^:]+))?: (.*)$/.exec(
 				e.detail.replace(/ \([^)]*\)$/, ''),
 			);
-			return m ? { from: m[1] ?? '', to: m[2] ?? '', why: m[3] ?? '' } : null;
+			return m ? { from: m[1] ?? '', to: m[2] ?? '', env: m[3] ?? 'every environment', why: m[4] ?? '' } : null;
 		})
 		.filter((f): f is Freeze => !!f);
+/** A day's releases by environment, from GitHub's deployments ("✓ 2 releases · Staging, Production"). */
+const releasesOn = (ctx: ProductCtx, deps: Record<string, unknown>[], day: string): string => {
+	const hits = deps.filter((x) => str(x['created_at']).startsWith(day));
+	if (!hits.length) return '';
+	const envs = [...new Set(hits.map((x) => str(x['environment'])).filter(Boolean))].map(
+		(n) => ctx.repo.environments.find((e) => e.name === n)?.label ?? n,
+	);
+	return ` ✓ ${hits.length} release${hits.length > 1 ? 's' : ''}${envs.length ? ` · ${envs.join(', ')}` : ''}`;
+};
 
 export const calendarScreen: ProductScreen = {
 	vendor: 'github',
@@ -1078,9 +1089,8 @@ export const calendarScreen: ProductScreen = {
 			const lead = (first.getUTCDay() + 6) % 7;
 			const cell = (d: number) => {
 				const day = `${month}-${String(d).padStart(2, '0')}`;
-				const rel = deps.filter((x) => str(x['created_at']).startsWith(day)).length;
-				const fr = freezes.find((f) => f.from <= day && day <= f.to);
-				return `${d}${fr ? ' ⛔ freeze' : ''}${rel ? ` ✓ ${rel} release${rel > 1 ? 's' : ''}` : ''}`;
+				const fr = freezes.filter((f) => f.from <= day && day <= f.to);
+				return `${d}${fr.length ? ` ⛔ freeze · ${fr.map((f) => f.env).join(', ')}` : ''}${releasesOn(ctx, deps, day)}`;
 			};
 			const weeks: string[][] = [];
 			for (let i = 0; i < lead + days; i += 7)
@@ -1120,8 +1130,15 @@ export const calendarScreen: ProductScreen = {
 						),
 						table(
 							'Freezes',
-							[col('from', 'From', true), col('to', 'To', true), col('why', 'Why')],
-							freezes.map((f, i) => row(String(i), f.why, { from: f.from, to: f.to, why: f.why })),
+							[
+								col('from', 'From', true),
+								col('to', 'To', true),
+								col('env', 'Environment'),
+								col('why', 'Why'),
+							],
+							freezes.map((f, i) =>
+								row(String(i), f.why, { from: f.from, to: f.to, env: f.env, why: f.why }),
+							),
 							'No freezes. Add one for each sale event.',
 						),
 					],
@@ -1141,7 +1158,7 @@ export const calendarScreen: ProductScreen = {
 	},
 	forms: {
 		freeze: {
-			read: async () =>
+			read: async (ctx) =>
 				formTab(
 					form({
 						key: 'freeze',
@@ -1150,6 +1167,13 @@ export const calendarScreen: ProductScreen = {
 						fields: [
 							field('from', 'From (YYYY-MM-DD)', 'text', { required: true }),
 							field('to', 'To (YYYY-MM-DD)', 'text', { required: true }),
+							field('env', 'Environment', 'select', {
+								value: ctx.repo.environments.some((e) => e.name === 'production') ? 'production' : '',
+								options: [
+									option('', 'Every environment'),
+									...ctx.repo.environments.map((e) => option(e.name, e.label || e.name)),
+								],
+							}),
 							field('why', 'Why', 'text', { value: 'Sale event' }),
 						],
 						notes: [
@@ -1157,12 +1181,20 @@ export const calendarScreen: ProductScreen = {
 						],
 					}),
 				),
-			async send(_ctx, w) {
+			async send(ctx, w) {
 				const from = text(w, 'from');
 				const to = text(w, 'to');
 				if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || to < from)
 					throw new VendorError('Dates as YYYY-MM-DD, the end not before the start.', 400);
-				return { message: `Freeze ${from} to ${to}: ${text(w, 'why')}`, productId: null, follow: [] };
+				const picked = typeof w.values['env'] === 'string' ? w.values['env'] : '';
+				const env = ctx.repo.environments.find((e) => e.name === picked);
+				if (picked && !env) throw new VendorError(`${picked} is not an environment of this repository.`, 400);
+				const why = text(w, 'why').replace(/:/g, ' ');
+				return {
+					message: `Freeze ${from} to ${to} on ${env ? env.label || env.name : 'every environment'}: ${why}`,
+					productId: null,
+					follow: [],
+				};
 			},
 		},
 	},

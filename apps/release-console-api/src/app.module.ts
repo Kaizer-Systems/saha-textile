@@ -21,7 +21,7 @@ import { VendorReadsService } from './projects/vendor-reads.service.js';
 import { HelperErrorFilter } from './runner/helper-error.filter.js';
 import { RunnerClient } from './runner/runner-client.js';
 import { DropletJobs } from './servers/droplet-jobs.js';
-import { ServersController, SshListController } from './servers/servers.controller.js';
+import { EnvTagsController, ServersController, SshListController } from './servers/servers.controller.js';
 import { ConsoleStore } from './store/console-store.js';
 import { ProductsController } from './products/products.controller.js';
 import { ProductsService } from './products/products.service.js';
@@ -36,6 +36,7 @@ import { ProductsService } from './products/products.service.js';
 		ServerDeployController,
 		ServersController,
 		SshListController,
+		EnvTagsController,
 		LocalController,
 		AppFilesController,
 	],

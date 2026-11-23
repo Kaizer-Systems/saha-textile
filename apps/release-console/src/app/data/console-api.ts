@@ -83,6 +83,9 @@ import {
 	type ProductTab,
 	type ProductWrite,
 	sshListAnswerSchema,
+	envTagsSchema,
+	type EnvTags,
+	type SetEnvTag,
 	consoleViewSchema,
 	dnsRecordsAnswerSchema,
 	dropletsAnswerSchema,
@@ -348,6 +351,14 @@ export class ConsoleApi {
 	/** Who may sign in over SSH to the project's servers; every server's Access rule follows. */
 	setSshEmails(p: string, body: { pin: string; emails: string[] }): Promise<{ emails: string[]; hosts: string[] }> {
 		return this.call('PUT', `/api/projects/${p}/ssh-emails`, sshListAnswerSchema, body, 120_000);
+	}
+	/** Which environment each cloud resource is for (resource key → environment name). */
+	envTags(p: string, r: string): Promise<EnvTags> {
+		return this.call('GET', `/api/projects/${p}/repos/${r}/env-tags`, envTagsSchema);
+	}
+	/** Tags a resource with one of the repository's environments, or clears it, after the PIN. */
+	setEnvTag(p: string, r: string, body: SetEnvTag): Promise<EnvTags> {
+		return this.call('PUT', `/api/projects/${p}/repos/${r}/env-tags`, envTagsSchema, body);
 	}
 	/** DigitalOcean › Droplets: create a server after the PIN; the screen follows the job. */
 	createDroplet(p: string, r: string, slot: string, body: StartDropletCreate): Promise<DropletJob> {

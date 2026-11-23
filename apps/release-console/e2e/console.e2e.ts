@@ -617,6 +617,108 @@ test('Create asks for the typed name, the admin password and the PIN, then follo
 		sshEmails: ['owner@example.com'],
 		draft: { environment: 'staging', sshKeyIds: [7] },
 	});
+
+	// Owner, 23 Nov: when a create finishes, a pop-up asks which environment the server is for, with the
+	// repository's own environments; saving keeps the tag in the console (the real API, with the PIN).
+	const name = `${base}-staging`;
+	const tag = page.getByRole('dialog', { name: `Which environment is ${name} for?` });
+	await expect(tag).toBeVisible();
+	await expect(tag.getByLabel('Environment', { exact: true })).toHaveValue('staging');
+	await expect(tag.getByRole('option')).toHaveText(['No environment', 'Local', 'Staging', 'Production']);
+	await tag.getByLabel('PIN digit 1 of 6').click();
+	await page.keyboard.type(PIN);
+	await tag.getByRole('button', { name: 'Save' }).click();
+	await expect(tag).toBeHidden();
+	await expect(page.locator('.rc-kv > div', { hasText: 'Environment tag' })).toContainText('staging');
+
+	// Later, from DigitalOcean › Droplets: the list shows the tag, and the same box changes or clears it.
+	await page.route('**/cloud/*/droplets', (route) =>
+		route.fulfill({
+			status: 200,
+			contentType: 'application/json',
+			headers: cors(route.request().headers()['origin'] ?? '*'),
+			body: JSON.stringify({
+				state: 'ok',
+				readAt: at,
+				data: [
+					{
+						id: 42,
+						name,
+						status: 'active',
+						region: 'blr1',
+						size: 's-2vcpu-4gb',
+						vcpus: 2,
+						memoryMb: 4096,
+						diskGb: 80,
+						ipv4: '203.0.113.9',
+						tags: [base],
+						createdAt: at,
+					},
+				],
+			}),
+		}),
+	);
+	await page.goto(`/p/${base}/r/saha-textile/droplets?tab=list`);
+	const env = page.getByRole('button', { name: `Tag the environment of ${name}` });
+	await expect(env).toHaveText(/staging/);
+	await env.click();
+	await tag.getByLabel('Environment', { exact: true }).selectOption('');
+	await tag.getByLabel('PIN digit 1 of 6').click();
+	await page.keyboard.type(PIN);
+	await tag.getByRole('button', { name: 'Save' }).click();
+	await expect(tag).toBeHidden();
+	await expect(env).toHaveText(/Tag environment/);
+});
+
+test('pages without the environment switch label each row with its environment', async ({ page }, info) => {
+	const base = `browser-test-${info.project.name}`;
+	const at = new Date().toISOString();
+	await sampleGithub(page);
+	await page.route('**/github/pulls', (route) =>
+		route.fulfill({
+			status: 200,
+			contentType: 'application/json',
+			headers: {
+				'access-control-allow-origin': route.request().headers()['origin'] ?? '*',
+				'access-control-allow-credentials': 'true',
+			},
+			body: JSON.stringify({
+				state: 'ok',
+				readAt: at,
+				data: [
+					{
+						number: 7,
+						title: 'Sale banner',
+						author: 'a',
+						branch: 'feat/sale',
+						base: 'staging',
+						draft: false,
+						updatedAt: at,
+						url: 'https://github.com/example/pull/7',
+					},
+					{
+						number: 8,
+						title: 'Release',
+						author: 'a',
+						branch: 'staging',
+						base: 'main',
+						draft: false,
+						updatedAt: at,
+						url: 'https://github.com/example/pull/8',
+					},
+				],
+			}),
+		}),
+	);
+	await unlock(page);
+	// The switch is gone on Ship › Code; a pull request's target branch names its environments.
+	await page.goto(`/p/${base}/r/saha-textile/pulls?tab=list`);
+	await expect(page.getByRole('row', { name: /Sale banner/ })).toContainText('Staging');
+	await expect(page.getByRole('row', { name: /Release/ })).toContainText('Production');
+	await expect(page.locator('.rc-envs')).toHaveCount(0);
+	// Run pages are about one environment and keep the switch.
+	await page.goto(`/p/${base}/r/saha-textile/services`);
+	await expect(page.locator('.rc-envs')).toBeVisible();
 });
 
 test('a DigitalOcean product screen lists, opens its create form with the price, and sends it with the PIN', async ({

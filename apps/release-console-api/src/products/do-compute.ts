@@ -29,6 +29,7 @@ import {
 	when,
 } from './kit.js';
 import {
+	envAttached,
 	actionDone,
 	doAll,
 	doGet,
@@ -609,6 +610,7 @@ const volumesList = async (ctx: ProductCtx) => {
 					col('on', 'Attached to'),
 					col('fs', 'Filesystem', true),
 					col('at', 'Created', true),
+					col('env', 'Environment'),
 				],
 				all.map((v) =>
 					row(
@@ -624,6 +626,7 @@ const volumesList = async (ctx: ProductCtx) => {
 									.join(', ') || 'not attached',
 							fs: str(v['filesystem_type']) || '—',
 							at: when(str(v['created_at'])),
+							env: envAttached(ctx, arr(v['droplet_ids'])),
 						},
 						arr(v['droplet_ids']).length ? null : 'amber',
 					),
@@ -1150,12 +1153,17 @@ async function allSnapshots(key: string) {
 }
 
 const backupsList = async (ctx: ProductCtx) => {
-	const [snaps, droplets] = await Promise.all([allSnapshots(ctx.key), dropletsOf(ctx.key)]);
+	const [snaps, droplets, vols] = await Promise.all([
+		allSnapshots(ctx.key),
+		dropletsOf(ctx.key),
+		doAll('/volumes', 'volumes', ctx.key, true),
+	]);
+	const volumes = vols ?? [];
 	const backups = (
 		await Promise.all(
 			droplets.map(async (d) =>
 				((await doAll(`/droplets/${num(d['id'])}/backups`, 'backups', ctx.key, true)) ?? []).map(
-					(b): Record<string, unknown> => ({ ...b, _droplet: str(d['name']) }),
+					(b): Record<string, unknown> => ({ ...b, _droplet: str(d['name']), _dropletId: num(d['id']) }),
 				),
 			),
 		)
@@ -1175,6 +1183,13 @@ const backupsList = async (ctx: ProductCtx) => {
 					.map((r) => str(r))
 					.join(', '),
 				at: when(str(s['created_at'])),
+				env:
+					str(s['resource_type']) === 'droplet'
+						? envAttached(ctx, [s['resource_id']])
+						: envAttached(
+								ctx,
+								arr(volumes.find((v) => str(v['id']) === str(s['resource_id']))?.['droplet_ids']),
+							),
 			}),
 		),
 		...backups.map((b) =>
@@ -1187,6 +1202,7 @@ const backupsList = async (ctx: ProductCtx) => {
 					.map((r) => str(r))
 					.join(', '),
 				at: when(str(b['created_at'])),
+				env: envAttached(ctx, [b['_dropletId']]),
 			}),
 		),
 	].sort((a, b) => String(b.cells['at']).localeCompare(String(a.cells['at'])));
@@ -1209,6 +1225,7 @@ const backupsList = async (ctx: ProductCtx) => {
 					col('size', 'Size', true),
 					col('where', 'Region', true),
 					col('at', 'Taken', true),
+					col('env', 'Environment'),
 				],
 				rows,
 				'No backups or snapshots on this account.',

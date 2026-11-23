@@ -47,10 +47,12 @@ const catalog = {
 
 function setup(over: Partial<JobDeps> = {}) {
 	const audit = vi.fn();
+	const setEnvTag = vi.fn();
 	const projects = {
 		repository: () => ({ project, repo }),
 		valueOf: async (ref: { id: string }) => `example-${ref.id}-key`,
 		setSshEmails: () => project,
+		setEnvTag,
 	} as unknown as ProjectsService;
 	const jobs = new DropletJobs(projects, { audit } as unknown as ConsoleStore, {} as RunnerClient);
 	const created: Record<string, unknown>[] = [];
@@ -153,7 +155,7 @@ function setup(over: Partial<JobDeps> = {}) {
 		waits: { activeEvery: 1, activeFor: 60_000, tunnelEvery: 1, tunnelFor: 60_000 },
 		...over,
 	} as JobDeps;
-	return { jobs, audit, created, records, helperCalls };
+	return { jobs, audit, created, records, helperCalls, setEnvTag };
 }
 
 const draft = () => ({ ...serverDraftOf('saha-textile', 'staging'), sshKeyIds: [7] });
@@ -265,7 +267,7 @@ describe('creating and destroying a server', () => {
 	});
 
 	it('destroys staging in reverse and never production', async () => {
-		const { jobs } = setup();
+		const { jobs, setEnvTag } = setup();
 		await expect(
 			jobs.startDestroy('saha-textile', 'saha-textile', 'do1', {
 				confirm: 'saha-textile-production',
@@ -282,6 +284,8 @@ describe('creating and destroying a server', () => {
 		const job = await done(jobs, started.id);
 		expect(job.state).toBe('done');
 		expect(job.steps.map((s) => s.state)).toEqual(['done', 'done', 'done', 'done', 'done', 'done']);
+		// The droplet's environment tag goes with it (owner, 23 Nov).
+		expect(setEnvTag).toHaveBeenCalledWith('saha-textile', 'saha-textile', 'do:droplet:42', null);
 	});
 
 	it('says Zero Trust must be on before it makes anything', async () => {

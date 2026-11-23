@@ -50,6 +50,7 @@ import {
 	extend,
 } from './cf-zone-more.js';
 import { ZT_EXTRA } from './cf-zt-more.js';
+import { ENV_LABELS, envTagExtra, withEnvLabels } from './env-tags.js';
 import { SPACES_MORE_EXTRA } from './do-spaces-more.js';
 import { DB_COST_EXTRA, DROPLET_COST_EXTRA, K8S_COST_EXTRA, SPACES_CDN_EXTRA } from './do-cost.js';
 import { ACCOUNT_EXTRA, DATABASES_EXTRA, DODNS_EXTRA, MONITORING_EXTRA, NET_EXTRA, REGISTRY_EXTRA } from './do-more.js';
@@ -130,16 +131,16 @@ import { addExtras } from './extras.js';
 
 /** Screen key (from the approved menu) → its live tabs and forms. */
 export const PRODUCT_SCREENS: Record<string, ProductScreen> = {
-	droplets: extend(dropletScreen, DROPLET_COST_EXTRA),
+	droplets: extend(extend(dropletScreen, DROPLET_COST_EXTRA), envTagExtra('droplet', 'detail')),
 	volumes: volumeScreen,
 	dobackups: backupsScreen,
 	cloudnet: extend(networkScreen, NET_EXTRA),
 	doautoscale: autoscaleScreen,
-	kubernetes: extend(kubernetesScreen, K8S_COST_EXTRA),
-	apps: appsScreen,
+	kubernetes: extend(extend(kubernetesScreen, K8S_COST_EXTRA), envTagExtra('k8s')),
+	apps: extend(appsScreen, envTagExtra('app')),
 	functions: functionsScreen,
 	nfs: nfsScreen,
-	databases: extend(extend(databasesScreen, DATABASES_EXTRA), DB_COST_EXTRA),
+	databases: extend(extend(extend(databasesScreen, DATABASES_EXTRA), DB_COST_EXTRA), envTagExtra('database')),
 	registry: extend(registryScreen, REGISTRY_EXTRA),
 	images: imagesScreen,
 	loadbalancers: loadBalancersScreen,
@@ -148,7 +149,7 @@ export const PRODUCT_SCREENS: Record<string, ProductScreen> = {
 	domonitoring: extend(monitoringScreen, MONITORING_EXTRA),
 	inference: inferenceScreen,
 	donetadv: vpcPeeringScreen,
-	spaces: extend(extend(spacesScreen, SPACES_CDN_EXTRA), SPACES_MORE_EXTRA),
+	spaces: extend(extend(extend(spacesScreen, SPACES_CDN_EXTRA), SPACES_MORE_EXTRA), envTagExtra('spaces', 'buckets')),
 	dosecrets: doSecretsScreen,
 	security: securityScreen,
 	doaccount: extend(doAccountScreen, ACCOUNT_EXTRA),
@@ -222,3 +223,8 @@ PRODUCT_SCREENS['cfplan'] = cfPlanScreen;
 PRODUCT_SCREENS['deps'] = depsAlertsScreen;
 const ghSecrets = PRODUCT_SCREENS['secrets'];
 if (ghSecrets) PRODUCT_SCREENS['secrets'] = extend(ghSecrets, SECRETS_EXTRA);
+// Environment labels on pages without the environment switch (owner, 23 Nov).
+for (const [name, spec] of Object.entries(ENV_LABELS)) {
+	const screen = PRODUCT_SCREENS[name];
+	if (screen) PRODUCT_SCREENS[name] = withEnvLabels(screen, spec);
+}

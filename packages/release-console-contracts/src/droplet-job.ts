@@ -45,6 +45,22 @@ export const setSshEmailsSchema = z.object({
 export type SetSshEmails = z.infer<typeof setSshEmailsSchema>;
 export const sshListAnswerSchema = z.object({ emails: z.array(z.string()), hosts: z.array(z.string()) });
 
+/**
+ * Which environment a cloud resource belongs to (owner, 23 Nov): resource key → one of the repository's
+ * own environment names, kept in the console's file. Keys: `do:droplet:<id>`, `do:database:<id>`,
+ * `do:spaces:<bucket>`, `do:k8s:<id>`, `do:app:<id>`.
+ */
+export const envTagKeySchema = z.string().regex(/^do:(droplet|database|spaces|k8s|app):[\w.-]{1,80}$/);
+export const envTagsSchema = z.record(z.string(), z.string());
+export type EnvTags = z.infer<typeof envTagsSchema>;
+/** Sets or clears (env null) one resource's environment, after the PIN. */
+export const setEnvTagSchema = z.object({
+	pin,
+	key: envTagKeySchema,
+	env: z.string().min(1).max(40).nullable(),
+});
+export type SetEnvTag = z.infer<typeof setEnvTagSchema>;
+
 /** The SSH host name a server gets through its tunnel: `ssh-<environment>.<zone>`. */
 export const sshHostOf = (environment: string, zone: string): string => `ssh-${environment}.${zone}`;
 

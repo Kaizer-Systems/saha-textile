@@ -65,7 +65,19 @@ The console has three levels. Search (⌘K) is on at every level and finds only 
 | Project    | `/p/:project/…`               | Overview, Repositories, Environments, Attention, Audit, Project settings (Connections, Repositories, Environments, Project menus, Remove project) |
 | Repository | `/p/:project/r/:repo/:screen` | Overview, the repository's own menus, Ship, Watch, Run, one group per cloud platform, edge platform and secrets manager, Governance               |
 
-The top bar holds the **Project** switcher (amber), the **Repository** switcher (cyan, with **Project overview** first) and the environment tabs of the open repository. The console level has no environment tabs.
+The top bar holds the **Project** switcher (amber), the **Repository** switcher (cyan, with **Project overview** first) and the environment tabs of the open repository. The tabs show only on pages about one environment: Ship › Release (Live deploy, Release steps, What changed, Release impact, Approvals, Rollback), Run, Watch, Shop and Secrets. Pages about every environment, the whole repository or the whole account have none: the overviews, the console and project pages, Ship › Code, Ship › Plan and Packages, DigitalOcean, Cloudflare and Governance. Those pages label each resource with its environment instead. The console level has no environment tabs.
+
+**Environment tags.** A droplet, managed database, Spaces bucket, Kubernetes cluster or App Platform app can be tagged with one of the repository's environments. The choices come from the repository, so an environment added later (Development, say) appears by itself. When a server create finishes, a box asks which environment the server is for, preset to the create's own environment; Cancel leaves it untagged. Later, the Environment column on DigitalOcean › Droplets › List opens the same box, and the Managed databases, Kubernetes, App Platform and Spaces screens have a **Tag environment** tab; each change needs the PIN. Tags live in the console's own file (`envTags`, per project and repository, for example `do:droplet:<id>` → `staging`). The API reads them with `GET /api/projects/:p/repos/:r/env-tags` and sets one with `PUT` (the key, an environment or `null`, and the PIN). Destroying a resource from the console removes its tag. A resource deleted on the vendor's own page loses its tag the next time the console reads its whole list.
+
+**Environment labels.** Other rows on those pages get an **Environment** column worked out from what the console already knows (`packages/release-console-contracts/src/env-labels.ts`, shared by the API and the app):
+
+- **Attached to servers:** volumes, snapshots, DigitalOcean backups, Cloud Firewalls, reserved IPs and load balancers follow the tags of the droplets they are attached to.
+- **By domain:** Cloudflare DNS records (A, AAAA and CNAME only; mail and text records belong to no environment), tunnels, Access applications, Workers routes, edge and origin certificates, custom hostnames and the hosts inside rules. An exact domain wins, then a server's SSH host (`ssh-<environment>.<zone>`), then the longest domain the host sits under. A wildcard such as `*.sahatextile.com` covers every environment under it.
+- **By branch:** pull requests by their target branch and runs by their branch. An environment with no branch of its own deploys from the repository's default branch.
+- **Release calendar:** each freeze holds one environment or every one, and each day lists its releases by environment from GitHub's deployments.
+- **Governance:** Audit labels an entry that names exactly one environment, Domains labels each edge certificate, and Costs adds **Servers by environment**, the monthly list price of each environment's droplets.
+
+A row that matches several environments says `mixed:` and names them; one that matches none shows `—`.
 
 Attention lists what needs the owner: keys that are expiring (14 days or less), expired or failed; vendor slots with no key; the latest run of a workflow on `main`, `staging` or `dev` that failed; and runs waiting for approval. The console level shows only project names and counts.
 
@@ -311,7 +323,7 @@ The console's browser tests run with `pnpm e2e:console` from the repository root
 
 ## Reaching a server (SSH, SFTP, phone)
 
-Port 22 is closed to the internet (plan §5); the owner chose Cloudflare WARP plus the browser terminal (21 Nov). Cloudflare Zero Trust must be switched on for the account once (team name, Free plan); until then creating a server stops before anything is made and says so. It is on since 22 Nov with the team name `saha-textile` (`saha-textile.cloudflareaccess.com`).
+Port 22 is closed to the internet (plan §5); servers are reached through Cloudflare WARP or the browser terminal. Cloudflare Zero Trust must be switched on for the account once (team name, Free plan); until then creating a server stops before anything is made and says so. It is on since 22 Nov with the team name `saha-textile` (`saha-textile.cloudflareaccess.com`).
 
 Zero Trust accounts made since June 2026 start with only "sign in with Cloudflare", limited to the account's members. The create job (and a change to the SSH list) adds sign-in by a one-time email code when it is missing, and sets WARP to include mode with each server's address, checking that the switch took: a new account starts in exclude mode, which sends all of a device's traffic through Cloudflare and leaves private addresses out.
 

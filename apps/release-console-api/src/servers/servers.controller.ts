@@ -1,6 +1,8 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Put, Req } from '@nestjs/common';
 import {
 	type DropletJob,
+	type EnvTags,
+	setEnvTagSchema,
 	setSshEmailsSchema,
 	startDropletCreateSchema,
 	startDropletDestroySchema,
@@ -83,5 +85,29 @@ export class SshListController {
 		this.lock.confirm(sessionOf(req), input.pin, 'change who may sign in over SSH');
 		const project = this.projects.setSshEmails(p, input.emails);
 		return { emails: project.sshEmails, hosts: await this.jobs.updateSshList(p) };
+	}
+}
+
+/**
+ * Which environment each cloud resource belongs to (owner, 23 Nov): read by every list that labels
+ * resources, set from the pop-up after a server is created or from Tag environment, after the PIN.
+ */
+@Controller('api/projects/:p/repos/:r/env-tags')
+export class EnvTagsController {
+	constructor(
+		private readonly lock: LockService,
+		private readonly projects: ProjectsService,
+	) {}
+
+	@Get()
+	list(@Param('p') p: string, @Param('r') r: string): EnvTags {
+		return this.projects.envTags(p, r);
+	}
+
+	@Put()
+	set(@Param('p') p: string, @Param('r') r: string, @Body() body: unknown, @Req() req: Req): EnvTags {
+		const input = parseBody(setEnvTagSchema, body);
+		this.lock.confirm(sessionOf(req), input.pin, `tag ${input.key} with an environment`);
+		return this.projects.setEnvTag(p, r, input.key, input.env);
 	}
 }

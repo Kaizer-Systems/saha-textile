@@ -48,8 +48,8 @@ export function extend(screen: ProductScreen, extra: ScreenExtra): ProductScreen
 		if (!base) continue;
 		tabs[key] = async (ctx) => {
 			const t = await base(ctx);
-			if (t.type === 'view') t.view.actions = [...t.view.actions, ...buttons];
-			return t;
+			// A copy: some tabs answer one shared view (an empty list), which must not gather buttons.
+			return t.type === 'view' ? { ...t, view: { ...t.view, actions: [...t.view.actions, ...buttons] } } : t;
 		};
 	}
 	return { ...screen, tabs, forms: { ...screen.forms, ...extra.forms } };

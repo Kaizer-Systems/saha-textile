@@ -1,10 +1,11 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
 	type ConsoleView,
 	KEY_KINDS,
+	envTagKeySchema,
 	type KeyRef,
 	type NewProject,
 	type Project,
@@ -202,6 +203,53 @@ export class ProjectsService {
 			),
 		}));
 		this.store.audit(projectId, 'key-unlinked', `${ref.label} (${keyId}) unlinked; it stays in Infisical`);
+	}
+
+	/** The environment tags of one repository's cloud resources (resource key → environment name). */
+	envTags(projectId: string, repoId: string): Record<string, string> {
+		return { ...(this.store.read().envTags[`${projectId}/${repoId}`] ?? {}) };
+	}
+
+	/**
+	 * Tags a resource with one of the repository's own environments, or clears it (`env` null). The
+	 * environment must exist in the repository, so a tag always names something real.
+	 */
+	setEnvTag(projectId: string, repoId: string, key: string, env: string | null): Record<string, string> {
+		const project = this.project(projectId);
+		const repo = project.repositories.find((r) => r.id === repoId);
+		if (!repo) throw new NotFoundException(`${repoId} is not in ${projectId}.`);
+		if (!envTagKeySchema.safeParse(key).success) throw new BadRequestException('Not a resource the console tags.');
+		if (env !== null && !repo.environments.some((e) => e.name === env))
+			throw new BadRequestException(`${env} is not an environment of ${repo.name}.`);
+		const slot = `${projectId}/${repoId}`;
+		this.store.update((f) => {
+			const tags = { ...(f.envTags[slot] ?? {}) };
+			if (env === null) delete tags[key];
+			else tags[key] = env;
+			return { ...f, envTags: { ...f.envTags, [slot]: tags } };
+		});
+		this.store.audit(projectId, 'env-tag', `${key} → ${env ?? 'no environment'}`);
+		return this.envTags(projectId, repoId);
+	}
+
+	/**
+	 * Drops the tags of resources that no longer exist (destroyed here or on the vendor's own page),
+	 * given the full live list of one kind. Called only with a complete list.
+	 */
+	pruneEnvTags(projectId: string, repoId: string, kind: string, liveIds: string[]): void {
+		const slot = `${projectId}/${repoId}`;
+		const prefix = `do:${kind}:`;
+		const live = new Set(liveIds.map((id) => `${prefix}${id}`));
+		const stale = Object.keys(this.store.read().envTags[slot] ?? {}).filter(
+			(k) => k.startsWith(prefix) && !live.has(k),
+		);
+		if (!stale.length) return;
+		this.store.update((f) => {
+			const tags = { ...(f.envTags[slot] ?? {}) };
+			for (const k of stale) delete tags[k];
+			return { ...f, envTags: { ...f.envTags, [slot]: tags } };
+		});
+		this.store.audit(projectId, 'env-tag', `${stale.join(', ')} → removed (no longer on the account)`);
 	}
 
 	/** Who may sign in over SSH to the project's servers (owner, 21 Nov: a list, more added later). */

@@ -86,6 +86,13 @@ export interface ResourceSpec {
 	tabs?: Record<string, (ctx: ProductCtx) => Promise<ProductTab>>;
 	/** Buttons on the list. */
 	listActions?: Array<[label: string, form: string, tone?: 'primary' | 'ghost' | 'danger']>;
+	/**
+	 * Resources the owner tags with an environment (owner, 23 Nov): the list gets an Environment
+	 * column, the Use tab a fact, and deleting the resource drops its tag.
+	 */
+	envTag?: 'droplet' | 'database' | 'spaces' | 'k8s' | 'app';
+	/** Resources whose environment follows something else (the droplets a load balancer sends to). */
+	envFrom?: (ctx: ProductCtx, i: Item) => string;
 }
 
 const pickerOf = (spec: ResourceSpec, items: Item[], id: string | null) =>
@@ -157,8 +164,20 @@ export function resource(spec: ResourceSpec): ProductScreen {
 	const tabs: ProductScreen['tabs'] = {};
 	const forms: Record<string, ProductFormSpec> = { ...(spec.forms ?? {}) };
 
+	const envOf = (ctx: ProductCtx, i: Item) =>
+		spec.envTag
+			? (ctx.envTags()[`do:${spec.envTag}:${spec.id(i)}`] ?? 'no environment')
+			: spec.envFrom
+				? spec.envFrom(ctx, i)
+				: null;
+	const labelled = !!(spec.envTag || spec.envFrom);
+
 	tabs['list'] = async (ctx) => {
 		const items = await spec.items(ctx);
+		if (spec.envTag && items.length < 2000) ctx.pruneEnvTags(spec.envTag, items.map(spec.id));
+		const columns: ResourceSpec['columns'] = labelled
+			? [...spec.columns, ['env', 'Environment', false, () => null]]
+			: spec.columns;
 		const [stats, notes, extra] = await Promise.all([
 			spec.stats?.(items, ctx) ?? [],
 			spec.notes?.(items, ctx) ?? [],
@@ -170,12 +189,15 @@ export function resource(spec: ResourceSpec): ProductScreen {
 			tables: [
 				table(
 					spec.nouns[0]?.toUpperCase() + spec.nouns.slice(1),
-					spec.columns.map(([k, l, m]) => col(k, l, m)),
+					columns.map(([k, l, m]) => col(k, l, m)),
 					items.map((i) =>
 						row(
 							spec.id(i),
 							spec.name(i),
-							Object.fromEntries(spec.columns.map(([k, , , cell]) => [k, cell(i)])),
+							{
+								...Object.fromEntries(spec.columns.map(([k, , , cell]) => [k, cell(i)])),
+								...(labelled ? { env: envOf(ctx, i) } : {}),
+							},
 							spec.status ? toneOf(spec.status(i)) : null,
 						),
 					),
@@ -187,6 +209,7 @@ export function resource(spec: ResourceSpec): ProductScreen {
 			actions: [
 				...(spec.create ? [action(`Create ${spec.noun}`, 'create', 'primary' as const)] : []),
 				...(spec.listActions ?? []).map(([l, f, t]) => action(l, f, t ?? 'ghost')),
+				...(spec.envTag ? [action('Tag environment', 'envtag')] : []),
 			],
 		});
 	};
@@ -198,9 +221,11 @@ export function resource(spec: ResourceSpec): ProductScreen {
 		return view(
 			{
 				head: { name: spec.name(item), status, tone: status ? toneOf(status) : null },
-				facts:
-					spec.facts?.(item) ??
-					spec.columns.map(([, l, , cell]) => [l, String(cell(item) ?? '—'), null] as ProductFact),
+				facts: [
+					...(spec.facts?.(item) ??
+						spec.columns.map(([, l, , cell]) => [l, String(cell(item) ?? '—'), null] as ProductFact)),
+					...(labelled ? [['Environment', envOf(ctx, item) ?? '—', null] as ProductFact] : []),
+				],
 				tables: spec.tables ? await spec.tables(ctx, item) : [],
 				links: spec.links?.(item) ?? [],
 				actions: [
@@ -241,6 +266,7 @@ export function resource(spec: ResourceSpec): ProductScreen {
 				async send(ctx, w, key, item) {
 					if (!item) throw new VendorError(`Choose a ${spec.noun}.`, 400);
 					const sent = await d.remove(ctx, key, item, w);
+					if (spec.envTag) ctx.setEnvTag(`do:${spec.envTag}:${spec.id(item)}`, null);
 					return (
 						sent ?? {
 							message: `${spec.noun[0]?.toUpperCase()}${spec.noun.slice(1)} ${spec.name(item)} deleted`,

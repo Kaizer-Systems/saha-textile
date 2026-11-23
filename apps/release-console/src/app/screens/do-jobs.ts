@@ -6,6 +6,7 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 import { map } from 'rxjs';
 
 import { money } from './do-create';
+import { EnvTagDialog, injectEnvTags } from './env-tag-dialog';
 import { VendorState } from './vendor-screens';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
@@ -15,10 +16,20 @@ import { PIN_LENGTH, PinBoxes } from '../shared/pin-boxes';
 
 import type { Droplet, DropletJob, DropletJobStep } from '@saha-textile/release-console-contracts';
 
+const DISMISSED = 'rc-env-tag-dismissed';
+function readDismissed(): string[] {
+	try {
+		const v: unknown = JSON.parse(sessionStorage.getItem(DISMISSED) ?? '[]');
+		return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+	} catch {
+		return [];
+	}
+}
+
 /** DigitalOcean › Droplets › Creating, Ready and Destroy (brief v7), following one job live. */
 @Component({
 	selector: 'rc-do-jobs',
-	imports: [VendorState, Loading, PinBoxes],
+	imports: [VendorState, Loading, PinBoxes, EnvTagDialog],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@if (tab() === 'destroy') {
@@ -194,6 +205,19 @@ import type { Droplet, DropletJob, DropletJobStep } from '@saha-textile/release-
 						<b>{{ j.name }} is ready</b>
 						· {{ took(j) }} · {{ money(j.hourly) }} an hour from now.
 					</div>
+					@if (j.dropletId) {
+						<button
+							type="button"
+							class="rc-btn ghost"
+							(click)="tagging.set(true)"
+						>
+							<span
+								class="lock"
+								aria-hidden="true"
+							></span>
+							Tag environment
+						</button>
+					}
 					<button
 						type="button"
 						class="rc-btn primary"
@@ -202,6 +226,15 @@ import type { Droplet, DropletJob, DropletJobStep } from '@saha-textile/release-
 						First deploy ›
 					</button>
 				</div>
+				@if (j.dropletId && (tagging() || askTag(j))) {
+					<!-- Owner, 23 Nov: when a create finishes, ask which environment the server is for. -->
+					<rc-env-tag-dialog
+						[resource]="'do:droplet:' + j.dropletId"
+						[name]="j.name"
+						[preset]="tagOf(j) ?? j.environment"
+						(closed)="tagging.set(false); dismiss(j)"
+					/>
+				}
 			} @else if (j.state === 'failed') {
 				<div class="rc-banner red">
 					<span class="rc-dot red"></span>
@@ -274,6 +307,12 @@ import type { Droplet, DropletJob, DropletJobStep } from '@saha-textile/release-
 							<span>Droplet</span>
 							<em class="rc-mono">{{ j.dropletId ?? '—' }}</em>
 						</div>
+						@if (j.kind === 'create' && j.dropletId) {
+							<div>
+								<span>Environment tag</span>
+								<em>{{ tagOf(j) ?? 'not tagged yet' }}</em>
+							</div>
+						}
 						<div>
 							<span>Addresses</span>
 							<em class="rc-mono">
@@ -372,6 +411,33 @@ export class DoJobsScreen {
 			(d) => d.tags.includes(p) && !/prod/i.test(d.name) && !d.tags.some((t) => /prod/i.test(t)),
 		);
 	});
+
+	protected readonly tags = injectEnvTags();
+	/** The tag box opened by hand (Tag environment), or shown once a create is done and untagged. */
+	protected readonly tagging = signal(false);
+	private readonly dismissed = signal<ReadonlySet<string>>(new Set(readDismissed()));
+	protected tagOf(j: DropletJob): string | null {
+		return j.dropletId ? (this.tags.data()?.[`do:droplet:${j.dropletId}`] ?? null) : null;
+	}
+	/** Ask once per finished create, after the tags are read, unless already tagged or cancelled. */
+	protected askTag(j: DropletJob): boolean {
+		return (
+			j.kind === 'create' &&
+			j.state === 'done' &&
+			this.tags.isSuccess() &&
+			!this.tagOf(j) &&
+			!this.dismissed().has(j.id)
+		);
+	}
+	protected dismiss(j: DropletJob): void {
+		const next = new Set(this.dismissed()).add(j.id);
+		this.dismissed.set(next);
+		try {
+			sessionStorage.setItem(DISMISSED, JSON.stringify([...next]));
+		} catch {
+			// A private window may refuse storage; the box then asks again on the next visit.
+		}
+	}
 
 	protected readonly picked = signal<Droplet | null>(null);
 	protected readonly typed = signal('');

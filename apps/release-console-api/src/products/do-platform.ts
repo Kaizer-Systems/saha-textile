@@ -247,6 +247,7 @@ export const autoscaleScreen = resource({
 /* ===== Kubernetes ===== */
 
 export const kubernetesScreen = resource({
+	envTag: 'k8s',
 	vendor: 'digitalocean',
 	noun: 'cluster',
 	nouns: 'Kubernetes clusters',
@@ -466,6 +467,7 @@ export const kubernetesScreen = resource({
 
 const appName = (a: Item) => str(rec(a['spec'])['name']);
 export const appsScreen = resource({
+	envTag: 'app',
 	vendor: 'digitalocean',
 	noun: 'app',
 	nouns: 'apps',
@@ -913,6 +915,7 @@ export const nfsScreen = resource({
 /* ===== Managed databases ===== */
 
 export const databasesScreen = resource({
+	envTag: 'database',
 	vendor: 'digitalocean',
 	noun: 'cluster',
 	nouns: 'managed databases',

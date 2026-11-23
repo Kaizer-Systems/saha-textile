@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { injectQuery } from '@tanstack/angular-query-experimental';
 
+import { EnvTagDialog, injectDefaultBranch, injectEnvTags } from './env-tag-dialog';
 import { SshList } from './ssh-list';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
@@ -11,7 +12,7 @@ import { Icon } from '../shared/icons';
 import { Loading } from '../shared/loading';
 import { VendorLogo } from '../shared/vendor-logo';
 
-import type { VendorAnswer } from '@saha-textile/release-console-contracts';
+import { type Droplet, type VendorAnswer, envOfBranch, envOfHost } from '@saha-textile/release-console-contracts';
 
 /** Why a vendor screen has no data: not connected (amber, with the way to connect) or an error (red). */
 @Component({
@@ -106,6 +107,7 @@ const ok = <T>(a: VendorAnswer<T> | undefined): T | null => (a?.state === 'ok' ?
 								<th>Author</th>
 								<th>Branch</th>
 								<th>Updated</th>
+								<th>Environment</th>
 								<th></th>
 							</tr>
 						</thead>
@@ -122,6 +124,7 @@ const ok = <T>(a: VendorAnswer<T> | undefined): T | null => (a?.state === 'ok' ?
 									<td>{{ p.author }}</td>
 									<td class="rc-mono">{{ p.branch }} → {{ p.base }}</td>
 									<td class="rc-mono">{{ when(p.updatedAt) }}</td>
+									<td>{{ envOfBranch(p.base) }}</td>
 									<td>
 										<a
 											class="rc-mono"
@@ -134,7 +137,7 @@ const ok = <T>(a: VendorAnswer<T> | undefined): T | null => (a?.state === 'ok' ?
 									</td>
 								</tr>
 							} @empty {
-								<tr><td colspan="6">No open pull requests.</td></tr>
+								<tr><td colspan="7">No open pull requests.</td></tr>
 							}
 						</tbody>
 					</table>
@@ -147,6 +150,12 @@ export class PullsScreen {
 	private readonly api = inject(ConsoleApi);
 	private readonly ctx = inject(ConsoleContext);
 	protected readonly when = when;
+	private readonly branches = injectDefaultBranch();
+	/** The environments a pull request's target branch deploys to (owner, 23 Nov). */
+	protected envOfBranch(branch: string): string {
+		const envs = this.ctx.repo()?.environments ?? [];
+		return envOfBranch(envs, branch, this.branches.data()?.defaultBranch ?? '') ?? '—';
+	}
 	protected readonly q = injectQuery(() => ({
 		queryKey: ['vendor', 'pulls', this.ctx.projectId(), this.ctx.repoId()],
 		queryFn: () => this.api.pulls(this.ctx.projectId() ?? '', this.ctx.repoId() ?? ''),
@@ -191,6 +200,7 @@ export class PullsScreen {
 								<th>Event</th>
 								<th>State</th>
 								<th>Started</th>
+								<th>Environment</th>
 								<th></th>
 							</tr>
 						</thead>
@@ -212,6 +222,7 @@ export class PullsScreen {
 										</span>
 									</td>
 									<td class="rc-mono">{{ when(r.createdAt) }}</td>
+									<td>{{ envOfBranch(r.branch) }}</td>
 									<td>
 										<a
 											class="rc-mono"
@@ -224,7 +235,7 @@ export class PullsScreen {
 									</td>
 								</tr>
 							} @empty {
-								<tr><td colspan="6">No runs yet.</td></tr>
+								<tr><td colspan="7">No runs yet.</td></tr>
 							}
 						</tbody>
 					</table>
@@ -237,6 +248,12 @@ export class PipelinesScreen {
 	private readonly api = inject(ConsoleApi);
 	private readonly ctx = inject(ConsoleContext);
 	protected readonly when = when;
+	private readonly branches = injectDefaultBranch();
+	/** The environments a run's branch deploys to (owner, 23 Nov). */
+	protected envOfBranch(branch: string): string {
+		const envs = this.ctx.repo()?.environments ?? [];
+		return envOfBranch(envs, branch, this.branches.data()?.defaultBranch ?? '') ?? '—';
+	}
 	protected readonly q = injectQuery(() => ({
 		queryKey: ['vendor', 'runs', this.ctx.projectId(), this.ctx.repoId()],
 		queryFn: () => this.api.runs(this.ctx.projectId() ?? '', this.ctx.repoId() ?? ''),
@@ -267,7 +284,7 @@ function cfSlot(ctx: ConsoleContext) {
 /** DigitalOcean › Compute › Droplets: every droplet the read key sees. */
 @Component({
 	selector: 'rc-droplets-screen',
-	imports: [VendorState, VendorLogo, SshList],
+	imports: [VendorState, VendorLogo, SshList, EnvTagDialog],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-vendor-state
@@ -347,6 +364,7 @@ function cfSlot(ctx: ConsoleContext) {
 								<th>CPU · memory · disk</th>
 								<th>IPv4</th>
 								<th>Tags</th>
+								<th>Environment</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -369,15 +387,38 @@ function cfSlot(ctx: ConsoleContext) {
 									</td>
 									<td class="rc-mono">{{ d.ipv4 ?? '—' }}</td>
 									<td class="rc-mono">{{ d.tags.join(', ') || '—' }}</td>
+									<td>
+										<!-- Owner, 23 Nov: tag a server with an environment here, any time. -->
+										<button
+											type="button"
+											class="rc-btn ghost"
+											[attr.aria-label]="'Tag the environment of ' + d.name"
+											(click)="tagging.set(d)"
+										>
+											<span
+												class="lock"
+												aria-hidden="true"
+											></span>
+											{{ envOf(d.id) ?? 'Tag environment' }}
+										</button>
+									</td>
 								</tr>
 							} @empty {
-								<tr><td colspan="7">No droplets on this account.</td></tr>
+								<tr><td colspan="8">No droplets on this account.</td></tr>
 							}
 						</tbody>
 					</table>
 				</div>
 			</div>
 		</rc-vendor-state>
+		@if (tagging(); as d) {
+			<rc-env-tag-dialog
+				[resource]="'do:droplet:' + d.id"
+				[name]="d.name"
+				[preset]="envOf(d.id) ?? ''"
+				(closed)="tagging.set(null)"
+			/>
+		}
 		<!-- Always shown, even with no droplets or while DigitalOcean answers: the list is needed before the first server. -->
 		<rc-ssh-list />
 	`,
@@ -402,6 +443,11 @@ export class DropletsScreen {
 		queryFn: () => this.api.cloudAccount(this.ctx.projectId() ?? '', this.ctx.repoId() ?? '', doSlot(this.ctx)),
 	}));
 	protected readonly running = computed(() => this.rows().filter((d) => d.status === 'active').length);
+	private readonly tags = injectEnvTags();
+	protected readonly tagging = signal<Droplet | null>(null);
+	protected envOf(id: number): string | null {
+		return this.tags.data()?.[`do:droplet:${id}`] ?? null;
+	}
 	protected readonly month = computed(() => ok(this.account.data())?.monthToDateUsage ?? null);
 	protected readonly limit = computed(() => ok(this.account.data())?.dropletLimit ?? null);
 	protected open(tab: string): void {
@@ -575,6 +621,7 @@ export class CfDomainsScreen {
 								<th>Content</th>
 								<th>Proxy</th>
 								<th>TTL</th>
+								<th>Environment</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -599,9 +646,10 @@ export class CfDomainsScreen {
 										}
 									</td>
 									<td class="rc-mono">{{ r.ttl === 1 ? 'auto' : r.ttl }}</td>
+									<td>{{ envOfRecord(r.type, r.name) }}</td>
 								</tr>
 							} @empty {
-								<tr><td colspan="5">No records.</td></tr>
+								<tr><td colspan="6">No records.</td></tr>
 							}
 						</tbody>
 					</table>
@@ -614,6 +662,11 @@ export class DnsScreen {
 	private readonly api = inject(ConsoleApi);
 	private readonly ctx = inject(ConsoleContext);
 	protected readonly when = when;
+	/** A web record's environment from its host (owner, 23 Nov); mail and text records belong to no one. */
+	protected envOfRecord(type: string, name: string): string {
+		if (!['A', 'AAAA', 'CNAME'].includes(type)) return '—';
+		return envOfHost(this.ctx.repo()?.environments ?? [], name) ?? '—';
+	}
 	protected readonly zone = computed(() => cfSlot(this.ctx)?.zones[0] ?? '');
 	protected readonly q = injectQuery(() => ({
 		queryKey: ['vendor', 'dns', this.ctx.projectId(), this.ctx.repoId(), this.zone()],

@@ -28,7 +28,7 @@ import {
 	view,
 	when,
 } from './kit.js';
-import { doAll, doGet, doSend, doSoft, dropletsOf, regionSlug } from './do-kit.js';
+import { doAll, doGet, doSend, doSoft, dropletsOf, envAttached, regionSlug } from './do-kit.js';
 import { type Item, createdRow, resource } from './resource.js';
 import { VendorError, arr, num, rec, str } from '../vendors/http.js';
 
@@ -41,6 +41,7 @@ export const loadBalancersScreen = resource({
 	noun: 'load balancer',
 	nouns: 'load balancers',
 	items: async (ctx) => (await doAll('/load_balancers', 'load_balancers', ctx.key, true)) ?? [],
+	envFrom: (ctx, l) => envAttached(ctx, arr(l['droplet_ids'])),
 	id: (l) => str(l['id']),
 	name: (l) => str(l['name']),
 	status: (l) => str(l['status']),
@@ -903,9 +904,11 @@ export const spacesScreen: ProductScreen = {
 							col('region', 'Region', true),
 							col('cdn', 'CDN'),
 							col('at', 'Created', true),
+							col('env', 'Environment'),
 						],
 						list_.map((b) =>
 							row(b.name, b.name, {
+								env: ctx.envTags()[`do:spaces:${b.name}`] ?? 'no environment',
 								name: b.name,
 								cdn: (cdn ?? []).some((e) => str(e['origin']).startsWith(`${b.name}.`)) ? 'on' : 'off',
 								region: b.region,

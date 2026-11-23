@@ -23,7 +23,7 @@ import {
 	view,
 	when,
 } from './kit.js';
-import { doAll, doGet, doSend, dropletName, dropletsOf, regionSlug } from './do-kit.js';
+import { doAll, doGet, doSend, dropletName, dropletsOf, envAttached, regionSlug } from './do-kit.js';
 import { cloudflareRanges } from '../vendors/do-writes.js';
 import { VendorError, arr, num, rec, str } from '../vendors/http.js';
 
@@ -143,6 +143,7 @@ const firewalls = async (ctx: ProductCtx) => {
 					col('out', 'Outbound'),
 					col('on', 'Applies to'),
 					col('at', 'Created', true),
+					col('env', 'Environment'),
 				],
 				all.map((f) =>
 					row(
@@ -159,6 +160,7 @@ const firewalls = async (ctx: ProductCtx) => {
 									...arr(f['tags']).map((t) => `tag ${str(t)}`),
 								].join(', ') || 'nothing',
 							at: when(str(f['created_at'])),
+							env: envAttached(ctx, arr(f['droplet_ids'])),
 						},
 						problems(f, ranges).length ? 'red' : toneOf(str(f['status'])),
 					),
@@ -369,6 +371,7 @@ const ips = async (ctx: ProductCtx) => {
 					kind: 'IPv4',
 					region: regionSlug(r['region']),
 					on: str(rec(r['droplet'])['name']) || 'unassigned',
+					env: r['droplet'] ? envAttached(ctx, [rec(r['droplet'])['id']]) : '—',
 				},
 				r['droplet'] ? null : 'amber',
 			),
@@ -382,6 +385,7 @@ const ips = async (ctx: ProductCtx) => {
 					kind: 'IPv6',
 					region: regionSlug(r['region_slug'] ?? r['region']),
 					on: str(rec(r['droplet'])['name']) || 'unassigned',
+					env: r['droplet'] ? envAttached(ctx, [rec(r['droplet'])['id']]) : '—',
 				},
 				r['droplet'] ? null : 'amber',
 			),
@@ -405,6 +409,7 @@ const ips = async (ctx: ProductCtx) => {
 					col('kind', 'Kind'),
 					col('region', 'Region', true),
 					col('on', 'Assigned to'),
+					col('env', 'Environment'),
 				],
 				rows,
 				'No reserved IPs. A droplet keeps its own address until destroyed.',

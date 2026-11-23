@@ -2,7 +2,7 @@
  * DigitalOcean reads and writes for the product screens: paged lists, actions the console follows
  * until DigitalOcean says they finished, and the monitoring API's series.
  */
-import { MONITOR_RANGE_SECONDS, type ProductSeries } from '@saha-textile/release-console-contracts';
+import { MONITOR_RANGE_SECONDS, type ProductSeries, envOfDroplets } from '@saha-textile/release-console-contracts';
 
 import { type Follow, type ProductCtx, read, soft, write } from './kit.js';
 import { VendorError, arr, num, rec, str } from '../vendors/http.js';
@@ -15,6 +15,13 @@ export const doSoft = (path: string, key: string) =>
 	soft(DO, `${DO_API}${path}`, key).then((b) => (b === null ? null : rec(b)));
 export const doSend = (method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', path: string, key: string, body?: unknown) =>
 	write(DO, method, `${DO_API}${path}`, key, body).then(rec);
+
+/**
+ * The environment of something attached to droplets (a volume, firewall, address, snapshot), from those
+ * droplets' stored tags (owner, 23 Nov); "mixed: …" when they differ, — when none is tagged.
+ */
+export const envAttached = (ctx: ProductCtx, ids: unknown[]): string =>
+	envOfDroplets(ctx.repo.environments, ctx.envTags(), ids) ?? '—';
 
 /** Every page of a list (200 a page, at most 10 pages). */
 export async function doAll(

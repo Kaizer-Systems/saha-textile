@@ -41,6 +41,12 @@ export interface ProductCtx {
 	keyRefs: KeyRef[];
 	/** A value from the console's own key file by name (Spaces keys); never sent anywhere but the vendor. */
 	consoleKey(name: string): string | null;
+	/** Which environment each tagged resource belongs to (resource key → environment name). */
+	envTags(): Record<string, string>;
+	/** Tags a resource with one of the repository's environments, or clears it (null); the PIN was checked. */
+	setEnvTag(key: string, env: string | null): void;
+	/** Drops tags of this kind whose resource is gone; `liveIds` must be the complete live list. */
+	pruneEnvTags(kind: string, liveIds: string[]): void;
 	/** This project's audit entries with this action, newest first (what the console changed before). */
 	recent(action: string): Array<{ at: string; detail: string }>;
 	/** Every audit entry with this action, any project (local jobs are not tied to one). */

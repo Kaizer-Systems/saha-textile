@@ -16,6 +16,12 @@ export const consoleFileSchema = z.object({
 	lock: z
 		.object({ failures: z.number().int().nonnegative(), lockedUntil: z.string().nullable() })
 		.default({ failures: 0, lockedUntil: null }),
+	/**
+	 * Which environment a cloud resource belongs to, set by the owner (owner, 23 Nov): per
+	 * `project/repository`, a resource key (`do:droplet:<id>`, `do:database:<id>`, `do:spaces:<bucket>`,
+	 * `do:k8s:<id>`, `do:app:<id>`) → one of that repository's environment names.
+	 */
+	envTags: z.record(z.string(), z.record(z.string(), z.string())).default({}),
 });
 export type ConsoleFile = z.infer<typeof consoleFileSchema>;
 
@@ -27,4 +33,5 @@ export const emptyConsoleFile = (): ConsoleFile => ({
 	password: null,
 	preferred: 'pin',
 	lock: { failures: 0, lockedUntil: null },
+	envTags: {},
 });

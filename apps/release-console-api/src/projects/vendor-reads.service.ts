@@ -197,8 +197,18 @@ export class VendorReadsService {
 		return this.sourceCode(projectId, repoId, (repo, key) => githubAdapter.runs(repo, key));
 	}
 
-	droplets(projectId: string, repoId: string, slotId: string): Promise<VendorAnswer<Droplet[]>> {
-		return this.cloud(projectId, repoId, slotId, (key) => digitalOceanAdapter.servers(key));
+	async droplets(projectId: string, repoId: string, slotId: string): Promise<VendorAnswer<Droplet[]>> {
+		const answer = await this.cloud(projectId, repoId, slotId, (key) => digitalOceanAdapter.servers(key));
+		// A droplet destroyed on DigitalOcean's own page loses its environment tag too (owner, 23 Nov);
+		// only from a whole list (the adapter reads one page of 200).
+		if (answer.state === 'ok' && answer.data.length < 200)
+			this.projects.pruneEnvTags(
+				projectId,
+				repoId,
+				'droplet',
+				answer.data.map((d) => String(d.id)),
+			);
+		return answer;
 	}
 
 	cloudAccount(projectId: string, repoId: string, slotId: string): Promise<VendorAnswer<CloudAccount>> {

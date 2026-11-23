@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 
+import { envOfHosts } from '@saha-textile/release-console-contracts';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 
 import { ConsoleApi } from '../data/console-api';
@@ -53,6 +54,7 @@ export function daysLeft(iso: string | null, now = Date.now()): number | null {
 										<th>Hosts</th>
 										<th>Edge certificate</th>
 										<th>Expires</th>
+										<th>Environment</th>
 									</tr>
 								</thead>
 								<tbody>
@@ -61,9 +63,10 @@ export function daysLeft(iso: string | null, now = Date.now()): number | null {
 											<td class="rc-mono">{{ c.hosts.join(', ') }}</td>
 											<td>{{ c.issuer || '—' }} · {{ c.status }}</td>
 											<td [class.amber]="soon(c.expiresOn)">{{ when(c.expiresOn) }}</td>
+											<td>{{ envOf(c.hosts) }}</td>
 										</tr>
 									} @empty {
-										<tr><td colspan="3">No edge certificate in this zone.</td></tr>
+										<tr><td colspan="4">No edge certificate in this zone.</td></tr>
 									}
 								</tbody>
 							</table>
@@ -130,6 +133,10 @@ export class DomainsScreen {
 			? `read ${new Date(this.view.dataUpdatedAt()).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
 			: 'reading…',
 	);
+	/** Which environments a certificate covers (owner, 23 Nov); a wildcard over several says mixed. */
+	protected envOf(hosts: string[]): string {
+		return envOfHosts(this.ctx.repo()?.environments ?? [], hosts) ?? '—';
+	}
 	protected soon(iso: string | null): boolean {
 		const d = daysLeft(iso);
 		return d !== null && d < EXPIRY_WARNING_DAYS;

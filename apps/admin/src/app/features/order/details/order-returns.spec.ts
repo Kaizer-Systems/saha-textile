@@ -1,4 +1,5 @@
 import { signal } from '@angular/core';
+import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 
@@ -30,6 +31,7 @@ const view = {
 	returns: [],
 	creditNotes: [{ id: 'cn_1', shipmentId: 'shp_2', status: 'draft' }],
 	debitNotes: [],
+	documents: [],
 };
 
 function setup(fail = false) {
@@ -50,6 +52,7 @@ function setup(fail = false) {
 		imports: [OrderReturnsCard, TranslocoTestingModule.forRoot({ langs: { en: {} } })],
 		providers: [
 			provideRouter([]),
+			provideHttpClient(),
 			provideTanStackQuery(new QueryClient()),
 			{ provide: ReturnsGateway, useValue: gateway },
 			{ provide: NgbModal, useValue: { open: () => ({ close }) } },

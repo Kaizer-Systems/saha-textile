@@ -64,17 +64,22 @@ export interface PeriodLockRepository {
 	save(locks: readonly PeriodLock[]): Promise<void>;
 }
 
+/** Who takes a document: a lock as claimed, before anyone asks its holder to let it go. */
+export type DocumentLockClaim = Omit<DocumentLock, 'releaseAskedBy' | 'releaseAskedAt'>;
+
 export interface DocumentLockRepository {
 	get(documentType: string, documentId: string): Promise<DocumentLock | null>;
 	/**
 	 * Takes the lock when it is free, stale (last active before `staleBefore`) or already held by this person;
 	 * otherwise returns the holder's lock unchanged. Atomic.
 	 */
-	acquire(lock: DocumentLock, staleBefore: string): Promise<DocumentLock>;
+	acquire(lock: DocumentLockClaim, staleBefore: string): Promise<DocumentLock>;
 	/** Moves the lock to another person regardless of the holder (a take-over, logged by the caller). */
-	takeOver(lock: DocumentLock): Promise<DocumentLock>;
+	takeOver(lock: DocumentLockClaim): Promise<DocumentLock>;
 	touch(documentType: string, documentId: string, holderId: string, at: string): Promise<boolean>;
 	release(documentType: string, documentId: string, holderId: string): Promise<void>;
+	/** B7: records that someone asked the holder to let it go; false when nobody holds it. */
+	askRelease(documentType: string, documentId: string, askedBy: string, at: string): Promise<boolean>;
 }
 
 /** Returns marked filed (G8): one per GSTIN, return and month. */

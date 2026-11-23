@@ -35,6 +35,7 @@ function setup(status: OrderReturn['status'] = 'received', fail = false, id: str
 				: of(entry('checked')),
 		),
 		creditNoteFromReturn: vi.fn(() => (fail ? throwError(() => new Error('down')) : of({ id: 'cn_1' }))),
+		returnNotePdf: vi.fn(() => of(new Blob(['%PDF']))),
 	};
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
@@ -85,6 +86,15 @@ describe('a return’s page (B3)', () => {
 		await page.makeCreditNote(entry('checked'));
 		expect(gateway.check).toHaveBeenCalledTimes(2);
 		expect(navigate).toHaveBeenLastCalledWith(['/accounts/credit-notes', 'cn_1']);
+	});
+
+	it('prints the return note (B3)', async () => {
+		Object.assign(URL, { createObjectURL: () => 'blob:x', revokeObjectURL: () => undefined });
+		const open = vi.spyOn(window, 'open').mockReturnValue(null);
+		const { page, gateway } = setup();
+		await page.printNote();
+		expect(gateway.returnNotePdf).toHaveBeenCalledWith('ret_1');
+		expect(open).toHaveBeenCalledWith('blob:x', '_blank', 'noopener');
 	});
 
 	it('says why a check or a credit note was refused', async () => {

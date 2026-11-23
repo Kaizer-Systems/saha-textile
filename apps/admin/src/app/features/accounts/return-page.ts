@@ -8,7 +8,7 @@ import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom, map } from 'rxjs';
 
 import { RETURN_KEYS, ReturnsGateway, returnProblemKey } from '@core/accounts/returns.gateway';
-import { apiProblem } from '@core/purchasing/purchasing-format';
+import { apiProblem, openPdf } from '@core/purchasing/purchasing-format';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 
@@ -79,6 +79,11 @@ export class ReturnPage {
 		} finally {
 			this.busy.set(false);
 		}
+	}
+
+	/** B3 "Print return note". */
+	printNote(): Promise<void> {
+		return this.run(async () => openPdf(await firstValueFrom(this.gateway.returnNotePdf(this.id()))));
 	}
 
 	step(to: 'pickup_booked' | 'received'): Promise<void> {

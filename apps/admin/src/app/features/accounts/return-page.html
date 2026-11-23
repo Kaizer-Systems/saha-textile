@@ -3,17 +3,29 @@
 	[title]="'ret_kind_return'"
 >
 	@if (entry.data(); as r) {
-	<div class="mb-3">
-		<h5 class="mb-1">
-			{{ 'ret_page_title' | transloco: { number: r.number } }}
-			<div class="d-inline-block status-pending ms-2">
-				<span>{{ 'ret_status_' + r.status | transloco }}</span>
-			</div>
-		</h5>
-		<small class="text-muted">
-			<a [routerLink]="['/order/details', r.orderId]">{{ r.orderNumber }}</a>
-			· {{ 'ret_reason_' + r.reason | transloco }}
-		</small>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">
+				{{ 'ret_page_title' | transloco: { number: r.number } }}
+				<div class="d-inline-block status-pending ms-2">
+					<span>{{ 'ret_status_' + r.status | transloco }}</span>
+				</div>
+			</h5>
+			<small class="text-muted">
+				<a [routerLink]="['/order/details', r.orderId]">{{ r.orderNumber }}</a>
+				· {{ 'ret_reason_' + r.reason | transloco }}
+			</small>
+		</div>
+		<button
+			type="button"
+			class="btn btn-outline"
+			id="ret_print_note"
+			[disabled]="busy()"
+			(click)="printNote()"
+		>
+			<i class="ri-printer-line"></i>
+			{{ 'ret_print_note' | transloco }}
+		</button>
 	</div>
 	<div class="row g-3">
 		<div class="col-xl-8">

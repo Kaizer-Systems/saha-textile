@@ -258,6 +258,24 @@ export type DebitNoteWrite = z.infer<typeof DebitNoteWrite>;
 export const ReturnSettings = z.object({ windowDays: z.number().int().min(0).max(90).default(7) });
 export type ReturnSettings = z.infer<typeof ReturnSettings>;
 
+/** B1 Documents card: every document of the order, each with what it can open and print. */
+export const OrderDocumentKind = z.enum(['taxInvoice', 'receipt', 'packingSlip', 'return', 'creditNote', 'debitNote']);
+export type OrderDocumentKind = z.infer<typeof OrderDocumentKind>;
+
+export const OrderDocumentRow = z.object({
+	kind: OrderDocumentKind,
+	/** The invoice, payment, parcel, return, credit note or debit note. */
+	id: Id,
+	number: z.string().nullable(),
+	date: IsoDate.nullable(),
+	amountINR: z.number().nullable(),
+	/** Draft, cancelled and the like; null when it is simply in force. */
+	status: z.string().nullable(),
+	/** A debit note opens the credit note it undoes. */
+	creditNoteId: Id.nullable().default(null),
+});
+export type OrderDocumentRow = z.infer<typeof OrderDocumentRow>;
+
 /** The order page's Returns and credit notes card (B1). */
 export const OrderReturnsView = z.object({
 	invoiceId: Id.nullable(),
@@ -279,11 +297,10 @@ export const OrderReturnsView = z.object({
 		}),
 	),
 	/** The order's parcels: one not delivered can be brought back with a credit note (B11). */
-	parcels: z.array(
-		z.object({ shipmentId: Id, number: z.string(), courier: z.string(), delivered: z.boolean() }),
-	),
+	parcels: z.array(z.object({ shipmentId: Id, number: z.string(), courier: z.string(), delivered: z.boolean() })),
 	returns: z.array(OrderReturn),
 	creditNotes: z.array(CreditNote),
 	debitNotes: z.array(DebitNote),
+	documents: z.array(OrderDocumentRow).default([]),
 });
 export type OrderReturnsView = z.infer<typeof OrderReturnsView>;

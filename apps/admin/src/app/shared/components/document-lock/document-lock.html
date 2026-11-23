@@ -1,0 +1,57 @@
+@if (holder(); as h) {
+<div
+	class="alert alert-warning d-flex align-items-start justify-content-between flex-wrap gap-2"
+	id="lock_banner"
+>
+	<div class="d-flex gap-2">
+		<i class="ri-lock-line mt-1"></i>
+		<div>
+			<b>
+				{{ (holderRole() ? 'lock_editing_role' : 'lock_editing') | transloco: { name: h.holderName, role:
+				holderRole() } }}
+			</b>
+			@let s = since(h); {{ 'lock_since_' + s.unit | transloco: { time: s.time, n: s.n } }} {{ 'lock_read_only' |
+			transloco }}
+		</div>
+	</div>
+	<div class="d-flex flex-wrap gap-2">
+		<button
+			type="button"
+			class="btn btn-outline btn-sm"
+			id="lock_ask"
+			[disabled]="busy()"
+			(click)="ask()"
+		>
+			{{ 'lock_ask_release' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme btn-sm"
+			id="lock_take_over"
+			[disabled]="busy()"
+			(click)="takeOver()"
+		>
+			{{ 'lock_take_over' | transloco }}
+		</button>
+	</div>
+</div>
+} @if (askedBy(); as who) {
+<div
+	class="alert alert-info d-flex align-items-center justify-content-between flex-wrap gap-2"
+	id="lock_asked_you"
+>
+	<span>
+		<i class="ri-information-line me-1"></i>
+		{{ 'lock_asked_you' | transloco: { name: who } }}
+	</span>
+	<button
+		type="button"
+		class="btn btn-outline btn-sm"
+		id="lock_release"
+		[disabled]="busy()"
+		(click)="release()"
+	>
+		{{ 'lock_release' | transloco }}
+	</button>
+</div>
+}

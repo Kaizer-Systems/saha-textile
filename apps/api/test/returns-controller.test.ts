@@ -1,7 +1,7 @@
-import { CreditNote, DebitNote } from '@saha-textile/contracts';
+import { CreditNote, DebitNote, OrderReturn } from '@saha-textile/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { creditNoteData, debitNoteData } from '../src/documents/credit-note-print';
+import { creditNoteData, debitNoteData, returnNoteData } from '../src/documents/credit-note-print';
 import { CreditNotesController, ReturnsController } from '../src/returns/returns.controller';
 
 /** The returns routes, the credit note routes and the note prints (accounts brief B1–B11). */
@@ -121,17 +121,66 @@ describe('note prints (Rule 53)', () => {
 	});
 });
 
+const entry = OrderReturn.parse({
+	id: 'ret_1',
+	number: 'ST-2611-482190/R1',
+	orderId: 'ord_1',
+	orderNumber: 'ST-2611-482190',
+	invoiceId: 'ti_1',
+	invoiceNumber: 'TI/26-27/000145',
+	status: 'checked',
+	lines: [
+		{
+			lineId: 'a',
+			sku: 'BAN-3',
+			title: 'Banarasi',
+			quantity: 1,
+			unitPriceINR: 4_680,
+			outcome: 'damaged',
+			note: 'Zari pulled',
+		},
+		{ lineId: 'b', sku: 'COT-1', title: 'Cotton', quantity: 2, unitPriceINR: 1_000 },
+	],
+	reason: 'damaged_on_arrival',
+	how: 'pickup',
+	refundTo: 'original_payment',
+	createdAt: '2026-11-22T05:00:00.000Z',
+	updatedAt: '2026-11-22T05:00:00.000Z',
+});
+
+describe('return note print (B3)', () => {
+	it('prints what came back, its condition, the reason in words and where the refund goes', () => {
+		const data = returnNoteData(entry, { buyer: note.buyer }, seller);
+		expect(data.values).toMatchObject({
+			returnNo: 'ST-2611-482190/R1',
+			orderNo: 'ST-2611-482190',
+			date: '22 Nov 2026',
+			reason: 'Damaged on arrival',
+			refund: '₹6,680.00 to the original payment',
+		});
+		expect(data.rows?.map((r) => r.cells['condition'])).toEqual([
+			'Damaged, kept (not for sale): Zari pulled',
+			'Not checked yet',
+		]);
+		expect(data.parties?.['customer']?.lines).toContain('Ananya Das');
+		expect(returnNoteData({ ...entry, note: 'Box torn' }, { buyer: note.buyer }, seller).values['reason']).toBe(
+			'Damaged on arrival: Box torn',
+		);
+	});
+});
+
 describe('returns routes', () => {
 	const calls: unknown[][] = [];
 	const service = new Proxy(
-		{},
+		{ returnNote: async () => ({ entry, invoice: { buyer: note.buyer } }) },
 		{
-			get:
-				(_t, name) =>
-				(...args: unknown[]) => (calls.push([name, ...args]), Promise.resolve(name)),
+			get: (target, name) =>
+				(target as Record<string | symbol, unknown>)[name] ??
+				((...args: unknown[]) => (calls.push([name, ...args]), Promise.resolve(name))),
 		},
 	);
-	const routes = new ReturnsController(service as never);
+	const formats = { seller: async () => seller, renderActive: async () => new Uint8Array([37]) };
+	const routes = new ReturnsController(service as never, formats as never);
 	const principal = { userId: 'adm_1' } as never;
 
 	it('passes each route to the service with who is acting', async () => {
@@ -168,6 +217,24 @@ describe('returns routes', () => {
 		expect(calls[1]?.at(-1)).toBe('adm_1');
 		expect(calls[2]?.at(-1)).toBeNull();
 	});
+
+	it('prints the return note named by its number, and logs the print', async () => {
+		const headers: Record<string, string> = {};
+		const reply = {
+			header(name: string, value: string) {
+				headers[name] = value;
+				return this;
+			},
+			send: () => undefined,
+		};
+		await routes.returnNotePdf('ret_1', reply as never, principal);
+		await routes.returnNotePdf('ret_1', reply as never);
+		expect(headers['Content-Disposition']).toBe('inline; filename="ST-2611-482190-R1 return note.pdf"');
+		expect(calls.slice(-2)).toEqual([
+			['printed', 'orderReturn', 'ret_1', 'adm_1'],
+			['printed', 'orderReturn', 'ret_1', null],
+		]);
+	});
 });
 
 describe('credit note routes', () => {
@@ -185,7 +252,8 @@ describe('credit note routes', () => {
 		seller: async () => seller,
 		renderActive: async (doc: string) => (rendered.push(doc), new Uint8Array([37])),
 	};
-	const routes = new CreditNotesController(service as never, formats as never);
+	const editLog = { entries: async (type: string, id: string) => [type, id] };
+	const routes = new CreditNotesController(service as never, formats as never, editLog as never);
 	const principal = { userId: 'adm_1' } as never;
 	const reply = () => {
 		const headers: Record<string, string> = {};
@@ -234,11 +302,17 @@ describe('credit note routes', () => {
 
 	it('prints a credit note and a debit note as PDFs named by their numbers', async () => {
 		const first = reply();
-		await routes.creditNotePdf('cn_1', first as never);
+		await routes.creditNotePdf('cn_1', first as never, principal);
+		await routes.creditNotePdf('cn_1', reply() as never);
+		expect(calls.slice(-2)).toEqual([
+			['printed', 'creditNote', 'cn_1', 'adm_1'],
+			['printed', 'creditNote', 'cn_1', null],
+		]);
 		expect(first.headers['Content-Disposition']).toBe('inline; filename="CN-26-27-000012.pdf"');
 		const second = reply();
 		await routes.debitNotePdf('dn_1', second as never);
 		expect(second.headers['Content-Type']).toBe('application/pdf');
-		expect(rendered).toEqual(['creditNote', 'debitNote']);
+		expect(rendered).toEqual(['creditNote', 'creditNote', 'debitNote']);
+		expect(await routes.creditNoteLog('cn_1')).toEqual(['creditNote', 'cn_1']);
 	});
 });

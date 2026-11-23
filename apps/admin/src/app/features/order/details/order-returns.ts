@@ -12,6 +12,8 @@ import { apiProblem } from '@core/purchasing/purchasing-format';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 
+import { OrderDocuments } from './order-documents';
+
 import type { RefundTo, ReturnHow, ReturnReason } from '@saha-textile/contracts';
 
 export const RETURN_REASONS: readonly ReturnReason[] = [
@@ -36,7 +38,7 @@ export const ADJUSTMENT_REASONS = [
  */
 @Component({
 	selector: 'app-order-returns',
-	imports: [TranslocoModule, FormsModule, RouterLink],
+	imports: [TranslocoModule, FormsModule, RouterLink, OrderDocuments],
 	templateUrl: './order-returns.html',
 })
 export class OrderReturnsCard {

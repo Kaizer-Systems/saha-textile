@@ -25,10 +25,10 @@ import {
 	type Order,
 	type OrderLine,
 	OrderReturn,
+	type OrderDocumentRow,
 	type OrderReturnsView,
 	type PriceAdjustmentWrite,
 	type ReturnCheck,
-	type ReturnReason,
 	ReturnSettings,
 	type ReturnStart,
 	type ReturnStep,
@@ -94,6 +94,7 @@ import {
 	TAX_INVOICE_REPOSITORY,
 	TRANSACTION_MANAGER,
 } from '../infra/tokens';
+import { REASON_WORDS } from '../documents/credit-note-print';
 import { LedgerService } from '../ledger/ledger.service';
 import { DocumentNumbersService } from '../orders-setup/document-numbers.service';
 
@@ -101,15 +102,25 @@ import { DocumentNumbersService } from '../orders-setup/document-numbers.service
 const backInStock = (line: CreditNoteLine): boolean =>
 	!line.delivery && (line.outcome === 'restock' || line.outcome === 'damaged');
 
-/** A return's reason as a credit note prints it (Rule 53: the reason in words). */
-const REASON_WORDS: Record<ReturnReason, string> = {
-	damaged_on_arrival: 'Damaged on arrival',
-	wrong_item: 'Wrong item sent',
-	not_as_described: 'Not as described',
-	size_or_fit: 'Size or fit',
-	changed_mind: 'Changed their mind',
-	other: 'Returned for another reason',
-};
+const round2 = (value: number): number => Math.round(value * 100) / 100;
+
+/** B1 Documents card: one row; a document simply in force (issued) carries no status. */
+const row = (
+	kind: OrderDocumentRow['kind'],
+	id: string,
+	number: string | null,
+	date: string | null,
+	amountINR: number | null,
+	status: string | null,
+): OrderDocumentRow => ({
+	kind,
+	id,
+	number,
+	date,
+	amountINR,
+	status: status === 'issued' ? null : status,
+	creditNoteId: null,
+});
 
 /** Notes still in force against an invoice: issued, not cancelled and not undone by a debit note. */
 const inForce = (note: CreditNote): boolean => note.status === 'issued' && !note.debitNoteId;
@@ -162,14 +173,16 @@ export class ReturnsService {
 	/** B1: what can still come back, the window and the deadline, and every return and note of the order. */
 	async view(orderId: string, today = istDay(new Date())): Promise<OrderReturnsView> {
 		const order = await this.order(orderId);
-		const [invoices, shipments, returns, creditNotes, debitNotes, settings] = await Promise.all([
-			this.invoices.listForOrder(orderId).then((all) => all.filter((i) => i.status === 'issued')),
+		const [allInvoices, shipments, returns, creditNotes, debitNotes, settings, payments] = await Promise.all([
+			this.invoices.listForOrder(orderId),
 			this.shipments.listByOrder(orderId),
 			this.returns.listForOrder(orderId),
 			this.notes.listForOrder(orderId),
 			this.debits.listForOrder(orderId),
 			this.returnSettings(),
+			this.payments.listByOrder(orderId),
 		]);
+		const invoices = allInvoices.filter((i) => i.status === 'issued');
 		const invoice = invoices[0] ?? null;
 		const deliveredOn =
 			shipments
@@ -210,6 +223,28 @@ export class ReturnsService {
 			returns,
 			creditNotes,
 			debitNotes,
+			documents: [
+				...allInvoices.map((i) => row('taxInvoice', i.id, i.number, i.date, i.totalINR, i.status)),
+				...payments
+					.filter((p) => !!p.receiptNumber)
+					.map((p) => row('receipt', p.id, p.receiptNumber, p.receivedOn, p.amountINR, null)),
+				...shipments.map((s) => row('packingSlip', s.id, s.number, s.shippedOn, null, null)),
+				...returns.map((r) =>
+					row(
+						'return',
+						r.id,
+						r.number,
+						istDay(new Date(r.createdAt)),
+						round2(r.lines.reduce((sum, l) => sum + l.unitPriceINR * l.quantity, 0)),
+						r.status,
+					),
+				),
+				...creditNotes.map((n) => row('creditNote', n.id, n.number, n.date, n.totalINR, n.status)),
+				...debitNotes.map((d) => ({
+					...row('debitNote', d.id, d.number, d.date, d.totalINR, null),
+					creditNoteId: d.creditNoteId,
+				})),
+			],
 		};
 	}
 
@@ -561,7 +596,16 @@ export class ReturnsService {
 		const saved = await this.notes.save(next, write.version).catch((error: Error) => {
 			throw new ConflictException(error.message);
 		});
-		await this.log(actorId, 'creditNote.save', 'creditNote', id, { lines: lines.length });
+		const diffs = [
+			...note.lines
+				.filter((l) => !l.delivery)
+				.flatMap((l) => {
+					const after = lines.find((x) => x.lineId === l.lineId && !x.delivery)?.quantity ?? 0;
+					return after === l.quantity ? [] : [{ field: `quantity:${l.title}`, before: l.quantity, after }];
+				}),
+			...(next.reason === note.reason ? [] : [{ field: 'reason', before: note.reason, after: next.reason }]),
+		];
+		await this.log(actorId, 'creditNote.save', 'creditNote', id, { lines: lines.length }, undefined, diffs);
 		return saved;
 	}
 
@@ -662,6 +706,7 @@ export class ReturnsService {
 	private async takeOut(
 		note: CreditNote,
 		number: string,
+		why: string,
 		order: Order,
 		actorId: string | null,
 		at: string,
@@ -679,7 +724,7 @@ export class ReturnsService {
 					heldDelta: damaged ? -line.quantity : 0,
 					source: 'return_restocked',
 					reasonCode: 'undone',
-					note: `${number} undoes ${note.number}`,
+					note: why,
 					referenceType: 'creditNote',
 					referenceId: note.id,
 					referenceNumber: number,
@@ -733,6 +778,7 @@ export class ReturnsService {
 				context,
 				actorId,
 			);
+			const refundStatus = note.refundTo === 'customer_account' ? 'kept' : 'due';
 			const source = { type: 'creditNoteInputTax', id: note.id, number };
 			await this.inputTax(lines, note.locationId, date, source, false, actorId, context);
 			await this.account(order, { id: note.id, number }, 'creditNote', -totals.totalINR, actorId, at, context);
@@ -744,7 +790,7 @@ export class ReturnsService {
 					status: 'issued',
 					lines,
 					voucherId: voucher.id,
-					refund: { status: note.refundTo === 'customer_account' ? 'kept' : 'due' },
+					refund: { status: refundStatus },
 					issuedAt: at,
 					issuedBy: actorId,
 				}),
@@ -755,7 +801,29 @@ export class ReturnsService {
 				const entry = await this.returns.get(note.returnId, context);
 				if (entry) await this.saveReturn(entry, { status: 'credit_note' }, actorId, now, context);
 			}
-			await this.log(actorId, 'creditNote.issue', 'creditNote', id, { number, totalINR: next.totalINR }, context);
+			await this.log(
+				actorId,
+				'creditNote.issue',
+				'creditNote',
+				id,
+				{ number, totalINR: next.totalINR },
+				context,
+				[{ field: 'number', after: number }],
+			);
+			await this.log(
+				null,
+				'creditNote.posted',
+				'creditNote',
+				id,
+				{
+					stock: lines.filter(backInStock).map((l) => ({ sku: l.sku, quantity: l.quantity })),
+					outputTaxINR: round2(totals.cgstINR + totals.sgstINR + totals.igstINR),
+					inputTaxINR: writeOffInputTax(lines),
+					refund: refundStatus,
+					totalINR: totals.totalINR,
+				},
+				context,
+			);
 			return next;
 		});
 		return issued;
@@ -787,6 +855,13 @@ export class ReturnsService {
 	/** B8: a super admin cancels an issued note while its month is open; everything it did is undone. */
 	async cancel(id: string, write: CreditNoteCancel, principal: AuthenticatedPrincipal | undefined, now = new Date()) {
 		const checks = await this.cancelChecks(id, principal);
+		const failed = (['superAdmin', 'monthFiled', 'booksClosed', 'refundPaid'] as const).filter((key) =>
+			key === 'superAdmin' ? !checks.superAdmin : checks[key],
+		);
+		if (failed.length)
+			await this.log(principal?.userId ?? null, 'creditNote.cancel_refused', 'creditNote', id, {
+				why: failed,
+			});
 		if (!checks.superAdmin || !principal) throw new ForbiddenException('credit_note_cancel_super_admin');
 		if (!checks.allowed) throw new ConflictException('credit_note_cancel_refused');
 		const actorId = principal.userId;
@@ -796,7 +871,15 @@ export class ReturnsService {
 			if (!note || note.status !== 'issued' || note.debitNoteId)
 				throw new ConflictException('credit_note_not_cancellable');
 			const order = await this.order(note.orderId);
-			await this.takeOut(note, `${note.number} cancelled`, order, actorId, at, context);
+			await this.takeOut(
+				note,
+				`${note.number} cancelled`,
+				`Credit note ${note.number} cancelled: ${write.reason}`,
+				order,
+				actorId,
+				at,
+				context,
+			);
 			await this.ledger.post(
 				{
 					date: note.date,
@@ -843,7 +926,7 @@ export class ReturnsService {
 				throw new ConflictException('credit_note_not_undoable');
 			const number = await this.numbers.issue('debitNote', context, now, note.gstRegistrationId);
 			const order = await this.order(note.orderId);
-			await this.takeOut(note, number, order, actorId, at, context);
+			await this.takeOut(note, number, `${number} undoes ${note.number}`, order, actorId, at, context);
 			const debitId = `dn_${randomUUID()}`;
 			const voucher = await this.ledger.post(
 				{
@@ -895,9 +978,9 @@ export class ReturnsService {
 			await this.log(
 				actorId,
 				'debitNote.issue',
-				'debitNote',
-				debit.id,
-				{ number, creditNote: note.number },
+				'creditNote',
+				note.id,
+				{ number, debitNoteId: debit.id, reason: write.reason },
 				context,
 			);
 			return debit;
@@ -1049,6 +1132,17 @@ export class ReturnsService {
 		);
 	}
 
+	/** B3 "Print return note": the return and its invoice's buyer. */
+	async returnNote(id: string): Promise<{ entry: OrderReturn; invoice: TaxInvoice }> {
+		const entry = await this.getReturn(id);
+		return { entry, invoice: await this.invoice(entry.invoiceId) };
+	}
+
+	/** Q11: every print is in the document's log. */
+	async printed(entityType: 'creditNote' | 'orderReturn', id: string, actorId: string | null): Promise<void> {
+		await this.log(actorId, `${entityType}.print`, entityType, id, { format: 'pdf' });
+	}
+
 	private async log(
 		actor: string | null,
 		action: string,
@@ -1056,6 +1150,7 @@ export class ReturnsService {
 		entityId: string,
 		metadata: Record<string, unknown>,
 		context?: TransactionContext,
+		diffs: { field: string; before?: unknown; after?: unknown }[] = [],
 	): Promise<void> {
 		await this.audit.append(
 			{
@@ -1069,7 +1164,7 @@ export class ReturnsService {
 				severity: 'info',
 				// The books' edit log is kept 8 years (owner, 2026-11-23).
 				retentionTier: 'books',
-				diffs: [],
+				diffs,
 				metadata,
 				requestId: null,
 				ipHash: null,

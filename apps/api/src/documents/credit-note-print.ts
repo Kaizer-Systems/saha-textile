@@ -1,4 +1,12 @@
-import type { CreditNote, CreditNoteLine, DebitNote } from '@saha-textile/contracts';
+import type {
+	CreditNote,
+	CreditNoteLine,
+	DebitNote,
+	OrderReturn,
+	ReturnOutcome,
+	ReturnReason,
+	TaxInvoice,
+} from '@saha-textile/contracts';
 import { gstStateName, rupeesInWords } from '@saha-textile/core-domain';
 
 import { longDate } from '../purchasing/purchase-order-document';
@@ -9,6 +17,22 @@ const REFUND_WORDS: Record<CreditNote['refundTo'], string> = {
 	original_payment: 'The original payment',
 	bank_transfer: 'A bank transfer to the customer',
 	customer_account: 'Kept on the customer’s account',
+};
+
+/** A return's reason as a credit note prints it (Rule 53: the reason in words). */
+export const REASON_WORDS: Record<ReturnReason, string> = {
+	damaged_on_arrival: 'Damaged on arrival',
+	wrong_item: 'Wrong item sent',
+	not_as_described: 'Not as described',
+	size_or_fit: 'Size or fit',
+	changed_mind: 'Changed their mind',
+	other: 'Returned for another reason',
+};
+
+const CONDITION_WORDS: Record<ReturnOutcome, string> = {
+	restock: 'Back to stock (for sale)',
+	damaged: 'Damaged, kept (not for sale)',
+	write_off: 'Written off',
 };
 
 const state = (code: string) => (code === '96' ? 'Outside India (96)' : `${gstStateName(code) ?? code} (${code})`);
@@ -116,5 +140,43 @@ export function debitNoteData(note: DebitNote, seller: { name: string; lines: st
 		},
 		parties: { party: { heading: 'To', lines: buyerLines(note.buyer) } },
 		...noteBody(note, 'Total'),
+	};
+}
+
+/** B3 "Print return note": what came back, in what condition, and where the refund goes (Return note format). */
+export function returnNoteData(
+	entry: OrderReturn,
+	invoice: Pick<TaxInvoice, 'buyer'>,
+	seller: { name: string; lines: string[] },
+): DocumentData {
+	const value = entry.lines.reduce((sum, l) => sum + l.unitPriceINR * l.quantity, 0);
+	const date = longDate(entry.createdAt.slice(0, 10));
+	return {
+		doc: 'returnNote',
+		title: 'Return note',
+		number: entry.number,
+		date,
+		seller,
+		values: {
+			returnNo: entry.number,
+			orderNo: entry.orderNumber,
+			date,
+			reason: [REASON_WORDS[entry.reason], entry.note].filter(Boolean).join(': '),
+			refund: `${money(value)} to ${REFUND_WORDS[entry.refundTo].toLowerCase()}`,
+		},
+		parties: { customer: { heading: 'Customer', lines: buyerLines(invoice.buyer) } },
+		rows: entry.lines.map((line, index) => ({
+			kind: 'line',
+			depth: 0,
+			cells: {
+				index: String(index + 1),
+				item: line.title,
+				qty: String(line.quantity),
+				condition: [line.outcome ? CONDITION_WORDS[line.outcome] : 'Not checked yet', line.note]
+					.filter(Boolean)
+					.join(': '),
+			},
+			sku: line.sku,
+		})),
 	};
 }

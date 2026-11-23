@@ -1,6 +1,6 @@
 import { JournalVoucher, type Ledger } from '@saha-textile/contracts';
 import { StaleRevisionError } from '@saha-textile/core-domain';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { connectMongo, disconnectMongo } from '../src/connection';
 import {
@@ -81,6 +81,7 @@ describe.skipIf(!hasMongoEnv())('general ledger persistence (integration, rs0)',
 		await wipe();
 		await disconnectMongo();
 	});
+	afterEach(() => vi.restoreAllMocks());
 
 	it('seeds the chart once and saves ledgers only over the copy read', async () => {
 		const chart = {
@@ -298,5 +299,127 @@ describe.skipIf(!hasMongoEnv())('general ledger persistence (integration, rs0)',
 		await invoices.linkShipment('ti_5', 'shp_5');
 		expect((await invoices.findByShipment('shp_5'))?.id).toBe('ti_5');
 		await expect(invoices.linkShipment('ti_5', 'shp_6')).rejects.toThrow('invoice_already_linked');
+	});
+
+	it('adds groups and new ledgers, and says why a write failed', async () => {
+		await repo.saveGroup({
+			id: 'g_bank',
+			systemKey: null,
+			name: 'Bank accounts',
+			parentId: null,
+			nature: 'asset',
+			tradingAccount: false,
+			order: 1,
+			createdAt: at,
+			updatedAt: at,
+		});
+		expect((await repo.chart()).groups.map((g) => g.id)).toContain('g_bank');
+		await repo.saveLedger(ledger('hdfc', null), null);
+		await expect(repo.saveLedger(ledger('hdfc', null), null)).rejects.toBeInstanceOf(StaleRevisionError);
+		await expect(repo.saveLedger(ledger('ghost', null), at)).rejects.toBeInstanceOf(StaleRevisionError);
+		const boom = new Error('disk_full');
+		vi.spyOn(LedgerModel, 'create').mockRejectedValueOnce(boom as never);
+		await expect(repo.saveLedger(ledger('sbi', null), null)).rejects.toBe(boom);
+		vi.spyOn(JournalVoucherModel, 'create').mockRejectedValueOnce(boom as never);
+		await expect(repo.insertVoucher(voucher('v7', 'key-seven-0007', '2026-11-07', 10))).rejects.toBe(boom);
+		await AccountGroupModel.deleteMany({});
+		vi.spyOn(AccountGroupModel, 'insertMany').mockRejectedValueOnce({ code: 11000 } as never);
+		expect(await repo.seedChart({ groups: [], ledgers: [] })).toBe(false);
+		vi.spyOn(AccountGroupModel, 'insertMany').mockRejectedValueOnce(boom as never);
+		await expect(repo.seedChart({ groups: [], ledgers: [] })).rejects.toBe(boom);
+	});
+
+	it('finds vouchers by id and key, lists without filters, and reads lines with missing fields', async () => {
+		expect((await repo.getVoucher('v1'))?.number).toBe('JV/26-27/v1');
+		expect(await repo.getVoucher('nope')).toBeNull();
+		expect(await repo.findVoucherByKey('no-such-key')).toBeNull();
+		const all = await repo.listVouchers({
+			from: '2026-11-01',
+			to: '2026-11-30',
+			kinds: [],
+			search: ' ',
+			page: 1,
+			pageSize: 10,
+		});
+		expect(all.total).toBeGreaterThan(0);
+		await JournalLineModel.create([
+			{
+				_id: 'odd:0',
+				ledgerId: 'odd',
+				voucherId: 'vo',
+				number: 'N1',
+				kind: 'journal',
+				date: '2026-11-15',
+				locationId: 'l',
+			},
+			{
+				_id: 'odd:1',
+				ledgerId: 'odd',
+				voucherId: 'vo',
+				number: 'N2',
+				kind: 'journal',
+				date: '2026-11-16',
+				locationId: 'l',
+				voucherNarration: 'From the voucher',
+				debitPaise: 5,
+			},
+		]);
+		expect(
+			(await repo.statementLines('odd', '2026-11-01', '2026-11-30', [])).map((l) => [
+				l.narration,
+				l.debitPaise,
+				l.creditPaise,
+			]),
+		).toEqual([
+			['', 0, 0],
+			['From the voucher', 5, 0],
+		]);
+		await new MongoPeriodLockRepository().save([]);
+	});
+
+	it('takes over a lock, records a release asked for, and says when a lock vanished or failed', async () => {
+		const locks = new MongoDocumentLockRepository();
+		const lock = {
+			documentType: 'creditNote',
+			documentId: 'cn_1',
+			holderId: 'adm_a',
+			holderName: 'A',
+			since: at,
+			lastActiveAt: at,
+		};
+		expect(await locks.askRelease('creditNote', 'cn_1', 'B', at)).toBe(false);
+		await locks.acquire(lock, '2026-11-23T09:00:00.000Z');
+		expect(await locks.askRelease('creditNote', 'cn_1', 'B', '2026-11-23T10:00:30.000Z')).toBe(true);
+		expect(await locks.get('creditNote', 'cn_1')).toMatchObject({ releaseAskedBy: 'B' });
+		expect((await locks.takeOver({ ...lock, holderId: 'adm_b', holderName: 'B' })).holderId).toBe('adm_b');
+		expect(await locks.get('creditNote', 'cn_1')).toMatchObject({ holderId: 'adm_b', releaseAskedBy: null });
+		vi.spyOn(DocumentLockModel, 'findOneAndUpdate').mockImplementationOnce(() => {
+			throw Object.assign(new Error('dup'), { code: 11000 });
+		});
+		await expect(locks.acquire({ ...lock, documentId: 'cn_gone' }, at)).rejects.toThrow(
+			'document_lock_unavailable',
+		);
+		const boom = new Error('network');
+		vi.spyOn(DocumentLockModel, 'findOneAndUpdate').mockImplementationOnce(() => {
+			throw boom;
+		});
+		await expect(locks.acquire(lock, at)).rejects.toBe(boom);
+	});
+
+	it('reads invoices by id and parcel, and passes on a failed write', async () => {
+		const invoices = new MongoTaxInvoiceRepository();
+		expect((await invoices.get('ti_1'))?.number).toBe('TI/26-27/000001');
+		expect(await invoices.get('nope')).toBeNull();
+		expect(await invoices.findByShipment('shp_none')).toBeNull();
+		expect(
+			(await invoices.list({ from: '2026-11-01', to: '2026-11-30', search: '', page: 1, pageSize: 10 })).total,
+		).toBe(4);
+		const boom = new Error('disk_full');
+		vi.spyOn(TaxInvoiceModel, 'create').mockRejectedValueOnce(boom as never);
+		await expect(invoices.insert({ ...(await invoices.get('ti_1'))!, id: 'ti_9' })).rejects.toBe(boom);
+		vi.spyOn(GstReturnModel, 'create').mockRejectedValueOnce(boom as never);
+		await expect(
+			new MongoGstReturnRepository().insert((await new MongoGstReturnRepository().list())[0]!),
+		).rejects.toBe(boom);
 	});
 });

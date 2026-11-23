@@ -31,6 +31,8 @@ describe('returns gateway (accounts brief B)', () => {
 			[gateway.refund('c1', { how: 'gateway' }), 'POST', '/admin/accounts/credit-notes/c1/refund'],
 			[gateway.creditNotePdf('c1'), 'GET', '/admin/accounts/credit-notes/c1/pdf'],
 			[gateway.debitNotePdf('d1'), 'GET', '/admin/accounts/debit-notes/d1/pdf'],
+			[gateway.creditNoteLog('c1'), 'GET', '/admin/accounts/credit-notes/c1/log'],
+			[gateway.returnNotePdf('r1'), 'GET', '/admin/returns/r1/pdf'],
 		];
 		for (const [call, method, path] of cases) {
 			const done = firstValueFrom(call);
@@ -44,6 +46,7 @@ describe('returns gateway (accounts brief B)', () => {
 		expect(RETURN_KEYS.view('o1').at(-1)).toBe('o1');
 		expect(RETURN_KEYS.creditNote('c1')).toEqual(['credit-notes', 'c1']);
 		expect(RETURN_KEYS.cancelChecks('c1')).toEqual(['credit-notes', 'c1', 'cancel-checks']);
+		expect(RETURN_KEYS.creditNoteLog('c1')).toEqual(['credit-notes', 'c1', 'log']);
 	});
 
 	it('turns refusal codes into word keys, naming the piece', () => {

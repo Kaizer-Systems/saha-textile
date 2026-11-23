@@ -8,6 +8,7 @@ import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-exper
 import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
+import { DocumentLocksGateway } from '@core/accounts/document-locks.gateway';
 import { LedgerGateway } from '@core/accounts/ledger.gateway';
 import { ReturnsGateway } from '@core/accounts/returns.gateway';
 import { AuthStore } from '@core/state/auth.store';
@@ -47,7 +48,13 @@ const note = (patch: Partial<CreditNote> = {}) =>
 	}) as unknown as CreditNote;
 
 function setup(
-	options: { fail?: boolean; checks?: Record<string, unknown>; id?: string | null; current?: CreditNote } = {},
+	options: {
+		fail?: boolean;
+		checks?: Record<string, unknown>;
+		id?: string | null;
+		current?: CreditNote;
+		permissions?: string[];
+	} = {},
 ) {
 	const notifier = { showError: vi.fn(), showSuccess: vi.fn() };
 	const opened: unknown[] = [];
@@ -72,6 +79,35 @@ function setup(
 		cancel: vi.fn(() => of(note({ status: 'cancelled' }))),
 		debitNote: vi.fn(() => of({ id: 'dn_1' })),
 		refund: vi.fn(() => of(note({ status: 'issued' }))),
+		getReturn: vi.fn(() => of({ id: 'ret_1', number: 'ST-2611-482190/R1' })),
+		creditNoteLog: vi.fn(() =>
+			of([
+				{
+					at: '2026-11-25T05:11:00.000Z',
+					who: 'Meera',
+					role: 'Store manager',
+					action: 'creditNote.issue',
+					diffs: [],
+					metadata: { number: 'CN/26-27/000012' },
+				},
+			]),
+		),
+	};
+	const lock = {
+		documentType: 'creditNote',
+		documentId: 'cn_1',
+		holderId: 'adm_1',
+		holderName: 'Owner',
+		since: '2026-11-25T05:00:00.000Z',
+		lastActiveAt: '2026-11-25T05:00:00.000Z',
+		releaseAskedBy: null,
+		releaseAskedAt: null,
+	};
+	const locks = {
+		claim: () => of(lock),
+		current: () => of({ lock, role: null }),
+		heartbeat: () => of({ held: true }),
+		release: () => of(undefined),
 	};
 	const chart = {
 		groups: [
@@ -111,7 +147,14 @@ function setup(
 			},
 			{ provide: NotificationService, useValue: notifier },
 			{ provide: LedgerGateway, useValue: { chart: () => of(chart) } },
-			{ provide: AuthStore, useValue: { permissions: signal(options.permissions ?? ['refund.action']) } },
+			{
+				provide: AuthStore,
+				useValue: {
+					permissions: signal(options.permissions ?? ['refund.action']),
+					user: signal({ id: 'adm_1' }),
+				},
+			},
+			{ provide: DocumentLocksGateway, useValue: locks },
 		],
 	});
 	const fixture = TestBed.createComponent(CreditNotePage);
@@ -122,14 +165,36 @@ function setup(
 describe('a credit note’s page (B4, B5, B8, B9)', () => {
 	it('loads the note and works out what the page shows', async () => {
 		const { fixture, page } = setup();
-		expect([page.draft(), page.goodsKind(), page.ratePercent()]).toEqual([false, true, 0]);
+		expect([page.draft(), page.goodsKind(), page.taxHeads()]).toEqual([false, true, ['CGST', 'SGST']]);
+		expect(page.logRows()).toEqual([]);
+		expect([page.goods(), page.inputTax()]).toEqual([[], 0]);
 		fixture.detectChanges();
 		await vi.waitFor(() => expect(page.note.data()).toBeTruthy());
-		expect([page.draft(), page.goodsKind(), page.ratePercent()]).toEqual([true, true, 5]);
+		expect([page.draft(), page.goodsKind(), page.taxHeads()]).toEqual([true, true, ['CGST 2.5%', 'SGST 2.5%']]);
+		fixture.detectChanges();
+		await vi.waitFor(() => expect(page.canEdit()).toBe(true));
 		const priced = setup({ current: note({ kind: 'price_adjustment', lines: [] }) });
 		priced.fixture.detectChanges();
 		await vi.waitFor(() => expect(priced.page.note.data()).toBeTruthy());
-		expect([priced.page.goodsKind(), priced.page.ratePercent()]).toEqual([false, 0]);
+		expect([priced.page.goodsKind(), priced.page.taxHeads()]).toEqual([false, ['CGST', 'SGST']]);
+		const igst = setup({
+			current: note({
+				interState: true,
+				lines: [
+					{ lineId: 'a', ratePercent: 5 },
+					{ lineId: 'b', ratePercent: 12 },
+				] as never,
+			}),
+		});
+		igst.fixture.detectChanges();
+		await vi.waitFor(() => expect(igst.page.note.data()).toBeTruthy());
+		expect(igst.page.taxHeads()).toEqual(['IGST']);
+		const oneRate = setup({
+			current: note({ interState: true, lines: [{ lineId: 'a', ratePercent: 5 }] as never }),
+		});
+		oneRate.fixture.detectChanges();
+		await vi.waitFor(() => expect(oneRate.page.note.data()).toBeTruthy());
+		expect(oneRate.page.taxHeads()).toEqual(['IGST 5%']);
 		expect(setup({ id: null }).page.id()).toBe('');
 	});
 
@@ -226,5 +291,43 @@ describe('a credit note’s page (B4, B5, B8, B9)', () => {
 		noRight.fixture.detectChanges();
 		await vi.waitFor(() => expect(noRight.page.note.data()).toBeTruthy());
 		expect(noRight.page.canRefund()).toBe(false);
+	});
+
+	it('shows an issued note’s edit log, its return, and what it changed piece by piece', async () => {
+		const issued = note({
+			status: 'issued',
+			returnId: 'ret_1',
+			number: 'CN/26-27/000012',
+			date: '2026-11-25',
+			cgstINR: 111.43,
+			sgstINR: 111.43,
+			lines: [
+				{ lineId: 'delivery', delivery: true, ratePercent: 0, quantity: 0 },
+				{ lineId: 'a', title: 'Banarasi', quantity: 1, outcome: 'restock', unitCostINR: 3_120, ratePercent: 5 },
+				{ lineId: 'b', title: 'Cotton', quantity: 2, outcome: 'write_off', unitCostINR: 1_000, ratePercent: 5 },
+				{ lineId: 'c', title: 'Old', quantity: 1, outcome: 'write_off', unitCostINR: null, ratePercent: 5 },
+				{ lineId: 'd', title: 'Price only', quantity: 1, outcome: null, ratePercent: 5 },
+			] as never,
+		});
+		const { fixture, page } = setup({ current: issued });
+		fixture.detectChanges();
+		await vi.waitFor(() => expect(page.logRows()).toHaveLength(1));
+		expect(page.logRows()[0]).toMatchObject({ who: 'Meera (Store manager)', after: 'CN/26-27/000012' });
+		await vi.waitFor(() => expect(page.returnEntry.data()?.number).toBe('ST-2611-482190/R1'));
+		expect(page.goods().map((l) => l.lineId)).toEqual(['a', 'b', 'c']);
+		expect(page.inputTax()).toBe(100);
+		expect(page.month()).toBe('November');
+		expect(page.taxOf(issued)).toBe(222.86);
+		expect(page.effectLine(issued.lines[1]!)).toEqual({
+			key: 'cn_effect_line_restock',
+			params: { qty: 1, title: 'Banarasi', cost: '₹3,120.00' },
+		});
+		expect(page.effectLine(issued.lines[3]!).params['cost']).toBe('₹0.00');
+		page.editable.set(true);
+		expect(page.canEdit()).toBe(false);
+		fixture.detectChanges();
+		const fresh = setup({ id: null });
+		expect(fresh.page.month()).toBe('January');
+		expect([fresh.page.monthLabel('2026-11'), fresh.page.monthLabel('')]).toEqual(['November 2026', '']);
 	});
 });

@@ -95,6 +95,7 @@ function setup(options: Options = {}) {
 	const posted: { date: string; source: { type: string }; lines: { ledger: { systemKey?: string } }[] }[] = [];
 	const entries: { kind: string; amountINR: number; documentNumber: string | null; by: string }[] = [];
 	const audit: string[] = [];
+	const logged: { action: string; entityType: string; diffs: unknown[]; metadata: Record<string, unknown> }[] = [];
 	let n = 0;
 	const service = new ReturnsService(
 		{
@@ -173,7 +174,7 @@ function setup(options: Options = {}) {
 		{ get: async () => (options.windowDays === undefined ? null : { windowDays: options.windowDays }) } as never,
 		{ list: async () => options.locks ?? [] } as never,
 		{ list: async () => options.filings ?? [] } as never,
-		{ append: async (row: { action: string }) => void audit.push(row.action) } as never,
+		{ append: async (row: (typeof logged)[number]) => (audit.push(row.action), void logged.push(row)) } as never,
 		{ withTransaction: async <T>(work: (context: never) => Promise<T>) => work({} as never) } as never,
 		{
 			issue: async (type: string) => `${type === 'creditNote' ? 'CN' : 'DN'}/26-27/00000${++n}`,
@@ -204,7 +205,7 @@ function setup(options: Options = {}) {
 					}),
 				} as never),
 	);
-	return { service, returns, notes, debits, moves, consumed, holds, posted, audit, invoices, entries };
+	return { service, returns, notes, debits, moves, consumed, holds, posted, audit, logged, invoices, entries };
 }
 
 const NOW = new Date('2026-11-25T05:00:00.000Z');
@@ -869,5 +870,114 @@ describe('input tax on written-off pieces (D9) and a business buyer’s account'
 		const shopper = setup();
 		await shopper.service.issue((await checkedDraft(shopper)).draft.id, 0, null, NOW);
 		expect(shopper.entries).toEqual([]);
+	});
+});
+
+describe('the edit log, prints and the order’s documents (Q11, B1, B3)', () => {
+	const superAdmin = { userId: 'adm_super' } as never;
+
+	it('logs each changed quantity and the reason, the system’s posting, refused cancels and prints', async () => {
+		const made = setup();
+		const asked = await made.service.start(
+			'ord_1',
+			startWrite([
+				{ lineId: 'a', quantity: 2 },
+				{ lineId: 'b', quantity: 1 },
+			]),
+			'adm_1',
+			NOW,
+		);
+		await made.service.step(asked.id, { to: 'received' }, 'adm_1', NOW);
+		await made.service.check(
+			asked.id,
+			{
+				lines: [
+					{ lineId: 'a', outcome: 'restock', note: '' },
+					{ lineId: 'b', outcome: 'restock', note: '' },
+				],
+			},
+			'adm_1',
+			NOW,
+		);
+		const draft = await made.service.fromReturn(asked.id, 'adm_1', NOW);
+		await made.service.saveDraft(
+			draft.id,
+			{ version: 0, lines: [{ lineId: 'a', quantity: 1 }], reason: 'Torn pallu' },
+			'adm_1',
+		);
+		await made.service.saveDraft(draft.id, { version: 1, lines: [] }, 'adm_1');
+		expect(made.logged.filter((r) => r.action === 'creditNote.save').map((r) => r.diffs)).toEqual([
+			[
+				{ field: 'quantity:Banarasi', before: 2, after: 1 },
+				{ field: 'reason', before: 'Damaged on arrival', after: 'Torn pallu' },
+			],
+			[],
+		]);
+		await made.service.saveDraft(draft.id, { version: 2, lines: [{ lineId: 'a', quantity: 0 }] }, 'adm_1');
+		expect(made.logged.at(-1)?.diffs).toEqual([{ field: 'quantity:Banarasi', before: 1, after: 0 }]);
+		const price = await made.service.priceAdjustment(
+			'ord_1',
+			{ lines: [{ lineId: 'b', lowerByINR: 100 }], reason: 'x', refundTo: 'customer_account' },
+			null,
+			NOW,
+		);
+		await made.service.issue(price.id, 0, 'adm_1', NOW);
+		expect(made.logged.find((r) => r.action === 'creditNote.posted')?.metadata).toMatchObject({
+			stock: [],
+			outputTaxINR: 4.76,
+			refund: 'kept',
+			totalINR: 100,
+		});
+		await expect(made.service.cancel(price.id, { reason: 'Wrong one' }, undefined, NOW)).rejects.toBeInstanceOf(
+			ForbiddenException,
+		);
+		const filed = setup({ filings: [{ gstRegistrationId: 'reg_wb', month: '2026-11', returnType: 'GSTR-3B' }] });
+		const other = await checkedDraft(filed);
+		await filed.service.issue(other.draft.id, 0, null, NOW);
+		await expect(filed.service.cancel(other.draft.id, { reason: 'Wrong one' }, superAdmin, NOW)).rejects.toThrow(
+			'credit_note_cancel_refused',
+		);
+		expect(made.logged.find((r) => r.action === 'creditNote.cancel_refused')?.metadata).toEqual({
+			why: ['superAdmin'],
+		});
+		expect(filed.logged.find((r) => r.action === 'creditNote.cancel_refused')?.metadata).toEqual({
+			why: ['monthFiled'],
+		});
+		await made.service.printed('orderReturn', asked.id, null);
+		expect(made.logged.at(-1)).toMatchObject({ action: 'orderReturn.print', entityType: 'orderReturn' });
+		expect((await made.service.returnNote(asked.id)).invoice.number).toBe('TI/26-27/000145');
+	});
+
+	it('lists every document of the order, with a debit note pointing at its credit note', async () => {
+		const made = setup({
+			payments: [
+				{ id: 'pay_1', receiptNumber: 'RC/26-27/000011', receivedOn: '2026-11-17', amountINR: 14_040 },
+				{ id: 'pay_2', receiptNumber: null, receivedOn: null, amountINR: 5 },
+			],
+			invoices: [invoice(), invoice({ id: 'ti_x', number: 'TI/26-27/000146', status: 'cancelled' })],
+		});
+		const { draft } = await checkedDraft(made);
+		await made.service.issue(draft.id, 0, null, NOW);
+		const debit = await made.service.debitNote(draft.id, { reason: 'November already filed' }, null, NOW);
+		await made.service.priceAdjustment(
+			'ord_1',
+			{ lines: [{ lineId: 'b', lowerByINR: 100 }], reason: 'x', refundTo: 'original_payment' },
+			null,
+			NOW,
+		);
+		const view = await made.service.view('ord_1', '2026-11-25');
+		expect(view.documents.map((d) => [d.kind, d.number, d.amountINR, d.status])).toEqual([
+			['taxInvoice', 'TI/26-27/000145', 14_040, null],
+			['taxInvoice', 'TI/26-27/000146', 14_040, 'cancelled'],
+			['receipt', 'RC/26-27/000011', 14_040, null],
+			['packingSlip', 'P1', null, null],
+			['packingSlip', 'P2', null, null],
+			['return', 'ST-2611-482190/R1', 4_680, 'credit_note'],
+			['creditNote', 'CN/26-27/000001', 4_680, null],
+			['creditNote', null, 100, 'draft'],
+			['debitNote', debit.number, 4_680, null],
+		]);
+		expect(view.documents.at(-1)?.creditNoteId).toBe(draft.id);
+		expect(made.logged.find((r) => r.action === 'debitNote.issue')).toMatchObject({ entityType: 'creditNote' });
 	});
 });

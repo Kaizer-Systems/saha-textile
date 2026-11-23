@@ -10,6 +10,7 @@ import type {
 	CreditNoteDraftWrite,
 	CreditNoteRefundWrite,
 	DebitNote,
+	EditLogEntry,
 	OrderReturn,
 	OrderReturnsView,
 	PriceAdjustmentWrite,
@@ -24,6 +25,7 @@ export const RETURN_KEYS = {
 	view: (orderId: string) => [...ORDERS_KEY, 'returns', orderId] as const,
 	one: (id: string) => ['returns', 'one', id] as const,
 	creditNote: (id: string) => ['credit-notes', id] as const,
+	creditNoteLog: (id: string) => ['credit-notes', id, 'log'] as const,
 	cancelChecks: (id: string) => ['credit-notes', id, 'cancel-checks'] as const,
 };
 
@@ -88,6 +90,12 @@ export class ReturnsGateway {
 	}
 	creditNotePdf(id: string): Observable<Blob> {
 		return this.http.get(this.note(id, '/pdf'), { responseType: 'blob' });
+	}
+	creditNoteLog(id: string): Observable<EditLogEntry[]> {
+		return this.http.get<EditLogEntry[]>(this.note(id, '/log'));
+	}
+	returnNotePdf(id: string): Observable<Blob> {
+		return this.http.get(this.admin(`/returns/${encodeURIComponent(id)}/pdf`), { responseType: 'blob' });
 	}
 	debitNotePdf(id: string): Observable<Blob> {
 		return this.http.get(this.admin(`/accounts/debit-notes/${encodeURIComponent(id)}/pdf`), {

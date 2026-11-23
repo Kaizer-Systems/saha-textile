@@ -11,6 +11,7 @@ import {
 	type VoucherKind,
 } from '@saha-textile/contracts';
 import {
+	type DocumentLockClaim,
 	type DocumentLockRepository,
 	type GeneralLedgerRepository,
 	type GstReturnRepository,
@@ -286,17 +287,19 @@ export class MongoDocumentLockRepository implements DocumentLockRepository {
 		return doc ? DocumentLock.parse(strip(doc)) : null;
 	}
 
-	async acquire(lock: DocumentLock, staleBefore: string): Promise<DocumentLock> {
+	async acquire(lock: DocumentLockClaim, staleBefore: string): Promise<DocumentLock> {
 		const _id = this.key(lock.documentType, lock.documentId);
 		try {
+			// An upsert that returns the new document always finds one; orFail keeps the type honest.
 			const doc = await DocumentLockModel.findOneAndUpdate(
 				{ _id, $or: [{ holderId: lock.holderId }, { lastActiveAt: { $lt: staleBefore } }] },
 				{ $set: lock },
 				{ upsert: true, new: true },
 			)
+				.orFail()
 				.lean<AggregateDoc>()
 				.exec();
-			if (doc) return DocumentLock.parse(strip(doc));
+			return DocumentLock.parse(strip(doc));
 		} catch (error) {
 			// The upsert lost to a live lock held by someone else.
 			if ((error as { code?: number }).code !== 11000) throw error;
@@ -306,10 +309,10 @@ export class MongoDocumentLockRepository implements DocumentLockRepository {
 		return current;
 	}
 
-	async takeOver(lock: DocumentLock): Promise<DocumentLock> {
+	async takeOver(lock: DocumentLockClaim): Promise<DocumentLock> {
 		const _id = this.key(lock.documentType, lock.documentId);
 		await DocumentLockModel.replaceOne({ _id }, { _id, ...lock }, { upsert: true }).exec();
-		return lock;
+		return DocumentLock.parse(lock);
 	}
 
 	async touch(documentType: string, documentId: string, holderId: string, at: string): Promise<boolean> {
@@ -322,6 +325,14 @@ export class MongoDocumentLockRepository implements DocumentLockRepository {
 
 	async release(documentType: string, documentId: string, holderId: string): Promise<void> {
 		await DocumentLockModel.deleteOne({ _id: this.key(documentType, documentId), holderId }).exec();
+	}
+
+	async askRelease(documentType: string, documentId: string, askedBy: string, at: string): Promise<boolean> {
+		const result = await DocumentLockModel.updateOne(
+			{ _id: this.key(documentType, documentId) },
+			{ $set: { releaseAskedBy: askedBy, releaseAskedAt: at } },
+		).exec();
+		return result.matchedCount === 1;
 	}
 }
 

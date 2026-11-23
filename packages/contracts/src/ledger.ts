@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { AuditFieldDiff } from './audit';
 import { Id, IsoDateTime } from './common';
 import { IsoDate } from './purchasing';
 
@@ -236,8 +237,26 @@ export const DocumentLock = z.object({
 	holderName: z.string(),
 	since: IsoDateTime,
 	lastActiveAt: IsoDateTime,
+	/** B7 "Ask them to release it": who asked the holder, and when (shown only when asked after `since`). */
+	releaseAskedBy: z.string().nullable().default(null),
+	releaseAskedAt: IsoDateTime.nullable().default(null),
 });
 export type DocumentLock = z.infer<typeof DocumentLock>;
+
+/**
+ * One row of a document's edit log (Q11, B5): who (and their role), when, what, each field before and after,
+ * and why. Read from the audit log; nothing in the app can change it.
+ */
+export const EditLogEntry = z.object({
+	at: IsoDateTime,
+	/** Null for what the system did on its own (the posting after Issue). */
+	who: z.string().nullable(),
+	role: z.string().nullable(),
+	action: z.string(),
+	diffs: z.array(AuditFieldDiff),
+	metadata: z.record(z.string(), z.unknown()),
+});
+export type EditLogEntry = z.infer<typeof EditLogEntry>;
 
 /** Accounts › Vouchers list (A: period presets, kinds, search). */
 export const VoucherListQuery = z.object({

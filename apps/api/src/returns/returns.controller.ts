@@ -18,9 +18,10 @@ import { z } from 'zod';
 import { Principal } from '../auth/ownership';
 import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../auth/session.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
-import { creditNoteData, debitNoteData } from '../documents/credit-note-print';
+import { creditNoteData, debitNoteData, returnNoteData } from '../documents/credit-note-print';
 import { DocumentFormatsService } from '../documents/document-formats.service';
 import { previewDocument } from '../documents/document-previews';
+import { EditLogService } from '../ledger/edit-log';
 import { API_TAGS } from '../openapi-tags';
 import { ReturnsService } from './returns.service';
 
@@ -39,7 +40,10 @@ const CreditNoteListQuery = z.object({
 @Audience('admin')
 @Controller('admin')
 export class ReturnsController {
-	constructor(private readonly returns: ReturnsService) {}
+	constructor(
+		private readonly returns: ReturnsService,
+		private readonly formats: DocumentFormatsService,
+	) {}
 
 	@Get('orders/:id/returns')
 	@Header('Cache-Control', 'no-store')
@@ -94,6 +98,26 @@ export class ReturnsController {
 		return this.returns.getReturn(id);
 	}
 
+	@Get('returns/:id/pdf')
+	@RequirePermissions('order.index')
+	@ApiOperation({ operationId: 'returnNotePdf', summary: 'The return note (B3 Print return note) as a PDF' })
+	async returnNotePdf(
+		@Param('id') id: string,
+		@Res() reply: FastifyReply,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		const { entry, invoice } = await this.returns.returnNote(id);
+		const seller = await this.formats.seller(previewDocument('returnNote').seller);
+		const data = returnNoteData(entry, invoice, seller);
+		const pdf = await this.formats.renderActive('returnNote', data);
+		await this.returns.printed('orderReturn', id, principal?.userId ?? null);
+		void reply
+			.header('Content-Type', 'application/pdf')
+			.header('Content-Disposition', `inline; filename="${entry.number.replace(/\//g, '-')} return note.pdf"`)
+			.header('Cache-Control', 'no-store')
+			.send(Buffer.from(pdf));
+	}
+
 	@Post('returns/:id/step')
 	@HttpCode(200)
 	@RequirePermissions('order.edit')
@@ -135,6 +159,7 @@ export class CreditNotesController {
 	constructor(
 		private readonly returns: ReturnsService,
 		private readonly formats: DocumentFormatsService,
+		private readonly editLog: EditLogService,
 	) {}
 
 	private async sendPdf(reply: FastifyReply, pdf: Uint8Array, name: string) {
@@ -148,11 +173,26 @@ export class CreditNotesController {
 	@Get('credit-notes/:id/pdf')
 	@RequirePermissions('accounts.index')
 	@ApiOperation({ operationId: 'creditNotePdf', summary: 'A credit note as a PDF' })
-	async creditNotePdf(@Param('id') id: string, @Res() reply: FastifyReply) {
+	async creditNotePdf(
+		@Param('id') id: string,
+		@Res() reply: FastifyReply,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
 		const note = await this.returns.creditNote(id);
 		const seller = await this.formats.seller(previewDocument('creditNote').seller);
 		const data = creditNoteData(note, seller);
-		await this.sendPdf(reply, await this.formats.renderActive('creditNote', data), data.number);
+		const pdf = await this.formats.renderActive('creditNote', data);
+		await this.returns.printed('creditNote', id, principal?.userId ?? null);
+		await this.sendPdf(reply, pdf, data.number);
+	}
+
+	@Get('credit-notes/:id/log')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({ operationId: 'creditNoteLog', summary: 'A credit note’s edit log (Q11, B5)' })
+	async creditNoteLog(@Param('id') id: string) {
+		await this.returns.creditNote(id);
+		return this.editLog.entries('creditNote', id);
 	}
 
 	@Get('debit-notes/:id')

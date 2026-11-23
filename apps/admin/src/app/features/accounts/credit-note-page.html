@@ -17,15 +17,20 @@
 				</div>
 			</h5>
 			<small class="text-muted">
-				{{ 'cn_against' | transloco: { invoice: n.invoiceNumber, date: day(n.invoiceDate) } }} ·
+				@if (draft()) { {{ 'cn_against' | transloco: { invoice: n.invoiceNumber, date: day(n.invoiceDate) } }} }
+				@else { {{ 'cn_issued_line' | transloco: { date: day(n.date), invoice: n.invoiceNumber, buyer:
+				n.buyer.name } }} } ·
 				<a [routerLink]="['/order/details', n.orderId]">{{ n.orderNumber }}</a>
 				@if (n.returnId) { ·
-				<a [routerLink]="['/accounts/returns', n.returnId]">{{ 'cn_from_return' | transloco }}</a>
+				<a [routerLink]="['/accounts/returns', n.returnId]">
+					@if (returnEntry.data(); as r) { {{ 'cn_from_return_n' | transloco: { number: r.number } }} } @else
+					{ {{ 'cn_from_return' | transloco }} }
+				</a>
 				}
 			</small>
 		</div>
 		<div class="d-flex flex-wrap gap-2">
-			@if (draft()) {
+			@if (draft()) { @if (canEdit()) {
 			<button
 				type="button"
 				class="btn btn-outline text-danger"
@@ -36,11 +41,12 @@
 				<i class="ri-delete-bin-line"></i>
 				{{ 'cn_delete_draft' | transloco }}
 			</button>
+			}
 			<button
 				type="button"
 				class="btn btn-outline"
 				id="cn_save"
-				[disabled]="busy()"
+				[disabled]="busy() || !canEdit()"
 				(click)="save(n)"
 			>
 				{{ 'cn_save_draft' | transloco }}
@@ -49,7 +55,7 @@
 				type="button"
 				class="btn btn-theme"
 				id="cn_issue"
-				[disabled]="busy()"
+				[disabled]="busy() || !canEdit()"
 				(click)="issue(n)"
 			>
 				<i class="ri-check-line"></i>
@@ -101,7 +107,13 @@
 			} }
 		</div>
 	</div>
-	@if (n.debitNoteId) {
+	@if (draft()) {
+	<app-document-lock
+		documentType="creditNote"
+		[documentId]="n.id"
+		(editable)="editable.set($event)"
+	/>
+	} @if (n.debitNoteId) {
 	<div class="alert alert-light border">
 		{{ 'cn_undone_by' | transloco }}
 		<a
@@ -116,6 +128,7 @@
 	}
 	<div class="row g-3">
 		<div class="col-xl-8">
+			@if (draft()) {
 			<div class="card">
 				<div class="card-body">
 					<div class="title-header">
@@ -157,25 +170,30 @@
 					</div>
 				</div>
 			</div>
+			}
 			<div class="card">
 				<div class="card-body">
 					<div class="title-header">
 						<h5>{{ 'cn_lines' | transloco }}</h5>
 					</div>
+					@if (draft()) {
 					<div class="alert alert-warning py-2">
 						<i class="ri-information-line me-1"></i>
 						{{ 'cn_lines_from_invoice' | transloco }}
 					</div>
+					}
 					<div class="table-responsive datatable-wrapper border-table">
 						<table class="all-package theme-table no-footer table">
 							<thead>
 								<tr>
 									<th class="text-start">{{ 'inv_item' | transloco }}</th>
-									<th class="text-nowrap">HSN</th>
+									<th>HSN</th>
 									<th>{{ 'inv_qty' | transloco }}</th>
-									<th class="text-end text-nowrap">{{ 'inv_taxable' | transloco }}</th>
-									<th class="text-end text-nowrap">{{ 'inv_tax' | transloco }}</th>
-									<th class="text-end text-nowrap">{{ 'inv_amount' | transloco }}</th>
+									<th class="text-end">{{ 'cn_col_taxable' | transloco }}</th>
+									@for (head of taxHeads(); track head) {
+									<th class="text-end">{{ head }}</th>
+									}
+									<th class="text-end">{{ 'accounts_total' | transloco }}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -191,7 +209,7 @@
 									</td>
 									<td class="text-nowrap">{{ line.hsn }}</td>
 									<td>
-										@if (draft() && goodsKind() && !line.delivery) {
+										@if (canEdit() && goodsKind() && !line.delivery) {
 										<input
 											class="form-control form-control-sm"
 											type="number"
@@ -204,9 +222,12 @@
 										} @else if (!line.delivery) { {{ line.quantity }} } @else { — }
 									</td>
 									<td class="text-end text-nowrap">{{ inr(line.taxableINR) }}</td>
-									<td class="text-end text-nowrap">
-										{{ inr(line.cgstINR + line.sgstINR + line.igstINR) }}
-									</td>
+									@if (n.interState) {
+									<td class="text-end text-nowrap">{{ inr(line.igstINR) }}</td>
+									} @else {
+									<td class="text-end text-nowrap">{{ inr(line.cgstINR) }}</td>
+									<td class="text-end text-nowrap">{{ inr(line.sgstINR) }}</td>
+									}
 									<td class="text-end text-nowrap">{{ inr(line.totalINR) }}</td>
 								</tr>
 								}
@@ -216,16 +237,22 @@
 										colspan="3"
 									>
 										<b>{{ 'accounts_total' | transloco }}</b>
-										<small class="text-muted ms-1">
-											{{ n.interState ? 'IGST' : 'CGST + SGST' }} {{ ratePercent() }}%
-										</small>
 									</td>
 									<td class="text-end text-nowrap">
 										<b>{{ inr(n.taxableINR) }}</b>
 									</td>
+									@if (n.interState) {
 									<td class="text-end text-nowrap">
-										<b>{{ inr(n.cgstINR + n.sgstINR + n.igstINR) }}</b>
+										<b>{{ inr(n.igstINR) }}</b>
 									</td>
+									} @else {
+									<td class="text-end text-nowrap">
+										<b>{{ inr(n.cgstINR) }}</b>
+									</td>
+									<td class="text-end text-nowrap">
+										<b>{{ inr(n.sgstINR) }}</b>
+									</td>
+									}
 									<td class="text-end text-nowrap">
 										<b>{{ inr(n.totalINR) }}</b>
 									</td>
@@ -235,6 +262,53 @@
 					</div>
 				</div>
 			</div>
+			@if (!draft()) {
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'cn_edit_log' | transloco }}</h5>
+					</div>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'log_when' | transloco }}</th>
+									<th>{{ 'log_who' | transloco }}</th>
+									<th>{{ 'log_what' | transloco }}</th>
+									<th>{{ 'log_field' | transloco }}</th>
+									<th>{{ 'log_before' | transloco }}</th>
+									<th>{{ 'log_after' | transloco }}</th>
+									<th>{{ 'log_why' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (row of logRows(); track $index) {
+								<tr>
+									<td class="text-nowrap">{{ row.when }}</td>
+									<td>{{ row.who }}</td>
+									<td>{{ row.what }}</td>
+									<td>{{ row.field }}</td>
+									<td>{{ row.before }}</td>
+									<td>{{ row.after }}</td>
+									<td>{{ row.why }}</td>
+								</tr>
+								} @empty {
+								<tr>
+									<td
+										colspan="7"
+										class="text-muted"
+									>
+										{{ 'log_empty' | transloco }}
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					<p class="help-text mt-2 mb-0">{{ 'log_caption' | transloco }}</p>
+				</div>
+			</div>
+			}
 		</div>
 		<div class="col-xl-4">
 			<div class="card">
@@ -242,37 +316,98 @@
 					<div class="title-header">
 						<h5>{{ (draft() ? 'cn_when_issue' : 'cn_what_changed') | transloco }}</h5>
 					</div>
+					@let icon = draft() ? '' : 'ri-checkbox-circle-line text-success';
 					<ul class="list-unstyled small mb-0">
-						<li class="border-bottom py-2">
-							<b>{{ 'ret_number' | transloco }}</b>
-							<span class="d-block text-muted">
-								{{ 'cn_effect_number' | transloco: { number: n.number ?? 'CN/…' } }}
-							</span>
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i [class]="icon || 'ri-hashtag'"></i>
+							<div>
+								<b>{{ 'ret_number' | transloco }}</b>
+								<span class="text-muted">· sequences</span>
+								<span class="d-block">
+									{{ 'cn_effect_number' | transloco: { number: n.number ?? 'CN/…' } }}
+								</span>
+							</div>
 						</li>
-						@if (goodsKind()) {
-						<li class="border-bottom py-2">
-							<b>{{ 'cn_effect_stock_title' | transloco }}</b>
-							<span class="d-block text-muted">{{ 'cn_effect_stock' | transloco }}</span>
+						@if (goods().length) {
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i [class]="icon || 'ri-stack-line'"></i>
+							<div>
+								<b>{{ 'cn_effect_stock_title' | transloco }}</b>
+								<span class="text-muted">· inventoryLedger, inventoryCostLayers</span>
+								@for (line of goods(); track line.lineId) { @let e = effectLine(line);
+								<span class="d-block">{{ e.key | transloco: e.params }}</span>
+								}
+							</div>
 						</li>
 						}
-						<li class="border-bottom py-2">
-							<b>{{ 'cn_effect_tax_title' | transloco }}</b>
-							<span class="d-block text-muted">
-								{{ 'cn_effect_tax' | transloco: { amount: inr(n.cgstINR + n.sgstINR + n.igstINR) } }}
-							</span>
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i [class]="icon || 'ri-percent-line'"></i>
+							<div class="flex-grow-1">
+								<div class="d-flex justify-content-between gap-2">
+									<span>
+										<b>{{ 'cn_effect_tax_title' | transloco }}</b>
+										<span class="text-muted">· gstEntries</span>
+									</span>
+									<b class="text-nowrap">−{{ inr(taxOf(n)) }}</b>
+								</div>
+								<span class="d-block">
+									{{ (n.buyer.gstin ? 'cn_effect_tax_registered' : 'cn_effect_tax_unregistered') |
+									transloco: { amount: inr(taxOf(n)), month: month() } }}
+								</span>
+							</div>
 						</li>
-						<li class="border-bottom py-2">
-							<b>{{ 'cn_effect_customer_title' | transloco }}</b>
-							<span class="d-block text-muted">
-								{{ 'cn_effect_customer' | transloco: { amount: inr(n.totalINR) } }}
-							</span>
+						@if (inputTax() > 0) {
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i [class]="icon || 'ri-percent-line'"></i>
+							<div>
+								<b>{{ 'cn_effect_input_tax_title' | transloco }}</b>
+								<span class="text-muted">· journalVouchers</span>
+								<span class="d-block">
+									{{ 'cn_effect_input_tax' | transloco: { amount: inr(inputTax()) } }}
+								</span>
+							</div>
 						</li>
-						<li class="py-2">
-							<b>{{ 'cn_effect_log_title' | transloco }}</b>
-							<span class="d-block text-muted">{{ 'cn_effect_log' | transloco }}</span>
+						}
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i [class]="icon || 'ri-file-list-3-line'"></i>
+							<div class="flex-grow-1">
+								<div class="d-flex justify-content-between gap-2">
+									<span>
+										<b>{{ 'cn_effect_order_title' | transloco: { number: n.orderNumber } }}</b>
+										<span class="text-muted">· orders, returns</span>
+									</span>
+									<b class="text-nowrap">{{ inr(n.totalINR) }}</b>
+								</div>
+								<span class="d-block">
+									@if (returnEntry.data(); as r) { {{ 'cn_effect_order_return' | transloco: { number:
+									r.number } }} } {{ 'cn_effect_order_' + (n.refund?.status ?? (n.refundTo ===
+									'customer_account' ? 'kept' : 'due')) | transloco: { amount: inr(n.totalINR) } }}
+								</span>
+							</div>
+						</li>
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i [class]="icon || 'ri-user-line'"></i>
+							<div>
+								<b>{{ 'cn_effect_customer_title' | transloco }}</b>
+								<span class="text-muted">· ledgerEntries</span>
+								<span class="d-block">
+									{{ 'cn_effect_customer_' + (n.refund?.status ?? (n.refundTo === 'customer_account' ?
+									'kept' : 'due')) | transloco: { amount: inr(n.totalINR) } }}
+								</span>
+							</div>
+						</li>
+						<li class="d-flex gap-2 py-2">
+							<i [class]="icon || 'ri-history-line'"></i>
+							<div>
+								<b>{{ 'cn_effect_log_title' | transloco }}</b>
+								<span class="text-muted">· auditLogs</span>
+								<span class="d-block">{{ 'cn_effect_log' | transloco }}</span>
+							</div>
 						</li>
 					</ul>
-					<p class="help-text mt-2 mb-0">{{ 'cn_one_transaction' | transloco }}</p>
+					@if (draft()) {
+					<div class="alert alert-light small mt-2 mb-0 border">{{ 'cn_one_transaction' | transloco }}</div>
+					}
 				</div>
 			</div>
 		</div>
@@ -294,20 +429,46 @@
 		<div class="modal-body theme-form theme-form-2">
 			<div class="alert alert-info py-2">{{ 'cn_cancel_info' | transloco }}</div>
 			@if (checks(); as c) {
-			<ul class="list-unstyled mb-3">
-				<li class="d-flex justify-content-between border-bottom py-1">
-					<span>{{ 'cn_check_filed' | transloco: { month: c.month } }}</span>
-					<b>{{ (c.monthFiled ? 'cn_yes' : 'cn_no') | transloco }}</b>
-				</li>
-				<li class="d-flex justify-content-between border-bottom py-1">
-					<span>{{ 'cn_check_books' | transloco }}</span>
-					<b>{{ (c.booksClosed ? 'cn_closed' : 'cn_open') | transloco }}</b>
-				</li>
-				<li class="d-flex justify-content-between border-bottom py-1">
-					<span>{{ 'cn_check_refund' | transloco }}</span>
-					<b>{{ (c.refundPaid ? 'cn_yes' : 'cn_no') | transloco }}</b>
-				</li>
-			</ul>
+			<div class="table-responsive datatable-wrapper border-table mb-3">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th class="text-start">{{ 'cn_check' | transloco }}</th>
+							<th>{{ 'cn_result' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td class="text-start">
+								{{ 'cn_check_filed' | transloco: { month: monthLabel(c.month) } }}
+							</td>
+							<td>
+								<div [class]="c.monthFiled ? 'status-danger' : 'status-success'">
+									<span>
+										{{ (c.monthFiled ? 'cn_pill_filed' : 'cn_pill_not_filed') | transloco }}
+									</span>
+								</div>
+							</td>
+						</tr>
+						<tr>
+							<td class="text-start">{{ 'cn_check_books' | transloco }}</td>
+							<td>
+								<div [class]="c.booksClosed ? 'status-danger' : 'status-success'">
+									<span>{{ (c.booksClosed ? 'cn_closed' : 'cn_open') | transloco }}</span>
+								</div>
+							</td>
+						</tr>
+						<tr>
+							<td class="text-start">{{ 'cn_check_refund' | transloco }}</td>
+							<td>
+								<div [class]="c.refundPaid ? 'status-danger' : 'status-success'">
+									<span>{{ (c.refundPaid ? 'cn_yes' : 'cn_no') | transloco }}</span>
+								</div>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
 			@if (!c.superAdmin) {
 			<div class="alert alert-warning py-2">{{ 'cn_cancel_super_admin' | transloco }}</div>
 			} }
@@ -325,6 +486,53 @@
 				[ngModel]="reason()"
 				(ngModelChange)="reason.set($event)"
 			></textarea>
+			<p class="form-label-title mt-3 mb-1">{{ 'cn_cancel_changes' | transloco }}</p>
+			<ul class="list-unstyled small mb-0">
+				@if (goods().length) {
+				<li class="d-flex border-bottom gap-2 py-2">
+					<i class="ri-stack-line"></i>
+					<div>
+						<b>{{ 'cn_effect_stock_title' | transloco }}</b>
+						<span class="text-muted">· inventoryLedger</span>
+						@for (line of goods(); track line.lineId) { @if (line.outcome !== 'write_off') {
+						<span class="d-block">
+							{{ 'cn_cancel_stock_line' | transloco: { qty: line.quantity, sku: line.sku } }}
+						</span>
+						} }
+					</div>
+				</li>
+				}
+				<li class="d-flex border-bottom gap-2 py-2">
+					<i class="ri-percent-line"></i>
+					<div>
+						<b>{{ 'cn_effect_tax_title' | transloco }}</b>
+						<span class="text-muted">· gstEntries</span>
+						<span class="d-block">
+							{{ 'cn_cancel_tax' | transloco: { amount: inr(taxOf(n)), month: month() } }} @if (inputTax()
+							> 0) { {{ 'cn_cancel_input_tax' | transloco: { amount: inr(inputTax()) } }} }
+						</span>
+					</div>
+				</li>
+				<li class="d-flex border-bottom gap-2 py-2">
+					<i class="ri-file-list-3-line"></i>
+					<div>
+						<b>{{ 'cn_effect_order_title' | transloco: { number: n.orderNumber } }}</b>
+						<span class="text-muted">· orders, returns</span>
+						<span class="d-block">
+							@if (returnEntry.data(); as r) { {{ 'cn_cancel_order_return' | transloco: { number: r.number
+							} }} } @else { {{ 'cn_cancel_order' | transloco }} }
+						</span>
+					</div>
+				</li>
+				<li class="d-flex gap-2 py-2">
+					<i class="ri-history-line"></i>
+					<div>
+						<b>{{ 'cn_effect_log_title' | transloco }}</b>
+						<span class="text-muted">· auditLogs</span>
+						<span class="d-block">{{ 'cn_cancel_log' | transloco }}</span>
+					</div>
+				</li>
+			</ul>
 		</div>
 		<div class="modal-footer">
 			<button
@@ -362,7 +570,7 @@
 		<div class="modal-body">
 			<div class="alert alert-danger py-2">
 				<i class="ri-lock-line me-1"></i>
-				{{ 'cn_blocked_reason' | transloco: { month: checks()?.month ?? '', number: n.number } }}
+				{{ 'cn_blocked_reason' | transloco: { month: monthLabel(checks()?.month ?? ''), number: n.number } }}
 			</div>
 			<p class="mb-0">
 				{{ 'cn_blocked_debit' | transloco: { invoice: n.invoiceNumber, amount: inr(n.totalINR) } }}

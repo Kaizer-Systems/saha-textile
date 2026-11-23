@@ -37,7 +37,12 @@ export class CookieSettings {
 		});
 	}
 
+	/**
+	 * One popup at a time. A tap on the box's Choose before the box woke can arrive twice on a slow phone: the box
+	 * carries out the tap the page head noted, then Angular's late replay of the same tap asks again.
+	 */
 	private open() {
+		if (this.ref) return;
 		this.functional.set(this.consent.allows('functional'));
 		this.openList.set(null);
 		this.ref = this.modal.open(this.template(), {
@@ -45,6 +50,8 @@ export class CookieSettings {
 			modalDialogClass: 'cookie-settings',
 			windowClass: 'theme-modal cookie-settings-modal',
 		});
+		const closed = () => (this.ref = null);
+		this.ref.result.then(closed, closed);
 	}
 
 	toggleList(list: 'necessary' | 'functional') {

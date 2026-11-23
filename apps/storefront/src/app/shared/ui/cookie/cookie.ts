@@ -1,10 +1,10 @@
-import { afterNextRender, Component, DOCUMENT, effect, inject, untracked, viewChild } from '@angular/core';
+import { afterNextRender, Component, DestroyRef, DOCUMENT, effect, inject, untracked, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 
-import { CONSENT_ASK_CLASS, CONSENT_TAP_ATTRIBUTE } from '@core/consent/cookie-catalogue';
 import { ConsentStore } from '@core/consent/consent.store';
+import { CONSENT_ASK_CLASS, CONSENT_TAP_ATTRIBUTE } from '@core/consent/cookie-catalogue';
 import { AuthStore } from '@core/state/auth.store';
 
 import { CookieSettings, longestLabel } from './cookie-settings/cookie-settings';
@@ -29,10 +29,12 @@ export class Cookie {
 	constructor() {
 		// From here the box follows the decision alone: the head script's mark has done its job.
 		const page = inject(DOCUMENT);
+		const destroyed = inject(DestroyRef);
 		afterNextRender(() => {
 			page.documentElement.classList.remove(CONSENT_ASK_CLASS);
-			// After Angular's replay has had its turn (it runs in the same task as waking up).
-			setTimeout(() => this.carryOutEarlyTap(page));
+			// After Angular's replay has had its turn (it runs in the same task as waking up). A box gone by then does nothing.
+			const later = setTimeout(() => this.carryOutEarlyTap(page));
+			destroyed.onDestroy(() => clearTimeout(later));
 		});
 		const auth = inject(AuthStore);
 		let signedIn = false;
@@ -44,18 +46,26 @@ export class Cookie {
 	}
 
 	necessaryOnly() {
-		this.acted = true;
-		this.settings().necessaryOnly();
+		this.answer(() => this.settings().necessaryOnly());
 	}
 
 	acceptAll() {
-		this.acted = true;
-		this.settings().acceptAll();
+		this.answer(() => this.settings().acceptAll());
 	}
 
 	choose() {
+		this.answer(() => this.consent.openSettings());
+	}
+
+	/**
+	 * The box's buttons act only while no decision exists. The box is hidden once there is one, so what still reaches
+	 * them then is the same early tap a second time: carried out from the head script's note, then replayed late by
+	 * Angular on a slow phone. Answering it twice would record the decision twice.
+	 */
+	private answer(act: () => void): void {
+		if (this.consent.decided()) return;
 		this.acted = true;
-		this.consent.openSettings();
+		act();
 	}
 
 	/**
@@ -65,7 +75,7 @@ export class Cookie {
 	carryOutEarlyTap(page: Document): void {
 		const tapped = page.documentElement.getAttribute(CONSENT_TAP_ATTRIBUTE);
 		page.documentElement.removeAttribute(CONSENT_TAP_ATTRIBUTE);
-		if (!tapped || this.acted || this.consent.decided()) return;
+		if (!tapped || this.acted) return;
 		if (tapped === 'cookie_accept_btn') this.acceptAll();
 		else if (tapped === 'cookie_necessary_btn') this.necessaryOnly();
 		else if (tapped === 'cookie_choose_btn') this.choose();

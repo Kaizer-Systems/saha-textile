@@ -70,6 +70,8 @@ export function creditLinesFor(
 			totalINR: share(line.totalINR),
 			outcome: pick.outcome ?? null,
 			unitCostINR: pick.unitCostINR ?? null,
+			layerId: null,
+			holdId: null,
 			delivery: false,
 			note: pick.note ?? '',
 		});
@@ -93,6 +95,8 @@ export function priceAdjustmentLines(
 			...splitTax(pick.lowerByINR, line.ratePercent, interState),
 			outcome: null,
 			unitCostINR: null,
+			layerId: null,
+			holdId: null,
 			delivery: false,
 			note: '',
 		});
@@ -121,6 +125,8 @@ export function deliveryShareLine(invoice: Pick<TaxInvoice, 'shippingINR'>): Cre
 		totalINR: 0,
 		outcome: null,
 		unitCostINR: null,
+		layerId: null,
+		holdId: null,
 		delivery: true,
 		note: invoice.shippingINR > 0 ? 'waits_for_ca' : 'free_delivery',
 	};

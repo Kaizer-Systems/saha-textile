@@ -11,6 +11,7 @@ import { MailboxesModule } from './mailboxes/mailboxes.module';
 import { PurchasingModule } from './purchasing/purchasing.module';
 import { CompanyModule } from './company/company.module';
 import { LedgerModule } from './ledger/ledger.module';
+import { ReturnsModule } from './returns/returns.module';
 import { OrderRoutingModule } from './routing/order-routing.module';
 import { OrderShipsFromModule } from './routing/order-ships-from.module';
 import { LocationsModule } from './locations/locations.module';
@@ -90,6 +91,7 @@ export class AppModule {
 				CompanyModule,
 				LocationsModule,
 				LedgerModule,
+				ReturnsModule,
 				OrderRoutingModule,
 				OrderShipsFromModule,
 				DocumentsModule,

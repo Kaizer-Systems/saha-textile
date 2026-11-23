@@ -109,6 +109,10 @@ export const CreditNoteLine = TaxInvoiceLine.extend({
 	outcome: ReturnOutcome.nullable().default(null),
 	/** The piece's cost, to put it back in stock at what it cost (FIFO layer). */
 	unitCostINR: z.number().nonnegative().nullable().default(null),
+	/** The cost layer the pieces went back into on Issue, so a cancel or debit note takes them out of it again. */
+	layerId: Id.nullable().default(null),
+	/** The hold a damaged piece went into on Issue, closed again when the note is undone. */
+	holdId: Id.nullable().default(null),
 	/** The delivery share line (CA B7.3): ₹0 until the CA answers. */
 	delivery: z.boolean().default(false),
 	note: z.string().default(''),

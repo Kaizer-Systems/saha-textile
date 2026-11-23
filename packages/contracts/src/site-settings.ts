@@ -6,6 +6,7 @@ import { DocumentNumberingSettings } from './document-numbering';
 import { FxSettings, PaymentRoutingSettings } from './fx';
 import { OrderRoutingSettings } from './order-routing';
 import { OrderSettings } from './order-settings';
+import { ReturnSettings } from './returns';
 import { StorefrontSearchSettings } from './search-term';
 
 /**
@@ -363,6 +364,8 @@ export const SITE_SETTING_SCHEMAS = {
 	'orders.numbering': DocumentNumberingSettings,
 	/** Where a new online order ships from (accounts brief M2). */
 	'orders.routing': OrderRoutingSettings,
+	/** The return window after delivery (accounts brief D4). */
+	'accounts.returns': ReturnSettings,
 } as const;
 export type SiteSettingKey = keyof typeof SITE_SETTING_SCHEMAS;
 export type SiteSettingValue<K extends SiteSettingKey> = z.infer<(typeof SITE_SETTING_SCHEMAS)[K]>;

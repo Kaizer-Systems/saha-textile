@@ -92,6 +92,9 @@ export const PermissionCode = z.enum([
 	'dashboard.reviews',
 	'dashboard.stock',
 	'dashboard.top_products',
+	'edocs.cancel',
+	'edocs.generate',
+	'edocs.settings',
 	'event.cancel',
 	'event.create',
 	'event.destroy',
@@ -398,6 +401,12 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 		'The open boxes and Save on Settings › Shop details (X04) and PUT /admin/settings/shop-details: the legal name, GSTIN and address printed on business documents. Reading the page is setting.index (read only, X04D). Held by the Administrator role.',
 	'company.edit':
 		'Save on Settings › Company, Registrations and Features (accounts brief J, CT, G1–G2) and PUT /admin/company, /admin/company/registrations, /admin/company/features. Reading them is setting.index. Held by the Administrator role.',
+	'edocs.generate':
+		'Generate e-invoice and Generate e-way bill on an order or invoice, by hand or through a connected path, and update an e-way bill’s Part B or extend it (accounts brief addendum 2). Held by the Administrator role.',
+	'edocs.cancel':
+		'Cancel an e-invoice (within 24 hours, no active e-way bill) or an e-way bill (within 24 hours). Held by the Administrator role.',
+	'edocs.settings':
+		'Settings › E-invoice and e-way bill: the path per document, enabled-from date, threshold, and the keys of the automatic paths. Held by the Administrator role.',
 	'shipping.destroy': 'Delete an own rule set not used anywhere, or remove an exception (Admin › Shipping).',
 	'shipping.edit': 'Save and make active a rule set, change an exception, save the zone settings (Admin › Shipping).',
 	'tag.create': 'Add-tag button on the Tags page, reached from Products rather than from navigation.',
@@ -427,6 +436,7 @@ export const PermissionResource = z.enum([
 	'currency',
 	'customer',
 	'dashboard',
+	'edocs',
 	'event',
 	'faq',
 	'language',
@@ -491,6 +501,7 @@ export const PermissionAction = z.enum([
 	'draft_home',
 	'edit',
 	'export',
+	'generate',
 	'go_live',
 	'go_live_home',
 	'hold',
@@ -507,6 +518,7 @@ export const PermissionAction = z.enum([
 	'reviews',
 	'revoke',
 	'send',
+	'settings',
 	'settle',
 	'stock',
 	'top_products',

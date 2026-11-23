@@ -702,6 +702,8 @@ export class AdminOrdersService {
 		now = new Date(),
 	): Promise<RaiseEDocumentResult> {
 		const order = await this.get(id);
+		// The portal needs the tax invoice's number: on a packed order it is issued now (D1, EI5B).
+		await this.invoicesSvc?.issueBeforeDispatch(order, actor.id ?? null, now.toISOString());
 		const outcome = kind === 'eInvoice' ? await this.eInvoice.raise(order) : await this.eWayBill.raise(order);
 		if (outcome.kind === 'notConnected') return { outcome: 'notConnected' };
 		if (outcome.kind === 'refused') return { outcome: 'refused', message: outcome.message };
@@ -720,6 +722,7 @@ export class AdminOrdersService {
 			kind,
 			kind === 'eInvoice' ? 'irpDirect' : 'ewbDirect',
 			actor.id ?? 'unknown',
+			(await this.invoicesSvc?.currentFor(id)) ?? null,
 		);
 		return { outcome: 'raised', order: saved };
 	}
@@ -741,7 +744,13 @@ export class AdminOrdersService {
 			'Someone else changed this order first',
 		);
 		const saved = await this.get(id);
-		await this.edocs?.recordForOrder(saved, 'eInvoice', 'manual', actor.id ?? 'unknown');
+		await this.edocs?.recordForOrder(
+			saved,
+			'eInvoice',
+			'manual',
+			actor.id ?? 'unknown',
+			(await this.invoicesSvc?.currentFor(id)) ?? null,
+		);
 		return this.detail(id, now);
 	}
 
@@ -762,7 +771,13 @@ export class AdminOrdersService {
 			'Someone else changed this order first',
 		);
 		const saved = await this.get(id);
-		await this.edocs?.recordForOrder(saved, 'eWayBill', 'manual', actor.id ?? 'unknown');
+		await this.edocs?.recordForOrder(
+			saved,
+			'eWayBill',
+			'manual',
+			actor.id ?? 'unknown',
+			(await this.invoicesSvc?.currentFor(id)) ?? null,
+		);
 		return this.detail(id, now);
 	}
 

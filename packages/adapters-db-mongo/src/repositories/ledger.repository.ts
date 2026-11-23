@@ -377,6 +377,15 @@ export class MongoTaxInvoiceRepository implements TaxInvoiceRepository {
 		return doc ? invoiceOf(doc) : null;
 	}
 
+	async linkShipment(id: string, shipmentId: string, context?: TransactionContext): Promise<void> {
+		const result = await TaxInvoiceModel.updateOne(
+			{ _id: id, shipmentId: null },
+			{ $set: { shipmentId } },
+			{ session: sessionFrom(context) },
+		);
+		if (result.matchedCount !== 1) throw new Error('invoice_already_linked');
+	}
+
 	async list(query: { from: string; to: string; search: string; page: number; pageSize: number }) {
 		const filter: Record<string, unknown> = { date: { $gte: query.from, $lte: query.to } };
 		if (query.search.trim()) {

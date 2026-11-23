@@ -1,12 +1,14 @@
 import { BadRequestException } from '@nestjs/common';
-import { OrderSettings, type EDocCall, type EDocSettings, type EDocument } from '@saha-textile/contracts';
+import { OrderSettings, TaxInvoice, type EDocCall, type EDocSettings, type EDocument } from '@saha-textile/contracts';
 import {
 	EDocUnavailableError,
 	type EDocKeyStore,
 	type EDocListFilter,
 	type EDocRepository,
 	type EDocSecrets,
+	EDocRefusedError,
 	type EInvoiceGateway,
+	type EInvoiceResult,
 	type OrderSettingsRepository,
 	type ShopDetailsRepository,
 } from '@saha-textile/core-domain';
@@ -17,6 +19,57 @@ import { EDocsOrderBridge } from '../src/edocs/edocs-order-bridge';
 import { EDocsService } from '../src/edocs/edocs.service';
 
 const GSTIN = '19DBYPS6736R1ZZ';
+const BARASAT = {
+	id: 'loc_bar',
+	name: 'Barasat warehouse',
+	address: '11/1A K.B. Bose Road',
+	city: 'Barasat',
+	pin: '700124',
+	phone: '',
+};
+const IRN_RESULT: EInvoiceResult = {
+	irn: 'a'.repeat(64),
+	ackNo: '112410123456789',
+	ackDate: '2026-11-23T10:05:00.000Z',
+	signedQr: 'eyJhbGciOiJSUzI1NiJ9.e30.sig',
+	signedInvoice: null,
+	ewb: null,
+};
+const INVOICE = TaxInvoice.parse({
+	id: 'ti_1',
+	number: 'TI/26-27/000001',
+	date: '2026-11-23',
+	gstRegistrationId: 'reg_wb',
+	gstin: GSTIN,
+	locationId: 'loc_bar',
+	orderId: 'ord_1',
+	orderNumber: 'ST-2611-482207',
+	seller: { name: 'K.R. Marketing', gstin: GSTIN, address: 'Barasat', stateCode: '19' },
+	buyer: { name: 'Rang Mahal Boutique LLP', gstin: '27AAKFR1234M1Z2', address: 'Mumbai', stateCode: '27' },
+	placeOfSupply: '27',
+	interState: true,
+	lines: [
+		{
+			lineId: 'a',
+			sku: 'S1',
+			title: 'Saree',
+			hsn: '5007',
+			quantity: 1,
+			unitPriceINR: 21_000,
+			ratePercent: 5,
+			taxableINR: 20_000,
+			igstINR: 1_000,
+			totalINR: 21_000,
+		},
+	],
+	taxableINR: 20_000,
+	cgstINR: 0,
+	sgstINR: 0,
+	igstINR: 1_000,
+	roundOffINR: 0,
+	totalINR: 21_000,
+	createdAt: '2026-11-23T10:00:00.000Z',
+});
 
 class MemoryEDocs implements EDocRepository {
 	settings: EDocSettings | null = null;
@@ -66,7 +119,14 @@ class MemoryKeys implements EDocKeyStore {
 	}
 }
 
-function setup(options: { keysAvailable?: boolean; testFails?: boolean } = {}) {
+function setup(
+	options: {
+		keysAvailable?: boolean;
+		testFails?: boolean;
+		invoices?: TaxInvoice[];
+		generate?: () => Promise<EInvoiceResult>;
+	} = {},
+) {
 	const repo = new MemoryEDocs();
 	const keys = new MemoryKeys(options.keysAvailable ?? true);
 	let orderSettings = OrderSettings.parse({});
@@ -79,11 +139,13 @@ function setup(options: { keysAvailable?: boolean; testFails?: boolean } = {}) {
 		test: async () => {
 			if (options.testFails) throw new EDocUnavailableError('edoc_network');
 		},
-		generate: async () => {
-			throw new Error('not used');
+		generate: async (_gstin, json) => {
+			sent.push(json);
+			if (!options.generate) throw new Error('not used');
+			return options.generate();
 		},
 		cancel: async () => ({ cancelledAt: '' }),
-		byDocument: async () => null,
+		byDocument: async () => (options.generate ? { ...IRN_RESULT, ackNo: 'fetched' } : null),
 		gstinDetails: async () => {
 			throw new Error('not used');
 		},
@@ -93,7 +155,14 @@ function setup(options: { keysAvailable?: boolean; testFails?: boolean } = {}) {
 	};
 	const factory = { build: (): AnyEDocGateway => ({ kind: 'eInvoice', gateway }) } as unknown as EDocGatewayFactory;
 	const service = new EDocsService(repo, keys, shop, orderRepo, factory);
-	return { service, repo, keys, bridge: new EDocsOrderBridge(service), orderSettings: () => orderSettings };
+	const sent: Record<string, unknown>[] = [];
+	const bridge = new EDocsOrderBridge(
+		service,
+		{ listForOrder: async () => options.invoices ?? [] },
+		{ list: async () => [BARASAT] as never },
+		shop,
+	);
+	return { service, repo, keys, bridge, sent, orderSettings: () => orderSettings };
 }
 
 const irisKeys = {
@@ -185,7 +254,7 @@ describe('e-invoice and e-way bill settings (addendum 2)', () => {
 		expect(orderSettings().eWayBillThresholdINR).toBe(100_000);
 	});
 
-	it('the order page’s Raise opens the by-hand popup on the by-hand path and, until D1, on an automatic path too', async () => {
+	it('the order page’s Raise opens the by-hand popup on the by-hand path, and on an automatic path until the order has its tax invoice', async () => {
 		const { service, bridge, repo } = setup();
 		const order = { id: 'ord_1', orderNumber: 'ST-2611-482207', createdAt: '2026-11-22T10:00:00.000Z' } as never;
 		expect(await bridge.raise(order, 'eInvoice')).toEqual({ kind: 'notConnected' });
@@ -246,5 +315,90 @@ describe('e-invoice and e-way bill settings (addendum 2)', () => {
 		);
 		expect(await service.eInvoiceEnabled('2026-11-23')).toBe(false);
 		expect(await service.eInvoiceEnabled('2027-04-01')).toBe(true);
+	});
+
+	async function connectIris(service: EDocsService) {
+		await service.saveKeys(irisKeys, 'usr_1');
+		const tested = await service.test('irpDirect', 'usr_1');
+		await service.saveSettings(
+			{
+				eInvoicePath: 'irpDirect',
+				eWayBillPath: 'manual',
+				eWayBillWithEInvoice: true,
+				eInvoiceEnabledFrom: '2026-04-01',
+				eWayBillThresholdINR: 50_000,
+			},
+			tested.settings!.updatedAt,
+			'usr_1',
+		);
+	}
+	const order = {
+		id: 'ord_1',
+		orderNumber: 'ST-2611-482207',
+		createdAt: '2026-11-22T10:00:00.000Z',
+		addresses: {
+			delivery: { fullName: 'Rang Mahal', line1: 'Linking Road', city: 'Mumbai', postalCode: '400050' },
+		},
+	} as never;
+
+	it('registers the order’s tax invoice when connected: the same number and lines (D1, EI4A)', async () => {
+		const { service, bridge, sent } = setup({ invoices: [INVOICE], generate: async () => IRN_RESULT });
+		await connectIris(service);
+		const outcome = await bridge.raise(order, 'eInvoice');
+		expect(outcome).toEqual({
+			kind: 'raised',
+			record: {
+				irn: IRN_RESULT.irn,
+				ackNo: IRN_RESULT.ackNo,
+				ackDate: IRN_RESULT.ackDate,
+				signedQr: IRN_RESULT.signedQr,
+				source: 'api',
+			},
+		});
+		expect(sent[0]).toMatchObject({ DocDtls: { No: 'TI/26-27/000001', Dt: '23/11/2026' } });
+		// The e-way bill needs Part B from the courier booking: by hand for now.
+		expect(await bridge.raise(order, 'eWayBill')).toEqual({ kind: 'notConnected' });
+	});
+
+	it('fetches the IRN of an invoice the IRP already has, and shows a refusal as it is (AE7)', async () => {
+		const duplicate = setup({
+			invoices: [INVOICE],
+			generate: async () => {
+				throw new EDocRefusedError('2150', 'Duplicate IRN');
+			},
+		});
+		await connectIris(duplicate.service);
+		expect(await duplicate.bridge.raise(order, 'eInvoice')).toMatchObject({
+			kind: 'raised',
+			record: { ackNo: 'fetched' },
+		});
+		const refused = setup({
+			invoices: [INVOICE],
+			generate: async () => {
+				throw new EDocRefusedError('2265', 'Recipient GSTIN is not valid');
+			},
+		});
+		await connectIris(refused.service);
+		expect(await refused.bridge.raise(order, 'eInvoice')).toEqual({
+			kind: 'refused',
+			message: '2265: Recipient GSTIN is not valid',
+		});
+	});
+
+	it('records the e-document against the tax invoice once there is one', async () => {
+		const { service, repo } = setup();
+		const withEwb = {
+			...(order as object),
+			eWayBill: {
+				number: '34101234567890',
+				generatedOn: '2026-11-23T11:03:00.000Z',
+				validUntil: '2026-12-02T18:29:59.000Z',
+			},
+		} as never;
+		await service.recordForOrder(withEwb, 'eWayBill', 'manual', 'usr_1');
+		await service.recordForOrder(withEwb, 'eWayBill', 'manual', 'usr_1', INVOICE);
+		const active = repo.docs.filter((d) => d.status === 'active');
+		expect(active).toHaveLength(1);
+		expect(active[0]).toMatchObject({ documentId: 'ti_1', documentNumber: 'TI/26-27/000001', valueINR: 21_000 });
 	});
 });

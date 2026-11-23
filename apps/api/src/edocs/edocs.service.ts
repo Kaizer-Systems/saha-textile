@@ -10,6 +10,7 @@ import {
 	type EDocSettingsWrite,
 	EDocument,
 	type Order,
+	type TaxInvoice,
 } from '@saha-textile/contracts';
 import {
 	EDocRefusedError,
@@ -249,24 +250,28 @@ export class EDocsService {
 	}
 
 	/**
-	 * Keeps the record of an IRN or e-way bill made for an order, by hand or automatically. Until tax invoices
-	 * are issued at dispatch (accounts brief D1) the order stands in for its invoice.
+	 * Keeps the record of an IRN or e-way bill made for an order, by hand or automatically, against the order's
+	 * tax invoice (accounts brief D1). Without one (the switch off, or an order Generated before it was packed) the
+	 * order stands in for its invoice, as before D1.
 	 */
 	async recordForOrder(
 		order: Order,
 		kind: 'eInvoice' | 'eWayBill',
 		path: EDocument['path'],
 		by: string,
+		invoice: Pick<TaxInvoice, 'id' | 'number' | 'date' | 'totalINR'> | null = null,
 	): Promise<void> {
 		const gstin = await this.gstin();
 		if (!gstin) return;
-		const active = await this.repo.findActive(kind, order.id);
-		if (active)
-			await this.repo.replace({
-				...active,
-				status: 'cancelled',
-				cancellation: { reason: 'replaced', remark: 'Entered again', at: new Date().toISOString(), by },
-			});
+		for (const documentId of new Set([invoice?.id ?? order.id, order.id])) {
+			const active = await this.repo.findActive(kind, documentId);
+			if (active)
+				await this.repo.replace({
+					...active,
+					status: 'cancelled',
+					cancellation: { reason: 'replaced', remark: 'Entered again', at: new Date().toISOString(), by },
+				});
+		}
 		const now = new Date().toISOString();
 		const irn = kind === 'eInvoice' ? order.eInvoice : null;
 		const ewb = kind === 'eWayBill' ? order.eWayBill : null;
@@ -276,13 +281,13 @@ export class EDocsService {
 				kind,
 				gstin,
 				documentType: 'taxInvoice',
-				documentId: order.id,
-				documentNumber: order.orderNumber,
-				documentDate: istDay(order.createdAt ?? now),
+				documentId: invoice?.id ?? order.id,
+				documentNumber: invoice?.number ?? order.orderNumber,
+				documentDate: invoice?.date ?? istDay(order.createdAt ?? now),
 				orderId: order.id,
 				partyName: order.buyer?.name ?? null,
 				partyGstin: order.buyer?.gstin ?? null,
-				valueINR: order.totalINR ?? null,
+				valueINR: invoice?.totalINR ?? order.totalINR ?? null,
 				path,
 				status: 'active',
 				irn: irn?.irn ?? null,
@@ -300,7 +305,7 @@ export class EDocsService {
 			gstin,
 			path,
 			action: path === 'manual' ? 'manualEntry' : 'generate',
-			documentNumber: order.orderNumber,
+			documentNumber: invoice?.number ?? order.orderNumber,
 			ok: true,
 			code: null,
 			message: null,

@@ -32,6 +32,16 @@ export class InvoicesController {
 		return this.invoices.listForOrder(id);
 	}
 
+	@Get(':invoiceId/accounting')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({ operationId: 'orderInvoiceAccounting', summary: "A tax invoice's posted lines and checks (Q5)" })
+	async accounting(@Param('id') id: string, @Param('invoiceId') invoiceId: string) {
+		const invoice = await this.invoices.get(invoiceId);
+		if (invoice.orderId !== id) throw new NotFoundException('invoice_not_found');
+		return this.invoices.accounting(invoiceId);
+	}
+
 	@Get(':invoiceId/pdf')
 	@RequirePermissions('order.index')
 	@ApiOperation({
@@ -76,5 +86,29 @@ export class InvoicesController {
 			.header('Content-Disposition', `inline; filename="${invoice.number.replace(/\//g, '-')} ${copy}.pdf"`)
 			.header('Cache-Control', 'no-store')
 			.send(Buffer.from(pdf));
+	}
+}
+
+/** A tax invoice as a document of the books (Q5): its page under Accounts shows its details, posting and checks. */
+@ApiTags(API_TAGS.orders)
+@Audience('admin')
+@Controller('admin/accounts/invoices')
+export class AccountsInvoicesController {
+	constructor(private readonly invoices: InvoicesService) {}
+
+	@Get(':id')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({ operationId: 'accountsInvoice', summary: 'One tax invoice' })
+	get(@Param('id') id: string) {
+		return this.invoices.get(id);
+	}
+
+	@Get(':id/accounting')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({ operationId: 'accountsInvoiceAccounting', summary: "A tax invoice's posted lines and checks (Q5)" })
+	accounting(@Param('id') id: string) {
+		return this.invoices.accounting(id);
 	}
 }

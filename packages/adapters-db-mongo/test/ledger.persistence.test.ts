@@ -292,5 +292,11 @@ describe.skipIf(!hasMongoEnv())('general ledger persistence (integration, rs0)',
 			(await invoices.list({ from: '2026-11-01', to: '2026-11-30', search: 'rang', page: 1, pageSize: 10 }))
 				.total,
 		).toBe(2);
+		// Issued before dispatch (for its e-way bill), several may wait without a parcel; each is tied to one once.
+		await invoices.insert({ ...invoice, id: 'ti_5', number: 'TI/26-27/000005', shipmentId: null });
+		await invoices.insert({ ...invoice, id: 'ti_6', number: 'TI/26-27/000006', shipmentId: null });
+		await invoices.linkShipment('ti_5', 'shp_5');
+		expect((await invoices.findByShipment('shp_5'))?.id).toBe('ti_5');
+		await expect(invoices.linkShipment('ti_5', 'shp_6')).rejects.toThrow('invoice_already_linked');
 	});
 });

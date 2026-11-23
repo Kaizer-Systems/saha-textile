@@ -1,5 +1,8 @@
+import type { TaxInvoice } from '@saha-textile/contracts';
 import { describe, expect, it } from 'vitest';
 
+import { eInvoiceProblems } from '../src/edocs/edoc-rules';
+import { DELIVERY_SAC, saleFromTaxInvoice } from '../src/invoicing/invoice-edoc';
 import { buildInvoiceLines, gstRateFor, invoicePosting } from '../src/invoicing/tax-invoice-rules';
 
 describe('tax invoices (accounts brief D1, D3; today’s rates until the CA confirms)', () => {
@@ -98,5 +101,57 @@ describe('tax invoices (accounts brief D1, D3; today’s rates until the CA conf
 		expect(debit).toBe(credit);
 		expect(rows[0]).toMatchObject({ systemKey: 'customer_advances', debitPaise: 99_900 });
 		expect(rows.find((r) => r.systemKey === 'cost_of_goods_sold')?.debitPaise).toBe(60_000);
+	});
+});
+
+describe('a tax invoice as an e-invoice (D1 + addendum 2)', () => {
+	const party = (gstin: string | null, stateCode: string) => ({
+		gstin,
+		legalName: 'Party',
+		line1: 'Street',
+		city: 'Town',
+		pin: '700124',
+		stateCode,
+	});
+	it('sends the same lines and totals, delivery as one service line, and passes the IRP checks', () => {
+		const built = buildInvoiceLines(
+			[{ lineId: 'a', sku: 'S1', title: 'Saree', hsn: '5007', quantity: 2, unit: 'PCS', lineTotalINR: 21_000 }],
+			{ interState: true, shippingINR: 210 },
+		);
+		const invoice: TaxInvoice = {
+			id: 'ti_1',
+			number: 'TI/26-27/000001',
+			date: '2026-11-23',
+			gstRegistrationId: 'reg',
+			gstin: '19DBYPS6736R1ZZ',
+			locationId: 'loc',
+			orderId: 'ord',
+			orderNumber: 'ST-1',
+			seller: { name: 'K.R. Marketing', gstin: '19DBYPS6736R1ZZ', address: 'Barasat', stateCode: '19' },
+			buyer: { name: 'Rang Mahal', gstin: '27AAKFR1234M1Z2', address: 'Mumbai', stateCode: '27' },
+			placeOfSupply: '27',
+			interState: true,
+			lines: built.lines,
+			...built.totals,
+			createdAt: '2026-11-23T10:00:00.000Z',
+			shipmentId: 'shp_1',
+			shippingINR: built.totals.shippingINR,
+			ratesPendingCa: true,
+			status: 'issued',
+			cancellation: null,
+			voucherId: null,
+			createdBy: null,
+		};
+		const sale = saleFromTaxInvoice(invoice, {
+			seller: party('19DBYPS6736R1ZZ', '19'),
+			buyer: party('27AAKFR1234M1Z2', '27'),
+		});
+		expect(sale.lines).toHaveLength(2);
+		expect(sale.lines[1]).toMatchObject({ hsn: DELIVERY_SAC, isService: true, gstRatePercent: 5, totalINR: 210 });
+		expect(sale.lines.reduce((s, l) => s + Math.round(l.taxableINR * 100), 0)).toBe(
+			Math.round(invoice.taxableINR * 100),
+		);
+		expect(sale.lines.reduce((s, l) => s + Math.round(l.igstINR * 100), 0)).toBe(Math.round(invoice.igstINR * 100));
+		expect(eInvoiceProblems(sale, { enabledFrom: '2026-04-01', todayIst: '2026-11-23' })).toEqual([]);
 	});
 });

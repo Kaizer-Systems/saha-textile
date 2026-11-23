@@ -54,13 +54,20 @@ const order = (hsn: string | null): Order =>
 	}) as unknown as Order;
 
 const setup = (on: boolean) => {
-	const inserted: unknown[] = [];
+	const inserted: { id: string; shipmentId: string | null; status: string; lines: { lineId: string }[] }[] = [];
 	const posted: { lines: { debitPaise?: number; creditPaise?: number }[] }[] = [];
 	const service = new InvoicesService(
 		{
-			findByShipment: async () => null,
-			listForOrder: async () => [],
-			insert: async (i: unknown) => void inserted.push(i),
+			findByShipment: async (shipmentId: string) => inserted.find((i) => i.shipmentId === shipmentId) ?? null,
+			listForOrder: async () => [...inserted],
+			insert: async (i: never) => void inserted.push(i),
+			get: async (id: string) => inserted.find((i) => i.id === id) ?? null,
+			list: async () => ({ items: [], total: 0 }),
+			linkShipment: async (id: string, shipmentId: string) => {
+				const invoice = inserted.find((i) => i.id === id);
+				if (!invoice || invoice.shipmentId) throw new Error('invoice_already_linked');
+				invoice.shipmentId = shipmentId;
+			},
 		} as never,
 		{
 			getFeatures: async () => ({ on: { tax_invoices: on } }),
@@ -92,7 +99,23 @@ const setup = (on: boolean) => {
 				posted.push(request),
 				{ id: 'jv_1' }
 			),
+			voucher: async () => ({
+				id: 'jv_1',
+				number: 'JV/26-27/000003',
+				totalPaise: 5_650_000,
+				lines: [
+					{ ledgerId: 'l_adv', locationId: 'loc_bar', debitPaise: 3_650_000, creditPaise: 0 },
+					{ ledgerId: 'l_cogs', locationId: 'loc_bar', debitPaise: 2_000_000, creditPaise: 0 },
+				],
+			}),
+			chart: async () => ({
+				ledgers: [
+					{ id: 'l_adv', name: 'Customer advances', systemKey: 'customer_advances' },
+					{ id: 'l_cogs', name: 'Cost of goods sold', systemKey: 'cost_of_goods_sold' },
+				],
+			}),
 		} as never,
+		{ withTransaction: async <T>(work: (context: never) => Promise<T>) => work({} as never) } as never,
 	);
 	return { service, inserted, posted };
 };
@@ -137,5 +160,39 @@ describe('tax invoices at dispatch (accounts brief D1, D3)', () => {
 		await expect(service.issueAtDispatch(dispatch(order(null)), {} as never)).rejects.toThrow(
 			'invoice_problem:hsn_missing:ST-KAT-0901',
 		);
+	});
+
+	it('issues the invoice when a packed order’s e-way bill is generated, and Shipped ties it to the parcel (EI5B)', async () => {
+		const { service, inserted } = setup(true);
+		expect(await service.issueBeforeDispatch({ ...order('5007'), status: 'processing' }, 'adm_owner')).toBeNull();
+		const early = await service.issueBeforeDispatch(order('5007'), 'adm_owner', '2026-11-23T09:00:00.000Z');
+		expect(early).toMatchObject({ shipmentId: null, date: '2026-11-23' });
+		// Pressing Generate again doesn't issue a second invoice.
+		expect((await service.issueBeforeDispatch(order('5007'), 'adm_owner'))?.id).toBe(early?.id);
+		const shipped = await service.issueAtDispatch(dispatch(order('5007')), {} as never);
+		expect(shipped?.id).toBe(early?.id);
+		expect(inserted).toHaveLength(1);
+		expect(inserted[0]?.shipmentId).toBe('shp_1');
+		expect((await service.currentFor('ord_1'))?.id).toBe(early?.id);
+	});
+
+	it('shows the posted lines by name and the checks it passed (Q5)', async () => {
+		const { service } = setup(true);
+		const invoice = await service.issueAtDispatch(dispatch(order('5007')), {} as never);
+		const view = await service.accounting(invoice?.id ?? '');
+		expect(view.lines[0]).toMatchObject({ ledgerName: 'Customer advances', locationName: 'loc_bar' });
+		expect(Object.fromEntries(view.checks.map((c) => [c.key, c.ok]))).toEqual({
+			period_open: true,
+			number_in_series: true,
+			place_of_supply: true,
+			stock_at_cost: true,
+			rates: false,
+			cancel: false,
+		});
+		expect(view.checks.find((c) => c.key === 'place_of_supply')?.params).toEqual({
+			from: 'West Bengal',
+			to: 'Maharashtra',
+			tax: 'IGST',
+		});
 	});
 });

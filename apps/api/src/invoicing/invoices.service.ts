@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { type Order, TaxInvoice } from '@saha-textile/contracts';
+import { type InvoiceCheck, type Order, TaxInvoice, type TaxInvoiceAccounting } from '@saha-textile/contracts';
 import {
 	buildInvoiceLines,
 	type CompanyRepository,
 	defaultStockLocation,
+	gstStateName,
 	invoicePosting,
 	istDay,
 	type LocationRepository,
@@ -13,6 +14,7 @@ import {
 	type ShopDetailsRepository,
 	type TaxInvoiceRepository,
 	type TransactionContext,
+	type TransactionManagerPort,
 } from '@saha-textile/core-domain';
 
 import {
@@ -21,6 +23,7 @@ import {
 	PRODUCT_REPOSITORY,
 	SHOP_DETAILS_REPOSITORY,
 	TAX_INVOICE_REPOSITORY,
+	TRANSACTION_MANAGER,
 } from '../infra/tokens';
 import { LedgerService } from '../ledger/ledger.service';
 import { DocumentNumbersService } from '../orders-setup/document-numbers.service';
@@ -49,6 +52,7 @@ export class InvoicesService {
 		@Inject(PRODUCT_REPOSITORY) private readonly products: Pick<ProductRepository, 'findById'>,
 		private readonly numbers: DocumentNumbersService,
 		private readonly ledger: LedgerService,
+		@Inject(TRANSACTION_MANAGER) private readonly tx: TransactionManagerPort,
 	) {}
 
 	async enabled(): Promise<boolean> {
@@ -65,18 +69,130 @@ export class InvoicesService {
 		return invoice;
 	}
 
-	/** The parcel's invoice, in the Shipped transaction; null while the switch is off. A repeat returns the first. */
+	/** Q5, the Accounting tab: the invoice's posted lines by name, and the checks it passed when issued. */
+	async accounting(id: string): Promise<TaxInvoiceAccounting> {
+		const invoice = await this.get(id);
+		const [voucher, chart, allLocations, earlier] = await Promise.all([
+			invoice.voucherId ? this.ledger.voucher(invoice.voucherId).catch(() => null) : null,
+			this.ledger.chart(),
+			this.locations.list(),
+			this.previousInSeries(invoice),
+		]);
+		const ledgerOf = (ledgerId: string) => chart.ledgers.find((l) => l.id === ledgerId);
+		const lines = (voucher?.lines ?? []).map((line) => ({
+			ledgerId: line.ledgerId,
+			ledgerName: ledgerOf(line.ledgerId)?.name ?? line.ledgerId,
+			locationName: allLocations.find((l) => l.id === line.locationId)?.name ?? line.locationId,
+			debitPaise: line.debitPaise,
+			creditPaise: line.creditPaise,
+		}));
+		const costPaise = (voucher?.lines ?? [])
+			.filter((line) => ledgerOf(line.ledgerId)?.systemKey === 'cost_of_goods_sold')
+			.reduce((sum, line) => sum + line.debitPaise, 0);
+		const state = (code: string) => (code === '96' ? 'Outside India' : (gstStateName(code) ?? code));
+		const checks: InvoiceCheck[] = [
+			{ key: 'period_open', ok: !!voucher, params: { month: invoice.date.slice(0, 7) } },
+			{ key: 'number_in_series', ok: earlier !== false, params: earlier ? { previous: earlier } : {} },
+			{
+				key: 'place_of_supply',
+				ok: true,
+				params: {
+					from: state(invoice.seller.stateCode),
+					to: state(invoice.placeOfSupply),
+					tax: invoice.interState ? 'IGST' : 'CGST + SGST',
+				},
+			},
+			{ key: 'stock_at_cost', ok: costPaise > 0, params: { cost: (costPaise / 100).toFixed(2) } },
+			{ key: 'rates', ok: !invoice.ratesPendingCa, params: {} },
+			{ key: 'cancel', ok: false, params: { shipped: invoice.shipmentId ? 'yes' : 'no' } },
+		];
+		return {
+			voucherId: voucher?.id ?? null,
+			voucherNumber: voucher?.number ?? null,
+			lines,
+			totalPaise: voucher?.totalPaise ?? 0,
+			checks,
+		};
+	}
+
+	/**
+	 * The number before this one in its GSTIN's series: its text when it exists, '' for the first of a series,
+	 * false when it is missing (a gap). Numbers end in their counter ("TI/26-27/000145").
+	 */
+	private async previousInSeries(invoice: TaxInvoice): Promise<string | false> {
+		const match = /^(.*?)(\d+)$/.exec(invoice.number);
+		if (!match) return '';
+		const [, prefix = '', digits = ''] = match;
+		const n = Number(digits);
+		if (n <= 1) return '';
+		const previous = `${prefix}${String(n - 1).padStart(digits.length, '0')}`;
+		const found = await this.invoices.list({
+			from: '2000-01-01',
+			to: '2999-12-31',
+			search: previous,
+			page: 1,
+			pageSize: 5,
+		});
+		return found.items.some((i) => i.number === previous && i.gstin === invoice.gstin) ? previous : false;
+	}
+
+	/**
+	 * The parcel's invoice, in the Shipped transaction; null while the switch is off. A repeat returns the first.
+	 * An invoice issued before dispatch for the order's e-way bill or e-invoice is tied to the parcel instead of a
+	 * second one, and a line is never invoiced twice.
+	 */
 	async issueAtDispatch(input: DispatchInput, context: TransactionContext): Promise<TaxInvoice | null> {
 		if (!(await this.enabled())) return null;
 		const existing = await this.invoices.findByShipment(input.shipmentId, context);
 		if (existing) return existing;
-		const { order } = input;
+		const issued = (await this.invoices.listForOrder(input.order.id)).filter((i) => i.status === 'issued');
+		const pending = issued.find((i) => !i.shipmentId) ?? null;
+		if (pending) await this.invoices.linkShipment(pending.id, input.shipmentId, context);
+		const invoiced = new Set(issued.flatMap((i) => i.lines.map((l) => l.lineId)));
+		const lineIds = input.lineIds.filter((lineId) => !invoiced.has(lineId));
+		if (!lineIds.length) return pending;
+		return this.issue(input.order, lineIds, pending ? null : input.shipmentId, input.actorId, input.at, context);
+	}
+
+	/**
+	 * Generate e-way bill or e-invoice on a packed order (EI5B): the goods are about to leave, and the portal needs
+	 * the tax invoice's number, so the invoice is issued now and Shipped ties it to the parcel. Null while the
+	 * switch is off or the order isn't packed yet; an invoice already waiting is returned as it is.
+	 */
+	async issueBeforeDispatch(order: Order, actorId: string | null, at = new Date().toISOString()) {
+		if (!(await this.enabled()) || order.status !== 'packed') return null;
+		const issued = (await this.invoices.listForOrder(order.id)).filter((i) => i.status === 'issued');
+		const waiting = issued.find((i) => !i.shipmentId);
+		if (waiting) return waiting;
+		const invoiced = new Set(issued.flatMap((i) => i.lines.map((l) => l.lineId)));
+		const lineIds = order.lines.flatMap((line) =>
+			line.lineId && line.role !== 'bundle' && !invoiced.has(line.lineId) ? [line.lineId] : [],
+		);
+		if (!lineIds.length) return null;
+		return this.tx.withTransaction((context) => this.issue(order, lineIds, null, actorId, at, context));
+	}
+
+	/** The order's invoice waiting for its parcel or, failing that, its latest one (e-documents cite it). */
+	async currentFor(orderId: string): Promise<TaxInvoice | null> {
+		const issued = (await this.invoices.listForOrder(orderId)).filter((i) => i.status === 'issued');
+		return issued.find((i) => !i.shipmentId) ?? issued.at(-1) ?? null;
+	}
+
+	private async issue(
+		order: Order,
+		lineIds: readonly string[],
+		shipmentId: string | null,
+		actorId: string | null,
+		at: string,
+		context: TransactionContext,
+	): Promise<TaxInvoice> {
+		const input = { order, shipmentId, lineIds, actorId, at };
 		const shipped = order.lines.filter(
 			(line) => line.lineId && input.lineIds.includes(line.lineId) && line.role !== 'bundle',
 		);
 		const [allLocations, earlier, shop] = await Promise.all([
 			this.locations.list(),
-			this.invoices.listForOrder(order.id),
+			this.invoices.listForOrder(order.id).then((all) => all.filter((i) => i.status === 'issued')),
 			this.shop.get(),
 		]);
 		const locationId = order.shipsFromLocationId ?? defaultStockLocation(allLocations);

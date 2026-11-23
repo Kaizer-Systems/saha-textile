@@ -9,6 +9,8 @@ export interface TaxInvoiceRepository {
 	get(id: string): Promise<TaxInvoice | null>;
 	listForOrder(orderId: string): Promise<TaxInvoice[]>;
 	findByShipment(shipmentId: string, context?: TransactionContext): Promise<TaxInvoice | null>;
+	/** Ties an invoice issued before dispatch (for its e-way bill or e-invoice) to the parcel that carried it. */
+	linkShipment(id: string, shipmentId: string, context?: TransactionContext): Promise<void>;
 	list(query: { from: string; to: string; search: string; page: number; pageSize: number }): Promise<{
 		items: TaxInvoice[];
 		total: number;

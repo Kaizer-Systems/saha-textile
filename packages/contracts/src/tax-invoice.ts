@@ -84,3 +84,41 @@ export const INVOICE_COPY_LABELS: Readonly<Record<InvoiceCopy, string>> = {
 
 export const TaxInvoiceCancel = z.object({ reason: z.string().trim().min(5).max(300) });
 export type TaxInvoiceCancel = z.infer<typeof TaxInvoiceCancel>;
+
+/**
+ * Q5's "Checks it passed": what was true when the invoice was issued, each with the facts it shows. `cancel` is
+ * never open here: an issued invoice is corrected by a credit note (D2; CA question B6.4 decides the rest).
+ */
+export const InvoiceCheckKey = z.enum([
+	'period_open',
+	'number_in_series',
+	'place_of_supply',
+	'stock_at_cost',
+	'rates',
+	'cancel',
+]);
+export type InvoiceCheckKey = z.infer<typeof InvoiceCheckKey>;
+export const InvoiceCheck = z.object({
+	key: InvoiceCheckKey,
+	ok: z.boolean(),
+	params: z.record(z.string(), z.string()).default({}),
+});
+export type InvoiceCheck = z.infer<typeof InvoiceCheck>;
+
+/** Q5, the Accounting tab: the invoice's posted lines with their names, and its checks. */
+export const TaxInvoiceAccounting = z.object({
+	voucherId: Id.nullable(),
+	voucherNumber: z.string().nullable(),
+	lines: z.array(
+		z.object({
+			ledgerId: Id,
+			ledgerName: z.string(),
+			locationName: z.string(),
+			debitPaise: z.number().int().nonnegative(),
+			creditPaise: z.number().int().nonnegative(),
+		}),
+	),
+	totalPaise: z.number().int().nonnegative(),
+	checks: z.array(InvoiceCheck),
+});
+export type TaxInvoiceAccounting = z.infer<typeof TaxInvoiceAccounting>;

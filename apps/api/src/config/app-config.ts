@@ -415,6 +415,21 @@ const ConfigSchema = z.object({
 				});
 			}
 		}),
+	/**
+	 * E-invoice and e-way bill (accounts brief addendum 2). `keysKey` (`EDOC_KEYS_KEY`, 32 bytes base64) seals the
+	 * automatic paths' keys in `edocKeys` (AES-256-GCM). Optional: without it the by-hand path still works and the
+	 * settings page says automatic paths need the server key first.
+	 */
+	edocs: z
+		.object({
+			keysKey: z
+				.string()
+				.optional()
+				.refine((value) => value === undefined || Buffer.from(value, 'base64').length === 32, {
+					message: 'EDOC_KEYS_KEY must be 32 bytes, base64',
+				}),
+		})
+		.default({}),
 	media: z
 		.object({
 			workerConcurrency: z.coerce.number().int().min(1).max(8).default(2),
@@ -593,6 +608,7 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 			adminUrl: env.ADMIN_APP_URL || undefined,
 			domain: env.MAILBOX_DOMAIN || undefined,
 		},
+		edocs: { keysKey: env.EDOC_KEYS_KEY || undefined },
 		media: {
 			workerConcurrency: env.MEDIA_WORKER_CONCURRENCY || undefined,
 			gcLive: env.MEDIA_GC_LIVE || undefined,

@@ -1,6 +1,8 @@
 import { ImageDecodeError } from '@saha-textile/core-domain';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { decodeExtra } from '../src/extra-decoders';
+
 /**
  * The PSD decoder's guards for what ag-psd can hand back but cannot be made to write: a file with no
  * flattened picture, pixels in a form other than 8, 16 or 32 bits, and a request to draw on a canvas.
@@ -17,8 +19,6 @@ vi.mock('ag-psd', () => ({
 	},
 	readPsd: () => ({ imageData: psd.imageData }),
 }));
-
-const { decodeExtra } = await import('../src/extra-decoders');
 
 describe('the PSD decoder’s guards', () => {
 	beforeEach(() => {

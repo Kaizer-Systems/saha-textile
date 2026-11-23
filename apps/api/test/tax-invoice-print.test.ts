@@ -103,9 +103,9 @@ describe('tax invoice print (accounts brief D1, AE5)', () => {
 		});
 		const data = taxInvoiceData(home, { name: 'K.R. Marketing', lines: [] }, 'triplicate', null);
 		expect(data.taxHeading).toBe('CGST + SGST');
-		expect(data.rows[0]?.cells['qty']).toBe('2.5 m');
+		expect(data.rows?.[0]?.cells['qty']).toBe('2.5 m');
 		expect(data.hsnSummary).toHaveLength(1);
-		expect(data.totals?.totals.map((t) => t.label)).toEqual([
+		expect(data.totals?.totals?.map((t) => t.label)).toEqual([
 			'Taxable value',
 			'CGST',
 			'SGST',

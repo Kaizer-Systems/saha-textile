@@ -21,6 +21,7 @@ const BARASAT = {
 };
 
 type Line = Partial<Order['lines'][number]> & Record<string, unknown>;
+type Title = Order['lines'][number]['title'];
 const saree = (patch: Line = {}): Line => ({
 	lineId: 'a',
 	productId: 'p1',
@@ -29,7 +30,8 @@ const saree = (patch: Line = {}): Line => ({
 	quantity: 1,
 	lineTotalINR: 10_500,
 	unitCostINR: 6_000,
-	tax: { hsn: '5007' },
+	// Invoices take only the HSN code from a line; the rate and amounts are worked out again.
+	tax: { hsn: '5007', ratePercent: null, taxableINR: null, taxINR: null },
 	...patch,
 });
 const orderOf = (patch: Record<string, unknown> = {}): Order =>
@@ -182,8 +184,9 @@ describe('issuing a tax invoice: every fallback (D1)', () => {
 		const invoice = await ship(
 			orderOf({
 				lines: [
-					saree({ title: { bn: 'কাতান শাড়ি' }, unitCostINR: undefined }),
-					saree({ lineId: 'b', title: {}, sku: 'ST-B' }),
+					// Titles without English on purpose, as an older row may hold.
+					saree({ title: { bn: 'কাতান শাড়ি' } as unknown as Title, unitCostINR: undefined }),
+					saree({ lineId: 'b', title: {} as unknown as Title, sku: 'ST-B' }),
 				],
 			}),
 			'shp_1',

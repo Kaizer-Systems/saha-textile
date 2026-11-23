@@ -79,7 +79,14 @@ export interface VoucherCheckContext {
 }
 
 export function voucherProblems(
-	voucher: { kind: VoucherKind; date: string; reverseOn?: string | null; lines: readonly JournalLine[] },
+	voucher: {
+		kind: VoucherKind;
+		date: string;
+		reverseOn?: string | null;
+		lines: readonly JournalLine[];
+		/** Undoes another voucher: its sides are swapped on purpose, so the cash-side rules don't apply. */
+		reversal?: boolean;
+	},
 	context: VoucherCheckContext,
 ): VoucherProblem[] {
 	const problems = new Set<VoucherProblem>();
@@ -104,11 +111,19 @@ export function voucherProblems(
 		const ledger = context.ledgers.get(line.ledgerId);
 		return ledger ? ledgerClass(ledger, context.groups) : 'other';
 	};
-	if (voucher.kind === 'contra' && voucher.lines.some((line) => classOf(line) === 'other'))
+	if (!voucher.reversal && voucher.kind === 'contra' && voucher.lines.some((line) => classOf(line) === 'other'))
 		problems.add('contra_needs_cash_or_bank');
-	if (voucher.kind === 'receipt' && !voucher.lines.some((line) => line.debitPaise > 0 && classOf(line) !== 'other'))
+	if (
+		!voucher.reversal &&
+		voucher.kind === 'receipt' &&
+		!voucher.lines.some((line) => line.debitPaise > 0 && classOf(line) !== 'other')
+	)
 		problems.add('receipt_needs_cash_or_bank_debit');
-	if (voucher.kind === 'payment' && !voucher.lines.some((line) => line.creditPaise > 0 && classOf(line) !== 'other'))
+	if (
+		!voucher.reversal &&
+		voucher.kind === 'payment' &&
+		!voucher.lines.some((line) => line.creditPaise > 0 && classOf(line) !== 'other')
+	)
 		problems.add('payment_needs_cash_or_bank_credit');
 	if (voucher.reverseOn && voucher.reverseOn <= voucher.date) problems.add('reverse_on_before_date');
 	const state = periodStateOf(

@@ -124,6 +124,10 @@ export const COMPANY_REPOSITORY = Symbol('CompanyRepository');
 export const EDOC_REPOSITORY = Symbol('EDocRepository');
 export const EDOC_KEY_STORE = Symbol('EDocKeyStore');
 export const LOCATION_REPOSITORY = Symbol('LocationRepository');
+/** The general ledger (accounts brief Q, T, D10). */
+export const GENERAL_LEDGER_REPOSITORY = Symbol('GeneralLedgerRepository');
+export const PERIOD_LOCK_REPOSITORY = Symbol('PeriodLockRepository');
+export const DOCUMENT_LOCK_REPOSITORY = Symbol('DocumentLockRepository');
 export const STOCK_MOVEMENT = Symbol('StockMovementPort');
 export const STOCK_READ_REPOSITORY = Symbol('StockReadRepository');
 export const INVENTORY_COST_LAYER_REPOSITORY = Symbol('InventoryCostLayerRepository');

@@ -231,3 +231,45 @@ export const DocumentLock = z.object({
 	lastActiveAt: IsoDateTime,
 });
 export type DocumentLock = z.infer<typeof DocumentLock>;
+
+/** Accounts › Vouchers list (A: period presets, kinds, search). */
+export const VoucherListQuery = z.object({
+	from: IsoDate,
+	to: IsoDate,
+	kinds: z
+		.union([VoucherKind, z.array(VoucherKind)])
+		.transform((value) => (Array.isArray(value) ? value : [value]))
+		.default([]),
+	search: z.string().trim().max(80).default(''),
+	page: z.coerce.number().int().min(1).default(1),
+	pageSize: z.coerce.number().int().min(1).max(200).default(25),
+});
+export type VoucherListQuery = z.infer<typeof VoucherListQuery>;
+
+export const VoucherPage = z.object({
+	items: z.array(JournalVoucher),
+	total: z.number().int().nonnegative(),
+	page: z.number().int(),
+	pageSize: z.number().int(),
+});
+export type VoucherPage = z.infer<typeof VoucherPage>;
+
+/** Q2's query string: one or several locations, or none for all the person may see. */
+export const AccountStatementSearch = z.object({
+	from: IsoDate,
+	to: IsoDate,
+	locationIds: z
+		.union([Id, z.array(Id)])
+		.transform((value) => (Array.isArray(value) ? value : [value]))
+		.default([]),
+});
+
+export const PeriodGrid = z.object({ months: z.array(YearMonth), locks: z.array(PeriodLock) });
+export type PeriodGrid = z.infer<typeof PeriodGrid>;
+
+/** The document a lock is about (D10). */
+export const DocumentLockTarget = z.object({
+	documentType: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{1,59}$/),
+	documentId: Id,
+});
+export type DocumentLockTarget = z.infer<typeof DocumentLockTarget>;

@@ -173,6 +173,13 @@ describe('general ledger rules (accounts brief Q, T)', () => {
 			voucherProblems({ kind: 'journal', date: '2026-11-23', reverseOn: '2026-11-23', lines }, context()),
 		).toContain('reverse_on_before_date');
 		expect(reversalLines({ lines })).toEqual([line('rent', 0, 100), line('cash', 100, 0)]);
+		// A payment's reversal puts the cash on the debit side on purpose.
+		expect(
+			voucherProblems(
+				{ kind: 'payment', date: '2026-11-24', lines: reversalLines({ lines }), reversal: true },
+				context(),
+			),
+		).toEqual([]);
 	});
 
 	it('runs a ledger statement from its opening balance', () => {

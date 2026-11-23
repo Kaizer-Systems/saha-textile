@@ -1,3 +1,4 @@
+import { trace } from '@opentelemetry/api';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { requestLogOptions } from '../src/bootstrap';
@@ -140,6 +141,16 @@ describe('request context', () => {
 		});
 		expect(seen).toBe('req-77');
 		expect(currentRequestId()).toBeUndefined();
+	});
+
+	it("puts the request id on the request's trace when tracing is on", () => {
+		const setAttribute = vi.fn();
+		const spy = vi.spyOn(trace, 'getActiveSpan').mockReturnValue({ setAttribute } as never);
+		let hook: ((request: { id: string }, reply: unknown, done: () => void) => void) | undefined;
+		attachRequestContext({ addHook: ((_name: string, fn: typeof hook) => (hook = fn)) as never });
+		hook?.({ id: 'req-88' }, {}, () => undefined);
+		expect(setAttribute).toHaveBeenCalledWith('saha_textile.request_id', 'req-88');
+		spy.mockRestore();
 	});
 });
 

@@ -1,3 +1,4 @@
+import { trace } from '@opentelemetry/api';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 import type { FastifyInstance, FastifyRequest } from 'fastify';
@@ -59,6 +60,8 @@ export function runWithRequestId<T>(requestId: string, work: () => T): T {
  */
 export function attachRequestContext(instance: Pick<FastifyInstance, 'addHook'>): void {
 	instance.addHook('onRequest', (request, _reply, done) => {
+		// The same id on the request's trace (when tracing is on), so a waterfall leads to its log lines.
+		trace.getActiveSpan()?.setAttribute('saha_textile.request_id', request.id);
 		requestContext.run({ requestId: request.id }, done);
 	});
 }

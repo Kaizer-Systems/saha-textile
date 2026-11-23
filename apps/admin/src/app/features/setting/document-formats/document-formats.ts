@@ -21,7 +21,12 @@ import type { DocumentFormat, DocumentKind } from '@saha-textile/contracts';
 export const DOCUMENT_FORMATS_QUERY_KEY = ['document-formats'] as const;
 
 /** A note under the page title (F02) or under one document's table (F03). */
-type Note = { kind: 'success' | 'warning'; doc: DocumentKind; key: string; params: Record<string, string> };
+interface Note {
+	kind: 'success' | 'warning';
+	doc: DocumentKind;
+	key: string;
+	params: Record<string, string>;
+}
 
 /**
  * Settings › Document formats (bundle builder brief F01–F04, approved 2026-11-22): every document in its own table,

@@ -1,4 +1,3 @@
-import { AsyncPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 
@@ -29,7 +28,6 @@ import { Search } from './widgets/search/search';
 		Mode,
 		Profile,
 		TranslocoModule,
-		AsyncPipe,
 	],
 })
 export class Header {

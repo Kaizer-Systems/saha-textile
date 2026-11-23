@@ -324,7 +324,7 @@
 											<a [routerLink]="['/blog/', blog?.slug]">
 												<img
 													[src]="blog?.blog_thumbnail?.original_url
-                                                ? blog?.blog_thumbnail?.original_url
+                                                ? blog?.blog_thumbnail.original_url
                                                 : 'assets/images/blog.png'"
 													[alt]="blog.title"
 												/>

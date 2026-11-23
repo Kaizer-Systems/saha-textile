@@ -2,7 +2,7 @@
 	[gridClass]="'col-sm-12'"
 	[title]="'shipping'"
 >
-	@if (form(); as current) { @let data = query.data();
+	@if (form(); as current) {
 	<div class="row g-3 mb-4">
 		@for (zone of zones; track zone) { @let ruleSet = ruleSetOf(zone);
 		<div class="col-lg-6">

@@ -18,7 +18,7 @@
 				@for (refund of (refund$ | async)?.data ; track refund ; let i = $index) {
 				<tr>
 					<td>{{ i + 1 }}</td>
-					<td><span class="fw-bolder">#{{ refund?.order?.order_number }}</span></td>
+					<td><span class="fw-bolder">#{{ refund?.order.order_number }}</span></td>
 					<td>
 						<div class="status-{{refund.status}}"><span>{{ refund.status | titleCase }}</span></div>
 					</td>

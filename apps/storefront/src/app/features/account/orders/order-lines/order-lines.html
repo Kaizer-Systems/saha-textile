@@ -49,7 +49,7 @@
 						class="ri-price-tag-3-line"
 						aria-hidden="true"
 					></i>
-					{{ 'my_order_saved_pill' | transloco: { amount: money(line.set?.saved ?? 0, o.currency) } }}
+					{{ 'my_order_saved_pill' | transloco: { amount: money(line.set.saved, o.currency) } }}
 				</span>
 				}
 			</div>

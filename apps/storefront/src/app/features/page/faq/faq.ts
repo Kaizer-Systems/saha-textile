@@ -1,4 +1,3 @@
-import { AsyncPipe } from '@angular/common';
 import { Component, computed, effect, inject } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 
@@ -18,7 +17,7 @@ import { SkeletonPage } from '../skeleton-page/skeleton-page';
 	selector: 'app-faq',
 	templateUrl: './faq.html',
 	styleUrls: ['./faq.scss'],
-	imports: [Breadcrumb, SkeletonPage, FaqAccordion, AsyncPipe, TranslocoModule],
+	imports: [Breadcrumb, SkeletonPage, FaqAccordion, TranslocoModule],
 })
 export class Faq {
 	private seo = inject(LocaleSeo);

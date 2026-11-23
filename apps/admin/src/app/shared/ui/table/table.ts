@@ -1,4 +1,4 @@
-import { DatePipe, AsyncPipe, isPlatformBrowser } from '@angular/common';
+import { DatePipe, isPlatformBrowser } from '@angular/common';
 import {
 	Component,
 	DOCUMENT,
@@ -75,7 +75,6 @@ const STORE_PREFIX = 'saha-textile:table-picks:';
 		DatePipe,
 		TranslocoModule,
 		CurrencySymbolPipe,
-		AsyncPipe,
 		DatePipe,
 	],
 })

@@ -1,4 +1,4 @@
-import { isPlatformBrowser, NgTemplateOutlet, AsyncPipe } from '@angular/common';
+import { isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, input, PLATFORM_ID } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
@@ -17,7 +17,7 @@ import { HasPermissionDirective } from '@shared/directives/has-permission.direct
 	selector: 'app-sidebar',
 	templateUrl: './sidebar.html',
 	styleUrls: ['./sidebar.scss'],
-	imports: [RouterModule, NgTemplateOutlet, HasPermissionDirective, TranslocoModule, AsyncPipe, NgTemplateOutlet],
+	imports: [RouterModule, NgTemplateOutlet, HasPermissionDirective, TranslocoModule],
 })
 export class Sidebar {
 	navServices = inject(NavService);

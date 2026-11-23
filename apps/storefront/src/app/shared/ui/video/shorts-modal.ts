@@ -84,7 +84,7 @@ export class ShortsModal {
 	readonly template = viewChild<TemplateRef<unknown>>('shortsModal');
 	readonly list = signal<IVideo[]>([]);
 	readonly index = signal(0);
-	readonly current = computed(() => this.list()[this.index()] ?? null);
+	readonly current = computed<IVideo | null>(() => this.list()[this.index()] ?? null);
 
 	open(list: IVideo[], start: IVideo): void {
 		this.list.set(list);

@@ -254,8 +254,9 @@ expect 'only the edge publishes a port' "$PUBLISHED" ''
 # Every secret file of the database, Redis and search comes from the server's own folder, never from a
 # release folder that a later cleanup deletes (they could not start again after a reboot).
 # shellcheck disable=SC2046
-DATA_MOUNTS="$(docker inspect --format '{{range .Mounts}}{{.Destination}} {{.Source}}{{"\n"}}{{end}}' \
-	$(in_release "$FIRST" ps -q mongo redis meilisearch) | awk '$1 ~ "^/run/secrets/" { print $2 }')"
+# Split on a tab: a checkout path may hold spaces.
+DATA_MOUNTS="$(docker inspect --format '{{range .Mounts}}{{.Destination}}{{"\t"}}{{.Source}}{{"\n"}}{{end}}' \
+	$(in_release "$FIRST" ps -q mongo redis meilisearch) | awk -F '\t' '$1 ~ "^/run/secrets/" { print $2 }')"
 expect 'the data services read six secret files' "$(printf '%s\n' "$DATA_MOUNTS" | grep -c .)" 6
 expect "none of them from a release folder" "$(printf '%s\n' "$DATA_MOUNTS" | grep -v -c -F "$SAHA_TEXTILE_ROOT/data-secrets/" || true)" 0
 # Saved first: under pipefail, `grep -q` closing the pipe early would fail the logs command.

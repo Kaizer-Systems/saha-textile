@@ -60,9 +60,11 @@ project-context/   nextjs-context/ (superseded — ignore)
   measured workspace ships with tests that cover it fully: statements, branches, functions and lines. Before each
   commit, run `pnpm coverage -- <workspace>` for every workspace you touched; none of the files you changed may
   appear in its list of files with missed lines. Older files may still be listed while the backlog is worked off,
-  but never leave one of yours there. Never lower the gate, exclude files, or add `istanbul`/`v8`/`c8 ignore`
-  comments to get there: a branch that can never run is restructured, not hidden. The 100% gate in CI
-  (`pnpm coverage`, job **Tests at 100% coverage**) stays exactly as it is.
+  but never leave one of yours there. Never exclude files or add `istanbul`/`v8`/`c8 ignore` comments to get
+  there: a branch that can never run is restructured, not hidden. CI (`pnpm coverage`, job **Tests at 100%
+  coverage**) fails any workspace below `COVERAGE_FLOOR` in `scripts/coverage.mjs`, or with failing tests. The
+  floor is **50 for now** (owner, 24 Nov, so staging can be deployed while the backlog is tested) and goes back
+  to 100 when the backlog is done; only the owner changes it. This rule for your own files stays at 100%.
 - **No secrets in code, logs, or the browser bundle.** Secrets live in server-side runtime env only; the Angular apps get non-secret config at runtime (not build-time inlining).
 - **No `mock` in shipping names (owner lock 2026-08-16).** No class, service, function, variable, file, route or CSS class that ships may contain `mock`, `fake`, `dummy` or `stub`. Those words belong only inside `*.test.ts` / `*.spec.ts` and test helpers, where something is genuinely being mocked. Everything written here goes to production; a name that is only defensible because the code is temporary is an argument for **deleting the code**, not labelling it. Name the thing for what it IS — an SSR interceptor returning an empty 200 is `emptyResponse`, not `mockResponse` — and when the honest name would need "mock", delete instead of renaming. Vendor demo JSON under `public/assets/data/` is data, not a name, and is out of scope.
 - **Brand naming law (owner lock 2026-07-24): never bare `saha`.** Every identifier — containers, volumes, DB names, env values, service names, paths, mock-data strings — and all prose uses the full brand: `saha-textile` / `saha_textile` / "Saha Textile". Enforced by `scripts/check-naming.sh` in `pnpm lint`. Exceptions: geography data (Sahara/Saharsa/the town "Saha"), the 6-char TRAI DLT sender `SAHATX`, and compact `st_*` cookie names. See owner-decisions-log §2026-07-24. <!-- naming-law:allow -->

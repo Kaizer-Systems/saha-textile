@@ -108,6 +108,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 
 ## Meta / process
 
+- 2026-11-24 — [DONE] **CI coverage floor 50% for now.** Owner: "temporarily just drop it to 50% ... later ... put it back to 100 again". `COVERAGE_FLOOR` in `scripts/coverage.mjs` is the one number; the job still runs and fails below it or on failing tests; every file below 100% is still listed. The per-change 100% rule (AGENTS.md §5) is unchanged.
 - 2026-11-23 — [DONE] **Rule: every change keeps its own code at 100% coverage.** Owner: "Yes, add the rule". AGENTS.md §5 and the owner log: before each commit, `pnpm coverage -- <workspace>` for every workspace touched, and none of the changed files may be listed with missed lines; no lowered gate, excluded files or ignore comments. The CI gate stays at 100%; the backlog (about 25,900 statements and 22,000 branches on 23 Nov) is worked off smallest workspace first.
 - 2026-07-25 — [DONE] **Angular-context KB consolidation.** Reduced the live
   folder from 34 Markdown files to 10 maintained sources. Centralized all

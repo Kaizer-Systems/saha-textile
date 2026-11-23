@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 /**
- * Test coverage of the application code, held at 100%.
+ * Test coverage of the application code. Every workspace must reach COVERAGE_FLOOR on statements,
+ * branches, functions and lines, and its tests must pass. The goal is 100; the floor is lower for now
+ * (see COVERAGE_FLOOR). Every file below 100% is listed either way, so a chat can check the files it
+ * changed (AGENTS.md §5: every change keeps its own code at 100%).
  *
  *   pnpm coverage                  every workspace
  *   pnpm coverage -- api contracts just those
@@ -14,7 +17,7 @@
  * The Mongo adapter suite needs the replica set: `pnpm mongo:up`. It runs on `saha_textile_it`.
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -22,6 +25,12 @@ import { localMongoTarget, testDatabaseUri } from './secrets/test-login.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const METRICS = ['statements', 'branches', 'functions', 'lines'];
+/**
+ * The share (in %) of each metric every workspace must reach. The goal is 100. Lowered to 50 on 24 Nov 2026
+ * (owner: "temporarily just drop it to 50% ... later when we have completed all of the test cases ... we'll
+ * just put it back to 100 again"), so the staging deployment can go ahead while the backlog is tested.
+ */
+const COVERAGE_FLOOR = 50;
 const DENOMINATOR = 'src/zz-denominator.spec.ts';
 
 const WORKSPACES = {
@@ -133,15 +142,13 @@ function measure(name, { dir, angular, mongo, generated }) {
 	const detail = existsSync(summary) ? JSON.parse(readFileSync(summary, 'utf8')) : null;
 	const total = detail?.total;
 	const percents = METRICS.map((metric) => total?.[metric]?.pct ?? 0);
-	const ok =
-		run.status === 0 &&
-		dropped === 0 &&
-		total?.statements?.total > 0 &&
-		METRICS.every((metric) => total[metric]?.covered === total[metric]?.total && total[metric]?.pct === 100);
-	console.log(
-		`${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(30)} ${METRICS.map((metric, index) => `${metric[0]} ${percents[index]}%`).join('  ')}  (${total?.statements?.total ?? 0} statements)`,
-	);
-	if (!ok) {
+	// Tests passed, nothing was dropped from the count and something was measured.
+	const complete = run.status === 0 && dropped === 0 && total?.statements?.total > 0;
+	const ok = complete && percents.every((percent) => percent >= COVERAGE_FLOOR);
+	const full = complete && METRICS.every((metric) => total[metric]?.covered === total[metric]?.total);
+	const line = `${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(30)} ${METRICS.map((metric, index) => `${metric[0]} ${percents[index]}%`).join('  ')}  (${total?.statements?.total ?? 0} statements)`;
+	console.log(line);
+	if (!full) {
 		if (run.status !== 0)
 			console.log(
 				output
@@ -165,7 +172,7 @@ function measure(name, { dir, angular, mongo, generated }) {
 			}
 		}
 	}
-	return ok;
+	return { ok, full, line };
 }
 
 /** Where a file lost its statements and branches, so a CI failure names the line. */
@@ -187,7 +194,19 @@ if (unknown.length) {
 	process.exit(2);
 }
 
-let failed = 0;
-for (const name of names) if (!measure(name, WORKSPACES[name])) failed += 1;
-console.log(failed ? `\n${failed} workspace(s) below 100%.` : '\nAll workspaces at 100%.');
+const results = names.map((name) => ({ name, ...measure(name, WORKSPACES[name]) }));
+const failed = results.filter((result) => !result.ok).length;
+const short = results.filter((result) => !result.full).length;
+const verdict = [
+	failed
+		? `${failed} workspace(s) below the ${COVERAGE_FLOOR}% floor or failing their tests.`
+		: `Every workspace reaches the ${COVERAGE_FLOOR}% floor and passes its tests.`,
+	short ? `${short} workspace(s) not yet at 100%.` : 'All workspaces at 100%.',
+].join(' ');
+console.log(`\n${verdict}`);
+if (process.env.GITHUB_STEP_SUMMARY)
+	appendFileSync(
+		process.env.GITHUB_STEP_SUMMARY,
+		`### Test coverage (floor ${COVERAGE_FLOOR}%)\n\n\`\`\`\n${results.map((result) => result.line).join('\n')}\n\`\`\`\n\n${verdict}\n`,
+	);
 process.exit(failed ? 1 : 0);

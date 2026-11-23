@@ -2529,3 +2529,16 @@ from now on, so the gap stops growing while the backlog is worked off. Owner: "Y
   (the repository has none). A branch that can never run is restructured, not hidden.
 - **The CI gate stays as it is**: `pnpm coverage`, 100% in every measured workspace. The existing backlog is worked off
   separately, smallest workspace first.
+
+## Owner decision round (2026-11-24) — CI coverage floor at 50% for now
+
+So the staging deployment can go ahead while the coverage backlog is tested: "If the coverage check 100% is like a single
+place where 100% numeric figure has to be changed, can you temporarily just drop it to 50% or 60%? Because yeah, 50% is
+fine ... later, when we have completed all of the test cases and everything, we'll just put it back to 100 again. So we
+don't have to disable or skip a check. Everything will run just at a lower number for now."
+
+- **One number:** `COVERAGE_FLOOR` in `scripts/coverage.mjs` is 50. CI's **Tests at 100% coverage** job still runs on every
+  pull request and in Publish images, and fails a workspace whose statements, branches, functions or lines fall below it,
+  or whose tests fail. Nothing is skipped or switched off. Back to 100 by changing that number when the backlog is done.
+- **Unchanged:** every change still keeps its own files at 100% (AGENTS.md §5; the 2026-11-23 round above). The coverage
+  run still lists every file below 100%, so each chat can check its own.

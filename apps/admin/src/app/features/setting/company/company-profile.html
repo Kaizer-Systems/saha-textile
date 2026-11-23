@@ -1,0 +1,744 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'co_title'"
+>
+	<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+		<p class="text-muted mb-0">{{ 'co_intro' | transloco }}</p>
+		@if (canEdit()) {
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="co_save"
+			[disabled]="saving() || problems().length > 0"
+			(click)="save()"
+		>
+			{{ 'save' | transloco }}
+		</button>
+		}
+	</div>
+	@if (form(); as f) {
+	<div class="card">
+		<div class="card-body">
+			<div class="title-header option-title">
+				<h5>{{ 'co_kind_question' | transloco }}</h5>
+			</div>
+			<div class="row g-3">
+				@for (kind of kinds; track kind) {
+				<div class="col-md-4">
+					<label
+						class="d-block h-100 rounded border p-3"
+						[id]="'co_kind_' + kind"
+					>
+						<div class="d-flex align-items-center mb-1 gap-2">
+							<input
+								class="form-check-input"
+								type="radio"
+								name="co_kind"
+								[checked]="f.kind === kind"
+								[disabled]="!canEdit()"
+								(change)="pickKind(kind)"
+							/>
+							<b>{{ 'co_kind_' + kind | transloco }}</b>
+						</div>
+						<small class="text-muted d-block mb-2">{{ 'co_kind_' + kind + '_sub' | transloco }}</small>
+						<small class="d-block">{{ 'co_kind_' + kind + '_points' | transloco }}</small>
+					</label>
+				</div>
+				}
+				<div class="col-md-4">
+					<label class="d-block h-100 rounded border p-3 opacity-50">
+						<div class="d-flex align-items-center mb-1 gap-2">
+							<input
+								class="form-check-input"
+								type="radio"
+								disabled
+							/>
+							<b>{{ 'co_kind_public_limited' | transloco }}</b>
+						</div>
+						<small class="text-muted d-block mb-2">{{ 'co_not_supported' | transloco }}</small>
+						<small class="d-block">{{ 'co_out_of_scope' | transloco }}</small>
+					</label>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="row g-3">
+		<div class="col-xl-8">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header option-title">
+						<h5>{{ 'co_business' | transloco }}</h5>
+					</div>
+					<div class="row g-3">
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="co_legal"
+							>
+								{{ 'co_legal_name' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="co_legal"
+								[disabled]="!canEdit()"
+								[ngModel]="f.legalName"
+								(ngModelChange)="set('legalName', $event)"
+							/>
+						</div>
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="co_trade"
+							>
+								{{ 'co_trade_name' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="co_trade"
+								[disabled]="!canEdit()"
+								[ngModel]="f.tradeName"
+								(ngModelChange)="set('tradeName', $event)"
+							/>
+						</div>
+						<div class="col-md-3">
+							<label
+								class="form-label-title"
+								for="co_pan"
+							>
+								PAN
+							</label>
+							<input
+								class="form-control"
+								id="co_pan"
+								[disabled]="!canEdit()"
+								[ngModel]="f.pan ?? ''"
+								(ngModelChange)="set('pan', text($event))"
+							/>
+						</div>
+						<div class="col-md-3">
+							<label
+								class="form-label-title"
+								for="co_tan"
+							>
+								TAN
+							</label>
+							<input
+								class="form-control"
+								id="co_tan"
+								[disabled]="!canEdit()"
+								[ngModel]="f.tan ?? ''"
+								(ngModelChange)="set('tan', text($event))"
+							/>
+							<small class="help-text d-block">{{ 'co_tan_help' | transloco }}</small>
+						</div>
+						@if (isCompany(f.kind)) {
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="co_cin"
+							>
+								CIN
+							</label>
+							<input
+								class="form-control"
+								id="co_cin"
+								[disabled]="!canEdit()"
+								[ngModel]="f.cin ?? ''"
+								(ngModelChange)="set('cin', text($event))"
+							/>
+						</div>
+						} @if (f.kind === 'llp') {
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="co_llpin"
+							>
+								LLPIN
+							</label>
+							<input
+								class="form-control"
+								id="co_llpin"
+								[disabled]="!canEdit()"
+								[ngModel]="f.llpin ?? ''"
+								(ngModelChange)="set('llpin', text($event))"
+							/>
+						</div>
+						}
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="co_udyam"
+							>
+								{{ 'co_udyam' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="co_udyam"
+								[disabled]="!canEdit()"
+								[ngModel]="f.udyam ?? ''"
+								(ngModelChange)="set('udyam', text($event))"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="co_fy"
+							>
+								{{ 'co_fy_starts' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="co_fy"
+								[disabled]="!canEdit()"
+								[ngModel]="f.financialYearStartMonth"
+								(ngModelChange)="set('financialYearStartMonth', num($event))"
+							>
+								@for (m of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]; track m) {
+								<option [ngValue]="m">{{ 'co_month_' + m | transloco }}</option>
+								}
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="co_books_start"
+							>
+								{{ 'co_books_start' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								type="date"
+								id="co_books_start"
+								[disabled]="!canEdit()"
+								[ngModel]="f.booksStartOn ?? ''"
+								(ngModelChange)="set('booksStartOn', $event || null)"
+							/>
+							<small class="help-text d-block">{{ 'co_books_start_help' | transloco }}</small>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="co_currency"
+							>
+								{{ 'co_home_currency' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="co_currency"
+								disabled
+							>
+								<option>{{ 'co_inr' | transloco }}</option>
+							</select>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header option-title">
+						<h5>{{ 'co_owners_' + f.kind | transloco }}</h5>
+					</div>
+					@if (f.kind === 'proprietorship') {
+					<div class="row g-3">
+						<div class="col-md-5">
+							<label
+								class="form-label-title"
+								for="co_prop_name"
+							>
+								{{ 'co_proprietor' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="co_prop_name"
+								[disabled]="!canEdit()"
+								[ngModel]="f.proprietor?.name ?? ''"
+								(ngModelChange)="setProprietor({ name: $event })"
+							/>
+						</div>
+						<div class="col-md-3">
+							<label
+								class="form-label-title"
+								for="co_prop_pan"
+							>
+								PAN
+							</label>
+							<input
+								class="form-control"
+								id="co_prop_pan"
+								[disabled]="!canEdit()"
+								[ngModel]="f.proprietor?.pan ?? ''"
+								(ngModelChange)="setProprietor({ pan: $event.trim().toUpperCase() })"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="co_prop_capital"
+							>
+								{{ 'co_opening_capital' | transloco }}
+							</label>
+							<div class="input-group">
+								<span class="input-group-text">₹</span>
+								<input
+									class="form-control"
+									type="number"
+									min="0"
+									id="co_prop_capital"
+									[disabled]="!canEdit()"
+									[ngModel]="f.proprietor?.openingCapitalINR ?? 0"
+									(ngModelChange)="setProprietor({ openingCapitalINR: num($event) })"
+								/>
+							</div>
+						</div>
+					</div>
+					<h6 class="mt-4">{{ 'co_other_businesses' | transloco }}</h6>
+					<p class="help-text">{{ 'co_other_businesses_help' | transloco }}</p>
+					@for (b of f.otherBusinesses; track $index) {
+					<div class="row g-2 align-items-end mb-2">
+						<div class="col-md-4">
+							<input
+								class="form-control"
+								[attr.aria-label]="'co_trade_name' | transloco"
+								[disabled]="!canEdit()"
+								[ngModel]="b.tradeName"
+								(ngModelChange)="patchOtherBusiness($index, { tradeName: $event })"
+							/>
+						</div>
+						<div class="col-md-3">
+							<input
+								class="form-control"
+								placeholder="GSTIN"
+								[disabled]="!canEdit()"
+								[ngModel]="b.gstin ?? ''"
+								(ngModelChange)="patchOtherBusiness($index, { gstin: text($event) })"
+							/>
+						</div>
+						<div class="col-md-4">
+							<select
+								class="form-select"
+								[attr.aria-label]="'co_runs_as' | transloco"
+								[disabled]="!canEdit()"
+								[ngModel]="b.runsAs"
+								(ngModelChange)="patchOtherBusiness($index, { runsAs: $event })"
+							>
+								<option value="own_deployment">{{ 'co_runs_own' | transloco }}</option>
+								<option value="location_here">{{ 'co_runs_here' | transloco }}</option>
+							</select>
+						</div>
+						<div class="col-md-1">
+							@if (canEdit()) {
+							<button
+								type="button"
+								class="btn btn-outline text-danger"
+								[title]="'remove' | transloco"
+								[attr.aria-label]="'remove' | transloco"
+								(click)="removeOtherBusiness($index)"
+							>
+								<i class="ri-delete-bin-line"></i>
+							</button>
+							}
+						</div>
+					</div>
+					} @if (canEdit()) {
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						(click)="addOtherBusiness()"
+					>
+						<i class="ri-add-line"></i>
+						{{ 'co_add_business' | transloco }}
+					</button>
+					} } @else if (isFirm(f.kind)) {
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'co_partner' | transloco }}</th>
+									<th>PAN</th>
+									<th>{{ 'co_working' | transloco }}</th>
+									<th>{{ 'co_capital' | transloco }}</th>
+									<th>{{ 'co_share' | transloco }}</th>
+									<th>{{ 'co_interest' | transloco }}</th>
+									<th>{{ 'co_pay_month' | transloco }}</th>
+									@if (f.kind === 'llp') {
+									<th>{{ 'co_designated' | transloco }}</th>
+									}
+									<th></th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (p of f.partners; track p.id) {
+								<tr>
+									<td>
+										<input
+											class="form-control"
+											[attr.aria-label]="'co_partner' | transloco"
+											[disabled]="!canEdit()"
+											[ngModel]="p.name"
+											(ngModelChange)="patchPartner(p.id, { name: $event })"
+										/>
+									</td>
+									<td>
+										<input
+											class="form-control"
+											aria-label="PAN"
+											[disabled]="!canEdit()"
+											[ngModel]="p.pan"
+											(ngModelChange)="patchPartner(p.id, { pan: $event.trim().toUpperCase() })"
+										/>
+									</td>
+									<td>
+										<input
+											class="form-check-input"
+											type="checkbox"
+											[attr.aria-label]="'co_working' | transloco"
+											[disabled]="!canEdit()"
+											[checked]="p.working"
+											(change)="patchPartner(p.id, { working: $any($event.target).checked })"
+										/>
+									</td>
+									<td>
+										<input
+											class="form-control"
+											type="number"
+											min="0"
+											[attr.aria-label]="'co_capital' | transloco"
+											[disabled]="!canEdit()"
+											[ngModel]="p.capitalINR"
+											(ngModelChange)="patchPartner(p.id, { capitalINR: num($event) })"
+										/>
+									</td>
+									<td>
+										<input
+											class="form-control"
+											type="number"
+											min="0"
+											max="100"
+											[attr.aria-label]="'co_share' | transloco"
+											[disabled]="!canEdit()"
+											[ngModel]="p.profitSharePercent"
+											(ngModelChange)="patchPartner(p.id, { profitSharePercent: num($event) })"
+										/>
+									</td>
+									<td>
+										<input
+											class="form-control"
+											type="number"
+											min="0"
+											max="100"
+											[attr.aria-label]="'co_interest' | transloco"
+											[disabled]="!canEdit()"
+											[ngModel]="p.interestOnCapitalPercent"
+											(ngModelChange)="patchPartner(p.id, { interestOnCapitalPercent: num($event) })"
+										/>
+									</td>
+									<td>
+										<input
+											class="form-control"
+											type="number"
+											min="0"
+											[attr.aria-label]="'co_pay_month' | transloco"
+											[disabled]="!canEdit() || !p.working"
+											[ngModel]="p.monthlyRemunerationINR"
+											(ngModelChange)="patchPartner(p.id, { monthlyRemunerationINR: num($event) })"
+										/>
+									</td>
+									@if (f.kind === 'llp') {
+									<td>
+										<input
+											class="form-check-input"
+											type="checkbox"
+											[attr.aria-label]="'co_designated' | transloco"
+											[disabled]="!canEdit()"
+											[checked]="p.designated"
+											(change)="patchPartner(p.id, { designated: $any($event.target).checked })"
+										/>
+									</td>
+									}
+									<td>
+										@if (canEdit()) {
+										<button
+											type="button"
+											class="btn btn-outline text-danger btn-sm"
+											[title]="'remove' | transloco"
+											[attr.aria-label]="'remove' | transloco"
+											(click)="removePartner(p.id)"
+										>
+											<i class="ri-delete-bin-line"></i>
+										</button>
+										}
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					<div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
+						<small [class.text-danger]="shareTotal() !== 100">
+							{{ 'co_share_total' | transloco: { total: shareTotal() } }}
+						</small>
+						@if (canEdit()) {
+						<button
+							type="button"
+							class="btn btn-outline btn-sm"
+							(click)="addPartner()"
+						>
+							<i class="ri-add-line"></i>
+							{{ 'co_add_partner' | transloco }}
+						</button>
+						}
+					</div>
+					<p class="help-text mt-2 mb-0">
+						{{ 'co_remuneration_note' | transloco: { limit: remunerationExample.toLocaleString('en-IN') } }}
+					</p>
+					} @else {
+					<h6>{{ 'co_directors' | transloco }}</h6>
+					@for (d of f.directors; track d.id) {
+					<div class="row g-2 align-items-end mb-2">
+						<div class="col-md-4">
+							<input
+								class="form-control"
+								[attr.aria-label]="'co_director' | transloco"
+								[disabled]="!canEdit()"
+								[ngModel]="d.name"
+								(ngModelChange)="patchDirector(d.id, { name: $event })"
+							/>
+						</div>
+						<div class="col-md-2">
+							<input
+								class="form-control"
+								placeholder="DIN"
+								[disabled]="!canEdit()"
+								[ngModel]="d.din"
+								(ngModelChange)="patchDirector(d.id, { din: $event.trim() })"
+							/>
+						</div>
+						<div class="col-md-3">
+							<input
+								class="form-control"
+								type="date"
+								[attr.aria-label]="'co_since' | transloco"
+								[disabled]="!canEdit()"
+								[ngModel]="d.since"
+								(ngModelChange)="patchDirector(d.id, { since: $event })"
+							/>
+						</div>
+						<div class="col-md-2">
+							<select
+								class="form-select"
+								[attr.aria-label]="'co_paid_as' | transloco"
+								[disabled]="!canEdit()"
+								[ngModel]="d.paidAs"
+								(ngModelChange)="patchDirector(d.id, { paidAs: $event })"
+							>
+								<option value="none">{{ 'co_paid_none' | transloco }}</option>
+								<option value="remuneration">{{ 'co_paid_remuneration' | transloco }}</option>
+								<option value="sitting_fees">{{ 'co_paid_sitting' | transloco }}</option>
+							</select>
+						</div>
+						<div class="col-md-1">
+							@if (canEdit()) {
+							<button
+								type="button"
+								class="btn btn-outline text-danger"
+								[title]="'remove' | transloco"
+								[attr.aria-label]="'remove' | transloco"
+								(click)="removeDirector(d.id)"
+							>
+								<i class="ri-delete-bin-line"></i>
+							</button>
+							}
+						</div>
+					</div>
+					} @if (canEdit()) {
+					<button
+						type="button"
+						class="btn btn-outline btn-sm mb-3"
+						(click)="addDirector()"
+					>
+						<i class="ri-add-line"></i>
+						{{ 'co_add_director' | transloco }}
+					</button>
+					}
+					<h6>{{ 'co_shareholders' | transloco }}</h6>
+					@for (h of f.shareholders; track h.id) {
+					<div class="row g-2 align-items-end mb-2">
+						<div class="col-md-6">
+							<input
+								class="form-control"
+								[attr.aria-label]="'co_shareholder' | transloco"
+								[disabled]="!canEdit()"
+								[ngModel]="h.name"
+								(ngModelChange)="patchShareholder(h.id, { name: $event })"
+							/>
+						</div>
+						<div class="col-md-3">
+							<input
+								class="form-control"
+								type="number"
+								min="1"
+								[attr.aria-label]="'co_shares' | transloco"
+								[disabled]="!canEdit()"
+								[ngModel]="h.shares"
+								(ngModelChange)="patchShareholder(h.id, { shares: num($event) || 1 })"
+							/>
+						</div>
+						<div class="col-md-1">
+							@if (canEdit()) {
+							<button
+								type="button"
+								class="btn btn-outline text-danger"
+								[title]="'remove' | transloco"
+								[attr.aria-label]="'remove' | transloco"
+								(click)="removeShareholder(h.id)"
+							>
+								<i class="ri-delete-bin-line"></i>
+							</button>
+							}
+						</div>
+					</div>
+					} @if (canEdit()) {
+					<button
+						type="button"
+						class="btn btn-outline btn-sm mb-3"
+						(click)="addShareholder()"
+					>
+						<i class="ri-add-line"></i>
+						{{ 'co_add_shareholder' | transloco }}
+					</button>
+					}
+					<div class="row g-3">
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="co_authorised"
+							>
+								{{ 'co_authorised' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								type="number"
+								min="0"
+								id="co_authorised"
+								[disabled]="!canEdit()"
+								[ngModel]="f.authorisedCapitalINR"
+								(ngModelChange)="set('authorisedCapitalINR', num($event))"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="co_paid_up"
+							>
+								{{ 'co_paid_up' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								type="number"
+								min="0"
+								id="co_paid_up"
+								[disabled]="!canEdit()"
+								[ngModel]="f.paidUpCapitalINR"
+								(ngModelChange)="set('paidUpCapitalINR', num($event))"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="co_face"
+							>
+								{{ 'co_face_value' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								type="number"
+								min="0"
+								id="co_face"
+								[disabled]="!canEdit()"
+								[ngModel]="f.faceValueINR"
+								(ngModelChange)="set('faceValueINR', num($event))"
+							/>
+						</div>
+						@if (f.kind === 'private_limited_opc') {
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="co_nominee"
+							>
+								{{ 'co_nominee' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="co_nominee"
+								[disabled]="!canEdit()"
+								[ngModel]="f.nomineeName ?? ''"
+								(ngModelChange)="set('nomineeName', $event.trim() || null)"
+							/>
+						</div>
+						}
+					</div>
+					<small class="help-text d-block mt-2">
+						{{ 'co_total_shares' | transloco: { total: totalShares() } }}
+					</small>
+					} @if (problems().length) {
+					<div
+						class="alert alert-warning mt-3 mb-0"
+						id="co_problems"
+					>
+						<ul class="mb-0 ps-3">
+							@for (problem of problems(); track problem) {
+							<li>{{ 'co_problem_' + problem | transloco }}</li>
+							}
+						</ul>
+					</div>
+					}
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-4">
+			@if (effects(); as fx) {
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header option-title">
+						<h5>{{ 'co_kind_sets' | transloco }}</h5>
+					</div>
+					<ul class="list-unstyled mb-0">
+						<li class="border-bottom py-2">
+							<b>{{ 'co_fx_accounts' | transloco }}</b>
+							<div class="small">{{ 'co_fx_accounts_' + fx.ownersAccounts | transloco }}</div>
+						</li>
+						<li class="border-bottom py-2">
+							<b>{{ 'co_fx_statements' | transloco }}</b>
+							<div class="small">{{ 'co_fx_statements_' + fx.statements | transloco }}</div>
+						</li>
+						<li class="border-bottom py-2">
+							<b>{{ 'co_fx_depreciation' | transloco }}</b>
+							<div class="small">
+								{{ (fx.depreciationBooks.length > 1 ? 'co_fx_dep_both' : 'co_fx_dep_tax') | transloco }}
+							</div>
+						</li>
+						<li class="border-bottom py-2">
+							<b>{{ 'co_fx_return' | transloco }}</b>
+							<div class="small">{{ fx.incomeTaxReturn }}</div>
+						</li>
+						<li class="border-bottom py-2">
+							<b>{{ 'co_fx_owners_paid' | transloco }}</b>
+							<div class="small">{{ 'co_fx_paid_' + fx.ownersPaidAs | transloco }}</div>
+						</li>
+						<li class="py-2">
+							<b>{{ 'co_fx_edit_log' | transloco }}</b>
+							<div class="small">
+								{{ (fx.companiesActAuditTrail ? 'co_fx_edit_log_company' : 'co_fx_edit_log_other') |
+								transloco }}
+							</div>
+						</li>
+					</ul>
+				</div>
+			</div>
+			}
+		</div>
+	</div>
+	}
+</app-page-wrapper>

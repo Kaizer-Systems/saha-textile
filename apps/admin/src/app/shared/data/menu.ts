@@ -759,6 +759,14 @@ export const menu: IMenu[] = [
 			},
 			{
 				parent_id: 19,
+				title: 'co_title',
+				path: '/setting/company',
+				type: 'link',
+				level: 2,
+				permission: ['setting.index'],
+			},
+			{
+				parent_id: 19,
 				title: 'gst_registrations',
 				path: '/setting/gst-registrations',
 				type: 'link',

@@ -212,6 +212,119 @@ export function blankEffects(names: string[]): { stops: string[]; restWorks: boo
 						</div>
 					}
 				}
+				<!-- After a deploy: through Cloudflare, and the release tag it recorded (Release Path brief 2.7, F15). -->
+				@if (d.run?.status === 'completed' && reach.data(); as rc) {
+					@if (allReachable(rc.checks)) {
+						<div class="rc-g2">
+							<div class="rc-banner ok small">
+								<span class="rc-dot ok"></span>
+								<div>
+									<b>Through Cloudflare:</b>
+									reachable · {{ rc.checks.length }} checks passed.
+								</div>
+							</div>
+							@if (recordedTag(d); as t) {
+								<div class="rc-banner small">
+									<span class="rc-dot"></span>
+									<div>
+										<b>Recorded:</b>
+										<span class="rc-mono">tag {{ t }}</span>
+										· the version Rollback can return to.
+									</div>
+								</div>
+							}
+						</div>
+					} @else {
+						<div class="rc-panel">
+							<div class="rc-ph">
+								<span class="rc-label">
+									<rc-icon name="tabler/cloud" />
+									Through Cloudflare · not reachable
+								</span>
+								<button
+									type="button"
+									class="rc-btn ghost"
+									[disabled]="reach.isFetching()"
+									(click)="reach.refetch()"
+								>
+									Check again
+								</button>
+							</div>
+							<div class="rc-tw">
+								<table class="rc-t">
+									<thead>
+										<tr>
+											<th>Check</th>
+											<th>Result</th>
+										</tr>
+									</thead>
+									<tbody>
+										@for (c of rc.checks; track c.key) {
+											<tr>
+												<td>{{ c.label }}</td>
+												<td
+													[class.ok]="c.ok === true"
+													[class.red]="c.ok === false"
+													[class.amber]="c.ok === null"
+												>
+													{{ c.detail }}
+												</td>
+											</tr>
+										}
+									</tbody>
+								</table>
+							</div>
+							@if (d.target === 'production') {
+								<div class="rc-form">
+									<label>
+										Type production to roll back
+										<div class="rc-msearch">
+											<input
+												type="text"
+												autocomplete="off"
+												aria-label="Type production to roll back"
+												[value]="cardConfirm()"
+												(input)="cardConfirm.set($any($event.target).value)"
+											/>
+										</div>
+									</label>
+								</div>
+							}
+							<div class="rc-row">
+								<rc-pin-boxes
+									label="Console PIN to fix or roll back"
+									[autofocus]="false"
+									[disabled]="busy()"
+									(changed)="cardPin.set($event)"
+								/>
+								@if (hasFix(rc.checks)) {
+									<button
+										type="button"
+										class="rc-btn primary"
+										[disabled]="cardPin().length !== pinLength || busy()"
+										(click)="fixOriginPulls()"
+									>
+										Turn origin pulls on again
+									</button>
+								}
+								<button
+									type="button"
+									class="rc-btn danger"
+									[disabled]="
+										cardPin().length !== pinLength ||
+										busy() ||
+										running() ||
+										(d.target === 'production' && cardConfirm().trim() !== 'production')
+									"
+									(click)="rollback()"
+								>
+									Roll back
+								</button>
+								<span class="rc-note">Both ask for the PIN.</span>
+							</div>
+						</div>
+					}
+				}
 				<div class="rc-g3 deploy">
 					<div class="rc-panel">
 						<div class="rc-ph">
@@ -797,6 +910,70 @@ export class ServerDeployScreen {
 		const asks = this.rotateIds().length > 0 || (a.data.target === 'production' && this.allowed().length > 0);
 		return asks && this.confirmText().trim() !== this.environment();
 	});
+	/** The environment's DigitalOcean slot, for the reachable card's address. */
+	private readonly slot = computed(
+		() => this.ctx.repo()?.environments.find((e) => e.name === this.environment())?.cloudId ?? '',
+	);
+	/** Reachable through Cloudflare, read once the newest run has finished (Release Path brief C8). */
+	protected readonly reach = injectQuery(() => {
+		const a = this.view.data();
+		const run = a?.state === 'ok' ? a.data.run : null;
+		return {
+			queryKey: ['reachable', this.ctx.projectId(), this.ctx.repoId(), this.environment(), run?.id ?? 0],
+			queryFn: () =>
+				this.api.reachable(
+					this.ctx.projectId() ?? '',
+					this.ctx.repoId() ?? '',
+					this.slot(),
+					this.environment(),
+				),
+			enabled: !!run && run.status === 'completed' && !!this.slot(),
+			staleTime: 60_000,
+		};
+	});
+	protected readonly cardPin = signal('');
+	protected readonly cardConfirm = signal('');
+	protected readonly pinLength = PIN_LENGTH;
+	protected allReachable(checks: { ok: boolean | null }[]): boolean {
+		return checks.every((c) => c.ok === true);
+	}
+	protected hasFix(checks: { fix: string | null }[]): boolean {
+		return checks.some((c) => c.fix === 'origin-pulls');
+	}
+	/** The newest release tag made at or after the newest run started. */
+	protected recordedTag(d: ServerDeployView): string | null {
+		if (!d.run || d.run.conclusion !== 'success') return null;
+		const from = Date.parse(d.run.createdAt) - 60_000;
+		return d.tags.find((t) => Date.parse(t.at) >= from)?.name ?? null;
+	}
+	protected async fixOriginPulls(): Promise<void> {
+		await this.act(async () => {
+			await this.api.fixReachable(
+				this.ctx.projectId() ?? '',
+				this.ctx.repoId() ?? '',
+				this.slot(),
+				this.environment(),
+				this.cardPin(),
+			);
+			await this.reach.refetch();
+		}, 'Origin pulls are on again for every host.');
+	}
+	protected async rollback(): Promise<void> {
+		await this.act(
+			() =>
+				this.api.startServerDeploy(
+					this.ctx.projectId() ?? '',
+					this.ctx.repoId() ?? '',
+					this.environment(),
+					this.cardPin(),
+					[],
+					this.cardConfirm().trim() || undefined,
+					undefined,
+					{ action: 'rollback' },
+				),
+			'Rolling back: the server swaps the previous release back in.',
+		);
+	}
 	/** What rotations left waiting for a deploy with rotation (names only), read with the view. */
 	protected readonly rotation = injectQuery(() => ({
 		queryKey: ['rotation', this.ctx.projectId(), this.ctx.repoId(), this.environment()],

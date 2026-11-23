@@ -2,6 +2,8 @@ import { Body, Controller, Get, HttpCode, Param, Post, Put, Req } from '@nestjs/
 import {
 	type DeployToken,
 	type DropletJob,
+	type Reachable,
+	fixReachableSchema,
 	type EnvTags,
 	setEnvTagSchema,
 	setSshEmailsSchema,
@@ -32,6 +34,26 @@ export class ServersController {
 	@Get()
 	list(@Param('p') p: string, @Param('r') r: string): DropletJob[] {
 		return this.jobs.list(p, r);
+	}
+
+	/** Reachable through Cloudflare, check by check (Release Path brief C8). */
+	@Get('reachable/:env')
+	reachable(@Param('p') p: string, @Param('r') r: string, @Param('env') env: string): Promise<Reachable> {
+		return this.jobs.reachable(p, r, env);
+	}
+
+	@Post('reachable/:env/fix')
+	@HttpCode(200)
+	async fixReachable(
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Param('env') env: string,
+		@Body() body: unknown,
+		@Req() req: Req,
+	): Promise<Reachable> {
+		const input = parseBody(fixReachableSchema, body);
+		this.lock.confirm(sessionOf(req), input.pin, `turn origin pulls on again for ${env}`);
+		return this.jobs.fixReachable(p, r, env, input.fix);
 	}
 
 	/** Each server's deploy token and its end date (Release Path brief C6). */

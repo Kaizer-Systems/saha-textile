@@ -356,6 +356,52 @@ export const cfWrites = {
 		}
 		return true;
 	},
+	/** Hosts whose origin pulls are not on (each looked up by name). */
+	async originPullsOff(key: string, zoneId: string, hosts: string[]): Promise<string[]> {
+		const off: string[] = [];
+		for (const host of hosts) {
+			const r = rec(
+				await call(
+					'GET',
+					`/zones/${zoneId}/origin_tls_client_auth/hostnames/${encodeURIComponent(host)}`,
+					key,
+				).catch(() => null),
+			);
+			if (r['enabled'] !== true) off.push(host);
+		}
+		return off;
+	},
+	/** The zone's per-host origin-pulls client certificate the create job uploaded (the newest active one). */
+	async originPullsCert(key: string, zoneId: string): Promise<string | null> {
+		const certs = arr(await call('GET', `/zones/${zoneId}/origin_tls_client_auth/hostnames/certificates`, key))
+			.map(rec)
+			.filter((c) => ['active', 'pending_deployment'].includes(str(c['status'])))
+			.sort((a, b) => str(b['uploaded_on']).localeCompare(str(a['uploaded_on'])));
+		return certs[0] ? str(certs[0]['id']) : null;
+	},
+	/** A host's address records: type, content and whether Cloudflare proxies it. */
+	async recordsOf(key: string, zoneId: string, host: string) {
+		return arr(await call('GET', `/zones/${zoneId}/dns_records?name=${encodeURIComponent(host)}&per_page=50`, key))
+			.map(rec)
+			.filter((r) => ['A', 'AAAA', 'CNAME'].includes(str(r['type'])))
+			.map((r) => ({ type: str(r['type']), content: str(r['content']), proxied: r['proxied'] === true }));
+	},
+	/** Whether the environment's Full (strict) rule (by its description) is on in the zone's configuration rules. */
+	async sslRuleOn(key: string, zoneId: string, name: string): Promise<boolean> {
+		const current = await call(
+			'GET',
+			`/zones/${zoneId}/rulesets/phases/http_config_settings/entrypoint`,
+			key,
+		).catch(() => ({ rules: [] }));
+		return arr(rec(current)['rules'])
+			.map(rec)
+			.some(
+				(r) =>
+					str(r['description']) === name &&
+					r['enabled'] !== false &&
+					str(rec(r['action_parameters'])['ssl']) === 'strict',
+			);
+	},
 	async setOriginPulls(key: string, zoneId: string, hosts: string[], certId: string | null, enabled: boolean) {
 		await call('PUT', `/zones/${zoneId}/origin_tls_client_auth/hostnames`, key, {
 			config: hosts.map((hostname) => ({ hostname, enabled, ...(certId ? { cert_id: certId } : {}) })),

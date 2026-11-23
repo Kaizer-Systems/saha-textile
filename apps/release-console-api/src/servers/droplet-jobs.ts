@@ -7,6 +7,8 @@ import {
 	CLOSED_PORTS,
 	CREATE_STEPS,
 	type DeployToken,
+	type ReachCheck,
+	type Reachable,
 	DESTROY_STEPS,
 	FINISH_STEPS,
 	RENEW_STEPS,
@@ -58,6 +60,8 @@ export interface JobDeps {
 	nameservers: (domain: string) => Promise<string[]>;
 	/** Whether a TCP port answers on a public address, from this machine (the outside check, C16). */
 	probe: (host: string, port: number) => Promise<boolean>;
+	/** The HTTP status of an address through Cloudflare (0 when nothing answers), for the reachable card. */
+	health: (url: string) => Promise<number>;
 }
 
 /** A TCP connect with a short wait: true when the port answers. */
@@ -154,6 +158,10 @@ export class DropletJobs {
 			waits: { activeEvery: 5_000, activeFor: 300_000, tunnelEvery: 10_000, tunnelFor: 900_000 },
 			nameservers: (domain) => resolveNs(domain).catch(() => []),
 			probe: (host, port) => probeTcp(host, port),
+			health: (url) =>
+				fetch(url, { signal: AbortSignal.timeout(15_000), redirect: 'manual' })
+					.then((r) => r.status)
+					.catch(() => 0),
 		};
 	}
 
@@ -765,6 +773,111 @@ export class DropletJobs {
 				? `${left.length} small ${left.length === 1 ? 'thing' : 'things'} left for you`
 				: 'nothing left';
 		});
+	}
+
+	// ---------------------------------------------------------------- reachable through Cloudflare
+
+	/** The server environment, its keys, zone and Cloudflare hosts, for the reachable card. */
+	private async reachContext(projectId: string, repoId: string, envName: string) {
+		const { project, repo } = this.projects.repository(projectId, repoId);
+		const env = repo.environments.find((e) => e.name === envName);
+		if (!env || env.cloudId === null) throw new BadRequestException(`${envName} does not run on a server.`);
+		const keys = await this.keys(project, repo, env.cloudId);
+		const webHosts = env.domains.filter((h) => zoneFor(h, keys.zones));
+		const zoneName = zoneFor(webHosts[0] ?? '', keys.zones);
+		const zone = zoneName ? await this.deps.cf.zone(keys.cfKey, zoneName) : null;
+		return { env, keys, webHosts, zone, name: `${projectId}-${env.name}` };
+	}
+
+	/**
+	 * Reachable through Cloudflare (Release Path brief F15, C8): the API's /health/live through
+	 * Cloudflare, each host's record pointing at this server and proxied, the Full (strict) rule,
+	 * origin pulls on each host, and the firewall letting in Cloudflare's current ranges.
+	 */
+	async reachable(projectId: string, repoId: string, envName: string): Promise<Reachable> {
+		const { deps } = this;
+		const { env, keys, webHosts, zone, name } = await this.reachContext(projectId, repoId, envName);
+		const checks: ReachCheck[] = [];
+		const add = (key: string, label: string, ok: boolean | null, detail: string, fix: ReachCheck['fix'] = null) =>
+			checks.push({ key, label, ok, detail, fix });
+		const api = env.domains.find((h) => /^api[.-]/.test(h)) ?? env.domains[0];
+		if (api) {
+			const status = await deps.health(`https://${api}/health/live`);
+			add(
+				'health',
+				`Health through Cloudflare: ${api}/health/live`,
+				status === 200,
+				status ? `answered ${status}` : 'no answer',
+			);
+		}
+		const server = (await deps.do.dropletsTagged(keys.doKey, projectId)).find((d) => d.name === name) ?? null;
+		if (!server) add('server', `The server ${name}`, false, 'no droplet by that name');
+		if (zone) {
+			for (const host of webHosts) {
+				const recs = await deps.cf.recordsOf(keys.cfKey, zone.id, host).catch(() => null);
+				const good = !!recs?.some((r) => r.proxied && (!server?.ipv4 || r.content === server.ipv4));
+				add(
+					`dns:${host}`,
+					`DNS: ${host} → this server, proxied`,
+					recs === null ? null : good,
+					recs === null
+						? 'Cloudflare did not answer'
+						: recs.length
+							? recs
+									.map((r) => `${r.type} ${r.content}${r.proxied ? ' proxied' : ' DNS only'}`)
+									.join(' · ')
+							: 'no record',
+				);
+			}
+			const rule = await deps.cf.sslRuleOn(keys.cfKey, zone.id, `${name} SSL`).catch(() => null);
+			add(
+				'ssl',
+				`SSL rule for ${env.label} hosts: Full (strict)`,
+				rule,
+				rule ? 'on' : rule === null ? 'Cloudflare did not answer' : 'missing',
+			);
+			const off = await deps.cf.originPullsOff(keys.cfKey, zone.id, webHosts).catch(() => null);
+			add(
+				'origin-pulls',
+				`Origin pulls certificate on ${webHosts.join(', ')}`,
+				off === null ? null : off.length === 0,
+				off === null ? 'Cloudflare did not answer' : off.length ? `missing on ${off.join(', ')}` : 'on',
+				off?.length ? 'origin-pulls' : null,
+			);
+		}
+		const sources = await deps.do.firewall443(keys.doKey, name).catch(() => null);
+		const ranges = await deps.ranges().catch(() => [] as string[]);
+		const open = !!sources?.some((a) => a === '0.0.0.0/0');
+		const missing = sources && !open ? ranges.filter((r) => !sources.includes(r.trim())) : [];
+		add(
+			'firewall',
+			"Firewall: 443 from Cloudflare's current ranges",
+			sources === null ? false : missing.length === 0,
+			sources === null
+				? `no Cloud Firewall named ${name}`
+				: open
+					? '443 open to everyone'
+					: missing.length
+						? `Cloudflare added ${missing.length} range${missing.length === 1 ? '' : 's'} the firewall lacks: ${missing.join(', ')}`
+						: `all ${ranges.length} ranges`,
+		);
+		return { environment: env.name, checks };
+	}
+
+	/** The one-click repair the reachable card offers: origin pulls on again for every host. */
+	async fixReachable(projectId: string, repoId: string, envName: string, fix: 'origin-pulls'): Promise<Reachable> {
+		const { keys, webHosts, zone, name } = await this.reachContext(projectId, repoId, envName);
+		if (fix === 'origin-pulls') {
+			if (!zone || !webHosts.length) throw new BadRequestException('No hosts in a Cloudflare zone.');
+			const cert = await this.deps.cf.originPullsCert(keys.cfKey, zone.id);
+			if (!cert)
+				throw new BadRequestException(
+					'No origin-pulls certificate on the zone: Finish setup or create the server again.',
+				);
+			await this.deps.cf.setOriginPulls(keys.cfKey, zone.id, webHosts, cert, true);
+			this.store.audit(projectId, 'origin-pulls-on', `${name}: ${webHosts.join(', ')} on again with the PIN`);
+		}
+		return this.reachable(projectId, repoId, envName);
 	}
 
 	// ---------------------------------------------------------------- deploy tokens

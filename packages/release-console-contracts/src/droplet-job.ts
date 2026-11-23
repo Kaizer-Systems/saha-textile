@@ -170,6 +170,22 @@ export const deployTokensSchema = z.array(deployTokenSchema);
 /** Days before a deploy token's end that Attention warns (Release Path brief F6). */
 export const TOKEN_WARN_DAYS = 30;
 
+/**
+ * Reachable through Cloudflare (Release Path brief F15, C8): after a deploy, each thing between a
+ * shopper and the server, checked by name; `fix` names the one-click repair the console offers.
+ */
+export const reachCheckSchema = z.object({
+	key: z.string(),
+	label: z.string(),
+	ok: z.boolean().nullable(),
+	detail: z.string(),
+	fix: z.enum(['origin-pulls']).nullable(),
+});
+export type ReachCheck = z.infer<typeof reachCheckSchema>;
+export const reachableSchema = z.object({ environment: z.string(), checks: z.array(reachCheckSchema) });
+export type Reachable = z.infer<typeof reachableSchema>;
+export const fixReachableSchema = z.object({ pin: z.string().min(6).max(200), fix: z.enum(['origin-pulls']) });
+
 /** Start Finish setup or Renew token for one server environment, after the PIN. */
 export const startServerFixSchema = z.object({
 	pin: z.string().min(6).max(200),

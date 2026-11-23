@@ -116,6 +116,17 @@ export const doWrites = {
 	async deleteFirewall(key: string, id: string): Promise<void> {
 		await call('DELETE', `/firewalls/${id}`, key);
 	},
+	/** A firewall's inbound sources for port 443, by its name, or `null` when there is none. */
+	async firewall443(key: string, name: string): Promise<string[] | null> {
+		const fw = arr(rec(await call('GET', '/firewalls?per_page=200', key))['firewalls'])
+			.map(rec)
+			.find((f) => str(f['name']) === name);
+		if (!fw) return null;
+		return arr(fw['inbound_rules'])
+			.map(rec)
+			.filter((r) => str(r['ports']) === '443')
+			.flatMap((r) => arr(rec(r['sources'])['addresses']).map((a) => str(a)));
+	},
 	/** The account's domains on DigitalOcean DNS. */
 	async domains(key: string): Promise<string[]> {
 		return arr(rec(await call('GET', '/domains?per_page=200', key))['domains']).map((d) => str(rec(d)['name']));

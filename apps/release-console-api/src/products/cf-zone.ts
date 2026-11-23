@@ -7,6 +7,7 @@ import type { ProductCtx, ProductFormSpec, ProductScreen } from './kit.js';
 import {
 	action,
 	ago,
+	bool,
 	bytes,
 	col,
 	confirmed,
@@ -511,6 +512,54 @@ const dnsAdd: ProductFormSpec = {
 
 /** The shop's go-live switch: the apex and www records move to a server, and can move back. */
 const SWITCH_NAMES = (z: Zone) => [z.name, `www.${z.name}`];
+
+/**
+ * The production server and its newest deploy, for the guided switch (Release Path brief 2.9, C9):
+ * read with the console's own DigitalOcean and GitHub keys; anything unread answers null.
+ */
+async function production(ctx: ProductCtx): Promise<{ ip: string | null; deployed: boolean | null }> {
+	const env = ctx.repo.environments.find((e) => /prod/i.test(e.name) && e.cloudId !== null);
+	if (!env) return { ip: null, deployed: null };
+	const doKey = ctx.consoleKey('CONSOLE_DO_READ_TOKEN') ?? ctx.consoleKey('CONSOLE_DO_WRITE_TOKEN');
+	const ghKey = ctx.consoleKey('CONSOLE_GITHUB_TOKEN');
+	const name = `${ctx.projectId}-${env.name}`;
+	const ip = doKey
+		? await fetch(
+				`https://api.digitalocean.com/v2/droplets?tag_name=${encodeURIComponent(ctx.projectId)}&per_page=200`,
+				{
+					headers: { authorization: `Bearer ${doKey}` },
+					signal: AbortSignal.timeout(15_000),
+				},
+			)
+				.then((r) => r.json() as Promise<unknown>)
+				.then((b) => {
+					const d = arr(rec(b)['droplets'])
+						.map(rec)
+						.find((x) => str(x['name']) === name);
+					const v4 = arr(rec(d?.['networks'])['v4'])
+						.map(rec)
+						.find((n) => str(n['type']) === 'public');
+					return v4 ? str(v4['ip_address']) : null;
+				})
+				.catch(() => null)
+		: null;
+	const deployed = ghKey
+		? await fetch(`https://api.github.com/repos/${ctx.repository}/actions/workflows/deploy.yml/runs?per_page=30`, {
+				headers: { authorization: `Bearer ${ghKey}`, 'user-agent': 'release-console' },
+				signal: AbortSignal.timeout(15_000),
+			})
+				.then((r) => r.json() as Promise<unknown>)
+				.then((b) => {
+					const run = arr(rec(b)['workflow_runs'])
+						.map(rec)
+						.find((x) => str(x['display_title']).startsWith('Deploy production '));
+					return run ? str(run['conclusion']) === 'success' : false;
+				})
+				.catch(() => null)
+		: null;
+	return { ip, deployed };
+}
+
 const dnsSwitch: ProductFormSpec = {
 	async read(ctx) {
 		const z = await zoneOf(ctx);
@@ -519,21 +568,39 @@ const dnsSwitch: ProductFormSpec = {
 			(r) => SWITCH_NAMES(z).includes(str(r['name'])) && ['A', 'AAAA', 'CNAME'].includes(str(r['type'])),
 		);
 		const last = ctx.recent('dns-switch')[0];
+		const prod = await production(ctx);
+		const state = (v: boolean | null) => (v === null ? 'not read' : v ? 'done' : 'not yet');
 		return formTab(
 			form({
 				key: 'switch',
-				title: 'Go-live switch',
-				submit: 'Switch the shop to this server',
+				title: 'DNS switch · production',
+				submit: 'Switch',
 				danger: true,
-				confirmName: z.name,
+				confirmName: 'production',
 				fields: [
-					field('ip', 'Server address (IPv4)', 'text', {
+					field('ip', 'Production server (IPv4)', 'text', {
 						required: true,
-						help: 'The droplet’s public IPv4 from DigitalOcean › Droplets. Both records become proxied A records to it.',
+						value: prod.ip,
+						help: 'Read from DigitalOcean: the production server. Both records become proxied A records to it.',
 					}),
+					field('backup', 'A backup restored on a throwaway server', 'toggle', { value: false }),
+					field('wordpress', 'WordPress export and the URL review', 'toggle', { value: false }),
 				],
 				notes: [
-					note(`Now: ${now.map(recordLabel).join(' · ') || 'no apex or www record'}.`, 'cy'),
+					note(
+						`Before you switch: production deployed and healthy on its own deploy: ${state(prod.deployed)} · a backup restored on a throwaway server: your tick · WordPress export and the URL review: your tick.`,
+						prod.deployed ? 'cy' : 'amber',
+					),
+					note(
+						`${SWITCH_NAMES(z)
+							.map((n) => {
+								const r = now.find((x) => str(x['name']) === n);
+								return `${n}: ${r ? `${str(r['type'])} ${str(r['content'])}` : 'no record'} → ${prod.ip ?? 'the production server'}`;
+							})
+							.join(' · ')}`,
+						'cy',
+					),
+					note('Type production, then the PIN. Flipping back is the same edit (Flip back).', 'muted'),
 					note(
 						'What they point at now is kept in the audit log, so Flip back can restore it exactly.',
 						'muted',
@@ -548,7 +615,12 @@ const dnsSwitch: ProductFormSpec = {
 	async send(ctx, w) {
 		const k = await ctx.writeKey();
 		const z = await zoneOf(ctx, k);
-		confirmed(w, z.name);
+		confirmed(w, 'production');
+		if (!bool(w, 'backup') || !bool(w, 'wordpress'))
+			throw new VendorError(
+				'Tick both: a backup restored on a throwaway server, and the WordPress export and URL review.',
+				400,
+			);
 		const ip = text(w, 'ip');
 		if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) throw new VendorError('An IPv4 address like 203.0.113.9.', 400);
 		const all = await records(ctx, z, k);

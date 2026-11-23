@@ -101,6 +101,13 @@ function setup(over: Partial<JobDeps> = {}) {
 			deleteDroplet: async () => undefined,
 			domains: async () => [],
 			pointDoHost: async () => 'created' as const,
+			firewall443: async () => [
+				'173.245.48.0/20',
+				'103.21.244.0/22',
+				'103.22.200.0/22',
+				'103.31.4.0/22',
+				'141.101.64.0/18',
+			],
 		},
 		cf: {
 			zone: async () => ({ id: 'z1', name: 'example.com', accountId: 'a1' }),
@@ -139,6 +146,10 @@ function setup(over: Partial<JobDeps> = {}) {
 			loginWall: async () => 'created' as const,
 			serviceTokenOf: async () => ({ id: 'st1', expiresAt: '2027-11-23T00:00:00Z' }),
 			rotateServiceToken: async () => ({ id: 'st1', clientId: 'example-id', clientSecret: 'example-new-secret' }),
+			recordsOf: async () => [{ type: 'A', content: '203.0.113.9', proxied: true }],
+			sslRuleOn: async () => true,
+			originPullsOff: async () => [],
+			originPullsCert: async () => 'aop1',
 		},
 		ranges: async () => [
 			'173.245.48.0/20',
@@ -165,6 +176,7 @@ function setup(over: Partial<JobDeps> = {}) {
 		waits: { activeEvery: 1, activeFor: 60_000, tunnelEvery: 1, tunnelFor: 60_000 },
 		nameservers: async () => [],
 		probe: async () => false,
+		health: async () => 200,
 		...over,
 	} as JobDeps;
 	return { jobs, audit, created, records, helperCalls, setEnvTag };
@@ -415,5 +427,34 @@ describe('creating and destroying a server', () => {
 		]);
 		expect(helperCalls.filter((h) => h === '/server/known-hosts')).toHaveLength(1);
 		expect(JSON.stringify(audit.mock.calls)).not.toMatch(/example-new-secret/);
+	});
+
+	it('checks a server is reachable through Cloudflare by name, and turns origin pulls on again', async () => {
+		const { jobs, audit } = setup({ health: async () => 525 });
+		const deps = jobs.deps;
+		const enabled: string[][] = [];
+		jobs.deps = {
+			...deps,
+			cf: {
+				...deps.cf,
+				originPullsOff: async () => ['api-staging.example.com'],
+				setOriginPulls: async (_k: string, _z: string, hosts: string[], cert: string | null, on: boolean) => {
+					if (on && cert === 'aop1') enabled.push(hosts);
+				},
+			},
+		};
+		const r = await jobs.reachable('saha-textile', 'saha-textile', 'staging');
+		expect(r.checks.map((c) => `${c.key}:${c.ok}`)).toEqual([
+			'health:false',
+			'dns:staging.example.com:true',
+			'dns:api-staging.example.com:true',
+			'ssl:true',
+			'origin-pulls:false',
+			'firewall:true',
+		]);
+		expect(r.checks.find((c) => c.key === 'origin-pulls')).toMatchObject({ fix: 'origin-pulls' });
+		await jobs.fixReachable('saha-textile', 'saha-textile', 'staging', 'origin-pulls');
+		expect(enabled).toEqual([['staging.example.com', 'api-staging.example.com']]);
+		expect(audit).toHaveBeenCalledWith('saha-textile', 'origin-pulls-on', expect.any(String));
 	});
 });

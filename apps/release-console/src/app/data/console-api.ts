@@ -40,6 +40,8 @@ import {
 	type StartDropletCreate,
 	type StartDropletDestroy,
 	type StartServerFix,
+	type Reachable,
+	reachableSchema,
 	type DeployToken,
 	deployTokensSchema,
 	type ConsoleView,
@@ -390,6 +392,26 @@ export class ConsoleApi {
 	}
 	dropletJobs(p: string, r: string, slot: string): Promise<DropletJob[]> {
 		return this.call('GET', `/api/projects/${p}/repos/${r}/cloud/${slot}/droplet-jobs`, dropletJobsSchema);
+	}
+	/** Reachable through Cloudflare, check by check (Release Path brief C8). */
+	reachable(p: string, r: string, slot: string, env: string): Promise<Reachable> {
+		return this.call(
+			'GET',
+			`/api/projects/${p}/repos/${r}/cloud/${slot}/droplet-jobs/reachable/${env}`,
+			reachableSchema,
+			undefined,
+			60_000,
+		);
+	}
+	/** The reachable card's one-click repair, after the PIN. */
+	fixReachable(p: string, r: string, slot: string, env: string, pin: string): Promise<Reachable> {
+		return this.call(
+			'POST',
+			`/api/projects/${p}/repos/${r}/cloud/${slot}/droplet-jobs/reachable/${env}/fix`,
+			reachableSchema,
+			{ pin, fix: 'origin-pulls' },
+			60_000,
+		);
 	}
 	/** Each server's deploy token and its end date (Release Path brief C6). */
 	deployTokens(p: string, r: string, slot: string): Promise<DeployToken[]> {

@@ -55,6 +55,7 @@ const view = (over: Partial<AdminCartView['lines'][number]> = {}): AdminCartView
 			addOnsZonePriced: false,
 			children: [],
 			setHeading: null,
+			setOnSale: false,
 			...over,
 		},
 	],

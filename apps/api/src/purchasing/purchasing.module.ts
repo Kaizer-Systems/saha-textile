@@ -11,6 +11,7 @@ import { PurchaseEntriesService } from './purchase-entries.service';
 import { PurchaseEntryBuilder } from './purchase-entry-builder';
 import { PurchaseItemsService } from './purchase-items.service';
 import { DocumentsModule } from '../documents/documents.module';
+import { LedgerModule } from '../ledger/ledger.module';
 import { PurchaseOrderDocument } from './purchase-order-document';
 import { PurchaseOrdersController } from './purchase-orders.controller';
 import { PurchaseOrdersService } from './purchase-orders.service';
@@ -42,7 +43,7 @@ import { SuppliersService } from './suppliers.service';
  * opening stock, reorder and reports. Admin only.
  */
 @Module({
-	imports: [AuthModule, MailboxesModule, MediaModule, DocumentsModule],
+	imports: [AuthModule, MailboxesModule, MediaModule, DocumentsModule, LedgerModule],
 	controllers: [
 		SuppliersController,
 		PurchaseItemsController,

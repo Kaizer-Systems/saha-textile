@@ -95,12 +95,17 @@ describe('tax invoices (accounts brief D1, D3; today’s rates until the CA conf
 			[{ lineId: 'a', sku: 'KAT-1', title: 'Saree', hsn: '5007', quantity: 1, unit: 'PCS', lineTotalINR: 999.4 }],
 			{ interState: false, shippingINR: 0 },
 		);
-		const rows = invoicePosting({ totals: built.totals, paidInAdvance: true, costINR: 600 });
+		const rows = invoicePosting({ totals: built.totals, advanceINR: 5_000, costINR: 600 });
 		const debit = rows.reduce((s, r) => s + (r.debitPaise ?? 0), 0);
 		const credit = rows.reduce((s, r) => s + (r.creditPaise ?? 0), 0);
 		expect(debit).toBe(credit);
 		expect(rows[0]).toMatchObject({ role: 'customer_advances', debitPaise: 99_900 });
 		expect(rows.find((r) => r.role === 'cost_of_goods_sold')?.debitPaise).toBe(60_000);
+		const part = invoicePosting({ totals: built.totals, advanceINR: 500, costINR: 0 });
+		expect(part.slice(0, 2)).toEqual([
+			{ role: 'customer_advances', debitPaise: 50_000 },
+			{ role: 'debtors_control', debitPaise: 49_900 },
+		]);
 	});
 });
 
@@ -178,7 +183,7 @@ describe('tax invoice edge cases (D1)', () => {
 
 	it('posts CGST and SGST in the seller’s State to a debtor, rounding either way, with no cost line when cost is unknown', () => {
 		const within = buildInvoiceLines([line({ lineTotalINR: 1_050.4 })], { interState: false, shippingINR: 0 });
-		const down = invoicePosting({ totals: within.totals, paidInAdvance: false, costINR: 0 });
+		const down = invoicePosting({ totals: within.totals, advanceINR: 0, costINR: 0 });
 		expect(down.map((r) => r.role)).toEqual([
 			'debtors_control',
 			'sales',
@@ -188,7 +193,7 @@ describe('tax invoice edge cases (D1)', () => {
 		]);
 		expect(down.find((r) => r.role === 'rounding_off')).toEqual({ role: 'rounding_off', debitPaise: 40 });
 		const up = buildInvoiceLines([line({ lineTotalINR: 1_050.6 })], { interState: false, shippingINR: 0 });
-		expect(invoicePosting({ totals: up.totals, paidInAdvance: false, costINR: 0 }).at(-1)).toEqual({
+		expect(invoicePosting({ totals: up.totals, advanceINR: 0, costINR: 0 }).at(-1)).toEqual({
 			role: 'rounding_off',
 			creditPaise: 40,
 		});

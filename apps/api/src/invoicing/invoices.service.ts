@@ -27,6 +27,7 @@ import {
 	TRANSACTION_MANAGER,
 } from '../infra/tokens';
 import { accountsRefusal } from '../ledger/accounts-refusal';
+import { BooksPostingService } from '../ledger/books-posting';
 import { LedgerService } from '../ledger/ledger.service';
 import { DocumentNumbersService } from '../orders-setup/document-numbers.service';
 
@@ -55,6 +56,7 @@ export class InvoicesService {
 		private readonly numbers: DocumentNumbersService,
 		private readonly ledger: LedgerService,
 		@Inject(TRANSACTION_MANAGER) private readonly tx: TransactionManagerPort,
+		private readonly books: BooksPostingService,
 	) {}
 
 	async enabled(): Promise<boolean> {
@@ -244,7 +246,7 @@ export class InvoicesService {
 				narration: `Tax invoice ${number} · order ${order.orderNumber}`,
 				lines: invoicePosting({
 					totals: built.totals,
-					paidInAdvance: order.paymentStatus === 'paid',
+					advanceINR: await this.books.advanceHeldINR(order.id),
 					costINR,
 				}).map((row) => ({ ledger: { role: row.role }, locationId: location.id, ...row })),
 				source: { type: 'taxInvoice', id, number },

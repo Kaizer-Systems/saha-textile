@@ -387,6 +387,11 @@ export class LedgerService {
 		}
 	}
 
+	/** A document's voucher by its idempotency key; null when it never posted (saved before the books took it). */
+	voucherByKey(idempotencyKey: string, context?: TransactionContext): Promise<JournalVoucher | null> {
+		return this.books.findVoucherByKey(idempotencyKey, context);
+	}
+
 	/**
 	 * A document's posting (tax invoices, credit notes, refund vouchers…): in the document's own transaction, to the
 	 * ledgers playing its roles (or a ledger by id). A second call with the same key returns the first voucher.

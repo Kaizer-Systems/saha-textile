@@ -129,19 +129,22 @@ function invoiceTotals(lines: readonly TaxInvoiceLine[], shipping: ReturnType<ty
 }
 
 /**
- * The invoice's posting (accounts brief Q, posting rules): debtor or customer advance for the total; sales,
+ * The invoice's posting (accounts brief Q, posting rules): the customer's advance as far as it goes, then the debtor; sales,
  * output CGST/SGST or IGST and rounding on the other side; and cost of goods sold against stock in hand.
  */
 export function invoicePosting(input: {
 	totals: InvoiceTotals;
-	paidInAdvance: boolean;
+	/** What the customer's advance still holds for this order (Postings and Convert brief P1): used first. */
+	advanceINR: number;
 	costINR: number;
 }): { role: string; debitPaise?: number; creditPaise?: number }[] {
 	const t = input.totals;
-	const rows: { role: string; debitPaise?: number; creditPaise?: number }[] = [
-		{ role: input.paidInAdvance ? 'customer_advances' : 'debtors_control', debitPaise: paise(t.totalINR) },
-		{ role: 'sales', creditPaise: paise(t.taxableINR) },
-	];
+	const total = paise(t.totalINR);
+	const advance = Math.min(total, paise(input.advanceINR));
+	const rows: { role: string; debitPaise?: number; creditPaise?: number }[] = [];
+	if (advance > 0) rows.push({ role: 'customer_advances', debitPaise: advance });
+	if (total > advance) rows.push({ role: 'debtors_control', debitPaise: total - advance });
+	rows.push({ role: 'sales', creditPaise: paise(t.taxableINR) });
 	const taxes = [
 		['output_cgst', t.cgstINR],
 		['output_sgst', t.sgstINR],

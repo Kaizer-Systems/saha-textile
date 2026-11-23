@@ -8254,5 +8254,10 @@
 	"ml_help": "Until a bank account is chosen, bank receipts and payments can't be saved.",
 	"ml_saved": "Saved where money lands",
 	"ml_wrong_ledger": "{{field}}: choose a ledger of the right kind.",
-	"ml_changed": "Someone else changed this; open the page again."
+	"ml_changed": "Someone else changed this; open the page again.",
+	"books_no_bank_received_by_bank": "The books have no bank account for money received by bank transfer or cheque yet. Set one in Accounts › Ledgers › Where money lands, then save again.",
+	"books_no_bank_paid_by_bank": "The books have no bank account for supplier payments yet. Set one in Accounts › Ledgers › Where money lands, then save again.",
+	"books_need_a_location": "The books need a warehouse location first. Add one in Settings › Locations, then try again.",
+	"books_role_not_mapped": "The books have no ledger for {{role}} yet, so this can't be saved. Add one in Accounts › Ledgers.",
+	"books_role_ambiguous": "More than one ledger in the books plays {{role}}, so this can't be saved. Keep one in Accounts › Ledgers."
 }

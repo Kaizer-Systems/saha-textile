@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	bankLanding,
 	billTotals,
 	purchaseEntryPosting,
 	purchaseReturnPosting,
@@ -8,8 +9,8 @@ import {
 	receiptPosting,
 	reversed,
 	supplierPaymentFrom,
-	supplierPaymentPosting,
 	supplierRefundPosting,
+	upiLanding,
 } from '../src/ledger/money-postings';
 
 import type { MoneyLanding } from '@saha-textile/contracts';
@@ -96,15 +97,17 @@ describe('postings (P1)', () => {
 		]);
 	});
 
-	it('pays a supplier from where the money left, and takes their refund into where it landed', () => {
-		expect(supplierPaymentPosting(48_400, { id: 'led_hdfc' })).toEqual([
-			{ ledger: { role: 'creditors_control' }, debitPaise: 4_840_000 },
-			{ ledger: { id: 'led_hdfc' }, creditPaise: 4_840_000 },
-		]);
+	it('takes a supplier’s refund into where it landed, against their account', () => {
 		expect(supplierRefundPosting(500, { id: 'led_hdfc' })).toEqual([
-			{ ledger: { role: 'creditors_control' }, creditPaise: 50_000 },
 			{ ledger: { id: 'led_hdfc' }, debitPaise: 50_000 },
+			{ ledger: { role: 'creditors_control' }, creditPaise: 50_000 },
 		]);
+	});
+
+	it('takes money into the bank account set, and refuses without one', () => {
+		expect(bankLanding(set)).toEqual({ id: 'led_hdfc' });
+		expect(() => bankLanding(none)).toThrow('money_lands_not_set:received_by_bank');
+		expect([upiLanding(set), upiLanding(none)]).toEqual([{ id: 'led_hdfc' }, { role: 'upi_card_clearing' }]);
 	});
 
 	it('puts input tax that can’t be claimed into the stock cost', () => {

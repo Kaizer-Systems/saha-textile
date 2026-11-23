@@ -108,6 +108,7 @@ function setup(options: Options = {}) {
 			chart: async () => options.chart ?? { ledgers: [] },
 		} as never,
 		{ withTransaction: async <T>(work: (context: never) => Promise<T>) => work({} as never) } as never,
+		{ advanceHeldINR: async () => 0 } as never,
 	);
 	const ship = (order: Order, shipmentId = 'shp_1', lineIds = ['a']) =>
 		service.issueAtDispatch(

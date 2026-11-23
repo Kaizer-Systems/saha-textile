@@ -26,15 +26,25 @@ export function receiptLanding(method: PaymentMethod, landing: MoneyLanding): Le
 		case 'gateway':
 			return either(landing.receivedByGateway, 'gateway_clearing');
 		case 'upi':
-			return either(landing.receivedByUpi, 'upi_card_clearing');
+			return upiLanding(landing);
 		case 'cashOnDelivery':
 			return either(landing.cashOnDelivery, 'cod_receivable');
 		case 'bankTransfer':
-			if (!landing.receivedByBank) throw new Error('money_lands_not_set:received_by_bank');
-			return { id: landing.receivedByBank };
+			return bankLanding(landing);
 		default:
 			return null;
 	}
+}
+
+/** Where money received by UPI lands: the ledger set, else UPI and card clearing. */
+export function upiLanding(landing: MoneyLanding): LedgerRef {
+	return either(landing.receivedByUpi, 'upi_card_clearing');
+}
+
+/** The bank account money received by transfer or cheque lands in (refused when none is set). */
+export function bankLanding(landing: MoneyLanding): LedgerRef {
+	if (!landing.receivedByBank) throw new Error('money_lands_not_set:received_by_bank');
+	return { id: landing.receivedByBank };
 }
 
 /** A payment received: where it landed against the customer's advance, or their debt once invoiced. */
@@ -52,17 +62,12 @@ export function supplierPaymentFrom(mode: PaymentMode, landing: MoneyLanding): L
 	return { id: landing.paidByBank };
 }
 
-/** A payment to a supplier: their account against where the money left from. */
-export function supplierPaymentPosting(amountINR: number, from: LedgerRef): MoneyRow[] {
-	return [
-		{ ledger: { role: 'creditors_control' }, debitPaise: paise(amountINR) },
-		{ ledger: from, creditPaise: paise(amountINR) },
-	];
-}
-
-/** Money a supplier paid back on a debit note: where it landed against their account. */
+/** Money a supplier paid back on a debit note: where it landed against their account (payments: self-invoice rules). */
 export function supplierRefundPosting(amountINR: number, landed: LedgerRef): MoneyRow[] {
-	return reversed(supplierPaymentPosting(amountINR, landed));
+	return [
+		{ ledger: landed, debitPaise: paise(amountINR) },
+		{ ledger: { role: 'creditors_control' }, creditPaise: paise(amountINR) },
+	];
 }
 
 export interface BillTotals {

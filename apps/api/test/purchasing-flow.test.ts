@@ -191,6 +191,15 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 		support,
 		outbox,
 	);
+	// The books are tested on their own (books-posting.test.ts); this flow is about purchases and stock.
+	const noBooks = {
+		purchaseEntryPosted: async () => null,
+		purchaseEntryVoided: async () => null,
+		supplierPaid: async () => null,
+		supplierPaymentReversed: async () => null,
+		purchaseReturnSent: async () => null,
+		purchaseReturnSettled: async () => null,
+	} as never;
 	const builder = new PurchaseEntryBuilder(repos.suppliers, repos.orders, repos.entries, repos.read, support);
 	const entries = new PurchaseEntriesService(
 		repos.entries,
@@ -205,6 +214,7 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 		repos.products,
 		builder,
 		support,
+		noBooks,
 		outbox,
 	);
 	const orders = new PurchaseOrdersService(
@@ -228,6 +238,7 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 		repos.movement,
 		repos.numbers,
 		support,
+		noBooks,
 		outbox,
 	);
 	const writer = new StockWriter(repos.read, repos.movement, repos.layers, repos.holds, outbox);

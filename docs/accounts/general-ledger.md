@@ -103,6 +103,25 @@ The posting rules that read it live in `packages/core-domain/src/ledger/money-po
 
 A bank receipt or payment with no bank account set is refused with `money_lands_not_set:received_by_bank` or `money_lands_not_set:paid_by_bank`.
 
+## Receipts and purchases
+
+`BooksPostingService` (`apps/api/src/ledger/books-posting.ts`) posts these inside the step that saves the document, in the same transaction, so the document and its voucher are saved together or not at all:
+
+| Step                                | Posting                                                                          | Key                                       |
+| ----------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------- |
+| Purchases › Post                    | Stock in hand and input CGST/SGST or IGST against Suppliers, rounding either way | `purchaseEntry:<id>`                      |
+| Void of a posted entry              | the entry's voucher reversed, on the day it is voided                            | `purchaseEntry:<id>:void`                 |
+| Record payment on a purchase entry  | Suppliers against cash or the bank set                                           | `supplierPayment:<id>`                    |
+| Reverse a supplier payment          | that payment's voucher reversed                                                  | `supplierPayment:<id>:reversed`           |
+| Send a purchase return (debit note) | Suppliers against stock in hand and input tax                                    | `purchaseReturn:<id>`                     |
+| A debit note settled by refund      | the bank set against Suppliers (credit notes and later bills post nothing more)  | `purchaseReturn:<id>:refund:<settlement>` |
+
+A bill whose input tax can't be claimed carries that tax in the stock cost. Purchases and supplier money post against the default stock location.
+
+A tax invoice uses the advance its order still holds (receipts credited to Customer advance, less earlier invoices and refund vouchers) before charging the customer's account.
+
+When the books can't take a posting, the step is refused with a code the admin puts in words (`money_lands_not_set:*`, `books_need_a_location`, `voucher_problem:*`), in the error notice and in Record payment on an order.
+
 ## Periods and locks
 
 Each month has a state per part of the books (sales, purchases, stock, cash, bank, payroll, journals):

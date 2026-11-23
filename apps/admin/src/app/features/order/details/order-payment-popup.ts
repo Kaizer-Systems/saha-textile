@@ -5,6 +5,7 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { firstValueFrom } from 'rxjs';
 
+import { booksWords } from '@core/accounts/books-refusal';
 import { OrdersGateway } from '@core/orders/orders.gateway';
 import { RupeesPipe, apiProblem, rupees } from '@core/purchasing/purchasing-format';
 import { parseRupees } from '@features/purchasing/shared/payment-popup';
@@ -106,7 +107,12 @@ export class OrderPaymentPopup {
 			);
 			this.modal.close(saved);
 		} catch (error) {
-			this.error.set(apiProblem(error, this.transloco.translate('ord_action_failed')));
+			// A step the books refused says why in words (Postings and Convert brief AP2).
+			this.error.set(
+				booksWords(apiProblem(error, this.transloco.translate('ord_action_failed')), (key, params) =>
+					this.transloco.translate(key, params),
+				),
+			);
 		} finally {
 			this.busy.set(false);
 		}

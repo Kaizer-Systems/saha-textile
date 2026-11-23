@@ -42,6 +42,7 @@ import {
 	STOCK_MOVEMENT,
 	STOCK_READ_REPOSITORY,
 } from '../infra/tokens';
+import { BooksPostingService } from '../ledger/books-posting';
 import { PurchasingSupport, missing, refuse } from './purchasing-support';
 
 const REASON_WORDS: Record<PurchaseReturn['reason'], string> = {
@@ -83,6 +84,7 @@ export class PurchaseReturnsService {
 		@Inject(STOCK_MOVEMENT) private readonly movement: StockMovementPort,
 		@Inject(NUMBER_ALLOCATOR) private readonly numbers: NumberAllocatorPort,
 		private readonly support: PurchasingSupport,
+		private readonly books: BooksPostingService,
 		@Optional() @Inject(SEARCH_OUTBOX) private readonly searchOutbox: SearchOutboxRepository | null = null,
 	) {}
 
@@ -231,6 +233,8 @@ export class PurchaseReturnsService {
 			noteToSupplier: write.noteToSupplier,
 			photoAssetIds: write.photoAssetIds,
 			lines: picked.map(({ row, line }, index) => ({
+				// computeReturnTotals gives one row per picked line, in order.
+				...Object.assign({ taxableINR: 0, taxINR: 0, totalINR: 0 }, totals.lines[index]),
 				lineId: existing?.lines.find((old) => old.entryLineId === line.lineId)?.lineId ?? `prl_${randomUUID()}`,
 				entryLineId: line.lineId,
 				productId: line.productId,
@@ -243,9 +247,6 @@ export class PurchaseReturnsService {
 				quantity: row.quantity,
 				unitCostINR: lineUnitCost(line),
 				gstRatePct: line.gstRatePct,
-				taxableINR: totals.lines[index]?.taxableINR ?? 0,
-				taxINR: totals.lines[index]?.taxINR ?? 0,
-				totalINR: totals.lines[index]?.totalINR ?? 0,
 			})),
 			taxableINR: totals.taxableINR,
 			cgstINR: totals.cgstINR,
@@ -423,6 +424,8 @@ export class PurchaseReturnsService {
 					};
 					const version = await this.returns.save(next, doc.version, context);
 					await this.creditEntry(entry.id, [next], context);
+					// The debit note in the books, in this same transaction (Postings and Convert brief P1).
+					await this.books.purchaseReturnSent(next, entry.itcClaimable, context, actor);
 					const units = describeUnits(
 						next.lines.map((line) => ({ units: line.quantity, soldBy: line.soldBy })),
 					);
@@ -501,21 +504,19 @@ export class PurchaseReturnsService {
 		const now = new Date().toISOString();
 		const settledINR = Math.round((doc.settledINR + body.amountINR) * 100) / 100;
 		const done = settlementOpen(doc.totalINR, settledINR) <= 0.005;
+		const settlement: PurchaseReturn['settlements'][number] = {
+			id: `prs_${randomUUID()}`,
+			how: body.how,
+			reference: body.reference,
+			date: body.date,
+			amountINR: body.amountINR,
+			attachmentAssetId: body.attachmentAssetId,
+			by: actor,
+			at: now,
+		};
 		const next: PurchaseReturn = {
 			...doc,
-			settlements: [
-				...doc.settlements,
-				{
-					id: `prs_${randomUUID()}`,
-					how: body.how,
-					reference: body.reference,
-					date: body.date,
-					amountINR: body.amountINR,
-					attachmentAssetId: body.attachmentAssetId,
-					by: actor,
-					at: now,
-				},
-			],
+			settlements: [...doc.settlements, settlement],
 			settledINR,
 			status: done ? 'settled' : 'sent',
 			settledAt: done ? now : null,
@@ -527,6 +528,7 @@ export class PurchaseReturnsService {
 			this.support.inTransaction(async (context) => {
 				const version = await this.returns.save(next, doc.version, context);
 				await this.creditEntry(doc.purchaseEntryId, [next], context);
+				await this.books.purchaseReturnSettled(next, settlement, context, actor);
 				await this.support.record(
 					{
 						actor,

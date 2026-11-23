@@ -61,6 +61,7 @@ import {
 	SUPPLIER_ITEM_CODE_REPOSITORY,
 	SUPPLIER_PAYMENT_REPOSITORY,
 } from '../infra/tokens';
+import { BooksPostingService } from '../ledger/books-posting';
 import { PurchaseEntryBuilder, warningKey } from './purchase-entry-builder';
 import { PurchasingSupport, actorOf, canSeeCost, missing, refuse, refuseAll } from './purchasing-support';
 
@@ -109,6 +110,7 @@ export class PurchaseEntriesService {
 		@Inject(PRODUCT_REPOSITORY) private readonly products: ProductRepository,
 		private readonly builder: PurchaseEntryBuilder,
 		private readonly support: PurchasingSupport,
+		private readonly books: BooksPostingService,
 		@Optional() @Inject(SEARCH_OUTBOX) private readonly searchOutbox: SearchOutboxRepository | null = null,
 	) {}
 
@@ -271,8 +273,8 @@ export class PurchaseEntriesService {
 
 		const byLine = new Map(body.lines.map((row) => [row.lineId, row]));
 		const lines = entry.lines.map((line) => {
-			const row = byLine.get(line.lineId);
-			if (!row) return line;
+			// goodsCheckProblems refused the check unless every line has its row, so the row always applies.
+			const row = Object.assign({ ...line }, byLine.get(line.lineId));
 			return {
 				...line,
 				accepted: row.accepted,
@@ -308,7 +310,7 @@ export class PurchaseEntriesService {
 			action: 'purchase.entry.goods_check',
 			entityType: 'purchase_entry',
 			entityId: id,
-			text: `${await this.support.nameOf(actor)} checked goods on the draft for ${entry.supplierName} ${entry.billNumber}: ${units((line) => line.accepted ?? 0)} good${problemsText ? `, ${problemsText}` : ', none damaged, none missing'}.`,
+			text: `${await this.support.nameOf(actor)} checked goods on the draft for ${entry.supplierName} ${entry.billNumber}: ${units((line) => line.accepted)} good${problemsText ? `, ${problemsText}` : ', none damaged, none missing'}.`,
 		});
 		return entryView(saved, canSeeCost(principal));
 	}
@@ -320,15 +322,15 @@ export class PurchaseEntriesService {
 		const settings = built.settings;
 		const fiscalYear = fiscalYearOf(this.support.today());
 		const next = await this.numbers.peek('PE', fiscalYear);
-		const accepted = entry.lines.filter((line) => (line.accepted ?? 0) > 0);
+		const accepted = entry.lines.flatMap((line) => (line.accepted ? [{ line, units: line.accepted }] : []));
 		const cost = accepted.reduce(
-			(sum, line) => sum + Math.round(perStockUnit(built.math, line.lineId) * (line.accepted ?? 0) * 100),
+			(sum, { line, units }) => sum + Math.round(perStockUnit(built.math, line.lineId) * units * 100),
 			0,
 		);
 		return {
 			numberPreview: formatDocumentNumber(settings.numberFormats.purchaseEntry, fiscalYear, next),
 			intoStock: describeUnits(entry.lines.map((line) => ({ units: line.accepted ?? 0, soldBy: line.soldBy }))),
-			skus: new Set(accepted.map((line) => line.variantId)).size,
+			skus: new Set(accepted.map(({ line }) => line.variantId)).size,
 			damaged: describeUnits(entry.lines.map((line) => ({ units: line.damaged, soldBy: line.soldBy }))),
 			missing: describeUnits(entry.lines.map((line) => ({ units: line.missing, soldBy: line.soldBy }))),
 			hasDamaged: entry.lines.some((line) => line.damaged > 0),
@@ -385,6 +387,8 @@ export class PurchaseEntriesService {
 						.join('; ') || null,
 				photoAssetIds: picks.flatMap(({ line }) => line.damagePhotoAssetIds),
 				lines: picks.map(({ line, quantity }, index) => ({
+					// computeReturnTotals gives one row per pick, in order.
+					...Object.assign({ taxableINR: 0, taxINR: 0, totalINR: 0 }, totals.lines[index]),
 					lineId: `prl_${randomUUID()}`,
 					entryLineId: line.lineId,
 					productId: line.productId,
@@ -397,9 +401,6 @@ export class PurchaseEntriesService {
 					quantity,
 					unitCostINR: perStockUnit(math, line.lineId),
 					gstRatePct: line.gstRatePct,
-					taxableINR: totals.lines[index]?.taxableINR ?? 0,
-					taxINR: totals.lines[index]?.taxINR ?? 0,
-					totalINR: totals.lines[index]?.totalINR ?? 0,
 				})),
 				taxableINR: totals.taxableINR,
 				cgstINR: totals.cgstINR,
@@ -478,8 +479,10 @@ export class PurchaseEntriesService {
 			);
 		}
 		// The rebuilt lines carry today's prices and warnings and keep the goods check (nothing changed).
-		const lines = built.entry.lines;
-		if (lines.some((line) => line.accepted === null))
+		const lines = built.entry.lines.flatMap((line) =>
+			line.accepted === null ? [] : [{ ...line, accepted: line.accepted }],
+		);
+		if (lines.length !== built.entry.lines.length)
 			throw refuse('goods_check_missing_line', 'Every line must be counted.');
 
 		// Products that had nothing to sell before: their back-in-stock badge starts (14-day rule).
@@ -506,9 +509,9 @@ export class PurchaseEntriesService {
 				}
 				const sequence = await this.numbers.next('PE', fiscalYear, context);
 				const number = formatDocumentNumber(settings.numberFormats.purchaseEntry, fiscalYear, sequence);
-				const postedLines: PurchaseEntry['lines'] = [];
+				const postedLines: Array<(typeof lines)[number]> = [];
 				for (const line of lines) {
-					const units = line.accepted ?? 0;
+					const units = line.accepted;
 					let costLayerId: string | null = null;
 					if (units > 0) {
 						costLayerId = `lay_${randomUUID()}`;
@@ -608,13 +611,14 @@ export class PurchaseEntriesService {
 					updatedBy: actor,
 				};
 				const version = await this.entries.save(next, entry.version, context);
+				// Stock and input tax against the supplier, in this same transaction (Postings and Convert brief P1).
+				await this.books.purchaseEntryPosted(next, context, actor);
 
 				const intoStock = describeUnits(
-					postedLines.map((line) => ({ units: line.accepted ?? 0, soldBy: line.soldBy })),
+					postedLines.map((line) => ({ units: line.accepted, soldBy: line.soldBy })),
 				);
-				const skus = new Set(
-					postedLines.filter((line) => (line.accepted ?? 0) > 0).map((line) => line.variantId),
-				).size;
+				const skus = new Set(postedLines.filter((line) => line.accepted > 0).map((line) => line.variantId))
+					.size;
 				const accepted = next.acceptedWarnings;
 				const tax =
 					entry.taxType === 'inter_state'
@@ -644,34 +648,33 @@ export class PurchaseEntriesService {
 				throw error;
 			});
 
-		await this.afterStockIn(productIds, freeBefore, lines);
+		await this.afterStockIn(freeBefore, lines);
 		return entryView(posted, canSeeCost(principal));
 	}
 
 	/** Back-in-stock dates and lifetime received units, then the shop's search entries. */
 	private async afterStockIn(
-		productIds: readonly string[],
 		freeBefore: ReadonlyMap<string, number>,
-		lines: ReadonlyArray<{ productId: string; accepted: number | null }>,
+		lines: ReadonlyArray<{ productId: string; accepted: number }>,
 	): Promise<void> {
 		const now = new Date().toISOString();
-		for (const productId of productIds) {
+		// One row per product on the entry: what it had free to sell before posting.
+		for (const [productId, before] of freeBefore) {
 			const product = await this.products.findById(productId, 'admin');
 			if (!product) continue;
 			const received = lines
 				.filter((line) => line.productId === productId)
-				.reduce((sum, line) => sum + (line.accepted ?? 0), 0);
+				.reduce((sum, line) => sum + line.accepted, 0);
 			const variants = await this.stock.variantsOfProduct(productId);
 			const freeAfter = variants.reduce((sum, row) => sum + Math.max(0, row.onHand - row.held), 0);
-			const cameBack =
-				(freeBefore.get(productId) ?? 0) === 0 && freeAfter > 0 && product.lifetimeUnitsReceived > 0;
+			const cameBack = before === 0 && freeAfter > 0 && product.lifetimeUnitsReceived > 0;
 			await this.products.save({
 				...product,
 				lifetimeUnitsReceived: product.lifetimeUnitsReceived + received,
 				backInStockAt: cameBack ? now : product.backInStockAt,
 			});
 		}
-		await this.searchOutbox?.request(productIds, new Date()).catch(() => undefined);
+		await this.searchOutbox?.request([...freeBefore.keys()], new Date()).catch(() => undefined);
 	}
 
 	/** p12: void only while every piece is still on the shelf, untouched, and nothing is paid or sent back. */
@@ -711,32 +714,33 @@ export class PurchaseEntriesService {
 			activePayments: payments.filter((payment) => !payment.reversedAt).length,
 			sentReturns: returns.filter((doc) => doc.status !== 'draft').length,
 		});
-		if (verdict.blocked) {
+		// A reason means blocked (voidBlockers gives none only when the entry can be voided).
+		if (verdict.reason) {
 			if (verdict.reason === 'stock_moved' && verdict.lines.length) {
 				throw refuseAll(
 					verdict.lines.map((line) => ({
 						code: 'void_stock_moved',
 						lineId: line.sku,
-						detail: [
-							line.soldUnits ? `sold ${line.soldUnits}` : '',
-							line.reservedUnits ? `in a paid checkout ${line.reservedUnits}` : '',
-							line.returnedUnits ? `returned ${line.returnedUnits}` : '',
-						]
-							.filter(Boolean)
+						detail: (
+							[
+								['sold', line.soldUnits],
+								['in a paid checkout', line.reservedUnits],
+								['returned', line.returnedUnits],
+							] as const
+						)
+							.filter(([, units]) => units > 0)
+							.map(([label, units]) => `${label} ${units}`)
 							.join(', '),
 					})),
 				);
 			}
-			const reasons: Record<string, string> = {
+			const reasons: Record<NonNullable<typeof verdict.reason>, string> = {
 				stock_moved: 'Some of its pieces have left stock, so taking them back out would leave the shop short.',
 				returns: 'A return from it has been sent to the supplier.',
 				payments: 'Payments are recorded against it: reverse them first.',
 				wrong_status: 'Only a posted entry can be voided.',
 			};
-			throw refuse(
-				`void_${verdict.reason ?? 'blocked'}`,
-				reasons[verdict.reason ?? ''] ?? 'This entry cannot be voided.',
-			);
+			throw refuse(`void_${verdict.reason}`, reasons[verdict.reason]);
 		}
 
 		const now = new Date().toISOString();
@@ -807,6 +811,7 @@ export class PurchaseEntriesService {
 					updatedBy: actor,
 				};
 				const version = await this.entries.save(next, entry.version, context);
+				await this.books.purchaseEntryVoided(next, context, actor);
 				const units = describeUnits(
 					layerRows.map((layer) => ({
 						units: layer.quantityRemaining,
@@ -892,11 +897,12 @@ export class PurchaseEntriesService {
 		return this.support.guardStale(() =>
 			this.support.inTransaction(async (context) => {
 				await this.payments.save(payment, context);
+				await this.books.supplierPaid(payment, entry, context, actor);
 				const paidINR = Math.round((entry.paidINR + write.amountINR) * 100) / 100;
 				const next: PurchaseEntry = { ...entry, paidINR, updatedAt: now, updatedBy: actor };
 				next.paymentStatus = entryPaymentStatus(next);
 				const version = await this.entries.save(next, entry.version, context);
-				const modes: Record<string, string> = {
+				const modes: Record<SupplierPayment['mode'], string> = {
 					bank_transfer: 'bank transfer',
 					upi: 'UPI',
 					cheque: 'cheque',
@@ -908,7 +914,7 @@ export class PurchaseEntriesService {
 						action: 'purchase.payment.record',
 						entityType: 'purchase_entry',
 						entityId: entry.id,
-						text: `${await this.support.nameOf(actor)} recorded ${formatRupees(write.amountINR)} paid to ${entry.supplierName} for ${entry.number} by ${modes[write.mode] ?? write.mode}${write.reference ? `, ref ${write.reference}` : ''}.`,
+						text: `${await this.support.nameOf(actor)} recorded ${formatRupees(write.amountINR)} paid to ${entry.supplierName} for ${entry.number} by ${modes[write.mode]}${write.reference ? `, ref ${write.reference}` : ''}.`,
 						facts: { paymentId: payment.id },
 					},
 					context,
@@ -929,10 +935,9 @@ export class PurchaseEntriesService {
 		const now = new Date().toISOString();
 		return this.support.guardStale(() =>
 			this.support.inTransaction(async (context) => {
-				await this.payments.save(
-					{ ...payment, reversedAt: now, reversedBy: actor, reverseReason: reason },
-					context,
-				);
+				const reversed = { ...payment, reversedAt: now, reversedBy: actor, reverseReason: reason };
+				await this.payments.save(reversed, context);
+				await this.books.supplierPaymentReversed(reversed, context, actor);
 				const paidINR = Math.max(0, Math.round((entry.paidINR - payment.amountINR) * 100) / 100);
 				const next: PurchaseEntry = { ...entry, paidINR, updatedAt: now, updatedBy: actor };
 				next.paymentStatus = entryPaymentStatus(next);

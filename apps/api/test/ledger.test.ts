@@ -511,6 +511,8 @@ describe('general ledger (accounts brief Q, T, D10)', () => {
 			{} as never,
 		);
 		expect(posted.kind).toBe('document');
+		expect(await service.voucherByKey('refundVoucher:rf_1', {} as never)).toEqual(posted);
+		expect(await service.voucherByKey('refundVoucher:rf_none')).toBeNull();
 		expect(posted.lines.map((l) => [l.ledgerId, l.gstRegistrationId, l.narration])).toEqual([
 			['led_customer_advances', 'reg_wb', 'Advance'],
 			['led_gateway_clearing', 'reg_wb', ''],

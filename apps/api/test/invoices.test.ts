@@ -116,6 +116,7 @@ const setup = (on: boolean) => {
 			}),
 		} as never,
 		{ withTransaction: async <T>(work: (context: never) => Promise<T>) => work({} as never) } as never,
+		{ advanceHeldINR: async () => 10_000_000 } as never,
 	);
 	return { service, inserted, posted };
 };

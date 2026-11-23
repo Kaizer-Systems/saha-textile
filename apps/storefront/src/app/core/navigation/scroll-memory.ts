@@ -101,15 +101,13 @@ export class ScrollMemory {
 	private readonly router = inject(Router);
 	private readonly scroller = inject(ViewportScroller);
 	private readonly positions = new Map<number, Saved>();
-	private started = false;
 
 	constructor() {
 		if (isPlatformBrowser(inject(PLATFORM_ID))) this.start();
 	}
 
+	/** Runs once, from the constructor. */
 	private start(): void {
-		if (this.started) return;
-		this.started = true;
 		this.scroller.setHistoryScrollRestoration('manual');
 		let currentId = 0;
 		// The service can start after the first page has finished loading; that load is not ours to move.

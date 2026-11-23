@@ -70,8 +70,8 @@ export const SettingStore = signalStore(
 					const current = store.selectedCurrency();
 					if (!current || !list.length) return;
 					const same = list.find((row) => row.code === current.code);
+					// The list is not empty here, so there is always a row to take.
 					const next = same ?? list.find((row) => row.code === 'INR') ?? list[0];
-					if (!next) return;
 					if (
 						next.code !== current.code ||
 						Number(next.exchange_rate) !== Number(current.exchange_rate) ||

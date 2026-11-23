@@ -50,7 +50,8 @@ export class SetSummary {
 	readonly lines = computed(() => [
 		...this.quote().pieces.map((piece) => ({
 			key: piece.key,
-			name: this.items().get(piece.key)?.name ?? '',
+			// The quote holds only keys of this bundle, so the item is always there.
+			name: this.items().get(piece.key)!.name,
 			quantity: piece.quantity,
 			today: piece.todayINR,
 			extra: false,
@@ -58,7 +59,8 @@ export class SetSummary {
 		})),
 		...this.quote().extras.map((extra) => ({
 			key: extra.key,
-			name: this.items().get(extra.key)?.name ?? '',
+			// The quote holds only keys of this bundle, so the item is always there.
+			name: this.items().get(extra.key)!.name,
 			quantity: extra.quantity,
 			today: extra.todayINR,
 			extra: true,

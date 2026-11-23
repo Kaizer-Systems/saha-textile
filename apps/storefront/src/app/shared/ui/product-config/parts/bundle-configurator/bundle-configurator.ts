@@ -377,12 +377,14 @@ export class BundleConfigurator implements OnInit {
 
 	/** Free items for every chosen piece and extra, given ones filled in. */
 	private freeAll(): Record<string, IFreePick[]> {
+		const chosen = this.chosen();
 		return Object.fromEntries(
-			[...this.chosen()].flatMap((key) => {
-				const item = this.itemOf(key);
-				const picks = item ? this.freeOf(item) : [];
-				return picks.length ? [[key, picks]] : [];
-			}),
+			this.items()
+				.filter((item) => chosen.has(item.key))
+				.flatMap((item) => {
+					const picks = this.freeOf(item);
+					return picks.length ? [[item.key, picks]] : [];
+				}),
 		);
 	}
 

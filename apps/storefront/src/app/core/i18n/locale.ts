@@ -196,7 +196,7 @@ export function retiredLocaleRedirect(pathAndQuery: string): LocaleRedirect | nu
 	const pathname = queryAt === -1 ? pathAndQuery : pathAndQuery.slice(0, queryAt);
 	const query = queryAt === -1 ? '' : pathAndQuery.slice(queryAt);
 	if (!isPagePath(pathname)) return null;
-	const first = pathname.split('/')[1] ?? '';
+	const first = pathname.slice(1).split('/', 1)[0];
 	if (!retired.includes(first) || locales.includes(first)) return null;
 	const rest = pathname.slice(first.length + 1) || '/';
 	return {

@@ -156,16 +156,18 @@ export class ContactUs {
 		this.form.markAllAsTouched();
 		if (this.form.invalid || this.sending()) return;
 		const value = this.form.getRawValue() as Record<string, string | null>;
+		// A cleared optional box reads as null; the required ones are filled once the form is valid.
+		const text = (name: string): string => value[name] ?? '';
 		this.sending.set(true);
 		this.contactMessages
 			.send({
-				name: value['name'] ?? '',
-				email: value['email'] ?? '',
-				phone: String(value['phone'] ?? ''),
-				subject: value['subject'] ?? '',
-				message: value['message'] ?? '',
+				name: text('name'),
+				email: text('email'),
+				phone: String(text('phone')),
+				subject: text('subject'),
+				message: text('message'),
 				locale: this.locale,
-				website: value['website'] ?? '',
+				website: text('website'),
 				elapsedMs: Date.now() - this.openedAt,
 			})
 			.subscribe({

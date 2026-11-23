@@ -82,10 +82,11 @@ export function stylesheetLinks(html: string): StylesheetLink[] {
  * Null: the page takes no part.
  */
 export function criticalKey(path: string, links: readonly StylesheetLink[], html = ''): string | null {
-	const clean = path.split('?')[0] ?? path;
+	const clean = path.split('?')[0];
 	const type = PAGE_TYPES.find((candidate) => candidate.path.test(clean));
 	if (!type || links.length === 0) return null;
-	const locale = /^\/([a-z]{2})\b/.exec(clean)?.[1] ?? 'en';
+	// Every page type starts with the two-letter language.
+	const locale = clean.slice(1, 3);
 	return `${type.key}:${locale}|${links.map((link) => link.href).join(',')}|${outline(html)}`;
 }
 
@@ -120,7 +121,7 @@ export function fontPreloads(html: string): Set<string> {
  */
 export function preloadedFontsOnly(css: string, preloads: ReadonlySet<string>): string {
 	return css.replace(/@font-face\s*\{[^}]*\}/g, (face) => {
-		const files = [...face.matchAll(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g)].map((match) => match[2] ?? '');
+		const files = [...face.matchAll(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g)].map((match) => match[2]);
 		if (files.length === 0) return face;
 		return files.some((file) => preloads.has(file)) ? face : '';
 	});
@@ -128,7 +129,7 @@ export function preloadedFontsOnly(css: string, preloads: ReadonlySet<string>): 
 
 /** The `<style>` blocks of a page, in order (Angular's component styles, and anything inlined). */
 export function inlineStyles(html: string): string[] {
-	return [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((match) => match[1] ?? '');
+	return [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((match) => match[1]);
 }
 
 /** What Beasties added to a page: the `<style>` blocks of its output that the input did not have. */
@@ -173,11 +174,11 @@ export function sampleBody(html: string): string {
 export function pageShape(html: string): Set<string> {
 	const shape = new Set<string>();
 	for (const match of sampleBody(html).matchAll(/<([a-zA-Z][\w-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g)) {
-		shape.add((match[1] ?? '').toLowerCase());
-		const attributes = match[2] ?? '';
+		shape.add(match[1].toLowerCase());
+		const attributes = match[2];
 		for (const attribute of attributes.matchAll(/([^\s=/>"']+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s>]+))?/g)) {
-			const name = (attribute[1] ?? '').toLowerCase();
-			if (!name || name === 'id') continue;
+			const name = attribute[1].toLowerCase();
+			if (name === 'id') continue;
 			shape.add(`@${name}`);
 			if (name !== 'class') continue;
 			const value = (attribute[2] ?? '').replace(/^["']|["']$/g, '');

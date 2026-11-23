@@ -148,15 +148,14 @@ export class ReviewModal {
 			imageAssetIds: this.photos().map((photo) => photo.assetId),
 		};
 		const { reviewId, orderId } = this;
-		if (!reviewId && !orderId) {
-			this.photoNotice.set('review_needs_delivered_order');
-			return;
-		}
 		try {
 			if (reviewId) {
 				await firstValueFrom(this.reviews.update(reviewId, content));
 			} else if (orderId) {
 				await this.uploads.submit({ productId: String(this.product.id), orderId, ...content });
+			} else {
+				this.photoNotice.set('review_needs_delivered_order');
+				return;
 			}
 			this.modalService.dismissAll();
 			this.saved.emit();

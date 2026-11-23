@@ -163,7 +163,8 @@ export class SearchSuggest {
 		if (!this.visible()) return '';
 		if (this.failed()) return 'search_unavailable';
 		if (this.noMatch()) return 'search_no_match_short';
-		return this.options().length ? 'search_suggestions_count' : '';
+		// Open with rows: every section drawn holds at least one.
+		return 'search_suggestions_count';
 	});
 
 	readonly highlight = highlight;

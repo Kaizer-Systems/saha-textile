@@ -135,6 +135,6 @@ export class Videos {
 			if (value) params.set(key, value);
 			else params.delete(key);
 		}
-		this.location.replaceState(path ?? '', params.toString());
+		this.location.replaceState(path, params.toString());
 	}
 }

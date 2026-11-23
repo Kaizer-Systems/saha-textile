@@ -61,9 +61,10 @@ export class ProductConfigModal {
 		const p = this.fullProduct() ?? this.product();
 		return p?.sold_by === 'metre' ? (p.metre_rule ?? null) : null;
 	});
+	/** Read only once `rule()` has found a metre product, so a product is always there. */
 	private readonly freeToSell = computed<number | null>(() => {
 		const p = this.fullProduct() ?? this.product();
-		if (!p || p.made_to_order) return null;
+		if (p.made_to_order) return null;
 		return this.summary()?.variation?.quantity ?? p.quantity ?? null;
 	});
 	readonly lengthIssue = computed(() => {

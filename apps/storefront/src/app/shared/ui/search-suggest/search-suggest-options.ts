@@ -49,14 +49,14 @@ export function matchCategories(
 	const byPath = new Map(rows.map((row) => [row.canonical_path ?? '', row]));
 	return rows
 		.filter(
-			(row) =>
+			(row): row is ICategory & { canonical_path: string } =>
 				!!row.canonical_path &&
 				(row.name.toLocaleLowerCase().includes(needle) || row.slug.replace(/-/g, ' ').includes(needle)),
 		)
 		.sort((a, b) => (a.level ?? 0) - (b.level ?? 0) || (b.products_count ?? 0) - (a.products_count ?? 0))
 		.slice(0, MAX_CATEGORIES)
 		.map((category) => {
-			const parentPath = (category.canonical_path ?? '').split('/').slice(0, -1).join('/');
+			const parentPath = category.canonical_path.split('/').slice(0, -1).join('/');
 			return { category, parent: parentPath ? (byPath.get(parentPath)?.name ?? null) : null };
 		});
 }

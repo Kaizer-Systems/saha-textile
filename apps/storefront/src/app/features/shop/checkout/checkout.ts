@@ -243,9 +243,10 @@ export class Checkout {
 		const abroad = entries.find((entry) => entry.result === 'firstAndFurther');
 		if (abroad) return t('chk_ship_abroad', { count: abroad.furtherUnits ?? 0 });
 		const charged = entries.filter((entry) => entry.result === 'productCharge' && entry.amountINR > 0);
-		if (!charged.length) return entries.length ? t('chk_ship_all_free') : '';
+		const [first] = charged;
+		if (!first) return entries.length ? t('chk_ship_all_free') : '';
 		const units = charged.reduce((sum, entry) => sum + (entry.units ?? 1), 0);
-		const unit = charged[0]?.unitAmountINR ?? charged[0]?.amountINR ?? 0;
+		const unit = first.unitAmountINR ?? first.amountINR;
 		const free = entries.some((entry) => entry.result === 'free');
 		const words = t(units === 1 ? 'chk_ship_discounted_one' : 'chk_ship_discounted_other', {
 			count: units,

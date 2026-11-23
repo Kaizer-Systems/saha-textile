@@ -90,7 +90,7 @@ export function blogImage(image: ApiResolvedImage | null, max = 1600): IBlogImag
 	if (!image || !sources.length) return null;
 	const pick = [...sources].reverse().find((source) => source.width <= max) ?? sources[0];
 	return {
-		original_url: pick?.url ?? '',
+		original_url: pick.url,
 		srcset: sources.map((source) => `${source.url} ${source.width}w`).join(', '),
 		alt: image.alt,
 		width: image.width,

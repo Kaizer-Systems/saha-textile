@@ -97,8 +97,9 @@ export class EDocsOrderBridge implements OnModuleInit {
 			enabledFrom: settings.eInvoiceEnabledFrom ?? null,
 			todayIst: istDay(new Date()),
 		});
-		if (problems.length) {
-			await log(false, problems[0] ?? 'refused', problems.join(', '));
+		const [problem] = problems;
+		if (problem) {
+			await log(false, problem, problems.join(', '));
 			return { kind: 'refused', message: problems.join(', ') };
 		}
 		const gateway = auto.gateway.gateway;

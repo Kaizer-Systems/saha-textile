@@ -8,6 +8,17 @@ import { EDocsOrderBridge } from './edocs-order-bridge';
 import { EDocsController } from './edocs.controller';
 import { EDocsService } from './edocs.service';
 
+/**
+ * Where the automatic paths' keys are kept (AE6): sealed under EDOC_KEYS_KEY (and the previous key while it rotates);
+ * without that server key only the by-hand path can be used.
+ */
+export function edocKeyStoreFor(config: Pick<AppConfig, 'edocs'>): MongoEDocKeyStore | UnavailableEDocKeyStore {
+	const key = (value: string) => new Uint8Array(Buffer.from(value, 'base64'));
+	const { keysKey, keysKeyPrevious } = config.edocs;
+	if (!keysKey) return new UnavailableEDocKeyStore();
+	return new MongoEDocKeyStore(key(keysKey), keysKeyPrevious ? key(keysKeyPrevious) : undefined);
+}
+
 /** E-invoice and e-way bill: five paths, one set of buttons (accounts brief addendum 2). */
 @Module({
 	controllers: [EDocsController],
@@ -16,19 +27,7 @@ import { EDocsService } from './edocs.service';
 		EDocsOrderBridge,
 		EDocGatewayFactory,
 		{ provide: EDOC_REPOSITORY, useClass: MongoEDocRepository },
-		{
-			provide: EDOC_KEY_STORE,
-			inject: [APP_CONFIG],
-			useFactory: (config: AppConfig) =>
-				config.edocs.keysKey
-					? new MongoEDocKeyStore(
-							new Uint8Array(Buffer.from(config.edocs.keysKey, 'base64')),
-							config.edocs.keysKeyPrevious
-								? new Uint8Array(Buffer.from(config.edocs.keysKeyPrevious, 'base64'))
-								: undefined,
-						)
-					: new UnavailableEDocKeyStore(),
-		},
+		{ provide: EDOC_KEY_STORE, inject: [APP_CONFIG], useFactory: edocKeyStoreFor },
 	],
 	exports: [EDocsService, EDocsOrderBridge, EDOC_REPOSITORY],
 })

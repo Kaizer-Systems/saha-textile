@@ -210,7 +210,10 @@ export class DocumentFormatsService {
 	}
 
 	/** Several copies of one real document in one PDF, each from a new page (tax invoice copies, EI10). */
-	async renderActiveCopies(doc: DocumentKind, copies: readonly DocumentData[]): Promise<Uint8Array> {
+	async renderActiveCopies(
+		doc: DocumentKind,
+		copies: readonly [DocumentData, ...DocumentData[]],
+	): Promise<Uint8Array> {
 		const format = await this.formats.findActive(doc);
 		const blocks = format?.blocks ?? ourBlocks(doc);
 		return this.pdf(
@@ -221,11 +224,10 @@ export class DocumentFormatsService {
 
 	private async pdf(
 		format: { name: string; paper: DocumentPaper; blocks: readonly DocumentBlock[] },
-		copies: readonly DocumentData[],
+		copies: readonly [DocumentData, ...DocumentData[]],
 	): Promise<Uint8Array> {
 		if (!this.renderer) throw new ServiceUnavailableException({ code: 'documents_unavailable' });
-		const data = copies[0];
-		if (!data) throw new ServiceUnavailableException({ code: 'documents_unavailable' });
+		const [data] = copies;
 		const [assets, logo] = await Promise.all([this.paperwork.loadStatic(), this.paperwork.logo()]);
 		const band = eInvoiceBand(format, data);
 		const brand = { logoSrc: logo.asset ? 'logo' : null, themeColor: logo.themeColor, fontFaces: FONT_FACES };

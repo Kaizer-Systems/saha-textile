@@ -76,14 +76,49 @@ describe('tax invoice print (accounts brief D1, AE5)', () => {
 		const seller = { name: 'K.R. Marketing', lines: [] };
 		const format = { name: 'Standard', paper: 'a4' as const, blocks: ourBlocks('taxInvoice') };
 		const brand = { logoSrc: null, themeColor: null, fontFaces: '' };
-		const copies = (['original', 'duplicate', 'triplicate'] as const).map((copy) =>
-			taxInvoiceData(invoice, seller, copy, null),
-		);
+		const print = (copy: 'original' | 'duplicate' | 'triplicate') => taxInvoiceData(invoice, seller, copy, null);
+		const copies = [print('original'), print('duplicate'), print('triplicate')] as const;
 		const html = documentHtmlCopies(format, copies, brand);
 		expect(html.match(/break-before:page/g)).toHaveLength(2);
 		for (const label of ['Original for recipient', 'Duplicate for transporter', 'Triplicate for supplier'])
 			expect(html).toContain(label);
 		expect(html).not.toContain('counter(pages)');
 		expect(documentHtml(format, copies[0]!, brand)).toContain('counter(pages)');
+	});
+
+	it('prints CGST and SGST at home, metres as metres, delivery, an export and a State it doesn’t know', () => {
+		const home = TaxInvoice.parse({
+			...invoice,
+			placeOfSupply: '19',
+			interState: false,
+			buyer: { ...invoice.buyer, gstin: null, stateCode: '19' },
+			lines: [
+				{ ...invoice.lines[0], unit: 'MTR', quantity: 2.5, cgstINR: 869.05, sgstINR: 869.05, igstINR: 0 },
+				{ ...invoice.lines[0], lineId: 'b', cgstINR: 869.05, sgstINR: 869.05, igstINR: 0 },
+			],
+			cgstINR: 1_738.1,
+			sgstINR: 1_738.1,
+			igstINR: 0,
+			shippingINR: 105,
+		});
+		const data = taxInvoiceData(home, { name: 'K.R. Marketing', lines: [] }, 'triplicate', null);
+		expect(data.taxHeading).toBe('CGST + SGST');
+		expect(data.rows[0]?.cells['qty']).toBe('2.5 m');
+		expect(data.hsnSummary).toHaveLength(1);
+		expect(data.totals?.totals.map((t) => t.label)).toEqual([
+			'Taxable value',
+			'CGST',
+			'SGST',
+			'Delivery (incl. GST)',
+			'Total',
+		]);
+		const abroad = taxInvoiceData(
+			TaxInvoice.parse({ ...invoice, placeOfSupply: '96', buyer: { ...invoice.buyer, stateCode: '00' } }),
+			{ name: 'K.R. Marketing', lines: [] },
+			'original',
+			null,
+		);
+		expect(abroad.values['placeOfSupply']).toBe('Outside India (96)');
+		expect(abroad.parties?.billTo?.lines).toContain('00 (00)');
 	});
 });

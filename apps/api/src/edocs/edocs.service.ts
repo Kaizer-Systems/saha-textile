@@ -182,17 +182,23 @@ export class EDocsService {
 		return this.view();
 	}
 
-	private async gatewayFor(gstin: string, path: AutomaticEDocPath): Promise<AnyEDocGateway | null> {
+	/** A path's adapter and the keys' view it was built from; null without both keys and secrets. */
+	private async gatewayFor(
+		gstin: string,
+		path: AutomaticEDocPath,
+	): Promise<{ gateway: AnyEDocGateway; view: EDocKeysView } | null> {
 		const view = (await this.settingsFor(gstin)).keys.find((k) => k.path === path);
 		const secrets = view ? await this.keys.get(gstin, path) : null;
-		return view && secrets ? this.gateways.build(path, view, secrets) : null;
+		const gateway = view && secrets ? this.gateways.build(path, view, secrets) : null;
+		return view && gateway ? { gateway, view } : null;
 	}
 
 	/** Settings › Test: signs in (and, for e-invoice, reads our own GSTIN back). */
 	async test(path: AutomaticEDocPath, by: string | null): Promise<EDocSettingsView> {
 		const gstin = await this.requireGstin();
-		const built = await this.gatewayFor(gstin, path);
-		if (!built) throw new NotFoundException('edoc_keys_needed');
+		const found = await this.gatewayFor(gstin, path);
+		if (!found) throw new NotFoundException('edoc_keys_needed');
+		const built = found.gateway;
 		const started = Date.now();
 		let ok = true;
 		let code: string | null = null;
@@ -209,14 +215,12 @@ export class EDocsService {
 						: 'error';
 			message = error instanceof Error ? error.message.slice(0, 300) : 'error';
 		}
-		const view = (await this.settingsFor(gstin)).keys.find((k) => k.path === path);
-		if (view)
-			await this.replaceKeysView(gstin, path, {
-				...view,
-				testedAt: new Date().toISOString(),
-				testOk: ok,
-				testMessage: message,
-			});
+		await this.replaceKeysView(gstin, path, {
+			...found.view,
+			testedAt: new Date().toISOString(),
+			testOk: ok,
+			testMessage: message,
+		});
 		await this.log({
 			gstin,
 			path,
@@ -241,8 +245,8 @@ export class EDocsService {
 		const path = kind === 'eInvoice' ? settings.eInvoicePath : settings.eWayBillPath;
 		if (path === 'manual' || PATH_KIND[path] !== kind) return null;
 		if (!settings.keys.find((k) => k.path === path)?.testOk) return null;
-		const gateway = await this.gatewayFor(gstin, path);
-		return gateway ? { gstin, path, gateway } : null;
+		const found = await this.gatewayFor(gstin, path);
+		return found ? { gstin, path, gateway: found.gateway } : null;
 	}
 
 	async log(call: Omit<EDocCall, 'id' | 'at'>): Promise<void> {

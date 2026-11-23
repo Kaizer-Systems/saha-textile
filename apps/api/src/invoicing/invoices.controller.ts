@@ -58,8 +58,10 @@ export class InvoicesController {
 		const invoice = await this.invoices.get(invoiceId);
 		if (invoice.orderId !== id) throw new NotFoundException('invoice_not_found');
 		// "all": the three copies one after another in one file (EI10).
-		const copies: InvoiceCopy[] =
-			copyParam === 'all' ? [...InvoiceCopy.options] : [InvoiceCopy.catch('original').parse(copyParam)];
+		const copies: [InvoiceCopy, ...InvoiceCopy[]] =
+			copyParam === 'all'
+				? ['original', 'duplicate', 'triplicate']
+				: [InvoiceCopy.catch('original').parse(copyParam)];
 		const [eInvoice, eWayBill] = await Promise.all([
 			this.edocs.findActive('eInvoice', invoice.id).then((d) => d ?? this.edocs.findActive('eInvoice', id)),
 			this.edocs.findActive('eWayBill', invoice.id).then((d) => d ?? this.edocs.findActive('eWayBill', id)),
@@ -76,11 +78,10 @@ export class InvoicesController {
 			: eWayBill?.ewbNumber
 				? { irn: null, ackNo: null, ackDate: null, signedQrSvg: null, ewayBill: eWayBill.ewbNumber }
 				: null;
-		const pdf = await this.formats.renderActiveCopies(
-			'taxInvoice',
-			copies.map((copy) => taxInvoiceData(invoice, seller, copy, band)),
-		);
-		const copy = copies.length > 1 ? 'all copies' : copies[0];
+		const [first, ...others] = copies;
+		const print = (copy: InvoiceCopy) => taxInvoiceData(invoice, seller, copy, band);
+		const pdf = await this.formats.renderActiveCopies('taxInvoice', [print(first), ...others.map(print)]);
+		const copy = others.length ? 'all copies' : first;
 		void reply
 			.header('Content-Type', 'application/pdf')
 			.header('Content-Disposition', `inline; filename="${invoice.number.replace(/\//g, '-')} ${copy}.pdf"`)

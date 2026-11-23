@@ -120,12 +120,10 @@ export class InvoicesService {
 	 * false when it is missing (a gap). Numbers end in their counter ("TI/26-27/000145").
 	 */
 	private async previousInSeries(invoice: TaxInvoice): Promise<string | false> {
-		const match = /^(.*?)(\d+)$/.exec(invoice.number);
-		if (!match) return '';
-		const [, prefix = '', digits = ''] = match;
+		const digits = /\d+$/.exec(invoice.number)?.[0] ?? '';
 		const n = Number(digits);
 		if (n <= 1) return '';
-		const previous = `${prefix}${String(n - 1).padStart(digits.length, '0')}`;
+		const previous = `${invoice.number.slice(0, -digits.length)}${String(n - 1).padStart(digits.length, '0')}`;
 		const found = await this.invoices.list({
 			from: '2000-01-01',
 			to: '2999-12-31',
@@ -186,9 +184,10 @@ export class InvoicesService {
 		at: string,
 		context: TransactionContext,
 	): Promise<TaxInvoice> {
-		const input = { order, shipmentId, lineIds, actorId, at };
-		const shipped = order.lines.filter(
-			(line) => line.lineId && input.lineIds.includes(line.lineId) && line.role !== 'bundle',
+		const shipped = order.lines.flatMap((line) =>
+			line.lineId && lineIds.includes(line.lineId) && line.role !== 'bundle'
+				? [{ ...line, lineId: line.lineId }]
+				: [],
 		);
 		const [allLocations, earlier, shop] = await Promise.all([
 			this.locations.list(),
@@ -209,12 +208,14 @@ export class InvoicesService {
 		const interState = placeOfSupply !== sellerState;
 		const inputs = [];
 		for (const line of shipped) {
-			const product = line.tax?.hsn ? null : await this.products.findById(line.productId).catch(() => null);
+			// The HSN snapshot on the line, else the product's own.
+			const hsn =
+				line.tax?.hsn || (await this.products.findById(line.productId).catch(() => null))?.hsnCode || null;
 			inputs.push({
-				lineId: line.lineId ?? line.sku,
+				lineId: line.lineId,
 				sku: line.sku,
 				title: line.title['en'] ?? Object.values(line.title)[0] ?? line.sku,
-				hsn: line.tax?.hsn ?? product?.hsnCode ?? null,
+				hsn,
 				quantity: line.quantity,
 				unit: 'PCS' as const,
 				lineTotalINR: line.lineTotalINR,
@@ -225,12 +226,12 @@ export class InvoicesService {
 		const built = buildInvoiceLines(inputs, { interState, shippingINR });
 		const problem = built.problems[0];
 		if (problem) {
-			const sku = inputs.find((l) => l.lineId === problem.lineId)?.sku ?? '';
+			const sku = inputs.find((l) => l.lineId === problem.lineId)?.sku;
 			throw new BadRequestException(`invoice_problem:${problem.problem}${sku ? `:${sku}` : ''}`);
 		}
 		const id = `ti_${randomUUID()}`;
-		const date = istDay(input.at);
-		const number = await this.numbers.issue('taxInvoice', context, new Date(input.at), registration.id);
+		const date = istDay(at);
+		const number = await this.numbers.issue('taxInvoice', context, new Date(at), registration.id);
 		const costINR = shipped.reduce((sum, line) => sum + (line.unitCostINR ?? 0) * line.quantity, 0);
 		const voucher = await this.ledger.post(
 			{
@@ -245,7 +246,7 @@ export class InvoicesService {
 				idempotencyKey: `taxInvoice:${id}`,
 			},
 			context,
-			input.actorId,
+			actorId,
 		);
 		const invoice = TaxInvoice.parse({
 			id,
@@ -256,7 +257,7 @@ export class InvoicesService {
 			locationId: location.id,
 			orderId: order.id,
 			orderNumber: order.orderNumber,
-			shipmentId: input.shipmentId,
+			shipmentId,
 			seller: {
 				name: shop?.tradeName || shop?.legalName || registration.gstin,
 				gstin: registration.gstin,
@@ -275,8 +276,8 @@ export class InvoicesService {
 			...built.totals,
 			ratesPendingCa: true,
 			voucherId: voucher.id,
-			createdBy: input.actorId,
-			createdAt: input.at,
+			createdBy: actorId,
+			createdAt: at,
 		});
 		await this.invoices.insert(invoice, context);
 		return invoice;

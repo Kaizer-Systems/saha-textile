@@ -41,10 +41,10 @@ export function taxInvoiceData(
 		},
 		sku: line.sku,
 	}));
-	const byHsn = new Map<string, { taxable: number; tax: number; rate: number }>();
+	const byHsn = new Map<string, { hsn: string; taxable: number; tax: number; rate: number }>();
 	for (const line of invoice.lines) {
 		const key = `${line.hsn}@${line.ratePercent}`;
-		const row = byHsn.get(key) ?? { taxable: 0, tax: 0, rate: line.ratePercent };
+		const row = byHsn.get(key) ?? { hsn: line.hsn, taxable: 0, tax: 0, rate: line.ratePercent };
 		row.taxable += line.taxableINR;
 		row.tax += line.cgstINR + line.sgstINR + line.igstINR;
 		byHsn.set(key, row);
@@ -89,8 +89,8 @@ export function taxInvoiceData(
 		},
 		taxHeading: invoice.interState ? 'IGST' : 'CGST + SGST',
 		rows,
-		hsnSummary: [...byHsn.entries()].map(([key, row]) => ({
-			hsn: key.split('@')[0] ?? '',
+		hsnSummary: [...byHsn.values()].map((row) => ({
+			hsn: row.hsn,
 			taxable: money(row.taxable),
 			rate: `${row.rate}%`,
 			tax: money(row.tax),

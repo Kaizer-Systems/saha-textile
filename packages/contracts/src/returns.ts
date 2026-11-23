@@ -191,6 +191,21 @@ export const PriceAdjustmentWrite = z.object({
 });
 export type PriceAdjustmentWrite = z.infer<typeof PriceAdjustmentWrite>;
 
+/**
+ * Refund now (B5): back through the gateway the order was paid with, or paid by hand (bank transfer or UPI) from a
+ * cash or bank ledger, with its reference.
+ */
+export const CreditNoteRefundWrite = z.discriminatedUnion('how', [
+	z.object({ how: z.literal('gateway') }),
+	z.object({
+		how: z.literal('by_hand'),
+		method: z.enum(['bank_transfer', 'upi']),
+		ledgerId: Id,
+		reference: z.string().trim().min(4).max(60),
+	}),
+]);
+export type CreditNoteRefundWrite = z.infer<typeof CreditNoteRefundWrite>;
+
 export const CreditNoteCancel = z.object({ reason: z.string().trim().min(5).max(300) });
 export type CreditNoteCancel = z.infer<typeof CreditNoteCancel>;
 

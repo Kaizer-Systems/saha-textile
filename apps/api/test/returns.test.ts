@@ -71,6 +71,8 @@ const order = {
 };
 
 interface Options {
+	payments?: unknown[];
+	gateway?: null | { outcome: string; refusalCode?: string | null };
 	noBase?: boolean;
 	delivered?: string | null;
 	invoices?: TaxInvoice[];
@@ -173,7 +175,26 @@ function setup(options: Options = {}) {
 		{
 			post: async (request: (typeof posted)[number]) => (posted.push(request), { id: `jv_${posted.length}` }),
 			isSuperAdmin: async (principal?: { userId: string }) => principal?.userId === 'adm_super',
+			chart: async () => ({
+				ledgers: [
+					{ id: 'led_cash', groupId: 'g_cash' },
+					{ id: 'led_rent', groupId: 'g_exp' },
+				],
+				groups: [
+					{ id: 'g_cash', systemKey: 'cash_in_hand', parentId: null },
+					{ id: 'g_exp', systemKey: 'indirect_expenses', parentId: null },
+				],
+			}),
 		} as never,
+		{ listByOrder: async () => options.payments ?? [] } as never,
+		options.gateway === null
+			? null
+			: ({
+					refundPayment: async () => ({
+						outcome: options.gateway?.outcome ?? 'accepted',
+						refusalCode: options.gateway?.refusalCode ?? null,
+					}),
+				} as never),
 	);
 	return { service, returns, notes, debits, moves, consumed, holds, posted, audit, invoices };
 }
@@ -654,5 +675,120 @@ describe('the parcel brought back and other edges', () => {
 		await made.service.step(entry.id, { to: 'received' }, null, NOW);
 		await made.service.check(entry.id, { lines: [{ lineId: 'z', outcome: 'write_off', note: '' }] }, null, NOW);
 		expect((await made.service.fromReturn(entry.id, null, NOW)).lines[0]?.unitCostINR).toBeNull();
+	});
+});
+
+describe('Refund now (B5)', () => {
+	const paid = [
+		{ method: 'upi', gateway: null, state: 'received' },
+		{ method: 'gateway', gateway: { reference: null }, state: 'received' },
+		{ method: 'gateway', gateway: { reference: 'pay_1' }, state: 'failed' },
+		{ method: 'gateway', gateway: { reference: 'pay_2' }, state: 'received' },
+	];
+	const issuedFrom = async (made: ReturnType<typeof setup>) => {
+		const { asked, draft } = await checkedDraft(made);
+		return { asked, note: await made.service.issue(draft.id, 0, null, NOW) };
+	};
+
+	it('records a refund paid by hand from a cash or bank ledger, and the return as refunded', async () => {
+		const made = setup();
+		const { asked, note } = await issuedFrom(made);
+		const refunded = await made.service.refund(
+			note.id,
+			{ how: 'by_hand', method: 'upi', ledgerId: 'led_cash', reference: 'UTR123456' },
+			'adm_1',
+			NOW,
+		);
+		expect(refunded.refund).toMatchObject({
+			status: 'paid',
+			method: 'upi',
+			reference: 'UTR123456',
+			voucherId: 'jv_2',
+		});
+		expect(made.posted.at(-1)?.source.type).toBe('creditNoteRefund');
+		expect(made.returns.find((r) => r.id === asked.id)?.status).toBe('refunded');
+		await expect(
+			made.service.refund(
+				note.id,
+				{ how: 'by_hand', method: 'upi', ledgerId: 'led_cash', reference: 'UTR123456' },
+				null,
+				NOW,
+			),
+		).rejects.toThrow('credit_note_refund_not_due');
+	});
+
+	it('refuses a ledger that isn’t cash or bank, or one it doesn’t know', async () => {
+		const made = setup();
+		const { note } = await issuedFrom(made);
+		for (const ledgerId of ['led_rent', 'led_x'])
+			await expect(
+				made.service.refund(
+					note.id,
+					{ how: 'by_hand', method: 'bank_transfer', ledgerId, reference: 'NEFT0001' },
+					null,
+					NOW,
+				),
+			).rejects.toThrow('credit_note_refund_needs_cash_or_bank');
+	});
+
+	it('refunds through the gateway the order was paid with, once, and says when it can’t', async () => {
+		const made = setup({ payments: paid });
+		const { note } = await issuedFrom(made);
+		const refunded = await made.service.refund(note.id, { how: 'gateway' }, null, NOW);
+		expect(refunded.refund).toMatchObject({ method: 'gateway', reference: `cn:${note.id}` });
+		const none = setup();
+		await expect(
+			none.service.refund((await issuedFrom(none)).note.id, { how: 'gateway' }, null, NOW),
+		).rejects.toThrow('credit_note_refund_no_gateway_payment');
+		const off = setup({ payments: paid, gateway: null });
+		await expect(
+			off.service.refund((await issuedFrom(off)).note.id, { how: 'gateway' }, null, NOW),
+		).rejects.toThrow('credit_note_refund_gateway_unavailable');
+		for (const [refusalCode, message] of [
+			['E31', 'credit_note_refund_refused:E31'],
+			[null, 'credit_note_refund_refused:gateway'],
+		] as const) {
+			const refused = setup({ payments: paid, gateway: { outcome: 'refused', refusalCode } });
+			await expect(
+				refused.service.refund((await issuedFrom(refused)).note.id, { how: 'gateway' }, null, NOW),
+			).rejects.toThrow(message);
+		}
+	});
+
+	it('refunds a note with no return, or whose return was removed, and never a kept, draft or undone note', async () => {
+		const made = setup();
+		const price = await made.service.priceAdjustment(
+			'ord_1',
+			{ lines: [{ lineId: 'a', lowerByINR: 100 }], reason: 'x', refundTo: 'original_payment' },
+			null,
+			NOW,
+		);
+		const issuedPrice = await made.service.issue(price.id, 0, null, NOW);
+		const byHand = {
+			how: 'by_hand' as const,
+			method: 'upi' as const,
+			ledgerId: 'led_cash',
+			reference: 'UTR000001',
+		};
+		expect((await made.service.refund(issuedPrice.id, byHand, null, NOW)).refund?.status).toBe('paid');
+		const { asked, note } = await issuedFrom(made);
+		made.returns.splice(
+			made.returns.findIndex((r) => r.id === asked.id),
+			1,
+		);
+		expect((await made.service.refund(note.id, byHand, null, NOW)).refund?.status).toBe('paid');
+		const kept = await made.service.priceAdjustment(
+			'ord_1',
+			{ lines: [{ lineId: 'b', lowerByINR: 50 }], reason: 'x', refundTo: 'customer_account' },
+			null,
+			NOW,
+		);
+		await expect(made.service.refund(kept.id, byHand, null, NOW)).rejects.toThrow('credit_note_refund_not_due');
+		await made.service.issue(kept.id, 0, null, NOW);
+		await expect(made.service.refund(kept.id, byHand, null, NOW)).rejects.toThrow('credit_note_refund_not_due');
+		const other = setup();
+		const undone = (await issuedFrom(other)).note;
+		await other.service.debitNote(undone.id, { reason: 'Undo the return' }, null, NOW);
+		await expect(other.service.refund(undone.id, byHand, null, NOW)).rejects.toThrow('credit_note_refund_not_due');
 	});
 });

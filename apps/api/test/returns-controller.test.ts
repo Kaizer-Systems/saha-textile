@@ -210,6 +210,8 @@ describe('credit note routes', () => {
 		await routes.issue('cn_1', { version: 0 });
 		await routes.cancelChecks('cn_1', principal);
 		await routes.cancel('cn_1', { reason: 'Wrong invoice' }, principal);
+		await routes.refund('cn_1', { how: 'gateway' }, principal);
+		await routes.refund('cn_1', { how: 'gateway' });
 		await routes.debitNote('cn_1', { reason: 'October filed' }, principal);
 		await routes.debitNote('cn_1', { reason: 'October filed' });
 		expect(await routes.getDebitNote('dn_1')).toBe(debit);
@@ -223,6 +225,8 @@ describe('credit note routes', () => {
 			'issue',
 			'cancelChecks',
 			'cancel',
+			'refund',
+			'refund',
 			'debitNote',
 			'debitNote',
 		]);

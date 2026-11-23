@@ -3,6 +3,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	CreditNoteCancel,
 	CreditNoteDraftWrite,
+	CreditNoteRefundWrite,
 	CreditNoteStatus,
 	DebitNoteWrite,
 	IsoDate,
@@ -240,6 +241,18 @@ export class CreditNotesController {
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
 		return this.returns.cancel(id, body, principal);
+	}
+
+	@Post('credit-notes/:id/refund')
+	@HttpCode(200)
+	@RequirePermissions('refund.action')
+	@ApiOperation({ operationId: 'refundCreditNote', summary: 'Refund an issued credit note now (gateway or by hand)' })
+	refund(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(CreditNoteRefundWrite)) body: CreditNoteRefundWrite,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.returns.refund(id, body, principal?.userId ?? null);
 	}
 
 	@Post('credit-notes/:id/debit-note')

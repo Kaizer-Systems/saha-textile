@@ -7,6 +7,8 @@ import {
 	Inject,
 	Injectable,
 	NotFoundException,
+	Optional,
+	ServiceUnavailableException,
 } from '@nestjs/common';
 import {
 	CreditNote,
@@ -14,6 +16,7 @@ import {
 	type CreditNoteCancelChecks,
 	type CreditNoteDraftWrite,
 	type CreditNoteLine,
+	type CreditNoteRefundWrite,
 	DebitNote,
 	type DebitNoteWrite,
 	GST_RETURN_LOCKS,
@@ -44,7 +47,10 @@ import {
 	deliveryShareLine,
 	type GstReturnRepository,
 	type InventoryCostLayerRepository,
+	type OrderPaymentRepository,
+	type PaymentGatewayPort,
 	istDay,
+	ledgerClass,
 	noteTotals,
 	type OrderReturnRepository,
 	type PeriodLockRepository,
@@ -70,6 +76,8 @@ import {
 	DEBIT_NOTE_REPOSITORY,
 	GST_RETURN_REPOSITORY,
 	INVENTORY_COST_LAYER_REPOSITORY,
+	INR_PAYMENT_GATEWAY,
+	ORDER_PAYMENT_REPOSITORY,
 	ORDER_RETURN_REPOSITORY,
 	PERIOD_LOCK_REPOSITORY,
 	PRODUCT_VARIANT_REPOSITORY,
@@ -128,6 +136,10 @@ export class ReturnsService {
 		@Inject(TRANSACTION_MANAGER) private readonly tx: TransactionManagerPort,
 		private readonly numbers: DocumentNumbersService,
 		private readonly ledger: LedgerService,
+		@Inject(ORDER_PAYMENT_REPOSITORY) private readonly payments: Pick<OrderPaymentRepository, 'listByOrder'>,
+		@Optional()
+		@Inject(INR_PAYMENT_GATEWAY)
+		private readonly gateway: Pick<PaymentGatewayPort, 'refundPayment'> | null = null,
 	) {}
 
 	async returnSettings(): Promise<ReturnSettings> {
@@ -873,6 +885,89 @@ export class ReturnsService {
 				context,
 			);
 			return debit;
+		});
+	}
+
+	/**
+	 * B5 Refund now: back through the order's gateway payment (our own reference, so a retry never refunds twice), or
+	 * recorded as paid by hand from a cash or bank ledger. Posts the customer's credit against where the money went.
+	 */
+	async refund(
+		id: string,
+		write: CreditNoteRefundWrite,
+		actorId: string | null,
+		now = new Date(),
+	): Promise<CreditNote> {
+		const note = await this.creditNote(id);
+		if (note.status !== 'issued' || note.debitNoteId || note.refund?.status !== 'due')
+			throw new ConflictException('credit_note_refund_not_due');
+		let ledger: { systemKey: string } | { id: string };
+		let reference: string;
+		if (write.how === 'gateway') {
+			const paid = (await this.payments.listByOrder(note.orderId)).find(
+				(p) => p.method === 'gateway' && p.gateway?.reference && p.state !== 'failed' && p.state !== 'void',
+			);
+			if (!paid?.gateway?.reference) throw new BadRequestException('credit_note_refund_no_gateway_payment');
+			if (!this.gateway) throw new ServiceUnavailableException('credit_note_refund_gateway_unavailable');
+			reference = `cn:${note.id}`;
+			const result = await this.gateway.refundPayment({
+				gatewayReference: paid.gateway.reference,
+				refundReference: reference,
+				amountMinor: Math.round(note.totalINR * 100),
+				currency: 'INR',
+			});
+			if (result.outcome === 'refused')
+				throw new ConflictException(`credit_note_refund_refused:${result.refusalCode ?? 'gateway'}`);
+			ledger = { systemKey: 'gateway_clearing' };
+		} else {
+			const chart = await this.ledger.chart();
+			const from = chart.ledgers.find((l) => l.id === write.ledgerId);
+			const cashOrBank = from ? ledgerClass(from, chart.groups) !== 'other' : false;
+			if (!cashOrBank) throw new BadRequestException('credit_note_refund_needs_cash_or_bank');
+			reference = write.reference;
+			ledger = { id: write.ledgerId };
+		}
+		const at = now.toISOString();
+		return this.tx.withTransaction(async (context) => {
+			const voucher = await this.ledger.post(
+				{
+					date: istDay(now),
+					narration: `Refund for credit note ${note.number} · ${reference}`,
+					lines: [
+						{
+							ledger: { systemKey: 'debtors_control' },
+							locationId: note.locationId,
+							debitPaise: Math.round(note.totalINR * 100),
+						},
+						{ ledger, locationId: note.locationId, creditPaise: Math.round(note.totalINR * 100) },
+					],
+					source: { type: 'creditNoteRefund', id: note.id, number: note.number },
+					idempotencyKey: `creditNoteRefund:${note.id}`,
+				},
+				context,
+				actorId,
+			);
+			const next = await this.notes.save(
+				CreditNote.parse({
+					...note,
+					refund: {
+						status: 'paid',
+						paidAt: at,
+						paidBy: actorId,
+						method: write.how === 'gateway' ? 'gateway' : write.method,
+						reference,
+						voucherId: voucher.id,
+					},
+				}),
+				note.version,
+				context,
+			);
+			if (note.returnId) {
+				const entry = await this.returns.get(note.returnId, context);
+				if (entry) await this.saveReturn(entry, { status: 'refunded' }, actorId, now, context);
+			}
+			await this.log(actorId, 'creditNote.refund', 'creditNote', id, { how: write.how, reference }, context);
+			return next;
 		});
 	}
 

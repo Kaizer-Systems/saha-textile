@@ -133,6 +133,30 @@ export function foldersAbove(path: string): string[] {
 	return ['', ...parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join('/'))];
 }
 
+/* ===== Comparing two runs ===== */
+
+/** Every measured path's counts in a run's tree, the whole codebase under ''. */
+export function countsByPath(root: CoverageNode): Map<string, Counts> {
+	const out = new Map<string, Counts>();
+	const walk = (node: CoverageNode, path: string) => {
+		if (node.c) out.set(path, node.c);
+		for (const k of node.k ?? []) walk(k, path ? `${path}/${k.n}` : k.n);
+	};
+	walk(root, '');
+	return out;
+}
+/** How a row's statements share moved since the run compared with: up, down, the same, or new there. */
+export function deltaOf(
+	now: Counts | null,
+	before: Counts | undefined,
+): { text: string; band: 'ok' | 'red' | 'muted' } | null {
+	if (!now) return null;
+	if (!before) return { text: 'new', band: 'muted' };
+	const d = Math.round((metricShare(now, 'statements') - metricShare(before, 'statements')) * 10) / 10;
+	if (d === 0) return { text: '±0', band: 'muted' };
+	return d > 0 ? { text: `▲ ${d.toFixed(1)}`, band: 'ok' } : { text: `▼ ${(-d).toFixed(1)}`, band: 'red' };
+}
+
 /* ===== The map ===== */
 
 export interface MapBox<T> {

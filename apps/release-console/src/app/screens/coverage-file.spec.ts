@@ -173,7 +173,7 @@ describe('the file at the side', () => {
 		const { el, jumps } = render({ answer: file(), tab: 'tests' });
 		expect(el.textContent).toContain("expected 50 to be '50'");
 		expect([...el.querySelectorAll('.rc-stat code')].map((x) => x.textContent?.trim())).toEqual(['"50"', '50']);
-		el.querySelector<HTMLButtonElement>('.rc-content .rc-btn')?.click();
+		el.querySelector<HTMLButtonElement>('.rc-content .rc-panel .rc-btn')?.click();
 		expect(jumps).toEqual([{ path: 'apps/admin/src/pick.ts', line: 2, tab: 'lines' }]);
 		expect(el.textContent).toContain('The report names no lines for this failure.');
 		expect([...el.querySelectorAll('.rc-content .rc-kv span')].map((x) => x.className)).toEqual([
@@ -182,6 +182,56 @@ describe('the file at the side', () => {
 			'muted',
 		]);
 		expect(el.textContent).toContain('pick > later');
+	});
+
+	it('runs a test file on this Mac with the PIN, and shows its output and any refusal', () => {
+		const { el, c, fixture } = render({ answer: file(), tab: 'tests' });
+		const asked: { spec: string; pin: string }[] = [];
+		c.runSpec.subscribe((r) => asked.push(r));
+		const buttons = [...el.querySelectorAll<HTMLButtonElement>('button')].filter((b) =>
+			b.textContent?.includes('on This Mac'),
+		);
+		expect(buttons.map((b) => b.textContent?.trim())).toEqual([
+			'▶ Run pick.spec.ts on This Mac',
+			'▶ Run other.spec.ts on This Mac',
+		]);
+		const pin = el.querySelector<HTMLInputElement>('input[type="password"]') as HTMLInputElement;
+		pin.value = '135790';
+		buttons[0]?.click();
+		expect(asked).toEqual([{ spec: 'apps/admin/src/pick.spec.ts', pin: '135790' }]);
+		expect(pin.value).toBe('');
+		const job = (status: string) => ({
+			id: 'j1',
+			kind: 'tests',
+			label: 'Run apps/admin/src/pick.spec.ts',
+			status,
+			startedAt: '2026-11-24T03:00:00.000Z',
+			finishedAt: null,
+			exitCode: null,
+			lines: [
+				{ seq: 1, stream: 'out', text: '✓ pick > keeps' },
+				{ seq: 2, stream: 'err', text: 'a warning' },
+			],
+		});
+		const pill = () => [...(el.querySelector('.rc-panel .rc-ph .rc-pill')?.classList ?? [])].sort().join(' ');
+		fixture.componentRef.setInput('job', job('running'));
+		fixture.detectChanges();
+		expect(el.textContent).toContain('Output · Run apps/admin/src/pick.spec.ts');
+		expect(pill()).toBe('cy rc-pill');
+		expect(buttons[0]?.disabled).toBe(true);
+		expect(
+			[...(el.querySelector('.rc-content > .rc-panel')?.querySelectorAll('.rc-log .l') ?? [])].map((l) =>
+				[...l.classList].sort().join(' '),
+			),
+		).toEqual(['l', 'l warn']);
+		fixture.componentRef.setInput('job', job('passed'));
+		fixture.detectChanges();
+		expect(pill()).toBe('ok rc-pill');
+		fixture.componentRef.setInput('job', job('failed'));
+		fixture.componentRef.setInput('runMessage', 'Wrong PIN or password.');
+		fixture.detectChanges();
+		expect(pill()).toBe('rc-pill red');
+		expect(el.textContent).toContain('Wrong PIN or password.');
 	});
 
 	it('says when nothing sits beside a file, when a file has no gaps, and shows only one side of a failure', () => {
@@ -218,6 +268,7 @@ describe('the file at the side', () => {
 		expect(c['marks']()).toEqual([]);
 		expect(c['shares']()).toEqual([]);
 		expect(c['name']()).toBe('');
+		expect(c['runnable']()).toEqual([]);
 		const strip = {
 			currentTarget: { getBoundingClientRect: () => ({ top: 0, height: 100 }) },
 			clientY: 50,

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	type RowFilters,
+	countsByPath,
+	deltaOf,
 	foldersAbove,
 	foldersWithGaps,
 	highlightedLines,
@@ -144,6 +146,26 @@ describe('the tree’s rows', () => {
 		expect(shareOf(done, 'lines')).toEqual({ share: 100, band: 'ok' });
 		expect(shareOf(null, 'lines')).toBeNull();
 		expect([shareText(100), shareText(99.9), shareText(50)]).toEqual(['100', '99.9', '50.0']);
+	});
+});
+
+describe('comparing two runs', () => {
+	it('reads every measured path’s counts, and how a row moved since', () => {
+		const counts = countsByPath(TREE);
+		expect([...counts.keys()]).toEqual([
+			'',
+			'apps',
+			'apps/admin',
+			'apps/admin/a.ts',
+			'apps/admin/b.ts',
+			'apps/shop',
+			'apps/shop/c.ts',
+		]);
+		expect(deltaOf(null, done)).toBeNull();
+		expect(deltaOf(done, undefined)).toEqual({ text: 'new', band: 'muted' });
+		expect(deltaOf(done, done)).toEqual({ text: '±0', band: 'muted' });
+		expect(deltaOf(done, half)).toEqual({ text: '▲ 50.0', band: 'ok' });
+		expect(deltaOf(low, half)).toEqual({ text: '▼ 40.0', band: 'red' });
 	});
 });
 

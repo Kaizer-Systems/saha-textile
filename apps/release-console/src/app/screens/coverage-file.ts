@@ -12,6 +12,7 @@ import {
 import {
 	COVERAGE_METRICS,
 	type CoverageFileAnswer,
+	type Job,
 	type VendorAnswer,
 	coverageBand,
 	metricShare,
@@ -212,6 +213,66 @@ export interface CoverageJump {
 						</div>
 					} @else {
 						<div class="rc-content">
+							@if (runnable().length) {
+								<div class="rc-row">
+									<label class="rc-form">
+										PIN
+										<div class="rc-msearch">
+											<input
+												#runPin
+												type="password"
+												inputmode="numeric"
+												maxlength="6"
+												autocomplete="off"
+												aria-label="Console PIN to run a test file on this Mac"
+											/>
+										</div>
+									</label>
+									@for (spec of runnable(); track spec) {
+										<button
+											type="button"
+											class="rc-btn"
+											[disabled]="running()"
+											(click)="runSpec.emit({ spec, pin: runPin.value }); runPin.value = ''"
+										>
+											▶ Run {{ spec.split('/').pop() }} on This Mac
+										</button>
+									}
+								</div>
+							}
+							@if (runMessage()) {
+								<div class="rc-banner red small">
+									<span class="rc-dot red"></span>
+									<div>{{ runMessage() }}</div>
+								</div>
+							}
+							@if (job(); as j) {
+								<div class="rc-panel">
+									<div class="rc-ph">
+										<span class="rc-label">Output · {{ j.label }}</span>
+										<span
+											[class]="
+												'rc-pill ' +
+												(j.status === 'passed'
+													? 'ok'
+													: j.status === 'running' || j.status === 'stopping'
+														? 'cy'
+														: 'red')
+											"
+										>
+											{{ j.status }}
+										</span>
+									</div>
+									<div class="rc-log">
+										@for (l of j.lines.slice(-300); track l.seq) {
+											<div [class]="'l ' + (l.stream === 'err' ? 'warn' : '')">
+												<span class="n">{{ l.seq }}</span>
+												<span class="m">{{ l.text }}</span>
+											</div>
+										}
+									</div>
+								</div>
+							}
 							@for (f of d.failures; track $index) {
 								<div class="rc-panel">
 									<span class="rc-label red">Failed · {{ f.file }}</span>
@@ -291,6 +352,10 @@ export class CoverageFile {
 	readonly closed = output<void>();
 	readonly tabChange = output<CoverageTab>();
 	readonly goTo = output<CoverageJump>();
+	/** Run on This Mac: the job started from here, a refusal to show, and the request to start one. */
+	readonly job = input<Job | null>(null);
+	readonly runMessage = input('');
+	readonly runSpec = output<{ spec: string; pin: string }>();
 
 	protected readonly tabs: { key: CoverageTab; label: string }[] = [
 		{ key: 'lines', label: 'Lines' },
@@ -301,6 +366,14 @@ export class CoverageFile {
 		const a = this.answer();
 		return a?.state === 'ok' ? a.data : null;
 	});
+	/** The test files beside this file or holding a failure through it, each runnable on this Mac. */
+	protected readonly runnable = computed(() => [
+		...new Set([
+			...(this.data()?.specs ?? []).map((s) => s.file),
+			...(this.data()?.failures ?? []).map((f) => f.file),
+		]),
+	]);
+	protected readonly running = computed(() => this.job()?.status === 'running' || this.job()?.status === 'stopping');
 	protected readonly name = computed(() => this.data()?.path.split('/').pop() ?? '');
 	protected readonly shares = computed(() => {
 		const c = this.data()?.counts;

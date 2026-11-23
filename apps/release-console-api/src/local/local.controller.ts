@@ -321,9 +321,15 @@ export class LocalController {
 	@HttpCode(202)
 	async run(@Req() req: Req, @Param('action') action: string, @Body() body: unknown): Promise<Job> {
 		const a = parseBody(localActionSchema, action);
-		const { pin, from, only, branch } = parseBody(startLocalSchema, body);
+		const { pin, from, only, branch, path } = parseBody(startLocalSchema, body);
+		// Coverage's Run on This Mac names the test file; the helper checks it is one in this copy.
+		if (a === 'test-file' && !path) throw new HelperError('Name the test file to run.', 400);
 		this.lock.confirm(sessionOf(req), pin, a);
-		const job = await this.runner.call<Job>('POST', `/run/${a}`, a === 'pipeline' ? { from, only, branch } : {});
+		const job = await this.runner.call<Job>(
+			'POST',
+			`/run/${a}`,
+			a === 'pipeline' ? { from, only, branch } : a === 'test-file' ? { path } : {},
+		);
 		this.store.audit(null, 'local-job-started', job.label);
 		return job;
 	}

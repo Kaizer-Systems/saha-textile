@@ -1247,6 +1247,10 @@ test('Coverage shows the tree with every folder’s numbers, a file at the side,
 	);
 	await page.getByRole('tab', { name: /^Tests/ }).click();
 	await expect(page.getByText("expected 'waiting' to be 'approved'")).toBeVisible();
+	// Run on This Mac takes the PIN; this browser test has no Mac helper, so it says so.
+	await page.getByLabel('Console PIN to run a test file on this Mac').fill(PIN);
+	await page.getByRole('button', { name: /Run github-deploys\.test\.ts on This Mac/ }).click();
+	await expect(page.getByText(/Mac helper/).first()).toBeVisible();
 	await expect(page.getByText("'approved'", { exact: true })).toBeVisible();
 	await expect(page.getByText("'waiting'", { exact: true })).toBeVisible();
 	// A step of the failure opens that line in the same pane.
@@ -1259,6 +1263,15 @@ test('Coverage shows the tree with every folder’s numbers, a file at the side,
 	await page.keyboard.press('Escape');
 	await expect(page.locator('.rc-cov-code')).toHaveCount(0);
 	await expect(page).not.toHaveURL(/file=/);
+	// The run's slowest test files.
+	await page.getByRole('button', { name: 'Slowest tests', exact: true }).click();
+	await expect(page.getByText('Slowest test files · this run')).toBeVisible();
+	await expect(
+		page
+			.locator('.rc-kv')
+			.filter({ hasText: /\.test\.ts/ })
+			.first(),
+	).toContainText(/\d+\.\d s/);
 	// The map: boxes sized by code; a folder box goes inside.
 	await page.getByRole('button', { name: 'Map', exact: true }).click();
 	const apps = page.locator('.rc-cov-box[title^="apps ·"]');

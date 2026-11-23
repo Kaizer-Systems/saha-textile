@@ -12,7 +12,9 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import {
 	COVERAGE_METRICS,
+	type Counts,
 	type CoverageRuns,
+	type Job,
 	type CoverageSource,
 	coverageBand,
 	metricShare,
@@ -21,7 +23,15 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 
 import { CoverageFile, type CoverageJump, type CoverageTab } from './coverage-file';
 import { CoverageMap } from './coverage-map';
-import { type CoverageRow, foldersAbove, foldersWithGaps, shareText, visibleRows } from './coverage-view';
+import {
+	type CoverageRow,
+	countsByPath,
+	deltaOf,
+	foldersAbove,
+	foldersWithGaps,
+	shareText,
+	visibleRows,
+} from './coverage-view';
 import { injectDefaultBranch } from './env-tag-dialog';
 import { VendorState } from './vendor-screens';
 import { ConsoleApi } from '../data/console-api';
@@ -183,6 +193,58 @@ export function firstRun(runs: CoverageRuns | undefined): { source: CoverageSour
 							</button>
 						</div>
 					</div>
+					<div class="rc-row">
+						<button
+							type="button"
+							class="rc-chip"
+							[class.on]="showSlow()"
+							(click)="showSlow.set(!showSlow())"
+						>
+							Slowest tests
+						</button>
+						<label class="rc-form">
+							Compare with
+							<select
+								class="rc-search"
+								style="max-width: 100%; min-width: 0"
+								aria-label="Compare with"
+								(change)="pickCompare($any($event.target).value)"
+							>
+								<option
+									value=""
+									[selected]="!compareWith()"
+								>
+									nothing
+								</option>
+								@for (o of compareChoices(); track o.value) {
+									<option
+										[value]="o.value"
+										[selected]="o.value === compareWith()"
+									>
+										{{ o.label }}
+									</option>
+								}
+							</select>
+						</label>
+						@if (compareWith() && compareQ.isPending()) {
+							<span class="rc-note">Reading the run to compare with…</span>
+						}
+					</div>
+					@if (showSlow()) {
+						<div class="rc-panel">
+							<span class="rc-label">Slowest test files · this run</span>
+							<div class="rc-kv">
+								@for (s of t.tests.slowest; track s.file) {
+									<div>
+										<span>{{ s.file }}</span>
+										<em>{{ seconds(s.ms) }}</em>
+									</div>
+								} @empty {
+									<p class="rc-note">This run kept no test times.</p>
+								}
+							</div>
+						</div>
+					}
 					@if (t.changed; as ch) {
 						<div class="rc-banner small">
 							<span [class]="'rc-dot ' + (patch().missed ? 'red' : 'ok')"></span>
@@ -222,6 +284,11 @@ export function firstRun(runs: CoverageRuns | undefined): { source: CoverageSour
 											<th>Branch</th>
 											<th>Funcs</th>
 											<th>Lines</th>
+											@if (compared()) {
+												<th title="Change in statements covered since the run compared with">
+													Δ
+												</th>
+											}
 										</tr>
 									</thead>
 									<tbody>
@@ -280,6 +347,10 @@ export function firstRun(runs: CoverageRuns | undefined): { source: CoverageSour
 														{{ c ? c.text : '—' }}
 													</td>
 												}
+												@if (compared(); as before) {
+													@let d = delta(row, before);
+													<td [class]="'num ' + (d?.band ?? 'muted')">{{ d?.text ?? '' }}</td>
+												}
 											</tr>
 										}
 									</tbody>
@@ -299,6 +370,9 @@ export function firstRun(runs: CoverageRuns | undefined): { source: CoverageSour
 								(closed)="close()"
 								(tabChange)="paneTab.set($event)"
 								(goTo)="jump($event)"
+								[job]="runJob()"
+								[runMessage]="runMessage()"
+								(runSpec)="runSpec($event)"
 							/>
 						}
 					</div>
@@ -356,6 +430,64 @@ export class CoverageScreen {
 	);
 	protected readonly chosen = computed(() => this.picked() ?? firstRun(this.runsQ.data()));
 	protected readonly mainBranch = computed(() => this.branches.data()?.defaultBranch ?? null);
+
+	/* ----- slowest tests and comparing two runs ----- */
+	protected readonly showSlow = signal(false);
+	/** The run compared with: a CI run's id or 'mac'. */
+	protected readonly compareWith = signal<string | null>(null);
+	protected readonly compareChoices = computed(() => {
+		const c = this.chosen();
+		const runs = this.ciRuns()
+			.filter((r) => !(c?.source === 'ci' && c.run === r.id))
+			.map((r) => ({ value: r.id, label: `${r.ref} · ${r.sha.slice(0, 8)} · ${r.title}` }));
+		return this.runsQ.data()?.mac && c?.source !== 'mac' ? [...runs, { value: 'mac', label: 'This Mac' }] : runs;
+	});
+	protected readonly compareQ = injectQuery(() => {
+		const w = this.compareWith();
+		const source = w === 'mac' ? 'mac' : 'ci';
+		return {
+			// the same key as the tree's own read, so a run read before answers at once
+			queryKey: ['coverage', 'tree', this.ctx.projectId(), this.ctx.repoId(), source, w, null],
+			queryFn: () => this.api.coverageTree(...this.ids(), { source, run: w as string, base: null }),
+			enabled: !!w,
+			staleTime: source === 'ci' ? Infinity : 30_000,
+		};
+	});
+	/** Every path's counts in the run compared with, once it is read. */
+	protected readonly compared = computed(() => {
+		const a = this.compareQ.data();
+		return this.compareWith() && a?.state === 'ok' ? countsByPath(a.data.tree) : null;
+	});
+	protected delta(row: CoverageRow, before: Map<string, Counts>) {
+		return deltaOf(row.counts, before.get(row.path));
+	}
+	protected pickCompare(value: string): void {
+		this.compareWith.set(value || null);
+	}
+	protected seconds(ms: number): string {
+		return `${(ms / 1000).toFixed(1)} s`;
+	}
+
+	/* ----- Run on This Mac ----- */
+	private readonly runWatch = signal<string | null>(null);
+	protected readonly runMessage = signal('');
+	private readonly runQ = injectQuery(() => ({
+		queryKey: ['job', this.runWatch()],
+		queryFn: () => this.api.job(this.runWatch() as string),
+		enabled: !!this.runWatch(),
+		refetchInterval: (q: { state: { data?: Job } }) => pollWhileRunning(q.state.data),
+	}));
+	protected readonly runJob = computed(() => this.runQ.data() ?? null);
+	/** Runs one test file on this Mac after the PIN; its log shows in the file's Tests tab. */
+	async runSpec(request: { spec: string; pin: string }): Promise<void> {
+		this.runMessage.set('');
+		try {
+			const job = await this.api.runLocal('test-file', request.pin, { path: request.spec });
+			this.runWatch.set(job.id);
+		} catch (err) {
+			this.runMessage.set((err as Error).message);
+		}
+	}
 
 	protected readonly treeQ = injectQuery(() => {
 		const c = this.chosen();
@@ -573,6 +705,11 @@ export class CoverageScreen {
 		else return;
 		event.preventDefault();
 	}
+}
+
+/** A job is read again every 2 seconds until it has finished. */
+export function pollWhileRunning(job: Job | undefined): number | false {
+	return job && job.status !== 'running' && job.status !== 'stopping' ? false : 2000;
 }
 
 /** A line number from the address, or nothing. */

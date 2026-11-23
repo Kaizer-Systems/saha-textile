@@ -733,6 +733,17 @@ export function commandFor(action, body = {}, busy = []) {
 				'docker',
 				['compose', '-f', 'docker/stack/compose.yaml', 'start', ...STACK_APP_SERVICES],
 			];
+		// Ship › Code › Coverage: one test file, in its own workspace, one test run at a time.
+		case 'test-file': {
+			const path = String(body.path ?? '');
+			const at = /^((?:apps|packages)\/[a-z0-9-]+)\/((?:[\w-]+\/)*[\w.-]+\.(?:spec|test)\.[cm]?[jt]sx?)$/.exec(
+				path,
+			);
+			if (!at || !existsSync(join(ROOT, path)))
+				throw Object.assign(new Error('That is not a test file in this copy.'), { status: 400 });
+			// --no-color: the log shows in the console as plain text
+			return ['tests', `Run ${path}`, 'pnpm', ['--dir', at[1], 'exec', 'vitest', 'run', '--no-color', at[2]]];
+		}
 		case 'github-login': {
 			// A Node script, so it runs wherever the console does: a Mac, Linux or Windows.
 			const repository = String(body.repository ?? '');

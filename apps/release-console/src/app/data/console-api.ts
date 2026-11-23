@@ -741,7 +741,7 @@ export class ConsoleApi {
 	runLocal(
 		action: LocalAction,
 		pin: string,
-		stages: { from?: PipelineStage; only?: PipelineStage; branch?: string } = {},
+		stages: { from?: PipelineStage; only?: PipelineStage; branch?: string; path?: string } = {},
 	): Promise<Job> {
 		return this.call('POST', `/api/local/run/${action}`, jobSchema, { pin, ...stages }, 30_000);
 	}

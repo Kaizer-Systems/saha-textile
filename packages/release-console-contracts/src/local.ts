@@ -74,7 +74,7 @@ export type JobLine = z.infer<typeof jobLineSchema>;
 
 export const jobSchema = z.object({
 	id: z.string(),
-	kind: z.enum(['stack', 'pipeline', 'github', 'seo']),
+	kind: z.enum(['stack', 'pipeline', 'github', 'seo', 'tests']),
 	label: z.string(),
 	status: z.enum(['running', 'stopping', 'passed', 'failed', 'stopped']),
 	startedAt: z.string(),
@@ -93,6 +93,8 @@ export const localActionSchema = z.enum([
 	'pipeline',
 	'tracing-on',
 	'tracing-off',
+	// Ship › Code › Coverage: run one test file on this Mac (brief CRmpBdP3ce62g1JoCAhh23)
+	'test-file',
 ]);
 export type LocalAction = z.infer<typeof localActionSchema>;
 export const PIPELINE_STAGES = ['checks', 'proof', 'images', 'release', 'deploy', 'record'] as const;
@@ -100,6 +102,11 @@ export const pipelineStageSchema = z.enum(PIPELINE_STAGES);
 export type PipelineStage = z.infer<typeof pipelineStageSchema>;
 /** The PIN or the password, asked again for every change. */
 const confirmation = z.string().min(6).max(200);
+/** A test file the console may run on this Mac: inside a workspace of apps/ or packages/, named *.spec or *.test. */
+export const testFileSchema = z
+	.string()
+	.max(300)
+	.regex(/^(apps|packages)\/[a-z0-9-]+\/([\w-]+\/)*[\w.-]+\.(spec|test)\.[cm]?[jt]sx?$/);
 /** Starting a job needs the console PIN (or password) again, as every change does. */
 export const startLocalSchema = z.object({
 	pin: confirmation,
@@ -107,6 +114,8 @@ export const startLocalSchema = z.object({
 	branch: branchNameSchema.optional(),
 	from: pipelineStageSchema.optional(),
 	only: pipelineStageSchema.optional(),
+	/** For test-file: the test file, inside a workspace of apps/ or packages/. */
+	path: testFileSchema.optional(),
 });
 export type StartLocal = z.infer<typeof startLocalSchema>;
 export const confirmPinSchema = z.object({ pin: confirmation });

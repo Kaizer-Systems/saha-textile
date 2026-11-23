@@ -5,7 +5,7 @@ import { Router, provideRouter } from '@angular/router';
 import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-experimental';
 import { describe, expect, it, vi } from 'vitest';
 
-import { CoverageScreen, firstRun, lineFrom } from './coverage-screen';
+import { CoverageScreen, firstRun, lineFrom, pollWhileRunning } from './coverage-screen';
 import { ConsoleApi, type CoverageQuery } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 
@@ -83,6 +83,17 @@ const tree = (
 	},
 });
 
+const job = (status: 'running' | 'passed') => ({
+	id: 'j1',
+	kind: 'tests' as const,
+	label: 'Run apps/admin/a.spec.ts',
+	status,
+	startedAt: AT,
+	finishedAt: null,
+	exitCode: null,
+	lines: [{ seq: 1, stream: 'out' as const, text: 'ok' }],
+});
+
 async function render(opts: { runs?: CoverageRuns; url?: string; root?: CoverageNode; ids?: null; main?: null } = {}) {
 	const api = {
 		coverageRuns: vi.fn(async () => opts.runs ?? runs()),
@@ -108,6 +119,11 @@ async function render(opts: { runs?: CoverageRuns; url?: string; root?: Coverage
 			},
 		})),
 		repositoryBranches: vi.fn(async () => ({ defaultBranch: opts.main === null ? null : 'dev', names: ['dev'] })),
+		runLocal: vi.fn(async (_a: string, pin: string) => {
+			if (pin !== '135790') throw new Error('Wrong PIN or password.');
+			return job('running');
+		}),
+		job: vi.fn(async () => job('passed')),
 	};
 	const ctx = {
 		projectId: signal(opts.ids === null ? null : 'p'),
@@ -154,6 +170,14 @@ describe('the first run and the address', () => {
 		expect(firstRun(runs({ ci: [], mac: null }))).toBeNull();
 		expect(firstRun(undefined)).toBeNull();
 	});
+	it('reads a job again until it has finished', () => {
+		expect([
+			pollWhileRunning(undefined),
+			pollWhileRunning(job('running')),
+			pollWhileRunning({ ...job('running'), status: 'stopping' }),
+			pollWhileRunning(job('passed')),
+		]).toEqual([2000, 2000, 2000, false]);
+	});
 	it('reads a line number from the address', () => {
 		expect([lineFrom('12'), lineFrom('0'), lineFrom('x'), lineFrom(null), lineFrom(undefined)]).toEqual([
 			{ n: 12 },
@@ -169,7 +193,7 @@ describe('the coverage screen', () => {
 	it('opens the newest run with reports: its totals, its tests, and the whole codebase’s first level', async () => {
 		const { el, rows, api } = await render();
 		expect(api.coverageTree).toHaveBeenCalledWith('p', 'r', { source: 'ci', run: '901', base: null });
-		const options = [...el.querySelectorAll<HTMLOptionElement>('select option')];
+		const options = [...el.querySelectorAll<HTMLOptionElement>('select[aria-label="CI run"] option')];
 		expect(options.map((o) => [o.value, o.disabled, o.selected])).toEqual([
 			['902', true, false],
 			['901', false, true],
@@ -406,6 +430,70 @@ describe('the coverage screen', () => {
 		await settle();
 		expect(c['line']()).toEqual({ n: 4 });
 		expect(c['paneTab']()).toBe('tests');
+	});
+
+	it('lists the slowest test files, and compares the run with another', async () => {
+		const { chip, el, fixture, settle, api, c } = await render();
+		chip('Slowest tests').click();
+		fixture.detectChanges();
+		expect(el.textContent).toContain('This run kept no test times.');
+		chip('Slowest tests').click();
+		fixture.detectChanges();
+		expect(el.textContent).not.toContain('Slowest test files');
+		const compare = el.querySelector<HTMLSelectElement>('select[aria-label="Compare with"]') as HTMLSelectElement;
+		expect([...compare.options].map((o) => o.textContent?.trim())).toEqual([
+			'nothing',
+			'dev · 01234567 · before',
+			'This Mac',
+		]);
+		compare.value = '900';
+		compare.dispatchEvent(new Event('change'));
+		await settle();
+		expect(api.coverageTree).toHaveBeenLastCalledWith('p', 'r', { source: 'ci', run: '900', base: null });
+		expect(el.querySelector('th[title^="Change in statements"]')).not.toBeNull();
+		expect([...el.querySelectorAll('tr.row td:last-child')].map((td) => td.textContent?.trim())).toEqual([
+			'±0',
+			'±0',
+			'',
+			'',
+		]);
+		c['pickCompare']('mac');
+		await settle();
+		expect(api.coverageTree).toHaveBeenLastCalledWith('p', 'r', { source: 'mac', run: 'mac', base: null });
+		c['pickCompare']('');
+		fixture.detectChanges();
+		expect(el.querySelector('th[title^="Change in statements"]')).toBeNull();
+		chip('This Mac').click();
+		await settle();
+		expect(c['compareChoices']().map((o) => o.value)).toEqual(['901', '900']);
+		c['pickCompare']('901');
+		await settle();
+		expect(c['compared']()?.get('apps')).toEqual(ROOT.k?.[0]?.c);
+		const before = new Map([
+			['apps', [1, 18, 0, 0, 0, 0, 1, 18] as [number, number, number, number, number, number, number, number]],
+		]);
+		expect(
+			c['delta'](
+				{ path: 'apps', name: 'apps', depth: 1, folder: true, open: false, counts: ROOT.k?.[0]?.c ?? null },
+				before,
+			),
+		).toEqual({
+			text: '▲ 33.3',
+			band: 'ok',
+		});
+		expect(c['seconds'](1234)).toBe('1.2 s');
+	});
+
+	it('runs a test file on this Mac after the PIN and follows its job, or says why it could not', async () => {
+		const { c, api, settle } = await render();
+		await c.runSpec({ spec: 'apps/admin/a.spec.ts', pin: '000000' });
+		expect(c['runMessage']()).toBe('Wrong PIN or password.');
+		await c.runSpec({ spec: 'apps/admin/a.spec.ts', pin: '135790' });
+		expect(api.runLocal).toHaveBeenLastCalledWith('test-file', '135790', { path: 'apps/admin/a.spec.ts' });
+		expect(c['runMessage']()).toBe('');
+		await settle();
+		expect(api.job).toHaveBeenCalledWith('j1');
+		expect(c['runJob']()?.status).toBe('passed');
 	});
 
 	it('opens the file and line the address names', async () => {

@@ -91,6 +91,21 @@ test('starts only commands on its list, and never the checks stage under running
 	assert.deepEqual(commandFor('sitemap-check', { local: true })[3].slice(1, 2), ['--local']);
 	assert.throws(() => commandFor('sitemap-check', { origin: 'https://a.example; id' }), /https:\/\/host/);
 	assert.throws(() => commandFor('sitemap-check', { local: true, path: '../../etc/passwd' }), /sitemap path/);
+	// Coverage's Run on This Mac: one existing test file, in its own workspace
+	assert.deepEqual(commandFor('test-file', { path: 'apps/release-console-api/src/code-coverage/zip.test.ts' }), [
+		'tests',
+		'Run apps/release-console-api/src/code-coverage/zip.test.ts',
+		'pnpm',
+		['--dir', 'apps/release-console-api', 'exec', 'vitest', 'run', '--no-color', 'src/code-coverage/zip.test.ts'],
+	]);
+	for (const path of [
+		'apps/api/src/gone.spec.ts',
+		'apps/api/../../etc/passwd.spec.ts',
+		'scripts/a.test.mjs',
+		'apps/api/src/a.ts',
+		undefined,
+	])
+		assert.throws(() => commandFor('test-file', { path }), /not a test file in this copy/);
 	assert.throws(() => commandFor('pipeline', { only: 'everything' }), /Unknown stage/);
 	assert.throws(() => commandFor('pipeline', { from: 'proof', only: 'deploy' }), /not both/);
 	const [, , cmd, args] = commandFor('pipeline', { only: 'deploy' });

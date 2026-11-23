@@ -70,7 +70,8 @@ USER node
 EXPOSE 4200
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
 	CMD wget -qO- "http://127.0.0.1:4200/" >/dev/null || exit 1
-CMD ["node", "server/index.mjs"]
+# tracing.mjs first (a no-op unless OTEL_EXPORTER_OTLP_TRACES_ENDPOINT is set; Release Path brief Q7).
+CMD ["node", "--import", "./tracing.mjs", "server/index.mjs"]
 
 # ---- admin (static SPA) ------------------------------------------------------
 FROM ${NGINX_IMAGE} AS admin

@@ -125,11 +125,13 @@ function codestreamOf(bytes: Uint8Array): Uint8Array {
 }
 
 async function decodeJp2(bytes: Uint8Array): Promise<RawPicture> {
+	// The decoder's console output, normal and error alike, goes nowhere.
+	const quiet = () => undefined;
 	openJpeg ??= import('@cornerstonejs/codec-openjpeg/decodewasmjs').then(({ default: factory }) =>
 		(factory as OpenJpegFactory)({
 			wasmBinary: readFileSync(require.resolve('@cornerstonejs/codec-openjpeg/decodewasm')),
-			print: () => undefined,
-			printErr: () => undefined,
+			print: quiet,
+			printErr: quiet,
 		}),
 	);
 	const codec = await openJpeg;
@@ -151,18 +153,19 @@ async function decodeJp2(bytes: Uint8Array): Promise<RawPicture> {
 		const decoded = decoder.getDecodedBuffer().slice();
 		const channels = componentCount;
 		if (bitsPerSample <= 8) {
-			if (isSigned)
-				for (let index = 0; index < decoded.length; index += 1) decoded[index] = (decoded[index] ?? 0) ^ 0x80;
+			// The decoder clamps signed 8-bit samples below zero to 0, so their real values are lost; drawing
+			// them would show the wrong picture. Refused, so the photo is kept as a file (9 to 16 bits are fine).
+			if (isSigned) throw new ImageDecodeError('a signed 8-bit JPEG 2000 file, which this decoder reads wrongly');
 			return { data: decoded, width, height, channels };
 		}
 		// 9 to 16 bits a sample, stored in two bytes each: stretched to 16 bits.
 		const samples = new Uint16Array(decoded.buffer, decoded.byteOffset, decoded.byteLength / 2).slice();
 		const shift = 16 - bitsPerSample;
 		const offset = isSigned ? 1 << (bitsPerSample - 1) : 0;
-		for (let index = 0; index < samples.length; index += 1) {
-			const value = isSigned ? (((samples[index] ?? 0) << 16) >> 16) + offset : (samples[index] ?? 0);
+		samples.forEach((sample, index) => {
+			const value = isSigned ? ((sample << 16) >> 16) + offset : sample;
 			samples[index] = Math.max(0, Math.min(65535, value << shift));
-		}
+		});
 		return { data: samples, width, height, channels };
 	} finally {
 		decoder.delete();
@@ -240,8 +243,9 @@ function psdPixels(bytes: Uint8Array): RawPicture {
 	if (data instanceof Float32Array) {
 		// A 32-bit PSD: 0–1 a sample, stretched to 16 bits.
 		const samples = new Uint16Array(data.length);
-		for (let index = 0; index < data.length; index += 1)
-			samples[index] = Math.round(Math.max(0, Math.min(1, data[index] ?? 0)) * 65535);
+		data.forEach((sample, index) => {
+			samples[index] = Math.round(Math.max(0, Math.min(1, sample)) * 65535);
+		});
 		return { data: samples, width: image.width, height: image.height, channels: 4 };
 	}
 	if (!(data instanceof Uint8Array) && !(data instanceof Uint8ClampedArray))

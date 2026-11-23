@@ -139,13 +139,13 @@ export class SharpImageCodec implements ImageCodecPort, ImageCutPort {
 		const { bytes } = await this.readable(original);
 		if (spec.fit === 'blur') return this.renderBlurFill(bytes, spec);
 		if (spec.fit === 'story') return this.renderStory(bytes, spec);
-		if (spec.fit === 'pad' && spec.inset) return this.renderInset(bytes, spec);
+		if (spec.fit === 'pad' && spec.inset) return this.renderInset(bytes, spec, spec.inset);
 		const background = colourOf(spec.background);
+		// A cover crop with a focal point keeps the window around it; otherwise (or with no size to place it by)
+		// the crop below is centred.
+		const window = spec.fit === 'cover' && spec.focal ? await focalWindow(bytes, spec) : null;
 		let pipeline = this.base(bytes, spec.keepAlpha, background);
-		if (spec.fit === 'cover' && spec.focal) {
-			const window = await focalWindow(bytes, spec);
-			if (window) pipeline = pipeline.extract(window);
-		}
+		pipeline = window ? pipeline.extract(window) : pipeline;
 		pipeline =
 			spec.fit === 'inside'
 				? pipeline.resize({ width: spec.width, withoutEnlargement: true })
@@ -163,10 +163,10 @@ export class SharpImageCodec implements ImageCodecPort, ImageCutPort {
 	}
 
 	/** A padded card with a white margin: the image fitted inside the inner box, then centred on white. */
-	private async renderInset(bytes: Uint8Array, spec: ImageRenderSpec): Promise<RenderedImage> {
+	private async renderInset(bytes: Uint8Array, spec: ImageRenderSpec, margin: number): Promise<RenderedImage> {
 		const width = spec.width;
 		const height = spec.height ?? spec.width;
-		const inset = Math.min(0.4, Math.max(0, spec.inset ?? 0));
+		const inset = Math.min(0.4, Math.max(0, margin));
 		const background = colourOf(spec.background);
 		const inner = await this.base(bytes, spec.keepAlpha, background)
 			.resize({

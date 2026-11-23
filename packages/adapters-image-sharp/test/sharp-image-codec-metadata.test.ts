@@ -37,6 +37,14 @@ describe('SharpImageCodec with incomplete metadata', () => {
 		await expect(codec.probe(bytes)).resolves.toMatchObject({ format: expected });
 	});
 
+	it('refuses an SVG the drawing library gives no size', async () => {
+		metadata.mockResolvedValue({ format: 'svg' });
+		const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"></svg>');
+		const error: unknown = await codec.probe(svg).catch((thrown: unknown) => thrown);
+		expect(error).toEqual(new ImageDecodeError('the upload is not a decodable image'));
+		expect((error as Error).cause).toEqual(new ImageDecodeError('an SVG with no size'));
+	});
+
 	it('rejects a swatch cut when either source dimension is unknown', async () => {
 		metadata.mockResolvedValue({ width: 10 });
 		await expect(codec.cut(bytes, { x: 0, y: 0, width: 1, height: 1 })).rejects.toThrow('no size');

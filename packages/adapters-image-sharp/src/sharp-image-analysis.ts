@@ -2,6 +2,8 @@ import type { SpotLuminance } from '@saha-textile/contracts';
 import type { ImageAnalysisPort } from '@saha-textile/core-domain';
 import sharp from 'sharp';
 
+import { valueAt } from './value-at';
+
 /** Width the picture is measured at: plenty for nine areas, and quick. */
 const MEASURE_WIDTH = 360;
 
@@ -25,7 +27,8 @@ export class SharpImageAnalysis implements ImageAnalysisPort {
 			.removeAlpha()
 			.raw()
 			.toBuffer({ resolveWithObject: true });
-		const counts = Array.from({ length: 9 }, () => new Array<number>(bins).fill(0));
+		// Nine spots' histograms side by side: spot s, bin b is counts[s * bins + b].
+		const counts = new Array<number>(9 * bins).fill(0);
 		const totals = new Array<number>(9).fill(0);
 		const { width, height, channels } = info;
 		for (let y = 0; y < height; y += 1) {
@@ -34,18 +37,19 @@ export class SharpImageAnalysis implements ImageAnalysisPort {
 				const column = Math.min(2, Math.floor((x * 3) / width));
 				const at = (y * width + x) * channels;
 				const lum =
-					0.2126 * (LINEAR[data[at] ?? 0] ?? 0) +
-					0.7152 * (LINEAR[data[at + 1] ?? 0] ?? 0) +
-					0.0722 * (LINEAR[data[at + 2] ?? 0] ?? 0);
+					0.2126 * valueAt(LINEAR, valueAt(data, at)) +
+					0.7152 * valueAt(LINEAR, valueAt(data, at + 1)) +
+					0.0722 * valueAt(LINEAR, valueAt(data, at + 2));
 				const spot = row * 3 + column;
-				const bin = Math.min(bins - 1, Math.floor(lum * bins));
-				const spotCounts = counts[spot] as number[];
-				spotCounts[bin] = (spotCounts[bin] ?? 0) + 1;
-				totals[spot] = (totals[spot] ?? 0) + 1;
+				const cell = spot * bins + Math.min(bins - 1, Math.floor(lum * bins));
+				counts[cell] = valueAt(counts, cell) + 1;
+				totals[spot] = valueAt(totals, spot) + 1;
 			}
 		}
-		return counts.map((spot, index) => ({
-			hist: spot.map((count) => Math.round((count / Math.max(1, totals[index] ?? 1)) * 10_000) / 10_000),
+		return totals.map((total, spot) => ({
+			hist: counts
+				.slice(spot * bins, (spot + 1) * bins)
+				.map((count) => Math.round((count / Math.max(1, total)) * 10_000) / 10_000),
 		}));
 	}
 }

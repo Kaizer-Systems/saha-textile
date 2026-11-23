@@ -68,6 +68,14 @@ export class EDocsService {
 		return EDocSettings.parse({ gstin, eWayBillThresholdINR: order.eWayBillThresholdINR });
 	}
 
+	/** Whether this business's GSTIN is e-invoice enabled today: only then is an IRN needed. */
+	async eInvoiceEnabled(day: string = istDay(new Date())): Promise<boolean> {
+		const gstin = await this.gstin();
+		if (!gstin) return false;
+		const from = (await this.settingsFor(gstin)).eInvoiceEnabledFrom;
+		return !!from && from <= day;
+	}
+
 	async view(): Promise<EDocSettingsView> {
 		const gstin = await this.gstin();
 		return { gstin, settings: gstin ? await this.settingsFor(gstin) : null, keysAvailable: this.keys.available };

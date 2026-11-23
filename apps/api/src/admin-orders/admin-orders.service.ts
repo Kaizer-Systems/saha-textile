@@ -97,10 +97,14 @@ export function machineOrder(order: Order): StatusMachineOrder {
 	};
 }
 
-export function machineSettings(settings: OrderSettings): StatusMachineSettings {
+/**
+ * `eInvoiceEnabled`: whether this business's GSTIN is e-invoice enabled today (Settings › E-invoice and e-way bill,
+ * accounts brief addendum 2). A GSTIN that isn't enabled can't get an IRN, so Shipped doesn't wait for one.
+ */
+export function machineSettings(settings: OrderSettings, eInvoiceEnabled = true): StatusMachineSettings {
 	return {
 		outForDeliveryOnlyFromCourier: settings.outForDeliveryOnlyFromCourier,
-		eInvoiceRequired: settings.eInvoiceRequired,
+		eInvoiceRequired: settings.eInvoiceRequired && eInvoiceEnabled,
 		eWayBillThresholdINR: settings.eWayBillThresholdINR,
 		courierConnected: false,
 	};
@@ -229,6 +233,11 @@ export class AdminOrdersService {
 		@Optional() @Inject(OrderNoticesService) private readonly notices: OrderNoticesService | null = null,
 		@Optional() @Inject(EDocsService) private readonly edocs: EDocsService | null = null,
 	) {}
+
+	/** Without the e-document settings (tests), the old rule stands: business orders need an IRN. */
+	private eInvoiceEnabled(): Promise<boolean> {
+		return this.edocs ? this.edocs.eInvoiceEnabled() : Promise.resolve(true);
+	}
 
 	/**
 	 * After a change is saved: the messages its status move tells the customer (order_confirmed when
@@ -401,7 +410,7 @@ export class AdminOrdersService {
 			this.shipments.courierNames(20),
 		]);
 		const machine = machineOrder(order);
-		const rules = machineSettings(settings);
+		const rules = machineSettings(settings, await this.eInvoiceEnabled());
 		return {
 			order,
 			payments,
@@ -459,7 +468,11 @@ export class AdminOrdersService {
 	): Promise<AdminOrderDetail> {
 		const order = await this.get(id);
 		const settings = await this.settings.get();
-		const verdict = canMoveTo(machineOrder(order), input.to, machineSettings(settings));
+		const verdict = canMoveTo(
+			machineOrder(order),
+			input.to,
+			machineSettings(settings, await this.eInvoiceEnabled()),
+		);
 		if (!verdict.allowed) {
 			throw new ConflictException(
 				codedRefusal('status_blocked', 'That step is not allowed yet', 'to', { reason: verdict.reason }),
@@ -477,9 +490,10 @@ export class AdminOrdersService {
 			throw new BadRequestException(codedRefusal('cancel_reason_needed', 'Give a reason', 'cancel'));
 		}
 		const at = now.toISOString();
-		const tells = allowedNextStatuses(machineOrder(order), machineSettings(settings)).find(
-			(row) => row.to === input.to,
-		)?.tells;
+		const tells = allowedNextStatuses(
+			machineOrder(order),
+			machineSettings(settings, await this.eInvoiceEnabled()),
+		).find((row) => row.to === input.to)?.tells;
 		// od06: "Customer told · Email · SMS": the messages that have somewhere to go (Settings ›
 		// Communications can still hold one back when it is sent).
 		const told = this.notices?.plan(order, tells ?? []) ?? [];

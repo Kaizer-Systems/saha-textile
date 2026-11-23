@@ -230,4 +230,21 @@ describe('e-invoice and e-way bill settings (addendum 2)', () => {
 		});
 		expect(repo.calls.at(-1)).toMatchObject({ action: 'manualEntry', ok: true });
 	});
+	it('needs an IRN only once the GSTIN is e-invoice enabled (K.R. Marketing isn’t)', async () => {
+		const { service } = setup();
+		expect(await service.eInvoiceEnabled('2026-11-23')).toBe(false);
+		await service.saveSettings(
+			{
+				eInvoicePath: 'manual',
+				eWayBillPath: 'manual',
+				eWayBillWithEInvoice: true,
+				eInvoiceEnabledFrom: '2027-04-01',
+				eWayBillThresholdINR: 50_000,
+			},
+			null,
+			'usr_1',
+		);
+		expect(await service.eInvoiceEnabled('2026-11-23')).toBe(false);
+		expect(await service.eInvoiceEnabled('2027-04-01')).toBe(true);
+	});
 });

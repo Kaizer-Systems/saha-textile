@@ -80,3 +80,4 @@ export * from './edocs';
 export * from './locations';
 export * from './ledger';
 export * from './order-routing';
+export * from './tax-invoice';

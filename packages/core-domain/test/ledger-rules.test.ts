@@ -223,4 +223,53 @@ describe('general ledger rules (accounts brief Q, T)', () => {
 			voucherProblems({ kind: 'journal', date: '2026-11-01', lines }, { ...context(), filedGst: filed }),
 		).toEqual([]);
 	});
+
+	it('gives partners their current accounts, and a group under a bank group is a bank', () => {
+		for (const kind of ['partnership', 'llp'] as const)
+			expect(defaultChart(kind).groups.map((g) => g.systemKey)).toContain('partners_current');
+		const nested = [...groups, group('g_hdfc', null, 'g_bank'), group('g_lost', null, 'g_missing')];
+		expect(ledgerClass(ledger('hdfc_cc', 'g_hdfc'), nested)).toBe('bank');
+		expect(ledgerClass(ledger('x', 'g_lost'), nested)).toBe('other');
+	});
+
+	it('files each document in its part of the books, and hand vouchers by their cash or bank side', () => {
+		expect(bookPartOf('document', ['other'], 'purchaseEntry')).toBe('purchases');
+		expect(bookPartOf('document', ['other'], 'stockAdjustment')).toBe('stock');
+		expect(bookPartOf('document', ['other'], 'payrollRun')).toBe('payroll');
+		expect(bookPartOf('document', ['other'], 'something')).toBe('journal');
+		expect(bookPartOf('document', ['other'])).toBe('journal');
+		expect(bookPartOf('payment', ['bank', 'other'])).toBe('bank');
+		expect(bookPartOf('payment', ['cash', 'other'])).toBe('cash');
+		expect(bookPartOf('payment', ['other'])).toBe('journal');
+	});
+
+	it('refuses a one-line voucher, an unknown location, and cash-side rules on unknown ledgers', () => {
+		expect(
+			voucherProblems(
+				{ kind: 'journal', date: '2026-11-23', lines: [{ ...line('rent', 100, 0), locationId: 'loc_x' }] },
+				context(),
+			),
+		).toEqual(expect.arrayContaining(['empty', 'location_unknown']));
+		expect(
+			voucherProblems(
+				{ kind: 'contra', date: '2026-11-23', lines: [line('nope', 100, 0), line('cash', 0, 100)] },
+				context(),
+			),
+		).toEqual(expect.arrayContaining(['contra_needs_cash_or_bank']));
+		expect(
+			voucherProblems(
+				{ kind: 'payment', date: '2026-11-23', lines: [line('rent', 100, 0), line('nope', 0, 100)] },
+				context(),
+			),
+		).toEqual(expect.arrayContaining(['payment_needs_cash_or_bank_credit']));
+	});
+
+	it('orders entries of one day by number, and stops counting months after twenty years', () => {
+		const statement = ledgerStatement(0, [
+			{ date: '2026-11-23', number: 'JV/26-27/000002', debitPaise: 0, creditPaise: 50 } as never,
+			{ date: '2026-11-23', number: 'JV/26-27/000001', debitPaise: 100, creditPaise: 0 } as never,
+		]);
+		expect(statement.rows.map((r) => r.number)).toEqual(['JV/26-27/000001', 'JV/26-27/000002']);
+		expect(monthsBetween('2000-01', '2030-12')).toHaveLength(241);
+	});
 });

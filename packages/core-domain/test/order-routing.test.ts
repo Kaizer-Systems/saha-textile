@@ -44,4 +44,9 @@ describe('order routing (accounts brief M1, M2, D14)', () => {
 			{ locationId: 'salt', has: 1, of: 2 },
 		]);
 	});
+
+	it('assigns nothing for an order with no stocked pieces (made to order only)', () => {
+		const none = { ...input([row('saree', 'bar', 2)]), lines: [] };
+		expect(routeOrder(none, { mode: 'auto' })).toMatchObject({ assign: null, suggestion: null });
+	});
 });

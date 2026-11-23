@@ -59,7 +59,10 @@ export function buildInvoiceLines(
 			problems.push({ lineId: line.lineId, problem: 'hsn_rate_missing' });
 			continue;
 		}
-		out.push({ ...splitTax(line.lineTotalINR, rate, options.interState), ...lineFacts(line, unitPriceINR, rate) });
+		out.push({
+			...splitTax(line.lineTotalINR, rate, options.interState),
+			...lineFacts(line, line.hsn, unitPriceINR, rate),
+		});
 	}
 	if (!lines.length) problems.push({ lineId: '', problem: 'no_lines' });
 	const shippingRate = Math.max(0, ...out.map((l) => l.ratePercent));
@@ -67,12 +70,12 @@ export function buildInvoiceLines(
 	return { problems, lines: out, totals: invoiceTotals(out, shipping) };
 }
 
-function lineFacts(line: InvoiceLineInput, unitPriceINR: number, rate: number) {
+function lineFacts(line: InvoiceLineInput, hsn: string, unitPriceINR: number, rate: number) {
 	return {
 		lineId: line.lineId,
 		sku: line.sku,
 		title: line.title,
-		hsn: line.hsn ?? '',
+		hsn,
 		quantity: line.quantity,
 		unit: line.unit,
 		unitPriceINR: rupees(paise(unitPriceINR)),
@@ -138,9 +141,12 @@ export function invoicePosting(input: {
 		{ systemKey: input.paidInAdvance ? 'customer_advances' : 'debtors_control', debitPaise: paise(t.totalINR) },
 		{ systemKey: 'sales', creditPaise: paise(t.taxableINR) },
 	];
-	if (t.cgstINR) rows.push({ systemKey: 'output_cgst', creditPaise: paise(t.cgstINR) });
-	if (t.sgstINR) rows.push({ systemKey: 'output_sgst', creditPaise: paise(t.sgstINR) });
-	if (t.igstINR) rows.push({ systemKey: 'output_igst', creditPaise: paise(t.igstINR) });
+	const taxes = [
+		['output_cgst', t.cgstINR],
+		['output_sgst', t.sgstINR],
+		['output_igst', t.igstINR],
+	] as const;
+	for (const [systemKey, amount] of taxes) if (amount) rows.push({ systemKey, creditPaise: paise(amount) });
 	const round = paise(t.roundOffINR);
 	if (round > 0) rows.push({ systemKey: 'rounding_off', creditPaise: round });
 	if (round < 0) rows.push({ systemKey: 'rounding_off', debitPaise: -round });

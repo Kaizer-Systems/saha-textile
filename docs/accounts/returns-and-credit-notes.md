@@ -3,7 +3,7 @@ title: Returns and credit notes
 description: Returns checked piece by piece, credit notes taken from the invoice line, price adjustments, parcels brought back, Cancel and debit notes, and Refund now.
 status: implemented
 audience: [backend, frontend, operator]
-last_verified: '2026-11-24'
+last_verified: '2026-11-23'
 search_keywords: return credit note debit note price adjustment undelivered parcel refund s.34 deadline rule 53 restock damaged write off cancel super admin
 source_of_truth:
     - packages/contracts/src/returns.ts

@@ -1,6 +1,8 @@
 import type { MediaJob, MediaJobQueuePort } from '@saha-textile/core-domain';
 import { type Job, Queue, Worker } from 'bullmq';
 
+import { queueTelemetry } from './telemetry';
+
 /** One queue for all media background work; job names are the job `type`. */
 export const MEDIA_QUEUE_NAME = 'saha-textile-media';
 
@@ -90,6 +92,7 @@ export class BullMqMediaJobQueue implements MediaJobQueuePort {
 		this.instance ??= new Queue<MediaQueueJob>(MEDIA_QUEUE_NAME, {
 			connection: connectionOptions(this.config),
 			defaultJobOptions: DEFAULT_JOB_OPTIONS,
+			telemetry: queueTelemetry,
 		});
 		return this.instance;
 	}
@@ -284,7 +287,7 @@ export const startMediaWorker = (input: {
 			const handler = input.handlers[data.type] as (payload: MediaQueueJob) => Promise<unknown>;
 			return handler(data);
 		},
-		{ connection: connectionOptions(input.connection), concurrency: input.concurrency },
+		{ connection: connectionOptions(input.connection), concurrency: input.concurrency, telemetry: queueTelemetry },
 	);
 	if (input.onFailed) worker.on('failed', input.onFailed);
 	return worker;

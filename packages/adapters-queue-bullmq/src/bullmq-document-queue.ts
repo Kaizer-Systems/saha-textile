@@ -1,6 +1,8 @@
 import type { DocumentRenderRequest, DocumentRendererPort } from '@saha-textile/core-domain';
 import { type Job, Queue, QueueEvents, Worker } from 'bullmq';
 
+import { queueTelemetry } from './telemetry';
+
 import type { RedisConnectionConfig } from './bullmq-media-queue.js';
 
 /**
@@ -56,6 +58,7 @@ export class BullMqDocumentRenderer implements DocumentRendererPort {
 		this.queue ??= new Queue<RenderJobData, RenderJobResult>(DOCUMENT_QUEUE_NAME, {
 			connection: connectionOptions(this.config),
 			defaultJobOptions: JOB_OPTIONS,
+			telemetry: queueTelemetry,
 		});
 		this.events ??= new QueueEvents(DOCUMENT_QUEUE_NAME, { connection: connectionOptions(this.config) });
 		return { queue: this.queue, events: this.events };
@@ -106,6 +109,6 @@ export function startDocumentWorker(
 			});
 			return { pdf: Buffer.from(pdf).toString('base64') };
 		},
-		{ connection: connectionOptions(config), concurrency },
+		{ connection: connectionOptions(config), concurrency, telemetry: queueTelemetry },
 	);
 }

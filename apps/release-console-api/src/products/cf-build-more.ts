@@ -7,7 +7,23 @@
 import type { ProductField, ProductWrite } from '@saha-textile/release-console-contracts';
 
 import type { ProductCtx, ProductFormSpec } from './kit.js';
-import { action, bool, confirmed, field, form, formTab, list, note, option, pick, text } from './kit.js';
+import {
+	action,
+	bool,
+	col,
+	confirmed,
+	field,
+	form,
+	formTab,
+	list,
+	note,
+	option,
+	pick,
+	row,
+	table,
+	text,
+	view,
+} from './kit.js';
 import { CF_API, accountOf, cfAll, cfSend, cfSoft, zoneOf } from './cf-kit.js';
 import { type ScreenExtra } from './cf-zone-more.js';
 import { VendorError, arr, rec, str } from '../vendors/http.js';
@@ -62,6 +78,8 @@ interface Coll {
 	save(w: ProductWrite, r: Rec | null, a: string, key: string): Promise<string>;
 	remove?(r: Rec, a: string, key: string): Promise<void>;
 	removeNote?(r: Rec): string;
+	/** False for items the console must never delete. */
+	canRemove?(r: Rec): boolean;
 	notes?: string[];
 	newBlocked?: string;
 }
@@ -107,7 +125,11 @@ function deleteAcross(key: string, title: string, colls: Coll[]): ProductFormSpe
 			await Promise.all(
 				colls
 					.filter((c) => c.remove)
-					.map(async (c) => (await c.list(k, a).catch(() => [])).map((r) => ({ c, r }))),
+					.map(async (c) =>
+						(await c.list(k, a).catch(() => []))
+							.filter((r) => c.canRemove?.(r) ?? true)
+							.map((r) => ({ c, r })),
+					),
 			)
 		).flat();
 	return {
@@ -654,10 +676,172 @@ export const TURNSTILE_EXTRA: ScreenExtra = {
 
 export const ALERTS_EXTRA: ScreenExtra = {
 	forms: { alert: collForm(alerts), alertdelete: deleteAcross('alertdelete', 'Delete an alert', [alerts]) },
-	buttons: { audit: [action('Alert by email', 'alert', 'primary'), action('Delete an alert', 'alertdelete')] },
+	buttons: {
+		audit: [
+			action('Alert by email', 'alert', 'primary'),
+			action('Delete an alert', 'alertdelete'),
+			action('Invite or change a member', 'member'),
+			action('Remove a member', 'memberdelete'),
+		],
+	},
 };
 
 export const ANALYTICS_EXTRA: ScreenExtra = {
 	forms: { webanalytics: webAnalytics },
 	buttons: { analytics: [action('Web Analytics', 'webanalytics')] },
+};
+
+/* ===== members, bulk redirect lists, Vectorize ===== */
+
+const members: Coll = {
+	key: 'member',
+	label: 'member',
+	list: async (k, a) => (await cfAll(`/accounts/${a}/members`, k)) ?? [],
+	idOf: (r) => str(r['id']),
+	nameOf: (r) =>
+		`${str(rec(r['user'])['email'])} · ${arr(r['roles'])
+			.map((x) => str(rec(x)['name']))
+			.join(', ')} · ${str(r['status'])}`,
+	async fields(r, ctx, a) {
+		const roles = (await cfAll(`/accounts/${a}/roles`, ctx.key)) ?? [];
+		return [
+			field('email', 'Email', 'text', { value: str(rec(r?.['user'])['email']), required: true, readOnly: !!r }),
+			field('role', 'Role', 'select', {
+				value: str(rec(arr(r?.['roles'])[0])['id']),
+				options: roles.map((x) => option(str(x['id']), str(x['name']), str(x['description']).slice(0, 80))),
+			}),
+		];
+	},
+	async save(w, r, a, k) {
+		const role = text(w, 'role');
+		if (r) {
+			await cfSend('PUT', `/accounts/${a}/members/${str(r['id'])}`, k, { roles: [{ id: role }] });
+			return 'Member role changed';
+		}
+		const email = text(w, 'email').toLowerCase();
+		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new VendorError('An email address.', 400);
+		await cfSend('POST', `/accounts/${a}/members`, k, { email, roles: [role], status: 'pending' });
+		return `${email}: Cloudflare emailed the invitation`;
+	},
+	remove: async (r, a, k) => {
+		await cfSend('DELETE', `/accounts/${a}/members/${str(r['id'])}`, k);
+	},
+	removeNote: () => 'They lose access to this account at once.',
+	// Never the account's super administrators (the owner, and the login the console's token belongs to).
+	canRemove: (r) => !arr(r['roles']).some((x) => /super administrator/i.test(str(rec(x)['name']))),
+	notes: ['Inviting sends an email from Cloudflare to that address.'],
+};
+
+const redirectLists: Coll = {
+	key: 'redirectlist',
+	label: 'bulk redirect list',
+	list: async (k, a) =>
+		((await cfAll(`/accounts/${a}/rules/lists`, k)) ?? []).filter((l) => str(l['kind']) === 'redirect'),
+	idOf: (r) => str(r['id']),
+	nameOf: (r) => `${str(r['name'])} · ${Number(r['num_items'] ?? 0)} redirects`,
+	newBlocked: 'A list is made by Rules › Upload bulk redirects on the domain.',
+	fields: (r) => [field('description', 'Note', 'text', { value: str(r?.['description']) })],
+	async save(w, r, a, k) {
+		if (!r) throw new VendorError('A list is made by Upload bulk redirects.', 400);
+		await cfSend('PUT', `/accounts/${a}/rules/lists/${str(r['id'])}`, k, { description: opt(w, 'description') });
+		return 'List saved';
+	},
+	remove: async (r, a, k) => {
+		await cfSend('DELETE', `/accounts/${a}/rules/lists/${str(r['id'])}`, k);
+	},
+	removeNote: () => 'Cloudflare refuses while a bulk redirect rule still uses it.',
+};
+
+const vectorize: Coll = {
+	key: 'vectorize',
+	label: 'Vectorize index',
+	list: async (k, a) => (await cfAll(`/accounts/${a}/vectorize/v2/indexes`, k)) ?? [],
+	idOf: (r) => str(r['name']),
+	nameOf: (r) => `${str(r['name'])} · ${Number(rec(r['config'])['dimensions'] ?? 0)} dims`,
+	fields: (r) => [
+		field('name', 'Name', 'text', { value: str(r?.['name']), required: true, readOnly: !!r }),
+		field('dimensions', 'Dimensions', 'number', {
+			value: Number(rec(r?.['config'])['dimensions'] ?? 768),
+			min: 1,
+			max: 1536,
+			readOnly: !!r,
+		}),
+		field('metric', 'Distance', 'select', {
+			value: str(rec(r?.['config'])['metric']) || 'cosine',
+			options: ['cosine', 'euclidean', 'dot-product'].map((m) => option(m, m)),
+			readOnly: !!r,
+		}),
+		field('description', 'Note', 'text', { value: str(r?.['description']) }),
+	],
+	async save(w, r, a, k) {
+		if (r) throw new VendorError('An index keeps its shape; delete and make a new one to change it.', 400);
+		const name = text(w, 'name');
+		if (!SLUG.test(name)) throw new VendorError('Name: lowercase letters, digits and -.', 400);
+		await cfSend('POST', `/accounts/${a}/vectorize/v2/indexes`, k, {
+			name,
+			description: opt(w, 'description'),
+			config: { dimensions: Number(opt(w, 'dimensions') || '768'), metric: opt(w, 'metric') || 'cosine' },
+		});
+		return `Vectorize index ${name} made`;
+	},
+	remove: async (r, a, k) => {
+		await cfSend('DELETE', `/accounts/${a}/vectorize/v2/indexes/${str(r['name'])}`, k);
+	},
+};
+
+export const MEMBERS_FORMS = {
+	member: collForm(members),
+	memberdelete: deleteAcross('memberdelete', 'Remove a member', [members]),
+	redirectlist: collForm(redirectLists),
+	redirectlistdelete: deleteAcross('redirectlistdelete', 'Delete a bulk redirect list', [redirectLists]),
+	vectorize: collForm(vectorize),
+	vectorizedelete: deleteAcross('vectorizedelete', 'Delete a Vectorize index', [vectorize]),
+};
+
+Object.assign(ALERTS_EXTRA.forms ?? {}, { member: MEMBERS_FORMS.member, memberdelete: MEMBERS_FORMS.memberdelete });
+Object.assign(BUILD_EXTRA.forms ?? {}, {
+	vectorize: MEMBERS_FORMS.vectorize,
+	vectorizedelete: MEMBERS_FORMS.vectorizedelete,
+});
+BUILD_EXTRA.buttons?.['storage']?.push(
+	action('Vectorize index', 'vectorize'),
+	action('Delete an index', 'vectorizedelete'),
+);
+
+export const RULES_LISTS_EXTRA: ScreenExtra = {
+	forms: { redirectlist: MEMBERS_FORMS.redirectlist, redirectlistdelete: MEMBERS_FORMS.redirectlistdelete },
+	buttons: {
+		overview: [action('Bulk redirect list', 'redirectlist'), action('Delete a list', 'redirectlistdelete')],
+	},
+};
+
+/** Manage account › Members: who is on the account, their roles, invite and remove. */
+ALERTS_EXTRA.tabs = {
+	...ALERTS_EXTRA.tabs,
+	members: async (ctx) => {
+		const a = await accountOf(ctx);
+		const list = await members.list(ctx.key, a);
+		return view({
+			tables: [
+				table(
+					'Members',
+					[col('email', 'Email', true), col('roles', 'Roles'), col('status', 'Status')],
+					list.map((m) =>
+						row(str(m['id']), str(rec(m['user'])['email']), {
+							email: str(rec(m['user'])['email']),
+							roles: arr(m['roles'])
+								.map((x) => str(rec(x)['name']))
+								.join(', '),
+							status: str(m['status']),
+						}),
+					),
+					'No members.',
+				),
+			],
+			actions: [
+				action('Invite or change a member', 'member', 'primary'),
+				action('Remove a member', 'memberdelete'),
+			],
+		});
+	},
 };

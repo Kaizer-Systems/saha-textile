@@ -52,7 +52,14 @@ import {
 import { ZT_EXTRA } from './cf-zt-more.js';
 import { cfPlanScreen } from './cf-plan.js';
 import { PIPELINE_EXTRA, PULLS_EXTRA, ROLLBACK_EXTRA, SECRETS_EXTRA } from './gh-more.js';
-import { ALERTS_EXTRA, ANALYTICS_EXTRA, BUILD_EXTRA, DEV_EXTRA, TURNSTILE_EXTRA } from './cf-build-more.js';
+import {
+	ALERTS_EXTRA,
+	ANALYTICS_EXTRA,
+	BUILD_EXTRA,
+	DEV_EXTRA,
+	RULES_LISTS_EXTRA,
+	TURNSTILE_EXTRA,
+} from './cf-build-more.js';
 import {
 	cfAccessScreen,
 	cfAnalyticsScreen,
@@ -163,7 +170,7 @@ export const PRODUCT_SCREENS: Record<string, ProductScreen> = {
 	cfspeed: extend(cfSpeedScreen, SPEED_EXTRA),
 	cfcache: extend(cfCacheScreen, CACHE_EXTRA),
 	cfroutes: extend(cfRoutesScreen, ROUTES_EXTRA),
-	cfrules: cfRulesScreen,
+	cfrules: extend(cfRulesScreen, RULES_LISTS_EXTRA),
 	cferror: extend(cfErrorScreen, ERROR_EXTRA),
 	cfnetwork: cfNetworkScreen,
 	cftraffic: extend(cfTrafficScreen, TRAFFIC_EXTRA),

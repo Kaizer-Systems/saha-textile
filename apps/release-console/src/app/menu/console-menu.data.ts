@@ -1837,11 +1837,8 @@ export const CONSOLE_MENU: ConsoleMenu = {
 			},
 			off: false,
 			tip: null,
-			part: 'Partly here. API tokens, audit log and notifications are here; members and paying are not. For the rest, please go to the Cloudflare portal to access this.',
-			offStates: {
-				members:
-					'Please go to the Cloudflare portal to access this. Inviting members and roles stay on Cloudflare.',
-			},
+			part: 'Partly here. API tokens, audit log, alerts and members (invite, role, remove) are here; making tokens and paying are on the Cloudflare portal.',
+			offStates: null,
 			partStates: {
 				billing: 'Partly here: plans, subscriptions and invoices. Changing plan and paying are on Cloudflare.',
 			},

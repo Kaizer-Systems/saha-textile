@@ -1,5 +1,5 @@
 import { readsHome } from './home-lock';
-import { expect, test } from './support';
+import { buyBoxReady, expect, test } from './support';
 
 /**
  * The header after its code split (search, cart and account load their code when needed; search itself is covered by
@@ -11,8 +11,8 @@ test.describe('the header and the page fonts', () => {
 
 	test('the cart count follows the cart without touching the header', async ({ page }) => {
 		await page.goto('/en/product/katan-banarasi-saree');
-		const add = page.locator('app-buy-box button', { hasText: /add to cart/i }).first();
-		await expect(add).toBeVisible();
+		// A click before Angular has taken over the buy box was lost under a full parallel run.
+		const add = (await buyBoxReady(page)).locator('button', { hasText: /add to cart/i }).first();
 		await add.click();
 		await expect(page.locator('app-header-cart .badge').first()).toContainText('1');
 	});

@@ -7,7 +7,9 @@
 		"postalCodeLabel": "postcode",
 		"postalCodeRequired": true,
 		"postalCodePattern": "[A-Z]{1,2}\\d[A-Z\\d]? ?\\d[A-Z]{2}",
-		"mobileLengths": [10],
+		"mobileLengths": [
+			10
+		],
 		"hasSubdivisions": true
 	},
 	{
@@ -18,7 +20,9 @@
 		"postalCodeLabel": "pin",
 		"postalCodeRequired": true,
 		"postalCodePattern": "\\d{6}",
-		"mobileLengths": [10],
+		"mobileLengths": [
+			10
+		],
 		"hasSubdivisions": true
 	}
 ]

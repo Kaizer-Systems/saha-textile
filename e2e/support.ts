@@ -44,7 +44,10 @@ interface Problems {
 
 export const test = base.extend<{ problems: Problems }>({
 	page: async ({ page }, use) => {
-		await page.addLocatorHandler(page.locator('#newsletter_modal_close_btn'), (close) => close.click());
+		// A visitor who has seen the newsletter popup this visit. It opens 30 s into a visit, and a slow test reaches
+		// that mid-click: the click lands on the popup and is lost (listing.spec, CI 23 Nov), which closing the popup
+		// afterwards cannot undo. Its own test (consent.spec) does not use this page.
+		await page.addInitScript(() => sessionStorage.setItem('st_newsletter_shown', '1'));
 		await page.context().addCookies([ACCEPTED_COOKIES]);
 		await use(page);
 	},

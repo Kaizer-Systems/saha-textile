@@ -76,9 +76,11 @@ test.describe('Settings › Image profiles (step 2c)', () => {
 		// Edit: a size more, crop off.
 		await added.locator('a[title="Edit"]').click();
 		await expect(page.locator('#profile_name')).toHaveValue(`${RUN} 2:3`);
-		await page.locator('#profile_add_size_own').fill('2400');
-		await page.locator('#profile_add_size_btn_own').click();
-		await expect(page.locator('[data-family="own"]').getByText('2400', { exact: true })).toBeVisible();
+		// A saved profile's sizes sit under its own family (its key), not under "own" as on the add screen.
+		const family = page.locator('[data-family]').first();
+		await family.locator('input[id^="profile_add_size_"]').fill('2400');
+		await family.locator('button[id^="profile_add_size_btn_"]').click();
+		await expect(family.getByText('2400', { exact: true })).toBeVisible();
 		await page.locator('#profile_fill_crop').uncheck();
 		await page.locator('#profile_save').click();
 		await expect(page).toHaveURL(/\/setting\/image-profiles$/);

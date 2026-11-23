@@ -219,14 +219,15 @@ test.describe('Home blog posts', () => {
 			.poll(() => first.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0))
 			.toBe(true);
 		// The picture fills the theme's 65% box, as the background did (measured once the carousel has settled).
+		// Layout sizes, not the box on screen: the theme zooms and tilts the picture under a resting pointer
+		// (scale 1.12, rotate 3°), which makes the on-screen box 0.679 tall for 1 wide.
 		const fit = () =>
-			first.evaluate((image) => {
-				const picture = image.getBoundingClientRect();
-				const box = (image.parentElement as HTMLElement).getBoundingClientRect();
+			first.evaluate((image: HTMLImageElement) => {
+				const box = image.parentElement as HTMLElement;
 				return {
-					width: Math.abs(picture.width - box.width),
-					height: Math.abs(picture.height - box.height),
-					ratio: Math.abs(box.height / box.width - 0.65),
+					width: Math.abs(image.offsetWidth - box.offsetWidth),
+					height: Math.abs(image.offsetHeight - box.offsetHeight),
+					ratio: Math.abs(box.offsetHeight / box.offsetWidth - 0.65),
 				};
 			});
 		await expect.poll(async () => (await fit()).width).toBeLessThanOrEqual(1);

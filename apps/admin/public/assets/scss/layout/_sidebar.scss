@@ -562,11 +562,18 @@
 
 								.dropdown-toggle {
 									gap: calc(0px + (8 - 0) * ((100vw - 320px) / (1920 - 320)));
+									// Admin Quick Add brief: the language button's p-0 loses to the later .btn
+									// padding (this admin's utilities are not !important), which left 30 px a side.
+									padding: 0;
 								}
 
 								.media-body {
 									margin-left: 15px;
 									align-items: center;
+									// Admin Quick Add brief: a long sign-in name ends in "…" (full name on hover)
+									// instead of running past the screen edge.
+									max-width: 150px;
+									min-width: 0;
 
 									[dir='rtl'] & {
 										margin-left: 0;
@@ -621,6 +628,14 @@
 
 						@media (max-width: 1400px) {
 							margin-right: 0;
+						}
+
+						// Admin Quick Add brief: the search icon shows only up to 762 px (_responsive.scss);
+						// above that its empty slot no longer leaves a gap before the language menu.
+						&:has(> .header-search) {
+							@media (min-width: 763px) {
+								display: none;
+							}
 						}
 
 						.badge {
@@ -987,6 +1002,14 @@
 					max-width: 240px;
 					top: 57px;
 					right: -12px;
+					// Admin Quick Add brief: the hover animation's left: 0 beat right: -12px, so a wide
+					// menu grew off the right edge; it now opens from the right, inside the screen.
+					left: auto;
+
+					[dir='rtl'] & {
+						right: auto;
+						left: -12px;
+					}
 					padding: 15px 10px;
 					font-size: 14px;
 					width: max-content;

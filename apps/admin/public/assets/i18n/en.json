@@ -49,6 +49,7 @@
 	"role": "Role",
 	"products": "Products",
 	"add_product": "Add Product",
+	"quick_add": "Add new",
 	"all_products": "All Products",
 	"attributes": "Attributes",
 	"categories": "Categories",

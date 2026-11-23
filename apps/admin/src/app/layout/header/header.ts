@@ -6,7 +6,6 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { injectBrandQuery } from '@core/brand/brand.gateway';
 import { NavService } from '@data-access/services/nav.service';
 import { LocationChipComponent } from '@shared/components/location-chip/location-chip';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
 import { Languages } from './widgets/languages/languages';
 import { Mode } from './widgets/mode/mode';
@@ -18,17 +17,7 @@ import { Search } from './widgets/search/search';
 	selector: 'app-header',
 	templateUrl: './header.html',
 	styleUrls: ['./header.scss'],
-	imports: [
-		LocationChipComponent,
-		RouterModule,
-		Search,
-		HasPermissionDirective,
-		Languages,
-		Notification,
-		Mode,
-		Profile,
-		TranslocoModule,
-	],
+	imports: [LocationChipComponent, RouterModule, Search, Languages, Notification, Mode, Profile, TranslocoModule],
 })
 export class Header {
 	navServices = inject(NavService);

@@ -1,0 +1,129 @@
+// Admin Quick Add brief (approved 24 Nov 2026). The corner stack, the round button and the opening
+// fan are the shop theme's .theme-option, .setting-box / .setting-button and .theme-setting-2
+// (Fastkart _tap-to-top.scss and _theme-setting.scss), copied here under the adm- prefix and
+// modified. The brief's custom values are marked "custom".
+
+// The theme's corner distance, 10 px on a phone to 25 px on a wide screen.
+$corner: calc(10px + (25 - 10) * ((100vw - 320px) / (1920 - 320)));
+
+.adm-theme-option {
+	position: fixed;
+	right: $corner;
+	// custom (brief value 2): clear the admin's fixed footer, about 51 px tall, by the corner gap.
+	bottom: calc(51px + #{$corner});
+	// Above the page and its footer (2); under the Media upload tray (60), menus and popups.
+	z-index: 50;
+
+	:host-context(html[dir='rtl']) & {
+		right: unset;
+		left: $corner;
+	}
+}
+
+.adm-setting-box {
+	position: relative;
+	width: max-content;
+}
+
+.adm-setting-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 48px;
+	height: 48px;
+	padding: 0;
+	border: 0;
+	// custom (brief value 1): round, where the theme's button has a 5 px corner.
+	border-radius: 50%;
+	// The admin's deeper teal under white (5.2 : 1, utils/_admin-colours.scss).
+	background-color: var(--theme-strong);
+	color: #fff;
+	line-height: 1;
+	box-shadow: 0 4px 8px rgba(34, 34, 34, 0.12);
+	transition: all 0.3s ease-in-out;
+
+	i {
+		font-size: 22px;
+		line-height: 1;
+	}
+
+	&:hover {
+		background-color: var(--theme-strong-hover);
+		color: #fff;
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--theme-ink);
+		outline-offset: 3px;
+	}
+}
+
+// The two actions in the fan: white rounds with the theme's ink, as the brief draws them, at the
+// 44 px tap size.
+.adm-setting-button-outline {
+	width: 44px;
+	height: 44px;
+	border: 1px solid var(--theme-ink);
+	background-color: #fff;
+	color: var(--theme-ink);
+
+	i {
+		font-size: 20px;
+	}
+}
+
+// The theme's fan scales in from the corner; the copy drops its white panel (the brief draws the
+// actions on their own) and also hides closed actions from Tab, which scale(0) alone does not.
+.adm-theme-setting-2 {
+	position: absolute;
+	right: 2px;
+	bottom: calc(100% + 12px);
+	display: grid;
+	gap: 10px;
+	transform: scale(0);
+	transform-origin: bottom right;
+	visibility: hidden;
+	transition: all 0.3s ease-in-out;
+
+	&.active {
+		transform: scale(1);
+		visibility: visible;
+	}
+
+	:host-context(html[dir='rtl']) & {
+		right: unset;
+		left: 2px;
+		transform-origin: bottom left;
+	}
+
+	a {
+		white-space: nowrap;
+		text-decoration: none;
+
+		&:hover .adm-setting-button-outline {
+			background-color: var(--theme-ink);
+			color: #fff;
+		}
+	}
+
+	// The theme's outline button is see-through; over a page it needs the card behind it.
+	.btn-outline {
+		background-color: #fff;
+		box-shadow: 0 4px 8px rgba(34, 34, 34, 0.12);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.adm-theme-setting-2,
+	.adm-setting-button {
+		transition: none;
+	}
+}
+
+// The admin's dark theme paints cards #1c2128 ($dark-card-background).
+:host-context(body.dark-only) {
+	.adm-setting-button-outline,
+	.adm-theme-setting-2 .btn-outline {
+		background-color: #1c2128;
+	}
+}

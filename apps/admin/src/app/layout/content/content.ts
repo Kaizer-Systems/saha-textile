@@ -12,6 +12,7 @@ import { ProductDraftService } from '@data-access/services/product-draft.service
 import { FmTray } from '@features/media/file-manager/fm-tray';
 import { Footer } from '@layout/footer/footer';
 import { Header } from '@layout/header/header';
+import { QuickAdd } from '@layout/quick-add/quick-add';
 import { Sidebar } from '@layout/sidebar/sidebar';
 import { SidebarMenuSkeleton } from '@shared/ui/skeleton/sidebar-menu-skeleton/sidebar-menu-skeleton';
 
@@ -22,7 +23,7 @@ const STOCK_MENU_ID = 24;
 	selector: 'app-content',
 	templateUrl: './content.html',
 	styleUrls: ['./content.scss'],
-	imports: [Header, SidebarMenuSkeleton, Sidebar, RouterModule, Footer, FmTray],
+	imports: [Header, SidebarMenuSkeleton, Sidebar, RouterModule, Footer, FmTray, QuickAdd],
 })
 export class Content {
 	navServices = inject(NavService);

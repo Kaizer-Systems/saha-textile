@@ -4,7 +4,7 @@ import { NavigationEnd, NavigationStart, Router } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
-import { Subject, of } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { StockGateway } from '@core/purchasing/stock.gateway';
@@ -173,6 +173,33 @@ describe('shell pieces', () => {
 		permissions.set(['product.index']);
 		TestBed.tick();
 		expect(menu.setBadge).toHaveBeenCalledWith('/product/drafts', 3);
+	});
+
+	it('counts your drafts once, keeps quiet when that fails, and never on the server', () => {
+		const menu = { loadBadges: vi.fn(), setBadge: vi.fn(), setGroupBadge: vi.fn() };
+		const list = vi.fn(() => throwError(() => new Error('offline')));
+		const permissions = signal<string[]>(['product.index']);
+		const providers = [
+			{ provide: ProductDraftService, useValue: { list } },
+			{ provide: MenuStore, useValue: menu },
+			{ provide: NavService, useValue: { sidebarLoading: true } },
+			{ provide: AuthStore, useValue: { permissions } },
+		];
+		bare(Content, providers);
+		TestBed.tick();
+		expect(list).toHaveBeenCalledOnce();
+		expect(menu.setBadge).not.toHaveBeenCalledWith('/product/drafts', expect.anything());
+		permissions.set(['product.index', 'mailbox.use']);
+		// a mailbox Gmail did not answer for has no count; the others still add up
+		inboxData.set([{ unread: 2 }, { unread: null as unknown as number }]);
+		TestBed.tick();
+		expect(list).toHaveBeenCalledOnce();
+		expect(menu.setBadge).toHaveBeenLastCalledWith('/inbox', 2);
+		inboxData.set(undefined);
+		list.mockClear();
+		bare(Content, [...providers, { provide: PLATFORM_ID, useValue: 'server' }]);
+		TestBed.tick();
+		expect(list).not.toHaveBeenCalled();
 	});
 
 	it('switches dark mode through the shared store, and remembers it', () => {

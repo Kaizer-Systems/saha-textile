@@ -31,21 +31,8 @@
 	</div>
 	<app-search />
 	<div class="nav-right right-header p-0">
+		<!-- Add Product and Add Order moved to the floating "+" (layout/quick-add, Admin Quick Add brief). -->
 		<div class="header-btns d-none d-lg-flex">
-			<a
-				[routerLink]="['/product/create']"
-				class="btn btn-outline"
-				*hasPermission="'product.create'"
-			>
-				{{ 'add_product' | transloco }}
-			</a>
-			<a
-				[routerLink]="['/order/create']"
-				class="btn btn-animation"
-				*hasPermission="'order.create'"
-			>
-				{{ 'add_order' | transloco }}
-			</a>
 			<app-location-chip />
 		</div>
 		<ul class="nav-menus">

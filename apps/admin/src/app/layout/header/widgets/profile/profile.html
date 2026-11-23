@@ -9,7 +9,12 @@
 			</div>
 		</div>
 		<div class="user-name-hide media-body">
-			<span>{{ displayName() }}</span>
+			<span
+				class="d-block text-truncate"
+				[title]="displayName()"
+			>
+				{{ displayName() }}
+			</span>
 			<p class="font-roboto mb-0">
 				{{ roleLabel() }}
 				<i class="middle ri-arrow-down-s-line"></i>

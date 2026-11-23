@@ -1,0 +1,50 @@
+<!-- Admin Quick Add brief (approved 24 Nov 2026): the floating "+" that replaced the header's two buttons. -->
+@if (actions(); as list) { @if (list.length > 1) {
+<div class="adm-theme-option">
+	<div class="adm-setting-box">
+		<div
+			class="adm-theme-setting-2"
+			id="quick_add_menu"
+			[class.active]="open()"
+		>
+			@for (action of list; track action.id) {
+			<a
+				class="d-flex align-items-center justify-content-end gap-2"
+				[id]="'quick_add_' + action.id"
+				[routerLink]="action.link"
+				(click)="close()"
+			>
+				<span class="btn btn-outline btn-sm">{{ action.label | transloco }}</span>
+				<span class="adm-setting-button adm-setting-button-outline">
+					<i [class]="action.icon"></i>
+				</span>
+			</a>
+			}
+		</div>
+		<button
+			type="button"
+			class="adm-setting-button"
+			id="quick_add_toggle"
+			aria-controls="quick_add_menu"
+			[attr.aria-expanded]="open()"
+			[title]="(open() ? 'close' : 'quick_add') | transloco"
+			[attr.aria-label]="(open() ? 'close' : 'quick_add') | transloco"
+			(click)="toggle()"
+		>
+			<i [class]="open() ? 'ri-close-line' : 'ri-add-line'"></i>
+		</button>
+	</div>
+</div>
+} @else if (list.length === 1) {
+<div class="adm-theme-option">
+	<a
+		class="adm-setting-button"
+		[id]="'quick_add_' + list[0].id"
+		[routerLink]="list[0].link"
+		[title]="list[0].label | transloco"
+		[attr.aria-label]="list[0].label | transloco"
+	>
+		<i class="ri-add-line"></i>
+	</a>
+</div>
+} }

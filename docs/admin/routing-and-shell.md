@@ -42,6 +42,12 @@ Route order matters because both shells use an empty parent path. The feature ch
 
 Used for the operator workspace. It composes navigation, header, content outlet, footer, loader, and page-level wrapper behaviour. The header's icon controls (menu, search, language, light/dark switch) each show their name on hover. The light/dark switch is remembered in the browser and applied before the app starts (see [Admin Styles and Dark Mode](./styles-and-dark-mode.md)).
 
+The header's right side holds the location chip, then the icon controls at one even gap, then the signed-in name, which ends in "…" when it is long (the full name shows on hover); the profile menu opens from the right, inside the screen.
+
+#### Quick add
+
+Add Product and Add Order are not in the header. A round "+" floats at the bottom right of every content-shell page, above the fixed footer, on phones too (`layout/quick-add`). A press opens the two named actions above it; Escape, a click outside, or the × closes them. Each action follows its permission (`product.create`, `order.create`): with only one allowed, the "+" goes straight to that page, and with neither there is no button. On Add Product or Add Order itself, that page's own action is left out. The button sits under popups, side panels and the Media upload tray, and in a right-to-left language it moves to the bottom left. Its corner, round button and opening fan are the shop theme's `.theme-option`, `.setting-box` and `.theme-setting-2`, copied under the `adm-` prefix.
+
 ### Full shell
 
 Used for full-page experiences such as authentication and errors where admin navigation should not appear.

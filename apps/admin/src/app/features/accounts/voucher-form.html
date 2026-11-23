@@ -6,7 +6,8 @@
 		<small class="text-muted">
 			@if (draftId()) {
 			<span class="badge bg-light text-dark me-1">{{ 'accounts_draft' | transloco }}</span>
-			} {{ 'accounts_number_when_posted' | transloco }} @if (draftBy()) { · {{ 'accounts_draft_by' | transloco: { name: draftBy() } }} }
+			} {{ 'accounts_number_when_posted' | transloco }} @if (draftBy()) { · {{ 'accounts_draft_by' | transloco: {
+			name: draftBy() } }} }
 		</small>
 		<div class="d-flex gap-2">
 			<button

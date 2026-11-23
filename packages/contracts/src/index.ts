@@ -75,3 +75,4 @@ export * from './shop-orders';
 export * from './order-admin';
 export * from './checkout';
 export * from './ops';
+export * from './company';

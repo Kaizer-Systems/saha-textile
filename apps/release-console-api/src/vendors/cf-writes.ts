@@ -7,7 +7,7 @@ import { VendorError, arr, getJson, rec, sendJson, str } from './http.js';
 const API = 'https://api.cloudflare.com/client/v4';
 
 async function call(
-	method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+	method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
 	path: string,
 	key: string,
 	body?: unknown,
@@ -227,6 +227,93 @@ export const cfWrites = {
 				: await call('POST', `/accounts/${accountId}/access/apps`, key, body),
 		);
 		return str(app['id']);
+	},
+	/**
+	 * The staging login wall (Release Path brief 1.3, C4): one Access application over the shop and
+	 * admin hosts, letting in only the people on the project's list with a one-time code. The API host
+	 * stays open for webhooks. Made, or rewritten in place.
+	 */
+	async loginWall(
+		key: string,
+		accountId: string,
+		input: { name: string; hosts: string[]; emails: string[] },
+	): Promise<'created' | 'updated'> {
+		const [first, ...rest] = input.hosts;
+		if (!first) throw new VendorError('The login wall needs at least one host.', 400);
+		const body = {
+			name: input.name,
+			domain: first,
+			self_hosted_domains: [first, ...rest],
+			type: 'self_hosted',
+			session_duration: '24h',
+			app_launcher_visible: false,
+			policies: [
+				{
+					name: 'People on the project list',
+					decision: 'allow',
+					include: input.emails.map((email) => ({ email: { email } })),
+					precedence: 1,
+				},
+			],
+		};
+		const existing = await cfWrites.accessAppFor(key, accountId, first);
+		if (existing) await call('PUT', `/accounts/${accountId}/access/apps/${existing.id}`, key, body);
+		else await call('POST', `/accounts/${accountId}/access/apps`, key, body);
+		return existing ? 'updated' : 'created';
+	},
+	/** A zone setting's value (`ssl`, `always_use_https`, `min_tls_version`…). */
+	async zoneSetting(key: string, zoneId: string, id: string): Promise<string> {
+		return str(rec(await call('GET', `/zones/${zoneId}/settings/${id}`, key))['value']);
+	},
+	async setZoneSetting(key: string, zoneId: string, id: string, value: string): Promise<void> {
+		await call('PATCH', `/zones/${zoneId}/settings/${id}`, key, { value });
+	},
+	/**
+	 * Full (strict) for this environment's hosts only, by a configuration rule (Release Path brief Q4):
+	 * WordPress still runs behind the zone, so the zone's own SSL mode stays as it is. The rule is
+	 * found by its description and rewritten in place; every other rule is kept as it was.
+	 */
+	async sslStrictRule(key: string, zoneId: string, name: string, hosts: string[]): Promise<'created' | 'updated'> {
+		const phase = `/zones/${zoneId}/rulesets/phases/http_config_settings/entrypoint`;
+		const current = await call('GET', phase, key).catch((err: unknown) => {
+			if (err instanceof VendorError && err.status === 404) return { rules: [] };
+			throw err;
+		});
+		const keep = (r: Record<string, unknown>) =>
+			Object.fromEntries(
+				['id', 'ref', 'description', 'expression', 'action', 'action_parameters', 'enabled', 'logging'].flatMap(
+					(k) => (k in r ? [[k, r[k]]] : []),
+				),
+			);
+		const rules = arr(rec(current)['rules']).map(rec);
+		const mine = rules.find((r) => str(r['description']) === name);
+		const rule = {
+			description: name,
+			expression: `(http.host in {${hosts.map((h) => `"${h}"`).join(' ')}})`,
+			action: 'set_config',
+			action_parameters: { ssl: 'strict' },
+			enabled: true,
+		};
+		await call('PUT', phase, key, {
+			rules: [...rules.filter((r) => r !== mine).map(keep), mine ? { ...keep(mine), ...rule } : rule],
+		});
+		return mine ? 'updated' : 'created';
+	},
+	/** The deploy job's service token: its id and end date, or `null` when there is none. */
+	async serviceTokenOf(
+		key: string,
+		accountId: string,
+		name: string,
+	): Promise<{ id: string; expiresAt: string | null } | null> {
+		const t = arr(await call('GET', `/accounts/${accountId}/access/service_tokens?per_page=100`, key))
+			.map(rec)
+			.find((x) => str(x['name']) === name);
+		return t ? { id: str(t['id']), expiresAt: str(t['expires_at']) || null } : null;
+	},
+	/** A new secret for the same service token (its client id stays); shown once, here, and goes straight to GitHub. */
+	async rotateServiceToken(key: string, accountId: string, id: string) {
+		const t = rec(await call('POST', `/accounts/${accountId}/access/service_tokens/${id}/rotate`, key, {}));
+		return { id, clientId: str(t['client_id']), clientSecret: str(t['client_secret']) };
 	},
 	async deleteAccessApp(key: string, accountId: string, id: string): Promise<void> {
 		await call('DELETE', `/accounts/${accountId}/access/apps/${id}`, key);

@@ -61,13 +61,14 @@ export function toDropletState(v: unknown): DropletState {
 }
 
 /** Inbound 443 from Cloudflare's ranges only, everything outbound (plan §5; servers.mjs firewallRules). */
-export function firewallBody(name: string, dropletId: number, ranges: string[], tags: string[]) {
+export function firewallBody(name: string, dropletId: number, ranges: string[], tags: string[], openToAll = false) {
 	const cidrs = ranges.map((r) => r.trim()).filter((r) => /^[0-9a-f.:]+\/\d{1,3}$/i.test(r));
 	if (cidrs.length < 5) throw new VendorError("Cloudflare's address ranges could not be read.", 502);
 	const everywhere = { addresses: ['0.0.0.0/0', '::/0'] };
 	return {
 		name,
-		inbound_rules: [{ protocol: 'tcp', ports: '443', sources: { addresses: cidrs } }],
+		// Hosts on DigitalOcean DNS are not behind Cloudflare, so 443 opens to everyone (Release Path brief C15).
+		inbound_rules: [{ protocol: 'tcp', ports: '443', sources: openToAll ? everywhere : { addresses: cidrs } }],
 		outbound_rules: [
 			{ protocol: 'tcp', ports: 'all', destinations: everywhere },
 			{ protocol: 'udp', ports: 'all', destinations: everywhere },
@@ -114,6 +115,31 @@ export const doWrites = {
 	},
 	async deleteFirewall(key: string, id: string): Promise<void> {
 		await call('DELETE', `/firewalls/${id}`, key);
+	},
+	/** The account's domains on DigitalOcean DNS. */
+	async domains(key: string): Promise<string[]> {
+		return arr(rec(await call('GET', '/domains?per_page=200', key))['domains']).map((d) => str(rec(d)['name']));
+	},
+	/**
+	 * An A record for a host on DigitalOcean DNS (Release Path brief C15), with Cloudflare's rule: a
+	 * record already pointing elsewhere stops the job instead of being overwritten.
+	 */
+	async pointDoHost(key: string, domain: string, host: string, ip: string): Promise<'created' | 'kept'> {
+		const records = arr(
+			rec(await call('GET', `/domains/${domain}/records?name=${encodeURIComponent(host)}&per_page=50`, key))[
+				'domain_records'
+			],
+		).map(rec);
+		if (records.some((r) => str(r['type']) === 'A' && str(r['data']) === ip)) return 'kept';
+		const other = records.find((r) => ['A', 'AAAA', 'CNAME'].includes(str(r['type'])));
+		if (other)
+			throw new VendorError(
+				`${host} already points to ${str(other['data'])} (${str(other['type'])}) on DigitalOcean DNS; the console does not overwrite it.`,
+				409,
+			);
+		const name = host === domain ? '@' : host.slice(0, -(domain.length + 1));
+		await call('POST', `/domains/${domain}/records`, key, { type: 'A', name, data: ip, ttl: 1800 });
+		return 'created';
 	},
 	async deleteDroplet(key: string, id: number): Promise<void> {
 		await call('DELETE', `/droplets/${id}`, key);

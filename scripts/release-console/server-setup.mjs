@@ -220,6 +220,57 @@ export async function githubEnvironment(
 }
 
 /**
+ * The GitHub environment's protection rules (Release Path brief 1.7 and C5, approved 23 Nov). The
+ * deploy branch and the release-tag pattern (`<environment>-*`, for Deploy an older version) are
+ * added when missing; whether a required reviewer is set is read and never changed, because who
+ * approves a deploy is the owner's own setting. A rule change keeps the reviewers and wait timer.
+ */
+export async function environmentRules({ repository, environment, branch }, { exec = run, spawnFn = spawn } = {}) {
+	if (!REPOSITORY.test(String(repository))) throw new SetupError('Write the repository as owner/name.');
+	if (!/^[a-z0-9-]{1,40}$/.test(String(environment))) throw new SetupError('That is not an environment name.');
+	if (!/^[A-Za-z0-9._/-]{1,100}$/.test(String(branch))) throw new SetupError('That is not a branch name.');
+	const base = `repos/${repository}/environments/${environment}`;
+	const read = async (path) => JSON.parse((await exec('gh', ['api', path])).stdout || 'null');
+	const env = await read(base);
+	const rules = Array.isArray(env?.protection_rules) ? env.protection_rules : [];
+	const reviewerRule = rules.find((r) => r.type === 'required_reviewers');
+	const reviewers = Array.isArray(reviewerRule?.reviewers) ? reviewerRule.reviewers : [];
+	const set = [];
+	if (!env?.deployment_branch_policy?.custom_branch_policies) {
+		// Keep what the environment already has; only the branch policy changes to a list of its own.
+		const timer = rules.find((r) => r.type === 'wait_timer')?.wait_timer ?? 0;
+		const body = JSON.stringify({
+			wait_timer: timer,
+			prevent_self_review: !!reviewerRule?.prevent_self_review,
+			reviewers: reviewers.map((r) => ({ type: r.type, id: r.reviewer?.id })).filter((r) => r.id),
+			deployment_branch_policy: { protected_branches: false, custom_branch_policies: true },
+		});
+		await gh(['api', '-X', 'PUT', base, '--input', '-'], body, spawnFn);
+		set.push('branch rules: only the listed branches and tags');
+	}
+	const policies = (await read(`${base}/deployment-branch-policies?per_page=100`))?.branch_policies ?? [];
+	const want = [
+		{ name: String(branch), type: 'branch' },
+		{ name: `${environment}-*`, type: 'tag' },
+	];
+	for (const w of want) {
+		if (policies.some((p) => p.name === w.name && (p.type ?? 'branch') === w.type)) continue;
+		await exec('gh', [
+			'api',
+			'-X',
+			'POST',
+			`${base}/deployment-branch-policies`,
+			'-f',
+			`name=${w.name}`,
+			'-f',
+			`type=${w.type}`,
+		]);
+		set.push(`${w.type} ${w.name}`);
+	}
+	return { reviewers: reviewers.length, set };
+}
+
+/**
  * The server's SSH host key line for SERVER_SSH_KNOWN_HOSTS, read once through the tunnel with the
  * deploy job's service token. Needs cloudflared on this machine.
  */

@@ -53,3 +53,31 @@ test('answers with the script’s last JSON line, or its last error line', async
 		/Infisical sign-in has expired/,
 	);
 });
+
+test('finds the deploy identity of the tier an Infisical place belongs to', async () => {
+	const { deployIdentityOf } = await import('./runner.mjs');
+	const inventory = {
+		projects: {
+			local: { name: 'saha-textile-local', environment: 'dev' },
+			development: { name: 'saha-textile-development', environment: 'dev' },
+			staging: {
+				name: 'saha-textile-staging',
+				environment: 'staging',
+				deployIdentityId: '1f0b5c2e-0000-4000-8000-000000000001',
+			},
+			production: { name: 'saha-textile-production', environment: 'prod', deployIdentityId: '' },
+		},
+	};
+	assert.deepEqual(deployIdentityOf({ project: 'saha-textile-staging', environment: 'staging' }, inventory), {
+		tier: 'staging',
+		identityId: '1f0b5c2e-0000-4000-8000-000000000001',
+	});
+	assert.deepEqual(deployIdentityOf({ project: 'saha-textile-production', environment: 'prod' }, inventory), {
+		tier: 'production',
+		identityId: null,
+	});
+	assert.deepEqual(deployIdentityOf({ project: 'elsewhere', environment: 'x' }, inventory), {
+		tier: null,
+		identityId: null,
+	});
+});

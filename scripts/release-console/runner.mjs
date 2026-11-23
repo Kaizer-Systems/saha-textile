@@ -46,7 +46,15 @@ import { BRANCH_NAME, checkoutBranches, menusFileAt } from './git-branches.mjs';
 import { repositoryOf } from './infisical-places.mjs';
 import { loadInventory, ROOT, SERVER_TIERS, TIERS } from '../secrets/inventory.mjs';
 import { FirstBootError, firstBootTemplate, prepareFirstBoot } from './first-boot.mjs';
-import { SetupError, aopPair, certificateFiles, githubEnvironment, knownHosts, originCsr } from './server-setup.mjs';
+import {
+	SetupError,
+	aopPair,
+	certificateFiles,
+	environmentRules,
+	githubEnvironment,
+	knownHosts,
+	originCsr,
+} from './server-setup.mjs';
 
 export const RUNNER_PORT = Number(process.env.CONSOLE_RUNNER_PORT ?? 4419);
 export const TOKEN_FILE = join(ROOT, 'docker/release-console/env/runner-token');
@@ -283,6 +291,20 @@ export function saveSecrets(body) {
 		});
 		child.stdin.end(JSON.stringify(body));
 	});
+}
+
+/**
+ * The deploy identity id of the tier an Infisical place belongs to, from the name list (not a
+ * secret; the Infisical chat, 23 Nov). The create job sets it as INFISICAL_IDENTITY_ID (Release Path
+ * brief C5); a tier without one answers null.
+ */
+export function deployIdentityOf(place, inventory = loadInventory()) {
+	const tier = TIERS.find(
+		(t) =>
+			inventory.projects[t]?.name === place?.project && inventory.projects[t]?.environment === place?.environment,
+	);
+	const id = tier ? inventory.projects[tier].deployIdentityId : null;
+	return { tier: tier ?? null, identityId: typeof id === 'string' && id ? id : null };
 }
 
 /** The rotate script's value ids (Release Path brief, Part 3; the Infisical chat's `pnpm secrets:rotate`). */
@@ -812,6 +834,8 @@ export function createRunner(token) {
 					return { saved: Object.keys(files), result: saved };
 				},
 				'/github/environment': (b) => githubEnvironment(b),
+				'/github/environment-rules': (b) => environmentRules(b),
+				'/server/deploy-identity': (b) => deployIdentityOf(b),
 				'/server/known-hosts': (b) => knownHosts(b),
 			};
 			if (req.method === 'POST' && Object.hasOwn(setupRoutes, path)) {

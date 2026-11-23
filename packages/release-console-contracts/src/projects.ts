@@ -405,6 +405,12 @@ export const attentionItemSchema = z.object({
 		'ci-failed',
 		'approval-waiting',
 		'local-alert',
+		/** Release Path brief C6: the deploy job's Access service token ends within 30 days. */
+		'deploy-token-expiring',
+		/** Release Path brief C9: old sign-in, CSRF or mailbox keys kept 30 days, now to remove. */
+		'old-keys',
+		/** Release Path brief C1: values changed in Infisical wait for a deploy with rotation. */
+		'rotation-waiting',
 	]),
 	title: z.string(),
 	detail: z.string(),

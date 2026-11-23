@@ -1,11 +1,13 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Put, Req } from '@nestjs/common';
 import {
+	type DeployToken,
 	type DropletJob,
 	type EnvTags,
 	setEnvTagSchema,
 	setSshEmailsSchema,
 	startDropletCreateSchema,
 	startDropletDestroySchema,
+	startServerFixSchema,
 } from '@saha-textile/release-console-contracts';
 
 import { DropletJobs } from './droplet-jobs.js';
@@ -30,6 +32,12 @@ export class ServersController {
 	@Get()
 	list(@Param('p') p: string, @Param('r') r: string): DropletJob[] {
 		return this.jobs.list(p, r);
+	}
+
+	/** Each server's deploy token and its end date (Release Path brief C6). */
+	@Get('tokens')
+	tokens(@Param('p') p: string): Promise<DeployToken[]> {
+		return this.jobs.deployTokens(p);
 	}
 
 	@Get(':id')
@@ -63,6 +71,25 @@ export class ServersController {
 		const input = parseBody(startDropletDestroySchema, body);
 		this.lock.confirm(sessionOf(req), input.pin, `destroy ${input.confirm}`);
 		return this.jobs.startDestroy(p, r, slot, input);
+	}
+
+	/** Finish setup or Renew token for a server that exists (Release Path brief C5, C6), after the PIN. */
+	@Post('fix')
+	@HttpCode(202)
+	async fix(
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Param('slot') slot: string,
+		@Body() body: unknown,
+		@Req() req: Req,
+	): Promise<DropletJob> {
+		const input = parseBody(startServerFixSchema, body);
+		this.lock.confirm(
+			sessionOf(req),
+			input.pin,
+			`${input.kind === 'finish' ? 'finish setting up' : 'renew the deploy token of'} ${input.environment}`,
+		);
+		return this.jobs.startFix(p, r, slot, input);
 	}
 }
 

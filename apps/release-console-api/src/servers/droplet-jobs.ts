@@ -1,9 +1,17 @@
 import { randomBytes } from 'node:crypto';
+import { resolveNs } from 'node:dns/promises';
+import { Socket } from 'node:net';
 
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+	CLOSED_PORTS,
 	CREATE_STEPS,
+	type DeployToken,
 	DESTROY_STEPS,
+	FINISH_STEPS,
+	RENEW_STEPS,
+	SERVER_TARGETS,
+	type LeftItem,
 	type DoCatalog,
 	type DropletDraft,
 	type DropletJob,
@@ -46,6 +54,25 @@ export interface JobDeps {
 	) => Promise<Set<string>>;
 	sleep: (ms: number) => Promise<void>;
 	waits: { activeEvery: number; activeFor: number; tunnelEvery: number; tunnelFor: number };
+	/** A domain's nameservers, to tell a domain delegated to DigitalOcean (Release Path brief C15). */
+	nameservers: (domain: string) => Promise<string[]>;
+	/** Whether a TCP port answers on a public address, from this machine (the outside check, C16). */
+	probe: (host: string, port: number) => Promise<boolean>;
+}
+
+/** A TCP connect with a short wait: true when the port answers. */
+function probeTcp(host: string, port: number, ms = 4000): Promise<boolean> {
+	return new Promise((resolve) => {
+		const socket = new Socket();
+		const done = (open: boolean) => {
+			socket.destroy();
+			resolve(open);
+		};
+		socket.setTimeout(ms, () => done(false));
+		socket.once('connect', () => done(true));
+		socket.once('error', () => done(false));
+		socket.connect(port, host);
+	});
 }
 
 interface Keys {
@@ -64,6 +91,10 @@ interface Carry {
 	aop: { certId: string } | null;
 	userData: string;
 	volumeId: string | null;
+	/** Hosts whose records live on DigitalOcean DNS (a domain delegated there), with that domain. */
+	doHosts: Map<string, string>;
+	/** What is left for the owner, for the ready card. */
+	left: LeftItem[];
 }
 
 interface CreateInput {
@@ -76,6 +107,8 @@ interface CreateInput {
 	repository: string;
 	target: string;
 	place: { project: string; environment: string } | null;
+	/** The branch the GitHub environment deploys from (its branch rule). */
+	branch: string;
 }
 
 class Stop extends Error {}
@@ -119,6 +152,8 @@ export class DropletJobs {
 			},
 			sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
 			waits: { activeEvery: 5_000, activeFor: 300_000, tunnelEvery: 10_000, tunnelFor: 900_000 },
+			nameservers: (domain) => resolveNs(domain).catch(() => []),
+			probe: (host, port) => probeTcp(host, port),
 		};
 	}
 
@@ -210,6 +245,7 @@ export class DropletJobs {
 			repository: repo.sourceCode.repository,
 			target: target ?? '',
 			place: source.kind === 'infisical' ? source.place : null,
+			branch: env.branch || (target ? SERVER_TARGETS[target].branch : ''),
 		});
 		return this.view(job);
 	}
@@ -286,6 +322,8 @@ export class DropletJobs {
 			aop: null,
 			userData: '',
 			volumeId: null,
+			doHosts: new Map(),
+			left: [],
 		};
 		try {
 			if (d.firstBoot) await this.reachSteps(job, o, c);
@@ -472,8 +510,12 @@ export class DropletJobs {
 		await this.step(job, 'firewall', async () => {
 			const existing = await deps.do.firewallsNamed(keys.doKey, name);
 			if (existing.length) throw new Stop(`A Cloud Firewall named ${name} exists already; remove it first.`);
-			await deps.do.createFirewall(keys.doKey, firewallBody(name, id, await deps.ranges(), []));
-			return `${name} · inbound 443 from Cloudflare's ranges only · all outbound`;
+			c.doHosts = await this.doHome(o);
+			const open = c.doHosts.size > 0;
+			await deps.do.createFirewall(keys.doKey, firewallBody(name, id, await deps.ranges(), [], open));
+			return open
+				? `${name} · inbound 443 from everyone: ${[...c.doHosts.keys()].join(', ')} ${c.doHosts.size === 1 ? 'is' : 'are'} on DigitalOcean DNS, not behind Cloudflare · all outbound`
+				: `${name} · inbound 443 from Cloudflare's ranges only · all outbound`;
 		});
 
 		if (/prod/i.test(d.environment)) this.skip(job, 'dns', 'production: the DNS switch is its own step');
@@ -482,8 +524,14 @@ export class DropletJobs {
 				const done: string[] = [];
 				for (const host of o.domains) {
 					const zone = zoneFor(host, keys.zones);
+					const onDo = c.doHosts.get(host);
+					if (!zone && onDo) {
+						const r = await deps.do.pointDoHost(keys.doKey, onDo, host, job.ipv4 ?? '');
+						done.push(`${host} ${r === 'created' ? '→' : 'already →'} ${job.ipv4} on DigitalOcean DNS`);
+						continue;
+					}
 					if (!zone) {
-						done.push(`${host}: not in a Cloudflare zone of this repository, left alone`);
+						done.push(`${host}: not in a Cloudflare zone or on DigitalOcean DNS, left alone`);
 						continue;
 					}
 					const z = await deps.cf.zone(keys.cfKey, zone);
@@ -500,6 +548,32 @@ export class DropletJobs {
 		const { deps } = this;
 		const { keys } = o;
 		const webHosts = o.domains.filter((h) => zoneFor(h, keys.zones));
+		const zoneName = zoneFor(webHosts[0] ?? '', keys.zones);
+		const wallZone = c.zone ?? (zoneName ? await deps.cf.zone(keys.cfKey, zoneName) : null);
+		if (wallZone && webHosts.length) {
+			await this.step(job, 'zone-check', async () => {
+				const mode = await deps.cf.zoneSetting(keys.cfKey, wallZone.id, 'ssl');
+				const r = await deps.cf.sslStrictRule(keys.cfKey, wallZone.id, `${job.name} SSL`, webHosts);
+				await deps.cf.setZoneSetting(keys.cfKey, wallZone.id, 'always_use_https', 'on');
+				await deps.cf.setZoneSetting(keys.cfKey, wallZone.id, 'min_tls_version', '1.2');
+				return `zone SSL ${mode || 'unknown'} kept for the rest of the zone · Full (strict) for ${webHosts.join(', ')} (rule ${r}) · Always Use HTTPS on · TLS 1.2 minimum`;
+			});
+		} else this.skip(job, 'zone-check', 'no hosts in a Cloudflare zone');
+		// The login wall keeps a non-production shop and admin to the people on the list; the API stays open for webhooks.
+		const walled = webHosts.filter((h) => !/^api[.-]/.test(h));
+		if (/prod/i.test(o.d.environment)) this.skip(job, 'login-wall', 'production stays open to shoppers');
+		else if (wallZone && walled.length) {
+			await this.step(job, 'login-wall', async () => {
+				if (!o.emails.length)
+					throw new Stop('The project’s SSH list is empty, so nobody could pass the login wall.');
+				const r = await deps.cf.loginWall(keys.cfKey, wallZone.accountId, {
+					name: `${job.name} login wall`,
+					hosts: walled,
+					emails: o.emails,
+				});
+				return `${walled.join(', ')}: ${o.emails.length} ${o.emails.length === 1 ? 'person' : 'people'} on the list, by email code (${r}) · API hosts stay open for webhooks`;
+			});
+		} else this.skip(job, 'login-wall', 'no shop or admin host in a Cloudflare zone');
 		const zone = c.zone;
 		const aop = c.aop;
 		if (aop && zone) {
@@ -543,7 +617,9 @@ export class DropletJobs {
 
 		const token = c.token;
 		if (!token) {
-			for (const k of ['github', 'known-hosts']) this.skip(job, k, 'no first-boot file');
+			for (const k of ['github', 'identity', 'known-hosts']) this.skip(job, k, 'no first-boot file');
+			await this.portsStep(job, c);
+			await this.readyStep(job, o, c);
 			return;
 		}
 		const apiHost = o.domains.find((h) => /^api[.-]/.test(h)) ?? null;
@@ -557,6 +633,7 @@ export class DropletJobs {
 			});
 			return `${o.repository} · environment ${o.target}${r.environmentMade ? ' (made)' : ''} · set ${r.set.join(', ')}`;
 		});
+		await this.identityStep(job, o, c);
 		await this.step(job, 'known-hosts', async () => {
 			const { line } = await deps.helper<{ line: string }>('/server/known-hosts', {
 				host: c.sshHost,
@@ -570,6 +647,277 @@ export class DropletJobs {
 			});
 			return `${line.split(' ').slice(0, 2).join(' ')} · saved as SERVER_SSH_KNOWN_HOSTS`;
 		});
+		await this.portsStep(job, c);
+		await this.readyStep(job, o, c);
+	}
+
+	/** Hosts outside this repository's Cloudflare zones whose domain is delegated to DigitalOcean DNS (C15). */
+	private async doHome(o: Pick<CreateInput, 'domains' | 'keys'>): Promise<Map<string, string>> {
+		const outside = o.domains.filter((h) => !zoneFor(h, o.keys.zones));
+		const found = new Map<string, string>();
+		if (!outside.length) return found;
+		const domains = await this.deps.do.domains(o.keys.doKey);
+		for (const host of outside) {
+			const domain = domains
+				.filter((d) => host === d || host.endsWith(`.${d}`))
+				.sort((a, b) => b.length - a.length)[0];
+			if (!domain) continue;
+			const ns = await this.deps.nameservers(domain);
+			if (ns.length && ns.every((n) => /\.digitalocean\.com\.?$/i.test(n))) found.set(host, domain);
+		}
+		return found;
+	}
+
+	/**
+	 * INFISICAL_IDENTITY_ID from the name list, and the GitHub environment's rules: its branch and
+	 * release-tag rules are added when missing; a missing required reviewer refuses to finish (C5).
+	 */
+	private async identityStep(
+		job: DropletJob,
+		o: Pick<CreateInput, 'repository' | 'target' | 'place' | 'branch'>,
+		c: Pick<Carry, 'left'>,
+	): Promise<void> {
+		const { deps } = this;
+		await this.step(job, 'identity', async () => {
+			const said: string[] = [];
+			const id = o.place
+				? (await deps.helper<{ identityId: string | null }>('/server/deploy-identity', o.place)).identityId
+				: null;
+			if (id) {
+				await deps.helper('/github/environment', {
+					repository: o.repository,
+					environment: o.target,
+					variables: { INFISICAL_IDENTITY_ID: id },
+				});
+				said.push('INFISICAL_IDENTITY_ID set from the name list');
+			} else
+				c.left.push({
+					text: `${o.target} has no deploy identity in docker/infisical/variable-names.json yet, so INFISICAL_IDENTITY_ID is not set: the deploy cannot sign in to Infisical.`,
+					blocking: true,
+				});
+			const rules = await deps.helper<{ reviewers: number; set: string[] }>('/github/environment-rules', {
+				repository: o.repository,
+				environment: o.target,
+				branch: o.branch,
+			});
+			said.push(
+				rules.set.length
+					? `added ${rules.set.join(', ')}`
+					: `branch ${o.branch} and tags ${o.target}-* allowed`,
+			);
+			if (rules.reviewers) said.push(`${rules.reviewers} required reviewer${rules.reviewers === 1 ? '' : 's'}`);
+			else
+				c.left.push({
+					text: `GitHub’s ${o.target} environment has no required reviewer, so a deploy would go out without your approval. Add yourself under the repository’s Settings › Environments › ${o.target} › Required reviewers, then press Finish setup.`,
+					blocking: true,
+				});
+			return said.join(' · ');
+		});
+	}
+
+	/** The public address from outside: 21, 22, 80, 27017, 6379 and 7700 must not answer (C16). */
+	private async portsStep(job: DropletJob, c: Pick<Carry, 'left'>): Promise<void> {
+		const ip = job.ipv4;
+		if (!ip) {
+			this.skip(job, 'ports', 'no public address');
+			return;
+		}
+		await this.step(job, 'ports', async () => {
+			const open: string[] = [];
+			for (const [port, what] of CLOSED_PORTS)
+				if (await this.deps.probe(ip, port)) open.push(`${port} (${what})`);
+			if (open.length)
+				c.left.push({
+					text: `${ip} answers from outside on ${open.join(', ')}: close ${open.length === 1 ? 'it' : 'them'} before the first deploy (Networking › Firewalls).`,
+					blocking: true,
+				});
+			return open.length
+				? `open from outside: ${open.join(', ')}`
+				: `${CLOSED_PORTS.map(([p]) => p).join(', ')}: all closed from outside`;
+		});
+	}
+
+	/** The ready card: what is left for the owner; anything blocking means the job did not finish. */
+	private async readyStep(job: DropletJob, o: Pick<CreateInput, 'target'>, c: Pick<Carry, 'left'>): Promise<void> {
+		const left: LeftItem[] = [
+			...c.left,
+			...(job.kind === 'create'
+				? [
+						{
+							text: 'After the first deploy, make the first administrator over SSH (docker/production/README.md, “The first administrator”).',
+							blocking: false,
+						},
+						{
+							text: 'Install the Cloudflare One client (WARP) once on each device you sign in from.',
+							blocking: false,
+						},
+					]
+				: []),
+		];
+		job.left = left;
+		await this.step(job, 'ready', async () => {
+			const blocking = left.filter((x) => x.blocking);
+			if (blocking.length)
+				throw new Stop(
+					`Not finished: ${blocking.length} ${blocking.length === 1 ? 'thing' : 'things'} left before ${o.target} can deploy. Fix ${blocking.length === 1 ? 'it' : 'them'}, then Finish setup.`,
+				);
+			return left.length
+				? `${left.length} small ${left.length === 1 ? 'thing' : 'things'} left for you`
+				: 'nothing left';
+		});
+	}
+
+	// ---------------------------------------------------------------- deploy tokens
+
+	/**
+	 * Each server environment's deploy token and its end date (the Access service token deploy.yml
+	 * signs in with), read from Cloudflare; an environment Cloudflare cannot answer for is left out.
+	 */
+	async deployTokens(projectId: string): Promise<DeployToken[]> {
+		const project = this.projects.project(projectId);
+		const out: DeployToken[] = [];
+		for (const repo of project.repositories) {
+			const slot = repo.cloud.find((c) => c.vendor === 'digitalocean');
+			if (!slot || !repo.edge.some((e) => e.vendor === 'cloudflare')) continue;
+			const keys = await this.keys(project, repo, slot.id).catch(() => null);
+			if (!keys) continue;
+			for (const env of repo.environments.filter((e) => e.cloudId === slot.id)) {
+				const zoneName = zoneFor(env.domains[0] ?? '', keys.zones) ?? keys.zones[0];
+				if (!zoneName) continue;
+				const name = `${projectId}-${env.name}`;
+				const token = await this.deps.cf
+					.zone(keys.cfKey, zoneName)
+					.then((z) => this.deps.cf.serviceTokenOf(keys.cfKey, z.accountId, `${name} deploy`))
+					.catch(() => null);
+				if (token) out.push({ repositoryId: repo.id, environment: env.name, name, expiresAt: token.expiresAt });
+			}
+		}
+		return out;
+	}
+
+	// ---------------------------------------------------------------- finish setup and renew token
+
+	/**
+	 * Finish setup (brief F3, C5) or Renew token (brief F6, C6) for a server that exists: a new secret
+	 * for its deploy token, then the GitHub secrets; Finish setup also redoes the GitHub variables, the
+	 * identity and approval check and the host key, and ends on the ready card. Nothing else changes.
+	 */
+	async startFix(
+		projectId: string,
+		repoId: string,
+		slotId: string,
+		input: { environment: string; kind: 'finish' | 'renew' },
+	): Promise<DropletJob> {
+		const { project, repo } = this.projects.repository(projectId, repoId);
+		const env = repo.environments.find((e) => e.name === input.environment);
+		if (!env || env.cloudId !== slotId)
+			throw new BadRequestException(`${input.environment} is not an environment on this DigitalOcean account.`);
+		const target = serverTargetOf(env.name);
+		if (!target) throw new BadRequestException(`${env.label} has no GitHub environment for deploy.yml.`);
+		const keys = await this.keys(project, repo, slotId);
+		const name = `${projectId}-${env.name}`;
+		const server = (await this.deps.do.dropletsTagged(keys.doKey, projectId)).find((d) => d.name === name);
+		if (!server) throw new BadRequestException(`No server named ${name}: create it first.`);
+		const job = this.newJob(
+			projectId,
+			repoId,
+			input.kind,
+			env.name,
+			name,
+			input.kind === 'finish' ? FINISH_STEPS : RENEW_STEPS,
+		);
+		job.dropletId = server.id;
+		job.ipv4 = server.ipv4;
+		this.store.audit(
+			projectId,
+			`server-${input.kind}`,
+			`${name}: ${input.kind === 'finish' ? 'finish setup' : 'renew token'} started with the PIN`,
+		);
+		const source = secretsSourceOf(repo, env.name);
+		void this.runFix(job, {
+			kind: input.kind,
+			domains: env.domains,
+			keys,
+			projectId,
+			repository: repo.sourceCode.repository,
+			target,
+			place: source.kind === 'infisical' ? source.place : null,
+			branch: env.branch || SERVER_TARGETS[target].branch,
+			environment: env.name,
+		});
+		return this.view(job);
+	}
+
+	private async runFix(
+		job: DropletJob,
+		o: Pick<CreateInput, 'domains' | 'keys' | 'projectId' | 'repository' | 'target' | 'place' | 'branch'> & {
+			kind: 'finish' | 'renew';
+			environment: string;
+		},
+	): Promise<void> {
+		const { deps } = this;
+		const { keys } = o;
+		const left: LeftItem[] = [];
+		try {
+			const zoneName = zoneFor(o.domains[0] ?? '', keys.zones) ?? keys.zones[0];
+			if (!zoneName) throw new Stop('The repository names no Cloudflare zone.');
+			const zone = await deps.cf.zone(keys.cfKey, zoneName);
+			const sshHost = sshHostOf(o.environment, zone.name);
+			job.sshHost = sshHost;
+			let token: { clientId: string; clientSecret: string } | null = null;
+			await this.step(job, 'token', async () => {
+				const found = await deps.cf.serviceTokenOf(keys.cfKey, zone.accountId, `${job.name} deploy`);
+				if (!found)
+					throw new Stop(
+						`${job.name} has no deploy token: create the server again, or make one on Cloudflare.`,
+					);
+				token = await deps.cf.rotateServiceToken(keys.cfKey, zone.accountId, found.id);
+				return `${job.name} deploy: a new secret, same client id${found.expiresAt ? ` · ends ${found.expiresAt.slice(0, 10)}` : ''}`;
+			});
+			const t = token as unknown as { clientId: string; clientSecret: string };
+			const apiHost = o.domains.find((h) => /^api[.-]/.test(h)) ?? null;
+			await this.step(job, 'github', async () => {
+				const r = await deps.helper<{ environmentMade: boolean; set: string[] }>('/github/environment', {
+					repository: o.repository,
+					environment: o.target,
+					...(o.kind === 'finish'
+						? {
+								variables: { SERVER_SSH_HOST: sshHost, ...(apiHost ? { API_HOST: apiHost } : {}) },
+								deployKeyOf: { project: o.projectId, environment: o.environment },
+							}
+						: {}),
+					secrets: { CF_ACCESS_CLIENT_ID: t.clientId, CF_ACCESS_CLIENT_SECRET: t.clientSecret },
+				});
+				return `${o.repository} · environment ${o.target} · set ${r.set.join(', ')}`;
+			});
+			if (o.kind === 'finish') {
+				await this.identityStep(job, o, { left });
+				await this.step(job, 'known-hosts', async () => {
+					const { line } = await deps.helper<{ line: string }>('/server/known-hosts', {
+						host: sshHost,
+						tokenId: t.clientId,
+						tokenSecret: t.clientSecret,
+					});
+					await deps.helper('/github/environment', {
+						repository: o.repository,
+						environment: o.target,
+						variables: { SERVER_SSH_KNOWN_HOSTS: line },
+					});
+					return `${line.split(' ').slice(0, 2).join(' ')} · saved as SERVER_SSH_KNOWN_HOSTS`;
+				});
+				await this.readyStep(job, o, { left });
+			}
+			this.finish(job, null);
+			this.store.audit(
+				o.projectId,
+				`server-${o.kind}-done`,
+				`${job.name}: ${o.kind === 'finish' ? 'set up' : 'token renewed'}`,
+			);
+		} catch (err) {
+			const message = this.reason(err);
+			this.finish(job, message);
+			this.store.audit(o.projectId, `server-${o.kind}-failed`, `${job.name}: ${message}`);
+		}
 	}
 
 	// ---------------------------------------------------------------- destroy
@@ -667,6 +1015,7 @@ export class DropletJobs {
 			monthly: 0,
 			hourly: 0,
 			error: null,
+			left: [] as LeftItem[],
 			projectId,
 			repoId,
 		};

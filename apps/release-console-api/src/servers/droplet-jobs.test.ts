@@ -99,6 +99,8 @@ function setup(over: Partial<JobDeps> = {}) {
 			firewallsNamed: async () => [],
 			deleteFirewall: async () => undefined,
 			deleteDroplet: async () => undefined,
+			domains: async () => [],
+			pointDoHost: async () => 'created' as const,
 		},
 		cf: {
 			zone: async () => ({ id: 'z1', name: 'example.com', accountId: 'a1' }),
@@ -131,6 +133,12 @@ function setup(over: Partial<JobDeps> = {}) {
 			deletePrivateRoutes: async () => 1,
 			warpEnrollment: async () => undefined,
 			warpInclude: async () => undefined,
+			zoneSetting: async () => 'full',
+			setZoneSetting: async () => undefined,
+			sslStrictRule: async () => 'created' as const,
+			loginWall: async () => 'created' as const,
+			serviceTokenOf: async () => ({ id: 'st1', expiresAt: '2027-11-23T00:00:00Z' }),
+			rotateServiceToken: async () => ({ id: 'st1', clientId: 'example-id', clientSecret: 'example-new-secret' }),
 		},
 		ranges: async () => [
 			'173.245.48.0/20',
@@ -148,11 +156,15 @@ function setup(over: Partial<JobDeps> = {}) {
 			if (path === '/server/certificates-save') return { saved: ['origin.pem', 'origin.key'] };
 			if (path === '/github/environment') return { environmentMade: false, set: ['SERVER_SSH_HOST'] };
 			if (path === '/server/known-hosts') return { line: 'ssh-staging.example.com ssh-ed25519 AAAAhost' };
+			if (path === '/server/deploy-identity') return { tier: 'staging', identityId: 'example-identity' };
+			if (path === '/github/environment-rules') return { reviewers: 1, set: [] };
 			return {};
 		}) as JobDeps['helper'],
 		infisicalSet: async () => new Set<string>(),
 		sleep: async () => undefined,
 		waits: { activeEvery: 1, activeFor: 60_000, tunnelEvery: 1, tunnelFor: 60_000 },
+		nameservers: async () => [],
+		probe: async () => false,
 		...over,
 	} as JobDeps;
 	return { jobs, audit, created, records, helperCalls, setEnvTag };
@@ -189,11 +201,16 @@ describe('creating and destroying a server', () => {
 			'project:skipped',
 			'firewall:done',
 			'dns:done',
+			'zone-check:done',
+			'login-wall:done',
 			'origin-pulls:done',
 			'tunnel-up:done',
 			'private-access:done',
 			'github:done',
+			'identity:done',
 			'known-hosts:done',
+			'ports:done',
+			'ready:done',
 		]);
 		expect(created[0]).toMatchObject({ name: 'saha-textile-staging', user_data: '#cloud-config\n', ssh_keys: [7] });
 		expect(created[0]).not.toHaveProperty('volumes');
@@ -205,9 +222,14 @@ describe('creating and destroying a server', () => {
 			'/server/certificates-save',
 			'/server/first-boot',
 			'/github/environment',
+			'/server/deploy-identity',
+			'/github/environment',
+			'/github/environment-rules',
 			'/server/known-hosts',
 			'/github/environment',
 		]);
+		// The ready card keeps the two things only the owner can do; nothing blocks.
+		expect(job.left.map((x) => x.blocking)).toEqual([false, false]);
 		expect(job.monthly).toBe(24);
 		// The audit log names what happened, never the password or the token.
 		expect(JSON.stringify(audit.mock.calls)).not.toMatch(/example only words|example-tunnel-token|example-secret/);
@@ -301,5 +323,97 @@ describe('creating and destroying a server', () => {
 			}),
 		).rejects.toThrow('Zero Trust is not switched on');
 		expect(created).toEqual([]);
+	});
+
+	it('refuses to finish without a required reviewer or with a port open, and says what is left', async () => {
+		const { jobs } = setup({
+			probe: async (_h: string, port: number) => port === 80,
+		});
+		const deps = jobs.deps;
+		jobs.deps = {
+			...deps,
+			helper: (async (path: string, body: Record<string, unknown>) =>
+				path === '/github/environment-rules'
+					? { reviewers: 0, set: ['tag staging-*'] }
+					: deps.helper(path, body)) as JobDeps['helper'],
+		};
+		const started = await jobs.startCreate('saha-textile', 'saha-textile', 'do1', {
+			pin: '000000',
+			confirm: 'staging',
+			draft: draft(),
+			adminPassword: 'example only words',
+			sshEmails: ['owner@example.com'],
+		});
+		const job = await done(jobs, started.id);
+		expect(job.state).toBe('failed');
+		expect(job.steps.find((s) => s.key === 'ready')).toMatchObject({ state: 'failed' });
+		expect(job.left.filter((x) => x.blocking).map((x) => x.text)).toEqual([
+			expect.stringMatching(/no required reviewer/),
+			expect.stringMatching(/80 \(plain HTTP\)/),
+		]);
+	});
+
+	it('points a host on DigitalOcean DNS there and opens 443 to everyone for it', async () => {
+		const bodies: Record<string, unknown>[] = [];
+		const doHosts: string[] = [];
+		const { jobs } = setup({ nameservers: async () => ['ns1.digitalocean.com', 'ns2.digitalocean.com'] });
+		const deps = jobs.deps;
+		jobs.deps = {
+			...deps,
+			do: {
+				...deps.do,
+				domains: async () => ['example.org'],
+				pointDoHost: async (_k: string, _d: string, host: string) => {
+					doHosts.push(host);
+					return 'created' as const;
+				},
+				createFirewall: async (_k: string, body: Record<string, unknown>) => {
+					bodies.push(body);
+					return 'fw-1';
+				},
+			},
+		};
+		const env = repo.environments[0] as { domains: string[] };
+		const before = env.domains;
+		env.domains = ['staging.example.com', 'shop.example.org'];
+		try {
+			const started = await jobs.startCreate('saha-textile', 'saha-textile', 'do1', {
+				pin: '000000',
+				confirm: 'staging',
+				draft: draft(),
+				adminPassword: 'example only words',
+				sshEmails: ['owner@example.com'],
+			});
+			const job = await done(jobs, started.id);
+			expect(job.state).toBe('done');
+			expect(doHosts).toEqual(['shop.example.org']);
+			expect(JSON.stringify(bodies[0])).toContain('0.0.0.0/0');
+		} finally {
+			env.domains = before;
+		}
+	});
+
+	it('renews the deploy token into the two GitHub secrets, and finishes setup with only those steps', async () => {
+		const { jobs, helperCalls, audit } = setup();
+		const renew = await done(
+			jobs,
+			(await jobs.startFix('saha-textile', 'saha-textile', 'do1', { environment: 'staging', kind: 'renew' })).id,
+		);
+		expect(renew.state).toBe('done');
+		expect(renew.steps.map((s) => s.key)).toEqual(['token', 'github']);
+		const finish = await done(
+			jobs,
+			(await jobs.startFix('saha-textile', 'saha-textile', 'do1', { environment: 'staging', kind: 'finish' })).id,
+		);
+		expect(finish.state).toBe('done');
+		expect(finish.steps.map((s) => `${s.key}:${s.state}`)).toEqual([
+			'token:done',
+			'github:done',
+			'identity:done',
+			'known-hosts:done',
+			'ready:done',
+		]);
+		expect(helperCalls.filter((h) => h === '/server/known-hosts')).toHaveLength(1);
+		expect(JSON.stringify(audit.mock.calls)).not.toMatch(/example-new-secret/);
 	});
 });

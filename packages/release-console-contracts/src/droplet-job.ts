@@ -77,9 +77,14 @@ export const dropletJobStepSchema = z.object({
 });
 export type DropletJobStep = z.infer<typeof dropletJobStepSchema>;
 
+/** One thing the owner still has to do after a server job; a blocking one means the job did not finish. */
+export const leftItemSchema = z.object({ text: z.string(), blocking: z.boolean() });
+export type LeftItem = z.infer<typeof leftItemSchema>;
+
 export const dropletJobSchema = z.object({
 	id: z.string(),
-	kind: z.enum(['create', 'destroy']),
+	/** `finish` re-runs only the GitHub and host-key steps; `renew` makes a new deploy token (Release Path brief C5, C6). */
+	kind: z.enum(['create', 'destroy', 'finish', 'renew']),
 	environment: z.string(),
 	name: z.string(),
 	state: z.enum(['running', 'done', 'failed']),
@@ -95,6 +100,8 @@ export const dropletJobSchema = z.object({
 	monthly: z.number(),
 	hourly: z.number(),
 	error: z.string().nullable(),
+	/** The ready card: what is left for the owner (Release Path brief 1.3). */
+	left: z.array(leftItemSchema).default([]),
 });
 export type DropletJob = z.infer<typeof dropletJobSchema>;
 export const dropletJobAnswerSchema = vendorAnswer(dropletJobSchema);
@@ -113,13 +120,63 @@ export const CREATE_STEPS: readonly (readonly [string, string])[] = [
 	['addresses', 'Addresses assigned'],
 	['project', 'Moved into the DigitalOcean project'],
 	['firewall', 'Cloud Firewall attached'],
-	['dns', 'DNS records at Cloudflare'],
+	['dns', 'DNS records at Cloudflare, or DigitalOcean for a domain delegated there'],
+	['zone-check', 'Zone check: Full (strict) for its own hosts, Always Use HTTPS, TLS 1.2 minimum'],
+	['login-wall', 'Staging login wall: Access on the shop and admin hosts, for the people on the list'],
 	['origin-pulls', 'Authenticated Origin Pulls on the environment’s hosts'],
 	['tunnel-up', 'First boot done: the tunnel is up'],
 	['private-access', 'WARP: the server’s private address for the people on the list'],
 	['github', 'GitHub environment: variables and secrets'],
+	['identity', 'Identity and approval: INFISICAL_IDENTITY_ID, a required reviewer, branch and tag rules'],
 	['known-hosts', 'The server’s SSH host key, read through the tunnel'],
+	['ports', 'Outside check: ports 21, 22, 80, 27017, 6379 and 7700 closed'],
+	['ready', 'What is left for you'],
 ];
+
+/** Finish setup (brief F3, C5): a new deploy token, then only the GitHub, identity and host-key steps. */
+export const FINISH_STEPS: readonly (readonly [string, string])[] = [
+	['token', 'A new deploy token for the tunnel'],
+	['github', 'GitHub environment: variables and secrets'],
+	['identity', 'Identity and approval: INFISICAL_IDENTITY_ID, a required reviewer, branch and tag rules'],
+	['known-hosts', 'The server’s SSH host key, read through the tunnel'],
+	['ready', 'What is left for you'],
+];
+
+/** Renew token (brief F6, C6): a new deploy token and the two GitHub secrets that hold it. */
+export const RENEW_STEPS: readonly (readonly [string, string])[] = [
+	['token', 'A new deploy token for the tunnel'],
+	['github', 'GitHub secrets CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET updated'],
+];
+
+/** The public ports the create job's last card checks from outside, each expected closed (brief 1.4b, C16). */
+export const CLOSED_PORTS = [
+	[21, 'FTP'],
+	[22, 'SSH'],
+	[80, 'plain HTTP'],
+	[27017, 'MongoDB'],
+	[6379, 'Redis'],
+	[7700, 'search'],
+] as const;
+
+/** A server's deploy token (the Access service token deploy.yml signs in with) and its end date. */
+export const deployTokenSchema = z.object({
+	repositoryId: z.string(),
+	environment: z.string(),
+	name: z.string(),
+	expiresAt: z.string().nullable(),
+});
+export type DeployToken = z.infer<typeof deployTokenSchema>;
+export const deployTokensSchema = z.array(deployTokenSchema);
+/** Days before a deploy token's end that Attention warns (Release Path brief F6). */
+export const TOKEN_WARN_DAYS = 30;
+
+/** Start Finish setup or Renew token for one server environment, after the PIN. */
+export const startServerFixSchema = z.object({
+	pin: z.string().min(6).max(200),
+	environment: z.string().min(1).max(40),
+	kind: z.enum(['finish', 'renew']),
+});
+export type StartServerFix = z.infer<typeof startServerFixSchema>;
 
 /** The destroy steps, the create in reverse. Production is never destroyed from the console. */
 export const DESTROY_STEPS: readonly (readonly [string, string])[] = [

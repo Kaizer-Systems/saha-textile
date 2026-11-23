@@ -39,6 +39,9 @@ import {
 	type DropletJob,
 	type StartDropletCreate,
 	type StartDropletDestroy,
+	type StartServerFix,
+	type DeployToken,
+	deployTokensSchema,
 	type ConsoleView,
 	type DnsRecord,
 	type Droplet,
@@ -387,6 +390,20 @@ export class ConsoleApi {
 	}
 	dropletJobs(p: string, r: string, slot: string): Promise<DropletJob[]> {
 		return this.call('GET', `/api/projects/${p}/repos/${r}/cloud/${slot}/droplet-jobs`, dropletJobsSchema);
+	}
+	/** Each server's deploy token and its end date (Release Path brief C6). */
+	deployTokens(p: string, r: string, slot: string): Promise<DeployToken[]> {
+		return this.call('GET', `/api/projects/${p}/repos/${r}/cloud/${slot}/droplet-jobs/tokens`, deployTokensSchema);
+	}
+	/** Finish setup or Renew token for a server that exists, after the PIN (Release Path brief C5, C6). */
+	serverFix(p: string, r: string, slot: string, body: StartServerFix): Promise<DropletJob> {
+		return this.call(
+			'POST',
+			`/api/projects/${p}/repos/${r}/cloud/${slot}/droplet-jobs/fix`,
+			dropletJobSchema,
+			body,
+			60_000,
+		);
 	}
 	/** Everything DigitalOcean's create steps choose from (the Marketplace is long, so a longer wait). */
 	doCatalog(p: string, r: string, slot: string): Promise<VendorAnswer<DoCatalog>> {

@@ -87,3 +87,50 @@ test('the host key read says plainly when cloudflared is missing', async () => {
 	);
 	assert.ok(mkdtempSync(join(tmpdir(), 'rc-')));
 });
+
+test('adds the branch and release-tag rules, keeps the reviewers, and only reads them', async () => {
+	const { environmentRules } = await import('./server-setup.mjs');
+	const calls = [];
+	const exec = async (cmd, args, opts) => {
+		calls.push({ args, input: opts?.input });
+		const path = args.at(-1);
+		if (args[1] === 'repos/o/r/environments/staging')
+			return {
+				stdout: JSON.stringify({
+					protection_rules: [
+						{
+							type: 'required_reviewers',
+							prevent_self_review: false,
+							reviewers: [{ type: 'User', reviewer: { id: 7 } }],
+						},
+					],
+					deployment_branch_policy: null,
+				}),
+			};
+		if (String(path).includes('deployment-branch-policies?'))
+			return { stdout: JSON.stringify({ branch_policies: [{ name: 'staging', type: 'branch' }] }) };
+		return { stdout: '{}' };
+	};
+	let put = '';
+	const spawnFn = (_cmd, args) => {
+		const child = new EventEmitter();
+		child.stderr = new PassThrough();
+		child.stdin = new PassThrough();
+		child.stdin.on('data', (c) => (put += c));
+		child.stdin.on('finish', () => setImmediate(() => child.emit('close', 0)));
+		calls.push({ args });
+		return child;
+	};
+	const r = await environmentRules(
+		{ repository: 'o/r', environment: 'staging', branch: 'staging' },
+		{ exec, spawnFn },
+	);
+	assert.equal(r.reviewers, 1);
+	assert.deepEqual(r.set, ['branch rules: only the listed branches and tags', 'tag staging-*']);
+	assert.ok(calls.some((c) => c.args.includes('PUT')));
+	assert.deepEqual(JSON.parse(put).reviewers, [{ type: 'User', id: 7 }]);
+	assert.ok(calls.some((c) => c.args.includes('name=staging-*') && c.args.includes('type=tag')));
+	await assert.rejects(
+		environmentRules({ repository: 'o/r', environment: 'staging', branch: 'bad branch' }, { exec, spawnFn }),
+	);
+});

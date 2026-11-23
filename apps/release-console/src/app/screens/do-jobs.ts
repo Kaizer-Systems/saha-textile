@@ -173,7 +173,7 @@ function readDismissed(): string[] {
 					@for (j of jobs.data() ?? []; track j.id) {
 						<div class="rc-act">
 							<span>
-								<b>{{ j.kind === 'create' ? 'Create' : 'Destroy' }} {{ j.name }}</b>
+								<b>{{ kindLabel(j) }} {{ j.name }}</b>
 								<small>{{ when(j.startedAt) }} · {{ j.state }}</small>
 							</span>
 							<span></span>
@@ -189,6 +189,52 @@ function readDismissed(): string[] {
 						<p class="rc-note">No server is being created or destroyed. Start from 1 · Region.</p>
 					}
 				</div>
+				<!-- Release Path brief F6, C6: each server's deploy token, with an alert 30 days before its end. -->
+				@if (tokens.data()?.length) {
+					<div class="rc-panel">
+						<div class="rc-ph">
+							<span class="rc-label">Deploy tokens · the tunnel's Access service token per server</span>
+						</div>
+						@for (t of tokens.data() ?? []; track t.name) {
+							<div class="rc-act">
+								<span>
+									<b>{{ t.name }} deploy</b>
+									<small [class.amber]="soon(t.expiresAt)">
+										{{ t.expiresAt ? 'ends ' + when(t.expiresAt) : 'no end date' }}
+										{{ soon(t.expiresAt) ? '· renew it now' : '' }}
+									</small>
+								</span>
+								<span></span>
+								<button
+									type="button"
+									class="rc-btn"
+									[disabled]="pin().length !== pinLength || busy()"
+									(click)="fix(t.environment, 'renew')"
+								>
+									Renew token
+								</button>
+							</div>
+						}
+						<div class="rc-form">
+							<label>
+								PIN
+								<rc-pin-boxes
+									label="Console PIN to renew a deploy token"
+									[autofocus]="false"
+									[disabled]="busy()"
+									(changed)="pin.set($event)"
+								/>
+							</label>
+						</div>
+						<p class="rc-note">
+							Renew token gives the token a new secret and updates the two GitHub secrets that hold it;
+							nothing on the server changes.
+						</p>
+						@if (message()) {
+							<p class="rc-note">{{ message() }}</p>
+						}
+					</div>
+				}
 			}
 		} @else if (job.isPending()) {
 			<rc-loading what="Reading the job…" />
@@ -239,8 +285,16 @@ function readDismissed(): string[] {
 				<div class="rc-banner red">
 					<span class="rc-dot red"></span>
 					<div>
-						<b>{{ j.kind === 'create' ? 'Creating' : 'Destroying' }} {{ j.name }} stopped.</b>
+						<b>{{ doing(j) }} {{ j.name }} stopped.</b>
 						{{ j.error }}
+					</div>
+				</div>
+			} @else if (j.state === 'done' && j.kind !== 'destroy') {
+				<div class="rc-banner ok">
+					<span class="rc-dot ok"></span>
+					<div>
+						<b>{{ j.name }} {{ j.kind === 'renew' ? 'has a new deploy token' : 'is set up' }}</b>
+						· {{ took(j) }}.
 					</div>
 				</div>
 			} @else if (j.state === 'done') {
@@ -264,6 +318,49 @@ function readDismissed(): string[] {
 					</div>
 				</div>
 				<span class="rc-bar do-progress"><i [style.width.%]="percent(j)"></i></span>
+			}
+			<!-- Release Path brief 1.3: the ready card, what is left for you; Finish setup redoes only GitHub and the host key. -->
+			@if (j.left.length) {
+				<div class="rc-panel">
+					<div class="rc-ph">
+						<span class="rc-label">Left for you</span>
+					</div>
+					@for (x of j.left; track x.text) {
+						<div class="rc-check">
+							<span
+								class="rc-dot"
+								[class.amber]="x.blocking"
+							></span>
+							<b>{{ x.text }}</b>
+							<span class="rc-mono">{{ x.blocking ? 'before a deploy' : 'once' }}</span>
+						</div>
+					}
+					@if (j.state === 'failed' && j.kind !== 'destroy' && j.kind !== 'renew') {
+						<div class="rc-row">
+							<rc-pin-boxes
+								label="Console PIN to finish setup"
+								[autofocus]="false"
+								[disabled]="busy()"
+								(changed)="pin.set($event)"
+							/>
+							<button
+								type="button"
+								class="rc-btn primary"
+								[disabled]="pin().length !== pinLength || busy()"
+								(click)="fix(j.environment, 'finish')"
+							>
+								Finish setup
+							</button>
+						</div>
+						<p class="rc-note">
+							Finish setup gives the deploy token a new secret, then redoes only the GitHub environment,
+							the identity and approval check and the host key.
+						</p>
+						@if (message()) {
+							<p class="rc-note">{{ message() }}</p>
+						}
+					}
+				</div>
 			}
 			<div class="rc-g2">
 				<div class="rc-panel">
@@ -460,6 +557,40 @@ export class DoJobsScreen {
 				dropletId: d.id,
 			});
 			this.picked.set(null);
+			this.open(job.id);
+		} catch (err) {
+			this.message.set(err instanceof Error ? err.message : 'The console API did not answer.');
+		} finally {
+			this.busy.set(false);
+		}
+	}
+	/** Each server's deploy token and its end date (Release Path brief C6). */
+	protected readonly tokens = injectQuery(() => ({
+		queryKey: ['deploy-tokens', this.ctx.projectId(), this.ctx.repoId()],
+		queryFn: () => this.api.deployTokens(...this.args()),
+		enabled: !this.jobId() && !!this.slot(),
+		staleTime: 60_000,
+	}));
+	protected soon(at: string | null): boolean {
+		return !!at && Date.parse(at) - Date.now() < 30 * 86_400_000;
+	}
+	protected kindLabel(j: DropletJob): string {
+		return { create: 'Create', destroy: 'Destroy', finish: 'Finish setup', renew: 'Renew token' }[j.kind];
+	}
+	protected doing(j: DropletJob): string {
+		return {
+			create: 'Creating',
+			destroy: 'Destroying',
+			finish: 'Finishing setup of',
+			renew: 'Renewing the token of',
+		}[j.kind];
+	}
+	/** Finish setup or Renew token, after the PIN; the new job opens. */
+	protected async fix(environment: string, kind: 'finish' | 'renew'): Promise<void> {
+		this.busy.set(true);
+		this.message.set('');
+		try {
+			const job = await this.api.serverFix(...this.args(), { pin: this.pin(), environment, kind });
 			this.open(job.id);
 		} catch (err) {
 			this.message.set(err instanceof Error ? err.message : 'The console API did not answer.');

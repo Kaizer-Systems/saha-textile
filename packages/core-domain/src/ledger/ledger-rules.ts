@@ -76,6 +76,8 @@ export interface VoucherCheckContext {
 	/** May post into a month closed for staff (holds accounts.lock); nobody posts into a locked month. */
 	mayPostWhenClosed: boolean;
 	sourceType?: string;
+	/** Returns filed for a GSTIN and month, and the parts of the books each locks (G8). */
+	filedGst?: readonly { gstRegistrationId: string; month: string; parts: readonly BookPart[] }[];
 }
 
 export function voucherProblems(
@@ -132,6 +134,19 @@ export function voucherProblems(
 		bookPartOf(voucher.kind, classes, context.sourceType),
 	);
 	if (state === 'locked') problems.add('period_locked');
+	const part = bookPartOf(voucher.kind, classes, context.sourceType);
+	const month = monthOf(voucher.date);
+	if (
+		voucher.lines.some((line) =>
+			(context.filedGst ?? []).some(
+				(filed) =>
+					filed.gstRegistrationId === line.gstRegistrationId &&
+					filed.month === month &&
+					filed.parts.includes(part),
+			),
+		)
+	)
+		problems.add('gst_filed');
 	if (state === 'closed_for_staff' && !context.mayPostWhenClosed) problems.add('period_closed_for_staff');
 	return [...problems];
 }

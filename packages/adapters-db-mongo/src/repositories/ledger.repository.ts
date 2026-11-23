@@ -2,6 +2,7 @@ import {
 	AccountGroup,
 	type ChartOfAccounts,
 	DocumentLock,
+	GstReturnFiling,
 	JournalVoucher,
 	Ledger,
 	PeriodLock,
@@ -11,6 +12,7 @@ import {
 import {
 	type DocumentLockRepository,
 	type GeneralLedgerRepository,
+	type GstReturnRepository,
 	type PeriodLockRepository,
 	StaleRevisionError,
 	type StatementLine,
@@ -20,6 +22,7 @@ import {
 import {
 	AccountGroupModel,
 	DocumentLockModel,
+	GstReturnModel,
 	JournalLineModel,
 	JournalVoucherModel,
 	LedgerModel,
@@ -316,5 +319,25 @@ export class MongoDocumentLockRepository implements DocumentLockRepository {
 
 	async release(documentType: string, documentId: string, holderId: string): Promise<void> {
 		await DocumentLockModel.deleteOne({ _id: this.key(documentType, documentId), holderId }).exec();
+	}
+}
+
+/** Returns marked filed (G8). */
+export class MongoGstReturnRepository implements GstReturnRepository {
+	async list(): Promise<GstReturnFiling[]> {
+		const docs = await GstReturnModel.find({}).sort({ month: -1 }).lean<AggregateDoc[]>().exec();
+		return docs.map((doc) => GstReturnFiling.parse(strip(doc)));
+	}
+
+	async insert(filing: GstReturnFiling): Promise<void> {
+		try {
+			await GstReturnModel.create({
+				_id: `${filing.gstRegistrationId}:${filing.returnType}:${filing.month}`,
+				...filing,
+			});
+		} catch (error) {
+			if ((error as { code?: number }).code === 11000) throw new Error('duplicate_gst_filing', { cause: error });
+			throw error;
+		}
 	}
 }

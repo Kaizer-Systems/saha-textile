@@ -38,6 +38,7 @@
 							@for (c of columns; track c.key) {
 							<th>{{ 'accounts_col_' + c.key | transloco }}</th>
 							}
+							<th>GSTR-3B</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -63,6 +64,23 @@
 								</span>
 							</td>
 							}
+							<td>
+								@if (gstr3b(m); as g) { @if (canLock() && g.filed < g.of) {
+								<a
+									href="javascript:void(0)"
+									[class.text-success]="g.filed === g.of && g.of > 0"
+									(click)="openFile(fileModal, m)"
+								>
+									{{ (g.of > 1 && g.filed ? 'accounts_gst_some_filed' : g.filed ? 'accounts_gst_filed'
+									: 'accounts_gst_not_filed') | transloco: { filed: g.filed, of: g.of } }}
+								</a>
+								} @else {
+								<span [class.text-success]="g.filed > 0 && g.filed === g.of">
+									{{ (g.of === 0 ? 'accounts_gst_no_gstin' : g.filed === g.of ? 'accounts_gst_filed' :
+									'accounts_gst_not_filed') | transloco }}
+								</span>
+								} }
+							</td>
 						</tr>
 						}
 					</tbody>
@@ -219,6 +237,130 @@
 			(click)="lock()"
 		>
 			{{ (lockState() === 'open' ? 'accounts_reopen' : 'accounts_lock') | transloco }}
+		</button>
+	</div>
+</ng-template>
+
+<ng-template
+	#fileModal
+	let-modal
+>
+	<div class="modal-header">
+		<h5 class="mb-0">{{ 'accounts_gst_mark_title' | transloco: { month: fileMonth() } }}</h5>
+		<button
+			type="button"
+			class="btn btn-close"
+			[title]="'close' | transloco"
+			(click)="modal.dismiss()"
+		></button>
+	</div>
+	<div class="modal-body">
+		@if (activeRegistrations().length > 1) {
+		<label
+			class="form-label-title"
+			for="file_gstin"
+		>
+			GSTIN
+		</label>
+		<select
+			class="form-select mb-3"
+			id="file_gstin"
+			[ngModel]="fileRegistration()"
+			(ngModelChange)="fileRegistration.set($event)"
+		>
+			@for (r of unfiledRegistrations(); track r.id) {
+			<option [value]="r.id">{{ r.gstin }}</option>
+			}
+		</select>
+		}
+		<div class="row g-3">
+			<div class="col-md-6">
+				<label
+					class="form-label-title"
+					for="file_arn"
+				>
+					ARN
+				</label>
+				<input
+					class="form-control"
+					id="file_arn"
+					maxlength="20"
+					[ngModel]="arn()"
+					(ngModelChange)="arn.set($event)"
+				/>
+			</div>
+			<div class="col-md-6">
+				<label
+					class="form-label-title"
+					for="file_filed_on"
+				>
+					{{ 'accounts_filed_on' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					type="date"
+					id="file_filed_on"
+					[ngModel]="filedOn()"
+					(ngModelChange)="filedOn.set($event)"
+				/>
+			</div>
+		</div>
+		<span class="form-label-title d-block mt-3">{{ 'accounts_acknowledgement' | transloco }}</span>
+		@if (acknowledgement(); as file) {
+		<div class="d-flex align-items-center small gap-2">
+			<i class="ri-attachment-2"></i>
+			{{ file.name }}
+			<a
+				href="javascript:void(0)"
+				[title]="'accounts_remove_attachment' | transloco"
+				(click)="acknowledgement.set(null)"
+			>
+				<i class="ri-close-line"></i>
+			</a>
+		</div>
+		} @else {
+		<a
+			href="javascript:void(0)"
+			class="text-decoration-underline small"
+			id="file_ack"
+			(click)="attachAck()"
+		>
+			<i class="ri-attachment-2"></i>
+			{{ 'accounts_add_file' | transloco }}
+		</a>
+		}
+		<b class="d-block small mt-3">{{ 'accounts_what_changes' | transloco }}</b>
+		<ul class="list-unstyled small mb-0">
+			<li class="border-bottom py-2">
+				<i class="ri-lock-line me-1"></i>
+				<b>{{ 'accounts_gst_change_lock' | transloco }}</b>
+				<div class="text-muted">
+					{{ 'accounts_gst_change_lock_body' | transloco: { month: fileMonth(), gstin: fileGstin() } }}
+				</div>
+			</li>
+			<li class="border-bottom py-2">
+				<i class="ri-history-line me-1"></i>
+				<b>{{ 'accounts_gst_change_log' | transloco }}</b>
+				<div class="text-muted">{{ 'accounts_gst_change_log_body' | transloco }}</div>
+			</li>
+		</ul>
+	</div>
+	<div class="modal-footer">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="file_confirm"
+			[disabled]="filing() || !fileRegistration() || arn().trim().length < 10"
+			(click)="markFiled()"
+		>
+			{{ 'accounts_mark_filed_lock' | transloco }}
 		</button>
 	</div>
 </ng-template>

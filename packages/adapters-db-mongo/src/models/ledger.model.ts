@@ -96,3 +96,11 @@ const VoucherDraftSchema = new Schema<AggregateDoc>(
 VoucherDraftSchema.index({ updatedAt: -1 });
 export const VoucherDraftModel: Model<AggregateDoc> =
 	(models.VoucherDraft as Model<AggregateDoc>) ?? model<AggregateDoc>('VoucherDraft', VoucherDraftSchema);
+
+/** G8: returns marked filed; `_id` is `<gstRegistrationId>:<returnType>:<month>`. */
+const GstReturnSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true } },
+	{ ...loose, collection: COLLECTION_NAMES.GstReturn },
+);
+export const GstReturnModel: Model<AggregateDoc> =
+	(models.GstReturn as Model<AggregateDoc>) ?? model<AggregateDoc>('GstReturn', GstReturnSchema);

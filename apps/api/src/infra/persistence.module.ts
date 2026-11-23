@@ -89,6 +89,7 @@ import {
 	MongoGeneralLedgerRepository,
 	MongoPeriodLockRepository,
 	MongoDocumentLockRepository,
+	MongoGstReturnRepository,
 	MongoNumberAllocator,
 	MongoOpeningStockRepository,
 	MongoPurchaseEntryRepository,
@@ -151,6 +152,7 @@ import {
 	GENERAL_LEDGER_REPOSITORY,
 	PERIOD_LOCK_REPOSITORY,
 	DOCUMENT_LOCK_REPOSITORY,
+	GST_RETURN_REPOSITORY,
 	NUMBER_ALLOCATOR,
 	OPENING_STOCK_REPOSITORY,
 	PURCHASE_ENTRY_REPOSITORY,
@@ -505,6 +507,7 @@ import { LanguageStore } from '../languages/language-store';
 		{ provide: GENERAL_LEDGER_REPOSITORY, useClass: MongoGeneralLedgerRepository },
 		{ provide: PERIOD_LOCK_REPOSITORY, useClass: MongoPeriodLockRepository },
 		{ provide: DOCUMENT_LOCK_REPOSITORY, useClass: MongoDocumentLockRepository },
+		{ provide: GST_RETURN_REPOSITORY, useClass: MongoGstReturnRepository },
 		{
 			// Every stock move records its location (accounts brief F4).
 			provide: STOCK_MOVEMENT,
@@ -690,6 +693,7 @@ import { LanguageStore } from '../languages/language-store';
 		GENERAL_LEDGER_REPOSITORY,
 		PERIOD_LOCK_REPOSITORY,
 		DOCUMENT_LOCK_REPOSITORY,
+		GST_RETURN_REPOSITORY,
 		STOCK_MOVEMENT,
 		STOCK_READ_REPOSITORY,
 		INVENTORY_COST_LAYER_REPOSITORY,

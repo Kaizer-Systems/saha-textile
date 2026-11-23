@@ -5,6 +5,7 @@ import {
 	AccountStatementSearch,
 	BalancesQuery,
 	DocumentLockTarget,
+	GstReturnFilingWrite,
 	JournalVoucherWrite,
 	LedgerWrite,
 	PeriodChecksQuery,
@@ -181,6 +182,19 @@ export class LedgerController {
 	@ApiOperation({ operationId: 'periodGrid', summary: 'Months of this year and the last, each part’s state' })
 	periods() {
 		return this.ledger.periodGrid();
+	}
+
+	@Post('gst-filings')
+	@RequirePermissions('accounts.lock')
+	@ApiOperation({
+		operationId: 'markGstReturnFiled',
+		summary: 'Mark a GST return filed with its ARN; locks that month',
+	})
+	markFiled(
+		@Body(new ZodValidationPipe(GstReturnFilingWrite)) body: GstReturnFilingWrite,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.ledger.markFiled(body, principal);
 	}
 
 	@Get('periods/checks')

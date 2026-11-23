@@ -2,6 +2,7 @@ import type {
 	AccountGroup,
 	ChartOfAccounts,
 	DocumentLock,
+	GstReturnFiling,
 	JournalVoucher,
 	Ledger,
 	PeriodLock,
@@ -74,4 +75,11 @@ export interface DocumentLockRepository {
 	takeOver(lock: DocumentLock): Promise<DocumentLock>;
 	touch(documentType: string, documentId: string, holderId: string, at: string): Promise<boolean>;
 	release(documentType: string, documentId: string, holderId: string): Promise<void>;
+}
+
+/** Returns marked filed (G8): one per GSTIN, return and month. */
+export interface GstReturnRepository {
+	list(): Promise<GstReturnFiling[]>;
+	/** Refused with `duplicate_gst_filing` when that return is already marked filed. */
+	insert(filing: GstReturnFiling): Promise<void>;
 }

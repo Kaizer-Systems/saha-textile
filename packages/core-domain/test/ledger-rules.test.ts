@@ -212,4 +212,15 @@ describe('general ledger rules (accounts brief Q, T)', () => {
 		expect(statement).toMatchObject({ debitPaise: 2_500, creditPaise: 4_000, closingPaise: 8_500 });
 		expect(monthsBetween('2026-11', '2027-02')).toEqual(['2026-11', '2026-12', '2027-01', '2027-02']);
 	});
+
+	it('refuses a voucher in a part locked by a filed GST return for that GSTIN and month', () => {
+		const lines = [line('rent', 100, 0), line('cash', 0, 100)];
+		const filed = [{ gstRegistrationId: 'reg_wb', month: '2026-10', parts: ['journal'] as const }];
+		expect(
+			voucherProblems({ kind: 'journal', date: '2026-10-31', lines }, { ...context(), filedGst: filed }),
+		).toContain('gst_filed');
+		expect(
+			voucherProblems({ kind: 'journal', date: '2026-11-01', lines }, { ...context(), filedGst: filed }),
+		).toEqual([]);
+	});
 });

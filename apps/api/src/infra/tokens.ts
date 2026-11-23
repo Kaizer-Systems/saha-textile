@@ -128,6 +128,7 @@ export const LOCATION_REPOSITORY = Symbol('LocationRepository');
 export const GENERAL_LEDGER_REPOSITORY = Symbol('GeneralLedgerRepository');
 export const PERIOD_LOCK_REPOSITORY = Symbol('PeriodLockRepository');
 export const DOCUMENT_LOCK_REPOSITORY = Symbol('DocumentLockRepository');
+export const GST_RETURN_REPOSITORY = Symbol('GstReturnRepository');
 export const STOCK_MOVEMENT = Symbol('StockMovementPort');
 export const STOCK_READ_REPOSITORY = Symbol('StockReadRepository');
 export const INVENTORY_COST_LAYER_REPOSITORY = Symbol('InventoryCostLayerRepository');

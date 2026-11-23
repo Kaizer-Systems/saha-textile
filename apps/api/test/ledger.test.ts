@@ -100,8 +100,30 @@ class MemoryBooks {
 	}
 }
 
+const newGst = () => {
+	const filings: unknown[] = [];
+	return {
+		filings,
+		list: async () => filings,
+		insert: async (f: { gstRegistrationId: string; returnType: string; month: string }) => {
+			if (
+				filings.some(
+					(x) =>
+						JSON.stringify([
+							(x as typeof f).gstRegistrationId,
+							(x as typeof f).returnType,
+							(x as typeof f).month,
+						]) === JSON.stringify([f.gstRegistrationId, f.returnType, f.month]),
+				)
+			)
+				throw new Error('duplicate_gst_filing');
+			filings.push(f);
+		},
+	};
+};
 const setup = (options: { locks?: PeriodLock[]; kind?: 'proprietorship' | 'private_limited' } = {}) => {
 	const books = new MemoryBooks();
+	const gst = newGst();
 	let locks: PeriodLock[] = options.locks ?? [];
 	const documentLocks = new Map<string, DocumentLock>();
 	let counter = 0;
@@ -132,7 +154,10 @@ const setup = (options: { locks?: PeriodLock[]; kind?: 'proprietorship' | 'priva
 			touch: async () => true,
 			release: async () => undefined,
 		} as never,
-		{ getProfile: async () => ({ kind: options.kind ?? 'proprietorship' }) } as never,
+		{
+			getProfile: async () => ({ kind: options.kind ?? 'proprietorship' }),
+			getRegistration: async (id: string) => (id === 'reg_wb' ? { id, gstin: '19DBYPS6736R1ZZ' } : null),
+		} as never,
 		{
 			list: async () => [
 				{ id: 'loc_bar', active: true, gstRegistrationId: 'reg_wb' },
@@ -148,6 +173,7 @@ const setup = (options: { locks?: PeriodLock[]; kind?: 'proprietorship' | 'priva
 		{ getUrl: (key: string) => `https://cdn.example/${key}` } as never,
 		{ list: async () => ({ items: [], total: 0, counts: { counting: 1, review: 0 } }) } as never,
 		{ pendingCount: async () => 2 } as never,
+		gst as never,
 		{ issue: async () => `JV/26-27/${String(++counter).padStart(6, '0')}` } as never,
 		{
 			scope: async (principal: { userId: string }) =>
@@ -156,7 +182,7 @@ const setup = (options: { locks?: PeriodLock[]; kind?: 'proprietorship' | 'priva
 					: { all: false, ids: ['loc_bar'], current: 'loc_bar' },
 		} as never,
 	);
-	return { service, books, audit, getLocks: () => locks };
+	return { service, books, audit, gst, getLocks: () => locks };
 };
 
 const owner = {
@@ -355,5 +381,39 @@ describe('general ledger (accounts brief Q, T, D10)', () => {
 			stock_counts: ['attention', 1],
 			stock_approvals: ['attention', 2],
 		});
+	});
+
+	it('marks GSTR-3B filed with its ARN, once, and then refuses cash and purchase entries of that month for that GSTIN', async () => {
+		const { service } = setup();
+		const filed = await service.markFiled(
+			{
+				gstRegistrationId: 'reg_wb',
+				returnType: 'GSTR-3B',
+				month: '2026-10',
+				arn: 'aa1911261234567',
+				filedOn: '2026-11-20',
+				acknowledgement: null,
+			},
+			owner,
+		);
+		expect(filed).toMatchObject({ gstin: '19DBYPS6736R1ZZ', arn: 'AA1911261234567' });
+		await expect(
+			service.markFiled(
+				{
+					gstRegistrationId: 'reg_wb',
+					returnType: 'GSTR-3B',
+					month: '2026-10',
+					arn: 'AA1911261234567',
+					filedOn: '2026-11-20',
+					acknowledgement: null,
+				},
+				owner,
+			),
+		).rejects.toThrow('gst_already_filed');
+		// A cash payment is not sales or purchases: still allowed; the grid shows the filing.
+		expect(
+			(await service.postByHand(rentPaid({ date: '2026-10-15', idempotencyKey: 'oct-cash-01' }), owner)).date,
+		).toBe('2026-10-15');
+		expect((await service.periodGrid('2026-11-23')).filings).toHaveLength(1);
 	});
 });

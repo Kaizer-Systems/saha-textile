@@ -10,6 +10,8 @@ import type {
 	AccountGroupWrite,
 	AccountStatement,
 	ChartOfAccounts,
+	GstReturnFiling,
+	GstReturnFilingWrite,
 	JournalVoucher,
 	JournalVoucherWrite,
 	Ledger,
@@ -101,6 +103,9 @@ export class LedgerGateway {
 	}
 	periods(): Observable<PeriodGrid> {
 		return this.http.get<PeriodGrid>(this.api('/periods'));
+	}
+	markFiled(write: GstReturnFilingWrite): Observable<GstReturnFiling> {
+		return this.http.post<GstReturnFiling>(this.api('/gst-filings'), write, QUIET);
 	}
 	periodChecks(month: string): Observable<PeriodCheck[]> {
 		return this.http.get<PeriodCheck[]>(this.api('/periods/checks'), { params: { month } });

@@ -162,6 +162,7 @@ export const VoucherProblem = z.enum([
 	'receipt_needs_cash_or_bank_debit',
 	'payment_needs_cash_or_bank_credit',
 	'already_reversed',
+	'gst_filed',
 ]);
 export type VoucherProblem = z.infer<typeof VoucherProblem>;
 
@@ -270,7 +271,11 @@ export const AccountStatementSearch = z.object({
 		.default([]),
 });
 
-export const PeriodGrid = z.object({ months: z.array(YearMonth), locks: z.array(PeriodLock) });
+export const PeriodGrid = z.object({
+	months: z.array(YearMonth),
+	locks: z.array(PeriodLock),
+	filings: z.array(z.lazy(() => GstReturnFiling)).default([]),
+});
 export type PeriodGrid = z.infer<typeof PeriodGrid>;
 
 /** The document a lock is about (D10). */
@@ -351,3 +356,44 @@ export const PeriodCheck = z.object({
 export type PeriodCheck = z.infer<typeof PeriodCheck>;
 
 export const PeriodChecksQuery = z.object({ month: YearMonth });
+
+/** GST returns this build records as filed (accounts brief G3, G8); the rest arrive with G1. */
+export const GstReturnType = z.enum(['GSTR-1', 'GSTR-3B']);
+export type GstReturnType = z.infer<typeof GstReturnType>;
+
+/** The parts of the books a filed return locks for its GSTIN and month (G8: sales under that GSTIN lock). */
+export const GST_RETURN_LOCKS: Readonly<Record<GstReturnType, readonly BookPart[]>> = {
+	'GSTR-1': ['sales'],
+	'GSTR-3B': ['sales', 'purchases'],
+};
+
+/** The portal's acknowledgement reference number, as printed. */
+export const GstArn = z
+	.string()
+	.trim()
+	.transform((value) => value.toUpperCase().replace(/\s+/g, ''))
+	.pipe(z.string().regex(/^[A-Z0-9]{10,20}$/, { message: 'arn_shape' }));
+
+/** G8 Mark filed: a return filed on the GST portal, entered here with its ARN; it locks that month for that GSTIN. */
+export const GstReturnFiling = z.object({
+	gstRegistrationId: Id,
+	gstin: z.string(),
+	returnType: GstReturnType,
+	month: YearMonth,
+	arn: GstArn,
+	filedOn: IsoDate,
+	acknowledgement: VoucherAttachment.nullable().default(null),
+	by: Id.nullable().default(null),
+	at: IsoDateTime,
+});
+export type GstReturnFiling = z.infer<typeof GstReturnFiling>;
+
+export const GstReturnFilingWrite = GstReturnFiling.pick({
+	gstRegistrationId: true,
+	returnType: true,
+	month: true,
+	arn: true,
+	filedOn: true,
+	acknowledgement: true,
+});
+export type GstReturnFilingWrite = z.infer<typeof GstReturnFilingWrite>;

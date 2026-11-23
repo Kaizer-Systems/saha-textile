@@ -7,11 +7,13 @@ import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
 import { LEDGER_KEYS, LedgerGateway } from '@core/accounts/ledger.gateway';
+import { COMPANY_KEYS, CompanyGateway } from '@core/company/company.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
+import { FmPicker, type FmPicked } from '@features/media/file-manager/fm-picker';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 
-import type { BookPart, PeriodLock, PeriodState } from '@saha-textile/contracts';
+import type { BookPart, PeriodLock, PeriodState, VoucherAttachment } from '@saha-textile/contracts';
 
 /** T1's columns: "Cash and bank" is one column over the two parts. */
 export const PERIOD_COLUMNS: { key: string; parts: BookPart[] }[] = [
@@ -84,6 +86,94 @@ export class PeriodsPage {
 	readonly reason = signal('');
 	readonly busy = signal(false);
 	private modal: NgbModalRef | null = null;
+
+	private readonly company = inject(CompanyGateway);
+	readonly registrations = injectQuery(() => ({
+		queryKey: COMPANY_KEYS.registrations,
+		queryFn: () => firstValueFrom(this.company.registrations()),
+	}));
+	readonly activeRegistrations = computed(() => (this.registrations.data() ?? []).filter((r) => r.active !== false));
+	/** T1's GSTR-3B column: Filed, Not filed, or "1 of 2" with several GSTINs (G8 marks it). */
+	gstr3b(month: string): { filed: number; of: number } {
+		const of = this.activeRegistrations().length;
+		const filed = (this.grid.data()?.filings ?? []).filter(
+			(f) => f.returnType === 'GSTR-3B' && f.month === month,
+		).length;
+		return { filed, of };
+	}
+
+	readonly fileMonth = signal('');
+	readonly fileRegistration = signal('');
+	readonly arn = signal('');
+	readonly filedOn = signal(new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10));
+	readonly acknowledgement = signal<VoucherAttachment | null>(null);
+	readonly filing = signal(false);
+	private fileModal: NgbModalRef | null = null;
+	readonly unfiledRegistrations = computed(() =>
+		this.activeRegistrations().filter(
+			(r) =>
+				!(this.grid.data()?.filings ?? []).some(
+					(f) => f.returnType === 'GSTR-3B' && f.month === this.fileMonth() && f.gstRegistrationId === r.id,
+				),
+		),
+	);
+	readonly fileGstin = computed(
+		() => this.activeRegistrations().find((r) => r.id === this.fileRegistration())?.gstin ?? '',
+	);
+
+	openFile(template: TemplateRef<unknown>, month: string): void {
+		if (!this.canLock()) return;
+		this.fileMonth.set(month);
+		this.fileRegistration.set(this.unfiledRegistrations()[0]?.id ?? '');
+		this.arn.set('');
+		this.acknowledgement.set(null);
+		this.fileModal = this.modals.open(template, { centered: true });
+	}
+
+	async attachAck(): Promise<void> {
+		const popup = this.modals.open(FmPicker, {
+			size: 'xl',
+			windowClass: 'theme-modal media-modal fm-picker',
+			scrollable: true,
+		});
+		(popup.componentInstance as FmPicker).start({
+			title: 'accounts_ack_file',
+			accept: 'any',
+			max: 1,
+			already: 0,
+			profile: null,
+		});
+		const picked = (await popup.result.catch(() => null)) as FmPicked[] | null;
+		if (picked?.[0]) this.acknowledgement.set({ assetId: picked[0].assetId, name: picked[0].name });
+	}
+
+	async markFiled(): Promise<void> {
+		this.filing.set(true);
+		try {
+			await firstValueFrom(
+				this.gateway.markFiled({
+					gstRegistrationId: this.fileRegistration(),
+					returnType: 'GSTR-3B',
+					month: this.fileMonth(),
+					arn: this.arn(),
+					filedOn: this.filedOn(),
+					acknowledgement: this.acknowledgement(),
+				}),
+			);
+			await this.queryClient.invalidateQueries({ queryKey: LEDGER_KEYS.periods });
+			this.notifier.showSuccess(this.transloco.translate('accounts_gst_filed_saved'));
+			this.fileModal?.close();
+		} catch (error) {
+			const code = (error as { error?: { error?: { message?: string } } }).error?.error?.message ?? '';
+			this.notifier.showError(
+				this.transloco.translate(
+					code === 'gst_already_filed' ? 'accounts_gst_already_filed' : 'accounts_gst_file_failed',
+				),
+			);
+		} finally {
+			this.filing.set(false);
+		}
+	}
 
 	open(template: TemplateRef<unknown>, month?: string): void {
 		const currentMonth = new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 7);

@@ -16,6 +16,9 @@ import {
 	type BookPart,
 	type ChartOfAccounts,
 	type DocumentLock,
+	GST_RETURN_LOCKS,
+	GstReturnFiling,
+	type GstReturnFilingWrite,
 	type JournalLine,
 	JournalVoucher,
 	type JournalVoucherWrite,
@@ -41,6 +44,7 @@ import {
 	type DocumentLockRepository,
 	fiscalYearOf,
 	type GeneralLedgerRepository,
+	type GstReturnRepository,
 	istDay,
 	ledgerStatement,
 	type LocationRepository,
@@ -67,6 +71,7 @@ import {
 	COMPANY_REPOSITORY,
 	DOCUMENT_LOCK_REPOSITORY,
 	GENERAL_LEDGER_REPOSITORY,
+	GST_RETURN_REPOSITORY,
 	LOCATION_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
 	PERIOD_LOCK_REPOSITORY,
@@ -125,6 +130,7 @@ export class LedgerService {
 		@Inject(STOCK_COUNT_REPOSITORY) private readonly counts: Pick<StockCountRepository, 'list'>,
 		@Inject(ADJUSTMENT_REQUEST_REPOSITORY)
 		private readonly approvals: Pick<AdjustmentRequestRepository, 'pendingCount'>,
+		@Inject(GST_RETURN_REPOSITORY) private readonly gstReturns: GstReturnRepository,
 		private readonly numbers: DocumentNumbersService,
 		private readonly locations: LocationsService,
 	) {}
@@ -294,10 +300,11 @@ export class LedgerService {
 	): Promise<JournalVoucher> {
 		const existing = await this.books.findVoucherByKey(input.idempotencyKey, context);
 		if (existing) return existing;
-		const [chart, locks, locationList] = await Promise.all([
+		const [chart, locks, locationList, filings] = await Promise.all([
 			this.chart(),
 			this.periods.list(),
 			this.locationRepo.list(),
+			this.gstReturns.list(),
 		]);
 		const problems = voucherProblems(
 			{
@@ -315,6 +322,11 @@ export class LedgerService {
 				byHand: check.byHand,
 				mayPostWhenClosed: check.mayPostWhenClosed,
 				sourceType: input.source?.type,
+				filedGst: filings.map((f) => ({
+					gstRegistrationId: f.gstRegistrationId,
+					month: f.month,
+					parts: GST_RETURN_LOCKS[f.returnType],
+				})),
 			},
 		);
 		if (problems.length) throw new BadRequestException(`voucher_problem:${problems[0]}`);
@@ -563,7 +575,9 @@ export class LedgerService {
 	}
 
 	/** T1: every month of this financial year and the last, with each part's state. */
-	async periodGrid(today = istDay(new Date())): Promise<{ months: string[]; locks: PeriodLock[] }> {
+	async periodGrid(
+		today = istDay(new Date()),
+	): Promise<{ months: string[]; locks: PeriodLock[]; filings: GstReturnFiling[] }> {
 		const fy = fiscalYearOf(today);
 		const start = Number(fy.slice(0, 4)) - 1;
 		const months: string[] = [];
@@ -572,7 +586,8 @@ export class LedgerService {
 			const year = start + Math.floor((3 + i) / 12);
 			months.push(`${year}-${String(month).padStart(2, '0')}`);
 		}
-		return { months, locks: await this.periods.list() };
+		const [locks, filings] = await Promise.all([this.periods.list(), this.gstReturns.list()]);
+		return { months, locks, filings };
 	}
 
 	/**
@@ -634,6 +649,38 @@ export class LedgerService {
 			{ reason: write.reason },
 		);
 		return next;
+	}
+
+	/**
+	 * G8 Mark filed: a return filed on the GST portal, entered with its ARN. From then on that month locks for that
+	 * GSTIN in the parts the return covers (GSTR-1: sales; GSTR-3B: sales and purchases). Logged with the ARN.
+	 */
+	async markFiled(
+		write: GstReturnFilingWrite,
+		principal: AuthenticatedPrincipal | undefined,
+	): Promise<GstReturnFiling> {
+		const registration = await this.company.getRegistration(write.gstRegistrationId);
+		if (!registration) throw new BadRequestException('gst_registration_unknown');
+		const filing = GstReturnFiling.parse({
+			...write,
+			gstin: registration.gstin,
+			by: principal?.userId ?? null,
+			at: new Date().toISOString(),
+		});
+		try {
+			await this.gstReturns.insert(filing);
+		} catch (error) {
+			if (error instanceof Error && error.message === 'duplicate_gst_filing')
+				throw new ConflictException('gst_already_filed');
+			throw error;
+		}
+		await this.log(principal?.userId ?? null, 'accounts.gst.filed', 'gstReturn', null, [], {
+			gstin: filing.gstin,
+			returnType: filing.returnType,
+			month: filing.month,
+			arn: filing.arn,
+		});
+		return filing;
 	}
 
 	/** D10: take the document, or learn who holds it. */

@@ -122,6 +122,10 @@ export const COLLECTION_NAMES = {
 	CompanyProfile: 'companyProfile',
 	GstRegistration: 'gstRegistrations',
 	FeatureSwitches: 'featureSwitches',
+	EDocSettings: 'edocSettings',
+	EDocument: 'eDocuments',
+	EDocCall: 'edocCalls',
+	EDocKeys: 'edocKeys',
 	/** Settings › Document formats (bundle builder brief F, 2026-11-22): one active format per document. */
 	DocumentFormat: 'documentFormats',
 	Sequence: 'sequences',
@@ -240,6 +244,10 @@ export const GRAPH_RECONCILIATION_OWED = [
 	'companyProfile',
 	'gstRegistrations',
 	'featureSwitches',
+	'edocSettings',
+	'eDocuments',
+	'edocCalls',
+	'edocKeys',
 ] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */

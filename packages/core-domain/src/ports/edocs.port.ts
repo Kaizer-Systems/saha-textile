@@ -1,4 +1,11 @@
-import type { EDocCancelReason, EWayBillPartB, GstinDetails } from '@saha-textile/contracts';
+import type {
+	EDocCall,
+	EDocCancelReason,
+	EDocSettings,
+	EDocument,
+	EWayBillPartB,
+	GstinDetails,
+} from '@saha-textile/contracts';
 
 /**
  * E-invoice and e-way bill ports (accounts brief addendum 2). One adapter per path: the API picks it per GSTIN
@@ -84,4 +91,46 @@ export interface EWayBillGateway {
 		},
 	): Promise<{ validUntil: string }>;
 	cancel(gstin: string, ewbNo: string, reason: EDocCancelReason, remark: string): Promise<{ cancelledAt: string }>;
+}
+
+/** Storage for settings, the IRN / e-way bill records and the activity log. */
+export interface EDocListFilter {
+	kind: 'eInvoice' | 'eWayBill';
+	gstin?: string;
+	status?: 'active' | 'cancelled';
+	from?: string;
+	to?: string;
+	q?: string;
+	page: number;
+	pageSize: number;
+}
+
+export interface EDocRepository {
+	getSettings(gstin: string): Promise<EDocSettings | null>;
+	/** Optimistic: refused with StaleVersionError when someone saved in between. */
+	saveSettings(settings: EDocSettings, expectedUpdatedAt: string | null): Promise<EDocSettings>;
+	/** The active record of a kind for a document, if any. */
+	findActive(kind: 'eInvoice' | 'eWayBill', documentId: string): Promise<EDocument | null>;
+	findById(id: string): Promise<EDocument | null>;
+	insert(doc: EDocument): Promise<void>;
+	replace(doc: EDocument): Promise<void>;
+	list(filter: EDocListFilter): Promise<{ rows: EDocument[]; total: number }>;
+	logCall(call: EDocCall): Promise<void>;
+	listCalls(gstin: string | null, page: number, pageSize: number): Promise<{ rows: EDocCall[]; total: number }>;
+}
+
+/** The secrets of an automatic path, encrypted at rest with EDOC_KEYS_KEY (AE6); never logged or returned. */
+export interface EDocSecrets {
+	password: string | null;
+	clientId: string | null;
+	clientSecret: string | null;
+	publicKeyPem: string | null;
+}
+
+export interface EDocKeyStore {
+	/** False when the server has no EDOC_KEYS_KEY: automatic paths can't be set up, by hand still works. */
+	readonly available: boolean;
+	put(gstin: string, path: string, secrets: EDocSecrets): Promise<void>;
+	get(gstin: string, path: string): Promise<EDocSecrets | null>;
+	remove(gstin: string, path: string): Promise<void>;
 }

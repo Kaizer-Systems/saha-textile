@@ -28,11 +28,18 @@ describe.skipIf(!hasMongoEnv())('stock by location (integration, rs0)', () => {
 			{
 				_id: 'var_loc_a',
 				productId: 'prd_loc_test',
+				// The schema's required fields; the hash and the SKU are unique once the model's indexes exist.
+				optionSelectionHash: 'loc-test-a',
+				sku: 'LOC-TEST-A',
+				priceINR: 1000,
 				stock: { tracked: true, quantity: 5, held: 1, reserved: 0 },
 			},
 			{
 				_id: 'var_loc_b',
 				productId: 'prd_loc_test',
+				optionSelectionHash: 'loc-test-b',
+				sku: 'LOC-TEST-B',
+				priceINR: 1000,
 				stock: { tracked: true, quantity: 0, held: 0, reserved: 0 },
 			},
 		] as never);

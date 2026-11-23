@@ -1182,6 +1182,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				op: 'Rotate the access key',
 				destroy: 'Empty and delete',
 				history: 'History',
+				files: 'Files',
 			},
 			off: false,
 			tip: null,
@@ -1201,6 +1202,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				op: 'Rotate the access key: step by step',
 				destroy: 'Empty and delete: what goes, what stays, typed name and PIN',
 				history: 'History: every change, who made it, from where',
+				files: 'DigitalOcean · Files in a bucket: find, delete; CORS',
 			},
 		},
 		volumes: {

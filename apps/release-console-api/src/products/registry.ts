@@ -50,6 +50,7 @@ import {
 	extend,
 } from './cf-zone-more.js';
 import { ZT_EXTRA } from './cf-zt-more.js';
+import { SPACES_MORE_EXTRA } from './do-spaces-more.js';
 import { DB_COST_EXTRA, DROPLET_COST_EXTRA, K8S_COST_EXTRA, SPACES_CDN_EXTRA } from './do-cost.js';
 import { ACCOUNT_EXTRA, DATABASES_EXTRA, DODNS_EXTRA, MONITORING_EXTRA, NET_EXTRA, REGISTRY_EXTRA } from './do-more.js';
 import { cfPlanScreen } from './cf-plan.js';
@@ -147,7 +148,7 @@ export const PRODUCT_SCREENS: Record<string, ProductScreen> = {
 	domonitoring: extend(monitoringScreen, MONITORING_EXTRA),
 	inference: inferenceScreen,
 	donetadv: vpcPeeringScreen,
-	spaces: extend(spacesScreen, SPACES_CDN_EXTRA),
+	spaces: extend(extend(spacesScreen, SPACES_CDN_EXTRA), SPACES_MORE_EXTRA),
 	dosecrets: doSecretsScreen,
 	security: securityScreen,
 	doaccount: extend(doAccountScreen, ACCOUNT_EXTRA),

@@ -377,8 +377,9 @@ function cfSlot(ctx: ConsoleContext) {
 					</table>
 				</div>
 			</div>
-			<rc-ssh-list />
 		</rc-vendor-state>
+		<!-- Always shown, even with no droplets or while DigitalOcean answers: the list is needed before the first server. -->
+		<rc-ssh-list />
 	`,
 })
 export class DropletsScreen {

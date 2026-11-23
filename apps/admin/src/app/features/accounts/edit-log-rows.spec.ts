@@ -162,6 +162,8 @@ describe('the edit log rows (Q11)', () => {
 				entry('paymentVoucher.print'),
 				entry('selfInvoice.cancel_refused', { metadata: { why: 'only_super_admin' } }),
 				entry('selfInvoice.cancel', { metadata: { reason: 'Typed twice' } }),
+				entry('paymentVoucher.cancel', { metadata: { reason: 'Paid twice' } }),
+				entry('paymentVoucher.cancel_refused', { metadata: { why: 'month_locked' } }),
 			],
 			t,
 			inr,
@@ -180,6 +182,8 @@ describe('the edit log rows (Q11)', () => {
 			['log_printed', '—', '—', 'PDF', '—'],
 			['log_tried_cancel', '—', '—', 'log_refused{"why":"si_problem_only_super_admin"}', '—'],
 			['log_cancelled', '—', '—', '—', 'Typed twice'],
+			['log_cancelled', '—', '—', '—', 'Paid twice'],
+			['log_tried_cancel', '—', '—', 'log_refused{"why":"si_problem_month_locked"}', '—'],
 		]);
 	});
 });

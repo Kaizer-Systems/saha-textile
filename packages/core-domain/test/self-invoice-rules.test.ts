@@ -2,6 +2,7 @@ import type { RcmChoice } from '@saha-textile/contracts';
 import { describe, expect, it } from 'vitest';
 
 import {
+	paymentVoucherCancelProblems,
 	selfInvoiceCancelProblems,
 	selfInvoiceDay,
 	selfInvoiceDeadline,
@@ -94,4 +95,14 @@ describe('self-invoices (D2, D3)', () => {
 		]);
 		expect(missingRoles({ ledgers: [], groups: [] }, 'paymentVoucher')).toEqual(['creditors_control', 'cash']);
 	});
+
+	it('cancels a payment voucher only once, by a super admin, while its month is open', () => {
+		expect(paymentVoucherCancelProblems({ status: 'paid' }, { superAdmin: true, monthLocked: false })).toEqual([]);
+		expect(paymentVoucherCancelProblems({ status: 'cancelled' }, { superAdmin: false, monthLocked: true })).toEqual([
+			'payment_voucher_cancelled',
+			'only_super_admin',
+			'month_locked',
+		]);
+	});
 });
+

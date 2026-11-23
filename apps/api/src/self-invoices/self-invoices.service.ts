@@ -4,6 +4,7 @@ import { BadRequestException, ConflictException, Inject, Injectable, NotFoundExc
 import {
 	PaymentVoucher,
 	SelfInvoice,
+	type PaymentVoucherCancel,
 	type PaymentVoucherListQuery,
 	type SelfInvoiceCancel,
 	type SelfInvoiceForm,
@@ -21,6 +22,9 @@ import {
 	type LocationRepository,
 	oppositePosting,
 	type PaymentVoucherRepository,
+	paymentVoucherCancelProblems,
+	type PeriodLockRepository,
+	periodStateOf,
 	selfInvoiceCancelProblems,
 	selfInvoiceDeadline,
 	selfInvoicePosting,
@@ -41,6 +45,7 @@ import {
 	GST_RETURN_REPOSITORY,
 	LOCATION_REPOSITORY,
 	PAYMENT_VOUCHER_REPOSITORY,
+	PERIOD_LOCK_REPOSITORY,
 	SELF_INVOICE_REPOSITORY,
 	SUPPLIER_REPOSITORY,
 	TRANSACTION_MANAGER,
@@ -80,6 +85,7 @@ export class SelfInvoicesService {
 		private readonly templates: AccountsTemplatesService,
 		private readonly log: EditLogService,
 		private readonly purchases: PurchaseEntriesService,
+		@Inject(PERIOD_LOCK_REPOSITORY) private readonly periods: Pick<PeriodLockRepository, 'list'>,
 	) {}
 
 	async get(id: string): Promise<SelfInvoice> {
@@ -501,6 +507,86 @@ export class SelfInvoicesService {
 			against: entry.number,
 		});
 		return { entry, voucher };
+	}
+
+	/**
+	 * Cancel a payment voucher (brief table: while its month is open for its cash or bank part; the bill is owed again;
+	 * a reversing voucher). A self-invoice's payment is reversed in the books here; a purchase entry's goes through the
+	 * purchases page's own reversal, unchanged.
+	 */
+	async cancelPaymentVoucher(
+		id: string,
+		write: PaymentVoucherCancel,
+		principal: AuthenticatedPrincipal | undefined,
+		now = new Date(),
+	): Promise<PaymentVoucher> {
+		const voucher = await this.paymentVoucher(id);
+		const [superAdmin, locks] = await Promise.all([this.ledger.isSuperAdmin(principal), this.periods.list()]);
+		const part = voucher.mode === 'cash' ? 'cash' : 'bank';
+		const monthLocked = periodStateOf(locks, voucher.date.slice(0, 7), part) !== 'open';
+		const [problem] = paymentVoucherCancelProblems(voucher, { superAdmin, monthLocked });
+		const actor = actorOf(principal);
+		if (problem) {
+			await this.log.append(actor, 'paymentVoucher.cancel_refused', 'paymentVoucher', id, [], { why: problem });
+			throw new ConflictException(accountsRefusal(problem));
+		}
+		const at = now.toISOString();
+		const cancelled: PaymentVoucher = {
+			...voucher,
+			status: 'cancelled',
+			cancelledAt: at,
+			cancelledBy: actor,
+			cancelReason: write.reason,
+		};
+		const done =
+			voucher.against.kind === 'purchaseEntry'
+				? await this.purchases
+						.reversePayment(voucher.against.id, voucher.supplierPaymentId as string, write.reason, actor)
+						.then(() => this.vouchers.cancel(cancelled))
+						.then(() => cancelled)
+				: await this.tx.withTransaction(async (context) => {
+						const invoice = await this.get(voucher.against.id);
+						const paidFrom = voucher.paidFromLedgerId ? { id: voucher.paidFromLedgerId } : { role: 'cash' };
+						const posted = await this.ledger.post(
+							{
+								date: istDay(now),
+								narration: `Cancelled payment voucher ${voucher.number} · ${write.reason}`,
+								lines: supplierPaymentPosting(voucher.amountINR, paidFrom).map((line) => ({
+									ledger: line.ledger,
+									locationId: voucher.locationId as string,
+									debitPaise: line.creditPaise,
+									creditPaise: line.debitPaise,
+								})),
+								source: { type: 'paymentVoucher', id, number: voucher.number },
+								idempotencyKey: `paymentVoucher:${id}:cancel`,
+							},
+							context,
+							actor,
+						);
+						const next = { ...cancelled, reversalVoucherId: posted.id };
+						await this.vouchers.cancel(next, context);
+						await this.saveOrConflict(
+							{
+								...invoice,
+								paidINR: Math.round((invoice.paidINR - voucher.amountINR) * 100) / 100,
+								paymentVouchers: invoice.paymentVouchers.filter((pv) => pv.id !== id),
+								updatedAt: at,
+								updatedBy: actor,
+							},
+							invoice.version,
+							context,
+						);
+						return next;
+					});
+		await this.log.append(
+			actor,
+			'paymentVoucher.cancel',
+			'paymentVoucher',
+			id,
+			[{ field: 'status', before: 'paid', after: 'cancelled' }],
+			{ reason: write.reason },
+		);
+		return done;
 	}
 
 	/** Q11: every print is in the document's log. */

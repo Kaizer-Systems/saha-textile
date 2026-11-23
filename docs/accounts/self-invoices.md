@@ -68,6 +68,13 @@ Every payment to a supplier gets a payment voucher (`PV/26-27/000007`), made wit
 - **Against a self-invoice**: issued by Pay, with the reverse-charge tax shown on it, and posted as above.
 - **Against a purchase entry**: Record payment saves through `POST /admin/purchases/entries/:id/pay-with-voucher`, which records the payment with the purchases step unchanged and then issues the voucher. Purchase bills don't post to the books, so neither does this voucher. The entry's Payments table shows each payment's voucher.
 
+### Cancelling a payment voucher
+
+A super admin cancels a voucher while its month is open for its cash or bank part (`month_locked` otherwise); the number is kept and the voucher reads Cancelled.
+
+- Against a self-invoice: the payment's posting is reversed (a voucher dated the day of the cancel) and the self-invoice is owed again.
+- Against a purchase entry: the purchases page's own payment reversal runs, so the bill is owed again.
+
 ## Screens
 
 - Accounts › Self-invoices (A7): chips All, Drafts, Due soon (drafts still inside the 30 days), Unpaid, Paid, each counted; period and search (number, supplier, what); the 30-day clock; Record a reverse-charge supply.
@@ -87,10 +94,11 @@ Every payment to a supplier gets a payment voucher (`PV/26-27/000007`), made wit
 | `POST /admin/accounts/self-invoices/:id/cancel`                     | cancel (super admin)                           | `accounts.post`    |
 | `GET …/self-invoices/:id`, `…/log`, `…/pdf`, `…/payment-vouchers`   | read                                           | `accounts.index`   |
 | `GET /admin/accounts/payment-vouchers?…`, `…/:id`, `…/log`, `…/pdf` | A6 list and one voucher                        | `accounts.index`   |
+| `POST /admin/accounts/payment-vouchers/:id/cancel`                  | cancel a voucher (super admin)                 | `purchase.payment` |
 | `POST /admin/purchases/entries/:id/pay-with-voucher`                | a purchase entry's payment with its voucher    | `purchase.payment` |
 | `GET /admin/purchases/entries/:id/payment-vouchers`                 | its vouchers                                   | `purchase.index`   |
 
-Refusals travel as coded issues: `supplier_has_gstin`, `not_on_reverse_charge_list`, `received_in_future`, `self_invoice_not_draft`, `self_invoice_changed`, `self_invoice_not_issued`, `self_invoice_paid`, `self_invoice_needs_a_location`, `self_invoice_needs_a_gstin`, `overpayment`, `paid_in_future`, `paid_before_self_invoice`, `payment_needs_a_bank_ledger`, `payment_choose_bank_ledger`, `only_super_admin`, `month_filed`, `payment_not_recorded`, `voucher_problem:role_not_mapped:<role>`.
+Refusals travel as coded issues: `supplier_has_gstin`, `not_on_reverse_charge_list`, `received_in_future`, `self_invoice_not_draft`, `self_invoice_changed`, `self_invoice_not_issued`, `self_invoice_paid`, `self_invoice_needs_a_location`, `self_invoice_needs_a_gstin`, `overpayment`, `paid_in_future`, `paid_before_self_invoice`, `payment_needs_a_bank_ledger`, `payment_choose_bank_ledger`, `only_super_admin`, `month_filed`, `payment_not_recorded`, `payment_voucher_cancelled`, `month_locked`, `voucher_problem:role_not_mapped:<role>`.
 
 ## Collections
 

@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Header, HttpCode, Param, Post, Put, Query, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+	PaymentVoucherCancel,
 	PaymentVoucherListQuery,
 	SelfInvoiceCancel,
 	SelfInvoiceFormQuery,
@@ -198,6 +199,21 @@ export class PaymentVouchersController {
 	async log(@Param('id') id: string) {
 		await this.selfInvoices.paymentVoucher(id);
 		return this.editLog.entries('paymentVoucher', id);
+	}
+
+	@Post(':id/cancel')
+	@HttpCode(200)
+	@RequirePermissions('purchase.payment')
+	@ApiOperation({
+		operationId: 'cancelPaymentVoucher',
+		summary: 'Cancel a payment voucher (super admin, month open)',
+	})
+	cancel(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(PaymentVoucherCancel)) body: PaymentVoucherCancel,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.selfInvoices.cancelPaymentVoucher(id, body, principal);
 	}
 
 	@Get(':id/pdf')

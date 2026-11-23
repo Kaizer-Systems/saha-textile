@@ -154,8 +154,17 @@ export const PaymentVoucher = z.object({
 	locationId: Id.nullable(),
 	createdAt: IsoDateTime,
 	createdBy: Id.nullable(),
+	/** Cancelled while its month was open: the bill is owed again and its posting reversed. */
+	status: z.enum(['paid', 'cancelled']).default('paid'),
+	cancelledAt: IsoDateTime.nullable().default(null),
+	cancelledBy: Id.nullable().default(null),
+	cancelReason: z.string().nullable().default(null),
+	reversalVoucherId: Id.nullable().default(null),
 });
 export type PaymentVoucher = z.infer<typeof PaymentVoucher>;
+
+export const PaymentVoucherCancel = z.object({ reason: z.string().trim().min(3).max(300) });
+export type PaymentVoucherCancel = z.infer<typeof PaymentVoucherCancel>;
 
 const ListPaging = {
 	from: IsoDate,

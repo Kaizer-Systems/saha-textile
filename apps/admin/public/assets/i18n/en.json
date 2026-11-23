@@ -8166,7 +8166,7 @@
 	"pv_rcm_tax": "Reverse-charge tax",
 	"pv_rcm_tax_paid": "{{amount}} paid by us under reverse charge",
 	"pv_rcm_tax_none": "None",
-	"pv_never_edited": "No: made with the payment, never edited",
+	"pv_never_edited": "Never edited; a super admin can cancel it while its month is open",
 	"pv_voucher": "Voucher",
 	"pv_entry_note": "This payment gets its own payment voucher, numbered PV/… and printable.",
 	"log_deleted_draft": "Deleted the draft",
@@ -8235,5 +8235,11 @@
 	"at_state_update": "Installed · update v{{version}}",
 	"at_state_not_installed": "Not installed",
 	"at_state_locked": "Locked · not this kind",
-	"at_empty": "No templates match."
+	"at_empty": "No templates match.",
+	"pv_status_cancelled": "Cancelled",
+	"pv_cancel_title": "Cancel {{number}}",
+	"pv_cancel_body": "The payment is reversed and the bill is owed again; the number is kept. Only a super admin can do this, while the month is open.",
+	"pv_cancel_confirm": "Cancel the voucher",
+	"si_problem_payment_voucher_cancelled": "This voucher is already cancelled.",
+	"si_problem_month_locked": "That month is closed for cash or bank."
 }

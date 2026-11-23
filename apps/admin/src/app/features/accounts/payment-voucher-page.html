@@ -7,24 +7,41 @@
 		<div>
 			<h5 class="mb-1">
 				{{ v.number }}
-				<div class="status-success d-inline-block ms-2">
-					<span>{{ 'pv_status_paid' | transloco }}</span>
+				<div
+					class="d-inline-block ms-2"
+					[class.status-success]="v.status === 'paid'"
+					[class.status-danger]="v.status === 'cancelled'"
+				>
+					<span>{{ 'pv_status_' + v.status | transloco }}</span>
 				</div>
 			</h5>
 			<small class="text-muted">
 				{{ 'pv_title_line' | transloco: { date: day(v.date), payee: v.payeeName } }}
 			</small>
 		</div>
-		<button
-			type="button"
-			class="btn btn-outline"
-			id="pv_print"
-			[disabled]="busy()"
-			(click)="print()"
-		>
-			<i class="ri-printer-line"></i>
-			{{ 'inv_print' | transloco }}
-		</button>
+		<div class="d-flex flex-wrap gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="pv_print"
+				[disabled]="busy()"
+				(click)="print()"
+			>
+				<i class="ri-printer-line"></i>
+				{{ 'inv_print' | transloco }}
+			</button>
+			@if (canCancel()) {
+			<button
+				type="button"
+				class="btn btn-outline text-danger"
+				id="pv_cancel_open"
+				(click)="cancel(v)"
+			>
+				<i class="ri-close-circle-line"></i>
+				{{ 'cancel' | transloco }}
+			</button>
+			}
+		</div>
 	</div>
 	<div class="card">
 		<div class="card-body">
@@ -61,6 +78,12 @@
 					<span class="text-muted d-block">{{ 'rf_can_cancel' | transloco }}</span>
 					<b>{{ 'pv_never_edited' | transloco }}</b>
 				</div>
+				@if (v.cancelReason) {
+				<div class="col-md-6">
+					<span class="text-muted d-block">{{ 'si_cancelled_because' | transloco }}</span>
+					<b>{{ v.cancelReason }}</b>
+				</div>
+				}
 			</div>
 		</div>
 	</div>

@@ -1,12 +1,15 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-experimental';
 import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SelfInvoicesGateway } from '@core/accounts/self-invoices.gateway';
+import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { PaymentVoucherPage } from './payment-voucher-page';
@@ -23,9 +26,24 @@ const voucher = {
 	mode: 'bank_transfer',
 	reference: 'NEFT 7712',
 	reverseChargeTaxINR: 10_800,
+	status: 'paid',
 };
 
-function setup(id: string | null = 'pv_1', failPdf = false) {
+function setup(
+	id: string | null = 'pv_1',
+	failPdf = false,
+	options: { result?: unknown; failCancel?: string; permissions?: string[] } = {},
+) {
+	const asked = { start: vi.fn() };
+	const modals = {
+		open: vi.fn(() => ({
+			componentInstance: asked,
+			result:
+				options.result === 'dismissed'
+					? Promise.reject(new Error('x'))
+					: Promise.resolve(options.result ?? null),
+		})),
+	};
 	const notifier = { showError: vi.fn(), showSuccess: vi.fn() };
 	const gateway = {
 		voucher: () => of(voucher),
@@ -41,6 +59,11 @@ function setup(id: string | null = 'pv_1', failPdf = false) {
 				},
 			]),
 		voucherPdf: vi.fn(() => (failPdf ? throwError(() => new Error('down')) : of(new Blob(['%PDF'])))),
+		cancelVoucher: vi.fn(() =>
+			options.failCancel
+				? throwError(() => ({ error: { error: { message: options.failCancel } } }))
+				: of({ ...voucher, status: 'cancelled' }),
+		),
 	};
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
@@ -51,10 +74,12 @@ function setup(id: string | null = 'pv_1', failPdf = false) {
 			{ provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap(id ? { id } : {})) } },
 			{ provide: SelfInvoicesGateway, useValue: gateway },
 			{ provide: NotificationService, useValue: notifier },
+			{ provide: NgbModal, useValue: modals },
+			{ provide: AuthStore, useValue: { permissions: signal(options.permissions ?? ['purchase.payment']) } },
 		],
 	});
 	const fixture = TestBed.createComponent(PaymentVoucherPage);
-	return { fixture, page: fixture.componentInstance, gateway, notifier };
+	return { fixture, page: fixture.componentInstance, gateway, notifier, asked };
 }
 
 describe('a payment voucher’s page', () => {
@@ -79,5 +104,30 @@ describe('a payment voucher’s page', () => {
 		await failing.page.print();
 		expect(failing.notifier.showError).toHaveBeenCalled();
 		expect(failing.page.busy()).toBe(false);
+	});
+
+	it('cancels through the reason popup, with the refusal in words, only with the right to pay', async () => {
+		const { fixture, page, gateway, asked } = setup('pv_1', false, { result: { status: 'cancelled' } });
+		expect(page.canCancel()).toBe(false);
+		fixture.detectChanges();
+		await vi.waitFor(() => expect(page.canCancel()).toBe(true));
+		await page.cancel(voucher as never);
+		const ask = asked.start.mock.calls[0]?.[0] as { act: (reason: string) => Promise<unknown> };
+		await ask.act('Paid twice');
+		expect(gateway.cancelVoucher).toHaveBeenCalledWith('pv_1', 'Paid twice');
+		const refused = setup('pv_1', false, { failCancel: 'month_locked', result: 'dismissed' });
+		await refused.page.cancel(voucher as never);
+		const refusedAsk = refused.asked.start.mock.calls[0]?.[0] as { act: (reason: string) => Promise<unknown> };
+		await expect(refusedAsk.act('x')).rejects.toMatchObject({
+			error: { message: expect.stringContaining('si_problem_month_locked') },
+		});
+		const other = setup('pv_1', false, { failCancel: 'Network down' });
+		await other.page.cancel(voucher as never);
+		const otherAsk = other.asked.start.mock.calls[0]?.[0] as { act: (reason: string) => Promise<unknown> };
+		await expect(otherAsk.act('x')).rejects.toMatchObject({ error: { message: 'Network down' } });
+		const noRight = setup('pv_1', false, { permissions: [] });
+		noRight.fixture.detectChanges();
+		await vi.waitFor(() => expect(noRight.page.voucher.data()).toBeTruthy());
+		expect(noRight.page.canCancel()).toBe(false);
 	});
 });

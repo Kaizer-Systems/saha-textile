@@ -206,6 +206,7 @@ export function editLogRows(
 				rows.push({ ...base, what: t('log_printed'), after: 'PDF' });
 				break;
 			case 'selfInvoice.cancel_refused':
+			case 'paymentVoucher.cancel_refused':
 				rows.push({
 					...base,
 					what: t('log_tried_cancel'),
@@ -213,6 +214,7 @@ export function editLogRows(
 				});
 				break;
 			case 'selfInvoice.cancel':
+			case 'paymentVoucher.cancel':
 				rows.push({ ...base, what: t('log_cancelled'), why: text(m['reason']) });
 				break;
 			case 'document.lock.ask_release':

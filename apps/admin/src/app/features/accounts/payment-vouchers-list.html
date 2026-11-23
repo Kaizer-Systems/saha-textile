@@ -92,8 +92,11 @@
 						{{ v.reverseChargeTaxINR === null ? '—' : inr(v.reverseChargeTaxINR) }}
 					</td>
 					<td>
-						<div class="status-success">
-							<span>{{ 'pv_status_paid' | transloco }}</span>
+						<div
+							[class.status-success]="v.status === 'paid'"
+							[class.status-danger]="v.status === 'cancelled'"
+						>
+							<span>{{ 'pv_status_' + v.status | transloco }}</span>
 						</div>
 					</td>
 					<td>

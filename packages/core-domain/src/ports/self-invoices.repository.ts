@@ -28,6 +28,8 @@ export interface PaymentVoucherRepository {
 	/** Refused with `duplicate_payment_voucher` when the supplier payment already has one. */
 	insert(voucher: PaymentVoucher, context?: TransactionContext): Promise<void>;
 	forDocument(kind: PaymentVoucher['against']['kind'], id: string): Promise<PaymentVoucher[]>;
+	/** Saves a cancelled voucher over the paid one; refused with `payment_voucher_changed` when it is no longer paid. */
+	cancel(voucher: PaymentVoucher, context?: TransactionContext): Promise<void>;
 	/** A6: one page and every chip's count. */
 	list(query: PaymentVoucherListQuery): Promise<PaymentVoucherList>;
 }

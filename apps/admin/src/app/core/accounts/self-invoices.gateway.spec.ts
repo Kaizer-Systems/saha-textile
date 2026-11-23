@@ -34,6 +34,7 @@ describe('self-invoices gateway (D2–D4)', () => {
 			[gateway.voucher('p1'), 'GET', '/admin/accounts/payment-vouchers/p1'],
 			[gateway.voucherLog('p1'), 'GET', '/admin/accounts/payment-vouchers/p1/log'],
 			[gateway.voucherPdf('p1'), 'GET', '/admin/accounts/payment-vouchers/p1/pdf'],
+			[gateway.cancelVoucher('p1', 'Paid twice'), 'POST', '/admin/accounts/payment-vouchers/p1/cancel'],
 			[gateway.payPurchaseEntry('e1', {} as never), 'POST', '/admin/purchases/entries/e1/pay-with-voucher'],
 			[gateway.purchaseEntryVouchers('e1'), 'GET', '/admin/purchases/entries/e1/payment-vouchers'],
 		];

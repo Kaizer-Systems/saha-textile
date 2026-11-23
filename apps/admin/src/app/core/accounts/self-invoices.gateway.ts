@@ -92,6 +92,9 @@ export class SelfInvoicesGateway {
 	voucherLog(id: string): Observable<EditLogEntry[]> {
 		return this.http.get<EditLogEntry[]>(this.voucherUrl(id, '/log'));
 	}
+	cancelVoucher(id: string, reason: string): Observable<PaymentVoucher> {
+		return this.http.post<PaymentVoucher>(this.voucherUrl(id, '/cancel'), { reason });
+	}
 	voucherPdf(id: string): Observable<Blob> {
 		return this.http.get(this.voucherUrl(id, '/pdf'), { responseType: 'blob' });
 	}
@@ -122,6 +125,8 @@ const KNOWN = new Set([
 	'only_super_admin',
 	'month_filed',
 	'payment_not_recorded',
+	'payment_voucher_cancelled',
+	'month_locked',
 ]);
 
 /**

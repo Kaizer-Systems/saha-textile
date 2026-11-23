@@ -133,6 +133,10 @@ describe.skipIf(!hasMongoEnv())('self-invoices and payment vouchers persistence 
 		expect((await vouchers.forDocument('selfInvoice', 'si_1')).map((v) => v.id)).toEqual(['pv_1']);
 		expect(await vouchers.get('pv_2')).toMatchObject({ supplierPaymentId: 'pay_1' });
 		expect(await vouchers.get('pv_x')).toBeNull();
+		const paid = (await vouchers.get('pv_1'))!;
+		await vouchers.cancel({ ...paid, status: 'cancelled', cancelledAt: at, cancelReason: 'Wrong supplier' });
+		expect(await vouchers.get('pv_1')).toMatchObject({ status: 'cancelled', cancelReason: 'Wrong supplier' });
+		await expect(vouchers.cancel({ ...paid, status: 'cancelled' })).rejects.toThrow('payment_voucher_changed');
 	});
 
 	it('lists self-invoices by the day received with every chip counted, and vouchers by date', async () => {

@@ -104,3 +104,18 @@ export function selfInvoiceCancelProblems(
 	if (checks.monthFiled) problems.push('month_filed');
 	return problems;
 }
+
+/**
+ * A payment voucher is cancelled by a super admin while its month is open for its cash or bank part; the bill is then
+ * owed again and the payment's posting reversed.
+ */
+export function paymentVoucherCancelProblems(
+	voucher: { status: 'paid' | 'cancelled' },
+	checks: { superAdmin: boolean; monthLocked: boolean },
+): string[] {
+	const problems: string[] = [];
+	if (voucher.status === 'cancelled') problems.push('payment_voucher_cancelled');
+	if (!checks.superAdmin) problems.push('only_super_admin');
+	if (checks.monthLocked) problems.push('month_locked');
+	return problems;
+}

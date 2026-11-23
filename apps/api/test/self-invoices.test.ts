@@ -47,7 +47,12 @@ const write = (patch: Record<string, unknown> = {}) => ({
 });
 
 function setup(
-	options: { scope?: { current: string | null; ids: readonly string[] }; banks?: number; filed?: boolean } = {},
+	options: {
+		scope?: { current: string | null; ids: readonly string[] };
+		banks?: number;
+		filed?: boolean;
+		locked?: boolean;
+	} = {},
 ) {
 	const invoices = new Map<string, SelfInvoice>();
 	const raced = new Set<string>();
@@ -101,6 +106,7 @@ function setup(
 				};
 			},
 		),
+		reversePayment: vi.fn(async () => ({})),
 	};
 	const service = new SelfInvoicesService(
 		{
@@ -121,6 +127,10 @@ function setup(
 			get: async (id: string) => vouchers.get(id) ?? null,
 			insert: async (v: PaymentVoucher) => void vouchers.set(v.id, v),
 			list: vi.fn(async (query: unknown) => ({ items: [], total: 0, counts: {}, query }) as never),
+			cancel: async (v: PaymentVoucher) => {
+				if (vouchers.get(v.id)?.status === 'cancelled') throw new Error('payment_voucher_changed');
+				vouchers.set(v.id, v);
+			},
 			forDocument: async (kind: string, id: string) =>
 				[...vouchers.values()].filter((v) => v.against.kind === kind && v.against.id === id),
 		},
@@ -147,6 +157,12 @@ function setup(
 		} as never,
 		{ append: log } as never,
 		purchases as never,
+		{
+			list: async () =>
+				options.locked
+					? [{ month: '2026-11', part: 'bank', state: 'locked', reason: 'Filed', by: null, at: null }]
+					: [],
+		} as never,
 	);
 	return { service, invoices, vouchers, log, post, purchases, raced };
 }
@@ -628,5 +644,116 @@ describe('prints and routes', () => {
 		expect(await bills.paymentVouchers('pe_31')).toEqual([bill.voucher]);
 		expect(new SelfInvoicesModule()).toBeInstanceOf(SelfInvoicesModule);
 		expect(BadRequestException).toBeDefined();
+	});
+});
+
+describe('cancelling a payment voucher', () => {
+	const pay = (patch: Record<string, unknown> = {}) => ({
+		amountINR: 60_000,
+		paidOn: '2026-11-21',
+		mode: 'bank_transfer',
+		reference: 'NEFT 7712',
+		paidFromLedgerId: null,
+		version: 1,
+		...patch,
+	});
+
+	it('reverses a self-invoice payment in the books, so the supplier is owed again', async () => {
+		const s = setup();
+		const issued = await issueOne(s);
+		const { voucher } = await s.service.pay(issued.id, pay() as never, owner, NOW);
+		const done = await s.service.cancelPaymentVoucher(voucher.id, { reason: 'Paid twice' }, owner, NOW);
+		expect(done).toMatchObject({
+			status: 'cancelled',
+			cancelReason: 'Paid twice',
+			cancelledBy: 'adm_owner',
+			reversalVoucherId: 'jv_5',
+		});
+		expect(s.post).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				idempotencyKey: `paymentVoucher:${voucher.id}:cancel`,
+				lines: [
+					{
+						ledger: { role: 'creditors_control' },
+						locationId: 'loc_bar',
+						debitPaise: undefined,
+						creditPaise: 6_000_000,
+					},
+					{
+						ledger: { id: 'led_bank0' },
+						locationId: 'loc_bar',
+						debitPaise: 6_000_000,
+						creditPaise: undefined,
+					},
+				],
+			}),
+			{},
+			'adm_owner',
+		);
+		expect(s.invoices.get(issued.id)).toMatchObject({ paidINR: 0, paymentVouchers: [] });
+		await expect(s.service.cancelPaymentVoucher(voucher.id, { reason: 'Again' }, owner, NOW)).rejects.toThrow(
+			'payment_voucher_cancelled',
+		);
+		const cash = setup();
+		const other = await issueOne(cash);
+		const paidInCash = await cash.service.pay(other.id, pay({ mode: 'cash' }) as never, owner, NOW);
+		await cash.service.cancelPaymentVoucher(paidInCash.voucher.id, { reason: 'Wrong mode' }, owner, NOW);
+		expect(cash.post).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				lines: expect.arrayContaining([
+					expect.objectContaining({ ledger: { role: 'cash' }, debitPaise: 6_000_000 }),
+				]),
+			}),
+			{},
+			'adm_owner',
+		);
+	});
+
+	it('cancels a purchase entry payment with the purchases reversal, and refuses others and locked months', async () => {
+		const s = setup();
+		const { voucher } = await s.service.payPurchaseEntry(
+			'pe_31',
+			{ amountINR: 100, paidOn: '2026-11-20', mode: 'upi', reference: null, proofAssetId: null },
+			owner,
+			NOW,
+		);
+		await expect(
+			s.service.cancelPaymentVoucher(voucher.id, { reason: 'Wrong bill' }, manager, NOW),
+		).rejects.toThrow('only_super_admin');
+		expect(s.log).toHaveBeenLastCalledWith(
+			'adm_manager',
+			'paymentVoucher.cancel_refused',
+			'paymentVoucher',
+			voucher.id,
+			[],
+			{
+				why: 'only_super_admin',
+			},
+		);
+		const done = await s.service.cancelPaymentVoucher(voucher.id, { reason: 'Wrong bill' }, owner, NOW);
+		expect(s.purchases.reversePayment).toHaveBeenCalledWith('pe_31', 'pay_1', 'Wrong bill', 'adm_owner');
+		expect(done).toMatchObject({ status: 'cancelled', reversalVoucherId: null });
+		const locked = setup({ locked: true });
+		const paid = await locked.service.payPurchaseEntry(
+			'pe_31',
+			{ amountINR: 100, paidOn: '2026-11-20', mode: 'bank_transfer', reference: null, proofAssetId: null },
+			owner,
+			NOW,
+		);
+		await expect(locked.service.cancelPaymentVoucher(paid.voucher.id, { reason: 'x' }, owner, NOW)).rejects.toThrow(
+			'month_locked',
+		);
+	});
+
+	it('routes the cancel', async () => {
+		const s = setup();
+		const { voucher } = await s.service.payPurchaseEntry(
+			'pe_31',
+			{ amountINR: 1, paidOn: '2026-11-20', mode: 'cash', reference: null, proofAssetId: null },
+			owner,
+			NOW,
+		);
+		const pvs = new PaymentVouchersController(s.service, {} as never, {} as never);
+		expect((await pvs.cancel(voucher.id, { reason: 'Typed twice' }, owner)).status).toBe('cancelled');
 	});
 });

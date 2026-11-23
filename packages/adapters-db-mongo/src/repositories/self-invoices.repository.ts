@@ -137,6 +137,14 @@ export class MongoPaymentVoucherRepository implements PaymentVoucherRepository {
 		);
 	}
 
+	async cancel(voucher: PaymentVoucher, context?: TransactionContext): Promise<void> {
+		const { id, ...rest } = voucher;
+		const result = await PaymentVoucherModel.replaceOne({ _id: id, status: { $ne: 'cancelled' } }, rest, {
+			session: sessionFrom(context),
+		}).exec();
+		if (result.matchedCount !== 1) throw new Error('payment_voucher_changed');
+	}
+
 	async list(query: PaymentVoucherListQuery): Promise<PaymentVoucherList> {
 		const base: Record<string, unknown> = { date: { $gte: query.from, $lte: query.to } };
 		if (query.search) {
@@ -147,8 +155,7 @@ export class MongoPaymentVoucherRepository implements PaymentVoucherRepository {
 			all: {},
 			reverse_charge: { 'against.kind': 'selfInvoice' },
 			supplier_bills: { 'against.kind': 'purchaseEntry' },
-			// A voucher is never cancelled yet; the chip stays, at nought.
-			cancelled: { cancelledAt: { $type: 'string' } },
+			cancelled: { status: 'cancelled' },
 		};
 		const { docs, total, counts } = await listed(PaymentVoucherModel, base, chips, query.filter, {
 			page: query.page,

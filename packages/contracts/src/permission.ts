@@ -41,6 +41,10 @@ import { z } from 'zod';
  * would fit any other code with the name swapped, the entry does not belong here yet.
  */
 export const PermissionCode = z.enum([
+	'accounts.edit',
+	'accounts.index',
+	'accounts.lock',
+	'accounts.post',
 	'admin_user_role.assign',
 	'admin_user_role.revoke',
 	'admin_user.create',
@@ -402,6 +406,12 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 		'The open boxes and Save on Settings › Shop details (X04) and PUT /admin/settings/shop-details: the legal name, GSTIN and address printed on business documents. Reading the page is setting.index (read only, X04D). Held by the Administrator role.',
 	'company.edit':
 		'Save on Settings › Company, Registrations and Features (accounts brief J, CT, G1–G2) and PUT /admin/company, /admin/company/registrations, /admin/company/features. Reading them is setting.index. Held by the Administrator role.',
+	'accounts.post':
+		'Post a journal, receipt, payment or contra voucher by hand on Accounts › Vouchers (accounts brief Q3, Q4); POST /admin/accounts/vouchers. Reversing a posted voucher also needs the Administrator role (brief tests: a store manager cannot reverse).',
+	'accounts.edit':
+		'Add ledgers and groups and rename or switch off ledgers on Accounts › Chart of accounts (Q1); POST/PUT /admin/accounts/chart/*. System groups and ledgers keep their place.',
+	'accounts.lock':
+		'Close a month for staff or lock it, part by part, with a reason, and reopen it, on Accounts › Periods and locks (T1, T2); POST /admin/accounts/periods. Held by the Administrator role.',
 	'location.edit':
 		'Add, edit and switch off locations (warehouses, stores, offices) and set where each admin user works (accounts brief K, L). Held by the Administrator role.',
 	'edocs.generate':
@@ -425,6 +435,7 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 
 /** The resource half of a code — the noun a permission is about. */
 export const PermissionResource = z.enum([
+	'accounts',
 	'admin_user',
 	'admin_user_role',
 	'attachment',
@@ -510,6 +521,7 @@ export const PermissionAction = z.enum([
 	'go_live_home',
 	'hold',
 	'index',
+	'lock',
 	'manage',
 	'open',
 	'opening',

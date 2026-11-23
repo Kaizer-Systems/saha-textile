@@ -46,7 +46,8 @@ describe('permission registry', () => {
 		// 156 → 157 on 2026-11-23 with `company.edit` (accounts brief: Settings › Company, Registrations, Features).
 		// 157 → 160 on 2026-11-23 with `edocs.generate`, `edocs.cancel`, `edocs.settings` (accounts brief addendum 2).
 		// 160 → 161 on 2026-11-23 with `location.edit` (accounts brief K, L).
-		expect(PERMISSION_CODES).toHaveLength(161);
+		// 161 → 165 on 2026-11-23 with `accounts.index/post/edit/lock` (accounts brief Q, T).
+		expect(PERMISSION_CODES).toHaveLength(165);
 		expect([...PERMISSION_CODES]).toEqual([...PERMISSION_CODES].sort((a, b) => a.localeCompare(b)));
 	});
 

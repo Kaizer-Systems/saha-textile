@@ -309,6 +309,45 @@ export function deployIdentityOf(place, inventory = loadInventory()) {
 	return { tier: tier ?? null, identityId: typeof id === 'string' && id ? id : null };
 }
 
+/** The local VictoriaTraces (the Infisical chat's M7): its Jaeger-compatible search API. */
+export const TRACES_URL = process.env.CONSOLE_TRACES_URL || 'http://127.0.0.1:10428';
+
+/**
+ * One read of the local traces (Release Path brief Part 6): the services, a search, or one trace.
+ * Only these three, with checked values; when nothing answers, says so instead of failing.
+ */
+export async function tracesRead(kind, q, get = fetch) {
+	let path;
+	if (kind === 'services') path = '/select/jaeger/api/services';
+	else if (kind === 'trace') {
+		if (!/^[0-9a-f]{8,32}$/i.test(String(q.id ?? '')))
+			throw Object.assign(new Error('Not a trace id.'), { status: 400 });
+		path = `/select/jaeger/api/traces/${q.id}`;
+	} else if (kind === 'search') {
+		if (!/^[a-z0-9][a-z0-9-]{0,60}$/.test(String(q.service ?? '')))
+			throw Object.assign(new Error('Not a service name.'), { status: 400 });
+		// VictoriaTraces finds nothing without a time range (the Infisical chat, 23 Nov): microseconds.
+		const seconds = { '1h': 3600, '6h': 21_600, '24h': 86_400 }[String(q.lookback)] ?? 3600;
+		const end = Date.now() * 1000;
+		const params = new URLSearchParams({
+			service: String(q.service),
+			limit: String(Math.min(Math.max(Number(q.limit) || 40, 1), 200)),
+			start: String(end - seconds * 1_000_000),
+			end: String(end),
+		});
+		if (q.errors === '1') params.set('tags', JSON.stringify({ error: 'true' }));
+		path = `/select/jaeger/api/traces?${params.toString()}`;
+	} else throw Object.assign(new Error('Unknown traces read.'), { status: 400 });
+	const res = await get(`${TRACES_URL}${path}`, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
+	if (!res)
+		return {
+			off: true,
+			message: 'VictoriaTraces is not answering on this Mac: start the local stack with its tracing profile.',
+		};
+	if (!res.ok) return { off: true, message: `VictoriaTraces answered ${res.status}.` };
+	return res.json();
+}
+
 /** The rotate script's value ids (Release Path brief, Part 3; the Infisical chat's `pnpm secrets:rotate`). */
 export const ROTATE_IDS = [
 	'mongo-app',
@@ -923,6 +962,16 @@ export function createRunner(token) {
 				let raw = '';
 				for await (const chunk of req) raw += chunk;
 				return send(200, await localOps(raw ? JSON.parse(raw) : {}));
+			}
+			if (req.method === 'GET' && path.startsWith('/traces/')) {
+				try {
+					return send(
+						200,
+						await tracesRead(path.slice('/traces/'.length), Object.fromEntries(url.searchParams)),
+					);
+				} catch (err) {
+					return send(err.status ?? 500, { message: err.message });
+				}
 			}
 			if (req.method === 'GET' && path === '/shop-health')
 				return send(200, await shared('shop-health', 2000, shopHealth));

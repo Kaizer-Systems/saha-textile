@@ -592,10 +592,11 @@ export const CONSOLE_MENU: ConsoleMenu = {
 		traces: {
 			label: 'Traces',
 			states: {
-				list: 'Slow requests',
-				waterfall: 'One trace',
+				list: 'Slowest',
+				errors: 'Errors',
+				waterfall: 'Waterfall',
 				map: 'Service map',
-				diagnose: 'Diagnose a request',
+				diagnose: 'Diagnose',
 			},
 			off: false,
 			tip: null,
@@ -604,6 +605,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 			partStates: null,
 			captions: {
 				list: 'Local stack: slowest requests, traced with OpenTelemetry',
+				errors: 'Local stack: requests that failed in the last hour',
 				waterfall: 'One trace: every database, search and outside call',
 				map: 'Service map built from traces',
 				diagnose: 'Diagnose: the console works out why one request failed or was slow, on its own',

@@ -55,4 +55,5 @@ export * from './do-catalog.js';
 export * from './droplet-job.js';
 export * from './env-labels.js';
 export * from './rotation.js';
+export * from './traces.js';
 export * from './products.js';

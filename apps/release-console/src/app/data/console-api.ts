@@ -48,6 +48,10 @@ import {
 	serverLogsSchema,
 	type DbReport,
 	dbReportSchema,
+	type TracesList,
+	tracesListSchema,
+	type TraceView,
+	traceViewSchema,
 	type DeployToken,
 	deployTokensSchema,
 	type ConsoleView,
@@ -429,6 +433,14 @@ export class ConsoleApi {
 			undefined,
 			75_000,
 		);
+	}
+	/** This computer's traces: the slowest or the failed of the last hour (Release Path brief Part 6). */
+	traces(view: 'slowest' | 'errors'): Promise<TracesList> {
+		return this.call('GET', `/api/local/traces?view=${view}`, tracesListSchema, undefined, 60_000);
+	}
+	/** One trace's waterfall with its rule-based Diagnose. */
+	trace(id: string): Promise<TraceView> {
+		return this.call('GET', `/api/local/traces/${id}`, traceViewSchema, undefined, 60_000);
 	}
 	/** Reachable through Cloudflare, check by check (Release Path brief C8). */
 	reachable(p: string, r: string, slot: string, env: string): Promise<Reachable> {

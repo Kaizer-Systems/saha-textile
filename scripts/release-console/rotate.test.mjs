@@ -81,3 +81,23 @@ test('finds the deploy identity of the tier an Infisical place belongs to', asyn
 		identityId: null,
 	});
 });
+
+test('reads only the three traces paths, and says when VictoriaTraces is off', async () => {
+	const { tracesRead } = await import('./runner.mjs');
+	const asked = [];
+	const get = async (url) => {
+		asked.push(url);
+		return { ok: true, status: 200, json: async () => ({ data: [] }) };
+	};
+	await tracesRead('search', { service: 'saha-textile-api', limit: '500', errors: '1' }, get);
+	assert.match(asked[0], /\/select\/jaeger\/api\/traces\?service=saha-textile-api&limit=200&start=\d+&end=\d+&tags=/);
+	await tracesRead('trace', { id: 'abcdef0123456789' }, get);
+	assert.match(asked[1], /\/traces\/abcdef0123456789$/);
+	await assert.rejects(tracesRead('trace', { id: '../x' }, get), /Not a trace id/);
+	await assert.rejects(tracesRead('search', { service: 'a b' }, get), /Not a service/);
+	await assert.rejects(tracesRead('delete', {}, get), /Unknown/);
+	const off = await tracesRead('services', {}, async () => {
+		throw new Error('ECONNREFUSED');
+	});
+	assert.equal(off.off, true);
+});

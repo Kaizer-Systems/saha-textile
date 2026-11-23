@@ -240,6 +240,12 @@ If a deploy's health check fails, `deploy.sh` restores the previous release itse
 - A restore drill on a throwaway droplet runs before launch and every quarter.
 - The staging destroy script saves staging's data, and the create script restores it, so each rebuild is also a restore test. Production data never goes to staging.
 
+### Media buckets, and copying one into another
+
+- One bucket per environment, all in `sgp1` under the one $5 Spaces subscription (250 GiB and 1 TiB of transfer shared by every bucket): `saha-textile-media` (this computer and development), `saha-textile-media-staging`, `saha-textile-media-production` (owner, 2026-11-23). Each has its own Read/Write/Delete key for that bucket only, in its project's `/api`, the CDN on with a one-hour cache, listing restricted, and browser uploads allowed only from that environment's shop and admin addresses.
+- `pnpm spaces:copy -- --from <bucket> --to <bucket>` reports what a copy would do; `--apply` does it (owner, 2026-11-23: dev's files into staging from time to time, a trimmed staging into production once). Each bucket's key comes from the Infisical project whose `/api/SPACES_BUCKET` names it. Every file keeps its content, headers, metadata and public or private setting; files already the same are skipped, a file whose only difference is public/private is fixed, and nothing in the destination is deleted. Production's bucket needs `--confirm <its name>`. Afterwards it checks every file again and the destination's listing, CDN and upload rules (`--origin` to name other page addresses).
+- Nothing needs rewriting after a copy: files hold no web addresses, and the database keeps file names, building each address from `SPACES_CDN_URL` when read. The YouTube posters' saved addresses are rebuilt from their file names the same way. Copying the database itself is a separate step.
+
 ## 12. Monitoring
 
 **DigitalOcean only.** No outside monitoring vendor.

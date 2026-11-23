@@ -472,6 +472,8 @@ export class Dashboard {
 		if (!isPlatformBrowser(this.platformId)) return;
 		if (this.chartInstance || !element || !this.chartOptions) return;
 		const ApexCharts = (await import('apexcharts')).default;
+		// The data and the view can both request a chart while the chunk is loading.
+		if (this.chartInstance || this.chart()?.nativeElement !== element) return;
 		this.chartInstance = new ApexCharts(element, this.chartOptions);
 		void this.chartInstance.render();
 	}

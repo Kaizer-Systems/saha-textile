@@ -254,11 +254,16 @@
 				}
 			}
 
+			app-search {
+				min-width: 0;
+			}
+
 			.search-full {
 				position: relative;
 				z-index: 1;
 				height: auto;
 				width: 600px;
+				max-width: 100%;
 				transition: all 0.3s ease;
 
 				@media (max-width: 1600px) {

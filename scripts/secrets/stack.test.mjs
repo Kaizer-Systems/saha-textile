@@ -6,7 +6,16 @@ import test from 'node:test';
 
 import { parseEnvText } from './files.mjs';
 import { SecretsError, loadInventory } from './inventory.mjs';
-import { STACK_ENV_DIR, stackPort, stackServiceSecrets, writeStackEnv } from './stack.mjs';
+import {
+	STACK_ENV_DIR,
+	STACK_TRACES_ADDRESS,
+	setStackTracing,
+	stackPort,
+	stackServiceSecrets,
+	stackTracesRunning,
+	withTracingLine,
+	writeStackEnv,
+} from './stack.mjs';
 
 // Every made-up value carries this marker, so a test can prove no value reaches a message.
 const MARK = 'zz-made-up-';
@@ -63,6 +72,7 @@ function write(root, api, extra = {}) {
 		inventory,
 		readApi: () => api,
 		readInfrastructure: infrastructure(),
+		tracing: () => false,
 		...extra,
 	});
 	for (const line of lines) assert.ok(!line.includes(MARK), `a value leaked into: ${line}`);
@@ -255,4 +265,60 @@ test('without Infisical, apps/api/.env is used and names the inventory does not 
 			TypeError,
 		);
 	});
+});
+
+test('tracing: one line set or removed, every other line kept; stack:env follows the trace store', () => {
+	assert.equal(
+		withTracingLine('A=1\nB=2\n', true),
+		`A=1\nB=2\nOTEL_EXPORTER_OTLP_TRACES_ENDPOINT=${STACK_TRACES_ADDRESS}\n`,
+	);
+	assert.equal(
+		withTracingLine(`A=1\nOTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1:10428/x\nB=2\n`, false),
+		'A=1\nB=2\n',
+	);
+	assert.equal(withTracingLine(withTracingLine('A=1\n', true), true), withTracingLine('A=1\n', true));
+	const root = mkdtempSync(join(tmpdir(), 'stack-tracing-'));
+	try {
+		const api = new Map([
+			...devProject(),
+			['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT', 'http://127.0.0.1:10428/insert/opentelemetry/v1/traces'],
+		]);
+		write(root, api);
+		assert.ok(
+			!file(root, 'api.env').includes('OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'),
+			"this Mac's address never reaches a container",
+		);
+		write(root, api, { tracing: () => true });
+		assert.equal(
+			parseEnvText(file(root, 'api.env')).get('OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'),
+			STACK_TRACES_ADDRESS,
+		);
+		assert.equal(
+			parseEnvText(file(root, 'storefront.env')).get('OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'),
+			STACK_TRACES_ADDRESS,
+		);
+		assert.match(setStackTracing(root, false)[0], /Tracing off in docker\/stack\/env: api\.env, storefront\.env/);
+		assert.ok(!file(root, 'api.env').includes('OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'));
+		assert.equal(mode(root, 'api.env'), 0o600);
+		assert.match(setStackTracing(root, false)[0], /already off/);
+		assert.match(setStackTracing(root, true)[0], /Tracing on/);
+		assert.equal(
+			parseEnvText(file(root, 'storefront.env')).get('OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'),
+			STACK_TRACES_ADDRESS,
+		);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+	assert.equal(
+		stackTracesRunning(() => ({ status: 0, stdout: 'abc123\n' })),
+		true,
+	);
+	assert.equal(
+		stackTracesRunning(() => ({ status: 0, stdout: '' })),
+		false,
+	);
+	assert.equal(
+		stackTracesRunning(() => ({ status: 1, stdout: '' })),
+		false,
+	);
 });

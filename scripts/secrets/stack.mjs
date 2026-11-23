@@ -18,6 +18,7 @@
  * be read, `apps/api/.env` (which `pnpm secrets:pull` keeps in step) and `docker/dev-secrets/` are
  * used.
  */
+import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -206,6 +207,68 @@ export function buildStackFiles(api, { inventory, source, local, services, unkno
 	return { files, notes: env.notes, names: env.names, hosts: { shop, admin, api: apiUrl } };
 }
 
+/** Where the stack's apps send traces while its trace store runs (Release Path brief Q7, tracing switch Q2 A). */
+export const STACK_TRACES_ADDRESS = 'http://traces:10428/insert/opentelemetry/v1/traces';
+const TRACING_LINE = /^\s*OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=/;
+
+/**
+ * An env file's text with its one tracing line set (on) or removed (off); every other line kept.
+ * @param {string} text
+ * @param {boolean} on
+ */
+export function withTracingLine(text, on) {
+	const kept = text.split('\n').filter((line) => !TRACING_LINE.test(line));
+	while (kept.length > 0 && kept.at(-1) === '') kept.pop();
+	if (on) kept.push(`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=${STACK_TRACES_ADDRESS}`);
+	return `${kept.join('\n')}\n`;
+}
+
+/**
+ * Turns tracing on or off for the stack's API, worker and shop: rewrites only the tracing line in
+ * docker/stack/env/api.env and storefront.env, with no Infisical read (the Release Console's switch).
+ * The containers read it when they are next created.
+ * @param {string} root
+ * @param {boolean} on
+ * @returns {string[]} names-only lines
+ */
+export function setStackTracing(root, on) {
+	const dir = join(root, STACK_ENV_DIR);
+	const changed = [];
+	for (const [name, mode] of /** @type {const} */ ([
+		['api.env', 0o600],
+		['storefront.env', 0o644],
+	])) {
+		const text = readIfPresent(join(dir, name));
+		if (text === null) continue;
+		const next = withTracingLine(text, on);
+		if (next === text) continue;
+		replaceFile(join(dir, name), next, mode);
+		changed.push(name);
+	}
+	return [
+		changed.length > 0
+			? `Tracing ${on ? 'on' : 'off'} in ${STACK_ENV_DIR}: ${changed.join(', ')}.`
+			: `Tracing was already ${on ? 'on' : 'off'} in ${STACK_ENV_DIR}.`,
+	];
+}
+
+/** Whether the stack's trace store is running (docker compose --profile tracing up -d traces). */
+export function stackTracesRunning(run = spawnSync) {
+	const result = run(
+		'docker',
+		[
+			'ps',
+			'-q',
+			'--filter',
+			'label=com.docker.compose.service=traces',
+			'--filter',
+			'label=com.docker.compose.project=saha-textile-stack',
+		],
+		{ encoding: 'utf8' },
+	);
+	return result.status === 0 && String(result.stdout).trim() !== '';
+}
+
 /** The files that hold secrets; the rest are public. */
 const SECRET_FILES = new Set([
 	'api.env',
@@ -225,9 +288,10 @@ const SECRET_FILES = new Set([
  * @param {import('./inventory.mjs').Inventory} options.inventory
  * @param {() => Map<string, string>} options.readApi
  * @param {() => Map<string, string>} options.readInfrastructure
+ * @param {() => boolean} [options.tracing]   whether the trace store runs (docker), so the apps send to it
  * @returns {string[]}
  */
-export function writeStackEnv({ root, inventory, readApi, readInfrastructure }) {
+export function writeStackEnv({ root, inventory, readApi, readInfrastructure, tracing = stackTracesRunning }) {
 	const project = inventory.projects.local;
 	const lines = [];
 	let api;
@@ -273,6 +337,12 @@ export function writeStackEnv({ root, inventory, readApi, readInfrastructure }) 
 					.map(([name]) => name)
 					.sort();
 
+	// The stack owns the tracing line: its trace store's address while it runs, none otherwise (never this
+	// Mac's 127.0.0.1 address from Infisical, which a container cannot reach).
+	const tracingOn = tracing();
+	for (const name of ['api.env', 'storefront.env']) {
+		built.files.set(name, withTracingLine(/** @type {string} */ (built.files.get(name)), tracingOn));
+	}
 	mkdirSync(dir, { recursive: true, mode: 0o700 });
 	for (const [name, text] of built.files) replaceFile(join(dir, name), text, SECRET_FILES.has(name) ? 0o600 : 0o644);
 

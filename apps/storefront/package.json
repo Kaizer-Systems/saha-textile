@@ -11,7 +11,7 @@
     "styles:watch": "sass --quiet --quiet-deps --no-source-map --load-path=node_modules --watch src/scss/app.scss:src/scss/app.gen.css",
     "predev": "pnpm run styles",
     "dev": "vite",
-    "start": "node dist/analog/server/index.mjs",
+    "start": "node --import ./dist/analog/tracing.mjs dist/analog/server/index.mjs",
     "start:watch": "node ../../scripts/serve-built-frontend.mjs --app storefront",
     "prebuild": "pnpm run styles",
     "build": "vite build && vite build --config server-tracing.vite.ts",

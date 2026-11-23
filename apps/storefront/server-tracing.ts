@@ -7,6 +7,7 @@
  * request and its calls to the API (the trace id travels with them, so the API's spans join it), with
  * addresses masked by the same rule as the API's logs and the edge.
  */
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
@@ -41,9 +42,41 @@ export class AddressMaskingProcessor implements SpanProcessor {
 	}
 }
 
-/** Starts tracing when the endpoint is set; returns the provider, or null. */
-export function startShopTracing(env: NodeJS.ProcessEnv = process.env): NodeTracerProvider | null {
-	const url = env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT;
+const ENDPOINT = 'OTEL_EXPORTER_OTLP_TRACES_ENDPOINT';
+
+/**
+ * The trace store's address: the environment's, or on this Mac (`pnpm start`, which has no env file)
+ * that one name alone from apps/api/.env.overrides, where the Release Console's tracing switch writes it
+ * (tracing switch brief, Q2 A). Never the rest of that file: it holds API-only settings such as PORT.
+ * The image has no such file, so there it is the environment's or nothing.
+ */
+export function traceEndpoint(
+	env: NodeJS.ProcessEnv,
+	readOverrides: () => string = () =>
+		// dist/analog/tracing.mjs → apps/api/.env.overrides
+		readFileSync(new URL('../../../api/.env.overrides', import.meta.url), 'utf8'),
+): string | undefined {
+	if (env[ENDPOINT]) return env[ENDPOINT];
+	let text: string;
+	try {
+		text = readOverrides();
+	} catch {
+		return undefined;
+	}
+	const line = text.split('\n').find((candidate) => candidate.trimStart().startsWith(`${ENDPOINT}=`));
+	const value = line
+		?.slice(line.indexOf('=') + 1)
+		.trim()
+		.replace(/^(['"])(.*)\1$/, '$2');
+	return value || undefined;
+}
+
+/** Starts tracing when there is a trace store's address; returns the provider, or null. */
+export function startShopTracing(
+	env: NodeJS.ProcessEnv = process.env,
+	readOverrides?: () => string,
+): NodeTracerProvider | null {
+	const url = traceEndpoint(env, readOverrides);
 	if (!url) return null;
 	const provider = new NodeTracerProvider({
 		resource: resourceFromAttributes({

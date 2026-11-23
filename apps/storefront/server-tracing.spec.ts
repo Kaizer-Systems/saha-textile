@@ -1,11 +1,31 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { AddressMaskingProcessor, startShopTracing } from './server-tracing';
+import { AddressMaskingProcessor, startShopTracing, traceEndpoint } from './server-tracing';
 
 /** Tracing for the shop's server pages (Release Path brief Q7): off unless configured; addresses masked. */
 describe('server tracing', () => {
 	it('starts nothing without a trace store address', () => {
-		expect(startShopTracing({})).toBeNull();
+		expect(startShopTracing({}, () => 'PORT=4000\n')).toBeNull();
+	});
+
+	it("takes the address from the environment, else that one name from the API's overrides file", () => {
+		const url = 'http://127.0.0.1:10428/insert/opentelemetry/v1/traces';
+		expect(
+			traceEndpoint(
+				{ OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: 'http://x' },
+				() => `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=${url}`,
+			),
+		).toBe('http://x');
+		expect(
+			traceEndpoint({}, () => `PORT=4000\n  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${url}"\nJWT_ACCESS_SECRET=zz\n`),
+		).toBe(url);
+		expect(traceEndpoint({}, () => 'PORT=4000\n')).toBeUndefined();
+		expect(traceEndpoint({}, () => 'OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=\n')).toBeUndefined();
+		expect(
+			traceEndpoint({}, () => {
+				throw new Error('no file');
+			}),
+		).toBeUndefined();
 	});
 
 	it('masks one-time tokens in addresses the moment a span starts', async () => {

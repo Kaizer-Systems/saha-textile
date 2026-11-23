@@ -221,10 +221,7 @@ export function creditNotePosting(input: { totals: NoteTotals; restockCostINR: n
 
 /** A debit note undoing a credit note posts its exact opposite, in the month it is made (B9). */
 export function debitNotePosting(input: { totals: NoteTotals; restockCostINR: number }): PostingRow[] {
-	return creditNotePosting(input).map((row) => ({
-		systemKey: row.systemKey,
-		...(row.debitPaise ? { creditPaise: row.debitPaise } : { debitPaise: row.creditPaise }),
-	}));
+	return oppositePosting(creditNotePosting(input));
 }
 
 /** What pieces back in stock cost: restocked and damaged-but-kept pieces at their own cost; written off, nothing. */
@@ -233,6 +230,43 @@ export function restockCost(lines: readonly Pick<CreditNoteLine, 'outcome' | 'qu
 		.filter((l) => l.outcome === 'restock' || l.outcome === 'damaged')
 		.reduce((s, l) => s + paise((l.unitCostINR ?? 0) * l.quantity), 0);
 	return rupees(cost);
+}
+
+/**
+ * D9 (s.17(5)(h)): a returned piece written off takes back the input tax claimed when it was bought: its cost at the
+ * line's GST rate, in paise. Pieces back in stock or held as damaged keep their input tax.
+ */
+export function writeOffInputTax(
+	lines: readonly Pick<CreditNoteLine, 'outcome' | 'quantity' | 'unitCostINR' | 'ratePercent'>[],
+): number {
+	const tax = lines
+		.filter((l) => l.outcome === 'write_off')
+		.reduce((s, l) => s + Math.round((paise((l.unitCostINR ?? 0) * l.quantity) * l.ratePercent) / 100), 0);
+	return rupees(tax);
+}
+
+/**
+ * The input tax reversal's posting (posting rules, "Stock lost, damaged and written off"): stock loss on the debit
+ * side, the input tax taken back as CGST and SGST. Purchases are taken as made within the State until the CA says
+ * otherwise (B7.6, B8.3).
+ */
+export function inputTaxReversalPosting(amountINR: number): PostingRow[] {
+	const total = paise(amountINR);
+	if (total <= 0) return [];
+	const half = Math.floor(total / 2);
+	return [
+		{ systemKey: 'stock_loss', debitPaise: total },
+		{ systemKey: 'input_cgst', creditPaise: half },
+		{ systemKey: 'input_sgst', creditPaise: total - half },
+	];
+}
+
+/** The opposite of a posting, for Cancel and debit notes. */
+export function oppositePosting(rows: readonly PostingRow[]): PostingRow[] {
+	return rows.map((row) => ({
+		systemKey: row.systemKey,
+		...(row.debitPaise ? { creditPaise: row.debitPaise } : { debitPaise: row.creditPaise }),
+	}));
 }
 
 /** B8: only a super admin, only while the note's month isn't filed or its books closed, and before the refund. */

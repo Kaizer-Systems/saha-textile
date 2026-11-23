@@ -7917,5 +7917,6 @@
 	"ret_problem_credit_note_refund_no_gateway_payment": "The order wasn’t paid through the gateway; record it as paid by hand.",
 	"ret_problem_credit_note_refund_gateway_unavailable": "The gateway isn’t answering; try again, it can’t refund twice.",
 	"ret_problem_credit_note_refund_refused": "The gateway refused the refund ({{sku}}).",
-	"ret_problem_credit_note_refund_needs_cash_or_bank": "Choose a cash or bank ledger to pay from."
+	"ret_problem_credit_note_refund_needs_cash_or_bank": "Choose a cash or bank ledger to pay from.",
+	"biz_entry_refund": "Refund"
 }

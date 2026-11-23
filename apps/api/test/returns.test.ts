@@ -81,6 +81,7 @@ interface Options {
 	filings?: unknown[];
 	windowDays?: number;
 	noOrder?: boolean;
+	business?: boolean;
 }
 
 function setup(options: Options = {}) {
@@ -91,11 +92,17 @@ function setup(options: Options = {}) {
 	const moves: { quantityDelta: number; heldDelta: number; reasonCode: string | null }[] = [];
 	const consumed: string[] = [];
 	const holds = new Map<string, { id: string; status: string }>();
-	const posted: { date: string; source: { type: string } }[] = [];
+	const posted: { date: string; source: { type: string }; lines: { ledger: { systemKey?: string } }[] }[] = [];
+	const entries: { kind: string; amountINR: number; documentNumber: string | null; by: string }[] = [];
 	const audit: string[] = [];
 	let n = 0;
 	const service = new ReturnsService(
-		{ findById: async (id: string) => (options.noOrder || id !== 'ord_1' ? null : order) } as never,
+		{
+			findById: async (id: string) =>
+				options.noOrder || id !== 'ord_1'
+					? null
+					: { ...order, buyer: options.business ? { businessId: 'biz_1' } : null },
+		} as never,
 		{
 			listByOrder: async () =>
 				options.delivered === null
@@ -187,6 +194,7 @@ function setup(options: Options = {}) {
 			}),
 		} as never,
 		{ listByOrder: async () => options.payments ?? [] } as never,
+		{ append: async (entry: (typeof entries)[number]) => (entries.push(entry), entry) } as never,
 		options.gateway === null
 			? null
 			: ({
@@ -196,7 +204,7 @@ function setup(options: Options = {}) {
 					}),
 				} as never),
 	);
-	return { service, returns, notes, debits, moves, consumed, holds, posted, audit, invoices };
+	return { service, returns, notes, debits, moves, consumed, holds, posted, audit, invoices, entries };
 }
 
 const NOW = new Date('2026-11-25T05:00:00.000Z');
@@ -790,5 +798,76 @@ describe('Refund now (B5)', () => {
 		const undone = (await issuedFrom(other)).note;
 		await other.service.debitNote(undone.id, { reason: 'Undo the return' }, null, NOW);
 		await expect(other.service.refund(undone.id, byHand, null, NOW)).rejects.toThrow('credit_note_refund_not_due');
+	});
+});
+
+describe('input tax on written-off pieces (D9) and a business buyer’s account', () => {
+	const superAdmin = { userId: 'adm_super' } as never;
+	const keys = (made: ReturnType<typeof setup>) => made.posted.map((p) => p.source.type);
+
+	it('takes back a written-off piece’s input tax at Issue, and gives it back on Cancel or a debit note', async () => {
+		const made = setup();
+		const { draft } = await checkedDraft(made, 'write_off');
+		const issued = await made.service.issue(draft.id, 0, 'adm_1', NOW);
+		expect(keys(made)).toEqual(['creditNote', 'creditNoteInputTax']);
+		expect(made.posted[1]?.lines.map((l) => l.ledger.systemKey)).toEqual([
+			'stock_loss',
+			'input_cgst',
+			'input_sgst',
+		]);
+		expect(made.posted[1]).toMatchObject({ lines: [{ debitPaise: 15_600 }, { creditPaise: 7_800 }, {}] });
+		await made.service.cancel(issued.id, { reason: 'Made against the wrong invoice' }, superAdmin, NOW);
+		expect(keys(made).slice(2)).toEqual(['creditNoteCancel', 'creditNoteInputTaxCancel']);
+		expect(made.posted[3]).toMatchObject({ lines: [{ creditPaise: 15_600 }, { debitPaise: 7_800 }, {}] });
+		const undone = setup();
+		const other = await checkedDraft(undone, 'write_off');
+		await undone.service.issue(other.draft.id, 0, null, NOW);
+		await undone.service.debitNote(other.draft.id, { reason: 'November already filed' }, null, NOW);
+		expect(keys(undone)).toEqual(['creditNote', 'creditNoteInputTax', 'debitNote', 'debitNoteInputTax']);
+		const restocked = setup();
+		const back = await checkedDraft(restocked);
+		await restocked.service.issue(back.draft.id, 0, null, NOW);
+		expect(keys(restocked)).toEqual(['creditNote']);
+	});
+
+	it('puts a business buyer’s credit note, refund, debit note and cancel on its account', async () => {
+		const made = setup({ business: true });
+		const { draft } = await checkedDraft(made);
+		const issued = await made.service.issue(draft.id, 0, 'adm_1', NOW);
+		await made.service.refund(
+			issued.id,
+			{ how: 'by_hand', method: 'upi', ledgerId: 'led_cash', reference: 'UTR123456' },
+			null,
+			NOW,
+		);
+		expect(made.entries).toEqual([
+			expect.objectContaining({
+				kind: 'creditNote',
+				amountINR: -4_680,
+				documentNumber: issued.number,
+				by: 'adm_1',
+			}),
+			expect.objectContaining({ kind: 'refund', amountINR: 4_680, by: 'system' }),
+		]);
+		const other = await checkedDraft(made);
+		await made.service.issue(other.draft.id, 0, null, NOW);
+		await made.service.debitNote(other.draft.id, { reason: 'November already filed' }, null, NOW);
+		const third = await made.service.priceAdjustment(
+			'ord_1',
+			{ lines: [{ lineId: 'b', lowerByINR: 50 }], reason: 'x', refundTo: 'customer_account' },
+			null,
+			NOW,
+		);
+		await made.service.issue(third.id, 0, null, NOW);
+		await made.service.cancel(third.id, { reason: 'Not agreed after all' }, superAdmin, NOW);
+		expect(made.entries.slice(2).map((e) => [e.kind, e.amountINR])).toEqual([
+			['creditNote', -4_680],
+			['debitNote', 4_680],
+			['creditNote', -50],
+			['reversal', 50],
+		]);
+		const shopper = setup();
+		await shopper.service.issue((await checkedDraft(shopper)).draft.id, 0, null, NOW);
+		expect(shopper.entries).toEqual([]);
 	});
 });

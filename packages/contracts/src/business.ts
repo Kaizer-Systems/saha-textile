@@ -191,6 +191,8 @@ export const LedgerEntryKind = z.enum([
 	'openingBalance',
 	'setOff',
 	'reversal',
+	/** Money paid back against a credit note (accounts brief B5, Refund now). */
+	'refund',
 ]);
 export type LedgerEntryKind = z.infer<typeof LedgerEntryKind>;
 

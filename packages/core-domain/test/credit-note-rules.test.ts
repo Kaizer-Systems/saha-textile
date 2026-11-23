@@ -8,6 +8,9 @@ import {
 	creditNotePosting,
 	creditNoteProblems,
 	debitNotePosting,
+	inputTaxReversalPosting,
+	oppositePosting,
+	writeOffInputTax,
 	deliveryShareLine,
 	NOTE_DELIVERY_SAC,
 	noteTotals,
@@ -223,5 +226,31 @@ describe('cancelling an issued credit note (B8, B9)', () => {
 		expect(creditNoteCancelAllowed(ok)).toBe(true);
 		for (const change of [{ superAdmin: false }, { monthFiled: true }, { booksClosed: true }, { refundPaid: true }])
 			expect(creditNoteCancelAllowed({ ...ok, ...change })).toBe(false);
+	});
+});
+
+describe('input tax on written-off returns (D9, s.17(5)(h))', () => {
+	it('takes back the input tax on written-off pieces only, at their cost and the line’s rate', () => {
+		expect(
+			writeOffInputTax([
+				{ outcome: 'write_off', quantity: 2, unitCostINR: 3_120, ratePercent: 5 },
+				{ outcome: 'write_off', quantity: 1, unitCostINR: null, ratePercent: 5 },
+				{ outcome: 'damaged', quantity: 1, unitCostINR: 3_120, ratePercent: 5 },
+				{ outcome: 'restock', quantity: 1, unitCostINR: 3_120, ratePercent: 5 },
+			]),
+		).toBe(312);
+	});
+
+	it('posts stock loss against input CGST and SGST, nothing for nothing, and its opposite', () => {
+		expect(inputTaxReversalPosting(312.01)).toEqual([
+			{ systemKey: 'stock_loss', debitPaise: 31_201 },
+			{ systemKey: 'input_cgst', creditPaise: 15_600 },
+			{ systemKey: 'input_sgst', creditPaise: 15_601 },
+		]);
+		expect(inputTaxReversalPosting(0)).toEqual([]);
+		expect(oppositePosting(inputTaxReversalPosting(312.01))[0]).toEqual({
+			systemKey: 'stock_loss',
+			creditPaise: 31_201,
+		});
 	});
 });

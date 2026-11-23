@@ -7917,5 +7917,6 @@
 	"ret_problem_credit_note_refund_no_gateway_payment": "অর্ডারের টাকা গেটওয়ে দিয়ে আসেনি; হাতে দেওয়া হিসেবে লিখুন।",
 	"ret_problem_credit_note_refund_gateway_unavailable": "গেটওয়ে সাড়া দিচ্ছে না; আবার চেষ্টা করুন, দু’বার ফেরত হবে না।",
 	"ret_problem_credit_note_refund_refused": "গেটওয়ে ফেরত নেয়নি ({{sku}})।",
-	"ret_problem_credit_note_refund_needs_cash_or_bank": "কোন ক্যাশ বা ব্যাংক লেজার থেকে দেওয়া হচ্ছে বেছে নিন।"
+	"ret_problem_credit_note_refund_needs_cash_or_bank": "কোন ক্যাশ বা ব্যাংক লেজার থেকে দেওয়া হচ্ছে বেছে নিন।",
+	"biz_entry_refund": "টাকা ফেরত"
 }

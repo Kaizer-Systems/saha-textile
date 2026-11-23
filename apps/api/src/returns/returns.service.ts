@@ -21,6 +21,7 @@ import {
 	type DebitNoteWrite,
 	GST_RETURN_LOCKS,
 	InventoryCostLayer,
+	LedgerEntry,
 	type Order,
 	type OrderLine,
 	OrderReturn,
@@ -45,6 +46,8 @@ import {
 	type DebitNoteRepository,
 	debitNotePosting,
 	deliveryShareLine,
+	inputTaxReversalPosting,
+	type LedgerRepository,
 	type GstReturnRepository,
 	type InventoryCostLayerRepository,
 	type OrderPaymentRepository,
@@ -52,6 +55,7 @@ import {
 	istDay,
 	ledgerClass,
 	noteTotals,
+	oppositePosting,
 	type OrderReturnRepository,
 	type PeriodLockRepository,
 	periodStateOf,
@@ -59,6 +63,7 @@ import {
 	type ProductVariantRepository,
 	restockCost,
 	returnWindow,
+	writeOffInputTax,
 	type ShipmentRepository,
 	type SiteSettingsRepository,
 	type StockHoldRepository,
@@ -77,6 +82,7 @@ import {
 	GST_RETURN_REPOSITORY,
 	INVENTORY_COST_LAYER_REPOSITORY,
 	INR_PAYMENT_GATEWAY,
+	LEDGER_REPOSITORY,
 	ORDER_PAYMENT_REPOSITORY,
 	ORDER_RETURN_REPOSITORY,
 	PERIOD_LOCK_REPOSITORY,
@@ -137,6 +143,7 @@ export class ReturnsService {
 		private readonly numbers: DocumentNumbersService,
 		private readonly ledger: LedgerService,
 		@Inject(ORDER_PAYMENT_REPOSITORY) private readonly payments: Pick<OrderPaymentRepository, 'listByOrder'>,
+		@Inject(LEDGER_REPOSITORY) private readonly accounts: Pick<LedgerRepository, 'append'>,
 		@Optional()
 		@Inject(INR_PAYMENT_GATEWAY)
 		private readonly gateway: Pick<PaymentGatewayPort, 'refundPayment'> | null = null,
@@ -726,6 +733,9 @@ export class ReturnsService {
 				context,
 				actorId,
 			);
+			const source = { type: 'creditNoteInputTax', id: note.id, number };
+			await this.inputTax(lines, note.locationId, date, source, false, actorId, context);
+			await this.account(order, { id: note.id, number }, 'creditNote', -totals.totalINR, actorId, at, context);
 			const next = await this.notes.save(
 				CreditNote.parse({
 					...note,
@@ -801,6 +811,9 @@ export class ReturnsService {
 				context,
 				actorId,
 			);
+			const source = { type: 'creditNoteInputTaxCancel', id: note.id, number: note.number };
+			await this.inputTax(note.lines, note.locationId, note.date, source, true, actorId, context);
+			await this.account(order, note, 'reversal', note.totalINR, actorId, at, context);
 			const next = await this.notes.save(
 				CreditNote.parse({
 					...note,
@@ -874,6 +887,9 @@ export class ReturnsService {
 				createdAt: at,
 				createdBy: actorId,
 			});
+			const source = { type: 'debitNoteInputTax', id: debitId, number };
+			await this.inputTax(note.lines, note.locationId, date, source, true, actorId, context);
+			await this.account(order, note, 'debitNote', note.totalINR, actorId, at, context);
 			await this.debits.insert(debit, context);
 			await this.notes.save(CreditNote.parse({ ...note, debitNoteId: debit.id }), note.version, context);
 			await this.log(
@@ -947,6 +963,8 @@ export class ReturnsService {
 				context,
 				actorId,
 			);
+			const order = await this.order(note.orderId);
+			await this.account(order, note, 'refund', note.totalINR, actorId, at, context);
 			const next = await this.notes.save(
 				CreditNote.parse({
 					...note,
@@ -969,6 +987,66 @@ export class ReturnsService {
 			await this.log(actorId, 'creditNote.refund', 'creditNote', id, { how: write.how, reference }, context);
 			return next;
 		});
+	}
+
+	/**
+	 * A business buyer's own account (receivable side; positive is owed to us): the credit note takes the total off,
+	 * a refund, a debit note or a cancel puts it back. Shoppers without a business account have none.
+	 */
+	private async account(
+		order: Order,
+		note: Pick<CreditNote, 'id' | 'number'>,
+		kind: 'creditNote' | 'refund' | 'debitNote' | 'reversal',
+		amountINR: number,
+		actorId: string | null,
+		at: string,
+		context: TransactionContext,
+	): Promise<void> {
+		const businessId = order.buyer?.businessId;
+		if (!businessId) return;
+		await this.accounts.append(
+			LedgerEntry.parse({
+				id: `led_${randomUUID()}`,
+				businessId,
+				side: 'receivable',
+				kind,
+				amountINR,
+				documentType: 'creditNote',
+				documentId: note.id,
+				documentNumber: note.number,
+				at,
+				by: actorId ?? 'system',
+			}),
+			context,
+		);
+	}
+
+	/**
+	 * D9 (s.17(5)(h)): written-off pieces take back their input tax in a voucher of its own; Cancel and debit notes
+	 * post its opposite. Nothing is posted when no piece was written off.
+	 */
+	private async inputTax(
+		lines: readonly CreditNoteLine[],
+		locationId: string,
+		date: string,
+		source: { type: string; id: string; number: string | null },
+		undo: boolean,
+		actorId: string | null,
+		context: TransactionContext,
+	): Promise<void> {
+		const rows = inputTaxReversalPosting(writeOffInputTax(lines));
+		if (!rows.length) return;
+		await this.ledger.post(
+			{
+				date,
+				narration: `${undo ? 'Input tax restored' : 'Input tax reversed, s.17(5)(h)'}: written-off pieces · ${source.number}`,
+				lines: this.posting(undo ? oppositePosting(rows) : rows, locationId),
+				source,
+				idempotencyKey: `${source.type}:${source.id}`,
+			},
+			context,
+			actorId,
+		);
 	}
 
 	private async log(

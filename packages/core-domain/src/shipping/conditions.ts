@@ -74,72 +74,54 @@ export function conditionHolds(condition: ShippingCondition, scope: ShippingEval
 	if (fact === null) return false;
 
 	if (type === 'boolean') return typeof fact === 'boolean' && fact === value;
-
-	if (NUMERIC.has(type)) {
-		if (typeof fact !== 'number') return false;
-		const n = value as number;
-		switch (op) {
-			case 'is':
-				return Math.abs(fact - n) < 1e-9;
-			case 'isNot':
-				return Math.abs(fact - n) >= 1e-9;
-			case 'moreThan':
-				return fact > n;
-			case 'atLeast':
-				return fact >= n;
-			case 'lessThan':
-				return fact < n;
-			case 'atMost':
-				return fact <= n;
-			case 'between': {
-				const [lo, hi] = value as [number, number];
-				return fact >= lo && fact <= hi;
-			}
-			default:
-				return false;
-		}
-	}
-
-	if (typeof fact === 'boolean' || typeof fact === 'number') return false;
-
+	// The shape check admits only these operators for each type, and a field's facts are always of its type.
+	if (NUMERIC.has(type)) return NUMBER_TESTS[op as NumberOp](fact as number, value);
 	if (type === 'pincode') {
-		const pin = Array.isArray(fact) ? '' : fact.replace(/\s+/g, '');
-		if (pin === '') return false;
-		switch (op) {
-			case 'is':
-				return pin === String(value).replace(/\s+/g, '');
-			case 'isOneOf':
-				return (value as string[]).some((v) => v.replace(/\s+/g, '') === pin);
-			case 'isNotOneOf':
-				return !(value as string[]).some((v) => v.replace(/\s+/g, '') === pin);
-			case 'startsWith': {
-				const prefixes = Array.isArray(value) ? (value as string[]) : [value as string];
-				return prefixes.some((p) => p.trim() !== '' && pin.startsWith(p.replace(/\s+/g, '')));
-			}
-			case 'between': {
-				if (!/^\d+$/.test(pin)) return false;
-				const [lo, hi] = value as [number, number];
-				const n = Number(pin);
-				return n >= lo && n <= hi;
-			}
-			default:
-				return false;
-		}
+		const pin = (fact as string).replace(/\s+/g, '');
+		return pin !== '' && PINCODE_TESTS[op as PincodeOp](pin, value);
 	}
-
-	switch (op) {
-		case 'is':
-			return textHas(fact, value as string);
-		case 'isNot':
-			return !textHas(fact, value as string);
-		case 'isOneOf':
-			return (value as string[]).some((v) => textHas(fact, v));
-		case 'isNotOneOf':
-			return !(value as string[]).some((v) => textHas(fact, v));
-		default:
-			return false;
-	}
+	return TEXT_TESTS[op as TextOp](fact as string | string[], value);
 }
+
+type NumberOp = 'is' | 'isNot' | 'moreThan' | 'atLeast' | 'lessThan' | 'atMost' | 'between';
+type PincodeOp = 'is' | 'isOneOf' | 'isNotOneOf' | 'startsWith' | 'between';
+type TextOp = 'is' | 'isNot' | 'isOneOf' | 'isNotOneOf';
+
+const NUMBER_TESTS: Record<NumberOp, (fact: number, value: unknown) => boolean> = {
+	is: (fact, value) => Math.abs(fact - (value as number)) < 1e-9,
+	isNot: (fact, value) => Math.abs(fact - (value as number)) >= 1e-9,
+	moreThan: (fact, value) => fact > (value as number),
+	atLeast: (fact, value) => fact >= (value as number),
+	lessThan: (fact, value) => fact < (value as number),
+	atMost: (fact, value) => fact <= (value as number),
+	between: (fact, value) => {
+		const [lo, hi] = value as [number, number];
+		return fact >= lo && fact <= hi;
+	},
+};
+
+const PINCODE_TESTS: Record<PincodeOp, (pin: string, value: unknown) => boolean> = {
+	is: (pin, value) => pin === String(value).replace(/\s+/g, ''),
+	isOneOf: (pin, value) => (value as string[]).some((v) => v.replace(/\s+/g, '') === pin),
+	isNotOneOf: (pin, value) => !(value as string[]).some((v) => v.replace(/\s+/g, '') === pin),
+	startsWith: (pin, value) => {
+		const prefixes = Array.isArray(value) ? (value as string[]) : [value as string];
+		return prefixes.some((p) => p.trim() !== '' && pin.startsWith(p.replace(/\s+/g, '')));
+	},
+	between: (pin, value) => {
+		if (!/^\d+$/.test(pin)) return false;
+		const [lo, hi] = value as [number, number];
+		const n = Number(pin);
+		return n >= lo && n <= hi;
+	},
+};
+
+const TEXT_TESTS: Record<TextOp, (fact: string | string[], value: unknown) => boolean> = {
+	is: (fact, value) => textHas(fact, value as string),
+	isNot: (fact, value) => !textHas(fact, value as string),
+	isOneOf: (fact, value) => (value as string[]).some((v) => textHas(fact, v)),
+	isNotOneOf: (fact, value) => !(value as string[]).some((v) => textHas(fact, v)),
+};
 
 /** AND / OR over a group; an empty group is not a valid rule, so it never holds. */
 export function groupHolds(group: ShippingConditionGroup, scope: ShippingEvalScope): boolean {

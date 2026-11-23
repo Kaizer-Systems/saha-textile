@@ -20,7 +20,8 @@ const label = (envs: EnvShape[], names: string[]): string | null => {
 	const unique = [...new Set(names)];
 	if (!unique.length) return null;
 	const named = unique.map((n) => envs.find((e) => e.name === n)?.label || n);
-	return unique.length === 1 ? (named[0] ?? null) : `${MIXED}: ${named.join(', ')}`;
+	const text = named.join(', ');
+	return unique.length === 1 ? text : `${MIXED}: ${text}`;
 };
 
 /** A host as written in a record, route or rule: no scheme, path, port or trailing dot. */

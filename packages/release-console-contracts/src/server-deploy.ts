@@ -151,7 +151,9 @@ export function deployFailureOf(lines: readonly string[]): DeployFailure | null 
 	const refused = clean.find((l) => l.includes('already run with:'));
 	if (refused) {
 		const after = refused.slice(refused.indexOf('already run with:') + 'already run with:'.length);
-		const names = (after.split('.')[0] ?? '')
+		// The names run to the end of the sentence.
+		const names = after
+			.replace(/\..*$/s, '')
 			.split(/,\s*|\s+and\s+/)
 			.map((n) => n.trim())
 			.filter((n) => /^[\w.-]+$/.test(n));
@@ -164,8 +166,15 @@ export function deployFailureOf(lines: readonly string[]): DeployFailure | null 
 	}
 	const step = [...clean].reverse().find((l) => /^✗ [^:]+: /.test(l));
 	if (step) {
-		const m = /^✗ ([^:]+): (.*?)(?: \(\d+ ms\))?$/.exec(step);
-		return { kind: 'release-step', step: m?.[1] ?? null, message: m?.[2] ?? step, names: [] };
+		// "✗ <step>: <message> (<n> ms)": the step name holds no colon, so the first ": " ends it.
+		const body = step.slice('✗ '.length);
+		const at = body.indexOf(': ');
+		return {
+			kind: 'release-step',
+			step: body.slice(0, at),
+			message: body.slice(at + 2).replace(/ \(\d+ ms\)$/, ''),
+			names: [],
+		};
 	}
 	const stop = [...clean].reverse().find((l) => l.startsWith('FAILED: '));
 	return stop ? { kind: 'stopped', step: null, message: stop.slice('FAILED: '.length), names: [] } : null;
@@ -178,10 +187,12 @@ export type ReleaseTag = z.infer<typeof releaseTagSchema>;
 
 /** The tag's own date and time (UTC), as an ISO string, or `null` for another tag. */
 export function releaseTagTime(name: string): string | null {
-	const m = RELEASE_TAG.exec(name);
-	if (!m) return null;
-	const [d, t] = [m[2] ?? '', m[3] ?? ''];
-	return `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T${t.slice(0, 2)}:${t.slice(2, 4)}:${t.slice(4, 6)}Z`;
+	if (!RELEASE_TAG.test(name)) return null;
+	return name.replace(
+		RELEASE_TAG,
+		(_tag: string, _environment: string, d: string, t: string) =>
+			`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T${t.slice(0, 2)}:${t.slice(2, 4)}:${t.slice(4, 6)}Z`,
+	);
 }
 
 export const serverDeployViewSchema = z.object({

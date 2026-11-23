@@ -182,16 +182,18 @@ export type DropletDraft = z.infer<typeof dropletDraftSchema>;
 /** One server per environment, as `pnpm server:create` makes it (scripts/server/servers.mjs). */
 export const SERVER_REGION = 'blr1';
 export const SERVER_IMAGE = 'ubuntu-26-04-x64';
+/** Staging's size, which any other environment not listed below starts from too. */
+const STAGING_SIZE = 's-2vcpu-4gb';
 export const SERVER_SIZES: Record<string, string> = {
 	production: 's-4vcpu-8gb',
-	staging: 's-2vcpu-4gb',
-	development: 's-2vcpu-4gb',
+	staging: STAGING_SIZE,
+	development: STAGING_SIZE,
 };
 
 /** The agreed setup for a project's environment server; every step starts from it. */
 export function serverDraftOf(projectId: string, environment: string): DropletDraft {
 	const name = `${projectId}-${environment}`;
-	const size = SERVER_SIZES[environment] ?? SERVER_SIZES['staging'] ?? 's-2vcpu-4gb';
+	const size = SERVER_SIZES[environment] ?? STAGING_SIZE;
 	return {
 		environment,
 		region: SERVER_REGION,

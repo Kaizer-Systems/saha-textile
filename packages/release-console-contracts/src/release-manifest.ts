@@ -145,17 +145,18 @@ export function readManifest(json: unknown, repositoryName = 'repository'): Mani
 			problems.push(`“${key}” is not used by this console.`);
 			delete raw[key];
 		}
-	for (let tries = 0; tries < 20; tries += 1) {
-		const parsed = releaseManifestSchema.safeParse(raw);
-		if (parsed.success) return { manifest: parsed.data, problems };
-		const issue = parsed.error.issues[0];
-		const top = String(issue?.path[0] ?? '');
-		if (!top || top === 'version' || top === 'product') {
-			problems.push(`${issue?.path.join('.') || 'file'}: ${issue?.message ?? 'cannot be read'}`);
-			return { manifest: null, problems };
-		}
-		problems.push(`“${issue?.path.join('.')}” was skipped: ${issue?.message}.`);
-		delete raw[top];
+	// Every other line the console knows is checked on its own; one it cannot read is reported and dropped.
+	for (const key of Object.keys(raw)) {
+		if (key === 'version' || key === 'product') continue;
+		const field = releaseManifestSchema.shape[key as keyof typeof releaseManifestSchema.shape].safeParse(raw[key]);
+		if (field.success) continue;
+		for (const issue of field.error.issues.slice(0, 1))
+			problems.push(`“${[key, ...issue.path].join('.')}” was skipped: ${issue.message}.`);
+		delete raw[key];
 	}
-	return { manifest: null, problems: [...problems, 'Too many lines could not be read.'] };
+	// What is left can fail only on the version or the product, which the file cannot do without.
+	const parsed = releaseManifestSchema.safeParse(raw);
+	if (parsed.success) return { manifest: parsed.data, problems };
+	for (const issue of parsed.error.issues.slice(0, 1)) problems.push(`${issue.path.join('.')}: ${issue.message}`);
+	return { manifest: null, problems };
 }

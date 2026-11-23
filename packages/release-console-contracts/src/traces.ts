@@ -107,16 +107,23 @@ export function traceOf(raw: unknown): TraceView | null {
 			],
 		) || null;
 	const ids = new Set(spansRaw.map((s) => str(s['spanID'])));
+	const isRoot = (s: Record<string, unknown>) => {
+		const p = parentOf(s);
+		return !p || !ids.has(p);
+	};
+	// The span with no parent in this trace; if every span has one (a loop), the earliest.
 	const root =
-		spansRaw.find((s) => !parentOf(s) || !ids.has(parentOf(s) ?? '')) ??
-		[...spansRaw].sort((a, b) => Number(a['startTime']) - Number(b['startTime']))[0];
-	if (!root) return null;
+		spansRaw.find(isRoot) ??
+		spansRaw.reduce((first, s) => (Number(s['startTime']) < Number(first['startTime']) ? s : first));
 	const t0 = Number(root['startTime']);
-	const depthOf = new Map<string, number>();
+	// The root is depth 0. A span is marked 0 while its depth is worked out, so parents that point back
+	// round in a loop (a broken trace from the store) end the climb instead of recursing for ever.
+	const depthOf = new Map<string, number>([[str(root['spanID']), 0]]);
 	const depth = (s: Record<string, unknown>): number => {
 		const id = str(s['spanID']);
 		const known = depthOf.get(id);
 		if (known !== undefined) return known;
+		depthOf.set(id, 0);
 		const p = parentOf(s);
 		const parent = p ? spansRaw.find((x) => str(x['spanID']) === p) : undefined;
 		const d = parent && parent !== s ? Math.min(depth(parent) + 1, 12) : 0;

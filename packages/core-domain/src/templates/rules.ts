@@ -4,6 +4,7 @@ import type {
 	ChartTemplateContent,
 	ChartTemplateGroup,
 	ChartTemplateLedger,
+	TaxRuleEntry,
 	TemplateVersion,
 } from '@saha-textile/contracts';
 
@@ -59,4 +60,41 @@ export function mergeCharts(contents: readonly ChartTemplateContent[]): {
 	const lost = ledgers.find((l) => !groupKeys.has(l.groupKey));
 	if (lost) throw new Error(`template_unknown_group:${lost.key}`);
 	return { groups, ledgers };
+}
+
+/**
+ * What the shipped starter templates add to a library: the templates it lacks, and newer starter versions of templates
+ * no person has published a version of. A person's own versions are never mixed with shipped ones; a newer version is
+ * only offered as an update and installed by a person (AT-D5).
+ */
+export function starterChanges(
+	stored: readonly AccountsTemplate[],
+	starters: readonly AccountsTemplate[],
+): { inserts: AccountsTemplate[]; updates: { template: AccountsTemplate; expectedUpdatedAt: string }[] } {
+	const byCode = new Map(stored.map((template) => [template.code, template]));
+	const inserts = starters.filter((starter) => !byCode.has(starter.code));
+	const updates = starters.flatMap((starter) => {
+		const mine = byCode.get(starter.code);
+		if (!mine || mine.versions.some((v) => v.publishedBy !== null)) return [];
+		const newest = latestVersion(mine).version;
+		const newer = starter.versions.filter((v) => v.version > newest);
+		if (!newer.length) return [];
+		return [
+			{
+				template: { ...mine, versions: [...mine.versions, ...newer], updatedAt: starter.updatedAt },
+				expectedUpdatedAt: mine.updatedAt,
+			},
+		];
+	});
+	return { inserts, updates };
+}
+
+/** The entries of a tax rule set that apply to a kind of company on a day (each entry has its own kinds and dates). */
+export function entriesOn(entries: readonly TaxRuleEntry[], kind: BusinessKind, day: string): TaxRuleEntry[] {
+	return entries.filter(
+		(entry) =>
+			(entry.kinds === null || entry.kinds.includes(kind)) &&
+			entry.from <= day &&
+			(entry.to === null || entry.to >= day),
+	);
 }

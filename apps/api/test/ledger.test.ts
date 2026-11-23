@@ -243,8 +243,8 @@ describe('general ledger (accounts brief Q, T, D10)', () => {
 			roles: ['cash_in_hand'],
 		});
 		expect(templates.installs.rows.map(({ code, version }) => [code, version])).toEqual([
-			['CH-COMMON', 1],
-			['CH-PVT', 1],
+			['CH-COMMON', 2],
+			['CH-PVT', 2],
 		]);
 		await service.chart();
 		expect(templates.installs.rows).toHaveLength(2);		// The ledger module brings the templates library with it.

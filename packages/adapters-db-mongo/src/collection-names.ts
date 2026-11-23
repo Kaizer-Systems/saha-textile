@@ -145,6 +145,8 @@ export const COLLECTION_NAMES = {
 	RefundVoucher: 'refundVouchers',
 	AccountsTemplate: 'accountsTemplates',
 	TemplateInstall: 'templateInstalls',
+	SelfInvoice: 'selfInvoices',
+	PaymentVoucher: 'paymentVouchers',
 	/** Stock split by location (accounts brief F4). */
 	LocationStock: 'locationStock',
 	/** Settings › Document formats (bundle builder brief F, 2026-11-22): one active format per document. */
@@ -287,6 +289,8 @@ export const GRAPH_RECONCILIATION_OWED = [
 	'refundVouchers',
 	'accountsTemplates',
 	'templateInstalls',
+	'selfInvoices',
+	'paymentVouchers',
 ] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */

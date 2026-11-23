@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { cashAndBankLedgers } from './cash-bank-ledgers';
+import { bankLedgers, cashAndBankLedgers } from './cash-bank-ledgers';
 
 describe('cash and bank ledgers', () => {
 	it('keeps active ledgers under cash or a bank, however deep, and nothing without a chart', () => {
@@ -20,5 +20,20 @@ describe('cash and bank ledgers', () => {
 		};
 		expect(cashAndBankLedgers(chart as never).map((l) => l.id)).toEqual(['led_hdfc']);
 		expect(cashAndBankLedgers(undefined)).toEqual([]);
+	});
+
+	it('keeps only banks for a transfer (D3 Paid from)', () => {
+		const chart = {
+			groups: [
+				{ id: 'g_cash', systemKey: 'cash_in_hand', parentId: null },
+				{ id: 'g_bank', systemKey: 'bank_accounts', parentId: null },
+			],
+			ledgers: [
+				{ id: 'led_cash', groupId: 'g_cash', active: true },
+				{ id: 'led_hdfc', groupId: 'g_bank', active: true },
+			],
+		} as never;
+		expect(bankLedgers(chart).map((l) => l.id)).toEqual(['led_hdfc']);
+		expect(bankLedgers(undefined)).toEqual([]);
 	});
 });

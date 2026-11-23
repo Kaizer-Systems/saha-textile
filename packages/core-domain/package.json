@@ -64,6 +64,11 @@
       "import": "./dist/esm/company/index.js",
       "default": "./dist/company/index.js"
     },
+    "./self-invoice": {
+      "types": "./dist/invoicing/self-invoice-rules.d.ts",
+      "import": "./dist/esm/self-invoice/invoicing/self-invoice-rules.js",
+      "default": "./dist/invoicing/self-invoice-rules.js"
+    },
     "./bundle": {
       "types": "./dist/bundle/index.d.ts",
       "import": "./dist/esm/bundle/index.js",
@@ -74,7 +79,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.legacy-esm.json && tsc -p tsconfig.purchasing-esm.json && tsc -p tsconfig.shipping-esm.json && tsc -p tsconfig.bundle-esm.json && tsc -p tsconfig.company-esm.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.legacy-esm.json && tsc -p tsconfig.purchasing-esm.json && tsc -p tsconfig.shipping-esm.json && tsc -p tsconfig.bundle-esm.json && tsc -p tsconfig.company-esm.json && tsc -p tsconfig.self-invoice-esm.json",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "lint": "eslint .",
     "test": "vitest run"

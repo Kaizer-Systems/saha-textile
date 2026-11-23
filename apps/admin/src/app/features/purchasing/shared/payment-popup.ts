@@ -6,11 +6,11 @@ import { NgbActiveModal, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { istDay } from '@saha-textile/core-domain/purchasing';
 import { firstValueFrom } from 'rxjs';
 
+import { SelfInvoicesGateway } from '@core/accounts/self-invoices.gateway';
 import { RupeesPipe, apiProblem, rupees } from '@core/purchasing/purchasing-format';
-import { PurchasingGateway } from '@core/purchasing/purchasing.gateway';
 import { FmPicker, type FmPicked } from '@features/media/file-manager/fm-picker';
 
-import type { PaymentMode, PurchaseEntry } from '@saha-textile/contracts';
+import type { PaymentMode } from '@saha-textile/contracts';
 
 /** A posted bill that still has something to pay, as the popup lists it. */
 export interface PayableBill {
@@ -34,7 +34,8 @@ export function parseRupees(text: string): number | null {
 /**
  * Record a payment against a posted bill (p11), from the purchase entry or from the supplier
  * page (s03), where a bill picker is shown first. Part payments are fine; the entry reads Part
- * paid until the rest is in. No bank account numbers are asked for or kept.
+ * paid until the rest is in. No bank account numbers are asked for or kept. Every payment gets its own payment
+ * voucher (accounts brief D4, decision D5).
  */
 @Component({
 	selector: 'app-payment-popup',
@@ -44,7 +45,7 @@ export function parseRupees(text: string): number | null {
 export class PaymentPopup {
 	readonly modal = inject(NgbActiveModal);
 	private readonly modals = inject(NgbModal);
-	private readonly gateway = inject(PurchasingGateway);
+	private readonly vouchers = inject(SelfInvoicesGateway);
 	private readonly transloco = inject(TranslocoService);
 
 	readonly bills = signal<readonly PayableBill[]>([]);
@@ -118,8 +119,8 @@ export class PaymentPopup {
 		this.saving.set(true);
 		this.error.set(null);
 		try {
-			const entry: PurchaseEntry = await firstValueFrom(
-				this.gateway.recordPayment(bill.id, {
+			const { entry } = await firstValueFrom(
+				this.vouchers.payPurchaseEntry(bill.id, {
 					amountINR: amount,
 					paidOn: this.paidOn(),
 					mode: this.mode(),

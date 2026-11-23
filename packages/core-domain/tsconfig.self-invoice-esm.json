@@ -1,0 +1,15 @@
+{
+	"compilerOptions": {
+		"module": "ES2022",
+		"moduleResolution": "bundler",
+		"target": "ES2023",
+		"lib": ["ES2023"],
+		"outDir": "./dist/esm/self-invoice",
+		"rootDir": "./src",
+		"strict": true,
+		"skipLibCheck": true,
+		"declaration": false,
+		"sourceMap": false
+	},
+	"files": ["src/invoicing/self-invoice-rules.ts"]
+}

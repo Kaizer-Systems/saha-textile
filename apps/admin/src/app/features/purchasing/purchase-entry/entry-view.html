@@ -203,6 +203,7 @@
 							<th>{{ 'payment_how' | transloco }}</th>
 							<th>{{ 'payment_reference' | transloco }}</th>
 							<th class="text-end">{{ 'amount_rupees' | transloco }}</th>
+							<th>{{ 'pv_voucher' | transloco }}</th>
 							<th>{{ 'status' | transloco }}</th>
 							<th style="width: 60px"></th>
 						</tr>
@@ -214,6 +215,11 @@
 							<td>{{ 'payment_mode_' + payment.mode | transloco }}</td>
 							<td>{{ payment.reference ?? '—' }}</td>
 							<td class="text-end text-nowrap">{{ payment.amountINR | rupees }}</td>
+							<td class="text-nowrap">
+								@if (voucherOf().get(payment.id); as voucher) {
+								<a [routerLink]="['/accounts/payment-vouchers', voucher.id]">{{ voucher.number }}</a>
+								} @else { — }
+							</td>
 							<td>
 								@if (payment.reversedAt) { {{ 'payment_reversed_on' | transloco: { reason:
 								payment.reverseReason ?? '' } }} } @else { {{ 'payment_recorded' | transloco }} }
@@ -237,7 +243,7 @@
 						</tr>
 						} @empty {
 						<tr>
-							<td colspan="6">
+							<td colspan="7">
 								<div class="no-data-added">
 									<h4>{{ 'no_payments_yet' | transloco }}</h4>
 								</div>

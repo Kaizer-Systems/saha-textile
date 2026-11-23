@@ -77,6 +77,6 @@ import { SuppliersService } from './suppliers.service';
 		InventorySettingsService,
 		ShopDetailsService,
 	],
-	exports: [ShopDetailsService],
+	exports: [ShopDetailsService, PurchaseEntriesService],
 })
 export class PurchasingModule {}

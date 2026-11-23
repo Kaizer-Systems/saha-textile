@@ -7,6 +7,7 @@ import { entryOutstanding } from '@saha-textile/core-domain/purchasing';
 import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
+import { SELF_INVOICE_KEYS, SelfInvoicesGateway } from '@core/accounts/self-invoices.gateway';
 import {
 	PILLS,
 	RupeesPipe,
@@ -55,6 +56,7 @@ export class EntryView {
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
 	private readonly gateway = inject(PurchasingGateway);
+	private readonly paymentVouchers = inject(SelfInvoicesGateway);
 	private readonly modals = inject(NgbModal);
 	private readonly notifier = inject(NotificationService);
 	private readonly transloco = inject(TranslocoService);
@@ -78,6 +80,15 @@ export class EntryView {
 		queryFn: () => firstValueFrom(this.gateway.payments(this.id())),
 		enabled: !!this.id() && this.tab() === 'payments',
 	}));
+	/** Each payment's own voucher (accounts brief D4, decision D5). */
+	readonly vouchers = injectQuery(() => ({
+		queryKey: SELF_INVOICE_KEYS.entryVouchers(this.id()),
+		queryFn: () => firstValueFrom(this.paymentVouchers.purchaseEntryVouchers(this.id())),
+		enabled: !!this.id() && this.tab() === 'payments',
+	}));
+	readonly voucherOf = computed(
+		() => new Map((this.vouchers.data() ?? []).map((voucher) => [voucher.supplierPaymentId, voucher])),
+	);
 	readonly returns = injectQuery(() => ({
 		queryKey: [...PURCHASING_KEYS.returns, 'for-entry', this.id()],
 		queryFn: () => firstValueFrom(this.gateway.returnsForEntry(this.id())),
@@ -110,6 +121,7 @@ export class EntryView {
 	private refresh(): void {
 		void this.queryClient.invalidateQueries({ queryKey: PURCHASING_KEYS.entries });
 		void this.queryClient.invalidateQueries({ queryKey: PURCHASING_KEYS.suppliers });
+		void this.queryClient.invalidateQueries({ queryKey: SELF_INVOICE_KEYS.entryVouchers(this.id()) });
 	}
 
 	edit(): void {

@@ -11,7 +11,11 @@ export function memoryTemplateStores(rows: AccountsTemplate[] = [], installed: T
 			if (rows.some((row) => row.code === template.code)) throw new Error('duplicate_template_code');
 			rows.push(template);
 		},
-		save: async () => undefined,
+		save: async (template: AccountsTemplate, expectedUpdatedAt: string) => {
+			const at = rows.findIndex((row) => row.code === template.code);
+			if (at < 0 || rows[at]!.updatedAt !== expectedUpdatedAt) throw new Error('template_changed');
+			rows.splice(at, 1, template);
+		},
 	};
 	const installs = {
 		rows: installed,

@@ -9,6 +9,7 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
+import { SelfInvoicesGateway } from '@core/accounts/self-invoices.gateway';
 import { PurchasingGateway } from '@core/purchasing/purchasing.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -450,9 +451,12 @@ describe('PaymentPopup (p11)', () => {
 	});
 
 	it('saves a part payment and closes with the entry; a refusal stays in the popup', async () => {
-		const recordPayment = vi
+		// Every payment gets its own payment voucher (accounts brief D4, decision D5): saved through that endpoint.
+		const payPurchaseEntry = vi
 			.fn()
-			.mockReturnValueOnce(of({ id: 'e1', paymentStatus: 'part_paid' }))
+			.mockReturnValueOnce(
+				of({ entry: { id: 'e1', paymentStatus: 'part_paid' }, voucher: { number: 'PV/26-27/000006' } }),
+			)
 			.mockReturnValueOnce(
 				throwError(() =>
 					httpError(400, [
@@ -464,14 +468,15 @@ describe('PaymentPopup (p11)', () => {
 					]),
 				),
 			);
-		const { page } = render(PaymentPopup, { recordPayment });
+		const { page } = render(PaymentPopup, {});
+		Object.assign(TestBed.inject(SelfInvoicesGateway), { payPurchaseEntry });
 		const close = TestBed.inject(NgbActiveModal).close as ReturnType<typeof vi.fn>;
 		page.start(bills, 'e1');
 		page.amount.set('1,00,000');
 		page.mode.set('upi');
 		page.reference.set('  UPI123  ');
 		await page.save();
-		expect(recordPayment).toHaveBeenCalledWith(
+		expect(payPurchaseEntry).toHaveBeenCalledWith(
 			'e1',
 			expect.objectContaining({ amountINR: 100000, mode: 'upi', reference: 'UPI123', proofAssetId: null }),
 		);

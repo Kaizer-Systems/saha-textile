@@ -141,4 +141,45 @@ describe('the edit log rows (Q11)', () => {
 			['log_printed', '—', '—', 'PDF'],
 		]);
 	});
+
+	it('words a self-invoice’s draft, edits, issue, payment, voucher, prints and cancel (D2, D3)', () => {
+		const rows = editLogRows(
+			[
+				entry('selfInvoice.create', { metadata: { supplier: 'Bose Properties', what: 'Shop rent' } }),
+				entry('selfInvoice.save'),
+				entry('selfInvoice.save', {
+					diffs: [
+						{ field: 'taxable', before: 60_000, after: 50_000 },
+						{ field: 'what', before: 'Shop rent', after: 'Goods transport' },
+					],
+				}),
+				entry('selfInvoice.delete'),
+				entry('selfInvoice.issue', { metadata: { number: 'SI/2', late: true } }),
+				entry('selfInvoice.issue', { metadata: { number: 'SI/3', late: false } }),
+				entry('selfInvoice.pay', { diffs: [{ field: 'paidINR', before: 0, after: 60_000 }] }),
+				entry('paymentVoucher.issue', { metadata: { number: 'PV/7', against: 'SI/2' } }),
+				entry('selfInvoice.print'),
+				entry('paymentVoucher.print'),
+				entry('selfInvoice.cancel_refused', { metadata: { why: 'only_super_admin' } }),
+				entry('selfInvoice.cancel', { metadata: { reason: 'Typed twice' } }),
+			],
+			t,
+			inr,
+		);
+		expect(rows.map((r) => [r.what, r.field, r.before, r.after, r.why])).toEqual([
+			['log_drafted', '—', '—', 'Bose Properties · Shop rent', '—'],
+			['log_saved', '—', '—', '—', '—'],
+			['log_edited', 'log_field_taxable', '₹60000', '₹50000', '—'],
+			['log_edited', 'log_field_what', 'Shop rent', 'Goods transport', '—'],
+			['log_deleted_draft', '—', '—', '—', '—'],
+			['log_issued', 'log_field_number', '—', 'SI/2', 'si_late'],
+			['log_issued', 'log_field_number', '—', 'SI/3', '—'],
+			['log_paid', 'log_field_paid', '₹0', '₹60000', '—'],
+			['log_pv_issued', 'log_field_number', '—', 'PV/7', 'log_pv_against{"number":"SI/2"}'],
+			['log_printed', '—', '—', 'PDF', '—'],
+			['log_printed', '—', '—', 'PDF', '—'],
+			['log_tried_cancel', '—', '—', 'log_refused{"why":"si_problem_only_super_admin"}', '—'],
+			['log_cancelled', '—', '—', '—', 'Typed twice'],
+		]);
+	});
 });

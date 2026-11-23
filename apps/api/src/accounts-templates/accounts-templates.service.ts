@@ -3,6 +3,8 @@ import type {
 	AccountsTemplate,
 	BusinessKind,
 	ChartTemplateContent,
+	RcmChoice,
+	TaxRuleSetContent,
 	TemplateLibraryRow,
 	TemplateVersion,
 } from '@saha-textile/contracts';
@@ -12,9 +14,12 @@ import {
 	latestVersion,
 	lockState,
 	mergeCharts,
+	starterChanges,
 	starterTemplates,
 	type TemplateInstallRepository,
 	unlockedFor,
+	entriesOn,
+	versionOn,
 } from '@saha-textile/core-domain';
 
 import { ACCOUNTS_TEMPLATE_REPOSITORY, COMPANY_REPOSITORY, TEMPLATE_INSTALL_REPOSITORY } from '../infra/tokens';
@@ -42,15 +47,24 @@ export class AccountsTemplatesService {
 		@Inject(COMPANY_REPOSITORY) private readonly company: Pick<CompanyRepository, 'getProfile'>,
 	) {}
 
-	/** The starter templates are written once, into an empty library; after that the library is the builder's. */
+	/**
+	 * The shipped starter templates reach the library once each: a template it lacks is added, and a newer starter
+	 * version of a template no person has published is added as an update (installed only by a person, AT-D5).
+	 */
 	private ensureLibrary(): Promise<void> {
 		this.seeding ??= (async () => {
-			if ((await this.templates.list()).length) return;
-			for (const template of starterTemplates(new Date().toISOString()))
-				await this.templates.insert(template).catch((error: unknown) => {
-					// Another API instance wrote it first: theirs stands.
-					if ((error as Error).message !== 'duplicate_template_code') throw error;
-				});
+			const { inserts, updates } = starterChanges(
+				await this.templates.list(),
+				starterTemplates(new Date().toISOString()),
+			);
+			// Another API instance may write the same first: theirs stands.
+			const theirs = (code: string) => (error: unknown) => {
+				if ((error as Error).message !== code) throw error;
+			};
+			for (const template of inserts)
+				await this.templates.insert(template).catch(theirs('duplicate_template_code'));
+			for (const update of updates)
+				await this.templates.save(update.template, update.expectedUpdatedAt).catch(theirs('template_changed'));
 		})().catch((error: unknown) => {
 			this.seeding = null;
 			throw error;
@@ -59,7 +73,7 @@ export class AccountsTemplatesService {
 	}
 
 	/** The kind of business on Settings › Company (proprietorship until it is set). */
-	private async kind(): Promise<BusinessKind> {
+	async kind(): Promise<BusinessKind> {
 		return (await this.company.getProfile())?.kind ?? 'proprietorship';
 	}
 
@@ -114,5 +128,52 @@ export class AccountsTemplatesService {
 		if ((await this.installs.list()).length) return;
 		const installedAt = new Date().toISOString();
 		for (const pick of picks) await this.installs.save({ ...pick, installedAt, installedBy: null });
+	}
+
+	/**
+	 * The version of a template the company uses: the one installed, or, on first use, the newest (recorded as
+	 * installed). Later versions wait for a person to install them.
+	 */
+	private async installedVersion(template: AccountsTemplate): Promise<number> {
+		const install = (await this.installs.list()).find((row) => row.code === template.code);
+		if (install) return install.version;
+		const version = latestVersion(template).version;
+		await this.installs.save({
+			code: template.code,
+			version,
+			installedAt: new Date().toISOString(),
+			installedBy: null,
+		});
+		return version;
+	}
+
+	/**
+	 * D2's "What": the reverse-charge list (RS-RCM) in force on the day the supply was received, for this company's
+	 * kind. Each choice names the rule set and version it came from, so a self-invoice keeps the rule it was made with.
+	 */
+	async rcmChoices(day: string): Promise<RcmChoice[]> {
+		await this.ensureLibrary();
+		const template = await this.templates.findByCode('RS-RCM');
+		if (!template) return [];
+		const installed = await this.installedVersion(template);
+		const version = versionOn({ versions: template.versions.filter((v) => v.version <= installed) }, day);
+		if (version?.content.kind !== 'taxRules') return [];
+		const kind = await this.kind();
+		return entriesOn((version.content as TaxRuleSetContent).entries, kind, day).flatMap((entry) =>
+			entry.expenseRole
+				? [
+						{
+							templateCode: template.code,
+							templateVersion: version.version,
+							key: entry.key,
+							name: entry.name,
+							code: entry.code,
+							ratePercent: entry.ratePercent,
+							expenseRole: entry.expenseRole,
+							source: entry.source,
+						},
+					]
+				: [],
+		);
 	}
 }

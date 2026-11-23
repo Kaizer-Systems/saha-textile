@@ -153,6 +153,68 @@ export function editLogRows(
 				});
 				break;
 			}
+			case 'selfInvoice.create':
+				rows.push({ ...base, what: t('log_drafted'), after: `${text(m['supplier'])} · ${text(m['what'])}` });
+				break;
+			case 'selfInvoice.save':
+				if (!entry.diffs.length) rows.push({ ...base, what: t('log_saved') });
+				for (const diff of entry.diffs) {
+					const shown = (value: unknown) => (diff.field === 'taxable' ? inr(Number(value)) : text(value));
+					rows.push({
+						...base,
+						what: t('log_edited'),
+						field: fieldName(diff.field, t),
+						before: shown(diff.before),
+						after: shown(diff.after),
+					});
+				}
+				break;
+			case 'selfInvoice.delete':
+				rows.push({ ...base, what: t('log_deleted_draft') });
+				break;
+			case 'selfInvoice.issue':
+				rows.push({
+					...base,
+					what: t('log_issued'),
+					field: t('log_field_number'),
+					after: text(m['number']),
+					why: m['late'] ? t('si_late') : DASH,
+				});
+				break;
+			case 'selfInvoice.pay': {
+				const paid = entry.diffs[0];
+				rows.push({
+					...base,
+					what: t('log_paid'),
+					field: t('log_field_paid'),
+					before: inr(Number(paid?.before)),
+					after: inr(Number(paid?.after)),
+				});
+				break;
+			}
+			case 'paymentVoucher.issue':
+				rows.push({
+					...base,
+					what: t('log_pv_issued'),
+					field: t('log_field_number'),
+					after: text(m['number']),
+					why: t('log_pv_against', { number: text(m['against']) }),
+				});
+				break;
+			case 'selfInvoice.print':
+			case 'paymentVoucher.print':
+				rows.push({ ...base, what: t('log_printed'), after: 'PDF' });
+				break;
+			case 'selfInvoice.cancel_refused':
+				rows.push({
+					...base,
+					what: t('log_tried_cancel'),
+					after: t('log_refused', { why: t(`si_problem_${String(m['why'])}`) }),
+				});
+				break;
+			case 'selfInvoice.cancel':
+				rows.push({ ...base, what: t('log_cancelled'), why: text(m['reason']) });
+				break;
 			case 'document.lock.ask_release':
 				rows.push({ ...base, what: t('log_asked_release') });
 				break;

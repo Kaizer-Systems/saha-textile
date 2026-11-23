@@ -12,6 +12,7 @@ import { PurchasingModule } from './purchasing/purchasing.module';
 import { CompanyModule } from './company/company.module';
 import { LedgerModule } from './ledger/ledger.module';
 import { ReturnsModule } from './returns/returns.module';
+import { SelfInvoicesModule } from './self-invoices/self-invoices.module';
 import { OrderRoutingModule } from './routing/order-routing.module';
 import { OrderShipsFromModule } from './routing/order-ships-from.module';
 import { LocationsModule } from './locations/locations.module';
@@ -92,6 +93,7 @@ export class AppModule {
 				LocationsModule,
 				LedgerModule,
 				ReturnsModule,
+				SelfInvoicesModule,
 				OrderRoutingModule,
 				OrderShipsFromModule,
 				DocumentsModule,

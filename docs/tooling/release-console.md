@@ -285,7 +285,7 @@ The create job runs these steps after the server is up:
 
 - **Zone check**: Full (strict) by a configuration rule for the environment's own hosts only, Always Use HTTPS, and TLS 1.2 minimum. The rest of the zone keeps its SSL mode.
 - **Staging login wall**: an Access application over the shop and admin hosts for the people on the project's SSH list; API hosts stay open for webhooks; production is not walled.
-- **DigitalOcean DNS**: a host outside the repository's Cloudflare zones whose domain is delegated to DigitalOcean gets its record there, never overwriting one that points elsewhere; the firewall then opens 443 to everyone.
+- **DigitalOcean DNS**: a host outside the repository's Cloudflare zones whose domain is delegated to DigitalOcean gets its record there, never overwriting one that points elsewhere; the firewall then opens 443 to everyone. The "Left for you" card then reminds you to set `EDGE_TLS=public`, `ACME_EMAIL` and the DigitalOcean DNS token in Infisical before the first deploy, so the server gets its own Let's Encrypt certificate.
 - **Identity and approval**: `INFISICAL_IDENTITY_ID` from `docker/infisical/variable-names.json`, the GitHub environment's branch rule and its release-tag rule. A missing required reviewer is never set by the console; it stops the job.
 - **Outside check**: ports 21, 22, 80, 27017, 6379 and 7700 on the public address must not answer.
 - **Ready card**: what is left for you. Anything blocking fails the job with **Finish setup**, which gives the deploy token a new secret and redoes only the GitHub environment, the identity check and the host key.

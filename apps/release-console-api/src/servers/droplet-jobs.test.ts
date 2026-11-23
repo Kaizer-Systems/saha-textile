@@ -401,6 +401,9 @@ describe('creating and destroying a server', () => {
 			expect(job.state).toBe('done');
 			expect(doHosts).toEqual(['shop.example.org']);
 			expect(JSON.stringify(bodies[0])).toContain('0.0.0.0/0');
+			const cert = job.left.find((x) => x.text.includes('EDGE_TLS=public'));
+			expect(cert?.text).toContain('shop.example.org is not behind Cloudflare');
+			expect(cert?.blocking).toBe(false);
 		} finally {
 			env.domains = before;
 		}

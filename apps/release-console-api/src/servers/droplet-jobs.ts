@@ -539,6 +539,12 @@ export class DropletJobs {
 			c.doHosts = await this.doHome(o);
 			const open = c.doHosts.size > 0;
 			await deps.do.createFirewall(keys.doKey, firewallBody(name, id, await deps.ranges(), [], open));
+			// The edge serves its own Let's Encrypt certificate for such hosts (the Infisical chat's M10).
+			if (open)
+				c.left.push({
+					text: `${[...c.doHosts.keys()].join(', ')} ${c.doHosts.size === 1 ? 'is' : 'are'} not behind Cloudflare: before the first deploy, set EDGE_TLS=public and ACME_EMAIL in Infisical’s /deployment and a DigitalOcean DNS token in /infrastructure/do-dns-token, so the server gets its own certificate (docker/production/README.md, “An environment not behind Cloudflare”).`,
+					blocking: false,
+				});
 			return open
 				? `${name} · inbound 443 from everyone: ${[...c.doHosts.keys()].join(', ')} ${c.doHosts.size === 1 ? 'is' : 'are'} on DigitalOcean DNS, not behind Cloudflare · all outbound`
 				: `${name} · inbound 443 from Cloudflare's ranges only · all outbound`;

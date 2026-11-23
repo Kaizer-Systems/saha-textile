@@ -262,14 +262,15 @@ Each vendor read answers in one of three ways: data, **not connected** (with a b
 
 ### Changing passwords and keys
 
-Run › Secrets › Rotate changes values for a server environment. Pick the values and why: **on a schedule** keeps the old sign-in, CSRF and mailbox keys for 30 days under `<NAME>_PREVIOUS`, so nobody is signed out; **after a leak** drops them at once. **Make new values** asks for the environment's name typed and the PIN, then the Mac helper runs `pnpm secrets:rotate -- <tier> --names <ids> [--no-grace] --json`, which makes the values and writes them into Infisical. The console keeps names and dates only.
+Run › Secrets › Rotate changes values for a server environment. Pick the values and why: **on a schedule** keeps the old sign-in, CSRF, mailbox and e-invoice and e-way bill keys for 30 days under `<NAME>_PREVIOUS`, so nobody is signed out; **after a leak** drops them at once. **Make new values** asks for the environment's name typed and the PIN, then the Mac helper runs `pnpm secrets:rotate -- <tier> --names <ids> [--no-grace] --json`, which makes the values and writes them into Infisical. The console keeps names and dates only.
 
-| Value                                                             | What happens                                                                                                |
-| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Database app, administrator and monitor passwords, Redis password | changed on the running service before the switch, no pause                                                  |
-| Search master key                                                 | search restarts, a few seconds                                                                              |
-| Database keyfile                                                  | used from the database's next restart, or restarted now (about 20 s)                                        |
-| Sign-in keys and CSRF key, mailbox key                            | kept 30 days on a schedule; after a leak everyone signs in again, and each Gmail mailbox is connected again |
+| Value                                                             | What happens                                                                                                                          |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Database app, administrator and monitor passwords, Redis password | changed on the running service before the switch, no pause                                                                            |
+| Search master key                                                 | search restarts, a few seconds                                                                                                        |
+| Database keyfile                                                  | used from the database's next restart, or restarted now (about 20 s)                                                                  |
+| Sign-in keys and CSRF key, mailbox key                            | kept 30 days on a schedule; after a leak everyone signs in again, and each Gmail mailbox is connected again                           |
+| E-invoice and e-way bill keys (`EDOC_KEYS_KEY`)                   | kept 30 days on a schedule, nothing to reconnect; after a leak the paths' keys are typed again in Settings › E-invoice and e-way bill |
 
 Database, Redis and search values wait for a deploy with rotation: Live deploy lists them under **Rotate secrets in this deploy** and its button becomes **Deploy and rotate** (deploy.yml `rotate`, and `restart_database` when ticked). A successful run clears the list. Without rotation the server refuses a release whose data-service secrets changed; Live deploy names them in words and offers **Deploy again with rotation**. After 30 days, Attention and the Rotate tab remind you to **Remove the old keys** (`--clear-previous`), which the next normal deploy carries.
 

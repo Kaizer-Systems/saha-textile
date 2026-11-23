@@ -361,6 +361,7 @@ export const ROTATE_IDS = [
 	'sign-in',
 	'csrf',
 	'mailbox',
+	'edocs',
 ];
 
 /**

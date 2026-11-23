@@ -21,6 +21,7 @@ export const ROTATE_IDS = [
 	'sign-in',
 	'csrf',
 	'mailbox',
+	'edocs',
 ] as const;
 export type RotateId = (typeof ROTATE_IDS)[number];
 
@@ -34,7 +35,7 @@ export const DATA_SERVICE_IDS: readonly RotateId[] = [
 	'keyfile',
 ];
 /** Values kept for 30 days under `<NAME>_PREVIOUS` on a scheduled change (brief Q2). */
-export const GRACE_IDS: readonly RotateId[] = ['sign-in', 'csrf', 'mailbox'];
+export const GRACE_IDS: readonly RotateId[] = ['sign-in', 'csrf', 'mailbox', 'edocs'];
 export const GRACE_DAYS = 30;
 
 /** One row of Run › Secrets › Rotate, as the brief draws it (3.1): a row may stand for several ids. */
@@ -103,6 +104,15 @@ export const ROTATE_ROWS: readonly RotateRow[] = [
 		label: 'Mailbox key',
 		scheduled: 'old one kept 30 days · no reconnect',
 		leak: 'each Gmail mailbox is connected again',
+		tone: 'ok',
+	},
+	{
+		// EDOC_KEYS_KEY, which seals the e-invoice and e-way bill paths' own keys (the Infisical chat, 23 Nov).
+		key: 'edocs',
+		ids: ['edocs'],
+		label: 'E-invoice and e-way bill keys',
+		scheduled: 'old one kept 30 days · nothing to reconnect',
+		leak: 'the paths’ keys are typed again in Settings › E-invoice and e-way bill',
 		tone: 'ok',
 	},
 ];

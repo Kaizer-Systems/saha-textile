@@ -39,6 +39,24 @@ describe('secret rotation records (Release Path brief, Part 3)', () => {
 			'Sign-in keys and CSRF key',
 		]);
 	});
+
+	it('rotates the e-invoice and e-way bill key with 30 days of grace and no deploy with rotation', () => {
+		expect(rotateRowsOf(['edocs'])[0]).toMatchObject({
+			label: 'E-invoice and e-way bill keys',
+			scheduled: 'old one kept 30 days · nothing to reconnect',
+		});
+		const next = afterRotate(
+			emptyRotation(),
+			['edocs'],
+			result({
+				changed: ['EDOC_KEYS_KEY'],
+				movedToPrevious: ['EDOC_KEYS_KEY_PREVIOUS'],
+				needsRotateDeploy: false,
+			}),
+		);
+		expect(next.pending).toEqual([]);
+		expect(next.graceNames).toEqual(['EDOC_KEYS_KEY_PREVIOUS']);
+	});
 });
 
 describe('why a deploy did not go live', () => {

@@ -170,7 +170,12 @@ await waitFor('Storefront', 'https://localhost:4200/en');
 await waitFor('Admin', 'https://localhost:4300/');
 delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
 
-const playwrightEnv = { ...env, E2E_ADMIN_EMAIL: ADMIN_EMAIL, E2E_ADMIN_PASSWORD: adminPassword };
+const playwrightEnv = {
+	...env,
+	E2E_PRODUCTION_BUILDS: '1',
+	E2E_ADMIN_EMAIL: ADMIN_EMAIL,
+	E2E_ADMIN_PASSWORD: adminPassword,
+};
 
 if (serveOnly) {
 	process.stdout.write(`Stack is up on ${DATABASE}. Press Ctrl+C to stop.\n`);

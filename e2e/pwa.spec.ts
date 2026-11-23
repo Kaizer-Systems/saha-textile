@@ -10,7 +10,11 @@ import { expect, test } from './support';
 test.describe('installable app', { tag: '@desktop-only' }, () => {
 	test.beforeEach(async ({ request }) => {
 		const worker = await request.get('/sw.js');
-		test.skip(!worker.ok(), 'needs a production build');
+		if (process.env['E2E_PRODUCTION_BUILDS'] === '1') {
+			expect(worker.ok(), 'the production stack must serve its service worker').toBe(true);
+		} else {
+			test.skip(!worker.ok(), 'needs a production build');
+		}
 	});
 
 	test('the worker file can always be replaced, and has no fetch listener', async ({ request }) => {

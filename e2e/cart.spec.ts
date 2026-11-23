@@ -1,18 +1,23 @@
+import { randomUUID } from 'node:crypto';
+
 import { withDatabase } from './database';
-import { API_URL as API, expect, test } from './support';
+import { API_URL as API, buyBoxReady, expect, test } from './support';
 
 const SAREE = 'katan-banarasi-saree';
 const SHOPPER = 'meera.sharma.003@example.com';
 const MEASUREMENTS = { shoulder: '14', chest: '34', waist: '28', sleeve: '8' };
+type CatalogueFixture = Record<string, unknown> & { _id: string };
 
 const addToCart = async (page: import('@playwright/test').Page, slug = SAREE) => {
 	await page.goto(`/en/product/${slug}`);
-	await page.waitForLoadState('networkidle');
-	const saved = page.waitForResponse((response) => response.url().includes('/cart/current/lines'));
-	await page
-		.locator('app-buy-box button', { hasText: /add to cart/i })
-		.first()
-		.click();
+	const buyBox = await buyBoxReady(page);
+	const [saved] = await Promise.all([
+		page.waitForResponse((response) => response.url().includes('/cart/current/lines')),
+		buyBox
+			.getByRole('button', { name: /add to cart/i })
+			.first()
+			.click(),
+	]);
 	return saved;
 };
 
@@ -75,7 +80,7 @@ test.describe('Real cart', () => {
 		await expect(page.locator('.summery-contain .price').first()).toContainText('9,250');
 		await expect(page.locator('.cart-table app-cart-line-config').first()).toContainText('Design 1');
 
-		await page.locator('.cart-table a.save:visible', { hasText: /edit/i }).first().click();
+		await page.locator('.cart-table').getByRole('button', { name: 'Edit', exact: true }).first().click();
 		await expect(page.locator('app-product-configurator')).toBeVisible();
 		await expect(page.locator('.product-config-modal .price').first()).toContainText('9,250');
 	});
@@ -111,7 +116,7 @@ test.describe('Real cart', () => {
 	});
 });
 
-// One account and shared stock, so these run once (on the laptop project).
+// One account, so these run once (on the laptop project).
 test.describe.serial('Cart across a sign-in', { tag: '@desktop-only' }, () => {
 	const reset = () =>
 		withDatabase(async (db) => {
@@ -143,20 +148,39 @@ test.describe.serial('Cart across a sign-in', { tag: '@desktop-only' }, () => {
 	});
 
 	test('a sold out line says so, and leaves the total', async ({ page }) => {
-		const lower = (quantity: number) =>
-			withDatabase((db) =>
-				db
-					.collection('productVariants')
-					.updateOne({ sku: 'SAR-KB-001-934-base' }, { $set: { 'stock.quantity': quantity } }),
-			);
-		await addToCart(page);
-		await lower(0);
+		// Other shop tests buy the seeded saree in parallel, so change stock only on this copy.
+		const key = randomUUID();
+		const slug = `e2e-cart-stock-${key}`;
+		const productId = `prd_${key}`;
+		const sku = `E2E-CART-${key}`.toUpperCase();
+		const productFilter = { _id: productId };
+		const variantFilter = { _id: `var_${key}` };
+
 		try {
+			await withDatabase(async (db) => {
+				const products = db.collection<CatalogueFixture>('products');
+				const variants = db.collection<CatalogueFixture>('productVariants');
+				const product = await products.findOne({ slug: SAREE });
+				if (!product) throw new Error(`Expected the seeded ${SAREE}`);
+				const variant = await variants.findOne({ productId: product._id, sku: 'SAR-KB-001-934-base' });
+				if (!variant) throw new Error(`Expected a base variant for ${SAREE}`);
+				await products.insertOne({ ...product, ...productFilter, slug, sku });
+				await variants.insertOne({ ...variant, ...variantFilter, productId, sku: `${sku}-BASE` });
+			});
+			expect((await addToCart(page, slug)).status()).toBe(201);
+			await withDatabase((db) =>
+				db
+					.collection<CatalogueFixture>('productVariants')
+					.updateOne(variantFilter, { $set: { 'stock.quantity': 0 } }),
+			);
 			await page.goto('/en/cart');
 			await expect(page.locator('.cart-table .text-danger')).toContainText('out of stock');
 			await expect(page.locator('.summery-contain .price').first()).not.toContainText('8,500');
 		} finally {
-			await lower(4);
+			await withDatabase(async (db) => {
+				await db.collection<CatalogueFixture>('productVariants').deleteOne(variantFilter);
+				await db.collection<CatalogueFixture>('products').deleteOne(productFilter);
+			});
 		}
 	});
 });

@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 
-import { API_URL, expect, test } from './support';
+import { API_URL, buyBoxReady, expect, test } from './support';
 
 /**
  * The shop checkout (shipping brief shop01–shop06, orders brief shop07–shop17): a guest signs in
@@ -26,13 +26,15 @@ async function signIn(page: Page, email = SHOPPER): Promise<void> {
 
 async function addToBag(page: Page): Promise<void> {
 	await page.goto(`/en/product/${SAREE}`);
-	await page.waitForLoadState('networkidle');
-	const saved = page.waitForResponse((response) => response.url().includes('/cart/current/lines'));
-	await page
-		.locator('app-buy-box button', { hasText: /add to cart/i })
-		.first()
-		.click();
-	expect((await saved).status()).toBeLessThan(300);
+	const buyBox = await buyBoxReady(page);
+	const [saved] = await Promise.all([
+		page.waitForResponse((response) => response.url().includes('/cart/current/lines')),
+		buyBox
+			.getByRole('button', { name: /add to cart/i })
+			.first()
+			.click(),
+	]);
+	expect(saved.status()).toBe(201);
 }
 
 // One shopper account, so these run once (on the laptop project).

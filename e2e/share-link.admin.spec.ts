@@ -103,11 +103,17 @@ test.describe('Share link page', () => {
 		await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
 	});
 
-	test('S7: a file the browser can show opens in its own viewer, from Spaces', async ({ page }) => {
+	test('S7: a file the browser can show opens in its own viewer, from object storage', async ({ page }) => {
 		const made = await link(page.request, pdf, { expiry: '1d', who: 'anyone' });
 		await page.goto(`${SHOP}/en/s/${made.code}`);
-		await expect.poll(() => page.url(), { timeout: 15_000 }).toContain('digitaloceanspaces.com');
-		expect(new URL(page.url()).searchParams.get('X-Amz-Expires')).toBe('300');
+		await expect.poll(() => new URL(page.url()).pathname, { timeout: 15_000 }).toContain(`/media/${pdf.assetId}/`);
+		const target = new URL(page.url());
+		const region = process.env['SPACES_REGION'] || 'sgp1';
+		const endpoint = new URL(process.env['SPACES_ENDPOINT'] || `https://${region}.digitaloceanspaces.com`);
+		expect(target.protocol).toBe(endpoint.protocol);
+		expect([endpoint.host, `${process.env['SPACES_BUCKET']}.${endpoint.host}`]).toContain(target.host);
+		expect(target.searchParams.get('X-Amz-Expires')).toBe('300');
+		expect(target.searchParams.get('response-content-disposition')).toMatch(/^inline;/);
 	});
 
 	test('S2, S3: a password link asks, says when it was wrong, and opens with the right one (বাংলা)', async ({

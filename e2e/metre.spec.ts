@@ -1,5 +1,5 @@
 import { withDatabase } from './database';
-import { SHOP, expect, test } from './support';
+import { SHOP, buyBoxReady, expect, test } from './support';
 
 /**
  * Fabric by the metre in the shop (shop brief M01–M04, M08–M10). The product is a copy of a live
@@ -51,6 +51,7 @@ test.describe('fabric by the metre', () => {
 		const slug = await metreProduct();
 		await page.goto(`${SHOP}/product/${slug}`);
 		await expect(page.locator('.price-rating .price')).toContainText('per metre');
+		await buyBoxReady(page);
 		const box = page.locator('input[name="length"]').first();
 		await expect(box).toHaveValue('1.0 m');
 		await page.locator('[id^="qty-plus-"] button, button[id^="qty-plus-"]').first().click();
@@ -76,8 +77,18 @@ test.describe('fabric by the metre', () => {
 	test('the cart shows the length and the price per metre', async ({ page }) => {
 		const slug = await metreProduct();
 		await page.goto(`${SHOP}/product/${slug}`);
-		await page.getByRole('button', { name: /2.5 m · suit/ }).click();
-		await page.locator('[id^="addcartbtn-"] button, button[id^="addcartbtn-"]').first().click();
+		const buyBox = await buyBoxReady(page);
+		await buyBox.getByRole('button', { name: /2.5 m · suit/ }).click();
+		await expect(buyBox.locator('input[name="length"]')).toHaveValue('2.5 m');
+		const [saved] = await Promise.all([
+			page.waitForResponse(
+				(response) =>
+					response.request().method() === 'POST' &&
+					new URL(response.url()).pathname === '/cart/current/lines',
+			),
+			buyBox.locator('[id^="addcartbtn-"] button, button[id^="addcartbtn-"]').first().click(),
+		]);
+		expect(saved.status()).toBe(201);
 		await page.goto(`${SHOP}/cart`);
 		await expect(page.getByText(/\/ m/).first()).toBeVisible();
 		await expect(page.locator('input[name="quantity"][inputmode="decimal"]').first()).toHaveValue('2.5 m');

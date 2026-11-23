@@ -62,6 +62,14 @@ export { expect };
 
 export const cards = (page: Page) => page.locator('app-collection-products app-product-box');
 
+export async function buyBoxReady(page: Page) {
+	const buyBox = page.locator('app-buy-box');
+	await expect(buyBox).toBeVisible();
+	// The server-rendered controls are visible before Angular claims the component.
+	await expect(buyBox).not.toHaveAttribute('ngh', /.*/);
+	return buyBox;
+}
+
 export async function openFilter(page: Page, title: string): Promise<void> {
 	const header = page.locator('.accordion-button', { hasText: title }).first();
 	if ((await header.getAttribute('class'))?.includes('collapsed')) await header.click();

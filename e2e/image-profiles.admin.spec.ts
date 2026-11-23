@@ -75,10 +75,10 @@ test.describe('Settings › Image profiles (step 2c)', () => {
 
 		// Edit: a size more, crop off.
 		await added.locator('a[title="Edit"]').click();
-		await expect(page.locator('#profile_name')).toBeEnabled();
-		const own = page.locator('[data-family]').first();
-		await own.locator('input[type="number"]').fill('2400');
-		await own.locator('button.btn-outline').click();
+		await expect(page.locator('#profile_name')).toHaveValue(`${RUN} 2:3`);
+		await page.locator('#profile_add_size_own').fill('2400');
+		await page.locator('#profile_add_size_btn_own').click();
+		await expect(page.locator('[data-family="own"]').getByText('2400', { exact: true })).toBeVisible();
 		await page.locator('#profile_fill_crop').uncheck();
 		await page.locator('#profile_save').click();
 		await expect(page).toHaveURL(/\/setting\/image-profiles$/);

@@ -104,11 +104,11 @@ test.describe('the product’s own share picture and a variant’s own picture',
 		page,
 	}) => {
 		await page.goto(`/en/product/${SLUG}`);
-		const meta = (property: string) => page.locator(`meta[property="${property}"]`).first().getAttribute('content');
-		expect(await meta('og:image')).toContain(`media/${SHARE}/e2e-share-1200w.jpg`);
-		expect(await meta('og:image:width')).toBe('1200');
-		expect(await meta('og:image:height')).toBe('628');
-		expect(await meta('og:image:type')).toBe('image/jpeg');
+		const meta = (property: string) => page.locator(`meta[property="${property}"]`).first();
+		await expect(meta('og:image')).toHaveAttribute('content', new RegExp(`media/${SHARE}/e2e-share-1200w\\.jpg$`));
+		await expect(meta('og:image:width')).toHaveAttribute('content', '1200');
+		await expect(meta('og:image:height')).toHaveAttribute('content', '628');
+		await expect(meta('og:image:type')).toHaveAttribute('content', 'image/jpeg');
 	});
 
 	test('opening the variant starts its gallery at the variant’s own picture', async ({ page, problems }) => {

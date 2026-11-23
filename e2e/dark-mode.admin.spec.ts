@@ -103,7 +103,11 @@ async function open(
 	await page.goto(`${ADMIN}${path}`, { waitUntil: 'networkidle' });
 	await page.addStyleTag({ content: STILL });
 	await page.evaluate(() => document.fonts.ready);
+	const revenueChart =
+		path === '/dashboard' && options.signedIn !== false ? page.locator('app-dashboard .apexcharts-canvas') : null;
+	if (revenueChart) await expect(revenueChart.first()).toBeVisible();
 	await settled(page);
+	if (revenueChart) expect(await revenueChart.count()).toBe(1);
 	return page;
 }
 
@@ -280,9 +284,12 @@ test.describe('Admin light and dark: menus, lists and popups', () => {
 
 			await page.locator('.page-header [title="Language"]').first().click();
 			await check('the header language menu');
-			await page.keyboard.press('Escape');
+			await page.getByRole('heading', { name: 'Products', exact: true }).click();
 
-			await page.locator('li.profile-nav').hover();
+			const profile = page.locator('li.profile-nav');
+			await expect(profile).toBeInViewport();
+			await profile.locator('.profile-media').hover();
+			await expect(profile.getByRole('link', { name: 'My Account' })).toBeVisible();
 			await check('the profile menu');
 			await page.mouse.move(10, 890);
 

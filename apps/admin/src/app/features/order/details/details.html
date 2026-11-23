@@ -745,15 +745,31 @@
 			<div class="card">
 				<div class="card-body">
 					<div class="title-header">
-						<div class="d-flex align-items-center">
+						<div class="d-flex align-items-center gap-2">
 							<h5>{{ 'ord_edocs_title' | transloco }}</h5>
+							@if (d.eDocuments.eInvoice.connected || d.eDocuments.eWayBill.connected) {
+							<span class="badge rounded-pill bg-success">{{ 'ord_edoc_connected' | transloco }}</span>
+							} @else {
+							<span class="badge rounded-pill bg-secondary">{{ 'ord_edoc_by_hand' | transloco }}</span>
+							}
 						</div>
 					</div>
 					<div class="row g-3">
 						@if (d.eDocuments.eInvoice.required || o.eInvoice) {
 						<div class="col-md-6">
 							<div class="h-100 rounded border p-3">
-								<h6 class="mb-2">{{ 'ord_einvoice' | transloco }}</h6>
+								<div class="d-flex align-items-center mb-2 gap-2">
+									<h6 class="mb-0">{{ 'ord_einvoice' | transloco }}</h6>
+									<div
+										class="d-inline-block"
+										[class.status-success]="!!o.eInvoice"
+										[class.status-pending]="!o.eInvoice"
+									>
+										<span>
+											{{ (o.eInvoice ? 'ord_edoc_generated' : 'ord_edoc_needed') | transloco }}
+										</span>
+									</div>
+								</div>
 								@if (o.eInvoice; as irn) {
 								<p class="small mb-1">
 									<span class="text-muted">IRN:</span>
@@ -771,6 +787,10 @@
 									[disabled]="busy() === 'raise:eInvoice'"
 									(click)="eDocument('eInvoice')"
 								>
+									<i
+										class="ri-qr-code-line"
+										aria-hidden="true"
+									></i>
 									{{ 'ord_raise_einvoice' | transloco }}
 								</button>
 								}
@@ -779,7 +799,18 @@
 						} @if (d.eDocuments.eWayBill.required || o.eWayBill) {
 						<div class="col-md-6">
 							<div class="h-100 rounded border p-3">
-								<h6 class="mb-2">{{ 'ord_ewaybill' | transloco }}</h6>
+								<div class="d-flex align-items-center mb-2 gap-2">
+									<h6 class="mb-0">{{ 'ord_ewaybill' | transloco }}</h6>
+									<div
+										class="d-inline-block"
+										[class.status-success]="!!o.eWayBill"
+										[class.status-pending]="!o.eWayBill"
+									>
+										<span>
+											{{ (o.eWayBill ? 'ord_edoc_generated' : 'ord_edoc_needed') | transloco }}
+										</span>
+									</div>
+								</div>
 								@if (o.eWayBill; as ewb) {
 								<p class="small mb-1">
 									<span class="text-muted">{{ 'ord_ewb_number' | transloco }}:</span>
@@ -797,6 +828,10 @@
 									[disabled]="busy() === 'raise:eWayBill'"
 									(click)="eDocument('eWayBill')"
 								>
+									<i
+										class="ri-truck-line"
+										aria-hidden="true"
+									></i>
 									{{ 'ord_raise_ewaybill' | transloco }}
 								</button>
 								}

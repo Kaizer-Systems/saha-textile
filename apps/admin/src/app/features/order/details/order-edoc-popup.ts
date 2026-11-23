@@ -55,6 +55,45 @@ export class OrderEDocPopup {
 		this.kind.set(kind);
 	}
 
+	/** The file read from the portal (EI4B), and why it was refused. */
+	readonly fileName = signal<string | null>(null);
+	readonly fileProblem = signal<string | null>(null);
+
+	/**
+	 * The e-invoice portal's signed file (a JSON result, a {Data: …} wrapper or a list): fills the IRN,
+	 * acknowledgement and signed QR, after checking the QR names this order's buyer GSTIN (accounts brief
+	 * addendum 2, AE1). Typed numbers stay possible, but only the file carries the signed QR.
+	 */
+	async readSignedFile(file: File | null | undefined): Promise<void> {
+		this.fileProblem.set(null);
+		if (!file) return;
+		this.fileName.set(file.name);
+		try {
+			const parsed: unknown = JSON.parse(await file.text());
+			const list = (Array.isArray(parsed) ? parsed : [parsed]).flatMap((item) => {
+				const obj = item as Record<string, unknown>;
+				return [obj, (obj?.['Data'] ?? obj?.['data']) as Record<string, unknown> | undefined].filter(
+					Boolean,
+				) as Record<string, unknown>[];
+			});
+			const found = list.find((c) => typeof c['Irn'] === 'string');
+			if (!found) return this.fileProblem.set('ord_signed_file_no_irn');
+			const qr = typeof found['SignedQRCode'] === 'string' ? found['SignedQRCode'] : '';
+			if (!qr) return this.fileProblem.set('ord_signed_file_no_qr');
+			const buyer = this.order()?.buyer?.gstin;
+			const data = qrData(qr);
+			if (buyer && data?.['BuyerGstin'] && data['BuyerGstin'] !== buyer)
+				return this.fileProblem.set('ord_signed_file_other_buyer');
+			this.irn.set(String(found['Irn']).toLowerCase());
+			this.ackNo.set(String(found['AckNo'] ?? ''));
+			const ackDay = String(found['AckDt'] ?? '').slice(0, 10);
+			if (/^\d{4}-\d{2}-\d{2}$/.test(ackDay)) this.ackDate.set(ackDay);
+			this.signedQr.set(qr);
+		} catch {
+			this.fileProblem.set('ord_signed_file_not_json');
+		}
+	}
+
 	irnValid(): boolean {
 		return /^[0-9a-fA-F]{64}$/.test(this.irn().trim());
 	}
@@ -106,5 +145,24 @@ export class OrderEDocPopup {
 		} finally {
 			this.busy.set(false);
 		}
+	}
+}
+
+/** The data inside an IRP signed QR (a JWS whose payload's "data" is a JSON string). */
+function qrData(jws: string): Record<string, unknown> | null {
+	const part = jws.split('.')[1];
+	if (!part) return null;
+	try {
+		const text = decodeURIComponent(
+			atob(part.replace(/-/g, '+').replace(/_/g, '/'))
+				.split('')
+				.map((c) => '%' + c.charCodeAt(0).toString(16).padStart(2, '0'))
+				.join(''),
+		);
+		const payload = JSON.parse(text) as { data?: unknown };
+		const data = typeof payload.data === 'string' ? JSON.parse(payload.data) : payload.data;
+		return data && typeof data === 'object' ? (data as Record<string, unknown>) : null;
+	} catch {
+		return null;
 	}
 }

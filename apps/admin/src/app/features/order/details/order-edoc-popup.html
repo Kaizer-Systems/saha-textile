@@ -21,6 +21,28 @@
 		<div>{{ 'ord_edoc_not_connected' | transloco }}</div>
 	</div>
 	@if (kind() === 'eInvoice') {
+	<div class="mb-3">
+		<label
+			class="form-label"
+			for="edoc_signed_file"
+		>
+			{{ 'ord_signed_file' | transloco }}
+		</label>
+		<input
+			class="form-control"
+			type="file"
+			accept=".json,application/json"
+			id="edoc_signed_file"
+			(change)="readSignedFile($any($event.target).files?.[0])"
+		/>
+		@if (fileProblem(); as problem) {
+		<p class="small text-danger mt-1 mb-0">{{ problem | transloco }}</p>
+		} @else if (fileName() && signedQr()) {
+		<p class="small text-success mt-1 mb-0">{{ 'ord_signed_file_read' | transloco }}</p>
+		} @else {
+		<p class="help-text mb-0">{{ 'ord_signed_file_help' | transloco }}</p>
+		}
+	</div>
 	<div class="row g-3">
 		<div class="col-12">
 			<label

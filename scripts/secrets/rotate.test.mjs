@@ -64,7 +64,7 @@ test('the arguments: a server tier, known ids once, the three switches', () => {
 		);
 	}
 	assert.deepEqual([...DATA_SERVICE_IDS].sort(), ['keyfile', 'mongo-app', 'mongo-monitor', 'mongo-root', 'redis', 'search']);
-	assert.equal(Object.keys(ROTATION_IDS).length, 9);
+	assert.equal(Object.keys(ROTATION_IDS).length, 10);
 });
 
 test('a planned change keeps the old sign-in and CSRF keys under _PREVIOUS; data-service ids need a rotate deploy', () => {

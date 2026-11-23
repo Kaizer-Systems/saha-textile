@@ -35,10 +35,17 @@ export const ROTATION_IDS = /** @type {const} */ ({
 	],
 	csrf: [['api', 'CSRF_SECRET']],
 	mailbox: [['api', 'MAILBOX_TOKEN_KEY']],
+	edocs: [['api', 'EDOC_KEYS_KEY']],
 });
 
 /** Keys the API still accepts under `<NAME>_PREVIOUS` for 30 days after a planned change. */
-export const GRACE_NAMES = ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET', 'CSRF_SECRET', 'MAILBOX_TOKEN_KEY'];
+export const GRACE_NAMES = [
+	'JWT_ACCESS_SECRET',
+	'JWT_REFRESH_SECRET',
+	'CSRF_SECRET',
+	'MAILBOX_TOKEN_KEY',
+	'EDOC_KEYS_KEY',
+];
 
 /** Ids whose new values reach the server only through a deploy started with rotation. */
 export const DATA_SERVICE_IDS = new Set(['mongo-app', 'redis', 'mongo-root', 'mongo-monitor', 'search', 'keyfile']);

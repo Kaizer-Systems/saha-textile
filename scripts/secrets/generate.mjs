@@ -34,6 +34,8 @@ export function generateServiceSecrets(tier, random = randomBytes) {
 			['CSRF_SECRET', hex(48)],
 			// `openssl rand -base64 32`: the API refuses any other length.
 			['MAILBOX_TOKEN_KEY', random(32).toString('base64')],
+			// Seals the e-invoice and e-way bill paths' keys (accounts brief, 23 Nov): 32 bytes, base64.
+			['EDOC_KEYS_KEY', random(32).toString('base64')],
 		]),
 		infrastructure: new Map([
 			// `openssl rand -base64 756`: 1,008 base64 characters, inside MongoDB's 6 to 1,024.

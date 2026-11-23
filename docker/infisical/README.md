@@ -243,9 +243,9 @@ never makes them again.
 `pnpm secrets:rotate -- <development|staging|production> --names <ids> [--no-grace] [--clear-previous] [--json]`
 (Release Path brief, approved 2026-11-23; the Release Console's Run › Secrets › Rotate runs it).
 Ids: `mongo-app`, `redis`, `mongo-root`, `mongo-monitor`, `search`, `keyfile`, `sign-in` (both JWT
-keys), `csrf`, `mailbox`. New values follow `generate.mjs`.
+keys), `csrf`, `mailbox`, `edocs` (the e-invoice and e-way bill keys' seal). New values follow `generate.mjs`.
 
-- **Grace (default):** the sign-in, CSRF and mailbox keys move to `<NAME>_PREVIOUS`, which the API
+- **Grace (default):** the sign-in, CSRF, mailbox and e-document keys move to `<NAME>_PREVIOUS`, which the API
   still accepts, so nobody is signed out and no Gmail mailbox needs connecting again. After 30 days,
   `--clear-previous` blanks the kept keys.
 - **After a leak:** `--no-grace` blanks `<NAME>_PREVIOUS` instead, so old sessions and tokens stop

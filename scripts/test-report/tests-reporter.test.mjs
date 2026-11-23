@@ -18,7 +18,11 @@ function moduleOf(file, tests, { state = 'passed', duration = 12.4, errors = [] 
 		children: {
 			*allTests() {
 				for (const t of tests)
-					yield { fullName: t.name, result: () => t.result, diagnostic: () => (t.ms === undefined ? undefined : { duration: t.ms }) };
+					yield {
+						fullName: t.name,
+						result: () => t.result,
+						diagnostic: () => (t.ms === undefined ? undefined : { duration: t.ms }),
+					};
 			},
 		},
 	};
@@ -85,19 +89,30 @@ describe('the coverage tests reporter', () => {
 			[
 				moduleOf('apps/admin/src/table.spec.ts', [
 					{ name: 'Table > keeps the page', result: { state: 'passed' }, ms: 3.6 },
-					{ name: 'Table > changes the size', result: { state: 'failed', errors: [{ message: 'no' }] }, ms: Number.NaN },
+					{
+						name: 'Table > changes the size',
+						result: { state: 'failed', errors: [{ message: 'no' }] },
+						ms: Number.NaN,
+					},
 					{ name: 'Table > later', result: { state: 'skipped' } },
 				]),
-				moduleOf('apps/admin/src/broken.spec.ts', [], { state: 'failed', duration: null, errors: [{ message: 'cannot import' }] }),
+				moduleOf('apps/admin/src/broken.spec.ts', [], {
+					state: 'failed',
+					duration: null,
+					errors: [{ message: 'cannot import' }],
+				}),
 			],
 			ROOT,
 		);
 		assert.equal(records.files.length, 2);
-		assert.deepEqual(records.files[0].tests.map((t) => [t.name, t.state, t.ms, t.errors.length]), [
-			['Table > keeps the page', 'passed', 4, 0],
-			['Table > changes the size', 'failed', 0, 1],
-			['Table > later', 'skipped', 0, 0],
-		]);
+		assert.deepEqual(
+			records.files[0].tests.map((t) => [t.name, t.state, t.ms, t.errors.length]),
+			[
+				['Table > keeps the page', 'passed', 4, 0],
+				['Table > changes the size', 'failed', 0, 1],
+				['Table > later', 'skipped', 0, 0],
+			],
+		);
 		assert.deepEqual(
 			{ ...records.files[1], errors: records.files[1].errors.map((e) => e.message) },
 			{ file: 'apps/admin/src/broken.spec.ts', state: 'failed', ms: 0, errors: ['cannot import'], tests: [] },
@@ -106,8 +121,14 @@ describe('the coverage tests reporter', () => {
 	});
 
 	it('leaves out the temporary spec that makes Angular apps count every file', () => {
-		const modules = [moduleOf('apps/admin/src/zz-denominator.spec.ts', []), moduleOf('apps/admin/src/a.spec.ts', [])];
-		assert.deepEqual(testRecords(modules, ROOT, 'src/zz-denominator.spec.ts').files.map((f) => f.file), ['apps/admin/src/a.spec.ts']);
+		const modules = [
+			moduleOf('apps/admin/src/zz-denominator.spec.ts', []),
+			moduleOf('apps/admin/src/a.spec.ts', []),
+		];
+		assert.deepEqual(
+			testRecords(modules, ROOT, 'src/zz-denominator.spec.ts').files.map((f) => f.file),
+			['apps/admin/src/a.spec.ts'],
+		);
 		assert.equal(testRecords(modules, ROOT, '').files.length, 2);
 	});
 
@@ -119,7 +140,10 @@ describe('the coverage tests reporter', () => {
 			process.env.COVERAGE_TESTS_FILE = join(dir, 'admin', 'tests.json');
 			process.env.COVERAGE_ROOT = ROOT;
 			reporter.onTestRunEnd([moduleOf('apps/a.spec.ts', [])]);
-			assert.equal(JSON.parse(readFileSync(join(dir, 'admin', 'tests.json'), 'utf8')).files[0].file, 'apps/a.spec.ts');
+			assert.equal(
+				JSON.parse(readFileSync(join(dir, 'admin', 'tests.json'), 'utf8')).files[0].file,
+				'apps/a.spec.ts',
+			);
 			delete process.env.COVERAGE_ROOT;
 			const cwd = process.cwd();
 			reporter.onTestRunEnd([{ ...moduleOf('x.spec.ts', []), moduleId: `${cwd}/x.spec.ts` }]);

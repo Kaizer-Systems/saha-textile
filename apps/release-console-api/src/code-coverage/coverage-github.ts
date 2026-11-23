@@ -43,9 +43,16 @@ export const coverageHttp: CoverageHttp = {
 
 /** A GitHub refusal in words; never the key. */
 function refused(status: number, what: string): VendorError {
-	if (status === 401) return new VendorError('GitHub did not accept this repository’s key. Paste a new one on the Connections screen.', 401);
+	if (status === 401)
+		return new VendorError(
+			'GitHub did not accept this repository’s key. Paste a new one on the Connections screen.',
+			401,
+		);
 	if (status === 403 || status === 404)
-		return new VendorError(`GitHub would not show ${what}. The key needs Actions and Contents read access to this repository.`, status);
+		return new VendorError(
+			`GitHub would not show ${what}. The key needs Actions and Contents read access to this repository.`,
+			status,
+		);
 	return new VendorError(`GitHub could not show ${what} (status ${status}).`, status);
 }
 async function json(http: CoverageHttp, url: string, key: string, what: string): Promise<Record<string, unknown>> {
@@ -60,14 +67,25 @@ const encodePath = (path: string) => path.split('/').map(encodeURIComponent).joi
  * counts once any of its recent runs kept a report, so a run still going, or one whose reports were not
  * kept, shows too.
  */
-export async function ciRuns(http: CoverageHttp, repo: string, key: string): Promise<Pick<CoverageRuns, 'ci' | 'ciMessage'>> {
+export async function ciRuns(
+	http: CoverageHttp,
+	repo: string,
+	key: string,
+): Promise<Pick<CoverageRuns, 'ci' | 'ciMessage'>> {
 	const kept = arr(
-		(await json(http, `${API}/repos/${repo}/actions/artifacts?name=${COVERAGE_ARTIFACT}&per_page=50`, key, 'the coverage reports'))[
-			'artifacts'
-		],
+		(
+			await json(
+				http,
+				`${API}/repos/${repo}/actions/artifacts?name=${COVERAGE_ARTIFACT}&per_page=50`,
+				key,
+				'the coverage reports',
+			)
+		)['artifacts'],
 	).map(rec);
 	const live = new Set(kept.filter((a) => a['expired'] !== true).map((a) => num(rec(a['workflow_run'])['id'])));
-	const runs = arr((await json(http, `${API}/repos/${repo}/actions/runs?per_page=40`, key, 'the workflow runs'))['workflow_runs']).map(rec);
+	const runs = arr(
+		(await json(http, `${API}/repos/${repo}/actions/runs?per_page=40`, key, 'the workflow runs'))['workflow_runs'],
+	).map(rec);
 	const workflows = new Set(runs.filter((r) => live.has(num(r['id']))).map((r) => num(r['workflow_id'])));
 	const ci = runs
 		.filter((r) => workflows.has(num(r['workflow_id'])))
@@ -98,16 +116,28 @@ export async function ciRuns(http: CoverageHttp, repo: string, key: string): Pro
 }
 
 /** One run's reports by file name (meta.json, <workspace>/coverage-final.json, <workspace>/tests.json). */
-export async function ciReports(http: CoverageHttp, repo: string, key: string, runId: string): Promise<Map<string, Buffer>> {
+export async function ciReports(
+	http: CoverageHttp,
+	repo: string,
+	key: string,
+	runId: string,
+): Promise<Map<string, Buffer>> {
 	const list = arr(
-		(await json(http, `${API}/repos/${repo}/actions/runs/${encodeURIComponent(runId)}/artifacts?name=${COVERAGE_ARTIFACT}`, key, 'this run’s reports'))[
-			'artifacts'
-		],
+		(
+			await json(
+				http,
+				`${API}/repos/${repo}/actions/runs/${encodeURIComponent(runId)}/artifacts?name=${COVERAGE_ARTIFACT}`,
+				key,
+				'this run’s reports',
+			)
+		)['artifacts'],
 	).map(rec);
 	const artifact = list.find((a) => a['expired'] !== true);
 	if (!artifact)
 		throw new VendorError(
-			list.length ? 'This run’s coverage reports have expired (GitHub keeps them 90 days).' : 'This run kept no coverage reports.',
+			list.length
+				? 'This run’s coverage reports have expired (GitHub keeps them 90 days).'
+				: 'This run kept no coverage reports.',
 			404,
 		);
 	const zip = await http.bytes(`${API}/repos/${repo}/actions/artifacts/${num(artifact['id'])}/zip`, key);
@@ -116,8 +146,18 @@ export async function ciReports(http: CoverageHttp, repo: string, key: string, r
 }
 
 /** Every file in the commit, as GitHub lists its tree. */
-export async function committedFiles(http: CoverageHttp, repo: string, key: string, sha: string): Promise<{ files: string[]; truncated: boolean }> {
-	const tree = await json(http, `${API}/repos/${repo}/git/trees/${encodeURIComponent(sha)}?recursive=1`, key, 'the commit’s files');
+export async function committedFiles(
+	http: CoverageHttp,
+	repo: string,
+	key: string,
+	sha: string,
+): Promise<{ files: string[]; truncated: boolean }> {
+	const tree = await json(
+		http,
+		`${API}/repos/${repo}/git/trees/${encodeURIComponent(sha)}?recursive=1`,
+		key,
+		'the commit’s files',
+	);
 	return {
 		files: arr(tree['tree'])
 			.map(rec)
@@ -128,7 +168,13 @@ export async function committedFiles(http: CoverageHttp, repo: string, key: stri
 }
 
 /** A file's text at a commit; null when the commit has no such file. */
-export async function fileAt(http: CoverageHttp, repo: string, key: string, sha: string, path: string): Promise<string | null> {
+export async function fileAt(
+	http: CoverageHttp,
+	repo: string,
+	key: string,
+	sha: string,
+	path: string,
+): Promise<string | null> {
 	const a = await http.text(`${API}/repos/${repo}/contents/${encodePath(path)}?ref=${encodeURIComponent(sha)}`, key);
 	if (a.status === 404) return null;
 	if (a.body === null) throw refused(a.status, 'this file');
@@ -150,7 +196,12 @@ export async function changedOnGithub(
 	const body =
 		base === 'commit'
 			? await json(http, `${API}/repos/${repo}/commits/${encodeURIComponent(sha)}`, key, 'the commit’s changes')
-			: await json(http, `${API}/repos/${repo}/compare/${encodeURIComponent(base)}...${encodeURIComponent(sha)}`, key, 'the changes');
+			: await json(
+					http,
+					`${API}/repos/${repo}/compare/${encodeURIComponent(base)}...${encodeURIComponent(sha)}`,
+					key,
+					'the changes',
+				);
 	const out = new Map<string, number[]>();
 	for (const f of arr(body['files']).map(rec)) {
 		const patch = str(f['patch']);

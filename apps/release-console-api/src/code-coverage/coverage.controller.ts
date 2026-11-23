@@ -36,13 +36,21 @@ export class CoverageController {
 	}
 
 	@Get('tree')
-	tree(@Param('p') p: string, @Param('r') r: string, @Query() query: unknown): Promise<VendorAnswer<CoverageTreeAnswer>> {
+	tree(
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Query() query: unknown,
+	): Promise<VendorAnswer<CoverageTreeAnswer>> {
 		const q = parseBody(runQuery, query);
 		return this.coverage.tree(p, r, q.source, q.run, q.base);
 	}
 
 	@Get('file')
-	file(@Param('p') p: string, @Param('r') r: string, @Query() query: unknown): Promise<VendorAnswer<CoverageFileAnswer>> {
+	file(
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Query() query: unknown,
+	): Promise<VendorAnswer<CoverageFileAnswer>> {
 		const q = parseBody(fileQuery, query);
 		return this.coverage.file(p, r, q.source, q.run, q.path, q.base);
 	}

@@ -28,20 +28,33 @@ describe('the coverage routes', () => {
 		expect(() => routes.tree('p', 'r', { source: 'gitlab', run: '7' })).toThrow(BadRequestException);
 		expect(() => routes.tree('p', 'r', { source: 'ci', run: '7', base: 'a b' })).toThrow(BadRequestException);
 		expect(() => routes.file('p', 'r', { source: 'ci', run: '7' })).toThrow(BadRequestException);
-		expect(() => routes.file('p', 'r', { source: 'ci', run: '7', path: 'x'.repeat(501) })).toThrow(BadRequestException);
+		expect(() => routes.file('p', 'r', { source: 'ci', run: '7', path: 'x'.repeat(501) })).toThrow(
+			BadRequestException,
+		);
 	});
 });
 
 describe('wiring', () => {
 	it('lets Nest build the coverage routes from their injected parts', async () => {
-		const projects = { repository: () => ({ project: {}, repo: { name: 'x', sourceCode: { repository: 'o/x' } } }) };
+		const projects = {
+			repository: () => ({ project: {}, repo: { name: 'x', sourceCode: { repository: 'o/x' } } }),
+		};
 		const reads = { sourceCode: async () => ({ state: 'not-connected', message: 'No key.' }) };
 		const module = await Test.createTestingModule({
 			controllers: [CoverageController],
-			providers: [CoverageService, { provide: VendorReadsService, useValue: reads }, { provide: ProjectsService, useValue: projects }],
+			providers: [
+				CoverageService,
+				{ provide: VendorReadsService, useValue: reads },
+				{ provide: ProjectsService, useValue: projects },
+			],
 		}).compile();
 		const routes = module.get(CoverageController);
 		module.get(CoverageService).helper = { call: async () => ({ off: true, message: 'Nothing yet.' }) } as never;
-		expect(await routes.runs('p', 'r')).toEqual({ ci: [], ciMessage: 'No key.', mac: null, macMessage: 'Nothing yet.' });
+		expect(await routes.runs('p', 'r')).toEqual({
+			ci: [],
+			ciMessage: 'No key.',
+			mac: null,
+			macMessage: 'Nothing yet.',
+		});
 	});
 });

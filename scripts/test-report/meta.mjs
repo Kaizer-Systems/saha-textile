@@ -18,7 +18,15 @@ export function gitAnswer(root, args, run = spawnSync) {
  * the folder: a run of some workspaces keeps the others' entries from that run of the same copy, each with
  * the time it was measured.
  */
-export function coverageMeta({ root, env, results, floor, previous = null, now = new Date(), git = (args) => gitAnswer(root, args) }) {
+export function coverageMeta({
+	root,
+	env,
+	results,
+	floor,
+	previous = null,
+	now = new Date(),
+	git = (args) => gitAnswer(root, args),
+}) {
 	const kept = previous && previous.root === root && previous.workspaces ? previous.workspaces : {};
 	return {
 		root,

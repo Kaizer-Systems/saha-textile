@@ -46,20 +46,20 @@ export function testRecords(modules, root, skip = '') {
 		files: [...modules]
 			.filter((module) => !skip || !module.moduleId.endsWith(skip))
 			.map((module) => ({
-			file: relativeTo(root, module.moduleId),
-			state: module.state(),
-			ms: round(module.diagnostic()?.duration),
-			errors: module.errors().map((error) => errorRecord(error, root)),
-			tests: [...module.children.allTests()].map((test) => {
-				const result = test.result();
-				return {
-					name: test.fullName,
-					state: result.state,
-					ms: round(test.diagnostic()?.duration),
-					errors: (result.errors ?? []).map((error) => errorRecord(error, root)),
-				};
-			}),
-		})),
+				file: relativeTo(root, module.moduleId),
+				state: module.state(),
+				ms: round(module.diagnostic()?.duration),
+				errors: module.errors().map((error) => errorRecord(error, root)),
+				tests: [...module.children.allTests()].map((test) => {
+					const result = test.result();
+					return {
+						name: test.fullName,
+						state: result.state,
+						ms: round(test.diagnostic()?.duration),
+						errors: (result.errors ?? []).map((error) => errorRecord(error, root)),
+					};
+				}),
+			})),
 	};
 }
 

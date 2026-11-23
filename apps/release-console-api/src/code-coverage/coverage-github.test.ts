@@ -40,7 +40,10 @@ function storedZip(entries: Record<string, string>): Buffer {
 }
 
 /** GitHub as a table of answers: the longest URL part that matches wins. */
-function github(routes: Record<string, { status: number; body?: unknown }>, files: Record<string, { status: number; body: Buffer | string | null }> = {}) {
+function github(
+	routes: Record<string, { status: number; body?: unknown }>,
+	files: Record<string, { status: number; body: Buffer | string | null }> = {},
+) {
 	const pick = <T>(table: Record<string, T>, url: string) =>
 		Object.keys(table)
 			.filter((k) => url.includes(k))
@@ -48,7 +51,11 @@ function github(routes: Record<string, { status: number; body?: unknown }>, file
 	const http: CoverageHttp = {
 		json: vi.fn(async (url: string) => {
 			const k = pick(routes, url);
-			return { status: k ? routes[k]!.status : 404, headers: new Headers(), body: k ? (routes[k]!.body ?? null) : null };
+			return {
+				status: k ? routes[k]!.status : 404,
+				headers: new Headers(),
+				body: k ? (routes[k]!.body ?? null) : null,
+			};
 		}),
 		bytes: vi.fn(async (url: string) => {
 			const k = pick(files, url);
@@ -112,7 +119,11 @@ describe('coverage runs on GitHub', () => {
 			['6', 'no-reports', null],
 		]);
 		expect(ci[2]?.title).toBe('CI');
-		expect(ci[1]).toMatchObject({ sha: 'sha1', ref: 'feat/combined-after-pr6', url: `https://github.com/${REPO}/actions/runs/1` });
+		expect(ci[1]).toMatchObject({
+			sha: 'sha1',
+			ref: 'feat/combined-after-pr6',
+			url: `https://github.com/${REPO}/actions/runs/1`,
+		});
 	});
 
 	it('says when no run has kept reports yet, and when GitHub refuses', async () => {
@@ -134,11 +145,26 @@ describe('coverage runs on GitHub', () => {
 });
 
 describe('one run’s reports', () => {
-	const zipped = storedZip({ 'meta.json': '{"sha":"abc"}', 'admin/coverage-final.json': '{}', 'admin/coverage-summary.json': '{}', 'admin/tests.json': '{"files":[]}' });
+	const zipped = storedZip({
+		'meta.json': '{"sha":"abc"}',
+		'admin/coverage-final.json': '{}',
+		'admin/coverage-summary.json': '{}',
+		'admin/tests.json': '{"files":[]}',
+	});
 
 	it('downloads the run’s artifact and keeps the description, line data and test results', async () => {
 		const http = github(
-			{ '/actions/runs/7/artifacts': { status: 200, body: { artifacts: [{ id: 9, expired: true }, { id: 11, expired: false }] } } },
+			{
+				'/actions/runs/7/artifacts': {
+					status: 200,
+					body: {
+						artifacts: [
+							{ id: 9, expired: true },
+							{ id: 11, expired: false },
+						],
+					},
+				},
+			},
 			{ '/actions/artifacts/11/zip': { status: 200, body: zipped } },
 		);
 		const files = await ciReports(http, REPO, 'key', '7');
@@ -146,12 +172,19 @@ describe('one run’s reports', () => {
 	});
 
 	it('says when the reports expired, were never kept, or could not be downloaded', async () => {
-		const expired = github({ '/actions/runs/7/artifacts': { status: 200, body: { artifacts: [{ id: 9, expired: true }] } } });
+		const expired = github({
+			'/actions/runs/7/artifacts': { status: 200, body: { artifacts: [{ id: 9, expired: true }] } },
+		});
 		await expect(ciReports(expired, REPO, 'key', '7')).rejects.toThrow('have expired (GitHub keeps them 90 days)');
 		const never = github({ '/actions/runs/7/artifacts': { status: 200, body: { artifacts: [] } } });
 		await expect(ciReports(never, REPO, 'key', '7')).rejects.toThrow('This run kept no coverage reports.');
-		const gone = github({ '/actions/runs/7/artifacts': { status: 200, body: { artifacts: [{ id: 11 }] } } }, { '/actions/artifacts/11/zip': { status: 410, body: null } });
-		await expect(ciReports(gone, REPO, 'key', '7')).rejects.toThrow('GitHub could not show this run’s reports (status 410).');
+		const gone = github(
+			{ '/actions/runs/7/artifacts': { status: 200, body: { artifacts: [{ id: 11 }] } } },
+			{ '/actions/artifacts/11/zip': { status: 410, body: null } },
+		);
+		await expect(ciReports(gone, REPO, 'key', '7')).rejects.toThrow(
+			'GitHub could not show this run’s reports (status 410).',
+		);
 	});
 });
 
@@ -160,16 +193,33 @@ describe('the commit’s files and text', () => {
 		const http = github({
 			'/git/trees/abc?recursive=1': {
 				status: 200,
-				body: { truncated: true, tree: [{ type: 'tree', path: 'apps' }, { type: 'blob', path: 'apps/a.ts' }, { type: 'blob', path: 'README.md' }] },
+				body: {
+					truncated: true,
+					tree: [
+						{ type: 'tree', path: 'apps' },
+						{ type: 'blob', path: 'apps/a.ts' },
+						{ type: 'blob', path: 'README.md' },
+					],
+				},
 			},
 		});
-		expect(await committedFiles(http, REPO, 'key', 'abc')).toEqual({ files: ['apps/a.ts', 'README.md'], truncated: true });
+		expect(await committedFiles(http, REPO, 'key', 'abc')).toEqual({
+			files: ['apps/a.ts', 'README.md'],
+			truncated: true,
+		});
 		const plain = github({ '/git/trees/abc': { status: 200, body: { tree: [] } } });
 		expect(await committedFiles(plain, REPO, 'key', 'abc')).toEqual({ files: [], truncated: false });
 	});
 
 	it('reads a file at the commit, with each part of its path escaped', async () => {
-		const http = github({}, { '/contents/apps/admin/a%20b.ts?ref=abc': { status: 200, body: 'export {};' }, '/contents/gone.ts': { status: 404, body: null }, '/contents/locked.ts': { status: 403, body: null } });
+		const http = github(
+			{},
+			{
+				'/contents/apps/admin/a%20b.ts?ref=abc': { status: 200, body: 'export {};' },
+				'/contents/gone.ts': { status: 404, body: null },
+				'/contents/locked.ts': { status: 403, body: null },
+			},
+		);
 		expect(await fileAt(http, REPO, 'key', 'abc', 'apps/admin/a b.ts')).toBe('export {};');
 		expect(await fileAt(http, REPO, 'key', 'abc', 'gone.ts')).toBeNull();
 		await expect(fileAt(http, REPO, 'key', 'abc', 'locked.ts')).rejects.toThrow('GitHub would not show this file.');
@@ -179,7 +229,10 @@ describe('the commit’s files and text', () => {
 describe('changed lines on GitHub', () => {
 	it('reads a commit’s own changes, or the changes against a branch, leaving out files without a patch', async () => {
 		const http = github({
-			'/commits/abc': { status: 200, body: { files: [{ filename: 'a.ts', patch: '@@ -1 +1,2 @@\n-x\n+y\n+z' }, { filename: 'logo.png' }] } },
+			'/commits/abc': {
+				status: 200,
+				body: { files: [{ filename: 'a.ts', patch: '@@ -1 +1,2 @@\n-x\n+y\n+z' }, { filename: 'logo.png' }] },
+			},
 			'/compare/dev...abc': { status: 200, body: { files: [{ filename: 'b.ts', patch: '@@ -0,0 +5 @@\n+w' }] } },
 		});
 		expect([...(await changedOnGithub(http, REPO, 'key', 'abc', 'commit'))]).toEqual([['a.ts', [1, 2]]]);
@@ -207,9 +260,15 @@ describe('the default GitHub client', () => {
 		});
 		vi.stubGlobal('fetch', fetch);
 		expect((await coverageHttp.json('https://api.github.com/x', 'key')).body).toEqual({ ok: true });
-		expect(await coverageHttp.bytes('https://api.github.com/a/zip', 'key')).toEqual({ status: 200, body: Buffer.from([1, 2, 3]) });
+		expect(await coverageHttp.bytes('https://api.github.com/a/zip', 'key')).toEqual({
+			status: 200,
+			body: Buffer.from([1, 2, 3]),
+		});
 		expect(await coverageHttp.bytes('https://api.github.com/missing', 'key')).toEqual({ status: 404, body: null });
-		expect(await coverageHttp.text('https://api.github.com/contents/a', 'key')).toEqual({ status: 200, body: 'text' });
+		expect(await coverageHttp.text('https://api.github.com/contents/a', 'key')).toEqual({
+			status: 200,
+			body: 'text',
+		});
 		expect(await coverageHttp.text('https://api.github.com/missing', 'key')).toEqual({ status: 404, body: null });
 	});
 });

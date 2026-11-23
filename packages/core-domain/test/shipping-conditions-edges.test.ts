@@ -31,7 +31,10 @@ const snapshot = (lines: ShippingSnapshotLine[], pincode = '700 045'): ShippingC
 	delivery: { country: 'in', state: 'West Bengal', pincode },
 	shopper: { signedIn: true, groups: ['wholesale'], firstOrder: true },
 });
-const scope = (over: Partial<ShippingEvalScope> = {}, lines = [line(), line({ lineId: 'b', chargeableWeightGrams: null })]): ShippingEvalScope => {
+const scope = (
+	over: Partial<ShippingEvalScope> = {},
+	lines = [line(), line({ lineId: 'b', chargeableWeightGrams: null })],
+): ShippingEvalScope => {
 	const snap = snapshot(lines);
 	return { snapshot: snap, cart: cartFacts(snap), zone: 'domestic', line: lines[0] ?? null, lineUnits: 2, ...over };
 };

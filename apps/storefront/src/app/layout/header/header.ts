@@ -1,5 +1,5 @@
 import { AsyncPipe } from '@angular/common';
-import { Component, inject, input } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 
 import { Observable } from 'rxjs';

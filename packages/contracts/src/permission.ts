@@ -72,6 +72,7 @@ export const PermissionCode = z.enum([
 	'category.destroy',
 	'category.edit',
 	'category.index',
+	'company.edit',
 	'coupon.create',
 	'coupon.destroy',
 	'coupon.edit',
@@ -395,6 +396,8 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 		'New rule set and Add exception on Admin › Shipping; POST /admin/shipping/rule-sets and /exceptions.',
 	'shop_details.edit':
 		'The open boxes and Save on Settings › Shop details (X04) and PUT /admin/settings/shop-details: the legal name, GSTIN and address printed on business documents. Reading the page is setting.index (read only, X04D). Held by the Administrator role.',
+	'company.edit':
+		'Save on Settings › Company, Registrations and Features (accounts brief J, CT, G1–G2) and PUT /admin/company, /admin/company/registrations, /admin/company/features. Reading them is setting.index. Held by the Administrator role.',
 	'shipping.destroy': 'Delete an own rule set not used anywhere, or remove an exception (Admin › Shipping).',
 	'shipping.edit': 'Save and make active a rule set, change an exception, save the zone settings (Admin › Shipping).',
 	'tag.create': 'Add-tag button on the Tags page, reached from Products rather than from navigation.',
@@ -419,6 +422,7 @@ export const PermissionResource = z.enum([
 	'business',
 	'cart',
 	'category',
+	'company',
 	'coupon',
 	'currency',
 	'customer',

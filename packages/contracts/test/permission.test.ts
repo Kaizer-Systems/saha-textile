@@ -43,7 +43,8 @@ describe('permission registry', () => {
 		// 140 → 156 on 2026-11-20 with the orders brief's permissions table (approved 2026-11-20), as
 		// resource.action pairs: business.{approve,assign,create,credit,edit,hold,index,settle},
 		// order.{address,open,payment,send} and price_zone.{create,destroy,edit,index} (DEC-B2B-ZONES).
-		expect(PERMISSION_CODES).toHaveLength(156);
+		// 156 → 157 on 2026-11-23 with `company.edit` (accounts brief: Settings › Company, Registrations, Features).
+		expect(PERMISSION_CODES).toHaveLength(157);
 		expect([...PERMISSION_CODES]).toEqual([...PERMISSION_CODES].sort((a, b) => a.localeCompare(b)));
 	});
 

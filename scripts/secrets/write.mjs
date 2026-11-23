@@ -6,7 +6,8 @@
  * straight after. Infisical Free keeps no history, so a write replaces the old value for good.
  *
  * The whole batch is checked before anything is written: only names the inventory lists for that
- * tier and folder, and no empty value. Then one CLI call per tier and folder.
+ * tier and folder, and no empty value except a kept `<NAME>_PREVIOUS` key being cleared
+ * (secrets:rotate). Then one CLI call per tier and folder.
  */
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -49,7 +50,9 @@ export function checkChanges(changes, inventory) {
 		const names = writableNames(inventory, change.tier, change.folder);
 		if (names === null) problems.push(`${where}: the ${change.tier} project holds no /${change.folder} folder.`);
 		else if (!names.has(change.name)) problems.push(`${where}: not a name the inventory lists for this folder.`);
-		if (typeof change.value !== 'string' || change.value.trim() === '')
+		// Clearing a key kept for 30 days after a rotation is the one empty write (secrets:rotate).
+		const clearsKept = change.value === '' && /_PREVIOUS$/.test(String(change.name));
+		if (!clearsKept && (typeof change.value !== 'string' || change.value.trim() === ''))
 			problems.push(`${where}: the value is empty.`);
 		else if (change.value.includes('\0')) problems.push(`${where}: the value holds a NUL character.`);
 		if (seen.has(where)) problems.push(`${where}: changed twice in one batch.`);
@@ -82,6 +85,8 @@ export function applySecretChanges(changes, { inventory, run = spawnSync, env = 
 		const dir = mkdtempSync(join(tmpdir(), 'secrets-write-'));
 		try {
 			const pairs = group.map((change, index) => {
+				// An empty value holds nothing to hide, so it goes on the command line as `NAME=`.
+				if (change.value === '') return `${change.name}=`;
 				const file = join(dir, String(index));
 				writeFileSync(file, change.value, { mode: 0o600, flag: 'wx' });
 				return `${change.name}=@${file}`;

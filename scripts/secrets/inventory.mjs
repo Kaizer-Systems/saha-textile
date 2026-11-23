@@ -59,6 +59,8 @@ export function describeError(error) {
  * @property {string} name        e.g. `saha-textile-staging`
  * @property {string} environment the Infisical environment slug, e.g. `staging`
  * @property {string} projectId
+ * @property {string | null} deployIdentityId  the GitHub deploy job's machine identity (not a secret;
+ *   the Release Console's create job sets it as the environment's INFISICAL_IDENTITY_ID)
  *
  * @typedef {object} Inventory
  * @property {Record<string, Project>} projects       keyed by tier
@@ -120,7 +122,11 @@ export function loadInventory(root = ROOT) {
 				name: project.name,
 				environment: project.environment,
 				projectId: project.projectId,
+				deployIdentityId: project.deployIdentityId ?? null,
 			};
+		if (project.deployIdentityId !== undefined && !/^[0-9a-f-]{36}$/.test(project.deployIdentityId)) {
+			throw new SecretsError(`variable-names.json: ${project.tier}'s deployIdentityId is not an id.`);
+		}
 	}
 	for (const tier of TIERS) {
 		if (!projects[tier]) throw new SecretsError(`variable-names.json has no project for ${tier}.`);

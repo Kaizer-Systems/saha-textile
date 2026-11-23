@@ -23,6 +23,7 @@
 			"name": "saha-textile-staging",
 			"environment": "staging",
 			"projectId": "a2d08450-3e22-4608-ac59-d9901836b292",
+			"deployIdentityId": "5be455b6-0332-4009-932b-31bb7c7ab9d0",
 			"url": "https://app.infisical.com/organizations/1679f92d-ecc8-4c0f-b127-7b3e250e603e/projects/secret-management/a2d08450-3e22-4608-ac59-d9901836b292/overview",
 			"includeDevelopmentOnlyApiVariables": false
 		},
@@ -31,6 +32,7 @@
 			"name": "saha-textile-production",
 			"environment": "prod",
 			"projectId": "962d746f-1ca1-41e5-bf4e-ae959ee4e244",
+			"deployIdentityId": "413ce650-19d2-45a6-9e17-1a3b738d9473",
 			"url": "https://app.infisical.com/organizations/1679f92d-ecc8-4c0f-b127-7b3e250e603e/projects/secret-management/962d746f-1ca1-41e5-bf4e-ae959ee4e244/overview",
 			"includeDevelopmentOnlyApiVariables": false
 		}

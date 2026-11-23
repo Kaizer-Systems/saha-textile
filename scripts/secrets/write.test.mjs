@@ -113,3 +113,27 @@ test('a bad batch writes nothing, and a refused save is reported by name only', 
 		error: 'Infisical refused the save (exit 1).',
 	});
 });
+
+test('a kept <NAME>_PREVIOUS key may be cleared with an empty value, on the command line; nothing else may be empty', () => {
+	assert.deepEqual(
+		checkChanges(
+			[
+				{ tier: 'staging', folder: 'api', name: 'CSRF_SECRET_PREVIOUS', value: '' },
+				{ tier: 'staging', folder: 'api', name: 'CSRF_SECRET', value: '' },
+				{ tier: 'staging', folder: 'api', name: 'JWT_ACCESS_SECRET_PREVIOUS', value: '  ' },
+			],
+			inventory,
+		),
+		['staging/api/CSRF_SECRET: the value is empty.', 'staging/api/JWT_ACCESS_SECRET_PREVIOUS: the value is empty.'],
+	);
+	const calls = [];
+	applySecretChanges(
+		[
+			{ tier: 'staging', folder: 'api', name: 'CSRF_SECRET_PREVIOUS', value: '' },
+			{ tier: 'staging', folder: 'api', name: 'CSRF_SECRET', value: VALUE },
+		],
+		{ inventory, run: (command, args) => (calls.push(args), { status: 0, stderr: '' }) },
+	);
+	assert.ok(calls[0].includes('CSRF_SECRET_PREVIOUS='));
+	assert.ok(!calls[0].some((arg) => arg.includes(VALUE)), 'a value never goes on the command line');
+});

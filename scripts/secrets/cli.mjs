@@ -26,6 +26,7 @@ import { pullDevEnv, refreshBeforeDev } from './pull.mjs';
 import { formatOtherFolder, formatReport, otherFolderReport, projectReport } from './render.mjs';
 import { stackAddresses, stackApiSettings, writeStackEnv } from './stack.mjs';
 import { checkAllowBlankNames, parseImagesFile, parseReleaseArgs, writeTierRelease } from './tier-release.mjs';
+import { formatRotation, parseRotateArgs, planRotation } from './rotate.mjs';
 import { readIfPresent } from './files.mjs';
 
 /** Notes from the Infisical CLI, said once at the end (for one, that it answered from its own copy). */
@@ -213,14 +214,59 @@ function generate(args) {
 	if (failed.length > 0 || missing.length > 0) process.exitCode = 1;
 }
 
-const commands = { status, pull, 'stack-env': stackEnv, 'setup-local': setupLocalCommand, release, generate };
+/**
+ * `pnpm secrets:rotate -- <development|staging|production> --names <ids> [--no-grace] [--clear-previous] [--json]`.
+ * @param {string[]} args
+ */
+function rotate(args) {
+	const { tier, ids, grace, clearPrevious, json } = parseRotateArgs(args);
+	const inventory = loadInventory();
+	const project = inventory.projects[tier];
+	const folders = exportProject(project, { notes });
+	const { changes, report } = planRotation({ tier, ids, grace, clearPrevious, folders });
+	const name = `${project.name} (${project.environment})`;
+	const at = new Date().toISOString();
+	if (changes.length === 0) {
+		console.log(
+			json ? JSON.stringify({ tier, project: project.name, at, ...report }) : `${name}\n  Nothing to change.`,
+		);
+		return;
+	}
+	const results = applySecretChanges(changes, { inventory });
+	const failed = results.filter((result) => !result.saved);
+	const after = exportProject(project, { notes });
+	const different = changes
+		.filter((change) => (after[change.folder]?.get(change.name) ?? '') !== change.value)
+		.map((change) => change.name);
+	if (json) {
+		console.log(
+			JSON.stringify({
+				tier,
+				project: project.name,
+				at,
+				...report,
+				notSaved: failed.flatMap((result) => result.names),
+				readBackDifferent: different,
+			}),
+		);
+	} else {
+		console.log(formatRotation(report, name));
+		for (const result of failed)
+			console.log(`  Not saved: /${result.folder} (${result.names.join(', ')}): ${result.error}`);
+		if (different.length > 0) console.log(`  Read back different or missing: ${different.join(', ')}`);
+		else console.log(`  Read back: all ${changes.length} written names hold what was written.`);
+	}
+	if (failed.length > 0 || different.length > 0) process.exitCode = 1;
+}
+
+const commands = { status, pull, 'stack-env': stackEnv, 'setup-local': setupLocalCommand, release, generate, rotate };
 
 function main() {
 	const [command, ...args] = process.argv.slice(2);
 	const run = commands[/** @type {keyof typeof commands} */ (command)];
 	if (!run) {
 		console.error(
-			'Usage: node scripts/secrets/cli.mjs status [local|development|staging|production] | pull [--dry-run|--replace] | stack-env | setup-local | release <tier> … | generate <development|staging|production> [--write] [--replace-shared]',
+			'Usage: node scripts/secrets/cli.mjs status [local|development|staging|production] | pull [--dry-run|--replace] | stack-env | setup-local | release <tier> … | generate <development|staging|production> [--write] [--replace-shared] | rotate <development|staging|production> --names <ids> [--no-grace] [--clear-previous] [--json]',
 		);
 		process.exit(2);
 	}

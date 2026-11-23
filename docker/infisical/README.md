@@ -238,6 +238,27 @@ never makes them again.
 - After `--write`, it reads the project back and confirms every written name holds its new value.
   Copy the new values into NordPass from the Infisical dashboard: Infisical Free keeps no history.
 
+### Rotating a server's values
+
+`pnpm secrets:rotate -- <development|staging|production> --names <ids> [--no-grace] [--clear-previous] [--json]`
+(Release Path brief, approved 2026-11-23; the Release Console's Run › Secrets › Rotate runs it).
+Ids: `mongo-app`, `redis`, `mongo-root`, `search`, `keyfile`, `sign-in` (both JWT keys), `csrf`,
+`mailbox`. New values follow `generate.mjs`.
+
+- **Grace (default):** the sign-in, CSRF and mailbox keys move to `<NAME>_PREVIOUS`, which the API
+  still accepts, so nobody is signed out and no Gmail mailbox needs connecting again. After 30 days,
+  `--clear-previous` blanks the kept keys.
+- **After a leak:** `--no-grace` blanks `<NAME>_PREVIOUS` instead, so old sessions and tokens stop
+  at once.
+- **Database, Redis and search:** the new values reach the server only through a deploy started
+  with rotation (`rotate`, plus `restart_database` for a keyfile to be used at once;
+  `docker/production/README.md`, Rotation). A deploy without it is refused before anything changes.
+- A blank value has nothing to rotate (a blank mailbox key means Gmail is off) and is refused.
+- Output is names only; `--json` gives `{ tier, project, at, changed, movedToPrevious,
+clearedPrevious, needsRotateDeploy }`.
+
+The deploy identities' ids are in `variable-names.json` (`deployIdentityId`); they are not secrets.
+
 ## Renderer and checks (`scripts/secrets/`)
 
 One renderer turns a project's four folders into the files each place reads, so a file is the same

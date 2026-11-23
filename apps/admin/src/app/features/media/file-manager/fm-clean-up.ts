@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, TemplateRef, computed, inject, output, signal, viewChild } from '@angular/core';
+import { Component, TemplateRef, computed, effect, inject, output, signal, untracked, viewChild } from '@angular/core';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -69,7 +69,22 @@ export class FmCleanUp {
 		return [...this.shownFiles(), ...page.filter((row) => !seen.has(row.file.id))];
 	});
 	readonly filePicked = signal<ReadonlySet<string>>(new Set());
-	readonly chosenFiles = computed(() => this.fileRows().filter((row) => this.filePicked().has(row.file.id)));
+	/**
+	 * Ticks stay when the tab changes (accounts brief H, owner-approved 2026-11-23): each ticked row is
+	 * remembered, so the bar counts every tick on every tab and Move to Trash takes them all.
+	 */
+	private readonly seenFiles = new Map<string, MediaCleanUpRow>();
+	private readonly seenVersion = signal(0);
+	/** Remembers each row as it is shown, so ticks on another tab keep their rows. */
+	private readonly rememberRows = effect(() => {
+		for (const row of this.fileRows()) this.seenFiles.set(row.file.id, row);
+		untracked(() => this.seenVersion.update((n) => n + 1));
+	});
+	readonly chosenFiles = computed(() => {
+		this.seenVersion();
+		for (const row of this.fileRows()) this.seenFiles.set(row.file.id, row);
+		return [...this.filePicked()].flatMap((id) => this.seenFiles.get(id) ?? []);
+	});
 	readonly chosenFileBytes = computed(() => this.chosenFiles().reduce((sum, row) => sum + row.file.bytes, 0));
 	readonly allFilesPicked = computed(
 		() => this.fileRows().length > 0 && this.fileRows().every((row) => this.filePicked().has(row.file.id)),
@@ -86,7 +101,6 @@ export class FmCleanUp {
 		this.tab.set(tab);
 		this.filePage.set(1);
 		this.shownFiles.set([]);
-		this.filePicked.set(new Set());
 	}
 
 	moreFileRows(): void {
@@ -105,8 +119,13 @@ export class FmCleanUp {
 		this.filePicked.set(new Set());
 	}
 
+	/** Ticks or unticks this tab's rows; ticks on other tabs stay. */
 	toggleAllFiles(): void {
-		this.filePicked.set(this.allFilesPicked() ? new Set() : new Set(this.fileRows().map((row) => row.file.id)));
+		const ids = this.fileRows().map((row) => row.file.id);
+		const next = new Set(this.filePicked());
+		if (this.allFilesPicked()) for (const id of ids) next.delete(id);
+		else for (const id of ids) next.add(id);
+		this.filePicked.set(next);
 	}
 
 	/** Move to Trash: the Media page asks, keeps Undo for 8 seconds, and the lists are read again. */
@@ -142,7 +161,18 @@ export class FmCleanUp {
 		return [...this.shown(), ...page.filter((row) => !seen.has(row.key))];
 	});
 	readonly picked = signal<ReadonlySet<string>>(new Set());
-	readonly chosen = computed(() => this.rows().filter((row) => this.picked().has(row.key)));
+	/** Ticks stay when "Sent" changes (accounts brief H): each ticked picture is remembered. */
+	private readonly seenRows = new Map<string, EmailPictureRow>();
+	private readonly seenEmailVersion = signal(0);
+	private readonly rememberEmailRows = effect(() => {
+		for (const row of this.rows()) this.seenRows.set(row.key, row);
+		untracked(() => this.seenEmailVersion.update((n) => n + 1));
+	});
+	readonly chosen = computed(() => {
+		this.seenEmailVersion();
+		for (const row of this.rows()) this.seenRows.set(row.key, row);
+		return [...this.picked()].flatMap((key) => this.seenRows.get(key) ?? []);
+	});
 	readonly chosenBytes = computed(() => this.chosen().reduce((sum, row) => sum + row.bytes, 0));
 	readonly allPicked = computed(
 		() => this.rows().length > 0 && this.rows().every((row) => this.picked().has(row.key)),
@@ -156,7 +186,6 @@ export class FmCleanUp {
 		this.sent.set(value as EmailPictureQuery['sent']);
 		this.pages.set([]);
 		this.shown.set([]);
-		this.picked.set(new Set());
 	}
 
 	showMore(): void {
@@ -175,8 +204,13 @@ export class FmCleanUp {
 		});
 	}
 
+	/** Ticks or unticks the pictures shown; ticks made under another "Sent" choice stay. */
 	toggleAll(): void {
-		this.picked.set(this.allPicked() ? new Set() : new Set(this.rows().map((row) => row.key)));
+		const keys = this.rows().map((row) => row.key);
+		const next = new Set(this.picked());
+		if (this.allPicked()) for (const key of keys) next.delete(key);
+		else for (const key of keys) next.add(key);
+		this.picked.set(next);
 	}
 
 	clear(): void {

@@ -418,7 +418,7 @@ describe('selection, stars and New folder (A17, A23, A27)', () => {
 		return { page: fixture.componentInstance, gateway, modals };
 	};
 
-	it('ticks files one by one or all at once, and forgets the ticks when the view changes', async () => {
+	it('ticks files one by one or all at once, keeps them through views, and clears them for Trash (H)', async () => {
 		const { page } = setup();
 		for (let i = 0; i < 20 && !page.result(); i += 1) await new Promise((resolve) => setTimeout(resolve, 5));
 		page.toggleSelect('med_1');
@@ -427,7 +427,12 @@ describe('selection, stars and New folder (A17, A23, A27)', () => {
 		expect([...page.selected()].sort()).toEqual(['med_1', 'med_2']);
 		page.toggleSelect('med_1');
 		expect([...page.selected()]).toEqual(['med_2']);
+		// Accounts brief H (owner-approved 2026-11-23): ticks survive views, folders and searches…
 		page.openNav('recent');
+		expect([...page.selected()]).toEqual(['med_2']);
+		expect(page.chosen().files.map((row) => row.id)).toEqual(['med_2']);
+		// …but not the move to Trash, whose actions differ.
+		page.openNav('trash');
 		expect(page.selected().size).toBe(0);
 	});
 

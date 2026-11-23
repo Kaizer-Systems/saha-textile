@@ -105,12 +105,13 @@ describe('Clean up › Email pictures (A50, A51; media step 3f)', () => {
 		expect(cancelled.gateway.deleteEmailPictures).not.toHaveBeenCalled();
 	});
 
-	it('a new filter starts with nothing chosen', () => {
+	it('a new filter keeps what was ticked (accounts brief H)', () => {
 		const { clean } = setup([row('email/a.jpg')]);
 		clean.toggleAll();
+		expect(clean.chosen().map((r) => r.key)).toEqual(['email/a.jpg']);
 		clean.setSent('over_2y');
 		expect(clean.sent()).toBe('over_2y');
-		expect(clean.picked().size).toBe(0);
+		expect([...clean.picked()]).toEqual(['email/a.jpg']);
 		clean.setSent('nonsense');
 		expect(clean.sent()).toBe('over_2y');
 	});

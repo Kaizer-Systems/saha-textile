@@ -50,7 +50,7 @@ Search (media step 4e) finds a file when every word is in its name, its web file
 
 A click on a folder card, a row or a thumbnail picks it. ⌘/Ctrl+click adds or removes one; Shift+click picks everything between the last click and this one, folders included. The row checkboxes and the thumbnail tick add or remove one; the table head's box picks every file shown. Picks clear when the page moves to another place.
 
-While anything is picked, the bulk bar above the folders says what ("2 folders and 3 files selected") and offers Move to, Move to Trash and Clear.
+While anything is picked, the bulk bar above the folders says what ("2 folders and 3 files selected") and offers Move to, Move to Trash and Clear. Picks stay while you open other folders, categories or Recent, search, sort or switch between grid and list, so files from several places can be moved or trashed together; switching to Trash, Esc and Clear empty them. Clean up keeps its ticks across its tabs and the Email pictures filter in the same way.
 
 A double-click (or Enter) opens a folder. On a file it opens Preview in a new tab.
 

@@ -439,6 +439,21 @@ describe('Inbox list', () => {
 		expect(page.threads().map((entry) => entry.id)).toEqual(['t1']);
 	});
 
+	it('keeps ticks through a search, and clears them for another folder (D7, accounts brief H)', () => {
+		const { page, summary, threadsQuery, flush, go } = setup();
+		summary([box('care')]);
+		threadsQuery.result.set({ data: { threads: [row('t1'), row('t2')], nextPageToken: null } });
+		flush();
+		page.toggleRow('t2', true);
+		go({ mailbox: 'care', folder: 'inbox' }, { q: 'saree' });
+		threadsQuery.result.set({ data: { threads: [row('t5')], nextPageToken: null } });
+		flush();
+		expect([...page.selected()]).toEqual(['t2']);
+		expect(page.selectedRows().map((entry) => entry.id)).toEqual(['t2']);
+		go({ mailbox: 'care', folder: 'sent' });
+		expect(page.selected().size).toBe(0);
+	});
+
 	it('steps to older and newer pages', () => {
 		const { page, summary, threadsQuery, flush } = setup();
 		summary([box('care')]);

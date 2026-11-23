@@ -6,8 +6,10 @@ import {
 	HostListener,
 	type TemplateRef,
 	computed,
+	effect,
 	inject,
 	signal,
+	untracked,
 	viewChild,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -325,7 +327,11 @@ export class FileManager {
 	}
 
 	go(changes: Record<string, string | null>): void {
-		this.clearSelection();
+		// Ticks stay through folders, categories, search, sort and layout; switching between the
+		// library and Trash clears them, since their actions differ (Trash restores or deletes for good).
+		const toTrash = 'view' in changes && (changes['view'] === 'trash') !== (this.nav() === 'trash');
+		if (toTrash) this.clearSelection();
+		else this.menu.set(null);
 		void this.router.navigate([], { relativeTo: this.route, queryParams: changes, queryParamsHandling: 'merge' });
 	}
 
@@ -376,12 +382,30 @@ export class FileManager {
 			...data.files.map((row) => ({ type: 'file' as const, id: row.id })),
 		];
 	});
-	readonly chosen = computed(() => {
+	/**
+	 * Ticks survive folders, categories, search, sort and layout (accounts brief H, owner-approved
+	 * 2026-11-23), like the products table: every row seen is remembered, so a tick made in another
+	 * folder or before a search still names its file and is acted on.
+	 */
+	private readonly seenFolders = new Map<string, MediaFolderRow>();
+	private readonly seenFiles = new Map<string, MediaFileRow>();
+	private readonly seenVersion = signal(0);
+	/** Remembers each row as it is shown, so ticks made elsewhere keep their rows. */
+	private readonly rememberRows = effect(() => {
 		const data = this.result();
+		for (const row of data?.folders ?? []) this.seenFolders.set(row.id, row);
+		for (const row of data?.files ?? []) this.seenFiles.set(row.id, row);
+		untracked(() => this.seenVersion.update((n) => n + 1));
+	});
+	readonly chosen = computed(() => {
+		this.seenVersion();
+		const data = this.result();
+		for (const row of data?.folders ?? []) this.seenFolders.set(row.id, row);
+		for (const row of data?.files ?? []) this.seenFiles.set(row.id, row);
 		const picked = this.selection();
 		return {
-			folders: (data?.folders ?? []).filter((row) => picked.folders.has(row.id)),
-			files: (data?.files ?? []).filter((row) => picked.files.has(row.id)),
+			folders: [...picked.folders].flatMap((id) => this.seenFolders.get(id) ?? []),
+			files: [...picked.files].flatMap((id) => this.seenFiles.get(id) ?? []),
 		};
 	});
 	readonly chosenCount = computed(() => pickedCount(this.selection()));
@@ -390,6 +414,8 @@ export class FileManager {
 
 	clearSelection(): void {
 		this.selection.set(NO_SELECTION);
+		this.seenFolders.clear();
+		this.seenFiles.clear();
 		this.anchor = null;
 		this.cursor = null;
 		this.menu.set(null);

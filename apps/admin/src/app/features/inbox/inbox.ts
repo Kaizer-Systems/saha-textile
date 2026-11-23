@@ -311,14 +311,12 @@ export class Inbox {
 	private readonly pages = signal<string[]>([]);
 	readonly firstPage = computed(() => this.pages().length === 0);
 	readonly searchText = signal('');
+	/**
+	 * Which mailbox, folder or label is open. Ticks clear when it changes, and stay through search and
+	 * pages inside it (decision D7, owner-approved 2026-11-23), as the products table keeps them.
+	 */
 	private readonly listKey = computed(() =>
-		[
-			this.mailbox()?.mailboxId ?? '',
-			this.folder(),
-			this.labelId() ?? '',
-			this.q(),
-			this.pages().at(-1) ?? '',
-		].join('|'),
+		[this.mailbox()?.mailboxId ?? '', this.folder(), this.labelId() ?? ''].join('|'),
 	);
 
 	private readonly threadsQuery = injectQuery(() => {
@@ -453,8 +451,10 @@ export class Inbox {
 	});
 	// ── Selection ─────────────────────────────────────────────────────────────────
 
-	/** Ticked conversations on this list. A refresh never ticks new arrivals; moving away clears it. */
+	/** Ticked conversations in this mailbox and folder, kept through search and pages (D7). A refresh never ticks new arrivals. */
 	readonly selected = signal<ReadonlySet<string>>(new Set());
+	/** Every conversation seen in this list, so ticks on another page or before a search keep their rows. */
+	private readonly seenRows = new Map<string, InboxThreadSummary>();
 	/** "Select all about 130": the action goes to every conversation that matches, read on the server. */
 	readonly allMatching = signal(false);
 	readonly selection = computed(() =>
@@ -463,7 +463,17 @@ export class Inbox {
 			this.selected(),
 		),
 	);
-	readonly selectedRows = computed(() => this.threads().filter((row) => this.selected().has(row.id)));
+	private readonly seenVersion = signal(0);
+	/** Remembers each row as it is shown, so a tick on an earlier page keeps its row (D7). */
+	private readonly rememberRows = effect(() => {
+		for (const row of this.threads()) this.seenRows.set(row.id, row);
+		untracked(() => this.seenVersion.update((n) => n + 1));
+	});
+	readonly selectedRows = computed(() => {
+		this.seenVersion();
+		for (const row of this.threads()) this.seenRows.set(row.id, row);
+		return [...this.selected()].flatMap((id) => this.seenRows.get(id) ?? []);
+	});
 	readonly selectionHasUnread = computed(() => this.selectedRows().some((row) => row.unread));
 	readonly selectionHasRead = computed(() => this.selectedRows().some((row) => !row.unread));
 	readonly bulkBusy = signal(false);
@@ -672,13 +682,20 @@ export class Inbox {
 			this.remember(mailboxKey(mailbox.address), this.folder());
 		});
 
-		// Moving to another list (mailbox, folder, label, search or page) clears the selection.
+		// Moving to another mailbox, folder or label clears the selection; search and pages keep it (D7).
 		effect(() => {
 			this.listKey();
 			untracked(() => {
 				this.selected.set(new Set());
 				this.allMatching.set(false);
+				this.seenRows.clear();
 			});
+		});
+		// "Select all about 130" is about one search: a new search or page drops it, the ticks stay.
+		effect(() => {
+			this.q();
+			this.pages();
+			untracked(() => this.allMatching.set(false));
 		});
 
 		// A label deleted or renamed away in Gmail: its old address lands on the Inbox with a note.
@@ -868,7 +885,11 @@ export class Inbox {
 	toggleAll() {
 		this.allMatching.set(false);
 		this.bulkNote.set(null);
-		this.selected.set(this.selection() === 'all' ? new Set() : new Set(this.threads().map((row) => row.id)));
+		const ids = this.threads().map((row) => row.id);
+		const next = new Set(this.selected());
+		if (this.selection() === 'all') for (const id of ids) next.delete(id);
+		else for (const id of ids) next.add(id);
+		this.selected.set(next);
 	}
 
 	selectAllMatching() {

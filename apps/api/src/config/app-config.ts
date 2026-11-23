@@ -151,6 +151,12 @@ const ConfigSchema = z.object({
 	jwt: z.object({
 		accessSecret: z.string().min(1),
 		refreshSecret: z.string().min(1),
+		/**
+		 * The keys before the last planned change, accepted for 30 days so nobody is signed out
+		 * (Release Path brief, 2026-11-23); blank after a leak. New tokens always use the current key.
+		 */
+		accessSecretPrevious: z.string().min(1).optional(),
+		refreshSecretPrevious: z.string().min(1).optional(),
 		accessTtl: z.string().default('15m'),
 		refreshTtl: z.string().default('30d'),
 	}),
@@ -172,6 +178,8 @@ const ConfigSchema = z.object({
 		signupName: z.string().default('st_signup'),
 		csrfHeader: z.string().default('x-csrf-token'),
 		csrfSecret: z.string().optional(),
+		/** The CSRF key before the last planned change, still matched for 30 days (`TokenHasher`). */
+		csrfSecretPrevious: z.string().optional(),
 		/**
 		 * Whether session cookies carry `Secure` (and so may use the `__Host-` prefix).
 		 *
@@ -377,10 +385,24 @@ const ConfigSchema = z.object({
 				.refine((value) => value === undefined || Buffer.from(value, 'base64').length === 32, {
 					message: 'MAILBOX_TOKEN_KEY must be 32 bytes, base64',
 				}),
+			/** The mailbox key before the last planned change: stored tokens are moved to the new key when read. */
+			tokenKeyPrevious: z
+				.string()
+				.optional()
+				.refine((value) => value === undefined || Buffer.from(value, 'base64').length === 32, {
+					message: 'MAILBOX_TOKEN_KEY_PREVIOUS must be 32 bytes, base64',
+				}),
 			adminUrl: z.string().url().optional(),
 			domain: z.string().min(3).default('sahatextile.com'),
 		})
 		.superRefine((mail, ctx) => {
+			if (mail.tokenKeyPrevious && !mail.tokenKey) {
+				ctx.addIssue({
+					code: 'custom',
+					message: 'MAILBOX_TOKEN_KEY_PREVIOUS goes only with MAILBOX_TOKEN_KEY.',
+					path: ['tokenKeyPrevious'],
+				});
+			}
 			const set = [mail.googleClientId, mail.googleClientSecret, mail.redirectUri, mail.tokenKey, mail.adminUrl];
 			if (set.some(Boolean) && !set.every(Boolean)) {
 				ctx.addIssue({
@@ -467,6 +489,8 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 			// (`deployment-hardening.ts` reads the raw env, so these never satisfy it).
 			accessSecret: env.JWT_ACCESS_SECRET || 'dev-access-secret-change-me',
 			refreshSecret: env.JWT_REFRESH_SECRET || 'dev-refresh-secret-change-me',
+			accessSecretPrevious: env.JWT_ACCESS_SECRET_PREVIOUS || undefined,
+			refreshSecretPrevious: env.JWT_REFRESH_SECRET_PREVIOUS || undefined,
 			accessTtl: env.JWT_ACCESS_TTL,
 			refreshTtl: env.JWT_REFRESH_TTL,
 		},
@@ -479,6 +503,7 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 			signupName: env.SIGNUP_COOKIE_NAME,
 			csrfHeader: env.CSRF_HEADER_NAME,
 			csrfSecret: env.CSRF_SECRET || undefined,
+			csrfSecretPrevious: env.CSRF_SECRET_PREVIOUS || undefined,
 			secure: env.COOKIE_SECURE,
 		},
 		tls: {
@@ -561,6 +586,7 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 			googleClientSecret: env.GOOGLE_MAIL_CLIENT_SECRET || undefined,
 			redirectUri: env.GOOGLE_MAIL_REDIRECT_URI || undefined,
 			tokenKey: env.MAILBOX_TOKEN_KEY || undefined,
+			tokenKeyPrevious: env.MAILBOX_TOKEN_KEY_PREVIOUS || undefined,
 			adminUrl: env.ADMIN_APP_URL || undefined,
 			domain: env.MAILBOX_DOMAIN || undefined,
 		},

@@ -7,8 +7,12 @@ import { UnavailableMailboxAdapter, UnavailableMailboxTokenStore } from './unava
 
 /** Encrypted token storage with the configured key, or none at all. */
 export function buildMailboxTokenStore(config: AppConfig): MailboxTokenStore {
+	const key = (value: string) => new Uint8Array(Buffer.from(value, 'base64'));
 	return config.mail.tokenKey
-		? new MongoMailboxTokenStore(new Uint8Array(Buffer.from(config.mail.tokenKey, 'base64')))
+		? new MongoMailboxTokenStore(
+				key(config.mail.tokenKey),
+				config.mail.tokenKeyPrevious ? key(config.mail.tokenKeyPrevious) : undefined,
+			)
 		: new UnavailableMailboxTokenStore();
 }
 

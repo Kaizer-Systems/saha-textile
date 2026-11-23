@@ -133,7 +133,9 @@ export class AdminInviteService {
 		assertPasswordAcceptable(request.password);
 		if (request.pin) assertPinAcceptable(request.pin);
 
-		const invite = await this.invites.consume(this.auth.hash(request.token), new Date().toISOString());
+		const invite = await this.auth.findByHash(request.token, (hash) =>
+			this.invites.consume(hash, new Date().toISOString()),
+		);
 		// One message for expired, revoked, already-accepted and unknown alike.
 		if (!invite) throw new UnauthorizedException('Invalid or expired invitation');
 

@@ -110,7 +110,7 @@ export class CartLinesService {
 	private async find(owner: CartOwner): Promise<Cart | null> {
 		if (owner.principal?.audience === 'storefront') return this.carts.findByUserId(owner.principal.userId);
 		if (!owner.guestToken) return null;
-		return this.carts.findByGuestToken(this.ownership.hashGuestToken(owner.guestToken));
+		return this.ownership.findGuestCart(owner.guestToken);
 	}
 
 	private async findOrStart(owner: CartOwner): Promise<{ cart: Cart; guestTokenRaw: string | null }> {

@@ -1,4 +1,4 @@
-import { createHmac, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
 import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type {
@@ -24,6 +24,7 @@ import {
 
 import { domainRefusal } from '../auth/domain-refusal';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { TokenHasher } from '../auth/token-hasher';
 import {
 	CUSTOMER_REPOSITORY,
 	NOTIFICATION_PORT,
@@ -228,12 +229,9 @@ export class AdminCustomersService {
 		return email.trim().toLowerCase();
 	}
 
-	private pepper(): string {
-		return this.config.cookies.csrfSecret ?? this.config.jwt.refreshSecret;
-	}
-
+	/** New tokens are stored under the current token key only (see `TokenHasher`). */
 	private hash(value: string): string {
-		return createHmac('sha256', this.pepper()).update(value).digest('hex');
+		return new TokenHasher(this.config).hash(value);
 	}
 
 	private assertActivationDestinations(

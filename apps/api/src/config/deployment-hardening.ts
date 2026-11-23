@@ -120,6 +120,15 @@ export function deploymentHardeningProblems(config: AppConfig, env: NodeJS.Proce
 		const problem = secretProblem(name, value);
 		if (problem) problems.push(problem);
 	}
+	// The keys kept for 30 days after a planned change (Release Path brief): as strong as the rest,
+	// and never one of the current ones.
+	for (const name of ['JWT_ACCESS_SECRET_PREVIOUS', 'JWT_REFRESH_SECRET_PREVIOUS', 'CSRF_SECRET_PREVIOUS']) {
+		const value = env[name];
+		if (!value) continue;
+		const problem = secretProblem(name, value);
+		if (problem) problems.push(problem);
+		secrets.push({ name, value });
+	}
 	for (let i = 0; i < secrets.length; i++) {
 		for (let j = i + 1; j < secrets.length; j++) {
 			const [a, b] = [secrets[i]!, secrets[j]!];

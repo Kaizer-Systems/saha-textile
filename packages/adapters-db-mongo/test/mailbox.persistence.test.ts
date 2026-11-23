@@ -19,6 +19,9 @@ import { hasMongoEnv, runPrefix } from './mongo-test-env';
 describe('MongoMailboxTokenStore key', () => {
 	it('refuses a key that is not 32 bytes', () => {
 		expect(() => new MongoMailboxTokenStore(new Uint8Array(16))).toThrow('32 bytes');
+		expect(() => new MongoMailboxTokenStore(new Uint8Array(32), new Uint8Array(8))).toThrow(
+			'MAILBOX_TOKEN_KEY_PREVIOUS must be 32 bytes',
+		);
 	});
 });
 
@@ -91,6 +94,19 @@ describe.runIf(hasMongoEnv())('mailbox persistence (rs0)', () => {
 		await tokens.remove(id);
 		expect(await tokens.get(id)).toBeNull();
 		expect(await tokens.get(`${prefix}missing`)).toBeNull();
+	});
+
+	it('opens a token locked with the previous key and locks it again with the new one (grace key)', async () => {
+		await mailboxes.save(mailbox('grace'));
+		const id = `${prefix}grace`;
+		await tokens.put(id, '1//grace-token');
+		const newKey = new Uint8Array(32).fill(9);
+		const rotated = new MongoMailboxTokenStore(newKey, key);
+		expect(await rotated.get(id)).toBe('1//grace-token');
+		// Stored again under the new key: the new key alone now opens it, the old one no longer does.
+		expect(await new MongoMailboxTokenStore(newKey).get(id)).toBe('1//grace-token');
+		expect(await tokens.get(id)).toBeNull();
+		await tokens.remove(id);
 	});
 
 	it("replaces a mailbox's access list as a whole, only from the version it was read at", async () => {

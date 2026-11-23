@@ -68,6 +68,8 @@ function buildInviteService() {
 	const auth = {
 		normalizeEmail: (email: string) => email.trim().toLowerCase(),
 		hash: (value: string) => `hash(${value})`,
+		findByHash: (value: string, lookup: (hash: string) => unknown) => lookup(`hash(${value})`),
+		hashMatches: (value: string, stored: string | null) => `hash(${value})` === stored,
 		hashPassword: async (value: string) => `argon2(${value})`,
 	} as unknown as AuthService;
 

@@ -160,17 +160,35 @@ export class MongoMailboxAccessRepository implements MailboxAccessRepository {
 /** AES-256-GCM: a fresh 12-byte IV per write, and the tag checked on every read. */
 const ALGORITHM = 'aes-256-gcm';
 
+/** The plain token, or null when this key does not open it (the tag fails). */
+function decrypt(key: Buffer, token: { iv: string; tag: string; data: string }): string | null {
+	try {
+		const decipher = createDecipheriv(ALGORITHM, key, Buffer.from(token.iv, 'base64'));
+		decipher.setAuthTag(Buffer.from(token.tag, 'base64'));
+		return Buffer.concat([decipher.update(Buffer.from(token.data, 'base64')), decipher.final()]).toString('utf8');
+	} catch {
+		return null;
+	}
+}
+
 /**
  * Refresh tokens, encrypted with `MAILBOX_TOKEN_KEY` (32 bytes, server settings only). A row
  * whose tag fails (wrong key, edited by hand) reads as no token, so the mailbox shows as needing
  * reconnection instead of the API failing.
+ *
+ * For 30 days after a planned change the previous key is also given (`MAILBOX_TOKEN_KEY_PREVIOUS`,
+ * Release Path brief, 2026-11-23): a token that opens only with it is stored again under the new
+ * key when read, so no mailbox needs connecting again.
  */
 export class MongoMailboxTokenStore implements MailboxTokenStore {
 	private readonly key: Buffer;
+	private readonly previousKey: Buffer | null;
 
-	constructor(key: Uint8Array) {
+	constructor(key: Uint8Array, previousKey?: Uint8Array) {
 		if (key.length !== 32) throw new Error('MAILBOX_TOKEN_KEY must be 32 bytes');
+		if (previousKey && previousKey.length !== 32) throw new Error('MAILBOX_TOKEN_KEY_PREVIOUS must be 32 bytes');
 		this.key = Buffer.from(key);
+		this.previousKey = previousKey ? Buffer.from(previousKey) : null;
 	}
 
 	async put(mailboxId: string, refreshToken: string): Promise<void> {
@@ -189,15 +207,11 @@ export class MongoMailboxTokenStore implements MailboxTokenStore {
 		const doc = await MailboxModel.findById(mailboxId).select('+token').lean<MailboxDoc>().exec();
 		const token = doc?.token;
 		if (!token) return null;
-		try {
-			const decipher = createDecipheriv(ALGORITHM, this.key, Buffer.from(token.iv, 'base64'));
-			decipher.setAuthTag(Buffer.from(token.tag, 'base64'));
-			return Buffer.concat([decipher.update(Buffer.from(token.data, 'base64')), decipher.final()]).toString(
-				'utf8',
-			);
-		} catch {
-			return null;
-		}
+		const current = decrypt(this.key, token);
+		if (current !== null || !this.previousKey) return current;
+		const previous = decrypt(this.previousKey, token);
+		if (previous !== null) await this.put(mailboxId, previous);
+		return previous;
 	}
 
 	async remove(mailboxId: string): Promise<void> {

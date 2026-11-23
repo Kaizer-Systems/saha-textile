@@ -1,4 +1,4 @@
-import { createHmac, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { Cart, CartLine } from '@saha-textile/contracts';
@@ -6,6 +6,7 @@ import type { CartRepository, TransactionContext } from '@saha-textile/core-doma
 
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { TokenHasher } from '../auth/token-hasher';
 import { CART_REPOSITORY } from '../infra/tokens';
 
 export interface CartActor {
@@ -28,9 +29,26 @@ export class CartService {
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
 	) {}
 
+	private tokenHasher?: TokenHasher;
+
+	/** The current token key, and the previous one for 30 days after a planned change. */
+	private get tokens(): TokenHasher {
+		return (this.tokenHasher ??= new TokenHasher(this.config));
+	}
+
 	hashGuestToken(raw: string): string {
-		const pepper = this.config.cookies.csrfSecret ?? this.config.jwt.refreshSecret;
-		return createHmac('sha256', pepper).update(raw).digest('hex');
+		return this.tokens.hash(raw);
+	}
+
+	/**
+	 * The guest cart an `st_guest` token opens, under the current or the previous token key. One found
+	 * under the previous key is stored again under the current one, so it outlives the grace period.
+	 */
+	async findGuestCart(raw: string): Promise<Cart | null> {
+		const hit = await this.tokens.find(raw, (hash) => this.carts.findByGuestToken(hash));
+		if (!hit) return null;
+		if (hit.current) return hit.found;
+		return this.carts.save({ ...hit.found, guestToken: this.tokens.hash(raw) });
 	}
 
 	mintGuestToken(): { raw: string; hash: string } {
@@ -59,7 +77,7 @@ export class CartService {
 
 		if (!cart.userId && cart.guestToken) {
 			const presented = actor.guestToken;
-			if (presented && this.hashGuestToken(presented) === cart.guestToken) {
+			if (presented && this.tokens.matches(presented, cart.guestToken)) {
 				return;
 			}
 		}
@@ -86,7 +104,7 @@ export class CartService {
 
 		if (!cart.userId && cart.guestToken) {
 			const presented = actor.guestToken;
-			if (presented && this.hashGuestToken(presented) === cart.guestToken) return cart;
+			if (presented && this.tokens.matches(presented, cart.guestToken)) return cart;
 		}
 
 		throw new NotFoundException('Cart not found');
@@ -108,7 +126,7 @@ export class CartService {
 	async mergeGuestCartForUser(userId: string, guestTokenRaw: string | null | undefined): Promise<Cart | null> {
 		if (!guestTokenRaw) return this.carts.findByUserId(userId);
 
-		const guest = await this.carts.findByGuestToken(this.hashGuestToken(guestTokenRaw));
+		const guest = await this.findGuestCart(guestTokenRaw);
 		if (!guest || guest.userId) {
 			// Missing, already adopted, or bound to someone else — never leak which.
 			return this.carts.findByUserId(userId);

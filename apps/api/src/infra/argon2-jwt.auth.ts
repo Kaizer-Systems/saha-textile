@@ -33,27 +33,36 @@ export class Argon2JwtAuth implements AuthPort {
 	}
 
 	verifyToken(token: string): Promise<TokenClaims> {
-		return new Promise((resolve, reject) => {
-			jwt.verify(token, this.config.jwt.accessSecret, (err, decoded) => {
-				if (err || !decoded || typeof decoded === 'string') {
-					reject(new Error('invalid token'));
-					return;
-				}
-				resolve(decoded as TokenClaims);
-			});
-		});
+		return this.verifyWith(
+			token,
+			[this.config.jwt.accessSecret, this.config.jwt.accessSecretPrevious],
+			'invalid token',
+		);
 	}
 
 	verifyRefreshToken(token: string): Promise<TokenClaims> {
-		return new Promise((resolve, reject) => {
-			jwt.verify(token, this.config.jwt.refreshSecret, (err, decoded) => {
-				if (err || !decoded || typeof decoded === 'string') {
-					reject(new Error('invalid refresh token'));
-					return;
-				}
-				resolve(decoded as TokenClaims);
+		return this.verifyWith(
+			token,
+			[this.config.jwt.refreshSecret, this.config.jwt.refreshSecretPrevious],
+			'invalid refresh token',
+		);
+	}
+
+	/**
+	 * The current key, then the previous one while it is set: 30 days after a planned change
+	 * (Release Path brief, 2026-11-23). Tokens are only ever signed with the current key.
+	 */
+	private async verifyWith(token: string, secrets: (string | undefined)[], message: string): Promise<TokenClaims> {
+		for (const secret of secrets) {
+			if (!secret) continue;
+			const claims = await new Promise<TokenClaims | null>((resolve) => {
+				jwt.verify(token, secret, (err, decoded) => {
+					resolve(err || !decoded || typeof decoded === 'string' ? null : (decoded as TokenClaims));
+				});
 			});
-		});
+			if (claims) return claims;
+		}
+		throw new Error(message);
 	}
 
 	private sign(claims: TokenClaims, secret: string, expiresIn: string): Promise<string> {

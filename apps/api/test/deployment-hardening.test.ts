@@ -520,4 +520,14 @@ describe('deployment hardening', () => {
 			expect(exit).not.toHaveBeenCalled();
 		});
 	});
+	it('holds a kept previous key to the same rules, and never lets it equal a current one', () => {
+		expect(problemsFor(deployment({ CSRF_SECRET_PREVIOUS: secret() }))).toEqual([]);
+		expect(problemsFor(deployment({ JWT_ACCESS_SECRET_PREVIOUS: 'change-me' })).join(' ')).toContain(
+			'JWT_ACCESS_SECRET_PREVIOUS',
+		);
+		const env = deployment();
+		expect(problemsFor({ ...env, CSRF_SECRET_PREVIOUS: env.CSRF_SECRET }).join(' ')).toContain(
+			'CSRF_SECRET and CSRF_SECRET_PREVIOUS must be different secrets.',
+		);
+	});
 });

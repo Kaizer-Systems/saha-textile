@@ -104,3 +104,22 @@ const GstReturnSchema = new Schema<AggregateDoc>(
 );
 export const GstReturnModel: Model<AggregateDoc> =
 	(models.GstReturn as Model<AggregateDoc>) ?? model<AggregateDoc>('GstReturn', GstReturnSchema);
+
+/** Tax invoices (accounts brief D1); a number is unique within its GSTIN, and a shipment has one invoice. */
+const TaxInvoiceSchema = new Schema<AggregateDoc>(
+	{
+		_id: { type: String, required: true },
+		number: { type: String, required: true },
+		gstin: { type: String, required: true },
+	},
+	{ ...loose, collection: COLLECTION_NAMES.TaxInvoice },
+);
+TaxInvoiceSchema.index({ gstin: 1, number: 1 }, { unique: true });
+TaxInvoiceSchema.index(
+	{ shipmentId: 1 },
+	{ unique: true, partialFilterExpression: { shipmentId: { $type: 'string' } } },
+);
+TaxInvoiceSchema.index({ orderId: 1 });
+TaxInvoiceSchema.index({ date: -1, number: -1 });
+export const TaxInvoiceModel: Model<AggregateDoc> =
+	(models.TaxInvoice as Model<AggregateDoc>) ?? model<AggregateDoc>('TaxInvoice', TaxInvoiceSchema);

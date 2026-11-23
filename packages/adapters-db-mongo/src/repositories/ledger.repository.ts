@@ -6,6 +6,7 @@ import {
 	JournalVoucher,
 	Ledger,
 	PeriodLock,
+	TaxInvoice,
 	VoucherDraft,
 	type VoucherKind,
 } from '@saha-textile/contracts';
@@ -16,6 +17,7 @@ import {
 	type PeriodLockRepository,
 	StaleRevisionError,
 	type StatementLine,
+	type TaxInvoiceRepository,
 	type TransactionContext,
 } from '@saha-textile/core-domain';
 
@@ -27,6 +29,7 @@ import {
 	JournalVoucherModel,
 	LedgerModel,
 	PeriodLockModel,
+	TaxInvoiceModel,
 	VoucherDraftModel,
 } from '../models/ledger.model';
 import type { AggregateDoc } from '../models/purchasing.model';
@@ -339,5 +342,65 @@ export class MongoGstReturnRepository implements GstReturnRepository {
 			if ((error as { code?: number }).code === 11000) throw new Error('duplicate_gst_filing', { cause: error });
 			throw error;
 		}
+	}
+}
+
+const invoiceOf = (doc: AggregateDoc): TaxInvoice => TaxInvoice.parse({ ...strip(doc), id: doc._id });
+
+/** Tax invoices (accounts brief D1). */
+export class MongoTaxInvoiceRepository implements TaxInvoiceRepository {
+	async insert(invoice: TaxInvoice, context?: TransactionContext): Promise<void> {
+		const { id, ...rest } = invoice;
+		try {
+			await TaxInvoiceModel.create([{ _id: id, ...rest }], { session: sessionFrom(context) });
+		} catch (error) {
+			if ((error as { code?: number }).code === 11000) throw new Error('duplicate_tax_invoice', { cause: error });
+			throw error;
+		}
+	}
+
+	async get(id: string): Promise<TaxInvoice | null> {
+		const doc = await TaxInvoiceModel.findById(id).lean<AggregateDoc>().exec();
+		return doc ? invoiceOf(doc) : null;
+	}
+
+	async listForOrder(orderId: string): Promise<TaxInvoice[]> {
+		const docs = await TaxInvoiceModel.find({ orderId }).sort({ createdAt: 1 }).lean<AggregateDoc[]>().exec();
+		return docs.map(invoiceOf);
+	}
+
+	async findByShipment(shipmentId: string, context?: TransactionContext): Promise<TaxInvoice | null> {
+		const doc = await TaxInvoiceModel.findOne({ shipmentId })
+			.session(sessionFrom(context) ?? null)
+			.lean<AggregateDoc>()
+			.exec();
+		return doc ? invoiceOf(doc) : null;
+	}
+
+	async list(query: { from: string; to: string; search: string; page: number; pageSize: number }) {
+		const filter: Record<string, unknown> = { date: { $gte: query.from, $lte: query.to } };
+		if (query.search.trim()) {
+			const re = new RegExp(escapeRegex(query.search.trim()), 'i');
+			filter['$or'] = [{ number: re }, { orderNumber: re }, { 'buyer.name': re }, { 'buyer.gstin': re }];
+		}
+		const [docs, total] = await Promise.all([
+			TaxInvoiceModel.find(filter)
+				.sort({ date: -1, number: -1 })
+				.skip((query.page - 1) * query.pageSize)
+				.limit(query.pageSize)
+				.lean<AggregateDoc[]>()
+				.exec(),
+			TaxInvoiceModel.countDocuments(filter).exec(),
+		]);
+		return { items: docs.map(invoiceOf), total };
+	}
+
+	async cancel(id: string, cancellation: NonNullable<TaxInvoice['cancellation']>, context?: TransactionContext) {
+		const result = await TaxInvoiceModel.updateOne(
+			{ _id: id, status: 'issued' },
+			{ $set: { status: 'cancelled', cancellation } },
+			{ session: sessionFrom(context) },
+		).exec();
+		if (result.matchedCount !== 1) throw new Error('invoice_not_cancellable');
 	}
 }

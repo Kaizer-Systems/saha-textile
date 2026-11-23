@@ -11,12 +11,14 @@ import {
 	LedgerModel,
 	PeriodLockModel,
 	GstReturnModel,
+	TaxInvoiceModel,
 	VoucherDraftModel,
 } from '../src/models/ledger.model';
 import {
 	MongoDocumentLockRepository,
 	MongoGeneralLedgerRepository,
 	MongoGstReturnRepository,
+	MongoTaxInvoiceRepository,
 	MongoPeriodLockRepository,
 } from '../src/repositories/ledger.repository';
 import { MongoTransactionManager } from '../src/transaction-manager';
@@ -37,6 +39,9 @@ describe.skipIf(!hasMongoEnv())('general ledger persistence (integration, rs0)',
 		JournalLineModel,
 		PeriodLockModel,
 		DocumentLockModel,
+		VoucherDraftModel,
+		GstReturnModel,
+		TaxInvoiceModel,
 	];
 	const wipe = () => Promise.all(models.map((m) => m.deleteMany({})));
 	const ledger = (id: string, systemKey: string | null): Ledger => ({
@@ -218,5 +223,74 @@ describe.skipIf(!hasMongoEnv())('general ledger persistence (integration, rs0)',
 		await gst.insert(filing);
 		await expect(gst.insert(filing)).rejects.toThrow('duplicate_gst_filing');
 		expect(await gst.list()).toMatchObject([{ arn: 'AA1911261234567', month: '2026-10' }]);
+	});
+
+	it('keeps tax invoice numbers unique per GSTIN, one invoice per shipment, and cancels once', async () => {
+		const invoices = new MongoTaxInvoiceRepository();
+		const party = { name: 'K.R. Marketing', gstin: '19DBYPS6736R1ZZ', address: 'Barasat', stateCode: '19' };
+		const invoice = {
+			id: 'ti_1',
+			number: 'TI/26-27/000001',
+			date: '2026-11-23',
+			gstRegistrationId: 'reg_wb',
+			gstin: '19DBYPS6736R1ZZ',
+			locationId: 'loc_bar',
+			orderId: 'ord_1',
+			orderNumber: 'ST-2611-000001',
+			shipmentId: 'shp_1',
+			seller: party,
+			buyer: { ...party, name: 'Rang Mahal', gstin: null, stateCode: '27' },
+			placeOfSupply: '27',
+			interState: true,
+			lines: [
+				{
+					lineId: 'a',
+					sku: 'S',
+					title: 'Saree',
+					hsn: '5007',
+					quantity: 1,
+					unit: 'PCS' as const,
+					unitPriceINR: 105,
+					ratePercent: 5,
+					taxableINR: 100,
+					cgstINR: 0,
+					sgstINR: 0,
+					igstINR: 5,
+					totalINR: 105,
+				},
+			],
+			shippingINR: 0,
+			taxableINR: 100,
+			cgstINR: 0,
+			sgstINR: 0,
+			igstINR: 5,
+			roundOffINR: 0,
+			totalINR: 105,
+			ratesPendingCa: true,
+			status: 'issued' as const,
+			cancellation: null,
+			voucherId: null,
+			createdBy: null,
+			createdAt: at,
+		};
+		await invoices.insert(invoice);
+		await expect(invoices.insert({ ...invoice, id: 'ti_2', shipmentId: 'shp_2' })).rejects.toThrow(
+			'duplicate_tax_invoice',
+		);
+		await expect(invoices.insert({ ...invoice, id: 'ti_3', number: 'TI/26-27/000002' })).rejects.toThrow(
+			'duplicate_tax_invoice',
+		);
+		// The same number under another GSTIN is a different series.
+		await invoices.insert({ ...invoice, id: 'ti_4', gstin: '16ABCDE1234F1Z5', shipmentId: 'shp_4' });
+		expect((await invoices.listForOrder('ord_1')).map((i) => i.id)).toEqual(['ti_1', 'ti_4']);
+		expect((await invoices.findByShipment('shp_1'))?.number).toBe('TI/26-27/000001');
+		await invoices.cancel('ti_1', { at, by: 'adm_a', reason: 'Wrong buyer' });
+		await expect(invoices.cancel('ti_1', { at, by: 'adm_a', reason: 'Again' })).rejects.toThrow(
+			'invoice_not_cancellable',
+		);
+		expect(
+			(await invoices.list({ from: '2026-11-01', to: '2026-11-30', search: 'rang', page: 1, pageSize: 10 }))
+				.total,
+		).toBe(2);
 	});
 });

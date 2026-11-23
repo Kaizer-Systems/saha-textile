@@ -6,7 +6,9 @@
  *   pnpm coverage -- api contracts just those
  *
  * Vitest silently drops Angular files that no spec imports, so a plain run reads high. For the
- * two Angular apps this writes a temporary spec importing every source file, then deletes it.
+ * Angular apps this writes a temporary spec importing every source file (all but specs, type
+ * declarations, test setup, the main entry points, server code, the service worker and `interfaces/`),
+ * then deletes it.
  * Any file Vitest still refuses to parse fails the run, so the count cannot shrink quietly.
  *
  * The Mongo adapter suite needs the replica set: `pnpm mongo:up`. It runs on `saha_textile_it`.
@@ -32,6 +34,8 @@ const WORKSPACES = {
 		generated: { file: 'public/assets/css/theme-dark.gen.css', script: 'styles' },
 	},
 	api: { dir: 'apps/api' },
+	'release-console': { dir: 'apps/release-console', angular: true },
+	'release-console-api': { dir: 'apps/release-console-api' },
 	'adapters-db-mongo': { dir: 'packages/adapters-db-mongo', mongo: true },
 	'core-domain': { dir: 'packages/core-domain' },
 	contracts: { dir: 'packages/contracts' },
@@ -45,6 +49,13 @@ const WORKSPACES = {
 	'adapters-payments': { dir: 'packages/adapters-payments' },
 	'adapters-cdn-cloudflare': { dir: 'packages/adapters-cdn-cloudflare' },
 	'adapters-archive-zip': { dir: 'packages/adapters-archive-zip' },
+	'adapters-fx': { dir: 'packages/adapters-fx' },
+	'adapters-geo': { dir: 'packages/adapters-geo' },
+	'adapters-gst-edocs': { dir: 'packages/adapters-gst-edocs' },
+	'adapters-mail-gmail': { dir: 'packages/adapters-mail-gmail' },
+	'adapters-pdf-chromium': { dir: 'packages/adapters-pdf-chromium' },
+	'email-templates': { dir: 'packages/email-templates' },
+	'release-console-contracts': { dir: 'packages/release-console-contracts' },
 };
 
 const envFile = join(ROOT, 'apps/api/.env');
@@ -119,9 +130,14 @@ function measure(name, { dir, angular, mongo, generated }) {
 	const output = `${run.stdout}${run.stderr}`;
 	const dropped = (output.match(/Failed to parse .*\.ts\. /g) ?? []).length;
 	const summary = join(report, 'coverage-summary.json');
-	const total = existsSync(summary) ? JSON.parse(readFileSync(summary, 'utf8')).total : null;
+	const detail = existsSync(summary) ? JSON.parse(readFileSync(summary, 'utf8')) : null;
+	const total = detail?.total;
 	const percents = METRICS.map((metric) => total?.[metric]?.pct ?? 0);
-	const ok = run.status === 0 && dropped === 0 && percents.every((percent) => percent === 100);
+	const ok =
+		run.status === 0 &&
+		dropped === 0 &&
+		total?.statements?.total > 0 &&
+		METRICS.every((metric) => total[metric]?.covered === total[metric]?.total && total[metric]?.pct === 100);
 	console.log(
 		`${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(30)} ${METRICS.map((metric, index) => `${metric[0]} ${percents[index]}%`).join('  ')}  (${total?.statements?.total ?? 0} statements)`,
 	);
@@ -135,14 +151,16 @@ function measure(name, { dir, angular, mongo, generated }) {
 					.join('\n'),
 			);
 		if (dropped) console.log(`      ${dropped} source files were dropped from the count`);
-		if (total) {
-			const detail = JSON.parse(readFileSync(summary, 'utf8'));
+		const reportFile = join(report, 'coverage-final.json');
+		if (detail && existsSync(reportFile)) {
+			const sourceCoverage = JSON.parse(readFileSync(reportFile, 'utf8'));
 			for (const [file, values] of Object.entries(detail)) {
 				if (file !== 'total' && METRICS.some((metric) => values[metric].pct !== 100)) {
 					console.log(
 						`      ${file.replace(`${ROOT}/`, '')}  ${METRICS.map((m) => `${m[0]} ${values[m].pct}`).join(' ')}`,
 					);
-					console.log(`        lines ${missedLines(join(report, 'coverage-final.json'), file).join(', ')}`);
+					if (sourceCoverage[file])
+						console.log(`        lines ${missedLines(sourceCoverage[file]).join(', ')}`);
 				}
 			}
 		}
@@ -151,8 +169,7 @@ function measure(name, { dir, angular, mongo, generated }) {
 }
 
 /** Where a file lost its statements and branches, so a CI failure names the line. */
-function missedLines(reportFile, file) {
-	const entry = JSON.parse(readFileSync(reportFile, 'utf8'))[file];
+function missedLines(entry) {
 	const statements = Object.entries(entry.s).filter(([, hits]) => hits === 0);
 	const branches = Object.entries(entry.b).filter(([, hits]) => hits.includes(0));
 	const lines = [

@@ -4,23 +4,16 @@ import { EDocSettings, EDocument } from '@saha-textile/contracts';
 import { StaleVersionError } from '@saha-textile/core-domain';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { buildMongoConfig } from '../src/config';
 import { connectMongo, disconnectMongo } from '../src/connection';
 import { EDocCallModel, EDocKeysModel, EDocSettingsModel, EDocumentModel } from '../src/models/edocs.model';
 import { MongoEDocKeyStore, MongoEDocRepository } from '../src/repositories/edocs.repository';
+
+import { hasMongoEnv } from './mongo-test-env';
 
 /**
  * E-invoice / e-way bill persistence (accounts brief addendum 2) against a real replica set:
  *   node scripts/secrets/test-login.mjs run saha_textile_edocs_test -- pnpm --filter @saha-textile/adapters-db-mongo test
  */
-function hasMongoEnv(): boolean {
-	if (process.env.RUN_DB_IT !== '1') return false;
-	try {
-		return buildMongoConfig().dbName.endsWith('_test');
-	} catch {
-		return false;
-	}
-}
 
 describe.skipIf(!hasMongoEnv())('e-document persistence (integration, rs0)', () => {
 	const repo = new MongoEDocRepository();

@@ -4,24 +4,17 @@ import { CompanyProfile, FeatureSwitches, GstRegistration, gstinCheckCharacter }
 import { StaleVersionError } from '@saha-textile/core-domain';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { buildMongoConfig } from '../src/config';
 import { connectMongo, disconnectMongo } from '../src/connection';
 import { CompanyProfileModel, FeatureSwitchesModel, GstRegistrationModel } from '../src/models/company.model';
 import { MongoCompanyRepository } from '../src/repositories/company.repository';
+
+import { hasMongoEnv } from './mongo-test-env';
 
 /**
  * Company setup persistence (accounts brief J, CT, G1–G2) against a real replica set.
  * Always run against the test database:
  *   RUN_DB_IT=1 MONGODB_DB_NAME=saha_textile_test pnpm --filter @saha-textile/adapters-db-mongo test
  */
-function hasMongoEnv(): boolean {
-	if (process.env.RUN_DB_IT !== '1') return false;
-	try {
-		return buildMongoConfig().dbName.endsWith('_test');
-	} catch {
-		return false;
-	}
-}
 
 describe.skipIf(!hasMongoEnv())('company setup persistence (integration, rs0)', () => {
 	const repo = new MongoCompanyRepository();

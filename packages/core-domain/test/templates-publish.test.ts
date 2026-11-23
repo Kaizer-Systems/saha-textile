@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { chartChanges, publishDraft, publishProblems, published, whatOpens } from '../src/templates/rules';
 import { starterTemplates } from '../src/templates/starter';
 
-import type { AccountsTemplate, ChartTemplateContent } from '@saha-textile/contracts';
+import type { AccountsTemplate, ChartTemplateContent, TemplateVersion } from '@saha-textile/contracts';
 
 /** The template builder (accounts templates plan AT2, AT3): drafts, the publishing checks and Publish. */
 
@@ -128,8 +128,8 @@ describe('Publish', () => {
 				{
 					...firm,
 					versions: [
-						{ ...(firm.versions[0] as never), validTo: '2026-01-31' },
-						{ ...(firm.versions[0] as never), version: 2, validFrom: '2028-01-01' },
+						{ ...(firm.versions[0] as TemplateVersion), validTo: '2026-01-31' },
+						{ ...(firm.versions[0] as TemplateVersion), version: 2, validFrom: '2028-01-01' },
 					],
 				},
 				latestChart('CH-FIRM'),

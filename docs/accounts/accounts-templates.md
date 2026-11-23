@@ -59,6 +59,19 @@ Nothing is deleted and a conversion isn't undone; the opening voucher can be rev
 
 Settings › Accounts templates lists every template with its code, type, the kinds it applies to, its newest version with its first day and CA review state, and its state here: Installed, Installed with an update waiting, Not installed, or Locked (another kind's, greyed). It filters by kind and type, and reads with `accounts.index`.
 
+## Making and publishing templates
+
+**New template** starts a template as a draft, empty or from another template's newest version of the same type; it has no version, so nothing uses it until it is published (`versions: []`, `draft`). **Save draft** keeps the builder's working copy with the day it applies from, its source and notes. **Publish** turns the draft into the next version, pending CA review, and ends the version before on the day before; it runs only when every check passes, and lists every problem otherwise:
+
+- `template_no_draft`, `template_wrong_kind` (a draft of another type), `template_dates_overlap` (it must start after the newest version);
+- for a chart, with the other chart templates each kind it applies to opens: `template_duplicate_key:<key>`, `template_unknown_parent:<key>`, `template_unknown_group:<key>`, `template_role_missing:<role>:<kind>` (a role a document needs has no ledger or group) and `template_role_ambiguous:<role>` (two ledgers play it).
+
+"Changes from vN" lists what a chart draft adds, removes and renames against the newest version. A chart template's ledger can name a tax rule set it follows (`ruleSetCode`) and its source. **Import** loads a template saved from another deployment (the template's JSON, as `GET /admin/accounts/templates/:code` gives it) under its own code; a code already here is refused with `duplicate_template_code`. The rules are in `packages/core-domain/src/templates/rules.ts`.
+
+## Roles
+
+Accounts › Roles lists every role the engine posts to, the ledger or group playing it in this company's books, the installed chart template that set it (`CH-COMMON v2`), and a problem when none or two play it. A super admin may point a ledger role at another ledger: the chosen ledger plays it and the others stop (a ledger left with no role is stored with `roles: ['none']`, since an empty list falls back to its system key). Each change is in the edit log (`accounts.role.point`).
+
 ## Versions
 
 A template keeps every version. Each has a `validFrom` and optional `validTo` date, its legal `source`, a CA review state and its content. A law change is a new version, never an edit of an old one; documents keep the rule they were made with.
@@ -82,6 +95,13 @@ The library row for each template says which version is installed and whether a 
 | `GET /admin/accounts/templates/:code`               | one template with every version (404 when unknown)                         | `accounts.index`         |
 | `GET /admin/accounts/templates/opens?kind=`         | what a kind opens, and whether the books are set up                        | `accounts.index`         |
 | `POST /admin/accounts/templates/set-up-books`       | install the books from the unlocked templates, once                        | `accounts_template.edit` |
+| `POST /admin/accounts/templates`                    | New template (a draft)                                                     | `accounts_template.edit` |
+| `POST /admin/accounts/templates/import`             | Import a template from another deployment                                  | `accounts_template.edit` |
+| `PUT /admin/accounts/templates/:code/draft`         | Save draft                                                                 | `accounts_template.edit` |
+| `GET /admin/accounts/templates/:code/changes`       | what the draft changes from the newest version                             | `accounts.index`         |
+| `POST /admin/accounts/templates/:code/publish`      | Publish the draft as the next version                                      | `accounts_template.edit` |
+| `GET /admin/accounts/roles`                         | roles in this company's books                                              | `accounts.index`         |
+| `PUT /admin/accounts/roles/:key`                    | point a ledger role at another ledger (super admin)                        | `accounts_template.edit` |
 | `GET /admin/company/convert/preview?kind=&lastDay=` | what converting would do (super admin)                                     | `accounts_template.edit` |
 | `POST /admin/company/convert`                       | convert to another kind (super admin)                                      | `accounts_template.edit` |
 

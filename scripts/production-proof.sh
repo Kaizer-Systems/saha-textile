@@ -324,7 +324,8 @@ grep -qi '^x-robots-tag: noindex, nofollow' <<<"$(page "$SITE_HOST" /en/ -o /dev
 	pass 'a staging shop page says noindex' || fail 'a staging shop page does not say noindex'
 grep -qi '^x-robots-tag: noindex, nofollow' <<<"$(page "$API_HOST" /health/live -o /dev/null -D -)" &&
 	pass 'an API answer says noindex' || fail 'an API answer does not say noindex'
-grep -q 'name="robots" content="noindex, nofollow"' <<<"$(page "$ADMIN_HOST" /)" &&
+# The tag spans lines in the built page, so line breaks and indents are folded first.
+grep -q 'name="robots" content="noindex, nofollow"' <<<"$(page "$ADMIN_HOST" / | tr -s '\n\t ' '   ')" &&
 	pass 'the admin page says noindex' || fail 'the admin page does not say noindex'
 
 echo 'Two copies of each web service'

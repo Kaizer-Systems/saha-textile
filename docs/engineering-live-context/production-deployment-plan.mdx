@@ -216,7 +216,19 @@ The zone already exists, and WordPress sits behind it. Read the current zone set
 
 ## 10. Rollback
 
-The deploy script keeps the previous digests. If health or the smoke test fails, it restores them and the run shows red. A manual Rollback workflow does the same later. Rollback restores code, not data.
+Two ways, both from the Release Console (Release Path brief, approved 2026-11-23):
+
+- **Roll back:** the deploy workflow's `action: rollback` sends the server one line, `rollback`; the live release's `bin/rollback.sh` swaps the previous release back in seconds from images on disk. A rotation made since then is undone with it, so its apps reach their data; after a leak, deploy a fix instead.
+- **Deploy an older version:** every live release is tagged `<environment>-<release id>`, and each GitHub environment accepts its own tags.
+
+If a deploy's health check fails, `deploy.sh` restores the previous release itself and the run shows red. Rollback restores code, not data: migrations only add, so older code still reads the data.
+
+### Reading a server, keys kept for a while, tracing
+
+- **Observer:** a read-only `observer` login through the tunnel whose key runs only `bin/observe.sh` (`containers`, `logs`, `releases`, `disk`, `db-report`), each answering one JSON document. With DigitalOcean's monitoring and the API's `/ops`, it fills the console's server tabs without an agent or an open port.
+- **Database monitor:** `saha_textile_monitor`, made by the deploy when `/infrastructure/mongo-monitor-password` is set, reads server figures, index use and the slow-query log; it reads no shop data and writes nothing. Queries are shown by their shape, every value as `?`.
+- **Grace keys:** after a planned change the previous sign-in, CSRF and mailbox keys stay set as `<NAME>_PREVIOUS` for 30 days (`pnpm secrets:rotate`), so nobody is signed out and no mailbox needs connecting again. After a leak they stay blank; the sign-in pages then say for 30 days that everyone was signed out (`SESSIONS_RESET_AT`).
+- **Tracing:** the API and worker trace requests, database and Redis calls when `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is set, with addresses masked and query values hidden. Locally the Docker stack's `tracing` profile runs VictoriaTraces; servers wait for `DEC-TRACING-SERVERS`.
 
 ## 11. Backups
 

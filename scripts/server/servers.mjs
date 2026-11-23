@@ -11,6 +11,7 @@
  * `create` reads, from the environment of the terminal it runs in (never printed):
  *   SERVER_ADMIN_SSH_KEY_FILE   the admin's public key (default ~/.ssh/id_ed25519.pub)
  *   SERVER_DEPLOY_SSH_KEY_FILE  the deploy job's public key (its private half goes to the GitHub environment)
+ *   SERVER_OBSERVER_SSH_KEY_FILE  the Release Console's read-only key (observe.sh only)
  *   SERVER_ADMIN_PASSWORD_HASH  `openssl passwd -6` of the admin password kept in NordPass (Recovery Console)
  *   SERVER_TUNNEL_TOKEN         the Cloudflare tunnel's token for this server
  *   SERVER_ADMIN_USER           optional, default saha-textile-admin
@@ -92,11 +93,13 @@ export function firstBootValues(env = process.env, read = (/** @type {string} */
 		ADMIN_USER: adminUser,
 		ADMIN_SSH_KEY: key(env.SERVER_ADMIN_SSH_KEY_FILE || join(homedir(), '.ssh/id_ed25519.pub'), 'The admin key'),
 		DEPLOY_SSH_KEY: key(env.SERVER_DEPLOY_SSH_KEY_FILE || '', 'SERVER_DEPLOY_SSH_KEY_FILE'),
+		OBSERVER_SSH_KEY: key(env.SERVER_OBSERVER_SSH_KEY_FILE || '', 'SERVER_OBSERVER_SSH_KEY_FILE'),
 		ADMIN_PASSWORD_HASH: hash,
 		TUNNEL_TOKEN: tunnel,
 		RECEIVE_RELEASE_B64: Buffer.from(read(join(ROOT, 'docker/production/bin/receive-release.sh'))).toString(
 			'base64',
 		),
+		OBSERVE_B64: Buffer.from(read(join(ROOT, 'docker/production/bin/observe.sh'))).toString('base64'),
 	};
 }
 

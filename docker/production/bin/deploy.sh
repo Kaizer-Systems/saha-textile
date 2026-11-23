@@ -456,12 +456,15 @@ if [[ "$started" -ne 0 ]]; then
 fi
 # Live: the copies kept for a failure are no longer needed (they hold the old private key and passwords).
 rm -rf "$CERTS_BEFORE" "$DATA_BEFORE"
-# The deploy user's one command follows the code, so a server made earlier learns new requests (rollback).
-if [[ -s "$RELEASE/bin/receive-release.sh" ]] && ! cmp -s "$RELEASE/bin/receive-release.sh" "$SAHA_TEXTILE_ROOT/bin/receive-release.sh"; then
+# The deploy and observer users' one command each follows the code, so a server made earlier learns
+# new requests (rollback; another read).
+for command in receive-release.sh observe.sh; do
+	[[ -s "$RELEASE/bin/$command" ]] || continue
+	cmp -s "$RELEASE/bin/$command" "$SAHA_TEXTILE_ROOT/bin/$command" && continue
 	install -d -m 0755 "$SAHA_TEXTILE_ROOT/bin"
-	install -m 0755 "$RELEASE/bin/receive-release.sh" "$SAHA_TEXTILE_ROOT/bin/receive-release.sh"
-	say 'The deploy command was brought up to date'
-fi
+	install -m 0755 "$RELEASE/bin/$command" "$SAHA_TEXTILE_ROOT/bin/$command"
+	say "bin/$command brought up to date"
+done
 
 if [[ -L "$CURRENT" ]]; then ln -sfn "$(readlink "$CURRENT")" "$PREVIOUS"; fi
 ln -sfn "$RELEASE" "$CURRENT"

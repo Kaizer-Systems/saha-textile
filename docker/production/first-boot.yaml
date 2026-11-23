@@ -38,6 +38,13 @@ users:
     ssh_authorized_keys:
       # The deploy job's key can only hand over a release (docker/production/bin/receive-release.sh).
       - 'restrict,command="sudo -n /opt/saha-textile/bin/receive-release.sh" @@DEPLOY_SSH_KEY@@'
+  - name: observer
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+      # The Release Console's read-only key (owner, 2026-11-23, Release Path brief Q8): containers,
+      # logs, releases and disk, nothing else (docker/production/bin/observe.sh).
+      - 'restrict,command="sudo -n /opt/saha-textile/bin/observe.sh" @@OBSERVER_SSH_KEY@@'
 
 write_files:
   - path: /etc/ssh/sshd_config.d/60-saha-textile.conf
@@ -48,11 +55,14 @@ write_files:
       PermitRootLogin no
       PasswordAuthentication no
       KbdInteractiveAuthentication no
-      AllowUsers @@ADMIN_USER@@ deploy
+      AllowUsers @@ADMIN_USER@@ deploy observer
   - path: /etc/sudoers.d/60-saha-textile-deploy
     permissions: '0440'
     content: |
       deploy ALL=(root) NOPASSWD: /opt/saha-textile/bin/receive-release.sh
+      # The observer's request travels in SSH_ORIGINAL_COMMAND, which observe.sh checks word by word.
+      Defaults:observer env_keep += "SSH_ORIGINAL_COMMAND"
+      observer ALL=(root) NOPASSWD: /opt/saha-textile/bin/observe.sh
   - path: /etc/docker/daemon.json
     permissions: '0644'
     content: |
@@ -102,6 +112,11 @@ write_files:
     owner: root:root
     encoding: b64
     content: '@@RECEIVE_RELEASE_B64@@'
+  - path: /opt/saha-textile/bin/observe.sh
+    permissions: '0755'
+    owner: root:root
+    encoding: b64
+    content: '@@OBSERVE_B64@@'
   - path: /root/.saha-textile-tunnel-token
     permissions: '0600'
     owner: root:root

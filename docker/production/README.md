@@ -96,8 +96,13 @@ bin/backup.sh
 CONFIRM_REPLACE_DATA=yes bin/restore.sh <backup-stamp> <age-identity-file>
 ```
 
-Each deploy also brings `/opt/saha-textile/bin/receive-release.sh` up to date from its release, so a
-server made earlier learns new requests. The deploy workflow's `action: rollback` sends the one line
+Each deploy also brings `/opt/saha-textile/bin/receive-release.sh` and `observe.sh` up to date from
+its release, so a server made earlier learns new requests.
+
+The `observer` user is the Release Console's read-only way in (Release Path brief Q8). Its key, made
+on the console's machine, is forced to `sudo -n /opt/saha-textile/bin/observe.sh`, which answers
+only `containers`, `logs <service> [--since <1-60>] [--errors]`, `releases` and `disk`, each as one
+JSON document, and refuses anything else. The deploy workflow's `action: rollback` sends the one line
 `rollback`, and the live release's `bin/rollback.sh` puts the previous release back from images on
 disk.
 

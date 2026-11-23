@@ -32,6 +32,8 @@ const values = {
 	ADMIN_PASSWORD_HASH: '$6$saltsalt$notarealhashnotarealhash',
 	TUNNEL_TOKEN: 'test-tunnel-token-not-real-0123456789abcdefghijklmnop',
 	RECEIVE_RELEASE_B64: Buffer.from('#!/bin/sh\n').toString('base64'),
+	OBSERVER_SSH_KEY: KEY.replace('owner@laptop', 'observer'),
+	OBSERVE_B64: Buffer.from('#!/bin/sh\n').toString('base64'),
 };
 
 /** A stand-in for doctl that records each call and answers from `answers` by its first two words. */
@@ -68,12 +70,22 @@ test('first-boot values come from the terminal, checked and never echoed', () =>
 	const env = {
 		SERVER_ADMIN_SSH_KEY_FILE: '/k/admin.pub',
 		SERVER_DEPLOY_SSH_KEY_FILE: '/k/deploy.pub',
+		SERVER_OBSERVER_SSH_KEY_FILE: '/k/observer.pub',
 		SERVER_ADMIN_PASSWORD_HASH: values.ADMIN_PASSWORD_HASH,
 		SERVER_TUNNEL_TOKEN: values.TUNNEL_TOKEN,
 	};
 	const got = firstBootValues(env, read);
 	assert.equal(got.ADMIN_USER, 'saha-textile-admin');
 	assert.equal(Buffer.from(got.RECEIVE_RELEASE_B64, 'base64').toString(), '#!/bin/sh\n');
+	assert.equal(Buffer.from(got.OBSERVE_B64, 'base64').toString(), '#!/bin/sh\n');
+	assert.ok(got.OBSERVER_SSH_KEY.startsWith('ssh-'));
+	assert.throws(
+		() =>
+			firstBootValues({ ...env, SERVER_OBSERVER_SSH_KEY_FILE: '' }, (path) =>
+				path === '' ? 'not a key' : read(path),
+			),
+		/SERVER_OBSERVER_SSH_KEY_FILE/,
+	);
 	assert.throws(() => firstBootValues({ ...env, SERVER_ADMIN_PASSWORD_HASH: 'plain' }, read), /SHA-512 crypt/);
 	assert.throws(() => firstBootValues({ ...env, SERVER_TUNNEL_TOKEN: '' }, read), /SERVER_TUNNEL_TOKEN/);
 	assert.throws(() => firstBootValues(env, () => 'not a key'), /not one public SSH key/);

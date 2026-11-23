@@ -75,6 +75,7 @@ import {
 	type TransactionManagerPort,
 } from '@saha-textile/core-domain';
 
+import { accountsRefusal } from '../ledger/accounts-refusal';
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import {
 	ADMIN_ORDER_REPOSITORY,
@@ -275,19 +276,20 @@ export class ReturnsService {
 	/** B2: a return is asked for; nothing changes in stock or the books yet. */
 	async start(orderId: string, write: ReturnStart, actorId: string | null, now = new Date()): Promise<OrderReturn> {
 		const view = await this.view(orderId, istDay(now));
-		if (!view.windowOpen) throw new BadRequestException('return_window_closed');
+		if (!view.windowOpen) throw new BadRequestException(accountsRefusal('return_window_closed'));
 		const picked = write.lines.filter((l) => l.quantity > 0);
-		if (!picked.length) throw new BadRequestException('return_nothing_picked');
+		if (!picked.length) throw new BadRequestException(accountsRefusal('return_nothing_picked'));
 		const invoices = (await this.invoices.listForOrder(orderId)).filter((i) => i.status === 'issued');
 		const invoiceOf = (lineId: string) => invoices.find((inv) => inv.lines.some((l) => l.lineId === lineId));
 		const invoice = invoiceOf(picked[0]!.lineId);
 		const lines = [];
 		for (const pick of picked) {
 			const row = view.returnable.find((r) => r.lineId === pick.lineId);
-			if (!row || invoiceOf(pick.lineId) !== invoice) throw new BadRequestException('return_line_unknown');
-			if (!row.returnable) throw new BadRequestException(`return_not_returnable:${row.sku}`);
+			if (!row || invoiceOf(pick.lineId) !== invoice)
+				throw new BadRequestException(accountsRefusal('return_line_unknown'));
+			if (!row.returnable) throw new BadRequestException(accountsRefusal(`return_not_returnable:${row.sku}`));
 			if (pick.quantity > row.bought - row.returnedBefore)
-				throw new BadRequestException(`return_too_many:${row.sku}`);
+				throw new BadRequestException(accountsRefusal(`return_too_many:${row.sku}`));
 			lines.push({
 				lineId: row.lineId,
 				sku: row.sku,
@@ -331,7 +333,7 @@ export class ReturnsService {
 	async step(id: string, write: ReturnStep, actorId: string | null, now = new Date()): Promise<OrderReturn> {
 		const entry = await this.getReturn(id);
 		const allowed = write.to === 'pickup_booked' ? ['asked'] : ['asked', 'pickup_booked'];
-		if (!allowed.includes(entry.status)) throw new ConflictException('return_step_refused');
+		if (!allowed.includes(entry.status)) throw new ConflictException(accountsRefusal('return_step_refused'));
 		return this.saveReturn(entry, { status: write.to }, actorId, now);
 	}
 
@@ -339,12 +341,12 @@ export class ReturnsService {
 	async check(id: string, write: ReturnCheck, actorId: string | null, now = new Date()): Promise<OrderReturn> {
 		const entry = await this.getReturn(id);
 		if (entry.status !== 'received' && entry.status !== 'checked')
-			throw new ConflictException('return_not_received');
+			throw new ConflictException(accountsRefusal('return_not_received'));
 		const lines = entry.lines.map((line) => {
 			const checked = write.lines.find((l) => l.lineId === line.lineId);
 			return checked ? { ...line, outcome: checked.outcome, note: checked.note } : line;
 		});
-		if (lines.some((l) => !l.outcome)) throw new BadRequestException('return_check_incomplete');
+		if (lines.some((l) => !l.outcome)) throw new BadRequestException(accountsRefusal('return_check_incomplete'));
 		return this.saveReturn(entry, { status: 'checked', lines }, actorId, now);
 	}
 
@@ -441,13 +443,13 @@ export class ReturnsService {
 			deadline: note.deadline,
 			today,
 		});
-		if (problem) throw new BadRequestException(`credit_note_problem:${problem}`);
+		if (problem) throw new BadRequestException(accountsRefusal(`credit_note_problem:${problem}`));
 	}
 
 	/** Make the credit note (B3 → B4): a draft from the checked return, at the pieces' own cost. */
 	async fromReturn(returnId: string, actorId: string | null, now = new Date()): Promise<CreditNote> {
 		const entry = await this.getReturn(returnId);
-		if (entry.status !== 'checked') throw new ConflictException('return_not_checked');
+		if (entry.status !== 'checked') throw new ConflictException(accountsRefusal('return_not_checked'));
 		if (entry.creditNoteId) return this.creditNote(entry.creditNoteId);
 		const [invoice, order] = await Promise.all([this.invoice(entry.invoiceId), this.order(entry.orderId)]);
 		const credited = await this.credited(invoice.id, null);
@@ -494,7 +496,7 @@ export class ReturnsService {
 		const invoice = invoices.find((inv) =>
 			inv.lines.some((l) => write.lines.some((w) => w.lineId === l.lineId && w.lowerByINR > 0)),
 		);
-		if (!invoice) throw new BadRequestException('credit_note_problem:nothing_to_credit');
+		if (!invoice) throw new BadRequestException(accountsRefusal('credit_note_problem:nothing_to_credit'));
 		const lines = priceAdjustmentLines(invoice.lines, write.lines, invoice.interState);
 		const note = this.draft(
 			invoice,
@@ -578,7 +580,7 @@ export class ReturnsService {
 	/** B4 Save draft: fewer pieces on a goods line (0 takes it off), or a new reason. */
 	async saveDraft(id: string, write: CreditNoteDraftWrite, actorId: string | null): Promise<CreditNote> {
 		const note = await this.creditNote(id);
-		if (note.status !== 'draft') throw new ConflictException('credit_note_not_draft');
+		if (note.status !== 'draft') throw new ConflictException(accountsRefusal('credit_note_not_draft'));
 		const invoice = await this.invoice(note.invoiceId);
 		const credited = await this.credited(invoice.id, note.id);
 		let lines = note.lines;
@@ -610,7 +612,7 @@ export class ReturnsService {
 		const next = CreditNote.parse({ ...note, lines, ...noteTotals(lines), reason: write.reason ?? note.reason });
 		this.refuseIfProblems(next, invoice, credited, next.date);
 		const saved = await this.notes.save(next, write.version).catch((error: Error) => {
-			throw new ConflictException(error.message);
+			throw new ConflictException(accountsRefusal(error.message));
 		});
 		const diffs = [
 			...note.lines
@@ -628,7 +630,7 @@ export class ReturnsService {
 	async deleteDraft(id: string, actorId: string | null): Promise<void> {
 		const note = await this.creditNote(id);
 		await this.notes.deleteDraft(id).catch((error: Error) => {
-			throw new ConflictException(error.message);
+			throw new ConflictException(accountsRefusal(error.message));
 		});
 		if (note.returnId) {
 			const entry = await this.getReturn(note.returnId);
@@ -642,7 +644,7 @@ export class ReturnsService {
 		if (line.variationId) return line.variationId;
 		const rows = await this.variants.listForProduct(line.productId, 'admin');
 		const base = rows.find((row) => row.isBaseVariant) ?? rows[0];
-		if (!base) throw new ConflictException(`variant_missing:${line.sku}`);
+		if (!base) throw new ConflictException(accountsRefusal(`variant_missing:${line.sku}`));
 		return base.id;
 	}
 
@@ -657,7 +659,7 @@ export class ReturnsService {
 		context: TransactionContext,
 	): Promise<CreditNoteLine> {
 		const orderLine = order.lines.find((l) => l.lineId === line.lineId);
-		if (!orderLine) throw new ConflictException(`order_line_missing:${line.sku}`);
+		if (!orderLine) throw new ConflictException(accountsRefusal(`order_line_missing:${line.sku}`));
 		const variantId = await this.variantIdOf(orderLine);
 		const damaged = line.outcome === 'damaged';
 		await this.stock.move(
@@ -730,7 +732,7 @@ export class ReturnsService {
 	): Promise<void> {
 		for (const line of note.lines.filter(backInStock)) {
 			const orderLine = order.lines.find((l) => l.lineId === line.lineId);
-			if (!orderLine) throw new ConflictException(`order_line_missing:${line.sku}`);
+			if (!orderLine) throw new ConflictException(accountsRefusal(`order_line_missing:${line.sku}`));
 			const damaged = line.outcome === 'damaged';
 			await this.stock.move(
 				{
@@ -768,8 +770,8 @@ export class ReturnsService {
 		const issued = await this.tx.withTransaction(async (context) => {
 			const note = await this.notes.get(id, context);
 			if (!note) throw new NotFoundException('credit_note_not_found');
-			if (note.status !== 'draft') throw new ConflictException('credit_note_not_draft');
-			if (note.version !== version) throw new ConflictException('credit_note_changed');
+			if (note.status !== 'draft') throw new ConflictException(accountsRefusal('credit_note_not_draft'));
+			if (note.version !== version) throw new ConflictException(accountsRefusal('credit_note_changed'));
 			const invoice = await this.invoice(note.invoiceId);
 			this.refuseIfProblems(note, invoice, await this.credited(invoice.id, note.id, context), date);
 			const number = await this.numbers.issue('creditNote', context, now, note.gstRegistrationId);
@@ -878,14 +880,15 @@ export class ReturnsService {
 			await this.log(principal?.userId ?? null, 'creditNote.cancel_refused', 'creditNote', id, {
 				why: failed,
 			});
-		if (!checks.superAdmin || !principal) throw new ForbiddenException('credit_note_cancel_super_admin');
-		if (!checks.allowed) throw new ConflictException('credit_note_cancel_refused');
+		if (!checks.superAdmin || !principal)
+			throw new ForbiddenException(accountsRefusal('credit_note_cancel_super_admin'));
+		if (!checks.allowed) throw new ConflictException(accountsRefusal('credit_note_cancel_refused'));
 		const actorId = principal.userId;
 		const at = now.toISOString();
 		return this.tx.withTransaction(async (context) => {
 			const note = await this.notes.get(id, context);
 			if (!note || note.status !== 'issued' || note.debitNoteId)
-				throw new ConflictException('credit_note_not_cancellable');
+				throw new ConflictException(accountsRefusal('credit_note_not_cancellable'));
 			const order = await this.order(note.orderId);
 			await this.takeOut(
 				note,
@@ -939,7 +942,7 @@ export class ReturnsService {
 		return this.tx.withTransaction(async (context) => {
 			const note = await this.notes.get(id, context);
 			if (!note || note.status !== 'issued' || note.debitNoteId || !note.number)
-				throw new ConflictException('credit_note_not_undoable');
+				throw new ConflictException(accountsRefusal('credit_note_not_undoable'));
 			const number = await this.numbers.issue('debitNote', context, now, note.gstRegistrationId);
 			const order = await this.order(note.orderId);
 			await this.takeOut(note, number, `${number} undoes ${note.number}`, order, actorId, at, context);
@@ -1015,14 +1018,15 @@ export class ReturnsService {
 	): Promise<CreditNote> {
 		const note = await this.creditNote(id);
 		if (note.status !== 'issued' || note.debitNoteId || note.refund?.status !== 'due')
-			throw new ConflictException('credit_note_refund_not_due');
+			throw new ConflictException(accountsRefusal('credit_note_refund_not_due'));
 		let ledger: { role: string } | { id: string };
 		let reference: string;
 		if (write.how === 'gateway') {
 			const paid = (await this.payments.listByOrder(note.orderId)).find(
 				(p) => p.method === 'gateway' && p.gateway?.reference && p.state !== 'failed' && p.state !== 'void',
 			);
-			if (!paid?.gateway?.reference) throw new BadRequestException('credit_note_refund_no_gateway_payment');
+			if (!paid?.gateway?.reference)
+				throw new BadRequestException(accountsRefusal('credit_note_refund_no_gateway_payment'));
 			if (!this.gateway) throw new ServiceUnavailableException('credit_note_refund_gateway_unavailable');
 			reference = gatewayRefundReference('CN', note.id);
 			const result = await this.gateway.refundPayment({
@@ -1032,13 +1036,15 @@ export class ReturnsService {
 				currency: 'INR',
 			});
 			if (result.outcome === 'refused')
-				throw new ConflictException(`credit_note_refund_refused:${result.refusalCode ?? 'gateway'}`);
+				throw new ConflictException(
+					accountsRefusal(`credit_note_refund_refused:${result.refusalCode ?? 'gateway'}`),
+				);
 			ledger = { role: 'gateway_clearing' };
 		} else {
 			const chart = await this.ledger.chart();
 			const from = chart.ledgers.find((l) => l.id === write.ledgerId);
 			const cashOrBank = from ? ledgerClass(from, chart.groups) !== 'other' : false;
-			if (!cashOrBank) throw new BadRequestException('credit_note_refund_needs_cash_or_bank');
+			if (!cashOrBank) throw new BadRequestException(accountsRefusal('credit_note_refund_needs_cash_or_bank'));
 			reference = write.reference;
 			ledger = { id: write.ledgerId };
 		}

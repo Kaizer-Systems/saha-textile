@@ -11,6 +11,7 @@ import type {
 	RoleRepository,
 } from '@saha-textile/core-domain';
 
+import { accountsRefusal } from './accounts-refusal';
 import { Principal } from '../auth/ownership';
 import { Audience, type AuthenticatedPrincipal } from '../auth/session.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
@@ -141,7 +142,7 @@ export class DocumentLockAsksController {
 		@Body(new ZodValidationPipe(DocumentLockTarget)) body: DocumentLockTarget,
 		@Principal() principal?: AuthenticatedPrincipal,
 	): Promise<{ asked: boolean }> {
-		if (!principal) throw new ForbiddenException('document_lock_refused');
+		if (!principal) throw new ForbiddenException(accountsRefusal('document_lock_refused'));
 		const name = await this.log.nameOf(principal.userId);
 		const asked = await this.locks.askRelease(body.documentType, body.documentId, name, new Date().toISOString());
 		if (asked)

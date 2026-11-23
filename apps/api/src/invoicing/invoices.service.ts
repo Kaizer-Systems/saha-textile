@@ -26,6 +26,7 @@ import {
 	TAX_INVOICE_REPOSITORY,
 	TRANSACTION_MANAGER,
 } from '../infra/tokens';
+import { accountsRefusal } from '../ledger/accounts-refusal';
 import { LedgerService } from '../ledger/ledger.service';
 import { DocumentNumbersService } from '../orders-setup/document-numbers.service';
 
@@ -200,11 +201,11 @@ export class InvoicesService {
 		]);
 		const locationId = order.shipsFromLocationId ?? defaultStockLocation(allLocations);
 		const location = allLocations.find((l) => l.id === locationId);
-		if (!location) throw new BadRequestException('invoice_problem:no_location');
+		if (!location) throw new BadRequestException(accountsRefusal('invoice_problem:no_location'));
 		const registration =
 			(location.gstRegistrationId ? await this.company.getRegistration(location.gstRegistrationId) : null) ??
 			(shop?.gstin ? await this.company.findRegistrationByGstin(shop.gstin) : null);
-		if (!registration) throw new BadRequestException('invoice_problem:no_gst_registration');
+		if (!registration) throw new BadRequestException(accountsRefusal('invoice_problem:no_gst_registration'));
 		const delivery = order.addresses?.delivery;
 		const sellerState = registration.stateCode;
 		const abroad = !!delivery?.country && !['IN', 'India'].includes(delivery.country);
@@ -231,7 +232,7 @@ export class InvoicesService {
 		const problem = built.problems[0];
 		if (problem) {
 			const sku = inputs.find((l) => l.lineId === problem.lineId)?.sku;
-			throw new BadRequestException(`invoice_problem:${problem.problem}${sku ? `:${sku}` : ''}`);
+			throw new BadRequestException(accountsRefusal(`invoice_problem:${problem.problem}${sku ? `:${sku}` : ''}`));
 		}
 		const id = `ti_${randomUUID()}`;
 		const date = istDay(at);

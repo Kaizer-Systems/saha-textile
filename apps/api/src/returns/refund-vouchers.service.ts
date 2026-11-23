@@ -26,6 +26,7 @@ import {
 	type TransactionManagerPort,
 } from '@saha-textile/core-domain';
 
+import { accountsRefusal } from '../ledger/accounts-refusal';
 import { type Actor, AdminOrdersService } from '../admin-orders/admin-orders.service';
 import { type CheckoutGateways, gatewayNamed } from '../infra/payment-gateway-factory';
 import {
@@ -87,19 +88,19 @@ export class RefundVouchersService {
 		const chart = await this.ledger.chart();
 		const from = chart.ledgers.find((l) => l.id === ledgerId);
 		if (!from || ledgerClass(from, chart.groups) === 'other')
-			throw new BadRequestException('refund_needs_cash_or_bank');
+			throw new BadRequestException(accountsRefusal('refund_needs_cash_or_bank'));
 	}
 
 	/** C1: cancel a paid order that has no tax invoice yet, and give its money back with a voucher for each payment. */
 	async cancelAndRefund(orderId: string, write: CancelAndRefundWrite, actor: Actor, now = new Date()) {
 		await this.order(orderId);
 		const invoiced = (await this.invoices.listForOrder(orderId)).some((i) => i.status === 'issued');
-		if (invoiced) throw new ConflictException('refund_after_invoice_needs_credit_note');
+		if (invoiced) throw new ConflictException(accountsRefusal('refund_after_invoice_needs_credit_note'));
 		const paid = refundablePayments(await this.payments.listByOrder(orderId));
-		if (!paid.length) throw new ConflictException('nothing_to_refund');
+		if (!paid.length) throw new ConflictException(accountsRefusal('nothing_to_refund'));
 		if (write.refund.how === 'bank_transfer') await this.refuseUnlessCashOrBank(write.refund.ledgerId);
 		else if (paid.some((p) => p.method !== 'gateway' || !p.gateway?.reference))
-			throw new BadRequestException('refund_payment_not_by_gateway');
+			throw new BadRequestException(accountsRefusal('refund_payment_not_by_gateway'));
 		await this.adminOrders.changeStatus(
 			orderId,
 			{
@@ -140,7 +141,7 @@ export class RefundVouchersService {
 
 	private async locationOf(order: Order): Promise<string> {
 		const id = order.shipsFromLocationId ?? defaultStockLocation(await this.locations.list());
-		if (!id) throw new ConflictException('refund_needs_a_location');
+		if (!id) throw new ConflictException(accountsRefusal('refund_needs_a_location'));
 		return id;
 	}
 
@@ -230,7 +231,8 @@ export class RefundVouchersService {
 
 	private async open(id: string): Promise<{ voucher: RefundVoucher; payment: OrderPayment }> {
 		const voucher = await this.get(id);
-		if (voucher.status === 'refunded') throw new ConflictException('refund_voucher_already_refunded');
+		if (voucher.status === 'refunded')
+			throw new ConflictException(accountsRefusal('refund_voucher_already_refunded'));
 		const payment = await this.payments.findById(voucher.paymentId);
 		if (!payment) throw new NotFoundException('payment_not_found');
 		return { voucher, payment };
@@ -246,7 +248,7 @@ export class RefundVouchersService {
 		return this.tx.withTransaction(async (context) => {
 			const done = await this.settle(next, payment, actorId, context);
 			await this.vouchers.save(done, before.updatedAt, context).catch((error: Error) => {
-				throw new ConflictException(error.message);
+				throw new ConflictException(accountsRefusal(error.message));
 			});
 			await this.log.append(actorId, action, 'refundVoucher', before.id, [
 				{ field: 'status', before: before.status, after: done.status },
@@ -258,7 +260,7 @@ export class RefundVouchersService {
 	/** "Failed: try again": the gateway is asked again with the same reference. */
 	async retry(id: string, actorId: string | null, now = new Date()): Promise<RefundVoucher> {
 		const { voucher, payment } = await this.open(id);
-		if (voucher.how !== 'gateway') throw new ConflictException('refund_voucher_not_by_gateway');
+		if (voucher.how !== 'gateway') throw new ConflictException(accountsRefusal('refund_voucher_not_by_gateway'));
 		const answer = await this.askGateway(payment, voucher.reference);
 		const next = {
 			...voucher,

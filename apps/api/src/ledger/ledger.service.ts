@@ -62,6 +62,7 @@ import {
 	resolveRole,
 } from '@saha-textile/core-domain';
 
+import { accountsRefusal } from './accounts-refusal';
 import { AccountsTemplatesService } from '../accounts-templates/accounts-templates.service';
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import {
@@ -207,7 +208,7 @@ export class LedgerService {
 	async addGroup(write: AccountGroupWrite, by: string | null): Promise<AccountGroup> {
 		const chart = await this.chart();
 		const parent = chart.groups.find((group) => group.id === write.parentId);
-		if (!parent) throw new BadRequestException('group_parent_unknown');
+		if (!parent) throw new BadRequestException(accountsRefusal('group_parent_unknown'));
 		const now = new Date().toISOString();
 		const group = AccountGroup.parse({
 			id: `grp_${randomUUID()}`,
@@ -227,7 +228,7 @@ export class LedgerService {
 	async addLedger(write: LedgerWrite, by: string | null): Promise<Ledger> {
 		const chart = await this.chart();
 		const group = chart.groups.find((g) => g.id === write.groupId);
-		if (!group) throw new BadRequestException('group_unknown');
+		if (!group) throw new BadRequestException(accountsRefusal('group_unknown'));
 		const now = new Date().toISOString();
 		const ledger = Ledger.parse({
 			id: `led_${randomUUID()}`,
@@ -250,9 +251,9 @@ export class LedgerService {
 		const current = chart.ledgers.find((l) => l.id === id);
 		if (!current) throw new NotFoundException('ledger_not_found');
 		const group = chart.groups.find((g) => g.id === write.groupId);
-		if (!group) throw new BadRequestException('group_unknown');
+		if (!group) throw new BadRequestException(accountsRefusal('group_unknown'));
 		if (current.systemKey && write.groupId !== current.groupId)
-			throw new BadRequestException('system_ledger_group');
+			throw new BadRequestException(accountsRefusal('system_ledger_group'));
 		const next = Ledger.parse({
 			...current,
 			name: write.name,
@@ -265,7 +266,7 @@ export class LedgerService {
 		try {
 			await this.books.saveLedger(next, write.expectedUpdatedAt ?? current.updatedAt);
 		} catch (error) {
-			if (error instanceof StaleRevisionError) throw new ConflictException('ledger_changed');
+			if (error instanceof StaleRevisionError) throw new ConflictException(accountsRefusal('ledger_changed'));
 			throw error;
 		}
 		const diffs = (['name', 'groupId', 'active'] as const)
@@ -339,7 +340,7 @@ export class LedgerService {
 				})),
 			},
 		);
-		if (problems.length) throw new BadRequestException(`voucher_problem:${problems[0]}`);
+		if (problems.length) throw new BadRequestException(accountsRefusal(`voucher_problem:${problems[0]}`));
 		const voucher = JournalVoucher.parse({
 			id: `jv_${randomUUID()}`,
 			number: await this.numbers.issue('journal', context, new Date(`${input.date}T06:30:00.000Z`)),
@@ -374,7 +375,7 @@ export class LedgerService {
 		try {
 			return resolveRole(ledgers, role);
 		} catch (error) {
-			throw new BadRequestException(`voucher_problem:${(error as Error).message}`);
+			throw new BadRequestException(accountsRefusal(`voucher_problem:${(error as Error).message}`));
 		}
 	}
 
@@ -394,7 +395,7 @@ export class LedgerService {
 					'role' in line.ledger
 						? this.byRole(chart.ledgers, line.ledger.role)
 						: chart.ledgers.find((l) => l.id === (line.ledger as { id: string }).id);
-				if (!ledger) throw new BadRequestException('voucher_problem:ledger_unknown');
+				if (!ledger) throw new BadRequestException(accountsRefusal('voucher_problem:ledger_unknown'));
 				return {
 					ledgerId: ledger.id,
 					locationId: line.locationId,
@@ -419,7 +420,7 @@ export class LedgerService {
 	): Promise<JournalVoucher> {
 		const scope = await this.locations.scope(principal);
 		if (write.lines.some((line) => !scope.all && !scope.ids.includes(line.locationId)))
-			throw new ForbiddenException('location_out_of_scope');
+			throw new ForbiddenException(accountsRefusal('location_out_of_scope'));
 		const lines = await this.stampLines(write.lines);
 		const mayPostWhenClosed = !!principal?.permissions.includes('accounts.lock');
 		const { draftId, ...voucher } = write;
@@ -468,7 +469,7 @@ export class LedgerService {
 		try {
 			await this.books.saveDraft(draft, current ? (expectedUpdatedAt ?? current.updatedAt) : null);
 		} catch (error) {
-			if (error instanceof StaleRevisionError) throw new ConflictException('draft_changed');
+			if (error instanceof StaleRevisionError) throw new ConflictException(accountsRefusal('draft_changed'));
 			throw error;
 		}
 		return draft;
@@ -487,11 +488,12 @@ export class LedgerService {
 		principal: AuthenticatedPrincipal | undefined,
 	): Promise<JournalVoucher> {
 		if (!principal || !(await this.isSuperAdmin(principal)))
-			throw new ForbiddenException('reverse_super_admin_only');
+			throw new ForbiddenException(accountsRefusal('reverse_super_admin_only'));
 		const original = await this.books.getVoucher(id);
 		if (!original) throw new NotFoundException('voucher_not_found');
-		if (original.reversedById) throw new BadRequestException('voucher_problem:already_reversed');
-		if (write.date < original.date) throw new BadRequestException('voucher_problem:reverse_on_before_date');
+		if (original.reversedById) throw new BadRequestException(accountsRefusal('voucher_problem:already_reversed'));
+		if (write.date < original.date)
+			throw new BadRequestException(accountsRefusal('voucher_problem:reverse_on_before_date'));
 		return this.tx.withTransaction(async (context) => {
 			const reversal = await this.insert(
 				{
@@ -585,7 +587,7 @@ export class LedgerService {
 		const scope = await this.locations.scope(principal);
 		const asked = query.locationIds;
 		if (!scope.all && asked.some((id) => !scope.ids.includes(id)))
-			throw new ForbiddenException('location_out_of_scope');
+			throw new ForbiddenException(accountsRefusal('location_out_of_scope'));
 		const locationIds = asked.length ? asked : scope.all ? [] : [...scope.ids];
 		const [openingPaise, lines] = await Promise.all([
 			this.books.balanceBefore(ledgerId, query.from, locationIds),
@@ -642,7 +644,7 @@ export class LedgerService {
 	/** T2: close or lock chosen months and parts with a reason; reopening is logged the same way. */
 	async lockPeriods(write: PeriodLockWrite, principal: AuthenticatedPrincipal | undefined): Promise<PeriodLock[]> {
 		if (write.state === 'open' && !(await this.isSuperAdmin(principal)))
-			throw new ForbiddenException('reopen_super_admin_only');
+			throw new ForbiddenException(accountsRefusal('reopen_super_admin_only'));
 		const now = new Date().toISOString();
 		const before = await this.periods.list();
 		const next: PeriodLock[] = write.months.flatMap((month) =>
@@ -680,7 +682,7 @@ export class LedgerService {
 		principal: AuthenticatedPrincipal | undefined,
 	): Promise<GstReturnFiling> {
 		const registration = await this.company.getRegistration(write.gstRegistrationId);
-		if (!registration) throw new BadRequestException('gst_registration_unknown');
+		if (!registration) throw new BadRequestException(accountsRefusal('gst_registration_unknown'));
 		const filing = GstReturnFiling.parse({
 			...write,
 			gstin: registration.gstin,
@@ -691,7 +693,7 @@ export class LedgerService {
 			await this.gstReturns.insert(filing);
 		} catch (error) {
 			if (error instanceof Error && error.message === 'duplicate_gst_filing')
-				throw new ConflictException('gst_already_filed');
+				throw new ConflictException(accountsRefusal('gst_already_filed'));
 			throw error;
 		}
 		await this.log(principal?.userId ?? null, 'accounts.gst.filed', 'gstReturn', null, [], {
@@ -709,7 +711,7 @@ export class LedgerService {
 		documentId: string,
 		principal: AuthenticatedPrincipal | undefined,
 	): Promise<DocumentLock> {
-		if (!principal) throw new ForbiddenException('document_lock_refused');
+		if (!principal) throw new ForbiddenException(accountsRefusal('document_lock_refused'));
 		const holderName = await this.nameOf(principal.userId);
 		const now = new Date();
 		return this.documentLocks.acquire(
@@ -743,7 +745,7 @@ export class LedgerService {
 		principal: AuthenticatedPrincipal | undefined,
 	): Promise<DocumentLock> {
 		if (!principal || !(await this.isSuperAdmin(principal)))
-			throw new ForbiddenException('take_over_super_admin_only');
+			throw new ForbiddenException(accountsRefusal('take_over_super_admin_only'));
 		const holderName = await this.nameOf(principal.userId);
 		const before = await this.documentLocks.get(documentType, documentId);
 		const now = new Date().toISOString();

@@ -5550,7 +5550,7 @@
 	"ord_irn_help": "64 characters, from the e-invoice portal",
 	"ord_ack_date": "Ack date",
 	"ord_signed_qr": "Signed QR",
-	"ord_ewb_help": "12 digits",
+	"ord_ewb_help": "12 or 14 digits (14 from 23 Nov 2026)",
 	"ord_ewb_generated_on": "Generated on",
 	"ord_transporter_name": "Transporter name",
 	"ord_transporter_id": "Transporter ID",

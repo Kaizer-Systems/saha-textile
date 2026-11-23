@@ -340,7 +340,7 @@ export type EInvoiceRecord = z.infer<typeof EInvoiceRecord>;
 
 /** E-way bill (business orders; typed by hand until an integration exists). */
 export const EWayBillRecord = z.object({
-	number: z.string().regex(/^\d{12}$/, { message: 'ewb_shape' }),
+	number: z.string().regex(/^(\d{12}|\d{14})$/, { message: 'ewb_shape' }),
 	generatedOn: IsoDateTime,
 	validUntil: IsoDateTime,
 	transporterName: z.string().trim().max(120).nullable().default(null),

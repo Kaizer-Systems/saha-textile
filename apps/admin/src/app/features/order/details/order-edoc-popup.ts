@@ -60,7 +60,7 @@ export class OrderEDocPopup {
 	}
 
 	ewbValid(): boolean {
-		return /^\d{12}$/.test(this.ewbNumber().trim());
+		return /^(\d{12}|\d{14})$/.test(this.ewbNumber().replace(/\s+/g, ''));
 	}
 
 	canSave(): boolean {
@@ -90,7 +90,7 @@ export class OrderEDocPopup {
 						)
 					: await firstValueFrom(
 							this.gateway.setEWayBill(order.id, {
-								number: this.ewbNumber().trim(),
+								number: this.ewbNumber().replace(/\s+/g, ''),
 								generatedOn: indiaDayStart(this.generatedOn()),
 								validUntil: indiaDayStart(this.validUntil()),
 								transporterName: this.transporterName().trim() || null,

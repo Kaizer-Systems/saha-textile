@@ -5550,7 +5550,7 @@
 	"ord_irn_help": "64 অক্ষর, ই-ইনভয়েস পোর্টাল থেকে",
 	"ord_ack_date": "Ack তারিখ",
 	"ord_signed_qr": "সই করা QR",
-	"ord_ewb_help": "12 সংখ্যার",
+	"ord_ewb_help": "12 বা 14 সংখ্যার (23 Nov 2026 থেকে 14)",
 	"ord_ewb_generated_on": "তৈরির তারিখ",
 	"ord_transporter_name": "ট্রান্সপোর্টারের নাম",
 	"ord_transporter_id": "ট্রান্সপোর্টার ID",

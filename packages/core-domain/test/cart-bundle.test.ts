@@ -117,6 +117,20 @@ describe('a set as a cart line', () => {
 		]);
 	});
 
+	it('says when a running sale event lowered the set, so coupons treat it as on sale (accounts brief F)', () => {
+		const plain = priceBundleLine(set(), choice());
+		if (!plain.ok) throw new Error(plain.reason);
+		expect(plain.saleLowered).toBe(false);
+		const base = set();
+		const lowered = priceBundleLine(
+			{ ...base, pricing: { ...base.pricing, eventSale: [{ kind: 'percent', value: 10, skuPrices: {} }] } },
+			choice(),
+		);
+		if (!lowered.ok) throw new Error(lowered.reason);
+		expect(lowered.saleLowered).toBe(true);
+		expect(lowered.totalINR).toBeLessThan(plain.totalINR);
+	});
+
 	it('refuses a set that cannot be bought, a missing size and a missing free choice', () => {
 		expect(priceBundleLine(set({ buyable: false }), choice())).toEqual({ ok: false, reason: 'bundle_not_on_sale' });
 		const sized = set({

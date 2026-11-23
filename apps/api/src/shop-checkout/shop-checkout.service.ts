@@ -461,7 +461,7 @@ export class ShopCheckoutService {
 			productId: line.productId,
 			categoryIds: [...new Set(facts[index]?.facts.categoryPaths.flat() ?? [])],
 			amountINR: line.lineTotalINR,
-			onSale: facts[index]?.facts.currentSaleINR != null,
+			onSale: line.setOnSale || facts[index]?.facts.currentSaleINR != null,
 			zonePriced: false,
 			isSet: Boolean(line.setHeading),
 		}));

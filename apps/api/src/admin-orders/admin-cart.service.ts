@@ -138,6 +138,7 @@ export class AdminCartService {
 						}))
 					: [],
 				setHeading: page?.bundle?.heading ?? null,
+				setOnSale: row?.setOnSale ?? false,
 			};
 			if (!row || !row.buyable) {
 				return {

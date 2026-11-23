@@ -206,7 +206,9 @@ export class AdminOrderCreateService {
 			productId: line.productId,
 			categoryIds: [...new Set(facts[index]?.facts.categoryPaths.flat() ?? [])],
 			amountINR: line.lineTotalINR,
-			onSale: facts[index]?.facts.currentSaleINR !== null && facts[index]?.facts.currentSaleINR !== undefined,
+			onSale:
+				line.setOnSale ||
+				(facts[index]?.facts.currentSaleINR !== null && facts[index]?.facts.currentSaleINR !== undefined),
 			zonePriced: false,
 			isSet: Boolean(line.setHeading),
 		}));
@@ -620,8 +622,8 @@ export class AdminOrderCreateService {
 			amountINR: line.lineTotalINR,
 			onSale:
 				!line.zonePrice &&
-				facts[index]?.facts.currentSaleINR !== null &&
-				facts[index]?.facts.currentSaleINR !== undefined,
+				(line.setOnSale ||
+					(facts[index]?.facts.currentSaleINR !== null && facts[index]?.facts.currentSaleINR !== undefined)),
 			zonePriced: line.zonePrice?.kind === 'priced' && line.zonePrice.rule.tier !== 'retail',
 			isSet: Boolean(line.setHeading),
 		}));

@@ -137,7 +137,7 @@ export function priceBundleLine(
 	choice: BundleChoice,
 	now: Date = new Date(),
 ):
-	| { ok: true; totalINR: number; children: PricedChild[]; separatelyINR: number }
+	| { ok: true; totalINR: number; children: PricedChild[]; separatelyINR: number; saleLowered: boolean }
 	| { ok: false; reason: ChildRefusal } {
 	if (!bundle.buyable) return { ok: false, reason: 'bundle_not_on_sale' };
 	const quote = quoteBundle(quoteFromPage(bundle), { picks: choice.picks, extras: choice.extras }, now);
@@ -191,5 +191,12 @@ export function priceBundleLine(
 		const refused = row('extra', extra.key, extra.priceINR);
 		if (refused) return { ok: false, reason: refused };
 	}
-	return { ok: true, totalINR: quote.totalINR, children, separatelyINR: quote.separatelyINR };
+	// A sale event that lowered the set makes it count as on sale for coupons (accounts brief F, 2026-11-23).
+	return {
+		ok: true,
+		totalINR: quote.totalINR,
+		children,
+		separatelyINR: quote.separatelyINR,
+		saleLowered: quote.beforeEventINR !== null,
+	};
 }

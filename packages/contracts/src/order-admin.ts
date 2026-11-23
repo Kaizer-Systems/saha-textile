@@ -209,6 +209,8 @@ export const AdminCartLine = z.object({
 	/** A set's pieces, their free items and its extras, or a product's free items, as in the shop cart (E09). */
 	children: z.array(CartViewChild).default([]),
 	setHeading: z.enum(['components', 'choose']).nullable().default(null),
+	/** A set lowered by a running sale event: coupons treat it as a piece already on sale. */
+	setOnSale: z.boolean().default(false),
 });
 export type AdminCartLine = z.infer<typeof AdminCartLine>;
 

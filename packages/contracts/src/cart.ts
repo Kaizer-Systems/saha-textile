@@ -152,6 +152,8 @@ export const CartViewLine = z.object({
 	children: z.array(CartViewChild).default([]),
 	/** A set's heading on the shop ("Bundle Components" or "Choose your set"); null for other products. */
 	setHeading: z.enum(['components', 'choose']).nullable().default(null),
+	/** A set lowered by a running sale event: coupons treat it as a piece already on sale. */
+	setOnSale: z.boolean().default(false),
 });
 export type CartViewLine = z.infer<typeof CartViewLine>;
 

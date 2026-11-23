@@ -39,6 +39,8 @@ export interface PricedCartLine {
 	measurements: { code: string; label: string; value: number; unit: 'in' | 'cm' }[];
 	/** A set's pieces, their free items and extras, or a product's own free items. */
 	children: PricedChild[];
+	/** A set whose price a running sale event lowered: coupons treat it as on sale. */
+	setOnSale?: boolean;
 }
 
 export type CartLineRefusal =
@@ -120,6 +122,7 @@ export function priceCartLine(page: CatalogProductPage, choice: CartLineChoice):
 				options: [],
 				measurements: [],
 				children: set.children,
+				setOnSale: set.saleLowered,
 			},
 		};
 	}

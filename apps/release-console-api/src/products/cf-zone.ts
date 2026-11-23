@@ -50,6 +50,7 @@ import {
 } from './cf-kit.js';
 import { VendorError, arr, num, rec, str } from '../vendors/http.js';
 import { ruleKindTables, rulesTabs } from './cf-rules.js';
+import { cfFeatures } from './cf-plan.js';
 
 const moreRules = rulesTabs();
 
@@ -2368,23 +2369,33 @@ export const cfTrafficScreen: ProductScreen = {
 	tabs: {
 		settings: async (ctx) => {
 			const z = await zoneOf(ctx);
-			const [argo, lbs, rooms] = await Promise.all([
+			const [argo, lbs, rooms, has] = await Promise.all([
 				cfSoft(`/zones/${z.id}/argo/smart_routing`, ctx.key),
 				cfAll(`/zones/${z.id}/load_balancers`, ctx.key),
 				cfAll(`/zones/${z.id}/waiting_rooms`, ctx.key),
+				cfFeatures(ctx),
 			]);
+			// Plan locks read live: a note only for what the account does not have yet (owner, 23 Nov).
+			const missing = [
+				...(has['cf.argo'] ? [] : ['Argo Smart Routing (paid add-on)']),
+				...(has['cf.lb'] ? [] : ['Load Balancing (paid add-on)']),
+				...(has['cf.waiting_room'] ? [] : ['waiting rooms (Business plan)']),
+			];
 			return view({
 				facts: [
-					fact('Argo Smart Routing', str(rec(argo)['value']) || 'off (paid add-on)'),
-					fact('Load balancers', (lbs ?? []).length),
-					fact('Waiting rooms', rooms ? rooms.length : 'Business plan'),
+					fact('Argo Smart Routing', has['cf.argo'] ? str(rec(argo)['value']) || 'off' : 'needs the add-on'),
+					fact('Load balancers', has['cf.lb'] ? (lbs ?? []).length : 'needs the add-on'),
+					fact('Waiting rooms', has['cf.waiting_room'] ? (rooms ?? []).length : 'needs Business'),
 				],
-				notes: [
-					note(
-						'Load balancing and Argo are paid add-ons; a waiting room is Business. The shop does not use them.',
-						'muted',
-					),
-				],
+				notes: missing.length
+					? [
+							note(
+								`Not on this account yet: ${missing.join(', ')}. Buying them is on Cloudflare; this tab opens their controls once they are on.`,
+								'muted',
+							),
+						]
+					: [],
+				actions: has['cf.argo'] ? [action('Argo on or off', 'argo')] : [],
 			});
 		},
 		lb: async (ctx) => {

@@ -45,6 +45,7 @@ import {
 	ROUTES_EXTRA,
 	SPEED_EXTRA,
 	SSL_EXTRA,
+	TRAFFIC_EXTRA,
 	WAF_EXTRA,
 	extend,
 } from './cf-zone-more.js';
@@ -165,7 +166,7 @@ export const PRODUCT_SCREENS: Record<string, ProductScreen> = {
 	cfrules: cfRulesScreen,
 	cferror: extend(cfErrorScreen, ERROR_EXTRA),
 	cfnetwork: cfNetworkScreen,
-	cftraffic: cfTrafficScreen,
+	cftraffic: extend(cfTrafficScreen, TRAFFIC_EXTRA),
 	cfweb3: cfWeb3Screen,
 	pulls: extend(pullsScreen, PULLS_EXTRA),
 	pipeline: extend(pipelineScreen, PIPELINE_EXTRA),

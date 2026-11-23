@@ -1288,3 +1288,39 @@ export const CACHE_EXTRA: ScreenExtra = {
 	forms: { tiered },
 	buttons: { config: [action('Tiered cache', 'tiered')] },
 };
+
+/* ===== Traffic: Argo Smart Routing (once the account has the add-on) ===== */
+
+const argoForm: ProductFormSpec = {
+	async read(ctx) {
+		const z = await zoneOf(ctx);
+		const a = rec(await cfSoft(`/zones/${z.id}/argo/smart_routing`, ctx.key));
+		return formTab(
+			form({
+				key: 'argo',
+				title: 'Argo Smart Routing',
+				submit: 'Save',
+				blocked:
+					a['editable'] === true
+						? null
+						: 'Argo is a paid add-on this account does not have yet; it is bought on Cloudflare.',
+				fields: [
+					field('on', 'Argo Smart Routing', 'select', {
+						value: str(a['value']) || 'off',
+						options: [option('on', 'On'), option('off', 'Off')],
+					}),
+				],
+				cost: 'Argo is billed per GB of traffic it carries, on top of the monthly add-on.',
+			}),
+		);
+	},
+	async send(ctx, w) {
+		const k = await ctx.writeKey();
+		const z = await zoneOf(ctx, k);
+		const value = opt(w, 'on') === 'on' ? 'on' : 'off';
+		await cfSend('PATCH', `/zones/${z.id}/argo/smart_routing`, k, { value });
+		return { message: `Argo Smart Routing ${value}`, productId: z.id, follow: [] };
+	},
+};
+
+export const TRAFFIC_EXTRA: ScreenExtra = { forms: { argo: argoForm } };

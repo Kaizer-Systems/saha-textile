@@ -46,7 +46,7 @@ import {
 } from '../infra/tokens';
 import { PurchaseOrderDocument } from '../purchasing/purchase-order-document';
 import type { DocumentData } from './document-data';
-import { documentHtml, type RenderBrand } from './document-html';
+import { documentHtml, eInvoiceBand, type RenderBrand } from './document-html';
 import { previewDocument } from './document-previews';
 
 /** Fonts the PDF embeds (the preview uses the system's sans). */
@@ -217,12 +217,15 @@ export class DocumentFormatsService {
 	): Promise<Uint8Array> {
 		if (!this.renderer) throw new ServiceUnavailableException({ code: 'documents_unavailable' });
 		const [assets, logo] = await Promise.all([this.paperwork.loadStatic(), this.paperwork.logo()]);
+		const band = eInvoiceBand(format, data);
 		const request: DocumentRenderRequest = {
-			html: documentHtml(format, data, {
-				logoSrc: logo.asset ? 'logo' : null,
-				themeColor: logo.themeColor,
-				fontFaces: FONT_FACES,
-			}),
+			html: documentHtml(
+				format,
+				data,
+				{ logoSrc: logo.asset ? 'logo' : null, themeColor: logo.themeColor, fontFaces: FONT_FACES },
+				{ band: !!band },
+			),
+			...(band ? { footerHtml: band } : {}),
 			assets: logo.asset ? [...assets, logo.asset] : assets,
 			title: `${data.title} ${data.number}`,
 			author: data.seller.name,

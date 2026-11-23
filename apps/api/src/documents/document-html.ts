@@ -142,6 +142,36 @@ const PAGE: Record<DocumentPaper, { size: string; margin: string; base: string }
 	roll80: { size: '80mm 297mm', margin: '4mm 4mm 6mm', base: '7.5pt' },
 };
 
+/** The page foot left for the e-invoice band (signed QR about 31 mm square, its facts and the page number). */
+const BAND_MARGIN_MM = 47;
+
+/**
+ * The e-invoice band (accounts brief addendum 2, EI8; AE4): the IRP's signed QR, the IRN, the acknowledgement and
+ * the e-way bill, repeated at the foot of every page — only when the document has an IRN and its format keeps the
+ * e-invoice block. Chromium's footer template: inline styles only, its own font size.
+ */
+export function eInvoiceBand(format: { blocks: readonly DocumentBlock[] }, data: DocumentData): string | null {
+	const block = format.blocks.find((b) => b.type === 'einvoice' && !b.hidden);
+	const irn = data.values['irn'];
+	if (!block || !irn) return null;
+	const footer = format.blocks.find((b) => b.type === 'footer' && !b.hidden);
+	const pageNumber = footer && has(footer, 'pageNumber');
+	const qr =
+		has(block, 'signedQr') && data.qrSvg
+			? data.qrSvg.replace('<svg ', '<svg style="width:31mm;height:31mm;display:block" ')
+			: '';
+	const fact = (label: string, value: string | undefined) =>
+		value ? `<div><span style="color:#7b8794">${e(label)}</span><br><b>${e(value)}</b></div>` : '';
+	return `<div style="width:100%;margin:0 12mm;font-family:Arial,sans-serif;font-size:7.4pt;color:#1f2933;-webkit-print-color-adjust:exact">
+<div style="display:flex;gap:4mm;align-items:stretch;border:1px solid #cbd2d9;border-radius:3px;padding:2mm;background:#f7fbf9">${qr}
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:1.4mm">
+<div style="font-weight:700;color:#0e7c66;letter-spacing:.04em">E-INVOICE · SIGNED BY THE IRP</div>
+<div><span style="color:#7b8794">IRN</span><br><b style="font-family:monospace;font-size:7.2pt;word-break:break-all">${e(irn)}</b></div>
+<div style="display:flex;gap:8mm">${fact(FIELD_LABELS['ackNo'] ?? 'Ack no.', data.values['ackNo'])}${fact(FIELD_LABELS['ackDate'] ?? 'Ack date', data.values['ackDate'])}${fact(FIELD_LABELS['ewayBill'] ?? 'E-way bill', data.values['ewayBill'])}</div>
+${qr ? '' : '<div style="color:#b54708">QR pending: upload the portal’s signed file</div>'}
+</div></div>${pageNumber ? '<div style="text-align:right;color:#777;font-size:7pt;margin-top:1.5mm">Page <span class="pageNumber"></span> of <span class="totalPages"></span></div>' : ''}</div>`;
+}
+
 const e = escapeHtml;
 const has = (block: DocumentBlock, field: string) => block.fields.includes(field);
 
@@ -335,12 +365,15 @@ export function documentHtml(
 	format: { name: string; paper: DocumentPaper; blocks: readonly DocumentBlock[] },
 	data: DocumentData,
 	brand: RenderBrand,
+	options: { band?: boolean } = {},
 ): string {
-	const visible = format.blocks.filter((block) => !block.hidden);
-	const page = PAGE[format.paper];
+	// With the e-invoice band (AE4) the e-invoice and e-way bill blocks print in the page foot instead (EI8), and the foot carries the page numbers.
+	const visible = format.blocks.filter((block) => !block.hidden && !(options.band && (block.type === 'einvoice' || block.type === 'eway')));
+	const base = PAGE[format.paper];
+	const page = options.band ? { ...base, margin: base.margin.replace(/\s\S+$/, ` ${BAND_MARGIN_MM}mm`) } : base;
 	const footer = visible.find((block) => block.type === 'footer');
 	const pageNumbers =
-		footer && has(footer, 'pageNumber')
+		!options.band && footer && has(footer, 'pageNumber')
 			? '@bottom-right{content:"Page " counter(page) " of " counter(pages);font-size:7pt;color:#777}'
 			: '';
 	// Pages after the first repeat a slim header (brief F: "the header repeated"): the document, its number, the shop.

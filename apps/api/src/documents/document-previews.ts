@@ -1,3 +1,4 @@
+import { renderSVG } from 'uqr';
 import type { DocumentKind } from '@saha-textile/contracts';
 
 import type { DocumentData, DocumentRow } from './document-data';
@@ -167,6 +168,14 @@ const INVOICE_ROWS: DocumentRow[] = [
 const simpleRows = (rows: Array<Record<string, string>>): DocumentRow[] =>
 	rows.map((cells, at) => line({ cells: { index: String(at + 1), ...cells } }));
 
+const EXAMPLE_IRN = '16249c4dea9e9ad1f40245b8d7cf6f48e0a6233a694ee112d578da7e22e24e34';
+const exampleB64 = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
+const EXAMPLE_SIGNED_QR = [
+	exampleB64({ alg: 'RS256', typ: 'JWT', kid: 'EXAMPLE' }),
+	exampleB64({ data: JSON.stringify({ DocNo: 'TI/26-27/000125', DocTyp: 'INV', Irn: EXAMPLE_IRN, Example: true }) }),
+	'example',
+].join('.');
+
 export function previewDocument(doc: DocumentKind): DocumentData {
 	const base = { doc, date: TODAY, seller: SELLER, values: {}, parties: {} } as const;
 	switch (doc) {
@@ -175,6 +184,8 @@ export function previewDocument(doc: DocumentKind): DocumentData {
 				...base,
 				title: 'Tax invoice',
 				number: 'TI/26-27/000125',
+				// The e-invoice band's example QR (addendum 2, EI8): drawn from an example, unsigned payload.
+				qrSvg: renderSVG(EXAMPLE_SIGNED_QR, { ecc: 'M', border: 1 }),
 				values: {
 					copyLabel: 'Original for recipient',
 					invoiceNo: 'TI/26-27/000125',
@@ -183,7 +194,7 @@ export function previewDocument(doc: DocumentKind): DocumentData {
 					orderDate: TODAY,
 					placeOfSupply: 'Maharashtra (27)',
 					reverseCharge: 'No',
-					irn: 'a5c8…e91f (example)',
+					irn: EXAMPLE_IRN,
 					ackNo: '112410123456789',
 					ackDate: TODAY,
 					ewayBill: '3410 1234 5678',

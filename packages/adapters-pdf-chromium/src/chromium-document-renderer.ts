@@ -144,7 +144,9 @@ export class ChromiumDocumentRenderer implements DocumentRendererPort {
 					// Tagged for screen readers; an outline only matters for long reports.
 					tagged: true,
 					outline: false,
-					displayHeaderFooter: false,
+					displayHeaderFooter: !!request.footerHtml,
+					headerTemplate: '<span></span>',
+					footerTemplate: request.footerHtml ?? '<span></span>',
 				});
 				return new Uint8Array(pdf);
 			} finally {

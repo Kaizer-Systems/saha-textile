@@ -24,6 +24,12 @@ export interface DocumentRenderRequest {
 		/** Millimetres; the HTML's own `@page` rules win when it sets them. */
 		marginMm: { top: number; right: number; bottom: number; left: number };
 	};
+	/**
+	 * A band repeated at the foot of every page (accounts brief addendum 2, AE4: the e-invoice's signed QR, IRN and
+	 * acknowledgement). Self-contained HTML with inline styles; `pageNumber` / `totalPages` spans are filled in.
+	 * The document's own bottom margin must leave room for it.
+	 */
+	footerHtml?: string;
 }
 
 export interface DocumentRendererPort {

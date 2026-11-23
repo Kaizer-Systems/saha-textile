@@ -75,11 +75,22 @@ const SERVICE_WHERE: Record<string, string> = {
 	'saha-textile-worker': 'worker',
 };
 
-function whereOf(service: string, tags: Record<string, string>): string {
+/**
+ * Our own containers and this machine: exact names only, so outside hosts such as api.msg91.com or
+ * api-m.paypal.com stay outside calls.
+ */
+const INSIDE_HOST =
+	/^((saha-textile-)?(api|storefront|worker|mongo|redis|meilisearch)|localhost|127\.[\d.]+|::1|\[::1\])$/;
+
+/**
+ * `callsOurs`: the span has a child in another of our own services, so it is a call between them
+ * (the shop's call to the API joins the API's trace), never an outside host, whatever address it used.
+ */
+function whereOf(service: string, tags: Record<string, string>, callsOurs = false): string {
 	const db = tags['db.system'];
 	if (db) return DB_WHERE[db] ?? db;
 	const host = tags['server.address'] ?? tags['net.peer.name'];
-	if (host && tags['span.kind'] === 'client' && !/^(api|mongo|redis|meilisearch|localhost)/.test(host)) return host;
+	if (host && !callsOurs && tags['span.kind'] === 'client' && !INSIDE_HOST.test(host)) return host;
 	return SERVICE_WHERE[service] ?? service;
 }
 
@@ -112,16 +123,27 @@ export function traceOf(raw: unknown): TraceView | null {
 		depthOf.set(id, d);
 		return d;
 	};
+	const serviceOf = (s: Record<string, unknown>) => str(rec(processes[str(s['processID'])])['serviceName']);
+	// Spans with a child in another of our own services: calls between our services.
+	const callsOurs = new Set(
+		spansRaw
+			.filter((c) => SERVICE_WHERE[serviceOf(c)])
+			.flatMap((c) => {
+				const p = parentOf(c);
+				const parent = p ? spansRaw.find((x) => str(x['spanID']) === p) : undefined;
+				return parent && serviceOf(parent) !== serviceOf(c) ? [p as string] : [];
+			}),
+	);
 	const spans: TraceSpan[] = spansRaw
 		.map((s) => {
 			const tags = tagsOf(s);
-			const service = str(rec(processes[str(s['processID'])])['serviceName']);
+			const service = serviceOf(s);
 			return {
 				id: str(s['spanID']),
 				parentId: s === root ? null : parentOf(s),
 				name: str(s['operationName']),
 				service,
-				where: whereOf(service, tags),
+				where: whereOf(service, tags, callsOurs.has(str(s['spanID']))),
 				startMs: Math.max(0, (Number(s['startTime']) - t0) / 1000),
 				ms: Number(s['duration']) / 1000,
 				depth: depth(s),

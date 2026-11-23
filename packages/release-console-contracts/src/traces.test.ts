@@ -100,4 +100,36 @@ describe('traces (Release Path brief Part 6)', () => {
 			{ from: 'API', to: 'Redis', calls: 3, ms: 2 },
 		]);
 	});
+
+	it("counts the shop's own call to the API as the shop, whatever address it used; an outside call keeps its host", () => {
+		const raw = sample();
+		const client = (spanID: string, address: string, parent: string, start: number) => ({
+			traceID: 't1',
+			spanID,
+			operationName: 'GET',
+			references: [{ refType: 'CHILD_OF', spanID: parent }],
+			startTime: start,
+			duration: 290_000,
+			processID: 'p1',
+			tags: [
+				{ key: 'span.kind', value: 'client' },
+				{ key: 'server.address', value: address },
+			],
+		});
+		// The shop's server page → its client span to the API at 127.0.0.1 → the API's server span.
+		raw.spans.splice(1, 0, client('k', '127.0.0.1', 'a', 1_000_020_000));
+		(raw.spans[2] as { references: unknown[] }).references = [{ refType: 'CHILD_OF', spanID: 'k' }];
+		// A public API address is still our own API when the API's span is its child.
+		const t = traceOf(raw);
+		if (!t) throw new Error('no trace');
+		expect(t.spans.find((s) => s.id === 'k')?.where).toBe('shop');
+		expect(edgesOf([t])[0]).toEqual({ from: 'shop', to: 'API', calls: 1, ms: 288 });
+
+		const outside = sample();
+		outside.spans.push(client('m', 'api.msg91.com', 'b', 1_000_200_000));
+		(outside.spans.at(-1) as { processID: string }).processID = 'p2';
+		const o = traceOf(outside);
+		expect(o?.spans.find((s) => s.id === 'm')?.where).toBe('api.msg91.com');
+		expect(edgesOf(o ? [o] : []).map((e) => `${e.from}→${e.to}`)).toContain('API→api.msg91.com');
+	});
 });

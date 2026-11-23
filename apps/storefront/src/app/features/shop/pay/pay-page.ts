@@ -46,10 +46,13 @@ import { shopMoney } from '@features/shop/checkout/checkout';
 														</div>
 														<div class="checkout-detail">
 															<p class="text-content mb-0">
-																{{ page.deliveryCity }}
-																@if (page.deliveryCountry) {
-																	, {{ page.deliveryCountry }}
-																}
+																{{
+																	page.deliveryCity && page.deliveryCountry
+																		? page.deliveryCity +
+																			', ' +
+																			page.deliveryCountry
+																		: (page.deliveryCity ?? page.deliveryCountry)
+																}}
 															</p>
 														</div>
 													</div>

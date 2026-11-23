@@ -1,22 +1,21 @@
-import {
-	BUSINESS_KINDS,
-	GST_STATES as CONTRACT_STATES,
-	gstStateName as contractName,
-	gstinProblem as contractProblem,
-} from '@saha-textile/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { BUSINESS_KIND_LIST } from '../src/company/company-rules';
-import { GST_STATES, gstStateName, gstinProblem } from '../src/company/gst-identity';
+import { gstStateName, gstinCheckCharacter, gstinProblem } from '../src/company/gst-identity';
 
-describe('core’s browser copy of the GSTIN helpers stays equal to contracts', () => {
-	it('has the same State list and kinds of business', () => {
-		expect(GST_STATES).toEqual(CONTRACT_STATES);
-		expect([...BUSINESS_KIND_LIST]).toEqual([...BUSINESS_KINDS]);
+describe('GST registration identity', () => {
+	it('resolves the recorded state and rejects an unknown code', () => {
+		expect(gstStateName('19')).toBe('West Bengal');
+		expect(gstStateName('00')).toBeNull();
 	});
-	it('answers the same for GSTINs and State codes', () => {
-		for (const value of ['19DBYPS6736R1ZZ', '19DBYPS6736R1ZA', '99ABCDE1234F1Z5', 'nonsense', '27AAKFR1234M1Z2'])
-			expect(gstinProblem(value)).toEqual(contractProblem(value));
-		for (const code of ['19', '16', '97', '00']) expect(gstStateName(code)).toBe(contractName(code));
+
+	it('distinguishes invalid syntax, an unknown state, and a wrong check character', () => {
+		expect(gstinProblem('nonsense')).toEqual({ problem: 'shape' });
+		expect(gstinProblem('99ABCDE1234F1Z5')).toEqual({ problem: 'state' });
+		expect(gstinProblem('19DBYPS6736R1ZA')).toEqual({ problem: 'check_digit', expected: 'Z' });
+		expect(gstinProblem(' 19dbyps6736r1zz ')).toBeNull();
+	});
+
+	it('reports no check character for an invalid alphabet character', () => {
+		expect(gstinCheckCharacter('19!BYPS6736R1Z')).toBe('');
 	});
 });

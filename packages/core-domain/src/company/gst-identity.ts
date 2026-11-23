@@ -1,7 +1,7 @@
 /**
  * GSTIN helpers for the browser (core's ESM company build). The admin may import only types from
  * @saha-textile/contracts (its CommonJS build doesn't load in the browser), so the State list and the
- * check-character rule live here as well; test/gst-identity.test.ts keeps them equal to contracts/src/gst.ts.
+ * check-character rule live here as well; the API's GST identity parity test compares both copies.
  */
 
 export const GST_STATES: ReadonlyArray<{ code: string; name: string; retired?: true }> = [

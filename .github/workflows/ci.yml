@@ -157,11 +157,17 @@ jobs:
         run: pnpm e2e:stack
 
   speed:
-    name: Speed gate (Lighthouse on the shop's Home)
+    name: Speed gate (Lighthouse on the shop's Home, part ${{ matrix.part }})
     # Page Builder SG-10. Report only until the repository variable SPEED_GATE_ENFORCE is `true`
     # (a GitHub setting, switched by the owner once phone scores reach the floor).
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    # The same measurements as one long job, split over parallel jobs: part n measures every layout whose
+    # place in the list is n, n + 7, …, so a new layout is never left out. Each part builds its own stack.
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [1, 2, 3, 4, 5, 6, 7]
     env:
       MONGODB_PORT: 27017
       MEILISEARCH_HOST: http://127.0.0.1:7700
@@ -169,6 +175,8 @@ jobs:
       SPEED_GATE_ENFORCE: ${{ vars.SPEED_GATE_ENFORCE }}
       # Home with each template and the stress layout, each made live in turn (SG-10).
       SPEED_GATE_LAYOUTS: '1'
+      SPEED_GATE_PART: ${{ matrix.part }}
+      SPEED_GATE_PARTS: ${{ strategy.job-total }}
     services:
       meilisearch:
         image: getmeili/meilisearch:v1.16.0

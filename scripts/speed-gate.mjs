@@ -12,6 +12,7 @@
  *   SPEED_GATE_FULL=1                                             the nightly table: every size upright and on its
  *                                                                 side, light and dark (SG-10)
  *   SPEED_GATE_LAYOUT_CASES=current,stress                        only these layouts (the nightly table)
+ *   SPEED_GATE_PART=2 SPEED_GATE_PARTS=7                          this job's share of the layouts (CI's parallel jobs)
  *   SPEED_GATE_RUNS=3                                             runs per row, compared by median
  *
  * The table goes to stdout and, in GitHub Actions, to the job summary. CI starts the stack with
@@ -96,12 +97,30 @@ function measure(url, size, run, theme) {
 	};
 }
 
-/** The layouts to measure: Home as it is, or each template and the stress layout made live in turn. */
+/**
+ * The layouts to measure: Home as it is, or each template and the stress layout made live in turn. CI splits the
+ * layouts over parallel jobs (SPEED_GATE_PART=n, SPEED_GATE_PARTS=total): part n takes every layout whose place in
+ * the list is n, n + total, …, so every layout is measured by exactly one part however long the list grows.
+ */
 const only = (process.env.SPEED_GATE_LAYOUT_CASES ?? '').split(',').filter(Boolean);
-const layouts =
-	process.env.SPEED_GATE_LAYOUTS === '1'
-		? layoutCases().filter((layout) => !only.length || only.includes(layout))
-		: ['current'];
+const layouts = process.env.SPEED_GATE_LAYOUTS === '1' ? chosenLayouts(layoutCases()) : ['current'];
+
+function chosenLayouts(all) {
+	const unknown = only.filter((layout) => !all.includes(layout));
+	if (unknown.length) {
+		process.stderr.write(`Not a speed gate layout: ${unknown.join(', ')}. The layouts are ${all.join(', ')}.\n`);
+		process.exit(2);
+	}
+	const named = all.filter((layout) => !only.length || only.includes(layout));
+	const part = Number(process.env.SPEED_GATE_PART ?? 0);
+	const parts = Number(process.env.SPEED_GATE_PARTS ?? 0);
+	if (!part && !parts) return named;
+	if (!Number.isInteger(part) || !Number.isInteger(parts) || part < 1 || part > parts) {
+		process.stderr.write(`SPEED_GATE_PART must be 1 to SPEED_GATE_PARTS (got ${part} of ${parts}).\n`);
+		process.exit(2);
+	}
+	return named.filter((_, index) => index % parts === part - 1);
+}
 
 function layoutCases() {
 	return execFileSync('pnpm', ['--filter', '@saha-textile/api', '--silent', 'speed:layouts', 'list'], {
@@ -117,6 +136,17 @@ function makeLive(layout) {
 	execFileSync('pnpm', ['--filter', '@saha-textile/api', '--silent', 'speed:layouts', 'live', layout], {
 		stdio: 'inherit',
 	});
+}
+
+if (!layouts.length && !process.env.SPEED_GATE_PARTS) {
+	process.stderr.write('The speed gate found no layout to measure.\n');
+	process.exit(2);
+}
+if (!layouts.length) {
+	const note = `### Speed gate, part ${process.env.SPEED_GATE_PART} of ${process.env.SPEED_GATE_PARTS}\n\nNo layout falls to this part; the other parts measure them all.\n`;
+	process.stdout.write(`${note}\n`);
+	if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, note);
+	process.exit(0);
 }
 
 const rows = [];

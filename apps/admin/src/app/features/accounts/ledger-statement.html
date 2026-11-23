@@ -1,0 +1,124 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'accounts_ledger'"
+>
+	@if (statement.data(); as s) {
+	<div class="d-flex align-items-baseline justify-content-between mb-3 flex-wrap gap-2">
+		<h5 class="mb-0">
+			{{ s.ledger.name }}
+			<small class="text-muted ms-2">{{ groupName() }}</small>
+		</h5>
+		<button
+			type="button"
+			class="btn btn-outline"
+			id="ledger_export"
+			(click)="export()"
+		>
+			<i class="ri-download-2-line"></i>
+			{{ 'accounts_export' | transloco }}
+		</button>
+	</div>
+	}
+	<div class="d-flex justify-content-end mb-3 flex-wrap gap-2">
+		<app-period-picker (changed)="setPeriod($event)" />
+		<select
+			class="form-select w-auto"
+			id="ledger_location"
+			[ngModel]="locationId()"
+			(ngModelChange)="locationId.set($event); page.set(1)"
+		>
+			<option value="">{{ 'accounts_every_location' | transloco }}</option>
+			@for (l of locations.data() ?? []; track l.id) {
+			<option [value]="l.id">{{ l.name }}</option>
+			}
+		</select>
+		<input
+			class="form-control w-auto"
+			type="search"
+			id="ledger_search"
+			[placeholder]="'accounts_search_voucher' | transloco"
+			[ngModel]="search()"
+			(ngModelChange)="search.set($event); page.set(1)"
+		/>
+	</div>
+	@if (statement.data(); as s) {
+	<div class="small d-flex mb-2 flex-wrap gap-4">
+		<span>
+			{{ 'accounts_opening' | transloco }}
+			<b>{{ drCr(s.openingPaise) }}</b>
+		</span>
+		<span>
+			{{ 'accounts_debits' | transloco }}
+			<b>{{ rupees(s.debitPaise) }}</b>
+		</span>
+		<span>
+			{{ 'accounts_credits' | transloco }}
+			<b>{{ rupees(s.creditPaise) }}</b>
+		</span>
+		<span>
+			{{ 'accounts_closing' | transloco }}
+			<b>{{ drCr(s.closingPaise) }}</b>
+		</span>
+	</div>
+	}
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'date' | transloco }}</th>
+					<th>{{ 'accounts_voucher' | transloco }}</th>
+					<th>{{ 'accounts_particulars' | transloco }}</th>
+					<th class="text-end">{{ 'accounts_debit' | transloco }}</th>
+					<th class="text-end">{{ 'accounts_credit' | transloco }}</th>
+					<th class="text-end">{{ 'accounts_balance' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (r of shown(); track r.voucherId + r.date + $index) {
+				<tr>
+					<td class="text-nowrap">{{ r.date }}</td>
+					<td class="text-nowrap">
+						<a [routerLink]="['/accounts/vouchers', r.voucherId]">{{ r.number }}</a>
+					</td>
+					<td>
+						{{ r.narration || '—' }}
+						<small class="d-block text-muted">{{ locationName(r.locationId) }}</small>
+					</td>
+					<td class="text-end text-nowrap">{{ r.debitPaise ? rupees(r.debitPaise) : '' }}</td>
+					<td class="text-end text-nowrap">{{ r.creditPaise ? rupees(r.creditPaise) : '' }}</td>
+					<td class="text-end text-nowrap">{{ drCr(r.balancePaise) }}</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="6"
+						class="text-muted py-4 text-center"
+					>
+						{{ 'accounts_no_entries' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if (pages() > 1) {
+	<nav class="custom-pagination">
+		<ul class="pagination justify-content-center">
+			@for (p of [].constructor(pages()); track $index) {
+			<li
+				class="page-item"
+				[class.active]="page() === $index + 1"
+			>
+				<a
+					class="page-link"
+					href="javascript:void(0)"
+					(click)="page.set($index + 1)"
+				>
+					{{ $index + 1 }}
+				</a>
+			</li>
+			}
+		</ul>
+	</nav>
+	}
+</app-page-wrapper>

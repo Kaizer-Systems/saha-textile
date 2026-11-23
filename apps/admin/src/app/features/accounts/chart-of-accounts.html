@@ -1,0 +1,222 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'accounts_chart'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<small class="text-muted">
+			{{ 'accounts_chart_made_for' | transloco: { kind: ('co_kind_' + (profile.data()?.kind ?? 'proprietorship') |
+			transloco) } }}
+		</small>
+		@if (canEdit()) {
+		<div class="d-flex gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="accounts_add_group"
+				(click)="addGroup()"
+			>
+				{{ 'accounts_add_group' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="accounts_add_ledger"
+				(click)="addLedger()"
+			>
+				<i class="ri-add-line"></i>
+				{{ 'accounts_add_ledger' | transloco }}
+			</button>
+		</div>
+		}
+	</div>
+	<div class="row g-3">
+		<div class="col-xl-8">
+			<div class="card">
+				<div class="card-body">
+					<div class="table-responsive">
+						<table class="theme-table no-footer table">
+							<tbody>
+								@for (node of tree(); track node.group.id) {
+								<ng-container *ngTemplateOutlet="groupRow; context: { $implicit: node, depth: 0 }" />
+								} @empty {
+								<tr>
+									<td class="text-muted py-4 text-center">
+										{{ 'accounts_chart_loading' | transloco }}
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-4">
+			@if (editing(); as form) {
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header option-title">
+						<h5>
+							{{ (form.kind === 'group' ? 'accounts_add_group' : form.id ? 'accounts_edit_ledger' :
+							'accounts_add_ledger') | transloco }}
+						</h5>
+					</div>
+					<label
+						class="form-label-title"
+						for="accounts_form_name"
+					>
+						{{ 'name' | transloco }}
+					</label>
+					<input
+						class="form-control mb-3"
+						id="accounts_form_name"
+						maxlength="80"
+						[ngModel]="form.name"
+						(ngModelChange)="patch({ name: $event })"
+					/>
+					@if (form.kind === 'group') {
+					<label
+						class="form-label-title"
+						for="accounts_form_parent"
+					>
+						{{ 'accounts_under_group' | transloco }}
+					</label>
+					<select
+						class="form-select mb-3"
+						id="accounts_form_parent"
+						[ngModel]="form.parentId"
+						(ngModelChange)="patch({ parentId: $event })"
+					>
+						@for (g of chart.data()?.groups ?? []; track g.id) {
+						<option [value]="g.id">{{ g.name }}</option>
+						}
+					</select>
+					} @else {
+					<label
+						class="form-label-title"
+						for="accounts_form_group"
+					>
+						{{ 'accounts_group' | transloco }}
+					</label>
+					<select
+						class="form-select mb-1"
+						id="accounts_form_group"
+						[disabled]="form.system"
+						[ngModel]="form.groupId"
+						(ngModelChange)="patch({ groupId: $event })"
+					>
+						@for (g of chart.data()?.groups ?? []; track g.id) {
+						<option [value]="g.id">{{ g.name }}</option>
+						}
+					</select>
+					@if (form.system) {
+					<small class="help-text d-block mb-3">{{ 'accounts_system_keeps_group' | transloco }}</small>
+					}
+					<div class="d-flex align-items-center mb-3 gap-2">
+						<label class="switch mb-0">
+							<input
+								type="checkbox"
+								id="accounts_form_active"
+								[checked]="form.active"
+								(change)="patch({ active: $any($event.target).checked })"
+							/>
+							<span class="switch-state"></span>
+						</label>
+						<span>{{ 'accounts_ledger_in_use' | transloco }}</span>
+					</div>
+					}
+					<div class="d-flex justify-content-end gap-2">
+						<button
+							type="button"
+							class="btn btn-outline"
+							(click)="editing.set(null)"
+						>
+							{{ 'cancel' | transloco }}
+						</button>
+						<button
+							type="button"
+							class="btn btn-theme"
+							id="accounts_form_save"
+							[disabled]="saving() || form.name.trim().length < 2"
+							(click)="save()"
+						>
+							{{ 'save' | transloco }}
+						</button>
+					</div>
+				</div>
+			</div>
+			}
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header option-title">
+						<h5>{{ 'accounts_system_ledgers' | transloco }}</h5>
+					</div>
+					<ul class="list-unstyled mb-0">
+						@for (rule of ['made_by_app', 'yours']; track rule) {
+						<li class="border-bottom py-2">
+							<i class="ri-checkbox-circle-line text-success me-1"></i>
+							<b>{{ 'accounts_rule_' + rule | transloco }}</b>
+							<div class="small text-muted">{{ 'accounts_rule_' + rule + '_body' | transloco }}</div>
+						</li>
+						}
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+</app-page-wrapper>
+
+<ng-template
+	#groupRow
+	let-node
+	let-depth="depth"
+>
+	<tr>
+		<td [class]="'text-start ' + indent(depth)">
+			<a
+				href="javascript:void(0)"
+				class="text-reset fw-semibold"
+				[title]="(isOpen(node.group.id, depth) ? 'accounts_collapse' : 'accounts_expand') | transloco"
+				(click)="toggle(node.group.id, depth)"
+			>
+				<i [class]="isOpen(node.group.id, depth) ? 'ri-arrow-down-s-line' : 'ri-arrow-right-s-line'"></i>
+				<i class="ri-folder-line me-1"></i>
+				{{ node.group.name }}
+			</a>
+		</td>
+		<td class="fw-semibold text-end text-nowrap">{{ node.balancePaise ? drCr(node.balancePaise) : '' }}</td>
+		<td></td>
+	</tr>
+	@if (isOpen(node.group.id, depth)) { @for (child of node.groups; track child.group.id) {
+	<ng-container *ngTemplateOutlet="groupRow; context: { $implicit: child, depth: depth + 1 }" />
+	} @for (row of node.ledgers; track row.ledger.id) {
+	<tr [class.text-muted]="!row.ledger.active">
+		<td [class]="'text-start ' + indent(depth + 1)">
+			<i class="ri-file-list-3-line me-1"></i>
+			<a
+				class="text-reset"
+				[routerLink]="['/accounts/ledgers', row.ledger.id]"
+			>
+				{{ row.ledger.name }}
+			</a>
+			@if (!row.ledger.handPosting) {
+			<span class="badge bg-light text-dark ms-2">{{ 'accounts_system' | transloco }}</span>
+			} @if (!row.ledger.active) {
+			<span class="badge bg-light text-dark ms-1">{{ 'accounts_switched_off' | transloco }}</span>
+			}
+		</td>
+		<td class="text-end text-nowrap">{{ drCr(row.balancePaise) }}</td>
+		<td class="text-end">
+			@if (canEdit()) {
+			<a
+				href="javascript:void(0)"
+				[title]="'edit' | transloco"
+				(click)="editLedger(row.ledger)"
+			>
+				<i class="ri-pencil-line"></i>
+			</a>
+			}
+		</td>
+	</tr>
+	} }
+</ng-template>

@@ -236,7 +236,8 @@ export const menu: IMenu[] = [
 			},
 		],
 	},
-	// Accounts (accounts brief, owner-approved 2026-11-23): e-invoices and e-way bills first (addendum 2, EI12–EI13).
+	// Accounts (accounts brief, owner-approved 2026-11-23): vouchers and ledgers (Q), e-invoices and e-way bills
+	// (addendum 2, EI12–EI13), periods and locks (T).
 	{
 		id: 25,
 		title: 'accounts',
@@ -244,8 +245,24 @@ export const menu: IMenu[] = [
 		icon: 'ri-book-2-line',
 		type: 'sub',
 		level: 1,
-		acl_permission: ['order.index'],
+		acl_permission: ['order.index', 'accounts.index'],
 		children: [
+			{
+				parent_id: 25,
+				title: 'accounts_vouchers',
+				path: '/accounts/vouchers',
+				type: 'link',
+				level: 2,
+				permission: ['accounts.index'],
+			},
+			{
+				parent_id: 25,
+				title: 'accounts_ledgers',
+				path: '/accounts/ledgers',
+				type: 'link',
+				level: 2,
+				permission: ['accounts.index'],
+			},
 			{
 				parent_id: 25,
 				title: 'edoc_list_einvoices',
@@ -261,6 +278,14 @@ export const menu: IMenu[] = [
 				type: 'link',
 				level: 2,
 				permission: ['order.index'],
+			},
+			{
+				parent_id: 25,
+				title: 'accounts_periods',
+				path: '/accounts/periods',
+				type: 'link',
+				level: 2,
+				permission: ['accounts.index'],
 			},
 		],
 	},

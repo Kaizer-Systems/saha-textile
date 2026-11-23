@@ -1,0 +1,229 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'accounts_voucher_new'"
+>
+	<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+		<small class="text-muted">{{ 'accounts_number_when_posted' | transloco }}</small>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="voucher_post"
+			[disabled]="posting() || !canPost()"
+			(click)="post()"
+		>
+			<i class="ri-check-line"></i>
+			{{ 'accounts_post' | transloco }}
+		</button>
+	</div>
+	<div class="row g-3">
+		<div class="col-xl-8">
+			<div class="card">
+				<div class="card-body">
+					<div class="row g-3">
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="voucher_date"
+							>
+								{{ 'date' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								type="date"
+								id="voucher_date"
+								[ngModel]="date()"
+								(ngModelChange)="date.set($event)"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="voucher_kind"
+							>
+								{{ 'accounts_kind' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="voucher_kind"
+								[ngModel]="kind()"
+								(ngModelChange)="kind.set($event)"
+							>
+								@for (k of kinds; track k) {
+								<option [value]="k">{{ 'accounts_kind_' + k | transloco }}</option>
+								}
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="voucher_reverse_on"
+							>
+								{{ 'accounts_reverse_on' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								type="date"
+								id="voucher_reverse_on"
+								[ngModel]="reverseOn()"
+								(ngModelChange)="reverseOn.set($event)"
+							/>
+							<small class="help-text d-block">{{ 'accounts_reverse_on_help' | transloco }}</small>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header option-title">
+						<h5>{{ 'accounts_lines' | transloco }}</h5>
+					</div>
+					<div class="row g-2 small text-muted d-none d-md-flex mb-1">
+						<div class="col-md-3">{{ 'accounts_ledger' | transloco }}</div>
+						<div class="col-md-3">{{ 'accounts_location' | transloco }}</div>
+						<div class="col-md-2 text-end">{{ 'accounts_debit' | transloco }}</div>
+						<div class="col-md-2 text-end">{{ 'accounts_credit' | transloco }}</div>
+						<div class="col-md-2">{{ 'accounts_line_note' | transloco }}</div>
+					</div>
+					@for (row of rows(); track $index) {
+					<div class="row g-2 align-items-center border-bottom mb-2 pb-2">
+						<div class="col-md-3">
+							<select
+								class="form-select"
+								[attr.aria-label]="'accounts_ledger' | transloco"
+								[ngModel]="row.ledgerId"
+								(ngModelChange)="setRow($index, { ledgerId: $event })"
+							>
+								<option value="">—</option>
+								@for (l of ledgers(); track l.id) {
+								<option [value]="l.id">{{ l.name }}</option>
+								}
+							</select>
+						</div>
+						<div class="col-md-3">
+							<select
+								class="form-select"
+								[attr.aria-label]="'accounts_location' | transloco"
+								[ngModel]="row.locationId"
+								(ngModelChange)="setRow($index, { locationId: $event })"
+							>
+								<option value="">—</option>
+								@for (l of activeLocations(); track l.id) {
+								<option [value]="l.id">{{ l.name }}</option>
+								}
+							</select>
+						</div>
+						<div class="col-md-2 col-6">
+							<input
+								class="form-control text-end"
+								inputmode="decimal"
+								[attr.aria-label]="'accounts_debit' | transloco"
+								[placeholder]="'accounts_debit' | transloco"
+								[ngModel]="row.debit"
+								(ngModelChange)="setRow($index, { debit: $event })"
+							/>
+						</div>
+						<div class="col-md-2 col-6">
+							<input
+								class="form-control text-end"
+								inputmode="decimal"
+								[attr.aria-label]="'accounts_credit' | transloco"
+								[placeholder]="'accounts_credit' | transloco"
+								[ngModel]="row.credit"
+								(ngModelChange)="setRow($index, { credit: $event })"
+							/>
+						</div>
+						<div class="col-md-1 col-10">
+							<input
+								class="form-control"
+								maxlength="200"
+								[attr.aria-label]="'accounts_line_note' | transloco"
+								[ngModel]="row.narration"
+								(ngModelChange)="setRow($index, { narration: $event })"
+							/>
+						</div>
+						<div class="col-md-1 col-2 text-end">
+							@if (rows().length > 2) {
+							<a
+								href="javascript:void(0)"
+								[title]="'accounts_remove_line' | transloco"
+								(click)="removeRow($index)"
+							>
+								<i class="ri-delete-bin-line"></i>
+							</a>
+							}
+						</div>
+					</div>
+					}
+					<div class="row g-2 fw-semibold mb-3">
+						<div class="col-md-6">{{ 'accounts_total' | transloco }}</div>
+						<div class="col-md-2 col-6 text-end text-nowrap">{{ rupees(checks().debitPaise) }}</div>
+						<div class="col-md-2 col-6 text-end text-nowrap">{{ rupees(checks().creditPaise) }}</div>
+						<div
+							class="col-md-2"
+							[class.text-success]="checks().balanced"
+							[class.text-danger]="!checks().balanced"
+						>
+							{{ (checks().balanced ? 'accounts_balanced' : 'accounts_not_balanced') | transloco }}
+						</div>
+					</div>
+					<button
+						type="button"
+						class="btn btn-outline btn-sm mb-3"
+						id="voucher_add_line"
+						(click)="addRow()"
+					>
+						<i class="ri-add-line"></i>
+						{{ 'accounts_add_line' | transloco }}
+					</button>
+					<label
+						class="form-label-title d-block"
+						for="voucher_narration"
+					>
+						{{ 'accounts_narration' | transloco }}
+					</label>
+					<textarea
+						class="form-control"
+						id="voucher_narration"
+						rows="2"
+						maxlength="500"
+						[ngModel]="narration()"
+						(ngModelChange)="narration.set($event)"
+					></textarea>
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-4">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header option-title">
+						<h5>{{ 'accounts_checks_before_post' | transloco }}</h5>
+					</div>
+					<ul class="list-unstyled mb-0">
+						<li class="border-bottom py-2">
+							<i
+								[class]="checks().balanced ? 'ri-checkbox-circle-line text-success me-1' : 'ri-close-circle-line text-danger me-1'"
+							></i>
+							<b>{{ 'accounts_check_balanced' | transloco }}</b>
+							<span class="small float-end">{{ rupees(checks().debitPaise) }}</span>
+						</li>
+						<li class="border-bottom py-2">
+							<i
+								[class]="periodState() === 'locked' ? 'ri-close-circle-line text-danger me-1' : 'ri-checkbox-circle-line text-success me-1'"
+							></i>
+							<b>{{ 'accounts_check_period_' + periodState() | transloco }}</b>
+							<span class="small float-end">{{ date().slice(0, 7) }}</span>
+							<div class="small text-muted">{{ 'accounts_part_' + part() | transloco }}</div>
+						</li>
+						<li class="border-bottom py-2">
+							<i
+								[class]="checks().noSystemLedger ? 'ri-checkbox-circle-line text-success me-1' : 'ri-close-circle-line text-danger me-1'"
+							></i>
+							<b>{{ 'accounts_check_no_system' | transloco }}</b>
+							<div class="small text-muted">{{ 'accounts_check_no_system_body' | transloco }}</div>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+</app-page-wrapper>

@@ -1,0 +1,201 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'accounts_periods'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div class="d-flex align-items-center gap-2">
+			<select
+				class="form-select w-auto"
+				id="periods_year"
+				[attr.aria-label]="'accounts_year' | transloco"
+				[ngModel]="year()"
+				(ngModelChange)="year.set($event)"
+			>
+				<option value="this">{{ 'accounts_this_year' | transloco }}</option>
+				<option value="last">{{ 'accounts_last_year' | transloco }}</option>
+			</select>
+			<small class="text-muted">{{ yearLabel() }} · {{ 'accounts_periods_sub' | transloco }}</small>
+		</div>
+		@if (canLock()) {
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="periods_lock"
+			(click)="open(lockModal)"
+		>
+			<i class="ri-lock-line"></i>
+			{{ 'accounts_lock_a_month' | transloco }}
+		</button>
+		}
+	</div>
+	<div class="card">
+		<div class="card-body">
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'accounts_month' | transloco }}</th>
+							@for (c of columns; track c.key) {
+							<th>{{ 'accounts_col_' + c.key | transloco }}</th>
+							}
+						</tr>
+					</thead>
+					<tbody>
+						@for (m of months(); track m) {
+						<tr>
+							<td class="text-nowrap">
+								@if (canLock()) {
+								<a
+									href="javascript:void(0)"
+									(click)="open(lockModal, m)"
+								>
+									{{ m }}
+								</a>
+								} @else { {{ m }} }
+							</td>
+							@for (c of columns; track c.key) {
+							<td>
+								<span
+									[class.text-danger]="state(m, c.parts) === 'locked'"
+									[class.text-warning]="state(m, c.parts) === 'closed_for_staff'"
+								>
+									{{ 'accounts_state_' + state(m, c.parts) | transloco }}
+								</span>
+							</td>
+							}
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<div class="row g-3 small mt-2">
+				@for (s of ['open', 'closed_for_staff', 'locked']; track s) {
+				<div class="col-md-4">
+					<b class="d-block">{{ 'accounts_state_' + s | transloco }}</b>
+					<span class="text-muted">{{ 'accounts_state_' + s + '_body' | transloco }}</span>
+				</div>
+				}
+			</div>
+		</div>
+	</div>
+</app-page-wrapper>
+
+<ng-template
+	#lockModal
+	let-modal
+>
+	<div class="modal-header">
+		<h5 class="mb-0">{{ 'accounts_lock_title' | transloco: { month: lockMonth() } }}</h5>
+		<button
+			type="button"
+			class="btn btn-close"
+			[title]="'close' | transloco"
+			(click)="modal.dismiss()"
+		></button>
+	</div>
+	<div class="modal-body">
+		<label
+			class="form-label-title"
+			for="lock_month"
+		>
+			{{ 'accounts_month' | transloco }}
+		</label>
+		<select
+			class="form-select mb-3"
+			id="lock_month"
+			[ngModel]="lockMonth()"
+			(ngModelChange)="lockMonth.set($event)"
+		>
+			@for (m of months(); track m) {
+			<option [value]="m">{{ m }}</option>
+			}
+		</select>
+		<b class="d-block mb-1">{{ 'accounts_parts' | transloco }}</b>
+		<label class="form-check d-block">
+			<input
+				class="form-check-input"
+				type="radio"
+				name="lock_parts"
+				[checked]="everything()"
+				(change)="everything.set(true)"
+			/>
+			{{ 'accounts_everything' | transloco }}
+		</label>
+		<label class="form-check d-block">
+			<input
+				class="form-check-input"
+				type="radio"
+				name="lock_parts"
+				[checked]="!everything()"
+				(change)="everything.set(false)"
+			/>
+			{{ 'accounts_choose_parts' | transloco }}
+		</label>
+		@if (!everything()) {
+		<div class="d-flex ms-4 mb-2 flex-wrap gap-3">
+			@for (p of allParts; track p) {
+			<label class="form-check">
+				<input
+					class="form-check-input"
+					type="checkbox"
+					[checked]="chosen().has(p)"
+					(change)="toggle(p, $any($event.target).checked)"
+				/>
+				{{ 'accounts_part_' + p | transloco }}
+			</label>
+			}
+		</div>
+		}
+		<div class="row g-3 mt-1">
+			<div class="col-md-6">
+				<b class="d-block mb-1">{{ 'accounts_lock_for' | transloco }}</b>
+				@for (s of ['closed_for_staff', 'locked', 'open']; track s) {
+				<label class="form-check d-block">
+					<input
+						class="form-check-input"
+						type="radio"
+						name="lock_state"
+						[checked]="lockState() === s"
+						(change)="lockState.set($any(s))"
+					/>
+					{{ 'accounts_lock_for_' + s | transloco }}
+				</label>
+				}
+			</div>
+			<div class="col-md-6">
+				<label
+					class="form-label-title"
+					for="lock_reason"
+				>
+					{{ 'accounts_reason' | transloco }}
+				</label>
+				<textarea
+					class="form-control"
+					id="lock_reason"
+					rows="3"
+					maxlength="300"
+					[ngModel]="reason()"
+					(ngModelChange)="reason.set($event)"
+				></textarea>
+			</div>
+		</div>
+	</div>
+	<div class="modal-footer">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="lock_confirm"
+			[disabled]="busy() || reason().trim().length < 5 || (!everything() && !chosen().size)"
+			(click)="lock()"
+		>
+			{{ (lockState() === 'open' ? 'accounts_reopen' : 'accounts_lock') | transloco }}
+		</button>
+	</div>
+</ng-template>

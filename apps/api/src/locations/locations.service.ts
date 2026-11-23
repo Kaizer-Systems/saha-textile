@@ -4,7 +4,6 @@ import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundEx
 import {
 	Location,
 	type LocationChip,
-	summariseStoreHours,
 	type LocationWrite,
 	UserLocations,
 	type UserLocationsWrite,
@@ -13,8 +12,6 @@ import {
 	type AdminUserRoleAssignmentRepository,
 	type CompanyRepository,
 	firstLocationFromShop,
-	type GeoDataPort,
-	locationFromStore,
 	locationProblems,
 	locationScope,
 	type LocationRepository,
@@ -22,7 +19,6 @@ import {
 	normaliseKinds,
 	type RoleRepository,
 	type ShopDetailsRepository,
-	type StoreLocationRepository,
 	SUPER_ADMIN_ROLE_KEY,
 } from '@saha-textile/core-domain';
 
@@ -30,11 +26,9 @@ import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import {
 	ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY,
 	COMPANY_REPOSITORY,
-	GEO_DATA_PORT,
 	LOCATION_REPOSITORY,
 	ROLE_REPOSITORY,
 	SHOP_DETAILS_REPOSITORY,
-	STORE_LOCATION_REPOSITORY,
 } from '../infra/tokens';
 
 export interface LocationRow extends Location {
@@ -44,7 +38,9 @@ export interface LocationRow extends Location {
 
 /**
  * Locations and who works where (accounts brief K1–K3, L1–L3; owner-approved 2026-11-23). The first read makes
- * the first location from Shop details and turns today's Stores page entries into locations linked to them.
+ * the first location from Shop details, and nothing else: the Stores page lists shops of another company
+ * (owner, 2026-11-23: K.R. Marketing is one online business; the offline stores are a separate company), so its
+ * entries never become locations by themselves.
  */
 @Injectable()
 export class LocationsService {
@@ -53,9 +49,7 @@ export class LocationsService {
 	constructor(
 		@Inject(LOCATION_REPOSITORY) private readonly repo: LocationRepository,
 		@Inject(SHOP_DETAILS_REPOSITORY) private readonly shop: ShopDetailsRepository,
-		@Inject(STORE_LOCATION_REPOSITORY) private readonly stores: StoreLocationRepository,
 		@Inject(COMPANY_REPOSITORY) private readonly company: CompanyRepository,
-		@Inject(GEO_DATA_PORT) private readonly geo: GeoDataPort,
 		@Inject(ROLE_REPOSITORY) private readonly roles: Pick<RoleRepository, 'findByKey'>,
 		@Inject(ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY)
 		private readonly assignments: Pick<AdminUserRoleAssignmentRepository, 'findActive'>,
@@ -71,7 +65,7 @@ export class LocationsService {
 		return !!role && !!(await this.assignments.findActive(principal.userId, role.id));
 	}
 
-	/** First run: the shop's own place, then each Stores page entry (linked, not copied twice). */
+	/** First run: the business's own place from Shop details. */
 	private ensureSeeded(): Promise<void> {
 		this.seeding ??= (async () => {
 			if ((await this.repo.list()).length) return;
@@ -85,44 +79,6 @@ export class LocationsService {
 						...firstLocationFromShop({ ...shop, stateCode: shop.gstin.slice(0, 2) }),
 						id: `loc_${randomUUID()}`,
 						gstRegistrationId: registration?.id ?? null,
-						createdAt: now,
-						updatedAt: now,
-					}),
-				);
-			}
-			const shopStateCode = shop?.gstin?.slice(0, 2) ?? '19';
-			for (const store of await this.stores.list()) {
-				const same = made.find((l) => l.pin && l.pin === store.pinCode && !l.storeLocationId);
-				if (same) {
-					// Shop details carry no phone or hours; the Stores entry at the same PIN does.
-					same.storeLocationId = store.id;
-					same.showOnStoresPage = store.active;
-					same.phone ||= store.phone ?? '';
-					same.openingHours ||= summariseStoreHours(store.hours, 'en').slice(0, 120);
-					continue;
-				}
-				const directory = await this.geo.pin(store.pinCode).catch(() => null);
-				made.push(
-					Location.parse({
-						...locationFromStore(
-							{
-								id: store.id,
-								name: store.name['en'] ?? Object.values(store.name)[0] ?? 'Store',
-								address: store.address['en'] ?? Object.values(store.address)[0] ?? '',
-								pinCode: store.pinCode,
-								phone: store.phone,
-								openingHours: summariseStoreHours(store.hours, 'en'),
-								active: store.active,
-							},
-							{
-								takenShortCodes: made.map((l) => l.shortCode),
-								pinDirectory: directory?.found
-									? { stateCode: directory.gstStateCode, city: directory.city }
-									: null,
-								shopStateCode,
-							},
-						),
-						id: `loc_${randomUUID()}`,
 						createdAt: now,
 						updatedAt: now,
 					}),

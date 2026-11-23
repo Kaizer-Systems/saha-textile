@@ -83,10 +83,12 @@ describe('locations (accounts brief K, L)', () => {
 				stateCode: '19',
 			}),
 		).toMatchObject({
-			name: 'Barasat store',
+			name: 'Barasat warehouse',
 			shortCode: 'BAR',
 			warehouse: true,
-			store: true,
+			store: false,
+			shipsOnline: true,
+			counterCashBox: false,
 			stateCode: '19',
 		});
 	});

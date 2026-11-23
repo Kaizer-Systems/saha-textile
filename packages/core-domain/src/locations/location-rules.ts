@@ -117,11 +117,12 @@ export function firstLocationFromShop(shop: {
 	stateCode: string | null;
 }): Omit<Location, 'id' | 'createdAt' | 'updatedAt' | 'updatedBy' | 'gstRegistrationId' | 'storeLocationId'> {
 	const city = shop.city.trim() || 'Main';
+	// An online business: its place holds stock and ships orders; a counter is added by hand when there is one.
 	return {
-		name: `${city} store`,
+		name: `${city} warehouse`,
 		shortCode: (city.replace(/[^A-Za-z]/g, '').slice(0, 3) || 'MAIN').toUpperCase(),
 		warehouse: true,
-		store: true,
+		store: false,
 		office: false,
 		courierPickup: true,
 		shipsOnline: true,
@@ -135,7 +136,7 @@ export function firstLocationFromShop(shop: {
 		shopsEstablishmentNo: '',
 		invoiceIdentity: 'company',
 		numberSeries: 'gstin',
-		counterCashBox: true,
+		counterCashBox: false,
 		pettyCashFloatINR: 0,
 		active: true,
 	};

@@ -1,4 +1,4 @@
-import { DocumentFormat, DocumentKind } from '@saha-textile/contracts';
+import type { DocumentKind } from '@saha-textile/contracts';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -13,9 +13,12 @@ import {
 	switchOnPlan,
 } from '../src/documents/index';
 
+/** Every document kind, from core's own spec list (contract values stay out of core, G-CORE-CONTRACTS). */
+const KINDS = Object.keys(DOCUMENT_SPECS) as DocumentKind[];
+
 describe('document formats (bundle builder brief F)', () => {
 	it('has a spec for every document, and our format and a blank start pass their own checks', () => {
-		for (const doc of DocumentKind.options) {
+		for (const doc of KINDS) {
 			expect(DOCUMENT_SPECS[doc].doc).toBe(doc);
 			expect(checkFormatBlocks(doc, ourBlocks(doc))).toEqual([]);
 			expect(checkFormatBlocks(doc, blankBlocks(doc))).toEqual([]);
@@ -26,8 +29,9 @@ describe('document formats (bundle builder brief F)', () => {
 	it('seeds ours for all 17 documents switched on, plus Compact and Counter receipt for the tax invoice switched off', () => {
 		const seeds = seedDocumentFormats();
 		expect(seeds).toHaveLength(19);
-		for (const seed of seeds) expect(() => DocumentFormat.parse(seed)).not.toThrow();
-		for (const doc of DocumentKind.options) {
+		// Each seed is checked against the contract in apps/api/test/document-formats.test.ts.
+		expect(KINDS).toHaveLength(17);
+		for (const doc of KINDS) {
 			expect(seeds.filter((row) => row.doc === doc && row.active)).toHaveLength(1);
 		}
 		const invoice = seeds.filter((row) => row.doc === 'taxInvoice');

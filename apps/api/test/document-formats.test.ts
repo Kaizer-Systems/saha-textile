@@ -1,5 +1,5 @@
-import { DocumentFormat, Order, type DocumentKind } from '@saha-textile/contracts';
-import { ourBlocks, seedDocumentFormats } from '@saha-textile/core-domain';
+import { DocumentFormat, DocumentKind, Order } from '@saha-textile/contracts';
+import { DOCUMENT_SPECS, ourBlocks, seedDocumentFormats } from '@saha-textile/core-domain';
 import { describe, expect, it } from 'vitest';
 
 import { documentHtml } from '../src/documents/document-html';
@@ -43,6 +43,11 @@ function service(formats: DocumentFormat[]) {
 }
 
 describe('document formats (bundle builder brief F)', () => {
+	it('has a spec for every kind the contract names, and every seeded format passes the contract', () => {
+		expect(Object.keys(DOCUMENT_SPECS).sort()).toEqual([...DocumentKind.options].sort());
+		for (const seed of seedDocumentFormats()) expect(() => DocumentFormat.parse(seed)).not.toThrow();
+	});
+
 	it('prints every document’s example with our format, escaping what it prints', () => {
 		for (const seed of seedDocumentFormats()) {
 			const html = documentHtml(seed, previewDocument(seed.doc), brand);

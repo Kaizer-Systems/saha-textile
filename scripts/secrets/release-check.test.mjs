@@ -66,6 +66,8 @@ function withRelease(change, fn) {
 		]) {
 			writeFileSync(join(release, 'secrets', name), `${MARK}\n`);
 		}
+		// Always carried, empty when the monitor login is not set up (Release Path brief Q9).
+		writeFileSync(join(release, 'secrets/mongo-monitor-password'), '');
 		for (const [path, content] of Object.entries(change.files ?? {})) writeFileSync(join(release, path), content);
 		fn(release, join(dir, 'root'));
 	} finally {

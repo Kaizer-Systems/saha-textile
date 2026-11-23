@@ -8,6 +8,9 @@
 #   logs <service> [--since <minutes>] [--errors] up to 500 recent lines, 60 minutes at most
 #   releases                                      current, previous and every release kept
 #   disk                                          the root disk and Docker's own use
+#   db-report                                     database figures, index use and the slowest queries,
+#                                                 every value in a query shown as ?; through the read-only
+#                                                 monitor login (Release Path brief Q9), when it is set up
 #
 # Each prints one JSON document. It reads only: no restart, no exec, no file outside the releases'
 # own record files. The apps' and the edge's log lines are already masked where they are written.
@@ -23,8 +26,8 @@ refuse() {
 }
 
 # The whole request is checked before anything runs; anything else is refused.
-[[ "$request" =~ ^(containers|releases|disk|logs\ [a-z][a-z0-9-]{1,30}(\ --since\ ([1-9]|[1-5][0-9]|60))?(\ --errors)?)$ ]] ||
-	refuse 'Ask for containers, logs <service> [--since <1-60>] [--errors], releases or disk.'
+[[ "$request" =~ ^(containers|releases|disk|db-report|logs\ [a-z][a-z0-9-]{1,30}(\ --since\ ([1-9]|[1-5][0-9]|60))?(\ --errors)?)$ ]] ||
+	refuse 'Ask for containers, logs <service> [--since <1-60>] [--errors], releases, disk or db-report.'
 
 exec python3 - "$ROOT" "$PROJECT" "$request" <<'PYTHON'
 import json, os, re, shutil, subprocess, sys
@@ -109,6 +112,51 @@ elif words[0] == 'releases':
                 'rotation': read_words(os.path.join(path, 'rotation.txt')),
             })
     print(json.dumps({'current': target('current'), 'previous': target('previous'), 'releases': releases}))
+
+elif words[0] == 'db-report':
+    settings = {}
+    api_env = os.path.join(root, 'current', 'secrets', 'api.env')
+    if os.path.exists(api_env):
+        for line in open(api_env):
+            name, _, value = line.rstrip('\n').partition('=')
+            settings[name] = value
+    mongo = containers_of('mongo')
+    if not mongo or not settings.get('MONGODB_DB_NAME'):
+        print(json.dumps({'error': 'No live release or database to read.'}))
+        sys.exit(0)
+    script = r"""
+const shape = (v) => Array.isArray(v) ? (v.length ? [shape(v[0])] : [])
+  : (v && typeof v === 'object' && v.constructor === Object) ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, shape(x)]))
+  : '?';
+const status = db.serverStatus();
+const stats = db.stats();
+const indexes = [];
+for (const name of db.getCollectionNames().filter((n) => !n.startsWith('system.'))) {
+  try {
+    for (const i of db.getCollection(name).aggregate([{ $indexStats: {} }]).toArray())
+      indexes.push({ collection: name, index: i.name, ops: Number(i.accesses.ops), since: i.accesses.since });
+  } catch (e) {}
+}
+let slowQueries = [];
+try {
+  slowQueries = db.system.profile.find({}).sort({ millis: -1 }).limit(20).toArray().map((p) => ({
+    op: p.op, ns: p.ns, millis: p.millis, at: p.ts, plan: p.planSummary, examined: p.docsExamined, returned: p.nreturned,
+    shape: shape((p.command && (p.command.filter || p.command.pipeline || p.command.q)) || {}),
+  }));
+} catch (e) {}
+print(EJSON.stringify({
+  uptimeSeconds: status.uptime, connections: status.connections, opcounters: status.opcounters, memoryMB: status.mem,
+  dataBytes: stats.dataSize, storageBytes: stats.storageSize, indexBytes: stats.indexSize, collections: stats.collections,
+  slowQueries, indexes,
+}, { relaxed: true }));
+"""
+    result = subprocess.run(
+        ['docker', 'exec', '-i', '-e', f"APP_DATABASE={settings['MONGODB_DB_NAME']}", mongo[0], 'sh', '-c',
+         'pw="$(cat /run/secrets/mongo-monitor-password 2>/dev/null)"; '
+         '[ -n "$pw" ] || { echo \'{"error":"The monitor login is not set up."}\'; exit 0; }; '
+         'mongosh --quiet -u saha_textile_monitor -p "$pw" --authenticationDatabase admin "$APP_DATABASE" --eval "$(cat)"'],
+        input=script, capture_output=True, text=True)
+    print(result.stdout.strip().splitlines()[-1] if result.stdout.strip() else json.dumps({'error': 'The database did not answer.'}))
 
 elif words[0] == 'disk':
     disk = shutil.disk_usage('/')

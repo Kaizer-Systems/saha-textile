@@ -29,6 +29,7 @@ test('a blank server project gets its own secrets and the server settings, and t
 	assert.deepEqual(report.make, [
 		'/infrastructure/meilisearch.toml',
 		'/infrastructure/mongo-keyfile',
+		'/infrastructure/mongo-monitor-password',
 		'/infrastructure/mongo-root-password',
 		'CSRF_SECRET',
 		'JWT_ACCESS_SECRET',
@@ -110,7 +111,7 @@ test('a project with its own values is left alone; a setting that is not the ser
 	folders.api.set('MONGODB_DB_NAME', `${MARK}other`);
 	const { changes, report } = planServerSecrets({ tier: 'production', folders, local: empty(), inventory, generate });
 	assert.deepEqual(changes, []);
-	assert.equal(report.kept.length, 9);
+	assert.equal(report.kept.length, 10);
 	assert.deepEqual(report.differs, ['MONGODB_DB_NAME (expected saha_textile_prod)']);
 	assert.deepEqual(report.backup, [...inventory.backup].sort());
 	assert.ok(!formatServerPlan(report, { project: 'p', written: false }).includes(MARK));

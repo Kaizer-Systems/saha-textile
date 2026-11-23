@@ -187,6 +187,7 @@
 		"BACKUP_ENDPOINT"
 	],
 	"certificateFileNames": ["cloudflare-client-ca.pem", "origin-ca.pem", "origin.key", "origin.pem"],
+	"optionalInfrastructureFileNames": ["mongo-monitor-password"],
 	"infrastructureSecretFileNames": [
 		"meilisearch.toml",
 		"mongo-keyfile",

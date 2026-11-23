@@ -90,6 +90,7 @@ make_secrets() {
 	printf 'proof_root' >"$secrets/mongo-root-username"
 	openssl rand -hex 24 | tr -d '\n' >"$secrets/mongo-root-password"
 	openssl rand -hex 24 | tr -d '\n' >"$secrets/mongo-app-password"
+	openssl rand -hex 24 | tr -d '\n' >"$secrets/mongo-monitor-password"
 	openssl rand -hex 24 | tr -d '\n' >"$secrets/redis-password"
 	printf 'master_key = "%s"\nenv = "production"\nno_analytics = true\n' "$(openssl rand -hex 24)" >"$secrets/meilisearch.toml"
 	cat >"$secrets/api.env" <<VARS
@@ -270,6 +271,13 @@ expect 'it names the live release' "$(observe releases | python3 -c 'import json
 	pass "it reads an app's recent log lines" || fail "it read no log lines"
 if observe 'containers; docker rm -f x' >/dev/null 2>&1; then fail 'the observer ran something it was not asked for'; fi
 pass 'anything outside its list is refused'
+REPORT="$(observe db-report)"
+printf '%s' "$REPORT" | python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(0 if "error" not in d and d["dataBytes"] > 0 and d["indexes"] else 1)' &&
+	pass 'db-report reads figures and index use through the monitor login' || fail "db-report did not read: $(printf '%s' "$REPORT" | cut -c1-200)"
+MONITOR_PASSWORD="$(cat "$PROOF/secrets/mongo-monitor-password")"
+in_release "$FIRST" exec -T mongo mongosh --quiet -u saha_textile_monitor -p "$MONITOR_PASSWORD" --authenticationDatabase admin \
+	saha_textile_proof --eval 'db.getCollectionNames().forEach((n) => db.getCollection(n).findOne())' >/dev/null 2>&1 &&
+	fail 'the monitor login read shop data' || pass 'the monitor login cannot read shop data'
 # Saved first: under pipefail, `grep -q` closing the pipe early would fail the logs command.
 in_release "$FIRST" logs --no-color >"$PROOF/stack.log" 2>&1
 grep -q 'hardening checks passed' "$PROOF/stack.log" && pass 'the API passed its startup checks' || fail 'no hardening line in the logs'

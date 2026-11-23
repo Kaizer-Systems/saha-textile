@@ -128,10 +128,10 @@ swap_apps() {
 # folder (compose.yaml). A release may change them only when it was started with rotation; each
 # change is made on the running service, so nothing restarts unless a new keyfile is to be used now.
 
-DATA_SECRET_FILES='mongo-keyfile mongo-root-username mongo-root-password mongo-app-password redis-password meilisearch.toml'
+DATA_SECRET_FILES='mongo-keyfile mongo-root-username mongo-root-password mongo-app-password mongo-monitor-password redis-password meilisearch.toml'
 DATA_SECRETS="$SAHA_TEXTILE_ROOT/data-secrets"
 # The order changes are made in: the administrator first, because every later step logs in with it.
-ROTATION_ORDER='mongo-root-password mongo-app-password redis-password meilisearch.toml mongo-keyfile'
+ROTATION_ORDER='mongo-root-password mongo-app-password mongo-monitor-password redis-password meilisearch.toml mongo-keyfile'
 
 # The names whose file in <release>/secrets differs from the server's copy (a missing copy is not a change).
 data_secrets_changed() {
@@ -214,7 +214,7 @@ rotate_data_secrets() {
 			}
 		fi ;;
 		esac
-		# The app password is set by ensure_database, which runs next.
+		# The app and monitor passwords are set by ensure_database, which runs next.
 		say "data-secrets/$name changed"
 	done
 }
@@ -234,12 +234,16 @@ restore_data_secrets() {
 		esac
 		say "data-secrets/$name put back"
 	done
-	if [[ -e "$before/mongo-app-password" ]]; then (ensure_database "$release") || failed+=' mongo-app-password'; fi
+	if [[ -e "$before/mongo-app-password" || -e "$before/mongo-monitor-password" ]]; then
+		(ensure_database "$release") || failed+=' mongo-app-password'
+	fi
 	rm -rf "$before"
 	[[ -z "$failed" ]] || say "FAILED to put back:$failed. Use SSH."
 }
 
-# Safe to repeat. Starts the replica set once, then sets the app user's password from the server's copy.
+# Safe to repeat. Starts the replica set once, then sets the app user's password from the server's copy,
+# and the Release Console's read-only monitor login when its password is set (Release Path brief Q9):
+# server figures, index use and the slow-query log; it can read no shop data and write nothing.
 ensure_database() {
 	local release="$1" database user
 	say 'Preparing the database'
@@ -259,6 +263,25 @@ const password = require('fs').readFileSync('/run/secrets/mongo-app-password', '
 const roles = [{ role: 'readWrite', db: process.env.APP_DATABASE }];
 if (appDb.getUser(process.env.APP_USER)) appDb.updateUser(process.env.APP_USER, { pwd: password, roles });
 else appDb.createUser({ user: process.env.APP_USER, pwd: password, roles });
+const fs = require('fs');
+const monitorFile = '/run/secrets/mongo-monitor-password';
+const monitorPassword = fs.existsSync(monitorFile) ? fs.readFileSync(monitorFile, 'utf8').trim() : '';
+if (monitorPassword) {
+	const admin = db.getSiblingDB('admin');
+	const role = 'saha_textile_monitor_role';
+	const privileges = [
+		{ resource: { db: process.env.APP_DATABASE, collection: 'system.profile' }, actions: ['find'] },
+		{
+			resource: { db: process.env.APP_DATABASE, collection: '' },
+			actions: ['collStats', 'dbStats', 'indexStats', 'listCollections', 'listIndexes'],
+		},
+	];
+	if (admin.getRole(role)) admin.updateRole(role, { privileges, roles: [] });
+	else admin.createRole({ role, privileges, roles: [] });
+	const monitorRoles = [{ role, db: 'admin' }, { role: 'clusterMonitor', db: 'admin' }];
+	if (admin.getUser('saha_textile_monitor')) admin.updateUser('saha_textile_monitor', { pwd: monitorPassword, roles: monitorRoles });
+	else admin.createUser({ user: 'saha_textile_monitor', pwd: monitorPassword, roles: monitorRoles });
+}
 JS
 mongosh --quiet --username "$root" --password "$(cat /run/secrets/mongo-root-password)" \
 	--authenticationDatabase admin admin /tmp/prepare.js >/dev/null

@@ -26,6 +26,7 @@ export const ROTATION_IDS = /** @type {const} */ ({
 	'mongo-app': [['api', 'MONGODB_PASSWORD']],
 	redis: [['api', 'REDIS_PASSWORD']],
 	'mongo-root': [['infrastructure', 'mongo-root-password']],
+	'mongo-monitor': [['infrastructure', 'mongo-monitor-password']],
 	search: [['infrastructure', 'meilisearch.toml']],
 	keyfile: [['infrastructure', 'mongo-keyfile']],
 	'sign-in': [
@@ -40,7 +41,7 @@ export const ROTATION_IDS = /** @type {const} */ ({
 export const GRACE_NAMES = ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET', 'CSRF_SECRET', 'MAILBOX_TOKEN_KEY'];
 
 /** Ids whose new values reach the server only through a deploy started with rotation. */
-export const DATA_SERVICE_IDS = new Set(['mongo-app', 'redis', 'mongo-root', 'search', 'keyfile']);
+export const DATA_SERVICE_IDS = new Set(['mongo-app', 'redis', 'mongo-root', 'mongo-monitor', 'search', 'keyfile']);
 
 /**
  * @param {string[]} args

@@ -176,6 +176,9 @@ check_release() {
 		redis-password meilisearch.toml; do
 		[[ -s "$SECRETS/$name" ]] || die "secrets/$name is missing or empty."
 	done
+	# Empty when the monitor login is not set up, but always there: the database mounts it.
+	[[ -e "$SECRETS/mongo-monitor-password" ]] || die 'secrets/mongo-monitor-password is missing.'
+
 	local tags deploy_env
 	deploy_env="$(release_value "$RELEASE" DEPLOY_ENV)"
 	read_allowed_blank

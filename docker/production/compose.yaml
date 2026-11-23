@@ -49,6 +49,7 @@ services:
       - mongo-root-username
       - mongo-root-password
       - mongo-app-password
+      - mongo-monitor-password
     volumes:
       - mongo_data:/data/db
       - mongo_configdb:/data/configdb
@@ -217,6 +218,9 @@ secrets:
     file: ${SAHA_TEXTILE_ROOT:?set by bin/lib.sh}/data-secrets/mongo-root-password
   mongo-app-password:
     file: ${SAHA_TEXTILE_ROOT:?set by bin/lib.sh}/data-secrets/mongo-app-password
+  # The Release Console's read-only login (Release Path brief Q9); empty when not set up.
+  mongo-monitor-password:
+    file: ${SAHA_TEXTILE_ROOT:?set by bin/lib.sh}/data-secrets/mongo-monitor-password
   redis-password:
     file: ${SAHA_TEXTILE_ROOT:?set by bin/lib.sh}/data-secrets/redis-password
   meilisearch.toml:

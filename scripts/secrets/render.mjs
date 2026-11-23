@@ -366,6 +366,12 @@ export function buildRelease(
 		if (isBlank(value)) problems.push(`/infrastructure/${file} is blank.`);
 		else files.set(`secrets/${file}`, /** @type {string} */ (value));
 	}
+	// ---- optional files (the database monitor's password, Release Path brief Q9): always carried, so the
+	// database's mount exists; empty when blank, and the database step then makes no monitor login.
+	for (const file of inventory.optionalInfrastructureFiles ?? []) {
+		const value = folders.infrastructure?.get(file);
+		files.set(`secrets/${file}`, isBlank(value) ? '' : /** @type {string} */ (value));
+	}
 	// ---- certificates (owner, 21 Nov): optional; a release carries the ones /infrastructure holds and
 	// deploy.sh installs them into certs/, so a new or rebuilt server gets them from Infisical.
 	const certs = inventory.certificateFiles.filter((f) => !isBlank(folders.infrastructure?.get(f)));

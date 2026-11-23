@@ -63,8 +63,8 @@ test('the arguments: a server tier, known ids once, the three switches', () => {
 			(error) => error instanceof SecretsError && pattern.test(error.message),
 		);
 	}
-	assert.deepEqual([...DATA_SERVICE_IDS].sort(), ['keyfile', 'mongo-app', 'mongo-root', 'redis', 'search']);
-	assert.equal(Object.keys(ROTATION_IDS).length, 8);
+	assert.deepEqual([...DATA_SERVICE_IDS].sort(), ['keyfile', 'mongo-app', 'mongo-monitor', 'mongo-root', 'redis', 'search']);
+	assert.equal(Object.keys(ROTATION_IDS).length, 9);
 });
 
 test('a planned change keeps the old sign-in and CSRF keys under _PREVIOUS; data-service ids need a rotate deploy', () => {

@@ -40,6 +40,8 @@ export function generateServiceSecrets(tier, random = randomBytes) {
 			['mongo-keyfile', random(756).toString('base64')],
 			['mongo-root-username', ROOT_DATABASE_USER],
 			['mongo-root-password', hex(32)],
+			// The Release Console's read-only database login (Release Path brief Q9).
+			['mongo-monitor-password', hex(32)],
 			[
 				'meilisearch.toml',
 				`master_key = "${hex(32)}"\nenv = "${tier === 'local' ? 'development' : 'production'}"\nno_analytics = true\n`,

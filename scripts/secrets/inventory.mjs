@@ -74,6 +74,7 @@ export function describeError(error) {
  *                                                    in Infisical (RELEASE_ALLOWED_BLANK)
  * @property {string[]} backup
  * @property {string[]} infrastructureFiles          stored whole in `/infrastructure`
+ * @property {string[]} optionalInfrastructureFiles  in `/infrastructure` when set; a release always carries the file, empty when blank
  * @property {string[]} certificateFiles             optional in `/infrastructure`; deploy.sh installs them into certs/
  * @property {Record<string, string>} derivedFiles   secret file name → the `/api` setting it is written from
  * @property {string[]} deployment
@@ -144,6 +145,7 @@ export function loadInventory(root = ROOT) {
 		backup: json.backupVariables,
 		infrastructureFiles: json.infrastructureSecretFileNames,
 		certificateFiles: json.certificateFileNames ?? [],
+		optionalInfrastructureFiles: json.optionalInfrastructureFileNames ?? [],
 		derivedFiles: json.derivedSecretFiles ?? {},
 		deployment: json.deploymentVariables,
 		derivedDeployment: json.derivedDeploymentVariables ?? {},
@@ -213,7 +215,11 @@ export function folderNames(inventory) {
 	return {
 		api: inventory.api,
 		backup: new Set(inventory.backup),
-		infrastructure: new Set([...inventory.infrastructureFiles, ...inventory.certificateFiles]),
+		infrastructure: new Set([
+			...inventory.infrastructureFiles,
+			...inventory.certificateFiles,
+			...inventory.optionalInfrastructureFiles,
+		]),
 		deployment: new Set(inventory.deployment),
 	};
 }

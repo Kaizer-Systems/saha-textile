@@ -172,6 +172,7 @@ test('buildRelease: a complete project gives every file deploy.sh checks', () =>
 		'secrets/meilisearch.toml',
 		'secrets/mongo-app-password',
 		'secrets/mongo-keyfile',
+		'secrets/mongo-monitor-password',
 		'secrets/mongo-root-password',
 		'secrets/mongo-root-username',
 		'secrets/redis-password',

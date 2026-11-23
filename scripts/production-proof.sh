@@ -258,7 +258,7 @@ expect 'only the edge publishes a port' "$PUBLISHED" ''
 # Split on a tab: a checkout path may hold spaces.
 DATA_MOUNTS="$(docker inspect --format '{{range .Mounts}}{{.Destination}}{{"\t"}}{{.Source}}{{"\n"}}{{end}}' \
 	$(in_release "$FIRST" ps -q mongo redis meilisearch) | awk -F '\t' '$1 ~ "^/run/secrets/" { print $2 }')"
-expect 'the data services read six secret files' "$(printf '%s\n' "$DATA_MOUNTS" | grep -c .)" 6
+expect 'the data services read seven secret files' "$(printf '%s\n' "$DATA_MOUNTS" | grep -c .)" 7
 expect "none of them from a release folder" "$(printf '%s\n' "$DATA_MOUNTS" | grep -v -c -F "$SAHA_TEXTILE_ROOT/data-secrets/" || true)" 0
 
 echo 'The observer'"'"'s read-only command'

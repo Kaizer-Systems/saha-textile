@@ -263,6 +263,10 @@ export const OrderReturnsView = z.object({
 			unitPriceINR: z.number().nonnegative(),
 		}),
 	),
+	/** The order's parcels: one not delivered can be brought back with a credit note (B11). */
+	parcels: z.array(
+		z.object({ shipmentId: Id, number: z.string(), courier: z.string(), delivered: z.boolean() }),
+	),
 	returns: z.array(OrderReturn),
 	creditNotes: z.array(CreditNote),
 	debitNotes: z.array(DebitNote),

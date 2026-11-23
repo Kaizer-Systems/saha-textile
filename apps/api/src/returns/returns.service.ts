@@ -171,6 +171,12 @@ export class ReturnsService {
 					};
 				}),
 			),
+			parcels: shipments.map((s) => ({
+				shipmentId: s.id,
+				number: s.number,
+				courier: [s.courierName, s.trackingNumber].filter(Boolean).join(' · '),
+				delivered: !!s.deliveredOn,
+			})),
 			returns,
 			creditNotes,
 			debitNotes,

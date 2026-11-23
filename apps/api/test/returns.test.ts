@@ -97,8 +97,17 @@ function setup(options: Options = {}) {
 		{
 			listByOrder: async () =>
 				options.delivered === null
-					? [{ deliveredOn: null }]
-					: [{ deliveredOn: options.delivered ?? '2026-11-21' }, { deliveredOn: null }],
+					? [{ id: 'shp_1', number: 'P1', courierName: 'DTDC', trackingNumber: '', deliveredOn: null }]
+					: [
+							{
+								id: 'shp_1',
+								number: 'P1',
+								courierName: 'DTDC',
+								trackingNumber: 'D475',
+								deliveredOn: options.delivered ?? '2026-11-21',
+							},
+							{ id: 'shp_2', number: 'P2', courierName: '', trackingNumber: '', deliveredOn: null },
+						],
 		} as never,
 		{
 			listForOrder: async () => invoices,
@@ -196,6 +205,10 @@ describe('the order’s returns card and starting a return (B1, B2)', () => {
 			windowOpen: true,
 			deadline: '2027-11-30',
 		});
+		expect(view.parcels).toEqual([
+			{ shipmentId: 'shp_1', number: 'P1', courier: 'DTDC · D475', delivered: true },
+			{ shipmentId: 'shp_2', number: 'P2', courier: '', delivered: false },
+		]);
 		expect(view.returnable.map((r) => [r.lineId, r.bought, r.returnable])).toEqual([
 			['a', 2, true],
 			['b', 1, true],

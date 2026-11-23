@@ -61,3 +61,29 @@ export function opsKeyName(env: { name: string; cloudId: string | null }): strin
 	if (/prod/i.test(env.name)) return 'CONSOLE_OPS_TOKEN_PRODUCTION';
 	return null;
 }
+
+/**
+ * A server environment's live state for Run › Server, Infrastructure, Live logs and Watch (Release
+ * Path brief Part 7, C12): machine figures from DigitalOcean's monitoring, the shop's own state from
+ * the API's /ops address, containers and logs through the read-only observer login (once a server
+ * has it). Each part says why when it cannot be read.
+ */
+const partState = z.enum(['ok', 'none', 'error', 'waiting']);
+export const serverStateSchema = z.object({
+	environment: z.string(),
+	machine: z.object({
+		state: partState,
+		message: z.string(),
+		cpuPercent: z.number().nullable(),
+		memoryPercent: z.number().nullable(),
+		diskPercent: z.number().nullable(),
+	}),
+	shop: z.object({
+		state: partState,
+		message: z.string(),
+		queues: opsJobsSchema.shape.queues,
+	}),
+	containers: z.object({ state: partState, message: z.string() }),
+	readAt: z.string(),
+});
+export type ServerState = z.infer<typeof serverStateSchema>;

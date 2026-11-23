@@ -23,6 +23,7 @@ import { RunnerClient } from './runner/runner-client.js';
 import { DropletJobs } from './servers/droplet-jobs.js';
 import { EnvTagsController, ServersController, SshListController } from './servers/servers.controller.js';
 import { RotationController } from './projects/rotation.controller.js';
+import { ServerStateController } from './servers/server-state.controller.js';
 import { ConsoleStore } from './store/console-store.js';
 import { ProductsController } from './products/products.controller.js';
 import { ProductsService } from './products/products.service.js';
@@ -39,6 +40,7 @@ import { ProductsService } from './products/products.service.js';
 		SshListController,
 		EnvTagsController,
 		RotationController,
+		ServerStateController,
 		LocalController,
 		AppFilesController,
 	],

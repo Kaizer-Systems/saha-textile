@@ -21,6 +21,7 @@ import { RotateScreen } from './rotate-screen';
 import { SecretsScreen } from './secrets-screen';
 import { SeoScreen } from './seo-screen';
 import { ServerDeployScreen } from './server-deploy-screen';
+import { ServerStateScreen } from './server-state';
 import { ServicesScreen } from './services-screen';
 import {
 	CfDomainsScreen,
@@ -31,6 +32,7 @@ import {
 	PullsScreen,
 } from './vendor-screens';
 import { ConsoleContext } from '../data/console-context';
+import { ConsoleState } from '../data/console-state';
 import { placeOf } from '../menu/menu-search';
 import { Icon, environmentIcon, screenIcon } from '../shared/icons';
 import { Loading } from '../shared/loading';
@@ -124,6 +126,7 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 		ApmScreen,
 		SecretsScreen,
 		RotateScreen,
+		ServerStateScreen,
 	],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
@@ -288,16 +291,32 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 						}
 					}
 					@case ('server') {
-						<rc-server-screen />
+						@if (envOnServer()) {
+							<rc-server-state />
+						} @else {
+							<rc-server-screen />
+						}
 					}
 					@case ('infra') {
-						<rc-infra-screen />
+						@if (envOnServer()) {
+							<rc-server-state />
+						} @else {
+							<rc-infra-screen />
+						}
 					}
 					@case ('tail') {
-						<rc-tail-screen [mode]="tabKey()" />
+						@if (envOnServer()) {
+							<rc-server-state />
+						} @else {
+							<rc-tail-screen [mode]="tabKey()" />
+						}
 					}
 					@case ('health') {
-						<rc-health-screen />
+						@if (envOnServer()) {
+							<rc-server-state />
+						} @else {
+							<rc-health-screen />
+						}
 					}
 					@case ('secrets') {
 						@if (tabKey() === 'rotate') {
@@ -337,6 +356,7 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 export class ScreenPage {
 	private readonly router = inject(Router);
 	protected readonly ctx = inject(ConsoleContext);
+	private readonly consoleState = inject(ConsoleState);
 	/** Live plan answer: a plan lock's badge shows until the feature is on (null while unknown). */
 	private readonly features = injectPlanFeatures(
 		() => this.ctx.projectId(),
@@ -405,6 +425,12 @@ export class ScreenPage {
 		() => this.productScreens.data()?.[this.screen()]?.vendor ?? 'digitalocean',
 	);
 
+	/** The environment switch is on one that runs on a server (Run and Watch read it differently, C12). */
+	protected readonly envOnServer = computed(
+		() =>
+			(this.ctx.repo()?.environments.find((e) => e.name === this.consoleState.environment())?.cloudId ?? null) !==
+			null,
+	);
 	/** The open Live deploy tab is an environment that runs on a server. */
 	protected readonly deployOnServer = computed(
 		() => (this.ctx.repo()?.environments.find((e) => e.name === this.tabKey())?.cloudId ?? null) !== null,

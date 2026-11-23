@@ -42,6 +42,8 @@ import {
 	type StartServerFix,
 	type Reachable,
 	reachableSchema,
+	type ServerState,
+	serverStateSchema,
 	type DeployToken,
 	deployTokensSchema,
 	type ConsoleView,
@@ -392,6 +394,16 @@ export class ConsoleApi {
 	}
 	dropletJobs(p: string, r: string, slot: string): Promise<DropletJob[]> {
 		return this.call('GET', `/api/projects/${p}/repos/${r}/cloud/${slot}/droplet-jobs`, dropletJobsSchema);
+	}
+	/** A server environment's live state: DigitalOcean monitoring, the shop's /ops, the observer (C12). */
+	serverState(p: string, r: string, env: string): Promise<ServerState> {
+		return this.call(
+			'GET',
+			`/api/projects/${p}/repos/${r}/server-state/${env}`,
+			serverStateSchema,
+			undefined,
+			45_000,
+		);
 	}
 	/** Reachable through Cloudflare, check by check (Release Path brief C8). */
 	reachable(p: string, r: string, slot: string, env: string): Promise<Reachable> {

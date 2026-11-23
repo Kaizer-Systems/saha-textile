@@ -50,6 +50,7 @@ import {
 	extend,
 } from './cf-zone-more.js';
 import { ZT_EXTRA } from './cf-zt-more.js';
+import { ACCOUNT_EXTRA, DATABASES_EXTRA, DODNS_EXTRA, MONITORING_EXTRA, NET_EXTRA, REGISTRY_EXTRA } from './do-more.js';
 import { cfPlanScreen } from './cf-plan.js';
 import { PIPELINE_EXTRA, PULLS_EXTRA, ROLLBACK_EXTRA, SECRETS_EXTRA } from './gh-more.js';
 import {
@@ -130,25 +131,25 @@ export const PRODUCT_SCREENS: Record<string, ProductScreen> = {
 	droplets: dropletScreen,
 	volumes: volumeScreen,
 	dobackups: backupsScreen,
-	cloudnet: networkScreen,
+	cloudnet: extend(networkScreen, NET_EXTRA),
 	doautoscale: autoscaleScreen,
 	kubernetes: kubernetesScreen,
 	apps: appsScreen,
 	functions: functionsScreen,
 	nfs: nfsScreen,
-	databases: databasesScreen,
-	registry: registryScreen,
+	databases: extend(databasesScreen, DATABASES_EXTRA),
+	registry: extend(registryScreen, REGISTRY_EXTRA),
 	images: imagesScreen,
 	loadbalancers: loadBalancersScreen,
-	dodns: doDnsScreen,
+	dodns: extend(doDnsScreen, DODNS_EXTRA),
 	certificates: certificatesScreen,
-	domonitoring: monitoringScreen,
+	domonitoring: extend(monitoringScreen, MONITORING_EXTRA),
 	inference: inferenceScreen,
 	donetadv: vpcPeeringScreen,
 	spaces: spacesScreen,
 	dosecrets: doSecretsScreen,
 	security: securityScreen,
-	doaccount: doAccountScreen,
+	doaccount: extend(doAccountScreen, ACCOUNT_EXTRA),
 	cfhome: cfHomeScreen,
 	cfdomains: cfDomainsScreen,
 	cfbuild: extend(cfBuildScreen, BUILD_EXTRA),

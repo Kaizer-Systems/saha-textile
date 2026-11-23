@@ -54,3 +54,4 @@ export * from './company.repository';
 export * from './edocs.repository';
 export * from './location.repository';
 export * from './ledger.repository';
+export * from './returns.repository';

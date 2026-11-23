@@ -182,6 +182,8 @@ export const FeatureKey = z.enum([
 	'lwf',
 	'tds',
 	'budgets',
+	/** Tax invoices issued when goods leave (accounts brief D1, D3); off until the CA confirms the rates. */
+	'tax_invoices',
 ]);
 export type FeatureKey = z.infer<typeof FeatureKey>;
 export const FEATURE_KEYS = FeatureKey.options;

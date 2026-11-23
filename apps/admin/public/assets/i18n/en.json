@@ -7683,5 +7683,7 @@
 	"ships_from_saved": "Location assigned",
 	"ships_from_changed": "The order changed meanwhile. Open it again.",
 	"ships_from_out_of_scope": "You can only use the locations you work at.",
-	"ships_from_failed": "Couldn't assign. Try again."
+	"ships_from_failed": "Couldn't assign. Try again.",
+	"feature_tax_invoices": "Tax invoices at dispatch",
+	"feature_opens_tax_invoices": "A numbered tax invoice for every order when it ships, posted to the books. Switch on once the CA confirms the GST rates."
 }

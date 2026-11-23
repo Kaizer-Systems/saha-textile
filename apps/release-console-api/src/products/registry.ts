@@ -50,6 +50,7 @@ import {
 	extend,
 } from './cf-zone-more.js';
 import { ZT_EXTRA } from './cf-zt-more.js';
+import { DB_COST_EXTRA, DROPLET_COST_EXTRA, K8S_COST_EXTRA, SPACES_CDN_EXTRA } from './do-cost.js';
 import { ACCOUNT_EXTRA, DATABASES_EXTRA, DODNS_EXTRA, MONITORING_EXTRA, NET_EXTRA, REGISTRY_EXTRA } from './do-more.js';
 import { cfPlanScreen } from './cf-plan.js';
 import { PIPELINE_EXTRA, PULLS_EXTRA, ROLLBACK_EXTRA, SECRETS_EXTRA, depsAlertsScreen } from './gh-more.js';
@@ -128,16 +129,16 @@ import { addExtras } from './extras.js';
 
 /** Screen key (from the approved menu) → its live tabs and forms. */
 export const PRODUCT_SCREENS: Record<string, ProductScreen> = {
-	droplets: dropletScreen,
+	droplets: extend(dropletScreen, DROPLET_COST_EXTRA),
 	volumes: volumeScreen,
 	dobackups: backupsScreen,
 	cloudnet: extend(networkScreen, NET_EXTRA),
 	doautoscale: autoscaleScreen,
-	kubernetes: kubernetesScreen,
+	kubernetes: extend(kubernetesScreen, K8S_COST_EXTRA),
 	apps: appsScreen,
 	functions: functionsScreen,
 	nfs: nfsScreen,
-	databases: extend(databasesScreen, DATABASES_EXTRA),
+	databases: extend(extend(databasesScreen, DATABASES_EXTRA), DB_COST_EXTRA),
 	registry: extend(registryScreen, REGISTRY_EXTRA),
 	images: imagesScreen,
 	loadbalancers: loadBalancersScreen,
@@ -146,7 +147,7 @@ export const PRODUCT_SCREENS: Record<string, ProductScreen> = {
 	domonitoring: extend(monitoringScreen, MONITORING_EXTRA),
 	inference: inferenceScreen,
 	donetadv: vpcPeeringScreen,
-	spaces: spacesScreen,
+	spaces: extend(spacesScreen, SPACES_CDN_EXTRA),
 	dosecrets: doSecretsScreen,
 	security: securityScreen,
 	doaccount: extend(doAccountScreen, ACCOUNT_EXTRA),

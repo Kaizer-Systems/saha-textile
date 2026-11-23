@@ -85,6 +85,7 @@ const sidebars: SidebarsConfig = {
 			},
 			items: ['gst-edocs/government-apis', 'gst-edocs/provider-masters-india'],
 		},
+		'accounts/general-ledger',
 		{
 			type: 'category',
 			label: 'Applications',

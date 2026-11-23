@@ -120,4 +120,25 @@ describe('the edit log rows (Q11)', () => {
 			['creditNote.delete', '—', '—', '—', '—'],
 		]);
 	});
+
+	it('words a refund voucher’s issue, the gateway’s answer, retries, payment by hand and prints', () => {
+		const rows = editLogRows(
+			[
+				entry('refundVoucher.issue', { metadata: { reason: 'order_cancelled', number: 'RF/1' } }),
+				entry('refundVoucher.outcome', { who: null, metadata: { how: 'gateway', status: 'failed' } }),
+				entry('refundVoucher.retry', { diffs: [{ field: 'status', before: 'failed', after: 'refunded' }] }),
+				entry('refundVoucher.by_hand'),
+				entry('refundVoucher.print'),
+			],
+			t,
+			inr,
+		);
+		expect(rows.map((r) => [r.what, r.field, r.before, r.after])).toEqual([
+			['log_rf_issued_order_cancelled', 'log_field_number', '—', 'RF/1'],
+			['log_rf_outcome_gateway_failed', '—', '—', '—'],
+			['log_rf_retry', 'log_field_status', 'rf_status_failed', 'rf_status_refunded'],
+			['log_rf_by_hand', 'log_field_status', '—', '—'],
+			['log_printed', '—', '—', 'PDF'],
+		]);
+	});
 });

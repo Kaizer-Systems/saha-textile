@@ -134,6 +134,7 @@ export const TAX_INVOICE_REPOSITORY = Symbol('TaxInvoiceRepository');
 export const ORDER_RETURN_REPOSITORY = Symbol('OrderReturnRepository');
 export const CREDIT_NOTE_REPOSITORY = Symbol('CreditNoteRepository');
 export const DEBIT_NOTE_REPOSITORY = Symbol('DebitNoteRepository');
+export const REFUND_VOUCHER_REPOSITORY = Symbol('RefundVoucherRepository');
 export const STOCK_MOVEMENT = Symbol('StockMovementPort');
 export const STOCK_READ_REPOSITORY = Symbol('StockReadRepository');
 export const INVENTORY_COST_LAYER_REPOSITORY = Symbol('InventoryCostLayerRepository');

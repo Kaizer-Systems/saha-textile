@@ -237,7 +237,129 @@
 				(ngModelChange)="cancelNote.set($event)"
 			/>
 		</div>
-		@if (cancelView(); as view) {
+		@if (refundsOnCancel()) { @let r = refunding();
+		<!-- C1 (accounts brief): a paid order not yet invoiced is refunded with a refund voucher. -->
+		<div class="col-12">
+			<div class="row g-2 small">
+				<div class="col-md-4">
+					<span class="text-muted d-block">{{ 'rf_paid' | transloco }}</span>
+					<b>{{ (r.viaGateway ? 'rf_paid_online' : 'rf_paid_other') | transloco: { amount: r.amount } }}</b>
+				</div>
+				<div class="col-md-4">
+					<span class="text-muted d-block">{{ 'rf_receipt' | transloco }}</span>
+					<b>{{ r.receipts }}</b>
+				</div>
+				<div class="col-md-4">
+					<span class="text-muted d-block">{{ 'rf_invoice' | transloco }}</span>
+					<b>{{ 'rf_invoice_none' | transloco }}</b>
+				</div>
+			</div>
+		</div>
+		<div class="col-12">
+			<p class="form-label mb-1">{{ 'rf_refund' | transloco }}</p>
+			<label class="form-check d-block">
+				<input
+					class="form-check-input"
+					type="radio"
+					name="rf_how"
+					id="rf_how_gateway"
+					[disabled]="!r.viaGateway"
+					[checked]="refundHow() === 'gateway'"
+					(change)="chooseRefund('gateway')"
+				/>
+				{{ 'rf_choose_gateway' | transloco: { amount: r.amount } }}
+			</label>
+			<label class="form-check d-block">
+				<input
+					class="form-check-input"
+					type="radio"
+					name="rf_how"
+					id="rf_how_bank_transfer"
+					[checked]="refundHow() === 'bank_transfer'"
+					(change)="chooseRefund('bank_transfer')"
+				/>
+				{{ 'rf_choose_bank_transfer' | transloco }}
+			</label>
+			@if (refundHow() === 'bank_transfer') {
+			<div class="row g-2 mt-1">
+				<div class="col-md-6">
+					<label
+						class="form-label"
+						for="rf_ledger"
+					>
+						{{ 'cn_refund_from' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="rf_ledger"
+						[ngModel]="refundLedger()"
+						(ngModelChange)="refundLedger.set($event)"
+					>
+						<option value="">—</option>
+						@for (l of payFrom(); track l.id) {
+						<option [value]="l.id">{{ l.name }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-6">
+					<label
+						class="form-label"
+						for="rf_reference"
+					>
+						{{ 'cn_refund_reference' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="rf_reference"
+						maxlength="60"
+						[ngModel]="refundReference()"
+						(ngModelChange)="refundReference.set($event)"
+					/>
+				</div>
+			</div>
+			}
+		</div>
+		<div class="col-12">
+			<p class="form-label mb-1">{{ 'cn_cancel_changes' | transloco }}</p>
+			<ul class="list-unstyled small mb-0">
+				<li class="d-flex border-bottom gap-2 py-2">
+					<i class="ri-file-list-3-line"></i>
+					<div>
+						<b>{{ 'rf_change_order_title' | transloco }}</b>
+						<span class="text-muted">· orders</span>
+						<span class="d-block">{{ 'rf_change_order' | transloco }}</span>
+					</div>
+				</li>
+				<li class="d-flex border-bottom gap-2 py-2">
+					<i class="ri-bank-card-line"></i>
+					<div>
+						<b>{{ 'rf_change_payment_title' | transloco }}</b>
+						<span class="text-muted">· payments, paymentAttempts</span>
+						<span class="d-block">
+							{{ (refundHow() === 'gateway' ? 'rf_change_payment_gateway' : 'rf_change_payment_bank') |
+							transloco }}
+						</span>
+					</div>
+				</li>
+				<li class="d-flex border-bottom gap-2 py-2">
+					<i class="ri-file-text-line"></i>
+					<div>
+						<b>{{ 'rf_change_voucher_title' | transloco }}</b>
+						<span class="text-muted">· refundVouchers</span>
+						<span class="d-block">{{ 'rf_change_voucher' | transloco: { receipt: r.receipts } }}</span>
+					</div>
+				</li>
+				<li class="d-flex gap-2 py-2">
+					<i class="ri-mail-line"></i>
+					<div>
+						<b>{{ 'rf_change_customer_title' | transloco }}</b>
+						<span class="text-muted">· messageOutbox</span>
+						<span class="d-block">{{ 'rf_change_customer' | transloco }}</span>
+					</div>
+				</li>
+			</ul>
+		</div>
+		} @else if (cancelView(); as view) {
 		<!-- st05: what cancelling does, before it is confirmed. -->
 		<ul class="list-unstyled small mb-0">
 			@if (view.refund) {

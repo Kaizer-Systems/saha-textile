@@ -88,6 +88,7 @@ export function editLogRows(
 				break;
 			case 'creditNote.print':
 			case 'orderReturn.print':
+			case 'refundVoucher.print':
 				rows.push({ ...base, what: t('log_printed'), after: 'PDF' });
 				break;
 			case 'creditNote.cancel_refused':
@@ -126,6 +127,29 @@ export function editLogRows(
 					what: t('log_took_over'),
 					before: text(holder?.before),
 					after: text(holder?.after),
+				});
+				break;
+			}
+			case 'refundVoucher.issue':
+				rows.push({
+					...base,
+					what: t(`log_rf_issued_${String(m['reason'])}`),
+					field: t('log_field_number'),
+					after: text(m['number']),
+				});
+				break;
+			case 'refundVoucher.outcome':
+				rows.push({ ...base, what: t(`log_rf_outcome_${String(m['how'])}_${String(m['status'])}`) });
+				break;
+			case 'refundVoucher.retry':
+			case 'refundVoucher.by_hand': {
+				const status = entry.diffs[0];
+				rows.push({
+					...base,
+					what: t(entry.action === 'refundVoucher.retry' ? 'log_rf_retry' : 'log_rf_by_hand'),
+					field: t('log_field_status'),
+					before: status?.before ? t(`rf_status_${String(status.before)}`) : DASH,
+					after: status?.after ? t(`rf_status_${String(status.after)}`) : DASH,
 				});
 				break;
 			}

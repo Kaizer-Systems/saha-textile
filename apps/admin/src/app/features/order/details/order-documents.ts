@@ -5,6 +5,7 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom, type Observable } from 'rxjs';
 
 import { InvoicesGateway } from '@core/accounts/invoices.gateway';
+import { RefundVouchersGateway } from '@core/accounts/refund-vouchers.gateway';
 import { ReturnsGateway } from '@core/accounts/returns.gateway';
 import { OrdersGateway } from '@core/orders/orders.gateway';
 import { apiProblem, openPdf } from '@core/purchasing/purchasing-format';
@@ -14,7 +15,7 @@ import type { OrderDocumentRow } from '@saha-textile/contracts';
 
 /**
  * B1 Documents: every document of the order (tax invoices, receipt vouchers, packing slips, returns, credit and debit
- * notes) with its number, date and amount; the eye opens it, the printer prints it.
+ * notes, refund vouchers) with its number, date and amount; the eye opens it, the printer prints it.
  */
 @Component({
 	selector: 'app-order-documents',
@@ -25,6 +26,7 @@ export class OrderDocuments {
 	private readonly invoices = inject(InvoicesGateway);
 	private readonly returns = inject(ReturnsGateway);
 	private readonly orders = inject(OrdersGateway);
+	private readonly refunds = inject(RefundVouchersGateway);
 	private readonly notifier = inject(NotificationService);
 	private readonly transloco = inject(TranslocoService);
 
@@ -55,9 +57,18 @@ export class OrderDocuments {
 				return ['/accounts/credit-notes', doc.id];
 			case 'debitNote':
 				return doc.creditNoteId ? ['/accounts/credit-notes', doc.creditNoteId] : null;
+			case 'refundVoucher':
+				return ['/accounts/refund-vouchers', doc.id];
 			default:
 				return null;
 		}
+	}
+
+	/** The status word: a return's step, a refund voucher's state, or a note's draft or cancelled. */
+	statusKey(doc: OrderDocumentRow): string {
+		const prefix =
+			doc.kind === 'return' ? 'ret_status_' : doc.kind === 'refundVoucher' ? 'rf_status_' : 'cn_status_';
+		return `${prefix}${doc.status}`;
 	}
 
 	/** A draft credit note has no print yet. */
@@ -79,6 +90,8 @@ export class OrderDocuments {
 				return this.returns.creditNotePdf(doc.id);
 			case 'debitNote':
 				return this.returns.debitNotePdf(doc.id);
+			case 'refundVoucher':
+				return this.refunds.pdf(doc.id);
 		}
 	}
 

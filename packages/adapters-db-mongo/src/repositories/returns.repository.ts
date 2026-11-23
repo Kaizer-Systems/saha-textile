@@ -1,14 +1,16 @@
-import { CreditNote, DebitNote, OrderReturn } from '@saha-textile/contracts';
+import { CreditNote, DebitNote, OrderReturn, RefundVoucher } from '@saha-textile/contracts';
 import type {
 	CreditNoteListQuery,
 	CreditNoteRepository,
 	DebitNoteRepository,
 	OrderReturnRepository,
+	RefundVoucherListQuery,
+	RefundVoucherRepository,
 	TransactionContext,
 } from '@saha-textile/core-domain';
 
 import type { AggregateDoc } from '../models/purchasing.model';
-import { CreditNoteModel, DebitNoteModel, OrderReturnModel } from '../models/returns.model';
+import { CreditNoteModel, DebitNoteModel, OrderReturnModel, RefundVoucherModel } from '../models/returns.model';
 import { sessionFrom } from '../transaction-manager';
 
 const strip = (doc: AggregateDoc): Record<string, unknown> => {
@@ -25,6 +27,7 @@ const duplicate = (error: unknown, code: string): never => {
 const returnOf = (doc: AggregateDoc): OrderReturn => OrderReturn.parse({ ...strip(doc), id: doc._id });
 const creditNoteOf = (doc: AggregateDoc): CreditNote => CreditNote.parse({ ...strip(doc), id: doc._id });
 const debitNoteOf = (doc: AggregateDoc): DebitNote => DebitNote.parse({ ...strip(doc), id: doc._id });
+const refundVoucherOf = (doc: AggregateDoc): RefundVoucher => RefundVoucher.parse({ ...strip(doc), id: doc._id });
 
 export class MongoOrderReturnRepository implements OrderReturnRepository {
 	async insert(entry: OrderReturn, context?: TransactionContext): Promise<void> {
@@ -149,5 +152,56 @@ export class MongoDebitNoteRepository implements DebitNoteRepository {
 	async listForOrder(orderId: string): Promise<DebitNote[]> {
 		const docs = await DebitNoteModel.find({ orderId }).sort({ createdAt: 1 }).lean<AggregateDoc[]>().exec();
 		return docs.map(debitNoteOf);
+	}
+}
+
+export class MongoRefundVoucherRepository implements RefundVoucherRepository {
+	async insert(voucher: RefundVoucher, context?: TransactionContext): Promise<void> {
+		const { id, ...rest } = voucher;
+		await RefundVoucherModel.create([{ _id: id, ...rest }], { session: sessionFrom(context) }).catch((error) =>
+			duplicate(error, 'duplicate_refund_voucher'),
+		);
+	}
+
+	async get(id: string, context?: TransactionContext): Promise<RefundVoucher | null> {
+		const doc = await RefundVoucherModel.findById(id)
+			.session(sessionFrom(context) ?? null)
+			.lean<AggregateDoc>()
+			.exec();
+		return doc ? refundVoucherOf(doc) : null;
+	}
+
+	async listForOrder(orderId: string): Promise<RefundVoucher[]> {
+		const docs = await RefundVoucherModel.find({ orderId }).sort({ createdAt: 1 }).lean<AggregateDoc[]>().exec();
+		return docs.map(refundVoucherOf);
+	}
+
+	async list(query: RefundVoucherListQuery): Promise<{ items: RefundVoucher[]; total: number }> {
+		const filter: Record<string, unknown> = { date: { $gte: query.from, $lte: query.to } };
+		if (query.status) filter['status'] = query.status;
+		if (query.search.trim()) {
+			const re = new RegExp(escapeRegex(query.search.trim()), 'i');
+			filter['$or'] = [{ number: re }, { receiptNumber: re }, { orderNumber: re }, { payee: re }];
+		}
+		const [docs, total] = await Promise.all([
+			RefundVoucherModel.find(filter)
+				.sort({ date: -1, number: -1 })
+				.skip((query.page - 1) * query.pageSize)
+				.limit(query.pageSize)
+				.lean<AggregateDoc[]>()
+				.exec(),
+			RefundVoucherModel.countDocuments(filter).exec(),
+		]);
+		return { items: docs.map(refundVoucherOf), total };
+	}
+
+	async save(voucher: RefundVoucher, expectedUpdatedAt: string, context?: TransactionContext): Promise<void> {
+		const { id, ...rest } = voucher;
+		const result = await RefundVoucherModel.replaceOne(
+			{ _id: id, updatedAt: expectedUpdatedAt },
+			{ _id: id, ...rest },
+			{ session: sessionFrom(context) },
+		).exec();
+		if (result.matchedCount !== 1) throw new Error('refund_voucher_changed');
 	}
 }

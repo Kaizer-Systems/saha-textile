@@ -6,10 +6,14 @@ import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { firstValueFrom } from 'rxjs';
 
 import { invoiceProblemKey } from '@core/accounts/invoices.gateway';
+import { LedgerGateway } from '@core/accounts/ledger.gateway';
+import { RefundVouchersGateway, refundProblemKey } from '@core/accounts/refund-vouchers.gateway';
 import { OrdersGateway } from '@core/orders/orders.gateway';
 import { apiProblem, rupees } from '@core/purchasing/purchasing-format';
 
-import type { AdminOrderDetail, AllowedNextStatus, StatusChangeWrite } from '@saha-textile/contracts';
+import { cashAndBankLedgers } from '../../accounts/cash-bank-ledgers';
+
+import type { AdminOrderDetail, AllowedNextStatus, Ledger, StatusChangeWrite } from '@saha-textile/contracts';
 
 /** Today in India, as the date fields take it. */
 export const indiaToday = (): string => new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
@@ -29,6 +33,8 @@ export class OrderStatusPopup {
 	readonly modal = inject(NgbActiveModal);
 	private readonly gateway = inject(OrdersGateway);
 	private readonly transloco = inject(TranslocoService);
+	private readonly refunds = inject(RefundVouchersGateway);
+	private readonly ledgerGateway = inject(LedgerGateway);
 
 	readonly detail = signal<AdminOrderDetail | null>(null);
 	readonly options = computed<readonly AllowedNextStatus[]>(() => this.detail()?.allowedNext ?? []);
@@ -44,6 +50,11 @@ export class OrderStatusPopup {
 	readonly podReference = signal('');
 	readonly cancelReason = signal<NonNullable<StatusChangeWrite['cancel']>['reason']>('customerAsked');
 	readonly cancelNote = signal('');
+	/** C1: a paid order not yet invoiced gives its money back with a refund voucher, by gateway or bank transfer. */
+	readonly refundHow = signal<'gateway' | 'bank_transfer'>('gateway');
+	readonly refundLedger = signal('');
+	readonly refundReference = signal('');
+	readonly payFrom = signal<Ledger[]>([]);
 	readonly busy = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly today = indiaToday();
@@ -97,6 +108,28 @@ export class OrderStatusPopup {
 			button: paidINR > 0 ? this.t('ord_cancel_and_refund', { amount }) : this.t('ord_cancel_the_order'),
 		};
 	});
+	/** C1: the received payments with their receipts, what they add up to, and whether all came by the gateway. */
+	readonly refunding = computed(() => {
+		const paid = (this.detail()?.payments ?? []).filter(
+			(p) => p.state === 'received' && p.amountINR > 0 && !!p.receiptNumber,
+		);
+		const paidINR = Math.round(paid.reduce((sum, p) => sum + p.amountINR, 0) * 100) / 100;
+		return {
+			paidINR,
+			amount: rupees(paidINR),
+			receipts: paid.map((p) => p.receiptNumber).join(', '),
+			viaGateway: paid.length > 0 && paid.every((p) => p.method === 'gateway' && !!p.gateway?.reference),
+		};
+	});
+	/** C1 applies when the order is being cancelled with money to give back. */
+	readonly refundsOnCancel = computed(() => this.chosen()?.to === 'cancelled' && this.refunding().paidINR > 0);
+
+	async chooseRefund(how: 'gateway' | 'bank_transfer'): Promise<void> {
+		this.refundHow.set(how);
+		if (how === 'bank_transfer' && !this.payFrom().length)
+			this.payFrom.set(cashAndBankLedgers(await firstValueFrom(this.ledgerGateway.chart())));
+	}
+
 	readonly cancelReasons: ReadonlyArray<NonNullable<StatusChangeWrite['cancel']>['reason']> = [
 		'customerAsked',
 		'outOfStock',
@@ -108,6 +141,7 @@ export class OrderStatusPopup {
 	start(detail: AdminOrderDetail): void {
 		this.detail.set(detail);
 		this.to.set(detail.allowedNext.find((option) => option.allowed)?.to ?? null);
+		if (!this.refunding().viaGateway) void this.chooseRefund('bank_transfer');
 	}
 
 	needs(field: string): boolean {
@@ -120,6 +154,8 @@ export class OrderStatusPopup {
 		if (chosen.to === 'shipped')
 			return !!this.courierName().trim() && !!this.trackingNumber().trim() && !!this.shippedOn();
 		if (chosen.to === 'delivered') return !!this.deliveredOn();
+		if (this.refundsOnCancel() && this.refundHow() === 'bank_transfer')
+			return !!this.refundLedger() && this.refundReference().trim().length >= 4;
 		return true;
 	}
 
@@ -159,12 +195,40 @@ export class OrderStatusPopup {
 		this.busy.set(true);
 		this.error.set(null);
 		try {
+			if (this.refundsOnCancel() && body.cancel) {
+				// C1: the same cancel step on the server, then each payment back with its refund voucher.
+				const refund =
+					this.refundHow() === 'gateway'
+						? ({ how: 'gateway' } as const)
+						: ({
+								how: 'bank_transfer',
+								ledgerId: this.refundLedger(),
+								reference: this.refundReference().trim(),
+							} as const);
+				const vouchers = await firstValueFrom(
+					this.refunds.cancelAndRefund(detail.order.id, {
+						comment: body.comment,
+						cancel: body.cancel,
+						revision: body.revision,
+						refund,
+					}),
+				);
+				this.modal.close(vouchers);
+				return;
+			}
 			const order = await firstValueFrom(this.gateway.changeStatus(detail.order.id, body));
 			this.modal.close(order);
 		} catch (error) {
 			const message = apiProblem(error, this.transloco.translate('ord_action_failed'));
 			const problem = invoiceProblemKey(message);
-			this.error.set(problem ? this.transloco.translate(problem.key, problem.params) : message);
+			const refusal = refundProblemKey(message);
+			this.error.set(
+				problem
+					? this.transloco.translate(problem.key, problem.params)
+					: refusal
+						? this.transloco.translate(refusal)
+						: message,
+			);
 		} finally {
 			this.busy.set(false);
 		}

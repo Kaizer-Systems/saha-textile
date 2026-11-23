@@ -6,6 +6,7 @@ import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { InvoicesGateway } from '@core/accounts/invoices.gateway';
+import { RefundVouchersGateway } from '@core/accounts/refund-vouchers.gateway';
 import { ReturnsGateway } from '@core/accounts/returns.gateway';
 import { OrdersGateway } from '@core/orders/orders.gateway';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -30,6 +31,7 @@ function setup(fail = false) {
 	const invoices = { pdf: vi.fn(pdf) };
 	const orders = { receiptPdf: vi.fn(pdf), packingSlip: vi.fn(pdf) };
 	const returns = { returnNotePdf: vi.fn(pdf), creditNotePdf: vi.fn(pdf), debitNotePdf: vi.fn(pdf) };
+	const refunds = { pdf: vi.fn(pdf) };
 	const notifier = { showError: vi.fn(), showSuccess: vi.fn() };
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
@@ -39,6 +41,7 @@ function setup(fail = false) {
 			{ provide: InvoicesGateway, useValue: invoices },
 			{ provide: OrdersGateway, useValue: orders },
 			{ provide: ReturnsGateway, useValue: returns },
+			{ provide: RefundVouchersGateway, useValue: refunds },
 			{ provide: NotificationService, useValue: notifier },
 		],
 	});
@@ -49,7 +52,7 @@ function setup(fail = false) {
 		doc('packingSlip', { amountINR: null, date: null }),
 	]);
 	fixture.detectChanges();
-	return { fixture, card: fixture.componentInstance, invoices, orders, returns, notifier };
+	return { fixture, card: fixture.componentInstance, invoices, orders, returns, refunds, notifier };
 }
 
 describe('the order’s Documents card (B1)', () => {
@@ -62,6 +65,14 @@ describe('the order’s Documents card (B1)', () => {
 		expect(card.link(doc('debitNote', { creditNoteId: 'cn_9' }))).toEqual(['/accounts/credit-notes', 'cn_9']);
 		expect(card.link(doc('debitNote'))).toBeNull();
 		expect(card.link(doc('receipt'))).toBeNull();
+		expect(card.link(doc('refundVoucher'))).toEqual(['/accounts/refund-vouchers', 'refundVoucher_1']);
+		expect(
+			[
+				doc('return', { status: 'checked' }),
+				doc('refundVoucher', { status: 'failed' }),
+				doc('creditNote', { status: 'draft' }),
+			].map((d) => card.statusKey(d)),
+		).toEqual(['ret_status_checked', 'rf_status_failed', 'cn_status_draft']);
 		expect(card.printable(doc('creditNote', { status: 'draft' }))).toBe(false);
 		expect(card.printable(doc('creditNote', { status: 'cancelled' }))).toBe(true);
 		expect(card.day('2026-11-18')).toBe('18 Nov 2026');
@@ -71,8 +82,16 @@ describe('the order’s Documents card (B1)', () => {
 	it('prints each kind on its own format', async () => {
 		Object.assign(URL, { createObjectURL: () => 'blob:x', revokeObjectURL: () => undefined });
 		vi.spyOn(window, 'open').mockReturnValue(null);
-		const { card, invoices, orders, returns } = setup();
-		for (const kind of ['taxInvoice', 'receipt', 'packingSlip', 'return', 'creditNote', 'debitNote'] as const)
+		const { card, invoices, orders, returns, refunds } = setup();
+		for (const kind of [
+			'taxInvoice',
+			'receipt',
+			'packingSlip',
+			'return',
+			'creditNote',
+			'debitNote',
+			'refundVoucher',
+		] as const)
 			await card.print(doc(kind));
 		expect(invoices.pdf).toHaveBeenCalledWith('ord_1', 'taxInvoice_1', 'original');
 		expect(orders.receiptPdf).toHaveBeenCalledWith('ord_1', 'receipt_1');
@@ -80,6 +99,7 @@ describe('the order’s Documents card (B1)', () => {
 		expect(returns.returnNotePdf).toHaveBeenCalledWith('return_1');
 		expect(returns.creditNotePdf).toHaveBeenCalledWith('creditNote_1');
 		expect(returns.debitNotePdf).toHaveBeenCalledWith('debitNote_1');
+		expect(refunds.pdf).toHaveBeenCalledWith('refundVoucher_1');
 		expect(card.busy()).toBe(false);
 	});
 

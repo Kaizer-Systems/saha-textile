@@ -39,3 +39,15 @@ DebitNoteSchema.index({ gstin: 1, number: 1 }, { unique: true });
 DebitNoteSchema.index({ orderId: 1 });
 export const DebitNoteModel: Model<AggregateDoc> =
 	(models.DebitNote as Model<AggregateDoc>) ?? model<AggregateDoc>('DebitNote', DebitNoteSchema);
+
+/** Refund vouchers (C, Rule 51): one per refunded payment; RF numbers are unique. */
+const RefundVoucherSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true }, paymentId: { type: String, required: true } },
+	{ ...loose, collection: COLLECTION_NAMES.RefundVoucher },
+);
+RefundVoucherSchema.index({ number: 1 }, { unique: true });
+RefundVoucherSchema.index({ paymentId: 1 }, { unique: true });
+RefundVoucherSchema.index({ orderId: 1 });
+RefundVoucherSchema.index({ date: -1 });
+export const RefundVoucherModel: Model<AggregateDoc> =
+	(models.RefundVoucher as Model<AggregateDoc>) ?? model<AggregateDoc>('RefundVoucher', RefundVoucherSchema);

@@ -82,6 +82,7 @@ interface Options {
 	windowDays?: number;
 	noOrder?: boolean;
 	business?: boolean;
+	refunds?: unknown[];
 }
 
 function setup(options: Options = {}) {
@@ -196,6 +197,7 @@ function setup(options: Options = {}) {
 		} as never,
 		{ listByOrder: async () => options.payments ?? [] } as never,
 		{ append: async (entry: (typeof entries)[number]) => (entries.push(entry), entry) } as never,
+		{ listForOrder: async () => options.refunds ?? [] } as never,
 		options.gateway === null
 			? null
 			: ({
@@ -744,7 +746,10 @@ describe('Refund now (B5)', () => {
 		const made = setup({ payments: paid });
 		const { note } = await issuedFrom(made);
 		const refunded = await made.service.refund(note.id, { how: 'gateway' }, null, NOW);
-		expect(refunded.refund).toMatchObject({ method: 'gateway', reference: `cn:${note.id}` });
+		expect(refunded.refund).toMatchObject({
+			method: 'gateway',
+			reference: `CN${note.id.replace(/[^A-Za-z0-9]/g, '')}`.slice(0, 30),
+		});
 		const none = setup();
 		await expect(
 			none.service.refund((await issuedFrom(none)).note.id, { how: 'gateway' }, null, NOW),
@@ -955,6 +960,10 @@ describe('the edit log, prints and the order’s documents (Q11, B1, B3)', () =>
 				{ id: 'pay_2', receiptNumber: null, receivedOn: null, amountINR: 5 },
 			],
 			invoices: [invoice(), invoice({ id: 'ti_x', number: 'TI/26-27/000146', status: 'cancelled' })],
+			refunds: [
+				{ id: 'rf_1', number: 'RF/26-27/000001', date: '2026-11-20', amountINR: 2_600, status: 'refunded' },
+				{ id: 'rf_2', number: 'RF/26-27/000002', date: '2026-11-21', amountINR: 1_000, status: 'failed' },
+			],
 		});
 		const { draft } = await checkedDraft(made);
 		await made.service.issue(draft.id, 0, null, NOW);
@@ -976,8 +985,10 @@ describe('the edit log, prints and the order’s documents (Q11, B1, B3)', () =>
 			['creditNote', 'CN/26-27/000001', 4_680, null],
 			['creditNote', null, 100, 'draft'],
 			['debitNote', debit.number, 4_680, null],
+			['refundVoucher', 'RF/26-27/000001', 2_600, null],
+			['refundVoucher', 'RF/26-27/000002', 1_000, 'failed'],
 		]);
-		expect(view.documents.at(-1)?.creditNoteId).toBe(draft.id);
+		expect(view.documents.find((d) => d.kind === 'debitNote')?.creditNoteId).toBe(draft.id);
 		expect(made.logged.find((r) => r.action === 'debitNote.issue')).toMatchObject({ entityType: 'creditNote' });
 	});
 });

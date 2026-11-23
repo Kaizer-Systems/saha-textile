@@ -142,6 +142,7 @@ export const COLLECTION_NAMES = {
 	OrderReturn: 'orderReturns',
 	CreditNote: 'creditNotes',
 	DebitNote: 'debitNotes',
+	RefundVoucher: 'refundVouchers',
 	/** Stock split by location (accounts brief F4). */
 	LocationStock: 'locationStock',
 	/** Settings › Document formats (bundle builder brief F, 2026-11-22): one active format per document. */
@@ -281,6 +282,7 @@ export const GRAPH_RECONCILIATION_OWED = [
 	'orderReturns',
 	'creditNotes',
 	'debitNotes',
+	'refundVouchers',
 ] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */

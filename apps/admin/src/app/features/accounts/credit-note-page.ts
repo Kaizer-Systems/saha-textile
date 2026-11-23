@@ -17,6 +17,7 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { DocumentLockBanner } from '@shared/components/document-lock/document-lock';
 
+import { cashAndBankLedgers } from './cash-bank-ledgers';
 import { editLogRows } from './edit-log-rows';
 import { rupees } from './ledger-helpers';
 
@@ -74,21 +75,8 @@ export class CreditNotePage {
 		queryFn: () => firstValueFrom(this.ledgers.chart()),
 		enabled: this.canRefund(),
 	}));
-	/** Cash and bank ledgers (their group, or a group above it, is cash in hand or a bank) for a refund by hand. */
-	readonly payFrom = computed(() => {
-		const chart = this.chart.data();
-		if (!chart) return [];
-		const groups = new Map(chart.groups.map((g) => [g.id, g]));
-		const isCashOrBank = (groupId: string | null): boolean => {
-			const group = groupId ? groups.get(groupId) : undefined;
-			if (!group) return false;
-			return (
-				['cash_in_hand', 'bank_accounts', 'bank_od'].includes(group.systemKey ?? '') ||
-				isCashOrBank(group.parentId)
-			);
-		};
-		return chart.ledgers.filter((l) => l.active && isCashOrBank(l.groupId));
-	});
+	/** Cash and bank ledgers for a refund by hand. */
+	readonly payFrom = computed(() => cashAndBankLedgers(this.chart.data()));
 	readonly goodsKind = computed(() => this.note.data()?.kind !== 'price_adjustment');
 	/** B7: this person holds the draft (the lock banner says so); others only read it. */
 	readonly editable = signal(false);

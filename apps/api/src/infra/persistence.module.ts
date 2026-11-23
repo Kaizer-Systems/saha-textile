@@ -94,6 +94,7 @@ import {
 	MongoOrderReturnRepository,
 	MongoCreditNoteRepository,
 	MongoDebitNoteRepository,
+	MongoRefundVoucherRepository,
 	MongoNumberAllocator,
 	MongoOpeningStockRepository,
 	MongoPurchaseEntryRepository,
@@ -161,6 +162,7 @@ import {
 	ORDER_RETURN_REPOSITORY,
 	CREDIT_NOTE_REPOSITORY,
 	DEBIT_NOTE_REPOSITORY,
+	REFUND_VOUCHER_REPOSITORY,
 	NUMBER_ALLOCATOR,
 	OPENING_STOCK_REPOSITORY,
 	PURCHASE_ENTRY_REPOSITORY,
@@ -520,6 +522,7 @@ import { LanguageStore } from '../languages/language-store';
 		{ provide: ORDER_RETURN_REPOSITORY, useClass: MongoOrderReturnRepository },
 		{ provide: CREDIT_NOTE_REPOSITORY, useClass: MongoCreditNoteRepository },
 		{ provide: DEBIT_NOTE_REPOSITORY, useClass: MongoDebitNoteRepository },
+		{ provide: REFUND_VOUCHER_REPOSITORY, useClass: MongoRefundVoucherRepository },
 		{
 			// Every stock move records its location (accounts brief F4).
 			provide: STOCK_MOVEMENT,
@@ -710,6 +713,7 @@ import { LanguageStore } from '../languages/language-store';
 		ORDER_RETURN_REPOSITORY,
 		CREDIT_NOTE_REPOSITORY,
 		DEBIT_NOTE_REPOSITORY,
+		REFUND_VOUCHER_REPOSITORY,
 		STOCK_MOVEMENT,
 		STOCK_READ_REPOSITORY,
 		INVENTORY_COST_LAYER_REPOSITORY,

@@ -46,6 +46,7 @@ import {
 	type DebitNoteRepository,
 	debitNotePosting,
 	deliveryShareLine,
+	gatewayRefundReference,
 	inputTaxReversalPosting,
 	type LedgerRepository,
 	type GstReturnRepository,
@@ -61,6 +62,7 @@ import {
 	periodStateOf,
 	priceAdjustmentLines,
 	type ProductVariantRepository,
+	type RefundVoucherRepository,
 	restockCost,
 	returnWindow,
 	writeOffInputTax,
@@ -87,6 +89,7 @@ import {
 	ORDER_RETURN_REPOSITORY,
 	PERIOD_LOCK_REPOSITORY,
 	PRODUCT_VARIANT_REPOSITORY,
+	REFUND_VOUCHER_REPOSITORY,
 	SHIPMENT_REPOSITORY,
 	SITE_SETTINGS_REPOSITORY,
 	STOCK_HOLD_REPOSITORY,
@@ -155,6 +158,7 @@ export class ReturnsService {
 		private readonly ledger: LedgerService,
 		@Inject(ORDER_PAYMENT_REPOSITORY) private readonly payments: Pick<OrderPaymentRepository, 'listByOrder'>,
 		@Inject(LEDGER_REPOSITORY) private readonly accounts: Pick<LedgerRepository, 'append'>,
+		@Inject(REFUND_VOUCHER_REPOSITORY) private readonly refunds: Pick<RefundVoucherRepository, 'listForOrder'>,
 		@Optional()
 		@Inject(INR_PAYMENT_GATEWAY)
 		private readonly gateway: Pick<PaymentGatewayPort, 'refundPayment'> | null = null,
@@ -173,15 +177,17 @@ export class ReturnsService {
 	/** B1: what can still come back, the window and the deadline, and every return and note of the order. */
 	async view(orderId: string, today = istDay(new Date())): Promise<OrderReturnsView> {
 		const order = await this.order(orderId);
-		const [allInvoices, shipments, returns, creditNotes, debitNotes, settings, payments] = await Promise.all([
-			this.invoices.listForOrder(orderId),
-			this.shipments.listByOrder(orderId),
-			this.returns.listForOrder(orderId),
-			this.notes.listForOrder(orderId),
-			this.debits.listForOrder(orderId),
-			this.returnSettings(),
-			this.payments.listByOrder(orderId),
-		]);
+		const [allInvoices, shipments, returns, creditNotes, debitNotes, settings, payments, refunds] =
+			await Promise.all([
+				this.invoices.listForOrder(orderId),
+				this.shipments.listByOrder(orderId),
+				this.returns.listForOrder(orderId),
+				this.notes.listForOrder(orderId),
+				this.debits.listForOrder(orderId),
+				this.returnSettings(),
+				this.payments.listByOrder(orderId),
+				this.refunds.listForOrder(orderId),
+			]);
 		const invoices = allInvoices.filter((i) => i.status === 'issued');
 		const invoice = invoices[0] ?? null;
 		const deliveredOn =
@@ -244,6 +250,16 @@ export class ReturnsService {
 					...row('debitNote', d.id, d.number, d.date, d.totalINR, null),
 					creditNoteId: d.creditNoteId,
 				})),
+				...refunds.map((r) =>
+					row(
+						'refundVoucher',
+						r.id,
+						r.number,
+						r.date,
+						r.amountINR,
+						r.status === 'refunded' ? null : r.status,
+					),
+				),
 			],
 		};
 	}
@@ -1008,7 +1024,7 @@ export class ReturnsService {
 			);
 			if (!paid?.gateway?.reference) throw new BadRequestException('credit_note_refund_no_gateway_payment');
 			if (!this.gateway) throw new ServiceUnavailableException('credit_note_refund_gateway_unavailable');
-			reference = `cn:${note.id}`;
+			reference = gatewayRefundReference('CN', note.id);
 			const result = await this.gateway.refundPayment({
 				gatewayReference: paid.gateway.reference,
 				refundReference: reference,

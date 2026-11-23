@@ -1,4 +1,4 @@
-import type { CreditNote, DebitNote, OrderReturn } from '@saha-textile/contracts';
+import type { CreditNote, DebitNote, OrderReturn, RefundVoucher } from '@saha-textile/contracts';
 
 import type { TransactionContext } from './transaction-manager.port';
 
@@ -38,4 +38,24 @@ export interface DebitNoteRepository {
 	insert(note: DebitNote, context?: TransactionContext): Promise<void>;
 	get(id: string): Promise<DebitNote | null>;
 	listForOrder(orderId: string): Promise<DebitNote[]>;
+}
+
+export interface RefundVoucherListQuery {
+	from: string;
+	to: string;
+	search: string;
+	status: RefundVoucher['status'] | null;
+	page: number;
+	pageSize: number;
+}
+
+/** Refund vouchers (C): made with the refund; only their status moves on (a retry, or paid by bank transfer). */
+export interface RefundVoucherRepository {
+	/** Refused with `duplicate_refund_voucher` when the payment already has one. */
+	insert(voucher: RefundVoucher, context?: TransactionContext): Promise<void>;
+	get(id: string, context?: TransactionContext): Promise<RefundVoucher | null>;
+	listForOrder(orderId: string): Promise<RefundVoucher[]>;
+	list(query: RefundVoucherListQuery): Promise<{ items: RefundVoucher[]; total: number }>;
+	/** Refused with `refund_voucher_changed` when someone saved it since `expectedUpdatedAt`. */
+	save(voucher: RefundVoucher, expectedUpdatedAt: string, context?: TransactionContext): Promise<void>;
 }

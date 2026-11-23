@@ -274,7 +274,15 @@ export const ReturnSettings = z.object({ windowDays: z.number().int().min(0).max
 export type ReturnSettings = z.infer<typeof ReturnSettings>;
 
 /** B1 Documents card: every document of the order, each with what it can open and print. */
-export const OrderDocumentKind = z.enum(['taxInvoice', 'receipt', 'packingSlip', 'return', 'creditNote', 'debitNote']);
+export const OrderDocumentKind = z.enum([
+	'taxInvoice',
+	'receipt',
+	'packingSlip',
+	'return',
+	'creditNote',
+	'debitNote',
+	'refundVoucher',
+]);
 export type OrderDocumentKind = z.infer<typeof OrderDocumentKind>;
 
 export const OrderDocumentRow = z.object({

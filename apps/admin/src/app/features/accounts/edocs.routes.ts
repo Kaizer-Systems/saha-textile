@@ -25,4 +25,8 @@ export default [
 	{ path: 'invoices/:id', loadComponent: () => import('./invoice-view').then((m) => m.InvoiceViewPage) },
 	{ path: 'returns/:id', loadComponent: () => import('./return-page').then((m) => m.ReturnPage) },
 	{ path: 'credit-notes/:id', loadComponent: () => import('./credit-note-page').then((m) => m.CreditNotePage) },
+	{
+		path: 'refund-vouchers/:id',
+		loadComponent: () => import('./refund-voucher-page').then((m) => m.RefundVoucherPage),
+	},
 ] satisfies Routes;

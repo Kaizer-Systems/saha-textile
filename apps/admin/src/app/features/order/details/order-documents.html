@@ -21,9 +21,7 @@
 						<td class="text-start">{{ 'doc_kind_' + doc.kind | transloco }}</td>
 						<td class="text-nowrap">
 							{{ doc.number ?? ('doc_draft' | transloco) }} @if (doc.status && doc.number) {
-							<small class="text-muted d-block">
-								{{ (doc.kind === 'return' ? 'ret_status_' : 'cn_status_') + doc.status | transloco }}
-							</small>
+							<small class="text-muted d-block">{{ statusKey(doc) | transloco }}</small>
 							}
 						</td>
 						<td class="text-nowrap">{{ doc.date ? day(doc.date) : '—' }}</td>
@@ -35,6 +33,17 @@
 									<a
 										[routerLink]="to"
 										[title]="'view' | transloco"
+									>
+										<i class="ri-eye-line"></i>
+									</a>
+								</li>
+								} @else if (doc.kind === 'receipt') {
+								<li>
+									<a
+										href="javascript:void(0)"
+										[title]="'view' | transloco"
+										[class.disabled]="busy()"
+										(click)="print(doc)"
 									>
 										<i class="ri-eye-line"></i>
 									</a>

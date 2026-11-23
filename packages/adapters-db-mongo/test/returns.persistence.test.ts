@@ -1,12 +1,13 @@
-import { CreditNote, DebitNote, OrderReturn } from '@saha-textile/contracts';
+import { CreditNote, DebitNote, OrderReturn, RefundVoucher } from '@saha-textile/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { connectMongo, disconnectMongo } from '../src/connection';
-import { CreditNoteModel, DebitNoteModel, OrderReturnModel } from '../src/models/returns.model';
+import { CreditNoteModel, DebitNoteModel, OrderReturnModel, RefundVoucherModel } from '../src/models/returns.model';
 import {
 	MongoCreditNoteRepository,
 	MongoDebitNoteRepository,
 	MongoOrderReturnRepository,
+	MongoRefundVoucherRepository,
 } from '../src/repositories/returns.repository';
 import { MongoTransactionManager } from '../src/transaction-manager';
 
@@ -18,7 +19,7 @@ import { hasMongoEnv } from './mongo-test-env';
  */
 describe.skipIf(!hasMongoEnv())('returns and notes persistence (integration, rs0)', () => {
 	const at = '2026-11-25T10:00:00.000Z';
-	const models = [OrderReturnModel, CreditNoteModel, DebitNoteModel];
+	const models = [OrderReturnModel, CreditNoteModel, DebitNoteModel, RefundVoucherModel];
 	const party = { name: 'Ananya Das', gstin: null, address: 'Kolkata', stateCode: '19' };
 	const line = {
 		lineId: 'a',
@@ -182,5 +183,54 @@ describe.skipIf(!hasMongoEnv())('returns and notes persistence (integration, rs0
 		expect((await debits.get('dn_1'))?.creditNoteId).toBe('cn_1');
 		expect(await debits.get('dn_x')).toBeNull();
 		expect((await debits.listForOrder('ord_1')).map((d) => d.id)).toEqual(['dn_1']);
+	});
+
+	it('keeps one refund voucher per payment, lists them, and saves only over the copy read', async () => {
+		const vouchers = new MongoRefundVoucherRepository();
+		const voucher = RefundVoucher.parse({
+			id: 'rf_1',
+			number: 'RF/26-27/000003',
+			date: '2026-11-22',
+			orderId: 'ord_1',
+			orderNumber: 'ST-2611-688796',
+			paymentId: 'pay_1',
+			receiptNumber: 'RC/26-27/000013',
+			receiptDate: '2026-11-22',
+			payee: 'Priya Sharma',
+			amountINR: 2_600,
+			currency: 'INR',
+			amount: 2_600,
+			how: 'gateway',
+			reference: 'RFpay1',
+			reason: 'order_cancelled',
+			status: 'waiting_for_gateway',
+			locationId: 'loc_bar',
+			createdAt: at,
+			updatedAt: at,
+		});
+		const tx = new MongoTransactionManager();
+		await tx.withTransaction((context) => vouchers.insert(voucher, context));
+		await expect(vouchers.insert({ ...voucher, id: 'rf_2', number: 'RF/26-27/000004' })).rejects.toThrow(
+			'duplicate_refund_voucher',
+		);
+		await vouchers.insert({
+			...voucher,
+			id: 'rf_3',
+			number: 'RF/26-27/000005',
+			paymentId: 'pay_3',
+			date: '2026-11-25',
+		});
+		expect((await vouchers.get('rf_1'))?.payee).toBe('Priya Sharma');
+		expect(await vouchers.get('rf_x')).toBeNull();
+		expect((await vouchers.listForOrder('ord_1')).map((v) => v.id)).toEqual(['rf_1', 'rf_3']);
+		const later = { ...voucher, status: 'refunded' as const, updatedAt: '2026-11-22T11:00:00.000Z' };
+		await vouchers.save(later, at);
+		await expect(vouchers.save({ ...later, status: 'failed' }, at)).rejects.toThrow('refund_voucher_changed');
+		const range = { from: '2026-11-01', to: '2026-11-30', page: 1, pageSize: 10 };
+		expect((await vouchers.list({ ...range, search: '', status: null })).items.map((v) => v.id)).toEqual([
+			'rf_3',
+			'rf_1',
+		]);
+		expect((await vouchers.list({ ...range, search: 'priya', status: 'refunded' })).total).toBe(1);
 	});
 });

@@ -94,7 +94,8 @@ test.describe('Real cart', () => {
 		await expect(page.locator('.toast-error')).toContainText('that many');
 		await expect(total).toContainText('34,000');
 
-		await page.locator('.cart-table a.remove:visible').first().click();
+		// Laptops show Remove under the item's name (cart option A); phones keep the action cell.
+		await page.locator('.cart-table :is(a.remove, a.st-line-remove):visible').first().click();
 		await expect(page.locator('app-no-data')).toBeVisible();
 		await page.reload();
 		await expect(page.locator('app-no-data')).toBeVisible();

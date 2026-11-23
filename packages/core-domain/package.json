@@ -59,6 +59,11 @@
       "import": "./dist/esm/shipping/index.js",
       "default": "./dist/shipping/index.js"
     },
+    "./company": {
+      "types": "./dist/company/index.d.ts",
+      "import": "./dist/esm/company/index.js",
+      "default": "./dist/company/index.js"
+    },
     "./bundle": {
       "types": "./dist/bundle/index.d.ts",
       "import": "./dist/esm/bundle/index.js",
@@ -69,7 +74,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.legacy-esm.json && tsc -p tsconfig.purchasing-esm.json && tsc -p tsconfig.shipping-esm.json && tsc -p tsconfig.bundle-esm.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.legacy-esm.json && tsc -p tsconfig.purchasing-esm.json && tsc -p tsconfig.shipping-esm.json && tsc -p tsconfig.bundle-esm.json && tsc -p tsconfig.company-esm.json",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "lint": "eslint .",
     "test": "vitest run"

@@ -83,7 +83,8 @@ describe('searching', () => {
 
 	it('finds a place by a common word for it', () => {
 		expect(ids('via')[0]).toBe('storefront_setting_share');
-		expect(ids('gst')[0]).toBe('tax');
+		// Settings › GST registrations (accounts brief J2) is titled with the word itself, so it may come first.
+		expect(ids('gst').slice(0, 2)).toContain('tax');
 		expect(ids('whatsapp')).toContain('setting_notifications');
 	});
 

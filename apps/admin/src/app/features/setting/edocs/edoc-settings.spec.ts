@@ -1,8 +1,9 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
+import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
-import { EDocSettings } from '@saha-textile/contracts';
+import type { EDocSettings } from '@saha-textile/contracts';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
@@ -16,7 +17,19 @@ import { EDocSettingsPage } from './edoc-settings';
 const view = (patch: Partial<EDocSettings> = {}): EDocSettingsView => ({
 	gstin: '19DBYPS6736R1ZZ',
 	keysAvailable: true,
-	settings: EDocSettings.parse({ gstin: '19DBYPS6736R1ZZ', updatedAt: '2026-11-23T10:00:00.000Z', ...patch }),
+	settings: {
+		gstin: '19DBYPS6736R1ZZ',
+		eInvoicePath: 'manual',
+		eWayBillPath: 'manual',
+		eWayBillWithEInvoice: true,
+		eInvoiceEnabledFrom: null,
+		eWayBillThresholdINR: 50_000,
+		keys: [],
+		revision: 0,
+		updatedAt: '2026-11-23T10:00:00.000Z',
+		updatedBy: null,
+		...patch,
+	} satisfies EDocSettings,
 });
 
 function setup(current: EDocSettingsView, permissions = ['setting.index', 'edocs.settings']) {
@@ -30,6 +43,7 @@ function setup(current: EDocSettingsView, permissions = ['setting.index', 'edocs
 	TestBed.configureTestingModule({
 		imports: [EDocSettingsPage, TranslocoTestingModule.forRoot({ langs: { en: {} } })],
 		providers: [
+			provideRouter([]),
 			provideTanStackQuery(new QueryClient()),
 			{ provide: EDocsGateway, useValue: gateway },
 			{ provide: AuthStore, useValue: { permissions: signal(permissions) } },

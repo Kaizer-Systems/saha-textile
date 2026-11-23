@@ -70,6 +70,11 @@ export default [
 		loadComponent: () => import('./edocs/edoc-settings').then((m) => m.EDocSettingsPage),
 	},
 	{
+		// Addendum 2, EI14.
+		path: 'edocs/activity',
+		loadComponent: () => import('./edocs/edoc-activity').then((m) => m.EDocActivityPage),
+	},
+	{
 		// Accounts brief J3 (owner-approved 2026-11-23).
 		path: 'features',
 		loadComponent: () => import('./company/feature-switches').then((m) => m.FeatureSwitchesSettings),

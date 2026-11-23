@@ -1,5 +1,6 @@
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
@@ -55,7 +56,7 @@ const SANDBOX_URL: Partial<Record<EDocProvider, string>> = {
  */
 @Component({
 	selector: 'app-edoc-settings',
-	imports: [PageWrapper, TranslocoModule, FormsModule],
+	imports: [PageWrapper, TranslocoModule, FormsModule, RouterLink],
 	templateUrl: './edoc-settings.html',
 })
 export class EDocSettingsPage {

@@ -24,6 +24,15 @@ export type CompanyProblem =
 	| 'llpin_needed'
 	| 'paid_up_over_authorised';
 
+/** The kinds of business offered (public limited is not), in the order the picker shows them; same as contracts' BUSINESS_KINDS. */
+export const BUSINESS_KIND_LIST: readonly BusinessKind[] = [
+	'proprietorship',
+	'partnership',
+	'llp',
+	'private_limited_opc',
+	'private_limited',
+];
+
 const twoDecimals = (value: number): number => Math.round(value * 100) / 100;
 
 /** What a save must have for its kind of business (CT2–CT5). */

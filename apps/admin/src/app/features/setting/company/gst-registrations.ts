@@ -1,15 +1,14 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import {
 	type GstRegistration,
 	type GstRegistrationTerms,
 	type GstReturnScheme,
 	type GstTaxpayerKind,
-	gstStateName,
-	gstinProblem,
 } from '@saha-textile/contracts';
-import { termsOn, termsProblems, turnoverChecks } from '@saha-textile/core-domain/company';
+import { gstStateName, gstinProblem, termsOn, termsProblems, turnoverChecks } from '@saha-textile/core-domain/company';
 import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 

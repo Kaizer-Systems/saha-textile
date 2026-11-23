@@ -236,6 +236,34 @@ export const menu: IMenu[] = [
 			},
 		],
 	},
+	// Accounts (accounts brief, owner-approved 2026-11-23): e-invoices and e-way bills first (addendum 2, EI12–EI13).
+	{
+		id: 25,
+		title: 'accounts',
+		active: false,
+		icon: 'ri-book-2-line',
+		type: 'sub',
+		level: 1,
+		acl_permission: ['order.index'],
+		children: [
+			{
+				parent_id: 25,
+				title: 'edoc_list_einvoices',
+				path: '/accounts/e-invoices',
+				type: 'link',
+				level: 2,
+				permission: ['order.index'],
+			},
+			{
+				parent_id: 25,
+				title: 'edoc_list_ewaybills',
+				path: '/accounts/e-way-bills',
+				type: 'link',
+				level: 2,
+				permission: ['order.index'],
+			},
+		],
+	},
 	// Purchases and stock (brief revision 2, accepted 2026-11-15): two groups, as drawn.
 	{
 		id: 23,

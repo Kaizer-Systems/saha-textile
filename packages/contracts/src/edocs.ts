@@ -124,6 +124,10 @@ export const EDocument = z.object({
 	documentNumber: z.string(),
 	documentDate: IsoDate,
 	orderId: Id.nullable().default(null),
+	/** The buyer and the document's value, as the lists show them (EI12, EI13). */
+	partyName: z.string().nullable().default(null),
+	partyGstin: z.string().nullable().default(null),
+	valueINR: z.number().nullable().default(null),
 	path: z.union([EInvoicePath, EWayBillPath]),
 	status: z.enum(['active', 'cancelled']),
 	irn: z.string().nullable().default(null),

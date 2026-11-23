@@ -2,7 +2,20 @@
 	[gridClass]="'col-sm-12'"
 	[title]="'edoc_settings_title'"
 >
-	<p class="text-muted">{{ 'edoc_settings_intro' | transloco }}</p>
+	<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+		<p class="text-muted mb-0">{{ 'edoc_settings_intro' | transloco }}</p>
+		<a
+			class="btn btn-outline"
+			id="edoc_activity_link"
+			routerLink="/setting/edocs/activity"
+		>
+			<i
+				class="ri-history-line"
+				aria-hidden="true"
+			></i>
+			{{ 'edoc_activity' | transloco }}
+		</a>
+	</div>
 	@if (query.data(); as view) { @if (!view.gstin) {
 	<div class="alert alert-warning">{{ 'edoc_shop_gstin_needed' | transloco }}</div>
 	} @else if (settings(); as s) {

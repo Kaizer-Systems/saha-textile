@@ -104,6 +104,11 @@ export const content: Routes = [
 		loadChildren: () => import('@features/setting/setting.routes'),
 	},
 	{
+		// Accounts › E-invoices, E-way bills (accounts brief addendum 2, EI12–EI13).
+		path: 'accounts',
+		loadChildren: () => import('@features/accounts/edocs.routes'),
+	},
+	{
 		path: 'order-status',
 		loadChildren: () => import('@features/order-status/order-status.routes'),
 	},

@@ -115,6 +115,9 @@ export type CompanyProfile = z.infer<typeof CompanyProfile>;
 export const CompanyProfileWrite = CompanyProfile.omit({ updatedAt: true, updatedBy: true });
 export type CompanyProfileWrite = z.infer<typeof CompanyProfileWrite>;
 
+export const CompanyProfileSave = z.object({ profile: CompanyProfileWrite, expectedUpdatedAt: z.string().nullable() });
+export type CompanyProfileSave = z.infer<typeof CompanyProfileSave>;
+
 /** GST taxpayer kinds the software handles (addendum G1, G2; ISD for shared costs, AD8). */
 export const GstTaxpayerKind = z.enum(['regular', 'composition', 'isd', 'casual']);
 export type GstTaxpayerKind = z.infer<typeof GstTaxpayerKind>;
@@ -195,6 +198,12 @@ export const FeatureSwitches = z.object({
 	updatedBy: Id.nullable().default(null),
 });
 export type FeatureSwitches = z.infer<typeof FeatureSwitches>;
+
+export const FeatureSwitchesSave = z.object({
+	on: z.partialRecord(FeatureKey, z.boolean()),
+	expectedUpdatedAt: z.string().nullable(),
+});
+export type FeatureSwitchesSave = z.infer<typeof FeatureSwitchesSave>;
 
 /** A switch as Settings › Features shows it: on or off, and how many records use it. */
 export const FeatureRow = z.object({

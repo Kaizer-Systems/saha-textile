@@ -99,6 +99,29 @@ export const EDocSettingsWrite = EDocSettings.pick({
 });
 export type EDocSettingsWrite = z.infer<typeof EDocSettingsWrite>;
 
+export const EDocSettingsSave = z.object({ settings: EDocSettingsWrite, expectedUpdatedAt: z.string().nullable() });
+export type EDocSettingsSave = z.infer<typeof EDocSettingsSave>;
+
+export const EDocListQuery = z.object({
+	kind: EDocKind,
+	status: z.enum(['active', 'cancelled']).optional(),
+	from: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional(),
+	to: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional(),
+	q: z.string().trim().max(80).optional(),
+	page: z.coerce.number().int().min(1).default(1),
+	pageSize: z.coerce.number().int().min(1).max(100).default(25),
+});
+export type EDocListQuery = z.infer<typeof EDocListQuery>;
+
+export const EDocActivityQuery = z.object({ page: z.coerce.number().int().min(1).default(1) });
+export type EDocActivityQuery = z.infer<typeof EDocActivityQuery>;
+
 export const EDocDocumentType = z.enum(['taxInvoice', 'creditNote', 'debitNote', 'deliveryChallan']);
 export type EDocDocumentType = z.infer<typeof EDocDocumentType>;
 

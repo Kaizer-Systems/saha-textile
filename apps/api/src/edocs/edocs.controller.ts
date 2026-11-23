@@ -1,7 +1,12 @@
 import { Body, Controller, Delete, Get, Header, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AutomaticEDocPath, EDocKeysWrite, EDocSettingsWrite } from '@saha-textile/contracts';
-import { z } from 'zod';
+import {
+	AutomaticEDocPath,
+	EDocActivityQuery,
+	EDocKeysWrite,
+	EDocListQuery,
+	EDocSettingsSave,
+} from '@saha-textile/contracts';
 
 import { Principal } from '../auth/ownership';
 import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../auth/session.guard';
@@ -10,24 +15,6 @@ import { API_TAGS } from '../openapi-tags';
 import { EDocsOrderBridge } from './edocs-order-bridge';
 import { EDocsService } from './edocs.service';
 
-const SettingsSave = z.object({ settings: EDocSettingsWrite, expectedUpdatedAt: z.string().nullable() });
-const PathParam = AutomaticEDocPath;
-const ListQuery = z.object({
-	kind: z.enum(['eInvoice', 'eWayBill']),
-	status: z.enum(['active', 'cancelled']).optional(),
-	from: z
-		.string()
-		.regex(/^\d{4}-\d{2}-\d{2}$/)
-		.optional(),
-	to: z
-		.string()
-		.regex(/^\d{4}-\d{2}-\d{2}$/)
-		.optional(),
-	q: z.string().trim().max(80).optional(),
-	page: z.coerce.number().int().min(1).default(1),
-	pageSize: z.coerce.number().int().min(1).max(100).default(25),
-});
-const ActivityQuery = z.object({ page: z.coerce.number().int().min(1).default(1) });
 const by = (principal: AuthenticatedPrincipal | undefined): string | null => principal?.userId ?? null;
 
 /** Settings › E-invoice and e-way bill, keys and Test, the lists and the activity log (accounts brief addendum 2). */
@@ -58,7 +45,7 @@ export class EDocsController {
 		summary: 'Choose the path per document (automatic only after Test passes)',
 	})
 	async saveSettings(
-		@Body(new ZodValidationPipe(SettingsSave)) body: z.infer<typeof SettingsSave>,
+		@Body(new ZodValidationPipe(EDocSettingsSave)) body: EDocSettingsSave,
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
 		const view = await this.edocs.saveSettings(body.settings, body.expectedUpdatedAt, by(principal));
@@ -87,7 +74,7 @@ export class EDocsController {
 		operationId: 'removeEdocKeys',
 		summary: 'Remove a path’s keys; a document using it goes back to by hand',
 	})
-	async removeKeys(@Param('path', new ZodValidationPipe(PathParam)) path: AutomaticEDocPath) {
+	async removeKeys(@Param('path', new ZodValidationPipe(AutomaticEDocPath)) path: AutomaticEDocPath) {
 		const view = await this.edocs.removeKeys(path);
 		await this.bridge.refresh();
 		return view;
@@ -98,7 +85,7 @@ export class EDocsController {
 	@RequirePermissions('edocs.settings')
 	@ApiOperation({ operationId: 'testEdocKeys', summary: 'Sign in with the path’s keys and record the result' })
 	async test(
-		@Param('path', new ZodValidationPipe(PathParam)) path: AutomaticEDocPath,
+		@Param('path', new ZodValidationPipe(AutomaticEDocPath)) path: AutomaticEDocPath,
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
 		const view = await this.edocs.test(path, by(principal));
@@ -113,7 +100,7 @@ export class EDocsController {
 		operationId: 'edocDocuments',
 		summary: 'E-invoices or e-way bills, newest first, with the period and search',
 	})
-	documents(@Query(new ZodValidationPipe(ListQuery)) query: z.infer<typeof ListQuery>) {
+	documents(@Query(new ZodValidationPipe(EDocListQuery)) query: EDocListQuery) {
 		return this.edocs.list(query);
 	}
 
@@ -121,7 +108,7 @@ export class EDocsController {
 	@Header('Cache-Control', 'no-store')
 	@RequirePermissions('edocs.settings')
 	@ApiOperation({ operationId: 'edocActivity', summary: 'Every call and by-hand entry, newest first (no keys)' })
-	activity(@Query(new ZodValidationPipe(ActivityQuery)) query: z.infer<typeof ActivityQuery>) {
+	activity(@Query(new ZodValidationPipe(EDocActivityQuery)) query: EDocActivityQuery) {
 		return this.edocs.activity(query.page);
 	}
 }

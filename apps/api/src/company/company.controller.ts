@@ -2,20 +2,13 @@ import { randomUUID } from 'node:crypto';
 
 import { Body, Controller, Get, Header, Param, Post, Put } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { CompanyProfileWrite, FeatureKey, GstRegistrationWrite } from '@saha-textile/contracts';
-import { z } from 'zod';
+import { CompanyProfileSave, FeatureSwitchesSave, GstRegistrationWrite } from '@saha-textile/contracts';
 
 import { Principal } from '../auth/ownership';
 import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../auth/session.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { CompanyService } from './company.service';
-
-const ProfileSave = z.object({ profile: CompanyProfileWrite, expectedUpdatedAt: z.string().nullable() });
-const FeaturesSave = z.object({
-	on: z.partialRecord(FeatureKey, z.boolean()),
-	expectedUpdatedAt: z.string().nullable(),
-});
 
 const canEdit = (principal: AuthenticatedPrincipal | undefined): boolean =>
 	!!principal?.permissions.includes('company.edit');
@@ -44,7 +37,7 @@ export class CompanyController {
 	@RequirePermissions('setting.index')
 	@ApiOperation({ operationId: 'saveCompanyProfile', summary: 'Save the company profile over the copy read' })
 	saveProfile(
-		@Body(new ZodValidationPipe(ProfileSave)) body: z.infer<typeof ProfileSave>,
+		@Body(new ZodValidationPipe(CompanyProfileSave)) body: CompanyProfileSave,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	) {
 		return this.company.saveProfile(body.profile, actor(principal), canEdit(principal), body.expectedUpdatedAt);
@@ -94,7 +87,7 @@ export class CompanyController {
 	@RequirePermissions('setting.index')
 	@ApiOperation({ operationId: 'saveFeatureSwitches', summary: 'Switch features on or off' })
 	saveFeatures(
-		@Body(new ZodValidationPipe(FeaturesSave)) body: z.infer<typeof FeaturesSave>,
+		@Body(new ZodValidationPipe(FeatureSwitchesSave)) body: FeatureSwitchesSave,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	) {
 		return this.company.saveFeatures(body.on, actor(principal), canEdit(principal), body.expectedUpdatedAt);

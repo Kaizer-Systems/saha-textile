@@ -43,6 +43,8 @@ const card = (over: Partial<AdminProductCard> = {}): AdminProductCard => ({
 	shortestCutTenths: null,
 	stock: 4,
 	retailINR: 6_800,
+	isBundle: false,
+	setsPossible: 0,
 	price: 6_800,
 	zonePrice: null,
 	...over,

@@ -48,7 +48,17 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 			userId: 'user_tx',
 			guestToken: null,
 			currency: 'INR',
-			lines: [{ id: 'line_1', productId: 'prod_1', variationId: null, quantity: 1, addons: [] }],
+			lines: [
+				{
+					id: 'line_1',
+					productId: 'prod_1',
+					variationId: null,
+					quantity: 1,
+					addons: [],
+					bundle: null,
+					free: [],
+				},
+			],
 		});
 
 		await transactions.withTransaction(async (context) => {
@@ -99,7 +109,17 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 			userId: 'user_tx',
 			guestToken: null,
 			currency: 'INR',
-			lines: [{ id: 'line_1', productId: 'prod_1', variationId: null, quantity: 1, addons: [] }],
+			lines: [
+				{
+					id: 'line_1',
+					productId: 'prod_1',
+					variationId: null,
+					quantity: 1,
+					addons: [],
+					bundle: null,
+					free: [],
+				},
+			],
 		});
 
 		const line = {
@@ -153,7 +173,17 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 			userId: 'user_tx',
 			guestToken: null,
 			currency: 'INR',
-			lines: [{ id: 'line_1', productId: 'prod_1', variationId: null, quantity: 1, addons: [] }],
+			lines: [
+				{
+					id: 'line_1',
+					productId: 'prod_1',
+					variationId: null,
+					quantity: 1,
+					addons: [],
+					bundle: null,
+					free: [],
+				},
+			],
 		});
 
 		await expect(

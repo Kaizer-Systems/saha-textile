@@ -118,6 +118,9 @@ import {
 	opsJobsAnswerSchema,
 	type OpsMessagesView,
 	opsMessagesAnswerSchema,
+	type RotateRequest,
+	type RotationView,
+	rotationViewSchema,
 } from '@saha-textile/release-console-contracts';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { z } from 'zod';
@@ -505,13 +508,43 @@ export class ConsoleApi {
 		allowBlank: string[] = [],
 		confirm?: string,
 		branch?: string,
+		/** Rotation, a rollback or an older version (Release Path brief 3.2, F16). */
+		extra: { rotate?: boolean; restartDatabase?: boolean; action?: 'deploy' | 'rollback'; tag?: string } = {},
 	): Promise<unknown> {
 		return this.call(
 			'POST',
 			`/api/projects/${projectId}/repos/${repoId}/server-deploy/${environment}`,
 			okAnswerSchema,
-			{ pin, allowBlank, ...(confirm ? { confirm } : {}), ...(branch ? { branch } : {}) },
+			{ pin, allowBlank, ...(confirm ? { confirm } : {}), ...(branch ? { branch } : {}), ...extra },
 			60_000,
+		);
+	}
+	/** Run › Secrets › Rotate for one environment: its tier and what rotations left behind (names only). */
+	rotation(projectId: string, repoId: string, environment: string): Promise<RotationView> {
+		return this.call(
+			'GET',
+			`/api/projects/${projectId}/repos/${repoId}/rotation/${environment}`,
+			rotationViewSchema,
+		);
+	}
+	/** Make new values in Infisical on this Mac (PIN and the environment's name typed). */
+	rotate(projectId: string, repoId: string, environment: string, body: RotateRequest): Promise<RotationView> {
+		return this.call(
+			'POST',
+			`/api/projects/${projectId}/repos/${repoId}/rotation/${environment}`,
+			rotationViewSchema,
+			body,
+			330_000,
+		);
+	}
+	/** Remove the old keys kept 30 days; a normal deploy then carries the change. */
+	clearPreviousKeys(projectId: string, repoId: string, environment: string, pin: string): Promise<RotationView> {
+		return this.call(
+			'POST',
+			`/api/projects/${projectId}/repos/${repoId}/rotation/${environment}/clear-previous`,
+			rotationViewSchema,
+			{ pin },
+			330_000,
 		);
 	}
 	/** Approves or rejects the deploy job waiting on its GitHub environment, after the PIN. */

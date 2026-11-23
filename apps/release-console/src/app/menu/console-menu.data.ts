@@ -945,6 +945,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				problem: 'Missing + stale',
 				write: 'Write a secret',
 				variables: 'Actions variables',
+				rotate: 'Rotate',
 			},
 			off: false,
 			tip: null,
@@ -956,6 +957,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				problem: 'Missing value blocks a deploy; older server copy flagged',
 				write: 'Write a new value into GitHub from the console',
 				variables: 'GitHub · Actions variables for the repository or one environment: add, change, delete',
+				rotate: 'Infisical · Change passwords and keys: on a schedule (old keys kept 30 days) or after a leak',
 			},
 		},
 		drift: {

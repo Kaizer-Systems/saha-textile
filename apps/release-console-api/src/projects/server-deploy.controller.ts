@@ -66,18 +66,16 @@ export class ServerDeployController {
 	): Promise<VendorAnswer<ServerDeployView>> {
 		try {
 			const c = await this.context(p, r, env);
-			return {
-				state: 'ok',
-				readAt: new Date().toISOString(),
-				data: await serverDeployView(
-					c.repo.sourceCode.repository,
-					c.env.name,
-					c.target,
-					c.key,
-					undefined,
-					c.env.branch || undefined,
-				),
-			};
+			const data = await serverDeployView(
+				c.repo.sourceCode.repository,
+				c.env.name,
+				c.target,
+				c.key,
+				undefined,
+				c.env.branch || undefined,
+			);
+			this.settleRotation(p, r, env, data);
+			return { state: 'ok', readAt: new Date().toISOString(), data };
 		} catch (err) {
 			if (err instanceof NotReady) return { state: 'not-connected', message: err.message };
 			if (err instanceof VendorError) return { state: 'error', message: err.message };
@@ -95,14 +93,26 @@ export class ServerDeployController {
 		@Param('env') env: string,
 		@Body() body: unknown,
 	): Promise<{ ok: true }> {
-		const { pin, allowBlank, confirm, branch } = parseBody(startServerDeploySchema, body);
+		const { pin, allowBlank, confirm, branch, rotate, restartDatabase, action, tag } = parseBody(
+			startServerDeploySchema,
+			body,
+		);
 		const c = await this.ready(p, r, env);
 		if (c.target === 'production' && allowBlank.length && confirm !== 'production')
-			throw new NotReady('Type production to deploy production with blank values.');
+			throw new HelperError('Type production to deploy production with blank values.', 409);
+		// Rotation asks for the environment's name typed (Release Path brief Q6); production asks it for every change.
+		if ((rotate || (c.target === 'production' && (action === 'rollback' || tag))) && confirm?.trim() !== c.env.name)
+			throw new HelperError(`Type ${c.env.name} to confirm.`, 409);
+		if (tag && !tag.startsWith(`${c.target}-`))
+			throw new HelperError(`${tag} is not a release of ${c.target}.`, 409);
 		// Staging and production run their own branch; only a development server takes one per run.
 		if (branch && !BRANCH_PICKED_TARGETS.includes(c.target))
 			throw new NotReady(`${c.env.label} deploys its own branch; change it in Project settings › Repositories.`);
-		this.lock.confirm(sessionOf(req), pin, `deploy ${c.env.name}`);
+		this.lock.confirm(
+			sessionOf(req),
+			pin,
+			action === 'rollback' ? `roll back ${c.env.name}` : `deploy ${c.env.name}${rotate ? ' with rotation' : ''}`,
+		);
 		await this.vendor(() =>
 			startServerDeploy(
 				c.repo.sourceCode.repository,
@@ -111,12 +121,24 @@ export class ServerDeployController {
 				undefined,
 				branch || c.env.branch || undefined,
 				allowBlank,
+				{ rotate, restartDatabase, action, tag },
 			),
 		);
+		if (rotate)
+			this.projects.setRotation(p, r, env, {
+				...this.projects.rotation(p, r, env),
+				requestedAt: new Date().toISOString(),
+			});
+		const what =
+			action === 'rollback'
+				? 'roll back to the previous release'
+				: tag
+					? `deploy the older version ${tag}`
+					: `deploy${rotate ? ` with rotation${restartDatabase ? ' and a database restart' : ''}` : ''}`;
 		this.store.audit(
 			c.project.id,
-			'server-deploy-started',
-			`${c.repo.name} · ${c.env.label} → GitHub environment ${c.target}${allowBlank.length ? ` · allowed blank: ${allowBlank.join(', ')}` : ''}`,
+			action === 'rollback' ? 'server-rollback-started' : 'server-deploy-started',
+			`${c.repo.name} · ${c.env.label} → GitHub environment ${c.target} · ${what}${allowBlank.length ? ` · allowed blank: ${allowBlank.join(', ')}` : ''}`,
 		);
 		return { ok: true };
 	}
@@ -155,6 +177,25 @@ export class ServerDeployController {
 			`${c.repo.name} · ${c.env.label} · run ${runId}`,
 		);
 		return { ok: true };
+	}
+
+	/**
+	 * A successful deploy started with rotation after the values were changed applies them: the
+	 * record of values waiting for a deploy with rotation is cleared (the Infisical chat, 23 Nov).
+	 */
+	private settleRotation(p: string, r: string, env: string, view: ServerDeployView): void {
+		const state = this.projects.rotation(p, r, env);
+		const run = view.run;
+		if (!state.requestedAt || !run || run.status !== 'completed') return;
+		if (Date.parse(run.createdAt) < Date.parse(state.requestedAt) - 120_000) return;
+		this.projects.setRotation(
+			p,
+			r,
+			env,
+			run.conclusion === 'success'
+				? { ...state, pending: [], pendingAt: null, requestedAt: null }
+				: { ...state, requestedAt: null },
+		);
 	}
 
 	private async ready(p: string, r: string, env: string) {

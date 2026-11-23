@@ -17,6 +17,7 @@ import { JobsScreen, MessagesScreen } from './ops-screens';
 import { OverviewScreen } from './overview-screen';
 import { PlannedScreen } from './planned-screen';
 import { ProductScreen, injectPlanFeatures, injectProductScreens } from './product-screen';
+import { RotateScreen } from './rotate-screen';
 import { SecretsScreen } from './secrets-screen';
 import { SeoScreen } from './seo-screen';
 import { ServerDeployScreen } from './server-deploy-screen';
@@ -50,7 +51,7 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 	health: 'normal',
 	alerts: ['rules', 'firing'],
 	apm: ['services', 'endpoint'],
-	secrets: ['matrix', 'problem'],
+	secrets: ['matrix', 'problem', 'rotate'],
 	pulls: 'list',
 	pipeline: 'list',
 	droplets: [
@@ -122,6 +123,7 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 		AlertsScreen,
 		ApmScreen,
 		SecretsScreen,
+		RotateScreen,
 	],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
@@ -298,7 +300,11 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 						<rc-health-screen />
 					}
 					@case ('secrets') {
-						<rc-secrets-screen [tab]="tabKey()" />
+						@if (tabKey() === 'rotate') {
+							<rc-rotate-screen />
+						} @else {
+							<rc-secrets-screen [tab]="tabKey()" />
+						}
 					}
 					@case ('apm') {
 						<rc-apm-screen [tab]="tabKey()" />

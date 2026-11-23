@@ -11,7 +11,9 @@ import {
 	type Project,
 	type Repository,
 	type LinkKey,
+	type RotationState,
 	type SlotKeys,
+	emptyRotation,
 } from '@saha-textile/release-console-contracts';
 
 import { KeySourceService } from '../keys/key-source.js';
@@ -250,6 +252,21 @@ export class ProjectsService {
 			return { ...f, envTags: { ...f.envTags, [slot]: tags } };
 		});
 		this.store.audit(projectId, 'env-tag', `${stale.join(', ')} → removed (no longer on the account)`);
+	}
+
+	/** What secret rotations left behind for one environment (Release Path brief, Part 3). */
+	rotation(projectId: string, repoId: string, env: string): RotationState {
+		return this.store.read().rotations[`${projectId}/${repoId}`]?.[env] ?? emptyRotation();
+	}
+
+	/** Replaces one environment's rotation record (names and dates only). */
+	setRotation(projectId: string, repoId: string, env: string, next: RotationState): RotationState {
+		const slot = `${projectId}/${repoId}`;
+		this.store.update((f) => ({
+			...f,
+			rotations: { ...f.rotations, [slot]: { ...(f.rotations[slot] ?? {}), [env]: next } },
+		}));
+		return next;
 	}
 
 	/** Who may sign in over SSH to the project's servers (owner, 21 Nov: a list, more added later). */

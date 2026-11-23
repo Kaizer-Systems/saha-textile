@@ -1,5 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
-import { repositorySchema } from '@saha-textile/release-console-contracts';
+import { type RotationState, emptyRotation, repositorySchema } from '@saha-textile/release-console-contracts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ServerDeployController } from './server-deploy.controller.js';
@@ -25,9 +25,12 @@ const repo = repositorySchema.parse({
 });
 
 function controller(pinOk = true) {
+	let rotation: RotationState = emptyRotation();
 	const projects = {
 		repository: vi.fn(() => ({ project: { id: 'saha-textile', keys: [{ id: 'gh' }] }, repo })),
 		valueOf: vi.fn(async () => 'github-key-not-real'),
+		rotation: vi.fn(() => rotation),
+		setRotation: vi.fn((_p: string, _r: string, _e: string, next: RotationState) => (rotation = next)),
 	};
 	const lock = {
 		confirm: vi.fn(() => {
@@ -35,7 +38,13 @@ function controller(pinOk = true) {
 		}),
 	};
 	const store = { audit: vi.fn() };
-	return { c: new ServerDeployController(projects as never, lock as never, store as never), lock, store };
+	return {
+		c: new ServerDeployController(projects as never, lock as never, store as never),
+		lock,
+		store,
+		projects,
+		rotation: () => rotation,
+	};
 }
 
 describe('server deploys from the console', () => {
@@ -79,6 +88,7 @@ describe('server deploys from the console', () => {
 			undefined,
 			undefined,
 			[],
+			{ rotate: false, restartDatabase: false, action: 'deploy', tag: undefined },
 		);
 		expect(right.store.audit).toHaveBeenCalledWith(
 			'saha-textile',
@@ -105,5 +115,52 @@ describe('server deploys from the console', () => {
 			true,
 			'github-key-not-real',
 		);
+	});
+
+	it('rotates only with the environment’s name typed, and clears the waiting values after a good run', async () => {
+		const { c, rotation, projects } = controller();
+		projects.setRotation('saha-textile', 'saha-textile', 'staging', { ...emptyRotation(), pending: ['redis'] });
+		await expect(
+			c.start(req, 'saha-textile', 'saha-textile', 'staging', { pin: '135790', rotate: true }),
+		).rejects.toThrow(/Type staging/);
+		await expect(
+			c.start(req, 'saha-textile', 'saha-textile', 'staging', { pin: '135790', restartDatabase: true }),
+		).rejects.toThrow(/only with rotation/);
+		await c.start(req, 'saha-textile', 'saha-textile', 'staging', {
+			pin: '135790',
+			rotate: true,
+			restartDatabase: true,
+			confirm: 'staging',
+		});
+		expect(vi.mocked(deploys.startServerDeploy).mock.calls.at(-1)?.[6]).toMatchObject({
+			rotate: true,
+			restartDatabase: true,
+		});
+		expect(rotation().requestedAt).not.toBeNull();
+		vi.mocked(deploys.serverDeployView).mockResolvedValueOnce({
+			run: { status: 'completed', conclusion: 'success', createdAt: new Date().toISOString() },
+		} as never);
+		await c.view('saha-textile', 'saha-textile', 'staging');
+		expect(rotation()).toMatchObject({ pending: [], requestedAt: null });
+	});
+
+	it('rolls back and deploys an older version of this environment only', async () => {
+		const { c, store } = controller();
+		await c.start(req, 'saha-textile', 'saha-textile', 'staging', { pin: '135790', action: 'rollback' });
+		expect(vi.mocked(deploys.startServerDeploy).mock.calls.at(-1)?.[6]).toMatchObject({ action: 'rollback' });
+		expect(store.audit).toHaveBeenLastCalledWith('saha-textile', 'server-rollback-started', expect.any(String));
+		await expect(
+			c.start(req, 'saha-textile', 'saha-textile', 'staging', {
+				pin: '135790',
+				tag: 'production-20261123-142210-08ac015c',
+			}),
+		).rejects.toThrow(/not a release of staging/);
+		await expect(
+			c.start(req, 'saha-textile', 'saha-textile', 'staging', {
+				pin: '135790',
+				action: 'rollback',
+				rotate: true,
+			}),
+		).rejects.toThrow(/only swaps/);
 	});
 });

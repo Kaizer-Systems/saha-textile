@@ -3,7 +3,7 @@
  * workflow runs, approvals, release steps, impact, rollback, the release calendar, the dress
  * rehearsal and the load test, read live from GitHub (and the local request log for impact).
  */
-import { DEPLOY_WORKFLOW } from '@saha-textile/release-console-contracts';
+import { DEPLOY_WORKFLOW, deployFailureOf } from '@saha-textile/release-console-contracts';
 
 import type { Follow, ProductCtx, ProductScreen } from './kit.js';
 import {
@@ -752,6 +752,9 @@ const releasePlan = (mode: 'plan' | 'blocked') => async (ctx: ProductCtx) => {
 			.map((s) => ({ j, s })),
 	);
 	const stop = all.find((x) => str(x.s['conclusion']) === 'failure');
+	// The release step that failed and its message, from the failed job's log (Release Path brief F12).
+	const tail = stop ? await logTail(ctx, String(num(stop.j['id'])), 600) : [];
+	const failure = deployFailureOf(tail.map((l) => l.text));
 	return view(
 		{
 			head: {
@@ -762,8 +765,14 @@ const releasePlan = (mode: 'plan' | 'blocked') => async (ctx: ProductCtx) => {
 			notes: stop
 				? [
 						note(
-							`The release stopped before the switch: “${str(stop.s['name'])}” failed in ${str(stop.j['name'])}. The shop kept serving the previous release.`,
-							'red',
+							failure?.kind === 'release-step'
+								? `${failure.step ?? 'A release step'} failed: ${failure.message}. The deploy stopped before the switch; the shop kept serving the previous release.`
+								: failure?.kind === 'refused-secrets'
+									? `The server refused the release: ${failure.names.join(', ')} in Infisical differ from what the database, Redis or search run with. Nothing changed; deploy again with rotation from Live deploy.`
+									: failure
+										? `The server stopped: ${failure.message}. The shop kept serving the previous release.`
+										: `The release stopped before the switch: “${str(stop.s['name'])}” failed in ${str(stop.j['name'])}. The shop kept serving the previous release.`,
+							failure?.kind === 'refused-secrets' ? 'amber' : 'red',
 						),
 					]
 				: [],
@@ -792,14 +801,7 @@ const releasePlan = (mode: 'plan' | 'blocked') => async (ctx: ProductCtx) => {
 					),
 					'No steps.',
 				),
-				...(stop
-					? [
-							logTable(
-								`Log of ${str(stop.j['name'])} (last lines, errors red)`,
-								await logTail(ctx, String(num(stop.j['id']))),
-							),
-						]
-					: []),
+				...(stop ? [logTable(`Log of ${str(stop.j['name'])} (last lines, errors red)`, tail.slice(-120))] : []),
 			],
 			links: [{ label: 'Open on GitHub', url: str(r['html_url']) }],
 		},

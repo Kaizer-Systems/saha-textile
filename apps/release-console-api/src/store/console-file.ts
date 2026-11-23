@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { projectSchema } from '@saha-textile/release-console-contracts';
+import { projectSchema, rotationStateSchema } from '@saha-textile/release-console-contracts';
 
 /**
  * The console's state, kept in its database. It holds projects, key links, the PIN and password
@@ -22,6 +22,12 @@ export const consoleFileSchema = z.object({
 	 * `do:k8s:<id>`, `do:app:<id>`) → one of that repository's environment names.
 	 */
 	envTags: z.record(z.string(), z.record(z.string(), z.string())).default({}),
+	/**
+	 * Per `project/repository`, per environment: what secret rotations left behind (Release Path brief,
+	 * Part 3): values waiting for a deploy with rotation, old keys kept 30 days, the last change. Names
+	 * and dates only; the values live in Infisical.
+	 */
+	rotations: z.record(z.string(), z.record(z.string(), rotationStateSchema)).default({}),
 });
 export type ConsoleFile = z.infer<typeof consoleFileSchema>;
 
@@ -34,4 +40,5 @@ export const emptyConsoleFile = (): ConsoleFile => ({
 	preferred: 'pin',
 	lock: { failures: 0, lockedUntil: null },
 	envTags: {},
+	rotations: {},
 });

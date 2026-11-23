@@ -4,9 +4,13 @@ import {
 	DEPLOY_WORKFLOW,
 	type DeployJob,
 	type DeployRun,
+	RELEASE_TAG,
+	type ReleaseTag,
 	SERVER_TARGETS,
 	type ServerDeployView,
 	type ServerTarget,
+	deployFailureOf,
+	releaseTagTime,
 } from '@saha-textile/release-console-contracts';
 
 import { VendorError, arr, getJson, num, rec, sendJson, str } from './http.js';
@@ -18,8 +22,18 @@ const GH = { 'x-github-api-version': '2022-11-28' };
 export interface GithubHttp {
 	get: typeof getJson;
 	send: typeof sendJson;
+	/** A job's log as text (GitHub answers with a redirect to the file), or `null` when it cannot be read. */
+	log: (url: string, key: string) => Promise<string | null>;
 }
-const live: GithubHttp = { get: getJson, send: sendJson };
+async function jobLog(url: string, key: string): Promise<string | null> {
+	const res = await fetch(url, {
+		headers: { authorization: `Bearer ${key}`, 'user-agent': 'release-console', ...GH },
+		redirect: 'follow',
+		signal: AbortSignal.timeout(20_000),
+	}).catch(() => null);
+	return res?.ok ? res.text() : null;
+}
+const live: GithubHttp = { get: getJson, send: sendJson, log: jobLog };
 
 const nul = (v: unknown): string | null => (typeof v === 'string' ? v : null);
 const step = (s: unknown) => {
@@ -75,6 +89,22 @@ async function runsOf(http: GithubHttp, repository: string, target: ServerTarget
 		.slice(0, 10);
 }
 
+/** This environment's release tags (deploy.yml pushes one after each healthy deploy), newest first. */
+async function tagsOf(http: GithubHttp, repository: string, target: ServerTarget, key: string): Promise<ReleaseTag[]> {
+	const a = await http.get(`${API}/repos/${repository}/tags?per_page=100`, key, GH);
+	if (a.status >= 400) return [];
+	return arr(a.body)
+		.map(rec)
+		.map((t) => ({
+			name: str(t['name']),
+			commit: str(rec(t['commit'])['sha']).slice(0, 7),
+			at: releaseTagTime(str(t['name'])),
+		}))
+		.filter((t): t is ReleaseTag => t.at !== null && RELEASE_TAG.exec(t.name)?.[1] === target)
+		.sort((a, b) => b.name.localeCompare(a.name))
+		.slice(0, 30);
+}
+
 /**
  * Everything Ship › Live deploy shows for a server environment: whether its GitHub environment is
  * set up for deploy.yml, the newest run with its jobs and steps, and the runs before it.
@@ -92,13 +122,14 @@ export async function serverDeployView(
 	const base = `${API}/repos/${repository}`;
 	const repo = rec((await http.get(base, key, GH)).body);
 	const defaultBranch = str(repo['default_branch']) || 'main';
-	const [environmentExists, onBranch, onDefault, variables, secrets, runs] = await Promise.all([
+	const [environmentExists, onBranch, onDefault, variables, secrets, runs, tags] = await Promise.all([
 		exists(http, `${base}/environments/${target}`, key),
 		exists(http, `${base}/contents/.github/workflows/${DEPLOY_WORKFLOW}?ref=${branch}`, key),
 		exists(http, `${base}/contents/.github/workflows/${DEPLOY_WORKFLOW}?ref=${defaultBranch}`, key),
 		names(http, `${base}/environments/${target}/variables?per_page=30`, key, 'variables'),
 		names(http, `${base}/environments/${target}/secrets?per_page=30`, key, 'secrets'),
 		runsOf(http, repository, target, key),
+		tagsOf(http, repository, target, key),
 	]);
 	const summary = (r: Record<string, unknown>) => ({
 		id: num(r['id']),
@@ -123,6 +154,15 @@ export async function serverDeployView(
 		}
 		run = { ...summary(newest), waiting, jobs };
 	}
+	// Why the newest run did not go live: the failed job's log names the step and its message.
+	let failure = null;
+	if (run?.conclusion === 'failure') {
+		const raw = arr(rec((await http.get(`${base}/actions/runs/${run.id}/jobs?per_page=100`, key, GH)).body)['jobs'])
+			.map(rec)
+			.find((j) => str(j['conclusion']) === 'failure');
+		const text = raw ? await http.log(`${base}/actions/jobs/${num(raw['id'])}/logs`, key) : null;
+		failure = text ? deployFailureOf(text.split('\n').slice(-600)) : null;
+	}
 	return {
 		environment,
 		target,
@@ -135,7 +175,17 @@ export async function serverDeployView(
 		},
 		run,
 		recent: runs.slice(1).map(summary),
+		failure,
+		tags,
 	};
+}
+
+/** What one start of deploy.yml asks for beyond the target: rotation, a rollback or an older version. */
+export interface DeployOptions {
+	rotate?: boolean;
+	restartDatabase?: boolean;
+	action?: 'deploy' | 'rollback';
+	tag?: string;
 }
 
 /**
@@ -150,22 +200,37 @@ export async function startServerDeploy(
 	http: GithubHttp = live,
 	chosen?: string,
 	allowBlank: readonly string[] = [],
+	options: DeployOptions = {},
 ): Promise<void> {
-	const branch = chosen || SERVER_TARGETS[target].branch;
+	const branch = options.tag || chosen || SERVER_TARGETS[target].branch;
+	// Only the inputs this start needs, so a deploy.yml without the newer ones still takes a plain deploy.
+	const inputs: Record<string, string> = { environment: target, allow_blank: [...new Set(allowBlank)].join(',') };
+	if (options.rotate) inputs['rotate'] = 'true';
+	if (options.rotate && options.restartDatabase) inputs['restart_database'] = 'true';
+	if (options.action === 'rollback') inputs['action'] = 'rollback';
 	const a = await http.send(
 		'POST',
 		`${API}/repos/${repository}/actions/workflows/${DEPLOY_WORKFLOW}/dispatches`,
 		key,
-		{ ref: branch, inputs: { environment: target, allow_blank: [...new Set(allowBlank)].join(',') } },
+		{ ref: branch, inputs },
 		GH,
 	);
 	if (a.status === 404)
 		throw new VendorError(`deploy.yml is not on ${branch} and the default branch yet; merge it there first.`, 409);
-	if (a.status === 422)
+	if (a.status === 422) {
+		const said = str(rec(a.body)['message']);
+		if (/unexpected inputs/i.test(said))
+			throw new VendorError(
+				`deploy.yml on ${branch} does not take ${options.action === 'rollback' ? 'a rollback' : 'rotation'} yet; the deploy-script side lands first.`,
+				409,
+			);
 		throw new VendorError(
-			`GitHub would not start deploy.yml on ${branch}: the ${target} environment's rules may not allow that branch.`,
+			options.tag
+				? `GitHub would not start deploy.yml on ${branch}: the ${target} environment's rules may not allow its tags yet (Finish setup adds ${target}-*).`
+				: `GitHub would not start deploy.yml on ${branch}: the ${target} environment's rules may not allow that branch.`,
 			409,
 		);
+	}
 	if (a.status !== 204) throw failed('start the deploy', a.status);
 }
 

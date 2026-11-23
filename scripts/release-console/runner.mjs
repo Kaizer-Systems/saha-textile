@@ -44,7 +44,7 @@ import {
 import { toolsGh } from './gh-tools.mjs';
 import { BRANCH_NAME, checkoutBranches, menusFileAt } from './git-branches.mjs';
 import { repositoryOf } from './infisical-places.mjs';
-import { loadInventory, ROOT, TIERS } from '../secrets/inventory.mjs';
+import { loadInventory, ROOT, SERVER_TIERS, TIERS } from '../secrets/inventory.mjs';
 import { FirstBootError, firstBootTemplate, prepareFirstBoot } from './first-boot.mjs';
 import { SetupError, aopPair, certificateFiles, githubEnvironment, knownHosts, originCsr } from './server-setup.mjs';
 
@@ -282,6 +282,75 @@ export function saveSecrets(body) {
 			}
 		});
 		child.stdin.end(JSON.stringify(body));
+	});
+}
+
+/** The rotate script's value ids (Release Path brief, Part 3; the Infisical chat's `pnpm secrets:rotate`). */
+export const ROTATE_IDS = ['mongo-app', 'redis', 'mongo-root', 'search', 'keyfile', 'sign-in', 'csrf', 'mailbox'];
+
+/**
+ * The arguments for `pnpm secrets:rotate` from the console's request: a server tier, then either the
+ * ids to change (with `--no-grace` after a leak) or `--clear-previous` alone. Anything else is refused.
+ */
+export function rotateArgs(body) {
+	const tier = SERVER_TIERS.includes(body?.tier) ? body.tier : null;
+	if (!tier) throw Object.assign(new Error('Rotation is for a server environment.'), { status: 400 });
+	const args = ['--silent', 'secrets:rotate', '--', tier];
+	if (body.clearPrevious === true) args.push('--clear-previous');
+	else {
+		const ids = Array.isArray(body.ids) ? [...new Set(body.ids.filter((i) => ROTATE_IDS.includes(i)))] : [];
+		if (!ids.length) throw Object.assign(new Error('Pick at least one value to change.'), { status: 400 });
+		args.push('--names', ids.join(','));
+		if (body.grace === false) args.push('--no-grace');
+	}
+	args.push('--json');
+	return args;
+}
+
+/**
+ * Makes new values and writes them into Infisical through the Infisical chat's script, on this Mac
+ * with the owner's Infisical sign-in. The script prints names only; its last JSON line is the answer.
+ */
+export function rotateSecrets(body, run = spawn) {
+	return new Promise((resolve, reject) => {
+		let args;
+		try {
+			args = rotateArgs(body);
+		} catch (err) {
+			reject(err);
+			return;
+		}
+		const child = run('pnpm', args, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+		let out = '';
+		let err = '';
+		const timer = setTimeout(() => child.kill('SIGTERM'), 300_000);
+		child.stdout.setEncoding('utf8');
+		child.stderr.setEncoding('utf8');
+		child.stdout.on('data', (chunk) => (out += chunk));
+		child.stderr.on('data', (chunk) => (err += chunk));
+		child.on('error', () => {
+			clearTimeout(timer);
+			reject(Object.assign(new Error('pnpm could not be started on this Mac.'), { status: 502 }));
+		});
+		child.on('close', (code) => {
+			clearTimeout(timer);
+			const last = out
+				.split('\n')
+				.map((l) => l.trim())
+				.filter((l) => l.startsWith('{'))
+				.pop();
+			try {
+				if (code === 0 && last) return resolve(JSON.parse(last));
+			} catch {
+				/* falls through to the error below */
+			}
+			const said = err
+				.split('\n')
+				.map((l) => l.trim())
+				.filter(Boolean)
+				.pop();
+			reject(Object.assign(new Error(said || 'The rotate script did not finish.'), { status: 422 }));
+		});
 	});
 }
 
@@ -683,6 +752,21 @@ export function createRunner(token) {
 					return send(200, await saveSecrets({ place, changes: body.changes }));
 				} finally {
 					forget(placeKey(place));
+				}
+			}
+			// Release Path brief, Part 3: new values made on this Mac and written into Infisical (names only back).
+			if (req.method === 'POST' && path === '/secrets/rotate') {
+				let raw = '';
+				for await (const chunk of req) {
+					raw += chunk;
+					if (raw.length > 8 * 1024) return send(413, { message: 'Too long.' });
+				}
+				try {
+					return send(200, await rotateSecrets(raw ? JSON.parse(raw) : {}));
+				} catch (err) {
+					return send(err.status ?? 500, { message: err.message });
+				} finally {
+					forget('secrets');
 				}
 			}
 			// A new server's first-boot file (DigitalOcean › Droplets › create): the deploy key pair is made

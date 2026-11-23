@@ -1,10 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal, viewChild } from '@angular/core';
+import { Router } from '@angular/router';
 
 import {
 	BLANK_TOGETHER,
 	BRANCH_PICKED_TARGETS,
+	DATA_FILE_IDS,
+	DATA_SECRET_LABELS,
+	type RotateId,
 	neverBlankReason,
+	rotateRowsOf,
 	serverLane,
+	DeployRun,
+	ServerDeployView,
+	ServerTarget,
 } from '@saha-textile/release-console-contracts';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 
@@ -15,8 +23,6 @@ import { BranchPicker } from '../shared/branch-picker';
 import { BrandLogo, Icon } from '../shared/icons';
 import { Loading } from '../shared/loading';
 import { PIN_LENGTH, PinBoxes } from '../shared/pin-boxes';
-
-import type { DeployRun, ServerDeployView, ServerTarget } from '@saha-textile/release-console-contracts';
 
 /** Each lane row's icon. */
 const LANE_ICONS: Record<string, string> = {
@@ -145,6 +151,66 @@ export function blankEffects(names: string[]): { stops: string[]; restWorks: boo
 							and the steps in docker/production/README.md, "A new server".
 						</div>
 					</div>
+				}
+				<!-- Why the newest run is not live (Release Path brief 4.1, paths F8/R2 and F12). -->
+				@if (d.run?.conclusion === 'failure' && d.failure; as f) {
+					@if (f.kind === 'refused-secrets') {
+						<div class="rc-banner amber small">
+							<span class="rc-dot amber"></span>
+							<div>
+								<b>
+									{{ refusedLabel(f.names) }} in Infisical
+									{{ f.names.length === 1 ? 'differs' : 'differ' }} from what the server runs with.
+								</b>
+								The server changed nothing. Rotate {{ f.names.length === 1 ? 'it' : 'them' }} in this
+								deploy, or put the old value back.
+							</div>
+							<button
+								type="button"
+								class="rc-btn primary"
+								(click)="rotateAgain(f.names)"
+							>
+								Deploy again with rotation
+							</button>
+							<button
+								type="button"
+								class="rc-btn ghost"
+								(click)="go('secrets', 'rotate')"
+							>
+								Run › Secrets
+							</button>
+						</div>
+					} @else {
+						<div class="rc-banner red small">
+							<span class="rc-dot red"></span>
+							<div>
+								<b>{{ f.step ? f.step + ' failed:' : 'The deploy stopped on the server:' }}</b>
+								{{ f.message }}.
+								{{
+									f.kind === 'release-step'
+										? 'The deploy stopped before the switch; ' +
+											d.target +
+											' still runs the previous release.'
+										: 'The previous release keeps serving.'
+								}}
+							</div>
+							<button
+								type="button"
+								class="rc-btn ghost"
+								(click)="go('steps', 'blocked')"
+							>
+								Release steps
+							</button>
+							<a
+								class="rc-btn ghost"
+								[href]="d.run.url"
+								target="_blank"
+								rel="noopener"
+							>
+								Logs
+							</a>
+						</div>
+					}
 				}
 				<div class="rc-g3 deploy">
 					<div class="rc-panel">
@@ -459,23 +525,88 @@ export function blankEffects(names: string[]): { stops: string[]; restWorks: boo
 										The shop, admin, catalogue and browsing work.
 									}
 								</p>
-								@if (d.target === 'production') {
-									<div class="rc-form">
-										<label>
-											Type production to confirm
-											<div class="rc-msearch">
-												<input
-													type="text"
-													autocomplete="off"
-													aria-label="Type production to confirm"
-													[value]="confirmText()"
-													(input)="confirmText.set($any($event.target).value)"
-												/>
-											</div>
-										</label>
-									</div>
-								}
 							}
+						}
+						<!-- Rotate secrets in this deploy (Release Path brief 2.3 and 3.2). -->
+						<span class="rc-label">Rotate secrets in this deploy</span>
+						@if (rotateIds().length) {
+							<div class="rc-banner amber small">
+								<span class="rc-dot amber"></span>
+								<div>
+									<b>
+										{{ rotateRows().length }}
+										{{ rotateRows().length === 1 ? 'value' : 'values' }} in Infisical
+										{{ rotateRows().length === 1 ? 'differs' : 'differ' }} from what the server
+										runs.
+									</b>
+									This deploy changes them on the server before the switch.
+								</div>
+							</div>
+							@for (row of rotateRows(); track row.key) {
+								<div
+									class="do-tick on"
+									role="checkbox"
+									aria-checked="true"
+									aria-disabled="true"
+								>
+									<i aria-hidden="true"></i>
+									<span>{{ row.label }} · {{ row.scheduled }}</span>
+								</div>
+							}
+							@if (rotateIds().includes('keyfile')) {
+								<div
+									class="do-tick"
+									role="checkbox"
+									tabindex="0"
+									[attr.aria-checked]="restartDb()"
+									[class.on]="restartDb()"
+									(click)="restartDb.set(!restartDb())"
+									(keydown.enter)="restartDb.set(!restartDb())"
+								>
+									<i aria-hidden="true"></i>
+									<span>
+										Restart the database now for a new keyfile · about 20 s, back-in-a-moment page
+									</span>
+								</div>
+							}
+							<span class="rc-label">What runs</span>
+							<p class="rc-note rc-mono">
+								deploy.yml · rotate = true{{ restartDb() ? ' · restart_database = true' : '' }}
+							</p>
+							<p class="rc-note rc-mono">
+								→ release {{ d.target }} --rotate{{ restartDb() ? ' --restart-database' : '' }}
+							</p>
+							<p class="rc-note">
+								If any change fails, every value goes back to the old one and the old release keeps
+								serving.
+							</p>
+						} @else {
+							<div
+								class="do-tick"
+								aria-disabled="true"
+							>
+								<i aria-hidden="true"></i>
+								<span>
+									Nothing to rotate. Changes made under Run › Secrets › Rotate show here, ticked, with
+									what each one does.
+								</span>
+							</div>
+						}
+						@if (rotateIds().length || (d.target === 'production' && allowed().length)) {
+							<div class="rc-form">
+								<label>
+									Type {{ environment() }}
+									<div class="rc-msearch">
+										<input
+											type="text"
+											autocomplete="off"
+											[attr.aria-label]="'Type ' + environment() + ' to confirm'"
+											[value]="confirmText()"
+											(input)="confirmText.set($any($event.target).value)"
+										/>
+									</div>
+								</label>
+							</div>
 						}
 						<div class="rc-form">
 							<label>
@@ -512,7 +643,7 @@ export function blankEffects(names: string[]): { stops: string[]; restWorks: boo
 									class="rc-btn primary"
 									[disabled]="!pinReady() || busy() || running() || needsConfirm()"
 								>
-									Start the deploy
+									{{ rotateIds().length ? 'Deploy and rotate' : 'Start the deploy' }}
 								</button>
 							}
 							@if (d.run) {
@@ -656,16 +787,45 @@ export class ServerDeployScreen {
 	);
 	protected readonly neverShown = computed(() => this.blankSplit().never.filter((x) => this.matches(x.name)));
 	protected readonly effects = computed(() => blankEffects(this.allowed()));
-	/** Production with allowed blanks waits for its name typed (the API checks it too). */
+	/**
+	 * Rotation asks for the environment's name typed (Release Path brief Q6), and production with
+	 * allowed blanks does too (the API checks both).
+	 */
 	protected readonly needsConfirm = computed(() => {
 		const a = this.view.data();
-		return (
-			a?.state === 'ok' &&
-			a.data.target === 'production' &&
-			this.allowed().length > 0 &&
-			this.confirmText().trim() !== 'production'
-		);
+		if (a?.state !== 'ok') return false;
+		const asks = this.rotateIds().length > 0 || (a.data.target === 'production' && this.allowed().length > 0);
+		return asks && this.confirmText().trim() !== this.environment();
 	});
+	/** What rotations left waiting for a deploy with rotation (names only), read with the view. */
+	protected readonly rotation = injectQuery(() => ({
+		queryKey: ['rotation', this.ctx.projectId(), this.ctx.repoId(), this.environment()],
+		queryFn: () => this.api.rotation(this.ctx.projectId() ?? '', this.ctx.repoId() ?? '', this.environment()),
+		enabled: !!this.ctx.projectId() && !!this.ctx.repoId(),
+	}));
+	/** Values the server refused, added with "Deploy again with rotation". */
+	private readonly refused = signal<RotateId[]>([]);
+	protected readonly rotateIds = computed(() => [
+		...new Set([...(this.rotation.data()?.state.pending ?? []), ...this.refused()]),
+	]);
+	protected readonly rotateRows = computed(() => rotateRowsOf(this.rotateIds()));
+	protected readonly restartDb = signal(false);
+	/** The refused data-service files in words ("Redis password, database keyfile"). */
+	protected refusedLabel(names: string[]): string {
+		const text = names.map((n) => DATA_SECRET_LABELS[n] ?? n).join(', ');
+		return text.charAt(0).toUpperCase() + text.slice(1);
+	}
+	/** Deploy again with rotation: the refused values are ticked; the name and PIN still confirm it. */
+	protected rotateAgain(names: string[]): void {
+		this.refused.set(names.map((n) => DATA_FILE_IDS[n]).filter((x): x is RotateId => !!x));
+		this.message.set(`Type ${this.environment()} and your PIN, then Deploy and rotate.`);
+	}
+	private readonly router = inject(Router);
+	protected go(screen: string, tab: string): void {
+		void this.router.navigate(['/p', this.ctx.projectId(), 'r', this.ctx.repoId(), screen], {
+			queryParams: { tab },
+		});
+	}
 	protected allowAll(): void {
 		this.allowed.set([...new Set([...this.allowed(), ...this.blankSplit().offered])]);
 	}
@@ -784,9 +944,14 @@ export class ServerDeployScreen {
 					this.allowed(),
 					this.confirmText() || undefined,
 					this.pickedBranch() || undefined,
+					this.rotateIds().length
+						? { rotate: true, restartDatabase: this.rotateIds().includes('keyfile') && this.restartDb() }
+						: {},
 				),
 			'Started. GitHub shows the run in a few seconds; the deploy job then waits for your approval here.',
 		);
+		this.refused.set([]);
+		void this.rotation.refetch();
 	}
 
 	protected async review(approve: boolean): Promise<void> {

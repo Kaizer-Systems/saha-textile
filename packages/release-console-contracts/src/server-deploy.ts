@@ -106,6 +106,77 @@ export const deployRunSchema = z.object({
 });
 export type DeployRun = z.infer<typeof deployRunSchema>;
 
+/**
+ * Why a deploy did not go live, read from the deploy job's log (Release Path brief, paths F8/R2 and
+ * F12): a release step that failed with its message, the server's refusal of changed data-service
+ * secrets with their names, or the server's own "FAILED:" line.
+ */
+export const deployFailureSchema = z.object({
+	kind: z.enum(['release-step', 'refused-secrets', 'stopped']),
+	/** The release step's label (roles, indexes, migrations, search), for a failed release step. */
+	step: z.string().nullable(),
+	message: z.string(),
+	/** The data-service secrets the server refused, for a refusal. */
+	names: z.array(z.string()),
+});
+export type DeployFailure = z.infer<typeof deployFailureSchema>;
+
+/** The data-service secret files deploy.sh compares, in the words the console shows. */
+export const DATA_SECRET_LABELS: Readonly<Record<string, string>> = {
+	'mongo-keyfile': 'database keyfile',
+	'mongo-root-username': 'database administrator name',
+	'mongo-root-password': 'database administrator password',
+	'mongo-app-password': 'database app password',
+	'redis-password': 'Redis password',
+	'meilisearch.toml': 'search master key',
+};
+
+/** A GitHub log line without its timestamp. */
+const bareLine = (line: string) => line.replace(/^\uFEFF?\d{4}-\d\d-\d\dT[\d:.]+Z\s?/, '').trimEnd();
+
+/**
+ * Reads the deploy job's log for why it stopped. deploy.sh's refusal names the secrets after
+ * "already run with:" (its wording after the names may change; the Infisical chat, 23 Nov); the
+ * release steps print "✗ <step>: <message>"; deploy.sh's own stops print "FAILED: <message>".
+ */
+export function deployFailureOf(lines: readonly string[]): DeployFailure | null {
+	const clean = lines.map(bareLine);
+	const refused = clean.find((l) => l.includes('already run with:'));
+	if (refused) {
+		const after = refused.slice(refused.indexOf('already run with:') + 'already run with:'.length);
+		const names = (after.split('.')[0] ?? '')
+			.split(/,\s*|\s+and\s+/)
+			.map((n) => n.trim())
+			.filter((n) => /^[\w.-]+$/.test(n));
+		return {
+			kind: 'refused-secrets',
+			step: null,
+			message: refused.replace(/^FAILED:\s*/, ''),
+			names,
+		};
+	}
+	const step = [...clean].reverse().find((l) => /^✗ [^:]+: /.test(l));
+	if (step) {
+		const m = /^✗ ([^:]+): (.*?)(?: \(\d+ ms\))?$/.exec(step);
+		return { kind: 'release-step', step: m?.[1] ?? null, message: m?.[2] ?? step, names: [] };
+	}
+	const stop = [...clean].reverse().find((l) => l.startsWith('FAILED: '));
+	return stop ? { kind: 'stopped', step: null, message: stop.slice('FAILED: '.length), names: [] } : null;
+}
+
+/** A release tag deploy.yml pushes after a healthy deploy: `<environment>-<yyyymmdd-hhmmss>-<sha8>`. */
+export const RELEASE_TAG = /^(staging|production|development)-(\d{8})-(\d{6})-([0-9a-f]{8})$/;
+export const releaseTagSchema = z.object({ name: z.string(), commit: z.string(), at: z.string() });
+export type ReleaseTag = z.infer<typeof releaseTagSchema>;
+
+/** The tag's own date and time (UTC), as an ISO string, or `null` for another tag. */
+export function releaseTagTime(name: string): string | null {
+	const m = RELEASE_TAG.exec(name);
+	if (!m) return null;
+	const [d, t] = [m[2] ?? '', m[3] ?? ''];
+	return `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T${t.slice(0, 2)}:${t.slice(2, 4)}:${t.slice(4, 6)}Z`;
+}
+
 export const serverDeployViewSchema = z.object({
 	environment: z.string(),
 	target: z.enum(['staging', 'production', 'development']).nullable(),
@@ -119,6 +190,10 @@ export const serverDeployViewSchema = z.object({
 	}),
 	run: deployRunSchema.nullable(),
 	recent: z.array(deployRunSchema.omit({ jobs: true, waiting: true })),
+	/** Why the newest run did not go live, when it failed (read from its deploy job's log). */
+	failure: deployFailureSchema.nullable().default(null),
+	/** This environment's release tags, newest first (Deploy an older version). */
+	tags: z.array(releaseTagSchema).default([]),
 });
 export type ServerDeployView = z.infer<typeof serverDeployViewSchema>;
 export const serverDeployAnswerSchema = vendorAnswer(serverDeployViewSchema);
@@ -155,26 +230,50 @@ export function neverBlankReason(name: string): string | null {
  * A server deploy runs on its environment's own branch (owner, 20 Nov: server branches are frozen
  * on the deploy screen and change only in the wizard or Project settings › Repositories).
  */
-export const startServerDeploySchema = z.object({
-	pin: confirmation,
-	/**
-	 * Required values the owner lets this deploy run without (brief 26gq3NbcbBESea6abRtsa3, screen 12):
-	 * passed to deploy.yml as `allow_blank`, then to the release step as `--allow-blank NAME` each.
-	 */
-	allowBlank: z
-		.array(
-			z
-				.string()
-				.regex(/^[A-Z][A-Z0-9_]{1,63}$/)
-				.refine((n) => neverBlankReason(n) === null, { message: 'This value can never be deployed blank.' }),
-		)
-		.max(60)
-		.default([]),
-	/** Production with blanks asks for its name typed. */
-	confirm: z.string().max(40).optional(),
-	/** A development server only: this run's branch, picked on the deploy tab (owner, 21 Nov). */
-	branch: branchNameSchema.optional(),
-});
+export const startServerDeploySchema = z
+	.object({
+		pin: confirmation,
+		/**
+		 * Required values the owner lets this deploy run without (brief 26gq3NbcbBESea6abRtsa3, screen 12):
+		 * passed to deploy.yml as `allow_blank`, then to the release step as `--allow-blank NAME` each.
+		 */
+		allowBlank: z
+			.array(
+				z
+					.string()
+					.regex(/^[A-Z][A-Z0-9_]{1,63}$/)
+					.refine((n) => neverBlankReason(n) === null, {
+						message: 'This value can never be deployed blank.',
+					}),
+			)
+			.max(60)
+			.default([]),
+		/** Production with blanks asks for its name typed. */
+		confirm: z.string().max(40).optional(),
+		/** A development server only: this run's branch, picked on the deploy tab (owner, 21 Nov). */
+		branch: branchNameSchema.optional(),
+		/**
+		 * Apply changed database, Redis and search secrets on the server before the switch (Release Path
+		 * brief 3.2, deploy.yml input `rotate`). Asks for the environment's name typed (brief Q6).
+		 */
+		rotate: z.boolean().default(false),
+		/** With `rotate` only: restart the database now for a new keyfile (about 20 s), else at its next restart. */
+		restartDatabase: z.boolean().default(false),
+		/** `rollback` swaps the previous release back in on the server, from images on its disk (brief F16). */
+		action: z.enum(['deploy', 'rollback']).default('deploy'),
+		/** Deploy an older version: one of this environment's release tags instead of its branch. */
+		tag: z.string().regex(RELEASE_TAG).optional(),
+	})
+	.refine((b) => !b.restartDatabase || b.rotate, {
+		message: 'Restarting the database goes only with rotation.',
+		path: ['restartDatabase'],
+	})
+	.refine((b) => b.action === 'deploy' || (!b.rotate && !b.tag && !b.allowBlank.length), {
+		message: 'A rollback only swaps the previous release back in.',
+		path: ['action'],
+	})
+	.refine((b) => !(b.tag && b.branch), { message: 'Pick a version or a branch, not both.', path: ['tag'] });
+export type StartServerDeploy = z.infer<typeof startServerDeploySchema>;
 export const reviewServerDeploySchema = z.object({
 	pin: confirmation,
 	runId: z.number().int().positive(),

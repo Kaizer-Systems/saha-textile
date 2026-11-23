@@ -141,6 +141,7 @@ describe.skipIf(!hasMongoEnv())('general ledger persistence (integration, rs0)',
 		await expect(repo.markReversed('v2', 'v2r2')).rejects.toThrow('already_reversed');
 		expect(await repo.dueReversals('2026-12-01')).toEqual([]);
 		expect(await repo.ledgerInUse('rent')).toBe(true);
+		expect(await repo.balancesAt('2026-11-30', [])).toEqual({ rent: 1_750_000, cash: -1_750_000 });
 	});
 
 	it('keeps one lock per month and part', async () => {

@@ -273,3 +273,7 @@ export const DocumentLockTarget = z.object({
 	documentId: Id,
 });
 export type DocumentLockTarget = z.infer<typeof DocumentLockTarget>;
+
+/** Q1's balances on a day. */
+export const BalancesQuery = z.object({ on: IsoDate });
+export type BalancesQuery = z.infer<typeof BalancesQuery>;

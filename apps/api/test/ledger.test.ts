@@ -75,6 +75,12 @@ class MemoryBooks {
 	async dueReversals(day: string) {
 		return this.vouchers.filter((v) => v.reverseOn && v.reverseOn <= day && !v.reversedById);
 	}
+	async balancesAt(day: string) {
+		const out: Record<string, number> = {};
+		for (const v of this.vouchers.filter((x) => x.date <= day))
+			for (const l of v.lines) out[l.ledgerId] = (out[l.ledgerId] ?? 0) + l.debitPaise - l.creditPaise;
+		return out;
+	}
 	async ledgerInUse() {
 		return false;
 	}
@@ -185,6 +191,7 @@ describe('general ledger (accounts brief Q, T, D10)', () => {
 			owner,
 		);
 		expect(statement).toMatchObject({ openingPaise: 0, creditPaise: 1_500_000, closingPaise: -1_500_000 });
+		expect(await service.balances('2026-11-30', owner)).toEqual({ led_rent: 1_500_000, led_cash: -1_500_000 });
 	});
 
 	it('refuses control ledgers by hand, other people’s locations, and locked months', async () => {

@@ -453,6 +453,12 @@ export class LedgerService {
 		return voucher;
 	}
 
+	/** Q1: each ledger's balance on a day (debit positive), at the locations the person may see. */
+	async balances(day: string, principal: AuthenticatedPrincipal | undefined): Promise<Record<string, number>> {
+		const scope = await this.locations.scope(principal);
+		return this.books.balancesAt(day, scope.all ? [] : [...scope.ids]);
+	}
+
 	/** Q2: opening, every entry with a running balance, closing; staff see only their locations. */
 	async statement(
 		ledgerId: string,

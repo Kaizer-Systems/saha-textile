@@ -204,6 +204,14 @@ export class MongoGeneralLedgerRepository implements GeneralLedgerRepository {
 		}));
 	}
 
+	async balancesAt(day: string, locationIds: readonly string[]): Promise<Record<string, number>> {
+		const rows = await JournalLineModel.aggregate<{ _id: string; debit: number; credit: number }>([
+			{ $match: { date: { $lte: day }, ...locationFilter(locationIds) } },
+			{ $group: { _id: '$ledgerId', debit: { $sum: '$debitPaise' }, credit: { $sum: '$creditPaise' } } },
+		]).exec();
+		return Object.fromEntries(rows.map((row) => [row._id, row.debit - row.credit]));
+	}
+
 	async dueReversals(day: string): Promise<JournalVoucher[]> {
 		const docs = await JournalVoucherModel.find({ reverseOn: { $type: 'string', $lte: day }, reversedById: null })
 			.lean<AggregateDoc[]>()

@@ -3,6 +3,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	AccountGroupWrite,
 	AccountStatementSearch,
+	BalancesQuery,
 	DocumentLockTarget,
 	JournalVoucherWrite,
 	LedgerWrite,
@@ -64,6 +65,17 @@ export class LedgerController {
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
 		return this.ledger.saveLedger(id, body, by(principal));
+	}
+
+	@Get('balances')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({ operationId: 'ledgerBalances', summary: 'Every ledger’s balance on a day, debit positive' })
+	balances(
+		@Query(new ZodValidationPipe(BalancesQuery)) query: BalancesQuery,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.ledger.balances(query.on, principal);
 	}
 
 	@Get('ledgers/:id/statement')

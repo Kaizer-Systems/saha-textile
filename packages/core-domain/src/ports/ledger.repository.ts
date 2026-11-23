@@ -43,6 +43,8 @@ export interface GeneralLedgerRepository {
 		to: string,
 		locationIds: readonly string[],
 	): Promise<StatementLine[]>;
+	/** Debit minus credit of every ledger up to and including a day (Q1 balances), at some locations (all when empty). */
+	balancesAt(day: string, locationIds: readonly string[]): Promise<Record<string, number>>;
 	/** Vouchers set to undo themselves on or before a day and not yet reversed (Q3 reversal date). */
 	dueReversals(day: string): Promise<JournalVoucher[]>;
 	/** Whether any posted line uses the ledger (a used ledger is switched off, never removed). */

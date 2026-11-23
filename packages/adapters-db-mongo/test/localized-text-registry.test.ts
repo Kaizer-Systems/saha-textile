@@ -92,6 +92,9 @@ const NOT_TEXT: Readonly<Record<string, string>> = {
 	'Product.freeWith': 'product ids, quantities and how many the shopper takes',
 	'Promotion.conditions': 'amounts and flags',
 	'Product.media': 'photo ids; per-photo alt overrides are erased by the coverage repository',
+	'ProductDraft.form':
+		'the product form as it was, unchecked (bulk actions brief § 7): its words are checked when the draft becomes the product',
+	'ProductDraft.changes': 'the paths a draft changed and their earlier values, for its review',
 	'Product.variations': 'combinations and prices',
 	'Product.ratingsSummary': 'counts',
 	'Product.lifecycle': 'dates',

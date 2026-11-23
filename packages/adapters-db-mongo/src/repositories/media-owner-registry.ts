@@ -20,6 +20,7 @@ import {
 	PaymentModel,
 	SupplierModel,
 	LedgerEntryModel,
+	ProductDraftModel,
 } from '../models/index';
 
 /**
@@ -77,4 +78,13 @@ export const MEDIA_OWNER_REGISTRY: readonly MediaOwnerEntry[] = [
 	entry('payment proof', as(PaymentModel), 'proofMediaId'),
 	entry('signed set-off agreement (business)', as(SupplierModel), 'setOff.mediaId'),
 	entry('signed set-off agreement (one-off entry)', as(LedgerEntryModel), 'agreement.mediaId'),
+	// A saved product draft (bulk actions brief § 7): its list picture, and the photos its form holds.
+	// A draft of a new product may hold photos no product uses yet, so they must count as used. The
+	// form is stored free-form, so the schema walk finds only `imageAssetId`; the variant pictures and
+	// picture tiles sit under per-variant keys that a path cannot name.
+	entry('product draft picture', as(ProductDraftModel), 'imageAssetId'),
+	entry('product draft photos', as(ProductDraftModel), 'form.state.images.gallery'),
+	entry('product draft photos per choice', as(ProductDraftModel), 'form.state.images.compound.gallery'),
+	entry('product draft share picture', as(ProductDraftModel), 'form.state.images.shareImage.assetId'),
+	entry('product draft option swatch', as(ProductDraftModel), 'form.state.optionGroups.terms.swatchAssetId'),
 ];

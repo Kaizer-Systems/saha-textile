@@ -24,7 +24,13 @@ const DENOMINATOR = 'src/zz-denominator.spec.ts';
 
 const WORKSPACES = {
 	storefront: { dir: 'apps/storefront', angular: true },
-	admin: { dir: 'apps/admin', angular: true },
+	// The dark-theme spec reads the generated dark stylesheet, which only `styles` (run by the admin's
+	// dev and build scripts) makes; a fresh checkout such as CI's coverage job has none.
+	admin: {
+		dir: 'apps/admin',
+		angular: true,
+		generated: { file: 'public/assets/css/theme-dark.gen.css', script: 'styles' },
+	},
 	api: { dir: 'apps/api' },
 	'adapters-db-mongo': { dir: 'packages/adapters-db-mongo', mongo: true },
 	'core-domain': { dir: 'packages/core-domain' },
@@ -63,7 +69,7 @@ function writeDenominator(cwd) {
 	);
 }
 
-function measure(name, { dir, angular, mongo }) {
+function measure(name, { dir, angular, mongo, generated }) {
 	const cwd = join(ROOT, dir);
 	const report = join(ROOT, 'coverage', name);
 	const args = [
@@ -98,6 +104,11 @@ function measure(name, { dir, angular, mongo }) {
 				}
 			: {}),
 	};
+	if (generated && !existsSync(join(cwd, generated.file))) {
+		const made = spawnSync('pnpm', ['run', generated.script], { cwd, encoding: 'utf8' });
+		if (made.status !== 0)
+			console.log(`${name}: pnpm run ${generated.script} failed, so ${generated.file} is missing.`);
+	}
 	if (angular) writeDenominator(cwd);
 	let run;
 	try {

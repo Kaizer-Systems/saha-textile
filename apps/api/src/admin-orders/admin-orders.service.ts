@@ -57,6 +57,7 @@ import {
 } from '@saha-textile/core-domain';
 
 import { EDocsService } from '../edocs/edocs.service';
+import { InvoicesService } from '../invoicing/invoices.service';
 import { AddressBookService } from '../addresses/address-book.service';
 import { codedRefusal } from '../common/coded-refusal';
 import {
@@ -232,6 +233,7 @@ export class AdminOrdersService {
 		@Optional() @Inject(ADMIN_USER_REPOSITORY) private readonly adminUsers: AdminUserRepository | null = null,
 		@Optional() @Inject(OrderNoticesService) private readonly notices: OrderNoticesService | null = null,
 		@Optional() @Inject(EDocsService) private readonly edocs: EDocsService | null = null,
+		@Optional() @Inject(InvoicesService) private readonly invoicesSvc: InvoicesService | null = null,
 	) {}
 
 	/** Without the e-document settings (tests), the old rule stands: business orders need an IRN. */
@@ -517,12 +519,14 @@ export class AdminOrdersService {
 				const physical = order.lines.flatMap((line) =>
 					line.lineId && line.role !== 'bundle' ? [line.lineId] : [],
 				);
+				const shipmentId = `shp_${randomUUID()}`;
+				const parcelLineIds = (input.shipped.lineIds ?? physical).filter((lineId) => physical.includes(lineId));
 				await this.shipments.save(
 					{
-						id: `shp_${randomUUID()}`,
+						id: shipmentId,
 						orderId: id,
 						number: await this.numbers.childNumber('parcel', order.orderNumber, existing.length + 1),
-						lineIds: (input.shipped.lineIds ?? physical).filter((lineId) => physical.includes(lineId)),
+						lineIds: parcelLineIds,
 						mode: 'manual',
 						provider: null,
 						courierName: input.shipped.courierName,
@@ -535,6 +539,11 @@ export class AdminOrdersService {
 						createdBy: actor.id,
 						createdAt: at,
 					},
+					context,
+				);
+				// The parcel's tax invoice, when Tax invoices at dispatch is on (accounts brief D1, D3).
+				await this.invoicesSvc?.issueAtDispatch(
+					{ order: { ...order, lines }, shipmentId, lineIds: parcelLineIds, actorId: actor.id, at },
 					context,
 				);
 			}

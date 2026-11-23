@@ -40,12 +40,20 @@ export class DocumentNumbersService {
 		@Inject(NUMBER_ALLOCATOR) private readonly allocator: NumberAllocatorPort,
 	) {}
 
-	/** The next number of a series type, taken inside the caller's transaction. */
-	async issue(type: NumberedDocumentType, context?: TransactionContext, at = new Date()): Promise<string> {
+	/**
+	 * The next number of a series type, taken inside the caller's transaction. `scope` keeps a separate counter,
+	 * such as a GST registration (accounts brief GS: invoice series per GSTIN, so each return lists its own).
+	 */
+	async issue(
+		type: NumberedDocumentType,
+		context?: TransactionContext,
+		at = new Date(),
+		scope?: string,
+	): Promise<string> {
 		const settings = await this.numbering.get();
 		const format = settings.series[type];
 		const financialYear = fiscalYearOf(istDay(at));
-		const counter = PURCHASE_COUNTERS[type] ?? `doc:${type}`;
+		const counter = `${PURCHASE_COUNTERS[type] ?? `doc:${type}`}${scope ? `@${scope}` : ''}`;
 		const period = format.reset === 'fy' ? financialYear : 'all';
 		const sequence = await this.allocator.next(counter, period, context);
 		if (!settings.lockedTypes.includes(type)) await this.numbering.lock(type, context);

@@ -45,6 +45,8 @@ const content = (groups: readonly ChartGroupSeed[], ledgers: readonly ChartLedge
 		groupKey: l.groupKey,
 		handPosting: l.handPosting,
 		roles: [l.systemKey],
+		ruleSetCode: null,
+		source: '',
 	})),
 });
 
@@ -55,6 +57,8 @@ const added = (key: string, name: string, groupKey: string) => ({
 	groupKey,
 	handPosting: true,
 	roles: [key],
+	ruleSetCode: null,
+	source: '',
 });
 
 /** CH-COMMON v2: the expense ledgers the reverse-charge list (RS-RCM) posts to. */
@@ -154,6 +158,7 @@ export function starterTemplates(now: string): AccountsTemplate[] {
 		description: '',
 		appliesTo,
 		versions,
+		draft: null,
 		createdAt: now,
 		updatedAt: now,
 	});

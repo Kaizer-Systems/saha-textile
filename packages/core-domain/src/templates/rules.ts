@@ -5,8 +5,11 @@ import type {
 	ChartTemplateGroup,
 	ChartTemplateLedger,
 	TaxRuleEntry,
+	TemplateChanges,
 	TemplateVersion,
 } from '@saha-textile/contracts';
+
+import { ROLE_REGISTRY, missingRoles, rolesOf } from '../ledger/roles';
 
 /** AT1, AT2: a template is open for a kind of company when it is shared or lists that kind; otherwise locked, with why. */
 export function lockState(
@@ -26,6 +29,11 @@ export function latestVersion(template: Pick<AccountsTemplate, 'versions'>): Tem
 export function versionOn(template: Pick<AccountsTemplate, 'versions'>, day: string): TemplateVersion | null {
 	const inForce = template.versions.filter((v) => v.validFrom <= day && (v.validTo === null || v.validTo >= day));
 	return inForce.length ? inForce.reduce((best, v) => (v.version > best.version ? v : best)) : null;
+}
+
+/** Templates with at least one version: one only drafted in the builder is used by nothing yet. */
+export function published<T extends Pick<AccountsTemplate, 'versions'>>(templates: readonly T[]): T[] {
+	return templates.filter((t) => t.versions.length > 0);
 }
 
 /** The templates a kind of company opens, in library order (shared first). */
@@ -110,7 +118,7 @@ export interface WhatOpens {
 
 export function whatOpens(templates: readonly AccountsTemplate[], kind: BusinessKind, day: string): WhatOpens {
 	const opens: WhatOpens = { charts: [], taxRules: [], reports: [], locked: 0 };
-	for (const template of templates) {
+	for (const template of published(templates)) {
 		if (lockState(template, kind).locked) {
 			opens.locked += 1;
 			continue;
@@ -123,4 +131,93 @@ export function whatOpens(templates: readonly AccountsTemplate[], kind: Business
 		else opens.reports.push(row);
 	}
 	return opens;
+}
+
+const KINDS: readonly BusinessKind[] = [
+	'proprietorship',
+	'partnership',
+	'llp',
+	'private_limited_opc',
+	'private_limited',
+];
+const DOCUMENT_TYPES = [...new Set(ROLE_REGISTRY.flatMap((role) => role.neededBy))];
+
+/** A chart template's groups and ledgers as role holders (a key plays its own role unless roles are listed). */
+const holders = (items: readonly { key: string; roles: readonly string[] }[]) =>
+	items.map((item) => ({ id: item.key, systemKey: item.key, roles: item.roles }));
+
+/**
+ * AT3's publishing checks: the draft is of the template's type and starts after the newest version; for a chart, with
+ * every other chart template each kind it applies to opens, the merged chart is whole, every role a document needs has a
+ * ledger (or group), and no role is played twice. Codes the admin puts in words.
+ */
+export function publishProblems(template: AccountsTemplate, library: readonly AccountsTemplate[]): string[] {
+	const draft = template.draft;
+	if (!draft) return ['template_no_draft'];
+	const problems = new Set<string>();
+	if (draft.content.kind !== template.kind) problems.add('template_wrong_kind');
+	if (template.versions.length && draft.validFrom <= latestVersion(template).validFrom)
+		problems.add('template_dates_overlap');
+	if (draft.content.kind !== 'chart') return [...problems];
+	const content = draft.content;
+	for (const kind of template.appliesTo.all ? KINDS : template.appliesTo.kinds) {
+		const others = published(unlockedFor(library, kind))
+			.filter((t) => t.code !== template.code)
+			.map((t) => latestVersion(t).content)
+			.filter((c): c is ChartTemplateContent => c.kind === 'chart');
+		let merged: ReturnType<typeof mergeCharts>;
+		try {
+			merged = mergeCharts([...others, content]);
+		} catch (error) {
+			problems.add((error as Error).message);
+			continue;
+		}
+		const chart = { groups: holders(merged.groups), ledgers: holders(merged.ledgers) };
+		for (const type of DOCUMENT_TYPES)
+			for (const role of missingRoles(chart, type)) problems.add(`template_role_missing:${role}:${kind}`);
+		const played = new Map<string, number>();
+		for (const role of chart.ledgers.flatMap((ledger) => rolesOf(ledger)))
+			played.set(role, (played.get(role) ?? 0) + 1);
+		for (const [role, count] of played) if (count > 1) problems.add(`template_role_ambiguous:${role}`);
+	}
+	return [...problems];
+}
+
+/** AT3 "Changes from vN": what the draft adds, removes and renames against the newest version, by key. */
+export function chartChanges(before: ChartTemplateContent | null, after: ChartTemplateContent): TemplateChanges {
+	const items = (c: ChartTemplateContent | null) =>
+		new Map([...(c?.groups ?? []), ...(c?.ledgers ?? [])].map((item) => [item.key, item.name]));
+	const old = items(before);
+	const now = items(after);
+	return {
+		added: [...now].filter(([key]) => !old.has(key)).map(([, name]) => name),
+		removed: [...old].filter(([key]) => !now.has(key)).map(([, name]) => name),
+		renamed: [...now].filter(([key, name]) => old.has(key) && old.get(key) !== name).map(([, name]) => name),
+	};
+}
+
+/** AT3 Publish: the draft becomes the next version (pending CA review) and the draft is cleared. */
+export function publishDraft(template: AccountsTemplate, by: string | null, now: string): AccountsTemplate {
+	const draft = template.draft;
+	if (!draft) return template;
+	const next: TemplateVersion = {
+		version: template.versions.length ? latestVersion(template).version + 1 : 1,
+		validFrom: draft.validFrom,
+		validTo: null,
+		source: draft.source,
+		caReview: 'pending',
+		notes: draft.notes,
+		content: draft.content,
+		publishedAt: now,
+		publishedBy: by,
+	};
+	const versions = template.versions.map((v) =>
+		v.validTo === null && v.validFrom < draft.validFrom ? { ...v, validTo: dayBefore(draft.validFrom) } : v,
+	);
+	return { ...template, versions: [...versions, next], draft: null, updatedAt: now };
+}
+
+/** The day before a day: an older version ends the day before the newer one starts. */
+function dayBefore(day: string): string {
+	return new Date(Date.parse(`${day}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
 }

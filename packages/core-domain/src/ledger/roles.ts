@@ -81,3 +81,17 @@ export function missingRoles(
 		})
 		.map((role) => role.key);
 }
+
+/** The roles list of a ledger that plays none (an empty list would fall back to its system key). */
+export const PLAYS_NO_ROLE = 'none';
+
+/** AT4: the roles a ledger plays once it also plays this one. */
+export function withRole(holder: Pick<RoleHolder, 'systemKey' | 'roles'>, role: string): string[] {
+	return [...new Set([...rolesOf(holder).filter((r) => r !== PLAYS_NO_ROLE), role])];
+}
+
+/** AT4: the roles a ledger plays once another ledger takes this one over. */
+export function withoutRole(holder: Pick<RoleHolder, 'systemKey' | 'roles'>, role: string): string[] {
+	const roles = rolesOf(holder).filter((r) => r !== role);
+	return roles.length ? roles : [PLAYS_NO_ROLE];
+}

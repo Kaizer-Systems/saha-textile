@@ -21,6 +21,7 @@ const rcm: AccountsTemplate = {
 	name: 'Reverse-charge list',
 	description: '',
 	appliesTo: { all: true, kinds: [] },
+	draft: null,
 	versions: [
 		{
 			version: 1,

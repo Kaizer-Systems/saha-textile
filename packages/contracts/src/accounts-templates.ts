@@ -41,6 +41,10 @@ export const ChartTemplateLedger = z.object({
 	/** False: only documents post here. */
 	handPosting: z.boolean().default(true),
 	roles: z.array(RoleKey).default([]),
+	/** A tax rule set this ledger follows (AT3's "Rule set link"), by its code. */
+	ruleSetCode: TemplateCode.nullable().default(null),
+	/** The law or guidance the ledger follows (AT3's "Source"). */
+	source: z.string().trim().max(300).default(''),
 });
 export type ChartTemplateLedger = z.infer<typeof ChartTemplateLedger>;
 
@@ -99,6 +103,17 @@ export const TemplateVersion = z.object({
 });
 export type TemplateVersion = z.infer<typeof TemplateVersion>;
 
+/** The builder's working copy (AT3 Save draft); Publish turns it into the next version. */
+export const TemplateDraft = z.object({
+	content: TemplateContent,
+	validFrom: IsoDate,
+	source: z.string().trim().max(500).default(''),
+	notes: z.string().trim().max(1000).default(''),
+	savedAt: IsoDateTime,
+	savedBy: Id.nullable().default(null),
+});
+export type TemplateDraft = z.infer<typeof TemplateDraft>;
+
 export const AccountsTemplate = z.object({
 	id: Id,
 	code: TemplateCode,
@@ -106,7 +121,9 @@ export const AccountsTemplate = z.object({
 	name: z.string().trim().min(1).max(120),
 	description: z.string().trim().max(500).default(''),
 	appliesTo: AppliesTo,
-	versions: z.array(TemplateVersion).min(1),
+	/** Empty for a template made in the builder and not yet published: nothing uses it until it has a version. */
+	versions: z.array(TemplateVersion),
+	draft: TemplateDraft.nullable().default(null),
 	createdAt: IsoDateTime,
 	updatedAt: IsoDateTime,
 });
@@ -122,11 +139,13 @@ export const TemplateInstall = z.object({
 export type TemplateInstall = z.infer<typeof TemplateInstall>;
 
 /** Settings › Accounts templates (AT2): every template with whether this company's kind unlocks it. */
-export const TemplateLibraryRow = AccountsTemplate.omit({ versions: true }).extend({
-	latestVersion: z.number().int().positive(),
+export const TemplateLibraryRow = AccountsTemplate.omit({ versions: true, draft: true }).extend({
+	/** Null while the template has only a draft. */
+	latestVersion: z.number().int().positive().nullable(),
 	/** The newest version's first day and CA review state (AT2's Version column). */
-	validFrom: IsoDate,
-	caReview: TemplateVersion.shape.caReview,
+	validFrom: IsoDate.nullable(),
+	caReview: TemplateVersion.shape.caReview.nullable(),
+	hasDraft: z.boolean(),
 	locked: z.boolean(),
 	lockReason: z.enum(['not_this_kind']).nullable(),
 	installedVersion: z.number().int().positive().nullable(),
@@ -150,3 +169,53 @@ export const TemplatesOpen = z.object({
 	booksSetUp: z.boolean(),
 });
 export type TemplatesOpen = z.infer<typeof TemplatesOpen>;
+
+/** AT2 New template: a code, a type, who it applies to, and optionally an existing template's newest version to start from. */
+export const TemplateNew = z.object({
+	code: TemplateCode,
+	kind: TemplateKind,
+	name: z.string().trim().min(1).max(120),
+	description: z.string().trim().max(500).default(''),
+	appliesTo: AppliesTo,
+	startFrom: TemplateCode.nullable().default(null),
+});
+export type TemplateNew = z.infer<typeof TemplateNew>;
+
+/** AT3 Save draft. */
+export const TemplateDraftWrite = TemplateDraft.pick({
+	content: true,
+	validFrom: true,
+	source: true,
+	notes: true,
+}).extend({
+	expectedUpdatedAt: IsoDateTime,
+});
+export type TemplateDraftWrite = z.infer<typeof TemplateDraftWrite>;
+
+/** AT3 Publish vN. */
+export const TemplatePublish = z.object({ expectedUpdatedAt: IsoDateTime });
+export type TemplatePublish = z.infer<typeof TemplatePublish>;
+
+/** AT3 "Changes from vN": keys added, removed and renamed between the newest version and the draft. */
+export const TemplateChanges = z.object({
+	added: z.array(z.string()),
+	removed: z.array(z.string()),
+	renamed: z.array(z.string()),
+});
+export type TemplateChanges = z.infer<typeof TemplateChanges>;
+
+/** AT4: a role the engine posts to, who plays it in this company's books, and the template that set it. */
+export const RoleRow = z.object({
+	key: RoleKey,
+	target: z.enum(['ledger', 'group']),
+	usedBy: z.array(z.string()),
+	holderId: Id.nullable(),
+	holderName: z.string().nullable(),
+	fromTemplate: z.string().nullable(),
+	problem: z.enum(['missing', 'ambiguous']).nullable(),
+});
+export type RoleRow = z.infer<typeof RoleRow>;
+
+/** AT4: a super admin points a ledger role at another ledger. */
+export const RolePoint = z.object({ ledgerId: Id });
+export type RolePoint = z.infer<typeof RolePoint>;

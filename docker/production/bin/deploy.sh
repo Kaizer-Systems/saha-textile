@@ -48,14 +48,16 @@ edge_tls() {
 }
 
 # How this script's own checks trust the edge: Cloudflare's Origin CA, or the system's own for a public
-# certificate. certs/acme-ca.pem, when present, stands in for Let's Encrypt (the production proof has no
-# internet CA); a real server never has it.
+# certificate. EDGE_CHECK_CA (release.env, the production proof only) names a mounted CA that stands in
+# for Let's Encrypt; a real server leaves it unset.
 ca_option() {
+	local stand_in
 	if [[ "$(edge_tls)" != public ]]; then
 		printf '%s' '--cacert /certs/origin-ca.pem'
-	elif [[ -s "$CERTS/acme-ca.pem" ]]; then
-		printf '%s' '--cacert /certs/acme-ca.pem'
+		return
 	fi
+	stand_in="$(release_value "$RELEASE" EDGE_CHECK_CA)"
+	if [[ -n "$stand_in" ]]; then printf '%s' "--cacert $stand_in"; fi
 }
 
 check_inputs() {

@@ -39,10 +39,39 @@ RESTART_DATABASE=0
 # The data-service files this release changes; empty unless it rotates.
 ROTATING=''
 
+# The edge's mode (release.env EDGE_TLS): cloudflare, the default, or public for an environment not
+# behind Cloudflare (Release Path brief M10).
+edge_tls() {
+	local value
+	value="$(release_value "$RELEASE" EDGE_TLS)"
+	printf '%s' "${value:-cloudflare}"
+}
+
+# How this script's own checks trust the edge: Cloudflare's Origin CA, or the system's own for a public
+# certificate. certs/acme-ca.pem, when present, stands in for Let's Encrypt (the production proof has no
+# internet CA); a real server never has it.
+ca_option() {
+	if [[ "$(edge_tls)" != public ]]; then
+		printf '%s' '--cacert /certs/origin-ca.pem'
+	elif [[ -s "$CERTS/acme-ca.pem" ]]; then
+		printf '%s' '--cacert /certs/acme-ca.pem'
+	fi
+}
+
 check_inputs() {
 	check_release
-	local name
-	for name in $CERT_FILES; do
+	local name required="$CERT_FILES"
+	if [[ "$(edge_tls)" == public ]]; then
+		# No Cloudflare CA to trust or client certificate to ask for: only the server's own pair, kept by
+		# Let's Encrypt. A missing or ending one is fetched before anything else happens.
+		required='origin.pem origin.key'
+		local using
+		using="$(cert_source origin.pem)"
+		if [[ ! -s "$using" ]] || ! openssl x509 -noout -checkend 2592000 -in "$using" >/dev/null 2>&1; then
+			bash "$RELEASE/bin/renew-certs.sh" "$RELEASE"
+		fi
+	fi
+	for name in $required; do
 		[[ -s "$SECRETS/$name" || -s "$CERTS/$name" ]] || die "certs/$name is missing or empty."
 	done
 	# A certificate from the release with the server's key, or the other way round, must still pair.
@@ -183,6 +212,15 @@ check_release() {
 	deploy_env="$(release_value "$RELEASE" DEPLOY_ENV)"
 	read_allowed_blank
 	read_rotation
+	case "$(edge_tls)" in
+	cloudflare) ;;
+	public)
+		[[ -n "$(release_value "$RELEASE" ACME_EMAIL)" ]] || die 'EDGE_TLS=public needs ACME_EMAIL in release.env.'
+		[[ -s "$SECRETS/do-dns-token" || -s "$SECRETS/origin.pem" || -s "$CERTS/origin.pem" ]] ||
+			die 'EDGE_TLS=public needs secrets/do-dns-token (or a certificate) for its public certificate.'
+		;;
+	*) die 'EDGE_TLS must be cloudflare or public.' ;;
+	esac
 	while read -r name tags; do
 		[[ -z "$name" || "$name" == \#* ]] && continue
 		# `server-only` names may stay blank on this computer, never on a server (required-secrets.txt).
@@ -314,12 +352,12 @@ check_running() {
 	# wait in the search queue, and a release that needed a new search version already built it.
 	ops "$RELEASE" sh -s <<SCRIPT
 set -eu
-fetch() { curl -fsS --cacert /certs/origin-ca.pem --max-time 20 "\$1"; }
+fetch() { curl -fsS $(ca_option) --max-time 20 "\$1"; }
 fetch "$api/health/ready" | jq -e '[.dependencies[] | select(.name != "search") | .status] | all(. == "up")' >/dev/null
 fetch "$api/health/ready" | jq -e '[.dependencies[] | select(.name == "search") | .status] | all(. == "up" or . == "degraded")' >/dev/null
 fetch "$site/config.json" | jq -e '.apiUrl == "$api"' >/dev/null
 fetch "$admin/config.json" | jq -e '.apiUrl == "$api"' >/dev/null
-curl -fsSL --cacert /certs/origin-ca.pem --max-time 20 "$site/" | grep -q '</html>'
+curl -fsSL $(ca_option) --max-time 20 "$site/" | grep -q '</html>'
 fetch "$admin/" | grep -q '</html>'
 SCRIPT
 }
@@ -345,11 +383,12 @@ install_fallback_pages() {
 	site="$(release_value "$RELEASE" SITE_URL)"
 	mkdir -p "$folder"
 	compose_for "$RELEASE" --profile ops run --rm --no-deps -T --user 0 -v "$folder:/out" \
-		-e API_URL="$(release_value "$RELEASE" API_URL)" -e SITE_URL="$site" ops sh -s <<'SCRIPT' >/dev/null
+		-e API_URL="$(release_value "$RELEASE" API_URL)" -e SITE_URL="$site" -e CA_OPTION="$(ca_option)" ops sh -s <<'SCRIPT' >/dev/null
 set -eu
 find /out -mindepth 1 -delete
 cp -R /fallback/. /out/
-brand="$(curl -fsS --cacert /certs/origin-ca.pem --max-time 20 "$API_URL/storefront/brand" || echo '{}')"
+# shellcheck disable=SC2086 # CA_OPTION is empty or two words
+brand="$(curl -fsS $CA_OPTION --max-time 20 "$API_URL/storefront/brand" || echo '{}')"
 name="$(printf '%s' "$brand" | jq -r '.shopName // empty' | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g')"
 logo_url="$(printf '%s' "$brand" | jq -r '.logo.url // empty')"
 logo=''

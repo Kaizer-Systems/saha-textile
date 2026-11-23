@@ -107,6 +107,33 @@ write_files:
       Persistent=false
       [Install]
       WantedBy=timers.target
+  - path: /etc/systemd/system/saha-textile-renew-certs.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Keep the public certificate current (only for an environment not behind Cloudflare)
+      [Service]
+      Type=oneshot
+      ExecStart=/opt/saha-textile/bin/renew-current-certs.sh
+  - path: /etc/systemd/system/saha-textile-renew-certs.timer
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Daily certificate check at 03:30 IST
+      [Timer]
+      OnCalendar=*-*-* 22:00:00 UTC
+      Persistent=true
+      [Install]
+      WantedBy=timers.target
+  - path: /opt/saha-textile/bin/renew-current-certs.sh
+    permissions: '0755'
+    owner: root:root
+    content: |
+      #!/bin/sh
+      # The live release's own renew-certs.sh; nothing before the first deploy, nothing behind Cloudflare.
+      release="$(readlink -f /opt/saha-textile/current)" || exit 0
+      [ -d "$release" ] || exit 0
+      exec bash "$release/bin/renew-certs.sh" "$release"
   - path: /opt/saha-textile/bin/receive-release.sh
     permissions: '0755'
     owner: root:root
@@ -145,6 +172,8 @@ runcmd:
   - [systemctl, enable, --now, unattended-upgrades]
   - [systemctl, daemon-reload]
   - [systemctl, enable, --now, saha-textile-reboot-check.timer]
+  # Does nothing behind Cloudflare; renews a public certificate 30 days before it ends (M10).
+  - [systemctl, enable, --now, saha-textile-renew-certs.timer]
   # WARP private access (owner, 21 Nov): SSH also answers on the private VPC address, reached only through the
   # tunnel's private route; the Cloud Firewall and UFW keep 22 closed to everything else.
   - [sh, -c, 'ip=$(curl -fsS http://169.254.169.254/metadata/v1/interfaces/private/0/ipv4/address) && echo "ListenAddress $ip" > /etc/ssh/sshd_config.d/61-saha-textile-private.conf || echo "first-boot: no private address for SSH" >&2']

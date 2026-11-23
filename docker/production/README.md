@@ -38,6 +38,15 @@ the new release does not come up healthy; once the release is live the kept copi
 Each file is rewritten in place, never replaced, because the edge mounts each one as a single file
 and would not see a new one.
 
+## An environment not behind Cloudflare
+
+`EDGE_TLS=public` in `/deployment` (release.env) is for a domain whose DNS lives at DigitalOcean
+(Release Path brief M10). The edge then asks for no Cloudflare client certificate, takes the visitor's
+address from the connection, and serves a Let's Encrypt certificate that `bin/renew-certs.sh` gets by
+DNS-01 at DigitalOcean (`/infrastructure/do-dns-token`, `/deployment/ACME_EMAIL`): when a deploy finds
+it missing or within 30 days of its end, and daily from the server's timer. The trade-off: no
+Cloudflare firewall, attack protection or cache in front. The Cloud Firewall then opens 443 to everyone.
+
 ## Data-service secrets
 
 `data-secrets/` also sits beside the releases. It holds the six files the database, Redis and search

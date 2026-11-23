@@ -161,6 +161,8 @@ services:
     image: nginx:1.30.6-alpine
     environment:
       EDGE_PORT: ${EDGE_PORT}
+      # cloudflare (origin certificate and origin pulls) or public (a public certificate; M10).
+      EDGE_TLS: ${EDGE_TLS:-cloudflare}
       STOREFRONT_HOST: ${STOREFRONT_HOST}
       ADMIN_HOST: ${ADMIN_HOST}
       API_HOST: ${API_HOST}

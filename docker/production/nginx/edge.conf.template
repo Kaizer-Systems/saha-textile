@@ -19,19 +19,9 @@ geo $from_inside {
 	${PRIVATE_GATEWAY} 0;
 }
 
-# Outside callers must present our own Authenticated Origin Pulls certificate.
-map "$ssl_client_verify:$from_inside" $origin_refused {
-	default     1;
-	"SUCCESS:0" 0;
-	"SUCCESS:1" 0;
-	"NONE:1"    0;
-}
-
-# The refusal above means this header can only have come from Cloudflare.
-map $from_inside $client_ip {
-	0 $http_cf_connecting_ip;
-	1 $remote_addr;
-}
+# Who may connect from outside, and where the visitor's address comes from: behind Cloudflare
+# (edge-cloudflare.conf) or not (edge-public.conf), chosen by EDGE_TLS.
+include /etc/nginx/snippets/edge-${EDGE_TLS}.conf;
 
 # Which "back in a moment" page to show: the address decides for the storefront (`/bn/` is
 # Bengali), and the browser's language decides where the address cannot.
@@ -145,7 +135,7 @@ server {
 	listen ${EDGE_PORT} ssl;
 	http2 on;
 	server_name ${STOREFRONT_HOST};
-	include /etc/nginx/snippets/tls.conf;
+	include /etc/nginx/snippets/tls-${EDGE_TLS}.conf;
 	if ($origin_refused) { return 403; }
 
 	add_header Strict-Transport-Security "max-age=31536000" always;
@@ -182,7 +172,7 @@ server {
 	listen ${EDGE_PORT} ssl;
 	http2 on;
 	server_name ${ADMIN_HOST};
-	include /etc/nginx/snippets/tls.conf;
+	include /etc/nginx/snippets/tls-${EDGE_TLS}.conf;
 	if ($origin_refused) { return 403; }
 
 	add_header Strict-Transport-Security "max-age=31536000" always;
@@ -211,7 +201,7 @@ server {
 	listen ${EDGE_PORT} ssl;
 	http2 on;
 	server_name ${API_HOST};
-	include /etc/nginx/snippets/tls.conf;
+	include /etc/nginx/snippets/tls-${EDGE_TLS}.conf;
 	if ($origin_refused) { return 403; }
 
 	# Dependency names are for the deploy, not the internet.
@@ -263,6 +253,6 @@ server {
 	access_log /var/log/nginx/access.log edge;
 	listen ${EDGE_PORT} ssl default_server;
 	server_name _;
-	include /etc/nginx/snippets/tls.conf;
+	include /etc/nginx/snippets/tls-${EDGE_TLS}.conf;
 	return 421;
 }

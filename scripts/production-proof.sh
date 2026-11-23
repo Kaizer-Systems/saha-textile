@@ -567,5 +567,29 @@ for _ in $(seq 1 30); do api_ready && READY=yes && break; sleep 2; done
 expect 'the first release is ready again' "$READY" yes
 expect 'the shop answers after the rollback past a rotation' "$(with_pull_cert "$SITE_HOST" /en/)" 200
 
+echo 'An environment not behind Cloudflare (EDGE_TLS=public)'
+PUBLIC="$(write_release public)"
+printf 'EDGE_TLS=public\nACME_EMAIL=proof@example.test\n' >>"$PUBLIC/release.env"
+printf 'unused-here' >"$PUBLIC/secrets/do-dns-token"
+# A certificate far from its end, so the deploy does not ask Let's Encrypt (there is no internet CA here);
+# the proof's own CA stands in for Let's Encrypt.
+openssl req -newkey rsa:2048 -nodes -subj "/CN=$SITE_HOST" -keyout "$PUBLIC/secrets/origin.key" \
+	-out "$PROOF/public.csr" 2>/dev/null
+openssl x509 -req -in "$PROOF/public.csr" -CA "$SAHA_TEXTILE_ROOT/certs/origin-ca.pem" -CAkey "$PROOF/origin-ca.key" \
+	-CAcreateserial -days 90 -extfile "$PROOF/san.ext" -out "$PROOF/public.pem" 2>/dev/null
+cp "$PROOF/public.pem" "$PUBLIC/secrets/origin.pem"
+cp "$SAHA_TEXTILE_ROOT/certs/origin-ca.pem" "$SAHA_TEXTILE_ROOT/certs/acme-ca.pem"
+if ! "$PUBLIC/bin/deploy.sh" "$PUBLIC" >"$PROOF/public.log" 2>&1; then
+	tail -n 15 "$PROOF/public.log" | sed 's/^/       /'
+	fail 'the public-mode deploy failed'
+fi
+expect 'the public-mode release is current' "$(readlink "$SAHA_TEXTILE_ROOT/current")" "$PUBLIC"
+expect 'a browser without a Cloudflare client certificate reaches the shop' "$(status_code "$SITE_HOST" /en/)" 200
+PUBLIC_LINE="$(docker logs --since 60s "$(in_release "$PUBLIC" ps --quiet edge | head -n 1)" 2>/dev/null | grep '"kind":"edge"' | tail -n 1)"
+printf '%s' "$PUBLIC_LINE" | grep -q '"ip":"[0-9a-f.:]\+"' && pass "the visitor's address is the connection's own" ||
+	fail "the edge logged no visitor address: $(printf '%s' "$PUBLIC_LINE" | cut -c1-160)"
+grep -q 'Asking Let' "$PROOF/public.log" && fail 'it asked Let'"'"'s Encrypt for a certificate that was current' ||
+	pass 'a current certificate is not fetched again'
+
 echo
 echo "Passed $PASSED checks. The stack is still running: pnpm production:proof clean removes it."

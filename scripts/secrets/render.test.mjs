@@ -169,6 +169,7 @@ test('buildRelease: a complete project gives every file deploy.sh checks', () =>
 		'release.env',
 		'secrets/api.env',
 		'secrets/backup.env',
+		'secrets/do-dns-token',
 		'secrets/meilisearch.toml',
 		'secrets/mongo-app-password',
 		'secrets/mongo-keyfile',

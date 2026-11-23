@@ -4,26 +4,35 @@ import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundEx
 import {
 	Location,
 	type LocationChip,
+	summariseStoreHours,
 	type LocationWrite,
 	UserLocations,
 	type UserLocationsWrite,
 } from '@saha-textile/contracts';
 import {
+	type AdminUserRoleAssignmentRepository,
 	type CompanyRepository,
 	firstLocationFromShop,
+	type GeoDataPort,
+	locationFromStore,
 	locationProblems,
 	locationScope,
 	type LocationRepository,
 	type LocationScope,
 	normaliseKinds,
+	type RoleRepository,
 	type ShopDetailsRepository,
 	type StoreLocationRepository,
+	SUPER_ADMIN_ROLE_KEY,
 } from '@saha-textile/core-domain';
 
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import {
+	ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY,
 	COMPANY_REPOSITORY,
+	GEO_DATA_PORT,
 	LOCATION_REPOSITORY,
+	ROLE_REPOSITORY,
 	SHOP_DETAILS_REPOSITORY,
 	STORE_LOCATION_REPOSITORY,
 } from '../infra/tokens';
@@ -46,7 +55,21 @@ export class LocationsService {
 		@Inject(SHOP_DETAILS_REPOSITORY) private readonly shop: ShopDetailsRepository,
 		@Inject(STORE_LOCATION_REPOSITORY) private readonly stores: StoreLocationRepository,
 		@Inject(COMPANY_REPOSITORY) private readonly company: CompanyRepository,
+		@Inject(GEO_DATA_PORT) private readonly geo: GeoDataPort,
+		@Inject(ROLE_REPOSITORY) private readonly roles: Pick<RoleRepository, 'findByKey'>,
+		@Inject(ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY)
+		private readonly assignments: Pick<AdminUserRoleAssignmentRepository, 'findActive'>,
 	) {}
+
+	/**
+	 * A super admin holds the active system Administrator role, as everywhere else in admin. The coarse
+	 * `admin` role on a session is not enough: a store manager has it too.
+	 */
+	private async isSuperAdmin(principal: AuthenticatedPrincipal | undefined): Promise<boolean> {
+		if (!principal) return false;
+		const role = await this.roles.findByKey(SUPER_ADMIN_ROLE_KEY);
+		return !!role && !!(await this.assignments.findActive(principal.userId, role.id));
+	}
 
 	/** First run: the shop's own place, then each Stores page entry (linked, not copied twice). */
 	private ensureSeeded(): Promise<void> {
@@ -67,35 +90,39 @@ export class LocationsService {
 					}),
 				);
 			}
+			const shopStateCode = shop?.gstin?.slice(0, 2) ?? '19';
 			for (const store of await this.stores.list()) {
 				const same = made.find((l) => l.pin && l.pin === store.pinCode && !l.storeLocationId);
 				if (same) {
+					// Shop details carry no phone or hours; the Stores entry at the same PIN does.
 					same.storeLocationId = store.id;
 					same.showOnStoresPage = store.active;
+					same.phone ||= store.phone ?? '';
+					same.openingHours ||= summariseStoreHours(store.hours, 'en').slice(0, 120);
 					continue;
 				}
-				const name = store.name['en'] ?? Object.values(store.name)[0] ?? 'Store';
-				const codes = new Set(made.map((l) => l.shortCode));
-				let code =
-					name
-						.replace(/[^A-Za-z]/g, '')
-						.slice(0, 3)
-						.toUpperCase() || 'STR';
-				for (let n = 2; codes.has(code); n += 1) code = `${code.slice(0, 3)}${n}`;
+				const directory = await this.geo.pin(store.pinCode).catch(() => null);
 				made.push(
 					Location.parse({
+						...locationFromStore(
+							{
+								id: store.id,
+								name: store.name['en'] ?? Object.values(store.name)[0] ?? 'Store',
+								address: store.address['en'] ?? Object.values(store.address)[0] ?? '',
+								pinCode: store.pinCode,
+								phone: store.phone,
+								openingHours: summariseStoreHours(store.hours, 'en'),
+								active: store.active,
+							},
+							{
+								takenShortCodes: made.map((l) => l.shortCode),
+								pinDirectory: directory?.found
+									? { stateCode: directory.gstStateCode, city: directory.city }
+									: null,
+								shopStateCode,
+							},
+						),
 						id: `loc_${randomUUID()}`,
-						name,
-						shortCode: code,
-						warehouse: true,
-						store: true,
-						showOnStoresPage: store.active,
-						storeLocationId: store.id,
-						address: store.address['en'] ?? '',
-						pin: store.pinCode,
-						city: '',
-						stateCode: '19',
-						phone: store.phone ?? '',
 						createdAt: now,
 						updatedAt: now,
 					}),
@@ -113,11 +140,14 @@ export class LocationsService {
 		return (await this.repo.list()).filter((l) => l.active).map((l) => l.id);
 	}
 
-	/** What this user may see (L1–L3); a super admin (role admin) sees everything. */
+	/** What this user may see (L1–L3); a super admin sees everything. */
 	async scope(principal: AuthenticatedPrincipal | undefined): Promise<LocationScope> {
 		await this.ensureSeeded();
 		const user = principal ? await this.repo.userLocations(principal.userId) : null;
-		return locationScope(user, { superAdmin: principal?.role === 'admin', activeIds: await this.activeIds() });
+		return locationScope(user, {
+			superAdmin: await this.isSuperAdmin(principal),
+			activeIds: await this.activeIds(),
+		});
 	}
 
 	async list(principal: AuthenticatedPrincipal | undefined): Promise<LocationRow[]> {
@@ -218,7 +248,7 @@ export class LocationsService {
 	async chip(principal: AuthenticatedPrincipal | undefined): Promise<LocationChip> {
 		const scope = await this.scope(principal);
 		const user = principal ? await this.repo.userLocations(principal.userId) : null;
-		const superAdmin = principal?.role === 'admin';
+		const superAdmin = await this.isSuperAdmin(principal);
 		const all = await this.repo.list();
 		const pick = (l: Location) => ({ id: l.id, name: l.name, shortCode: l.shortCode });
 		const current = scope.current ? all.find((l) => l.id === scope.current) : null;

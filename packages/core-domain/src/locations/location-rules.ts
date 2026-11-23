@@ -1,5 +1,7 @@
 import type { Location, LocationWrite, UserLocations } from '@saha-textile/contracts';
 
+import { GST_STATES } from '../company/gst-identity';
+
 /**
  * Location rules (accounts brief K1–K3, L1–L3; owner-approved 2026-11-23). Pure: the API checks saves with them
  * and the admin shows the same problems.
@@ -134,6 +136,104 @@ export function firstLocationFromShop(shop: {
 		invoiceIdentity: 'company',
 		numberSeries: 'gstin',
 		counterCashBox: true,
+		pettyCashFloatINR: 0,
+		active: true,
+	};
+}
+
+/** Older or everyday spellings of a State as addresses write it. */
+const STATE_ALIASES: Readonly<Record<string, string>> = {
+	orissa: '21',
+	pondicherry: '34',
+	'new delhi': '07',
+	'nct of delhi': '07',
+};
+
+const stateCodeOfPart = (part: string): string | null => {
+	const key = part.trim().toLowerCase();
+	return STATE_ALIASES[key] ?? GST_STATES.find((s) => !s.retired && s.name.toLowerCase() === key)?.code ?? null;
+};
+
+/**
+ * The State and city an address names, reading its comma parts from the end ("…, Agartala, Tripura" →
+ * Tripura, Agartala). Null State when no part is a State's name.
+ */
+export function placeFromAddress(address: string): { stateCode: string | null; city: string } {
+	const parts = address
+		.split(',')
+		.map((part) => part.replace(/\b\d{6}\b/g, '').trim())
+		.filter(Boolean);
+	for (let index = parts.length - 1; index >= 0; index -= 1) {
+		const code = stateCodeOfPart(parts[index] ?? '');
+		if (!code) continue;
+		const before = parts[index - 1] ?? '';
+		return { stateCode: code, city: /[A-Za-z]/.test(before) && !/\d/.test(before) ? before : '' };
+	}
+	return { stateCode: null, city: '' };
+}
+
+/** A short code from a place's name: initials of several words ("Hindustan Park" → HP), else its first three letters. */
+export function shortCodeFor(place: string, taken: readonly string[]): string {
+	const words = place.match(/[A-Za-z]+/g) ?? [];
+	const initials = words.map((word) => word[0]).join('');
+	const base = (words.length > 1 && initials.length >= 2 ? initials.slice(0, 4) : (words[0] ?? '').slice(0, 3))
+		.toUpperCase()
+		.padEnd(2, 'X');
+	const used = new Set(taken.map((code) => code.toUpperCase()));
+	if (!used.has(base)) return base;
+	for (let n = 2; ; n += 1) {
+		const code = `${base.slice(0, 5)}${n}`;
+		if (!used.has(code)) return code;
+	}
+}
+
+/**
+ * A location made from a Stores page entry (F2 migration; brief: "Stores become locations with Show on the
+ * shop's Stores page"). Its State comes from the address the entry shows; the PIN directory is only a
+ * fallback, because its rows carry mistakes (a post office filed under the wrong State), then the shop's State.
+ */
+export function locationFromStore(
+	store: {
+		id: string;
+		name: string;
+		address: string;
+		pinCode: string;
+		phone: string | null;
+		/** The entry's hours as one line (the API summarises them with the Stores page's own wording). */
+		openingHours: string;
+		active: boolean;
+	},
+	context: {
+		takenShortCodes: readonly string[];
+		pinDirectory: { stateCode: string | null; city: string | null } | null;
+		shopStateCode: string;
+	},
+): Omit<Location, 'id' | 'createdAt' | 'updatedAt' | 'updatedBy' | 'gstRegistrationId'> {
+	const fromAddress = placeFromAddress(store.address);
+	const stateCode = fromAddress.stateCode ?? context.pinDirectory?.stateCode ?? context.shopStateCode;
+	const city = fromAddress.city || context.pinDirectory?.city || '';
+	// "Saha Textile, Agartala" names its place after the comma; a name without one is the place itself.
+	const place = (store.name.includes(',') ? store.name.split(',').at(-1) : store.name)?.trim() || city || 'Store';
+	return {
+		name: `${place} store`.slice(0, 80),
+		shortCode: shortCodeFor(place, context.takenShortCodes),
+		warehouse: true,
+		store: true,
+		office: false,
+		courierPickup: false,
+		shipsOnline: false,
+		showOnStoresPage: store.active,
+		storeLocationId: store.id,
+		address: store.address,
+		pin: store.pinCode,
+		city,
+		stateCode,
+		phone: store.phone ?? '',
+		openingHours: store.openingHours.slice(0, 120),
+		shopsEstablishmentNo: '',
+		invoiceIdentity: 'company',
+		numberSeries: 'gstin',
+		counterCashBox: false,
 		pettyCashFloatINR: 0,
 		active: true,
 	};

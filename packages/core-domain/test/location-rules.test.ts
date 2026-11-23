@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
 	firstLocationFromShop,
 	inScope,
+	locationFromStore,
+	placeFromAddress,
+	shortCodeFor,
 	locationProblems,
 	locationScope,
 	normaliseKinds,
@@ -86,5 +89,62 @@ describe('locations (accounts brief K, L)', () => {
 			store: true,
 			stateCode: '19',
 		});
+	});
+
+	it('reads the State and city an address names, from the end', () => {
+		expect(placeFromAddress('Colonel Chowmuhani, Krishna Nagar, Agartala, Tripura')).toEqual({
+			stateCode: '16',
+			city: 'Agartala',
+		});
+		expect(placeFromAddress('51/2, Golpark, Hindustan Park, Gariahat, Kolkata, West Bengal 700029')).toEqual({
+			stateCode: '19',
+			city: 'Kolkata',
+		});
+		expect(placeFromAddress('Plot 4, Bhubaneswar, Orissa')).toEqual({ stateCode: '21', city: 'Bhubaneswar' });
+		expect(placeFromAddress('Rash Behari Avenue')).toEqual({ stateCode: null, city: '' });
+	});
+
+	it('makes short codes from a place and keeps them unique', () => {
+		expect(shortCodeFor('Agartala', [])).toBe('AGA');
+		expect(shortCodeFor('Hindustan Park', [])).toBe('HP');
+		expect(shortCodeFor('Agartala', ['AGA'])).toBe('AGA2');
+		expect(shortCodeFor('Agartala', ['aga', 'AGA2'])).toBe('AGA3');
+	});
+
+	it('turns a Stores page entry into a store location, its State from the address first', () => {
+		const store = {
+			id: 'store_1',
+			name: 'Saha Textile, Agartala',
+			address: 'Colonel Chowmuhani, Agartala, Tripura',
+			pinCode: '799001',
+			phone: null,
+			openingHours: 'Mon–Sat 11:00–21:30, Sun closed',
+			active: true,
+		};
+		const wrongDirectory = { stateCode: '36', city: 'Nirmal' };
+		expect(
+			locationFromStore(store, { takenShortCodes: ['BAR'], pinDirectory: wrongDirectory, shopStateCode: '19' }),
+		).toMatchObject({
+			name: 'Agartala store',
+			shortCode: 'AGA',
+			store: true,
+			warehouse: true,
+			showOnStoresPage: true,
+			storeLocationId: 'store_1',
+			stateCode: '16',
+			city: 'Agartala',
+			openingHours: 'Mon–Sat 11:00–21:30, Sun closed',
+		});
+		const noState = { ...store, name: 'Gariahat', address: 'Rash Behari Avenue' };
+		expect(
+			locationFromStore(noState, {
+				takenShortCodes: [],
+				pinDirectory: { stateCode: '19', city: 'Kolkata' },
+				shopStateCode: '19',
+			}),
+		).toMatchObject({ name: 'Gariahat store', stateCode: '19', city: 'Kolkata' });
+		expect(
+			locationFromStore(noState, { takenShortCodes: [], pinDirectory: null, shopStateCode: '19' }),
+		).toMatchObject({ stateCode: '19', city: '' });
 	});
 });

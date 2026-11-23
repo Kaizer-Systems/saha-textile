@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
+import { gstStateName } from '@saha-textile/core-domain/company';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
@@ -32,6 +33,11 @@ export class LocationsListPage {
 		queryKey: COMPANY_KEYS.registrations,
 		queryFn: () => firstValueFrom(this.company.registrations()),
 	}));
+
+	/** The State's name, as the State picker shows it ("Tripura"), not its GST code. */
+	stateName(code: string): string {
+		return gstStateName(code) ?? code;
+	}
 
 	gstinOf(id: string | null): string {
 		return (id && this.registrations.data()?.find((r) => r.id === id)?.gstin) || '—';

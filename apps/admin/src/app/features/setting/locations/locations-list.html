@@ -51,9 +51,11 @@
 					</td>
 					<td>
 						{{ l.address }}
-						<small class="d-block text-muted">{{ l.city }} {{ l.pin }} · {{ l.stateCode }}</small>
+						<small class="d-block text-muted">
+							{{ l.city }} {{ l.pin }} · {{ stateName(l.stateCode) }}
+						</small>
 					</td>
-					<td>{{ gstinOf(l.gstRegistrationId) }}</td>
+					<td class="text-nowrap">{{ gstinOf(l.gstRegistrationId) }}</td>
 					<td>{{ l.people }}</td>
 					<td>
 						<div

@@ -35,7 +35,7 @@
 			<tbody>
 				@for (row of rows(); track row.registration.id) {
 				<tr>
-					<td>{{ row.registration.gstin }}</td>
+					<td class="text-nowrap">{{ row.registration.gstin }}</td>
 					<td>{{ stateLabel(row.registration.stateCode) }} ({{ row.registration.stateCode }})</td>
 					<td>{{ 'gst_kind_' + row.terms?.kind | transloco }}</td>
 					<td>{{ 'gst_scheme_' + row.terms?.scheme | transloco }}</td>

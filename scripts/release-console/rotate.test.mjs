@@ -101,3 +101,28 @@ test('reads only the three traces paths, and says when VictoriaTraces is off', a
 	});
 	assert.equal(off.off, true);
 });
+
+test('the local database monitor sends its password on stdin, and says when the login is missing', async () => {
+	const { monitorReport } = await import('./inspect.mjs');
+	const { mkdtempSync, mkdirSync, writeFileSync } = await import('node:fs');
+	const { tmpdir } = await import('node:os');
+	const { join } = await import('node:path');
+	const root = mkdtempSync(join(tmpdir(), 'rc-monitor-'));
+	assert.match((await monitorReport(root, { dbName: 'saha_textile_local' })).error, /not set up/);
+	mkdirSync(join(root, 'docker/dev-secrets'), { recursive: true });
+	mkdirSync(join(root, 'docker/production/bin'), { recursive: true });
+	writeFileSync(join(root, 'docker/dev-secrets/mongo-monitor-password'), 'example-monitor-words\n');
+	writeFileSync(join(root, 'docker/production/bin/observe.sh'), 'x\n    script = r"""\nprint(1)\n"""\n');
+	let stdin = '';
+	let args = [];
+	const exec = (_cmd, a, _o, done) => {
+		args = a;
+		setImmediate(() => done(null, '{"uptimeSeconds":5,"collections":2}\n', ''));
+		return { stdin: { end: (t) => (stdin = t) } };
+	};
+	const r = await monitorReport(root, { dbName: 'saha_textile_local' }, exec);
+	assert.equal(r.collections, 2);
+	assert.equal(stdin, 'example-monitor-words\nprint(1)');
+	assert.ok(!args.join(' ').includes('example-monitor-words'));
+	await assert.rejects(monitorReport(root, { dbName: 'other' }, exec), /saha_textile_/);
+});

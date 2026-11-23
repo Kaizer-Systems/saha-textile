@@ -342,7 +342,7 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 			} @else if (screen() === 'traces') {
 				<!-- Real tracing (Release Path brief Part 6): VictoriaTraces on this computer, servers after DEC-TRACING-SERVERS. -->
 				<rc-traces-screen [tab]="tabKey()" />
-			} @else if (screen() === 'queries' && envOnServer()) {
+			} @else if (screen() === 'queries' && (envOnServer() || tabKey() === 'top')) {
 				<!-- Database monitor on a server tab: observe.sh db-report (Release Path brief Q9). -->
 				<rc-db-monitor />
 			} @else if (product()) {

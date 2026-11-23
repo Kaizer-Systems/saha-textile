@@ -5,6 +5,8 @@
  * browser), and passwords are read inside their own container, so they never reach this process.
  */
 import { execFile } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 export const STACK = /^saha-textile-[a-z0-9-]+$/;
 export class InspectError extends Error {}
@@ -164,6 +166,64 @@ export async function mongoReport(name, dbName) {
 	if (!r.ok) throw new InspectError(`mongosh failed: ${r.err || 'no answer'}`);
 	const text = r.out.trim().split('\n').pop() ?? '{}';
 	return JSON.parse(text);
+}
+
+/** observe.sh's db-report script, read from the file so this Mac and the servers run the same report. */
+export function dbReportScript(root) {
+	const text = readFileSync(join(root, 'docker/production/bin/observe.sh'), 'utf8');
+	const m = /script = r"""\n([\s\S]*?)\n"""/.exec(text);
+	if (!m) throw new InspectError('observe.sh has no db-report script.');
+	return m[1];
+}
+
+/**
+ * The Database monitor on this Mac (Release Path brief Q9): the same report as the servers, through
+ * the read-only monitor login `saha_textile_monitor`. Its password comes from
+ * docker/dev-secrets/mongo-monitor-password and goes to the container on stdin, never on a command line.
+ */
+export async function monitorReport(root, { name = 'saha-textile-mongo', dbName } = {}, exec = execFile) {
+	if (!MONGO_DB.test(dbName ?? '')) throw new InspectError('Name a saha_textile_* database.');
+	const file = join(root, 'docker/dev-secrets/mongo-monitor-password');
+	if (!existsSync(file))
+		return {
+			error: 'The monitor login is not set up on this Mac: run pnpm secrets:setup-local -- --monitor-only.',
+		};
+	const password = readFileSync(file, 'utf8').trim();
+	if (!password || /[\r\n]/.test(password)) return { error: 'The monitor login is not set up on this Mac.' };
+	const script = dbReportScript(root);
+	return new Promise((resolve, reject) => {
+		const child = exec(
+			'docker',
+			[
+				'exec',
+				'-i',
+				'-e',
+				`APP_DATABASE=${dbName}`,
+				container(name),
+				'sh',
+				'-c',
+				'IFS= read -r pw; mongosh --quiet -u saha_textile_monitor -p "$pw" --authenticationDatabase admin "$APP_DATABASE" --eval "$(cat)"',
+			],
+			{ encoding: 'utf8', timeout: 45_000, maxBuffer: 8 * 1024 * 1024 },
+			(error, stdout, stderr) => {
+				const last =
+					String(stdout ?? '')
+						.trim()
+						.split('\n')
+						.pop() ?? '';
+				if (error && !last)
+					return reject(
+						new InspectError(`mongosh failed: ${String(stderr ?? '').slice(0, 300) || 'no answer'}`),
+					);
+				try {
+					resolve(JSON.parse(last));
+				} catch {
+					reject(new InspectError('The database did not answer in JSON.'));
+				}
+			},
+		);
+		child.stdin.end(`${password}\n${script}`);
+	});
 }
 
 /** Turns slow-query profiling on (100 ms) or off for one local database. */

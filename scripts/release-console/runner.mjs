@@ -15,6 +15,7 @@ import {
 	meiliReport,
 	mongoProfile,
 	mongoReport,
+	monitorReport,
 	networks,
 	patches,
 	redisReport,
@@ -998,6 +999,14 @@ export function createRunner(token) {
 						return send(200, await connectionsOf(q('container')));
 					if (req.method === 'GET' && path === '/inspect/networks')
 						return send(200, await shared('networks', 5000, networks));
+					if (req.method === 'GET' && path === '/inspect/monitor') {
+						// This Mac's shop database, from apps/api/.env (the Infisical chat's local monitor login).
+						const envFile = join(ROOT, 'apps/api/.env');
+						const dbName = /^MONGODB_DB_NAME=(.+)$/m
+							.exec(existsSync(envFile) ? readFileSync(envFile, 'utf8') : '')?.[1]
+							?.trim();
+						return send(200, await monitorReport(ROOT, { dbName }));
+					}
 					if (req.method === 'GET' && path === '/inspect/mongo')
 						return send(
 							200,

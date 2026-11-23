@@ -234,3 +234,23 @@ export class ServerStateController {
 		};
 	}
 }
+
+/**
+ * The Database monitor on this Mac (Release Path brief Q9): the same db-report as the servers, run by
+ * the Mac helper with the local read-only monitor login.
+ */
+@Controller('api/local/db-report')
+export class LocalDbReportController {
+	private readonly helper = new RunnerClient();
+
+	@Get()
+	async read(): Promise<DbReport | { error: string }> {
+		const answer = await this.helper.call<unknown>('GET', '/inspect/monitor', undefined, 60_000);
+		const said = (answer as { error?: unknown } | null)?.error;
+		if (typeof said === 'string') return { error: said };
+		const parsed = dbReportSchema.safeParse(answer);
+		if (!parsed.success)
+			throw new HelperError('The local report answered in a shape the console does not know.', 502);
+		return parsed.data;
+	}
+}

@@ -424,6 +424,16 @@ export class ConsoleApi {
 			60_000,
 		);
 	}
+	/** Database monitor on this Mac: the same report with the local read-only monitor login (Q9). */
+	localDbReport(): Promise<DbReport | { error: string }> {
+		return this.call(
+			'GET',
+			'/api/local/db-report',
+			z.union([dbReportSchema, z.object({ error: z.string() })]),
+			undefined,
+			75_000,
+		);
+	}
 	/** Database monitor on a server: observe.sh db-report with the read-only monitor login (Q9). */
 	dbReport(p: string, r: string, env: string): Promise<DbReport | { error: string }> {
 		return this.call(

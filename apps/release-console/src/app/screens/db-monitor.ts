@@ -10,8 +10,8 @@ import { Loading } from '../shared/loading';
 /**
  * Watch › Database monitor on an environment that runs on a server (Release Path brief Q9, approved
  * 23 Nov): the server's figures, slow-query shapes with every value shown as "?", and index use,
- * read by observe.sh's `db-report` with the read-only monitor login. This Mac's tab reads the local
- * MongoDB as before.
+ * read by observe.sh's `db-report` with the read-only monitor login on a server, and by the same
+ * script with the local monitor login on this Mac (its Query plan tab keeps reading as before).
  */
 @Component({
 	selector: 'rc-db-monitor',
@@ -132,7 +132,7 @@ import { Loading } from '../shared/loading';
 				</div>
 			</div>
 		} @else {
-			<rc-loading what="Reading the database report through the observer login…" />
+			<rc-loading what="Reading the database report with the read-only monitor login…" />
 		}
 	`,
 })
@@ -141,12 +141,18 @@ export class DbMonitorScreen {
 	private readonly ctx = inject(ConsoleContext);
 	private readonly state = inject(ConsoleState);
 	private readonly envName = computed(() => this.state.environment());
+	protected readonly onServer = computed(
+		() => (this.ctx.repo()?.environments.find((e) => e.name === this.envName())?.cloudId ?? null) !== null,
+	);
 	protected readonly envLabel = computed(
 		() => this.ctx.repo()?.environments.find((e) => e.name === this.envName())?.label ?? this.envName(),
 	);
 	protected readonly view = injectQuery(() => ({
 		queryKey: ['db-report', this.ctx.projectId(), this.ctx.repoId(), this.envName()],
-		queryFn: () => this.api.dbReport(this.ctx.projectId() ?? '', this.ctx.repoId() ?? '', this.envName()),
+		queryFn: () =>
+			this.onServer()
+				? this.api.dbReport(this.ctx.projectId() ?? '', this.ctx.repoId() ?? '', this.envName())
+				: this.api.localDbReport(),
 		enabled: !!this.ctx.projectId() && !!this.ctx.repoId() && !!this.envName(),
 		staleTime: 60_000,
 	}));

@@ -623,7 +623,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 			offStates: null,
 			partStates: null,
 			captions: {
-				top: 'Queries ranked by total time, from the MongoDB profiler',
+				top: 'Figures, slow queries (every value shown as ?) and index use, with the read-only monitor login',
 				explain: 'One slow query: its plan, the missing index and the fix',
 			},
 		},

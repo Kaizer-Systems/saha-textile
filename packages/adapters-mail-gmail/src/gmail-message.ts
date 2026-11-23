@@ -242,7 +242,7 @@ export function toDraftSummary(draftId: string, message: GmailMessage): InboxDra
 		threadId: message.threadId || null,
 		to: header(message.payload, 'To'),
 		subject: header(message.payload, 'Subject'),
-		snippet: message.snippet ?? '',
+		snippet: message.snippet,
 		date: iso(message.internalDate),
 	};
 }

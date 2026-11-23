@@ -72,7 +72,7 @@ const MAX_REFERENCES = 20;
 export const referencesFor = (references: string | undefined, inReplyTo: string): string => {
 	const ids = [...(references ?? '').matchAll(/<[^<>\s]+>/g)].map((match) => match[0]);
 	const all = [...new Set([...ids, angle(inReplyTo)])];
-	const kept = all.length > MAX_REFERENCES ? [all[0] ?? '', ...all.slice(-(MAX_REFERENCES - 1))] : all;
+	const kept = all.length > MAX_REFERENCES ? [...all.slice(0, 1), ...all.slice(-(MAX_REFERENCES - 1))] : all;
 	return kept.map(headerSafe).join(' ');
 };
 

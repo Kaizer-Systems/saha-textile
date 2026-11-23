@@ -14,6 +14,8 @@ import type { Order } from '@saha-textile/contracts';
 
 /** A date typed in the form (India) as the API takes it: the start of that day in India. */
 const indiaDayStart = (day: string): string => new Date(`${day}T00:00:00+05:30`).toISOString();
+/** An e-way bill is valid to the end of its last day, at midnight Indian time (Rule 138(10)). */
+const indiaDayEnd = (day: string): string => new Date(`${day}T23:59:59+05:30`).toISOString();
 
 /**
  * Raise e-invoice / Raise e-way bill, the manual fallback (owner 2026-11-20): until an integration
@@ -131,7 +133,7 @@ export class OrderEDocPopup {
 							this.gateway.setEWayBill(order.id, {
 								number: this.ewbNumber().replace(/\s+/g, ''),
 								generatedOn: indiaDayStart(this.generatedOn()),
-								validUntil: indiaDayStart(this.validUntil()),
+								validUntil: indiaDayEnd(this.validUntil()),
 								transporterName: this.transporterName().trim() || null,
 								transporterId: this.transporterId().trim() || null,
 								vehicleOrDocumentNo: this.vehicleOrDocumentNo().trim() || null,

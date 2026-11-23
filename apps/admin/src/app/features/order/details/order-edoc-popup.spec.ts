@@ -49,4 +49,14 @@ describe('by-hand e-invoice popup: the portal’s signed file (addendum 2, EI4B)
 		expect(popup.fileProblem()).toBe('ord_signed_file_not_json');
 		expect(popup.irn()).toBe('');
 	});
+
+	it('takes a 14-digit e-way bill number with spaces (NIC, 23 Nov 2026)', () => {
+		const popup = setup(null);
+		popup.ewbNumber.set('3410 1234 5512 70');
+		expect(popup.ewbValid()).toBe(true);
+		popup.ewbNumber.set('3410 1234 5512');
+		expect(popup.ewbValid()).toBe(true);
+		popup.ewbNumber.set('3410 1234 551');
+		expect(popup.ewbValid()).toBe(false);
+	});
 });

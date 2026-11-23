@@ -7,6 +7,7 @@ import { BundleChoice } from './product-bundle';
 import { Id, IsoDateTime, PriceINR } from './common';
 import { AppliedCoupon } from './coupon';
 import { Order, OrderChannel, OrderPaymentStatus, OrderStatus, PaymentGateway } from './order';
+import { EWayBillNumber } from './edocs';
 import { ManualPaymentWrite, OrderPayment, PaymentMethod, PaymentRequest, Shipment } from './order-payment';
 import { ZoneLinePrice } from './price-zone';
 import { IsoDate } from './purchasing';
@@ -542,10 +543,8 @@ export const EInvoiceWrite = z.object({
 export type EInvoiceWrite = z.infer<typeof EInvoiceWrite>;
 
 export const EWayBillWrite = z.object({
-	number: z
-		.string()
-		.trim()
-		.regex(/^\d{12}$/, { message: 'ewb_shape' }),
+	/** 12 digits, 14 from 23 Nov 2026 (NIC); spaces are ignored. */
+	number: EWayBillNumber,
 	generatedOn: IsoDateTime,
 	validUntil: IsoDateTime,
 	transporterName: z.string().trim().max(120).nullable().default(null),

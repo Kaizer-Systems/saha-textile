@@ -108,69 +108,48 @@ export interface ShippingEvalScope {
 
 export type ShippingFactValue = boolean | number | string | string[] | null;
 
+type LineField = Extract<ShippingConditionField, `line.${string}`>;
+type ScopeField = Exclude<ShippingConditionField, LineField>;
+
+/** Every cart, delivery and shopper field; the compiler holds this to the full list. */
+const SCOPE_FACTS: Readonly<Record<ScopeField, (scope: ShippingEvalScope) => ShippingFactValue>> = {
+	'cart.subtotal': ({ cart }) => cart.subtotalINR,
+	'cart.units': ({ cart }) => cart.units,
+	'cart.lines': ({ cart }) => cart.lines,
+	'cart.chargeableWeight': ({ cart }) => cart.chargeableWeightGrams,
+	'cart.hasMadeToOrder': ({ cart }) => cart.hasMadeToOrder,
+	'delivery.country': ({ snapshot }) => snapshot.delivery.country.toUpperCase(),
+	'delivery.state': ({ snapshot }) => snapshot.delivery.state,
+	'delivery.pincode': ({ snapshot }) => snapshot.delivery.pincode,
+	'delivery.zone': (scope) => scope.zone,
+	'shopper.signedIn': ({ snapshot }) => snapshot.shopper.signedIn,
+	'shopper.group': ({ snapshot }) => snapshot.shopper.groups,
+	'shopper.firstOrder': ({ snapshot }) => snapshot.shopper.firstOrder,
+};
+
+/** Every line field; the compiler holds this to the full list. */
+const LINE_FACTS: Readonly<
+	Record<LineField, (line: ShippingSnapshotLine, scope: ShippingEvalScope) => ShippingFactValue>
+> = {
+	'line.discounted': (line) => isDiscounted(line),
+	'line.quantity': (_line, scope) => scope.lineUnits,
+	'line.sellingPrice': (line) => line.sellingPriceINR,
+	'line.mrp': (line) => line.mrpINR,
+	'line.discountPercent': (line) => discountPercent(line),
+	'line.onSaleEvent': (line) => line.onSaleEvent,
+	'line.category': (line) => line.categoryIds,
+	'line.mainCategory': (line) => line.mainCategoryId,
+	'line.product': (line) => line.productId,
+	'line.soldBy': (line) => line.soldBy,
+	'line.madeToOrder': (line) => line.madeToOrder,
+	'line.chargeableWeight': (line, scope) => (line.chargeableWeightGrams ?? 0) * scope.lineUnits,
+	'line.charge.domestic': (line) => line.charges.domestic,
+	'line.charge.internationalFirst': (line) => line.charges.internationalFirst,
+	'line.charge.internationalFurther': (line) => line.charges.internationalFurther,
+};
+
 /** The value of a field in a scope; null when the field needs a line and there is none. */
 export function factValue(field: ShippingConditionField, scope: ShippingEvalScope): ShippingFactValue {
-	const { line, cart, snapshot } = scope;
-	switch (field) {
-		case 'cart.subtotal':
-			return cart.subtotalINR;
-		case 'cart.units':
-			return cart.units;
-		case 'cart.lines':
-			return cart.lines;
-		case 'cart.chargeableWeight':
-			return cart.chargeableWeightGrams;
-		case 'cart.hasMadeToOrder':
-			return cart.hasMadeToOrder;
-		case 'delivery.country':
-			return snapshot.delivery.country.toUpperCase();
-		case 'delivery.state':
-			return snapshot.delivery.state;
-		case 'delivery.pincode':
-			return snapshot.delivery.pincode;
-		case 'delivery.zone':
-			return scope.zone;
-		case 'shopper.signedIn':
-			return snapshot.shopper.signedIn;
-		case 'shopper.group':
-			return snapshot.shopper.groups;
-		case 'shopper.firstOrder':
-			return snapshot.shopper.firstOrder;
-		default:
-			break;
-	}
-	if (line === null) return null;
-	switch (field) {
-		case 'line.discounted':
-			return isDiscounted(line);
-		case 'line.quantity':
-			return scope.lineUnits;
-		case 'line.sellingPrice':
-			return line.sellingPriceINR;
-		case 'line.mrp':
-			return line.mrpINR;
-		case 'line.discountPercent':
-			return discountPercent(line);
-		case 'line.onSaleEvent':
-			return line.onSaleEvent;
-		case 'line.category':
-			return line.categoryIds;
-		case 'line.mainCategory':
-			return line.mainCategoryId;
-		case 'line.product':
-			return line.productId;
-		case 'line.soldBy':
-			return line.soldBy;
-		case 'line.madeToOrder':
-			return line.madeToOrder;
-		case 'line.chargeableWeight':
-			return (line.chargeableWeightGrams ?? 0) * scope.lineUnits;
-		case 'line.charge.domestic':
-			return line.charges.domestic;
-		case 'line.charge.internationalFirst':
-			return line.charges.internationalFirst;
-		case 'line.charge.internationalFurther':
-			return line.charges.internationalFurther;
-	}
-	return null;
+	if (!isLineField(field)) return SCOPE_FACTS[field as ScopeField](scope);
+	return scope.line === null ? null : LINE_FACTS[field as LineField](scope.line, scope);
 }

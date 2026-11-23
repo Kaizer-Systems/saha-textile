@@ -99,8 +99,9 @@ export function fromGovDateTime(value: string | null | undefined): string | null
 		if (half === 'AM' && h === 12) h = 0;
 		// "23:59:00 PM" in the examples: a 24-hour time with a stray suffix stays as it is.
 	}
+	// Every part is digits by the patterns above, so the time is always a number.
 	const utc = Date.UTC(y, mo - 1, d, h, mi, s) - IST_MINUTES * 60_000;
-	return Number.isNaN(utc) ? null : new Date(utc).toISOString();
+	return new Date(utc).toISOString();
 }
 
 /**

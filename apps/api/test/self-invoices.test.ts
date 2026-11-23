@@ -115,12 +115,12 @@ function setup(
 			},
 			removeDraft: async (id: string) => id !== 'si_gone' && invoices.delete(id),
 			forSupplier: async () => [],
-			list: vi.fn(async (query: unknown) => ({ items: [], total: 0, counts: {}, query })),
+			list: vi.fn(async (query: unknown) => ({ items: [], total: 0, counts: {}, query }) as never),
 		},
 		{
 			get: async (id: string) => vouchers.get(id) ?? null,
 			insert: async (v: PaymentVoucher) => void vouchers.set(v.id, v),
-			list: vi.fn(async (query: unknown) => ({ items: [], total: 0, counts: {}, query })),
+			list: vi.fn(async (query: unknown) => ({ items: [], total: 0, counts: {}, query }) as never),
 			forDocument: async (kind: string, id: string) =>
 				[...vouchers.values()].filter((v) => v.against.kind === kind && v.against.id === id),
 		},

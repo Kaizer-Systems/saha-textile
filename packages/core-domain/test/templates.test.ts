@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultChart } from '../src/ledger/chart';
 import {
 	entriesOn,
+	whatOpens,
 	latestVersion,
 	lockState,
 	mergeCharts,
@@ -148,6 +149,28 @@ describe('accounts templates (T2)', () => {
 		expect(keys('private_limited', '2026-11-01')).toEqual(['rent', 'sponsorship']);
 		expect(keys('proprietorship', '2019-06-01')).toEqual(['old']);
 		expect(keys('proprietorship', '2024-10-09')).toEqual([]);
+	});
+});
+
+describe('what a kind opens (AT1)', () => {
+	it('lists the charts, tax rules and reports a kind unlocks, and how many stay locked', () => {
+		const templates = starterTemplates('2026-11-24T00:00:00.000Z');
+		const report = {
+			...templates[0]!,
+			code: 'RP-NCE-BS',
+			name: 'Balance sheet',
+			kind: 'report' as const,
+			versions: [{ ...templates[0]!.versions[0]!, content: { kind: 'report' as const, lines: [] } }],
+		};
+		const opens = whatOpens([...templates, report], 'proprietorship', '2026-11-24');
+		expect(opens.charts).toEqual([
+			{ code: 'CH-COMMON', name: 'Shared chart', version: 2 },
+			{ code: 'CH-PROP', name: "Proprietor's capital and drawings", version: 1 },
+		]);
+		expect(opens.taxRules).toEqual([{ code: 'RS-RCM', name: 'Reverse-charge list', version: 1, entries: 4 }]);
+		expect(opens.reports).toEqual([{ code: 'RP-NCE-BS', name: 'Balance sheet', version: 1 }]);
+		expect(opens.locked).toBe(4);
+		expect(whatOpens(templates, 'private_limited', '2026-11-24').taxRules[0]?.entries).toBe(6);
 	});
 });
 

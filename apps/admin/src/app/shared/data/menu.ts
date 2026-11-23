@@ -800,6 +800,14 @@ export const menu: IMenu[] = [
 			},
 			{
 				parent_id: 19,
+				title: 'at_title',
+				path: '/setting/accounts-templates',
+				type: 'link',
+				level: 2,
+				permission: ['accounts.index'],
+			},
+			{
+				parent_id: 19,
 				title: 'locations',
 				path: '/setting/locations',
 				type: 'link',

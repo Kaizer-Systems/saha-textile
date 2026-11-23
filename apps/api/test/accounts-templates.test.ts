@@ -58,7 +58,11 @@ describe('accounts templates library (T2)', () => {
 			installedVersion: null,
 			updateAvailable: false,
 		});
-		expect(rows.find((r) => r.code === 'CH-COMMON')?.latestVersion).toBe(2);
+		expect(rows.find((r) => r.code === 'CH-COMMON')).toMatchObject({
+			latestVersion: 2,
+			validFrom: '2026-04-01',
+			caReview: 'pending',
+		});
 		expect(rows.every((r) => !('versions' in r))).toBe(true);
 		await service.library();
 		expect(stores.templates.rows).toHaveLength(7);
@@ -207,9 +211,34 @@ describe('accounts templates library (T2)', () => {
 		expect(await empty.rcmChoices('2026-11-01')).toEqual([]);
 	});
 
+	it('says what a kind opens, and records every unlocked template once the books are set up (T3, AT1)', async () => {
+		const { stores, service } = serviceFor('private_limited');
+		expect(await service.booksSetUp()).toBe(false);
+		const opens = await service.opens('private_limited', new Date('2026-11-24T06:00:00Z'));
+		expect(opens).toMatchObject({ locked: 4, booksSetUp: false, reports: [] });
+		expect(opens.charts.map((c) => [c.code, c.version])).toEqual([
+			['CH-COMMON', 2],
+			['CH-PVT', 2],
+		]);
+		expect(opens.taxRules).toEqual([{ code: 'RS-RCM', name: 'Reverse-charge list', version: 1, entries: 6 }]);
+		stores.installs.rows.push({ code: 'CH-COMMON', version: 1, installedAt: at, installedBy: null });
+		await service.installUnlocked('usr_owner');
+		expect(stores.installs.rows.map((i) => [i.code, i.version, i.installedBy])).toEqual([
+			['CH-COMMON', 1, null],
+			['RS-RCM', 1, 'usr_owner'],
+			['CH-PVT', 2, 'usr_owner'],
+		]);
+		expect(await service.booksSetUp()).toBe(true);
+		expect((await service.opens('llp')).booksSetUp).toBe(true);
+	});
+
 	it('serves the library and one template to accounts.index holders', async () => {
 		const { service } = serviceFor(null);
 		const routes = new AccountsTemplatesController(service);
+		expect((await routes.opens({ kind: 'proprietorship' })).charts.map((c) => c.code)).toEqual([
+			'CH-COMMON',
+			'CH-PROP',
+		]);
 		expect((await routes.library()).length).toBe(7);
 		expect((await routes.get('CH-PROP')).code).toBe('CH-PROP');
 		expect(new AccountsTemplatesModule()).toBeInstanceOf(AccountsTemplatesModule);

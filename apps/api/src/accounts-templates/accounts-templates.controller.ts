@@ -1,7 +1,9 @@
-import { Controller, Get, Header, Param } from '@nestjs/common';
+import { Controller, Get, Header, Param, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { TemplatesOpenQuery } from '@saha-textile/contracts';
 
 import { Audience, RequirePermissions } from '../auth/session.guard';
+import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { AccountsTemplatesService } from './accounts-templates.service';
 
@@ -21,6 +23,14 @@ export class AccountsTemplatesController {
 	})
 	library() {
 		return this.templates.library();
+	}
+
+	@Get('opens')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({ operationId: 'accountsTemplatesOpen', summary: 'What a kind of company unlocks (AT1)' })
+	opens(@Query(new ZodValidationPipe(TemplatesOpenQuery)) query: TemplatesOpenQuery) {
+		return this.templates.opens(query.kind);
 	}
 
 	@Get(':code')

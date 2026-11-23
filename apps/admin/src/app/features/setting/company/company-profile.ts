@@ -11,6 +11,7 @@ import {
 import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
+import { ACCOUNTS_TEMPLATE_KEYS, AccountsTemplatesGateway } from '@core/accounts/accounts-templates.gateway';
 import { COMPANY_KEYS, CompanyGateway } from '@core/company/company.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -26,6 +27,8 @@ const newId = (prefix: string): string => `${prefix}_${Math.random().toString(36
  * other businesses under the same PAN, partners with capital, profit share, interest and pay, LLP
  * designated partners, or a company's directors, shareholders and capital (one-person company with
  * its nominee). The side says what the kind sets; problems show from the same rules the API uses.
+ * The kind unlocks its accounts templates (AT1): "What opens" lists them, Save sets up the books from them, and once the
+ * books exist the kind is changed only through Convert (AT-D3).
  */
 @Component({
 	selector: 'app-company-profile',
@@ -38,6 +41,7 @@ export class CompanyProfileSettings {
 	private readonly notifier = inject(NotificationService);
 	private readonly transloco = inject(TranslocoService);
 	private readonly auth = inject(AuthStore);
+	private readonly templates = inject(AccountsTemplatesGateway);
 
 	readonly kinds = BUSINESS_KIND_LIST;
 	readonly canEdit = computed(() => this.auth.permissions().includes('company.edit'));
@@ -46,6 +50,12 @@ export class CompanyProfileSettings {
 		queryFn: () => firstValueFrom(this.gateway.profile()),
 	}));
 	readonly form = signal<CompanyProfile | null>(null);
+	/** AT1: what the kind picked opens, and whether the books are set up already. */
+	readonly opens = injectQuery(() => ({
+		queryKey: ACCOUNTS_TEMPLATE_KEYS.opens(this.form()?.kind ?? 'proprietorship'),
+		queryFn: () => firstValueFrom(this.templates.opens(this.form()?.kind ?? 'proprietorship')),
+	}));
+	readonly booksSetUp = computed(() => this.opens.data()?.booksSetUp ?? false);
 	readonly saving = signal(false);
 	readonly effects = computed(() => (this.form() ? kindEffects(this.form()!.kind) : null));
 	readonly problems = computed(() => (this.form() ? companyProblems(this.form()!) : []));
@@ -70,7 +80,7 @@ export class CompanyProfileSettings {
 	}
 
 	pickKind(kind: BusinessKind): void {
-		if (this.canEdit()) this.set('kind', kind);
+		if (this.canEdit() && !this.booksSetUp()) this.set('kind', kind);
 	}
 
 	setProprietor(change: Partial<NonNullable<CompanyProfile['proprietor']>>): void {
@@ -195,6 +205,11 @@ export class CompanyProfileSettings {
 			void updatedBy;
 			await firstValueFrom(this.gateway.saveProfile(write, this.query.data()?.updatedAt ?? updatedAt ?? null));
 			await this.queryClient.invalidateQueries({ queryKey: COMPANY_KEYS.profile });
+			// AT1: the first save sets up the books from the templates the kind unlocks.
+			if (!this.booksSetUp() && this.auth.permissions().includes('accounts_template.edit')) {
+				await firstValueFrom(this.templates.setUpBooks());
+				await this.queryClient.invalidateQueries({ queryKey: ['accounts-templates'] });
+			}
 			this.notifier.showSuccess(this.transloco.translate('company_saved'));
 		} catch {
 			this.notifier.showError(this.transloco.translate('company_save_failed'));

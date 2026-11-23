@@ -98,3 +98,29 @@ export function entriesOn(entries: readonly TaxRuleEntry[], kind: BusinessKind, 
 			(entry.to === null || entry.to >= day),
 	);
 }
+
+/** AT1 "What opens": for a kind of company, the templates it unlocks by type, with the newest version of each. */
+export interface WhatOpens {
+	charts: { code: string; name: string; version: number }[];
+	taxRules: { code: string; name: string; version: number; entries: number }[];
+	reports: { code: string; name: string; version: number }[];
+	/** Templates of other kinds that stay locked (listed greyed in Accounts templates). */
+	locked: number;
+}
+
+export function whatOpens(templates: readonly AccountsTemplate[], kind: BusinessKind, day: string): WhatOpens {
+	const opens: WhatOpens = { charts: [], taxRules: [], reports: [], locked: 0 };
+	for (const template of templates) {
+		if (lockState(template, kind).locked) {
+			opens.locked += 1;
+			continue;
+		}
+		const latest = latestVersion(template);
+		const row = { code: template.code, name: template.name, version: latest.version };
+		if (latest.content.kind === 'taxRules')
+			opens.taxRules.push({ ...row, entries: entriesOn(latest.content.entries, kind, day).length });
+		else if (latest.content.kind === 'chart') opens.charts.push(row);
+		else opens.reports.push(row);
+	}
+	return opens;
+}

@@ -1,4 +1,11 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+	BadRequestException,
+	ConflictException,
+	ForbiddenException,
+	Inject,
+	Injectable,
+	NotFoundException,
+} from '@nestjs/common';
 import {
 	CompanyProfile,
 	type CompanyProfileWrite,
@@ -19,11 +26,13 @@ import {
 	termsProblems,
 } from '@saha-textile/core-domain';
 
+import { AccountsTemplatesService } from '../accounts-templates/accounts-templates.service';
 import { COMPANY_REPOSITORY, SHOP_DETAILS_REPOSITORY } from '../infra/tokens';
+import { accountsRefusal } from '../ledger/accounts-refusal';
 
 const refuse = (codes: readonly string[]) =>
 	new BadRequestException({
-		message: codes[0] ?? 'refused',
+		message: String(codes[0]),
 		issues: codes.map((code) => ({ path: [code], message: code, code })),
 	});
 
@@ -37,6 +46,7 @@ export class CompanyService {
 	constructor(
 		@Inject(COMPANY_REPOSITORY) private readonly repository: CompanyRepository,
 		@Inject(SHOP_DETAILS_REPOSITORY) private readonly shop: ShopDetailsRepository,
+		private readonly templates: AccountsTemplatesService,
 	) {}
 
 	async profile(): Promise<CompanyProfile> {
@@ -63,6 +73,10 @@ export class CompanyService {
 			updatedAt: new Date().toISOString(),
 			updatedBy: actorId,
 		});
+		// AT-D3: once the books are installed, the kind changes only through Convert.
+		const kindBefore = (await this.repository.getProfile())?.kind ?? 'proprietorship';
+		if (kindBefore !== next.kind && (await this.templates.booksSetUp()))
+			throw new ConflictException(accountsRefusal('kind_locked_books_exist'));
 		const problems = companyProblems(next);
 		if (problems.length) throw refuse(problems);
 		await this.repository.saveProfile(next, expectedUpdatedAt);

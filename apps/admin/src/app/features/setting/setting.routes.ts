@@ -70,6 +70,12 @@ export default [
 		loadComponent: () => import('./company/gst-registrations').then((m) => m.GstRegistrationsSettings),
 	},
 	{
+		// Accounts templates AT2 (owner-approved 2026-11-24).
+		path: 'accounts-templates',
+		loadComponent: () =>
+			import('./accounts-templates/accounts-templates-page').then((m) => m.AccountsTemplatesPage),
+	},
+	{
 		// Accounts brief M2 (owner-approved 2026-11-23).
 		path: 'order-routing',
 		loadComponent: () => import('./order-routing/order-routing').then((m) => m.OrderRoutingPage),

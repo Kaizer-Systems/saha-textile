@@ -39,6 +39,14 @@ export class LedgerController {
 		return this.ledger.chart();
 	}
 
+	@Post('templates/set-up-books')
+	@HttpCode(200)
+	@RequirePermissions('accounts_template.edit')
+	@ApiOperation({ operationId: 'setUpBooks', summary: 'Install the books from the templates the kind unlocks' })
+	setUpBooks(@Principal() principal?: AuthenticatedPrincipal) {
+		return this.ledger.setUpBooks(by(principal));
+	}
+
 	@Post('chart/groups')
 	@RequirePermissions('accounts.edit')
 	@ApiOperation({ operationId: 'addAccountGroup', summary: 'Add a group under another' })

@@ -4,6 +4,7 @@ import type {
 	BusinessKind,
 	ChartTemplateContent,
 	RcmChoice,
+	TemplatesOpen,
 	TaxRuleSetContent,
 	TemplateLibraryRow,
 	TemplateVersion,
@@ -19,7 +20,9 @@ import {
 	type TemplateInstallRepository,
 	unlockedFor,
 	entriesOn,
+	istDay,
 	versionOn,
+	whatOpens,
 } from '@saha-textile/core-domain';
 
 import { ACCOUNTS_TEMPLATE_REPOSITORY, COMPANY_REPOSITORY, TEMPLATE_INSTALL_REPOSITORY } from '../infra/tokens';
@@ -87,16 +90,50 @@ export class AccountsTemplatesService {
 		]);
 		const installed = new Map(installs.map((install) => [install.code, install.version]));
 		return templates.map(({ versions, ...template }) => {
-			const latest = latestVersion({ versions }).version;
+			const newest = latestVersion({ versions });
+			const latest = newest.version;
 			const installedVersion = installed.get(template.code) ?? null;
 			return {
 				...template,
 				latestVersion: latest,
+				validFrom: newest.validFrom,
+				caReview: newest.caReview,
 				...lockState(template, kind),
 				installedVersion,
 				updateAvailable: installedVersion !== null && latest > installedVersion,
 			};
 		});
+	}
+
+	/** Whether the company's books are installed (any template recorded as installed). */
+	async booksSetUp(): Promise<boolean> {
+		return (await this.installs.list()).length > 0;
+	}
+
+	/** AT1 "What opens" for a kind of company, and whether the books are already set up. */
+	async opens(kind: BusinessKind, now = new Date()): Promise<TemplatesOpen> {
+		await this.ensureLibrary();
+		const [templates, booksSetUp] = await Promise.all([this.templates.list(), this.booksSetUp()]);
+		return { ...whatOpens(templates, kind, istDay(now)), booksSetUp };
+	}
+
+	/** T3: every template the kind unlocks is recorded as installed at its newest version; installed ones keep theirs. */
+	async installUnlocked(by: string | null): Promise<void> {
+		await this.ensureLibrary();
+		const [templates, installs, kind] = await Promise.all([
+			this.templates.list(),
+			this.installs.list(),
+			this.kind(),
+		]);
+		const have = new Set(installs.map((install) => install.code));
+		const installedAt = new Date().toISOString();
+		for (const template of unlockedFor(templates, kind).filter((t) => !have.has(t.code)))
+			await this.installs.save({
+				code: template.code,
+				version: latestVersion(template).version,
+				installedAt,
+				installedBy: by,
+			});
 	}
 
 	/** One template with every version, by its reference code. */

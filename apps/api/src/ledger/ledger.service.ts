@@ -200,6 +200,14 @@ export class LedgerService {
 		return this.seeding;
 	}
 
+	/** AT1 "Save and set up the books": installed from the templates the kind unlocks, once (then only Convert). */
+	async setUpBooks(by: string | null) {
+		if (await this.templates.booksSetUp()) throw new ConflictException(accountsRefusal('books_already_set_up'));
+		await this.ensureChart();
+		await this.templates.installUnlocked(by);
+		return this.templates.library();
+	}
+
 	async chart(): Promise<ChartOfAccounts> {
 		await this.ensureChart();
 		return this.books.chart();

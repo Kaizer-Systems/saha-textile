@@ -247,7 +247,18 @@ describe('general ledger (accounts brief Q, T, D10)', () => {
 			['CH-PVT', 2],
 		]);
 		await service.chart();
-		expect(templates.installs.rows).toHaveLength(2);		// The ledger module brings the templates library with it.
+		expect(templates.installs.rows).toHaveLength(2); // Books already set up: setting them up again is refused (the kind changes only through Convert).
+		await expect(service.setUpBooks('adm_owner')).rejects.toThrow('books_already_set_up');
+		const fresh = setup({ kind: 'private_limited' });
+		const library = await fresh.service.setUpBooks('adm_owner');
+		expect(fresh.templates.installs.rows.map(({ code, version }) => [code, version])).toEqual([
+			['CH-COMMON', 2],
+			['CH-PVT', 2],
+			['RS-RCM', 1],
+		]);
+		expect(library.find((row) => row.code === 'RS-RCM')).toMatchObject({ installedVersion: 1, locked: false });
+		expect((await fresh.service.chart()).ledgers.some((l) => l.systemKey === 'directors_remuneration')).toBe(true);
+		// The ledger module brings the templates library with it.
 		expect(new LedgerModule()).toBeInstanceOf(LedgerModule);
 	});
 

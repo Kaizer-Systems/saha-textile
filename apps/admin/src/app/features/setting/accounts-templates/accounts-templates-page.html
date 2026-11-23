@@ -1,0 +1,99 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'at_title'"
+>
+	<p class="text-muted">{{ 'at_intro' | transloco }}</p>
+	<div class="theme-form theme-form-2 d-flex align-items-end mb-3 flex-wrap gap-3">
+		<div>
+			<label
+				class="form-label-title"
+				for="at_kind"
+			>
+				{{ 'at_filter_kind' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="at_kind"
+				[ngModel]="kind()"
+				(ngModelChange)="kind.set($event)"
+			>
+				<option value="">{{ 'at_all' | transloco }}</option>
+				@for (k of kinds; track k) {
+				<option [value]="k">{{ 'co_kind_' + k | transloco }}</option>
+				}
+			</select>
+		</div>
+		<div>
+			<label
+				class="form-label-title"
+				for="at_type"
+			>
+				{{ 'at_filter_type' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="at_type"
+				[ngModel]="type()"
+				(ngModelChange)="type.set($event)"
+			>
+				<option value="">{{ 'at_all' | transloco }}</option>
+				@for (t of types; track t) {
+				<option [value]="t">{{ 'at_type_' + t | transloco }}</option>
+				}
+			</select>
+		</div>
+		@if (profile.data(); as p) {
+		<span class="text-muted pb-2">
+			{{ 'at_this_company' | transloco: { kind: ('co_kind_' + p.kind | transloco) } }}
+		</span>
+		}
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'at_code' | transloco }}</th>
+					<th>{{ 'at_template' | transloco }}</th>
+					<th>{{ 'at_type' | transloco }}</th>
+					<th>{{ 'at_applies_to' | transloco }}</th>
+					<th>{{ 'at_version' | transloco }}</th>
+					<th>{{ 'at_state' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of rows(); track row.code) { @let s = state(row);
+				<tr [class.opacity-50]="row.locked">
+					<td class="text-nowrap">{{ row.code }}</td>
+					<td>{{ row.name }}</td>
+					<td>{{ 'at_type_' + row.kind | transloco }}</td>
+					<td>{{ appliesTo(row) }}</td>
+					<td class="text-nowrap">
+						{{ 'at_version_from' | transloco: { version: row.latestVersion, date: day(row.validFrom) } }}
+						@if (row.caReview === 'pending') {
+						<span class="badge bg-light text-dark ms-1">{{ 'at_ca_review' | transloco }}</span>
+						}
+					</td>
+					<td>
+						<div
+							[class.status-success]="s.key === 'at_state_installed'"
+							[class.status-pending]="s.key === 'at_state_update' || s.key === 'at_state_not_installed'"
+							[class.status-danger]="s.key === 'at_state_locked'"
+						>
+							<span>{{ s.key | transloco: { version: s.version } }}</span>
+						</div>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="6"
+						class="text-muted py-4 text-center"
+					>
+						{{ 'at_empty' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+</app-page-wrapper>

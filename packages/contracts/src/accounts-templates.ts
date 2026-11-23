@@ -124,9 +124,29 @@ export type TemplateInstall = z.infer<typeof TemplateInstall>;
 /** Settings › Accounts templates (AT2): every template with whether this company's kind unlocks it. */
 export const TemplateLibraryRow = AccountsTemplate.omit({ versions: true }).extend({
 	latestVersion: z.number().int().positive(),
+	/** The newest version's first day and CA review state (AT2's Version column). */
+	validFrom: IsoDate,
+	caReview: TemplateVersion.shape.caReview,
 	locked: z.boolean(),
 	lockReason: z.enum(['not_this_kind']).nullable(),
 	installedVersion: z.number().int().positive().nullable(),
 	updateAvailable: z.boolean(),
 });
 export type TemplateLibraryRow = z.infer<typeof TemplateLibraryRow>;
+
+/** AT1: what the kind of company chosen at setup opens. */
+export const TemplatesOpenQuery = z.object({ kind: BusinessKind });
+export type TemplatesOpenQuery = z.infer<typeof TemplatesOpenQuery>;
+
+const OpenTemplate = z.object({ code: TemplateCode, name: z.string(), version: z.number().int().positive() });
+
+export const TemplatesOpen = z.object({
+	charts: z.array(OpenTemplate),
+	taxRules: z.array(OpenTemplate.extend({ entries: z.number().int().nonnegative() })),
+	reports: z.array(OpenTemplate),
+	/** Templates of other kinds, listed greyed. */
+	locked: z.number().int().nonnegative(),
+	/** The books are installed: the kind is changed only through Convert (AT-D3). */
+	booksSetUp: z.boolean(),
+});
+export type TemplatesOpen = z.infer<typeof TemplatesOpen>;

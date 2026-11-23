@@ -133,7 +133,9 @@ describe('a shopper’s own orders (bundle builder brief E05–E06)', () => {
 
 	it('answers "not found" for someone else’s order', async () => {
 		const svc = new OrdersService(
-			...(Array.from({ length: 8 }, () => ({}) as never) as ConstructorParameters<typeof OrdersService>),
+			...(Array.from({ length: 6 }, () => ({}) as never) as unknown as ConstructorParameters<
+				typeof OrdersService
+			>),
 		);
 		Object.assign(svc, {
 			orders: { findByOrderNumber: async (number: string) => (number === 'ST-2611-482190' ? order : null) },

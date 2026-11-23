@@ -53,6 +53,8 @@ const stored = (over: Partial<CartLine> = {}): CartLine => ({
 	variationId: null,
 	quantity: 1,
 	addons: [],
+	bundle: null,
+	free: [],
 	...over,
 });
 

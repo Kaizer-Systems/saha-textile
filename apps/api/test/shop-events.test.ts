@@ -200,6 +200,7 @@ const saleBody = (startsAt: number, endsAt: number) => ({
 			{ categoryId: 'cat_cotton', rule: { kind: 'amount' as const, value: 400, skuPrices: {} }, exceptions: [] },
 		],
 		products: [],
+		includeSets: false,
 	},
 });
 
@@ -632,6 +633,7 @@ describe('the sale price book', () => {
 				sale: {
 					categories: [],
 					products: [{ productId: 'p3', rule: { kind: 'fixed', value: 1_000, skuPrices: {} } }],
+					includeSets: false,
 				},
 			},
 			null,
@@ -652,7 +654,7 @@ describe('the sale price book', () => {
 		const off = await h.admin.create(
 			{
 				...saleBody(h.now - HOUR, h.now + HOUR),
-				sale: { categories: [], products: [{ productId: 'p3', rule }] },
+				sale: { categories: [], products: [{ productId: 'p3', rule }], includeSets: false },
 			},
 			null,
 		);
@@ -712,6 +714,7 @@ describe('the event catalogue', () => {
 						{ categoryId: 'cat_gone', rule: { kind: 'percent', value: 10, skuPrices: {} }, exceptions: [] },
 					],
 					products: [],
+					includeSets: false,
 				},
 			},
 			null,
@@ -742,6 +745,7 @@ describe('the event catalogue', () => {
 			{
 				...saleBody(h.now + HOUR, h.now + 2 * HOUR),
 				sale: {
+					includeSets: false,
 					categories: [],
 					products: [{ productId: 'p3', rule: { kind: 'fixed', value: 5_000, skuPrices: {} } }],
 				},
@@ -1006,6 +1010,7 @@ describe('the remaining event branches', () => {
 			{
 				...saleBody(h.now + HOUR, h.now + 2 * HOUR),
 				sale: {
+					includeSets: false,
 					categories: [
 						{
 							categoryId: 'cat_ghost',
@@ -1047,6 +1052,7 @@ describe('the remaining event branches', () => {
 			{
 				...saleBody(h.now + HOUR, h.now + 2 * HOUR),
 				sale: {
+					includeSets: false,
 					categories: [],
 					products: [
 						{ productId: 'p1', rule: { kind: 'percent', value: 50, skuPrices: {} } },
@@ -1146,6 +1152,7 @@ describe('the sale price book’s membership', () => {
 			{
 				...saleBody(h.now - HOUR, h.now + HOUR),
 				sale: {
+					includeSets: false,
 					categories: [
 						{ categoryId: 'cat_silk', rule, exceptions: [] },
 						{ categoryId: 'cat_ghost', rule, exceptions: [] },
@@ -1158,7 +1165,7 @@ describe('the sale price book’s membership', () => {
 		const second = await h.admin.create(
 			{
 				...saleBody(h.now - HOUR, h.now + HOUR),
-				sale: { categories: [], products: [{ productId: 'p3', rule }] },
+				sale: { categories: [], products: [{ productId: 'p3', rule }], includeSets: false },
 			},
 			null,
 		);

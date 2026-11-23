@@ -53,6 +53,8 @@ const view = (over: Partial<AdminCartView['lines'][number]> = {}): AdminCartView
 			options: [],
 			measurements: [],
 			addOnsZonePriced: false,
+			children: [],
+			setHeading: null,
 			...over,
 		},
 	],
@@ -96,7 +98,14 @@ const tenOff = {
 	usedCount: 0,
 };
 
-const freeShip = { ...tenOff, id: 'cpn_free', code: 'FREESHIP', title: 'Free delivery', kind: 'freeDelivery', value: 0 };
+const freeShip = {
+	...tenOff,
+	id: 'cpn_free',
+	code: 'FREESHIP',
+	title: 'Free delivery',
+	kind: 'freeDelivery',
+	value: 0,
+};
 
 function harness(cart = view(), limitINR = 200_000, outstanding = 0, orderSettings: Record<string, unknown> = {}) {
 	const created: Order[] = [];

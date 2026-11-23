@@ -189,7 +189,9 @@ describe('shop checkout Pay (place)', () => {
 describe('a set at checkout (bundle builder brief E05–E08)', () => {
 	type LinesOf = { orderLines(built: unknown, at: string): import('@saha-textile/contracts').OrderLine[] };
 	const svc = new ShopCheckoutService(
-		...(Array.from({ length: 15 }, () => ({}) as never) as ConstructorParameters<typeof ShopCheckoutService>),
+		...(Array.from({ length: 15 }, () => ({}) as never) as unknown as ConstructorParameters<
+			typeof ShopCheckoutService
+		>),
 	) as unknown as LinesOf;
 	const child = (over: Record<string, unknown>) => ({
 		role: 'piece',

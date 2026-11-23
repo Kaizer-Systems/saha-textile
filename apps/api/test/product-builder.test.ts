@@ -630,7 +630,7 @@ describe('TaxonomyService', () => {
 		await service.saveAttribute(attribute(), null);
 		expect(catalog.dropLeftBehindSwatches).toHaveBeenLastCalledWith(
 			['med_old'],
-			attribute().terms.map((term) => term.swatchAssetId),
+			(attribute() as { terms: { swatchAssetId?: string }[] }).terms.map((term) => term.swatchAssetId),
 		);
 		await expect(service.saveAttribute(attribute({ label: { en: ' ' } }), null)).rejects.toThrow('English name');
 	});

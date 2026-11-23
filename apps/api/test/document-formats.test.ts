@@ -103,7 +103,7 @@ describe('document formats (bundle builder brief F)', () => {
 		expect(made.blocks.map((row) => row.type)).toEqual(['facts', 'table']);
 		const bad = made.blocks.map((row) => (row.type === 'table' ? { ...row, fields: ['index'] } : row));
 		await expect(
-			svc.update(made.id, { name: 'Small slip', about: '', paper: 'a5', blocks: bad, version: 1 }),
+			svc.update(made.id, { name: 'Small slip', about: '', paper: 'a5', blocks: bad, version: 1 }, 'u1'),
 		).rejects.toMatchObject({ response: { code: 'document_format_invalid' } });
 		const saved = await svc.update(
 			made.id,

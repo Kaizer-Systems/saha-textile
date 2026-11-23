@@ -149,6 +149,7 @@
 			</div>
 			}
 		</div>
+		@if (envSwitch()) {
 		<div
 			class="rc-envs"
 			role="tablist"
@@ -168,6 +169,8 @@
 			}
 		</div>
 		} @else {
+		<span></span>
+		} } @else {
 		<span></span>
 		}
 		<div class="rc-who">

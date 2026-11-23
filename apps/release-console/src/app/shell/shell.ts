@@ -95,6 +95,30 @@ export class Shell {
 	private readonly api = inject(ConsoleApi);
 	protected readonly state = inject(ConsoleState);
 	protected readonly ctx = inject(ConsoleContext);
+	/**
+	 * The Local / Staging / Production switch shows only where a page is about one environment (owner,
+	 * 23 Nov, "Yes, as planned"): Ship › Release, Run, Watch, the repository's own menus (Shop) and
+	 * Secrets. Elsewhere a page covers every environment and labels each thing with its own.
+	 */
+	protected readonly envSwitch = computed(() => {
+		if (this.ctx.level() !== 'repository') return false;
+		const page = this.ctx.page();
+		const m = this.menu();
+		if (!m) return false;
+		for (const g of m.menu)
+			for (const sub of g.subs) {
+				if (!sub.items.includes(page)) continue;
+				const group = g.label.toLowerCase();
+				return (
+					!!g.own ||
+					group === 'run' ||
+					group === 'watch' ||
+					group.startsWith('secrets') ||
+					(group === 'ship' && (sub.label ?? '').toLowerCase() === 'release')
+				);
+			}
+		return false;
+	});
 	/** Live plan answer for the open repository: a whole screen's plan badge shows until it is on. */
 	private readonly planFeatures = injectPlanFeatures(
 		() => this.ctx.projectId(),

@@ -94,38 +94,41 @@ interface PinRow {
 	gstStateCode: string | null;
 }
 
+type GeoManifestLoader = () => Promise<GeoManifest>;
+type LoadedManifest = { manifest: GeoManifest; at: number };
+
 export class ManifestGeoDataAdapter implements GeoDataPort {
-	readonly #load: () => Promise<GeoManifest>;
+	readonly #source: GeoManifest | GeoManifestLoader;
 	readonly #read: GeoFileReader;
 	readonly #now: () => number;
-	#current: { manifest: GeoManifest; at: number } | null = null;
+	#current: LoadedManifest | null = null;
 	#first: Promise<GeoManifest> | null = null;
 	#refreshing = false;
 	#cache = new Map<string, Promise<unknown>>();
 
 	/** `manifest` (a fixed one) or `loadManifest` (read now and again every few hours). */
-	constructor(options: {
-		read: GeoFileReader;
-		manifest?: GeoManifest;
-		loadManifest?: () => Promise<GeoManifest>;
-		now?: () => number;
-	}) {
+	constructor(
+		options: { read: GeoFileReader; now?: () => number } & (
+			{ manifest: GeoManifest } | { loadManifest: GeoManifestLoader }
+		),
+	) {
 		this.#read = options.read;
 		this.#now = options.now ?? Date.now;
-		const fixed = options.manifest;
-		this.#load = options.loadManifest ?? (async () => fixed as GeoManifest);
-		if (fixed) this.#current = { manifest: fixed, at: Number.POSITIVE_INFINITY };
+		this.#source = 'manifest' in options ? options.manifest : options.loadManifest;
 	}
 
 	/** The manifest in use, read on first use; later reads happen in the background and swap only on success. */
 	async manifest(): Promise<GeoManifest> {
+		const source = this.#source;
+		if (typeof source !== 'function') return source;
 		const current = this.#current;
 		if (current) {
-			if (this.#now() - current.at > GEO_MANIFEST_REFRESH_MS && !this.#refreshing) void this.#refresh();
+			if (this.#now() - current.at > GEO_MANIFEST_REFRESH_MS && !this.#refreshing)
+				void this.#refresh(current, source);
 			return current.manifest;
 		}
 		if (!this.#first) {
-			this.#first = this.#load().then(
+			this.#first = source().then(
 				(manifest) => {
 					this.#current = { manifest, at: this.#now() };
 					return manifest;
@@ -142,15 +145,15 @@ export class ManifestGeoDataAdapter implements GeoDataPort {
 		return this.#first;
 	}
 
-	async #refresh(): Promise<void> {
+	async #refresh(current: LoadedManifest, load: GeoManifestLoader): Promise<void> {
 		this.#refreshing = true;
 		try {
-			const next = await this.#load();
-			if (next.version !== this.#current?.manifest.version) this.#cache = new Map();
+			const next = await load();
+			if (next.version !== current.manifest.version) this.#cache = new Map();
 			this.#current = { manifest: next, at: this.#now() };
 		} catch {
 			// Keep serving the manifest already loaded; the next request tries again.
-			if (this.#current) this.#current = { ...this.#current, at: this.#now() - GEO_MANIFEST_REFRESH_MS + 60_000 };
+			this.#current = { ...current, at: this.#now() - GEO_MANIFEST_REFRESH_MS + 60_000 };
 		} finally {
 			this.#refreshing = false;
 		}

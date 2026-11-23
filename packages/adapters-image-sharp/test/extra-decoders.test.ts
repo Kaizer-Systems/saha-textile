@@ -2,10 +2,12 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { ImageDecodeError } from '@saha-textile/core-domain';
+import { writePsdUint8Array } from 'ag-psd';
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
 
 import { SharpImageCodec } from '../src/index.js';
+import { decodeExtra } from '../src/extra-decoders';
 
 /**
  * Media step 5 (owner, 16 Nov): JPEG XL, JPEG 2000, BMP, ICO and PSD through their decoders, and SVG drawn as a
@@ -86,6 +88,20 @@ describe('photo types through the extra decoders (media step 5)', () => {
 		expect(await codec.probe(ico)).toMatchObject({ width: 64, height: 64, format: 'ico' });
 		const { box } = await corners(ico);
 		expect(near(box, BLUE)).toBe(true);
+
+		const bitmapOnlyHeader = header.slice(0, 22);
+		const bitmapOnlyView = new DataView(bitmapOnlyHeader.buffer);
+		bitmapOnlyView.setUint16(4, 1, true);
+		bitmapOnlyView.setUint32(18, bitmapOnlyHeader.length, true);
+		const bitmapOnly = new Uint8Array([...bitmapOnlyHeader, ...bmp]);
+		const bitmap = await corners(bitmapOnly);
+		expect([bitmap.width, bitmap.height]).toEqual([16, 16]);
+		expect(near(bitmap.box, RED)).toBe(true);
+	});
+
+	it('refuses an icon directory with no pictures', async () => {
+		const bytes = Uint8Array.of(0, 0, 1, 0, 0, 0);
+		await expect(decodeExtra(bytes, 'ico')).rejects.toThrow('ICO with no pictures');
 	});
 
 	it('an SVG is drawn 4096 px on its long edge, in its own shape, and named svg', async () => {
@@ -100,6 +116,47 @@ describe('photo types through the extra decoders (media step 5)', () => {
 
 	it('refuses a JPEG 2000 the decoder does not take, so the photo is kept as a file', async () => {
 		await expect(codec.probe(fixture('photo-120x80-alpha.jp2'))).rejects.toBeInstanceOf(ImageDecodeError);
+	});
+
+	it('accepts a bare JPEG 2000 codestream and a final box extending to the end of the file', async () => {
+		const boxed = Buffer.from(fixture('photo-120x80.jp2'));
+		const label = boxed.indexOf('jp2c');
+		expect(label).toBeGreaterThan(4);
+		const bare = boxed.subarray(label + 4);
+		expect(await codec.probe(bare)).toMatchObject({ width: 120, height: 80, format: 'jp2' });
+		boxed.writeUInt32BE(0, label - 4);
+		const { box, far } = await corners(boxed);
+		expect(near(box, BLUE)).toBe(true);
+		expect(near(far, RED)).toBe(true);
+	});
+
+	// Four grayscale levels, encoded losslessly with OpenJPEG, in each row of these 4×4 fixtures.
+	it.each(['gray-signed-12.jp2', 'gray-unsigned-12.jp2'])(
+		'renders all four gray levels of %s in ascending order',
+		async (name) => {
+			const bytes = await decodeExtra(fixture(name), 'jp2');
+			const levels = await sharp(bytes).greyscale().raw().toBuffer();
+			expect(levels).toHaveLength(16);
+			for (let column = 0; column < 4; column += 1) {
+				expect(levels[column]).toBe(levels[12 + column]);
+			}
+			expect([...levels.subarray(0, 4)]).toEqual([0, 64, 128, 255]);
+		},
+	);
+
+	it.each([
+		{ depth: 16, colors: Uint16Array.of(0, 0, 0, 65535, 65535, 65535, 65535, 65535) },
+		{ depth: 32, colors: Float32Array.of(0, 0, 0, 1, 1, 1, 1, 1) },
+	])('renders the flattened $depth-bit PSD pixels', async ({ depth, colors }) => {
+		const original = writePsdUint8Array({
+			width: 2,
+			height: 1,
+			bitsPerChannel: depth,
+			imageData: { width: 2, height: 1, data: colors },
+		});
+		const decoded = await decodeExtra(original, 'psd');
+		const levels = await sharp(decoded).greyscale().raw().toBuffer();
+		expect([...levels]).toEqual([0, 255]);
 	});
 
 	it('refuses a file whose header asks for more pixels than the limit, before decoding it', async () => {

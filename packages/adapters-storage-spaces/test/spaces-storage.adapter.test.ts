@@ -3,6 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { SpacesStorageAdapter, SpacesStorageError, type SpacesStorageConfig } from '../src/index.js';
 
+async function collect<T>(source: AsyncIterable<T>): Promise<T[]> {
+	const items: T[] = [];
+	for await (const item of source) items.push(item);
+	return items;
+}
+
 const baseConfig: SpacesStorageConfig = {
 	key: 'TEST_ACCESS_KEY_ID',
 	secret: 'test-secret-key-value-not-real',
@@ -307,6 +313,25 @@ describe('visibility and server-side operations', () => {
 			`attachment; filename="size-chart.pdf"; filename*=UTF-8''size-chart.pdf`,
 		);
 	});
+
+	it('uses the configured expiry and quotes special characters in the extended filename', async () => {
+		const adapter = new SpacesStorageAdapter({ ...baseConfig, defaultUploadExpirySeconds: 120 });
+		const key = 'media/a/original.pdf';
+		const upload = await adapter.createSignedUploadUrl({ key, contentType: 'application/pdf' });
+		expect(new URL(upload.url).searchParams.get('X-Amz-Expires')).toBe('120');
+		const download = await adapter.createSignedDownloadUrl({
+			key,
+			expiresInSeconds: 120,
+			fileName: "my*file!'s.pdf",
+		});
+		expect(new URL(download).searchParams.get('response-content-disposition')).toBe(
+			`inline; filename="my*file!'s.pdf"; filename*=UTF-8''my%2Afile!%27s.pdf`,
+		);
+		const empty = await adapter.createSignedDownloadUrl({ key, expiresInSeconds: 120, fileName: '\r\n"\\' });
+		expect(new URL(empty).searchParams.get('response-content-disposition')).toBe(
+			`inline; filename="file"; filename*=UTF-8''file`,
+		);
+	});
 });
 
 describe('listKeys (the nightly Spaces check, media step 5)', () => {
@@ -337,13 +362,22 @@ describe('listKeys (the nightly Spaces check, media step 5)', () => {
 			{ Bucket: baseConfig.bucket, Prefix: 'media/', ContinuationToken: 'next' },
 		]);
 	});
+
+	it('tolerates an empty page and missing object sizes', async () => {
+		const send = vi
+			.fn()
+			.mockResolvedValueOnce({ IsTruncated: true, NextContinuationToken: 'next' })
+			.mockResolvedValueOnce({ Contents: [{ Key: 'media/pending' }] });
+		const adapter = new SpacesStorageAdapter(baseConfig, fakeClient(send));
+		await expect(collect(adapter.listKeys('media/'))).resolves.toEqual([{ key: 'media/pending', bytes: 0 }]);
+	});
 });
 
 describe('readStream and uploadStream (the .zip job, media step 5)', () => {
 	it('reads an object chunk by chunk', async () => {
 		async function* body() {
 			yield new Uint8Array([1, 2]);
-			yield new Uint8Array([3]);
+			yield 'a';
 		}
 		const adapter = new SpacesStorageAdapter(
 			baseConfig,
@@ -351,7 +385,7 @@ describe('readStream and uploadStream (the .zip job, media step 5)', () => {
 		);
 		const chunks: number[][] = [];
 		for await (const chunk of adapter.readStream('media/med_1/original.jpg')) chunks.push([...chunk]);
-		expect(chunks).toEqual([[1, 2], [3]]);
+		expect(chunks).toEqual([[1, 2], [97]]);
 	});
 
 	it('stores bytes in parts as they come, private, and completes with every part in order', async () => {
@@ -422,5 +456,84 @@ describe('readStream and uploadStream (the .zip job, media step 5)', () => {
 			}),
 		).rejects.toThrow('stopped');
 		expect(names).toEqual(['CreateMultipartUploadCommand', 'AbortMultipartUploadCommand']);
+	});
+
+	it.each([0, 16 * 1024 * 1024])('writes precisely one part for a stream of %i bytes', async (bytes) => {
+		const send = vi
+			.fn()
+			.mockResolvedValueOnce({ UploadId: 'up_1' })
+			.mockResolvedValueOnce({ ETag: 'part-1' })
+			.mockResolvedValueOnce({});
+		const adapter = new SpacesStorageAdapter(baseConfig, fakeClient(send));
+		async function* contents() {
+			if (bytes) yield new Uint8Array(bytes);
+		}
+		const key = 'zips/zip_4.zip';
+		await expect(
+			adapter.uploadStream({ key, contentType: 'application/zip', body: contents(), signal: { aborted: false } }),
+		).resolves.toEqual({ bytes });
+		expect(send).toHaveBeenCalledTimes(3);
+		const part = send.mock.calls[1]?.[0] as { input: { Body: Uint8Array } };
+		expect(part.input.Body.byteLength).toBe(bytes);
+	});
+});
+
+describe('browser multipart lifecycle', () => {
+	const request = { key: 'media/asset-1/original.mp4', uploadId: 'up_1' };
+
+	it('starts private, collects valid parts in order, and completes with their ETags', async () => {
+		const send = vi
+			.fn()
+			.mockResolvedValueOnce({ UploadId: request.uploadId })
+			.mockResolvedValueOnce({
+				Parts: [{ PartNumber: 3, ETag: 'c', Size: 3 }, { PartNumber: 4 }, { ETag: 'unknown' }],
+				IsTruncated: true,
+				NextPartNumberMarker: '4',
+			})
+			.mockResolvedValueOnce({ Parts: [{ PartNumber: 2, ETag: 'b' }] })
+			.mockResolvedValueOnce({});
+		const adapter = new SpacesStorageAdapter(baseConfig, fakeClient(send));
+		await expect(adapter.startMultipartUpload({ key: request.key, contentType: 'video/mp4' })).resolves.toEqual({
+			uploadId: request.uploadId,
+		});
+		expect(send).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				input: {
+					Bucket: baseConfig.bucket,
+					Key: request.key,
+					ContentType: 'video/mp4',
+					ACL: 'private',
+				},
+			}),
+		);
+		await adapter.completeMultipartUpload(request);
+		expect(send).toHaveBeenNthCalledWith(
+			3,
+			expect.objectContaining({ input: expect.objectContaining({ PartNumberMarker: '4' }) }),
+		);
+		expect(send).toHaveBeenNthCalledWith(
+			4,
+			expect.objectContaining({
+				input: expect.objectContaining({
+					MultipartUpload: {
+						Parts: [
+							{ PartNumber: 2, ETag: 'b' },
+							{ PartNumber: 3, ETag: 'c' },
+						],
+					},
+				}),
+			}),
+		);
+	});
+
+	it('returns no parts for an empty upload and aborts it explicitly', async () => {
+		const send = vi.fn(async (_command: unknown) => ({}));
+		const adapter = new SpacesStorageAdapter(baseConfig, fakeClient(send));
+		await expect(adapter.listUploadedParts(request)).resolves.toEqual([]);
+		await expect(adapter.abortMultipartUpload(request)).resolves.toBeUndefined();
+		expect(send.mock.calls[1]?.[0]).toMatchObject({
+			input: { Bucket: baseConfig.bucket, Key: request.key, UploadId: request.uploadId },
+		});
 	});
 });

@@ -75,17 +75,20 @@ export class ExchangeRateApiFxAdapter implements FxRatePort {
 		}
 		const keyed = KeyedResponse.safeParse(body);
 		const open = OpenResponse.safeParse(body);
-		const rates = keyed.success ? keyed.data.conversion_rates : open.success ? open.data.rates : null;
-		const baseCode = keyed.success ? keyed.data.base_code : open.success ? open.data.base_code : null;
-		if (!rates) {
+		const parsed = keyed.success
+			? { rates: keyed.data.conversion_rates, baseCode: keyed.data.base_code }
+			: open.success
+				? { rates: open.data.rates, baseCode: open.data.base_code }
+				: null;
+		if (!parsed) {
 			const problem = ErrorResponse.safeParse(body);
 			throw new Error(
 				`ExchangeRate-API sent no rates${problem.success && problem.data['error-type'] ? ` (${problem.data['error-type']})` : ''}`,
 			);
 		}
-		if (baseCode?.toUpperCase() !== this.base)
-			throw new Error(`ExchangeRate-API answered for ${baseCode}, not ${this.base}`);
-		return rates;
+		if (parsed.baseCode.toUpperCase() !== this.base)
+			throw new Error(`ExchangeRate-API answered for ${parsed.baseCode}, not ${this.base}`);
+		return parsed.rates;
 	}
 
 	async getRateFromINR(currencyCode: string): Promise<number> {

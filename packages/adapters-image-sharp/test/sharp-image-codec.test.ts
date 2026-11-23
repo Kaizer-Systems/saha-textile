@@ -82,6 +82,23 @@ describe('SharpImageCodec', () => {
 		expect(at(600, 315)).toBeGreaterThan(at(5, 315));
 	});
 
+	it('uses a square for a padded render and a tall box for a story when no height is supplied', async () => {
+		const source = await jpeg(90, 120);
+		const spec = { width: 90, height: null, format: 'image/png' as const, quality: 85 };
+		await expect(codec.render(source, { ...spec, fit: 'pad' })).resolves.toMatchObject({
+			width: 90,
+			height: 90,
+		});
+		await expect(codec.render(source, { ...spec, fit: 'pad', inset: 0.12 })).resolves.toMatchObject({
+			width: 90,
+			height: 90,
+		});
+		await expect(codec.render(source, { ...spec, fit: 'story' })).resolves.toMatchObject({
+			width: 90,
+			height: 160,
+		});
+	});
+
 	it('strips metadata from every output', async () => {
 		const out = await codec.render(await jpeg(600, 800, 6), {
 			width: 300,

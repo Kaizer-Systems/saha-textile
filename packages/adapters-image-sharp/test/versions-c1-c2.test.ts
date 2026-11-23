@@ -160,34 +160,39 @@ describe('versions made from real photos (media step 2b)', () => {
 		}
 	});
 
-	it('makes two fills side by side under their own folders, at the profile’s shape', async () => {
-		const square = await photo(2400, 2400);
-		const { files, row } = await run(square, asking('product_3x4.white', 'product_3x4.crop'));
-		expect(row.versions?.map((version) => [version.id, version.state])).toEqual([
-			['product_3x4.white', 'ready'],
-			['product_3x4.crop', 'ready'],
-		]);
-		const keys = [...files.keys()];
-		expect(keys.some((key) => key.startsWith('media/med_1/product-3x4-white/red-banarasi-gallery-1600w-'))).toBe(
-			true,
-		);
-		expect(keys.some((key) => key.startsWith('media/med_1/product-3x4-crop/red-banarasi-gallery-1600w-'))).toBe(
-			true,
-		);
-		const gallery = row.derivatives.filter((file) => file.role === 'gallery' && file.width === 1600);
-		expect(gallery.map((file) => [file.versionId, file.width, file.height])).toEqual([
-			['product_3x4.white', 1600, 2133],
-			['product_3x4.crop', 1600, 2133],
-		]);
-		// White padding keeps the whole square photo with white above and below; a crop fills the box.
-		const white = files.get(gallery[0]?.storageKey as string) as Uint8Array;
-		const top = await sharp(white).extract({ left: 800, top: 5, width: 1, height: 1 }).raw().toBuffer();
-		expect([...top]).toEqual([255, 255, 255]);
-		const crop = files.get(gallery[1]?.storageKey as string) as Uint8Array;
-		const cropTop = await sharp(crop).extract({ left: 800, top: 5, width: 1, height: 1 }).raw().toBuffer();
-		expect(cropTop[0]).toBeGreaterThan(150);
-		expect(cropTop[1]).toBeLessThan(80);
-	});
+	// Encoding both full-size profiles can exceed Vitest's five-second default on shared CI runners.
+	it(
+		'makes two fills side by side under their own folders, at the profile’s shape',
+		{ timeout: 20_000 },
+		async () => {
+			const square = await photo(2400, 2400);
+			const { files, row } = await run(square, asking('product_3x4.white', 'product_3x4.crop'));
+			expect(row.versions?.map((version) => [version.id, version.state])).toEqual([
+				['product_3x4.white', 'ready'],
+				['product_3x4.crop', 'ready'],
+			]);
+			const keys = [...files.keys()];
+			expect(
+				keys.some((key) => key.startsWith('media/med_1/product-3x4-white/red-banarasi-gallery-1600w-')),
+			).toBe(true);
+			expect(keys.some((key) => key.startsWith('media/med_1/product-3x4-crop/red-banarasi-gallery-1600w-'))).toBe(
+				true,
+			);
+			const gallery = row.derivatives.filter((file) => file.role === 'gallery' && file.width === 1600);
+			expect(gallery.map((file) => [file.versionId, file.width, file.height])).toEqual([
+				['product_3x4.white', 1600, 2133],
+				['product_3x4.crop', 1600, 2133],
+			]);
+			// White padding keeps the whole square photo with white above and below; a crop fills the box.
+			const white = files.get(gallery[0]?.storageKey as string) as Uint8Array;
+			const top = await sharp(white).extract({ left: 800, top: 5, width: 1, height: 1 }).raw().toBuffer();
+			expect([...top]).toEqual([255, 255, 255]);
+			const crop = files.get(gallery[1]?.storageKey as string) as Uint8Array;
+			const cropTop = await sharp(crop).extract({ left: 800, top: 5, width: 1, height: 1 }).raw().toBuffer();
+			expect(cropTop[0]).toBeGreaterThan(150);
+			expect(cropTop[1]).toBeLessThan(80);
+		},
+	);
 
 	it('puts a see-through icon on the Brand Kit colour for the Brand colour fill', async () => {
 		const logo = await photo(1200, 400, { alpha: true });

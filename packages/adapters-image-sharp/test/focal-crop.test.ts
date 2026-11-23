@@ -57,4 +57,18 @@ describe('a crop with a focal point (S10, media step 3c)', () => {
 			height: 200,
 		});
 	});
+
+	it('uses the upright dimensions of a rotated JPEG and a square when no height is given', async () => {
+		const bytes = await sharp(await halves())
+			.jpeg()
+			.withMetadata({ orientation: 6 })
+			.toBuffer();
+		await expect(focalWindow(bytes, { width: 150, height: null, focal: { x: 0.5, y: 0.9 } })).resolves.toEqual({
+			left: 0,
+			top: 400,
+			width: 400,
+			height: 400,
+		});
+		await expect(focalWindow(bytes, { width: 150, height: null })).resolves.toBeNull();
+	});
 });

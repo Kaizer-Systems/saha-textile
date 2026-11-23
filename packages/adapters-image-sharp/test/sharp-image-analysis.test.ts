@@ -34,4 +34,12 @@ describe('the words check measurement (SG-1)', () => {
 		expect(spots[7]?.hist[0]).toBeGreaterThan(0.3);
 		expect(spots[7]?.hist[31]).toBeGreaterThan(0.3);
 	});
+
+	it('flattens a transparent pixel onto white and leaves unsampled spots empty', async () => {
+		const bytes = await sharp({ create: { width: 1, height: 1, channels: 4, background: '#0000' } })
+			.png()
+			.toBuffer();
+		const spots = await new SharpImageAnalysis().wordSpots(bytes, 2);
+		expect(spots.map(({ hist }) => hist)).toEqual([[0, 1], ...Array.from({ length: 8 }, () => [0, 0])]);
+	});
 });

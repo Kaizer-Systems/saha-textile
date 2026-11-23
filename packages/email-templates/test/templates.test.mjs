@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { TEMPLATES, checkTemplate, fillTokens, render, renderSample } from '../src/index.mjs';
+import { layout, totals } from '../src/layout.mjs';
 
 const PROD = {
 	shop_origin: 'https://sahatextile.com',
@@ -66,5 +67,57 @@ describe('the 24 MSG91 email templates', () => {
 		expect(Buffer.byteLength(html) / 1024).toBeLessThan(102);
 		expect(html).toContain('piece 25');
 		expect(html).not.toMatch(/\[\[[a-z_]+\]\]/);
+	});
+});
+
+describe('template validation and previews', () => {
+	it.each([
+		['{{#if ready}}{{/each}}', '{{/each}} closes {{#if}}'],
+		['{{#unless ready}}', 'unclosed {{#unless}}'],
+		['{{> footer}}', '“>” (partials, inverse) is not supported'],
+		['{{^ hidden}}', '“^” (partials, inverse) is not supported'],
+		['{{profile.name}}', 'odd variable “profile.name”'],
+		['<img src="logo.png">', 'an image without an absolute address'],
+		['<td style="background-image:none">', 'background image found'],
+	])('refuses invalid template source %#', (source, problem) => {
+		expect(checkTemplate('preview', source)).toEqual([`preview: ${problem}`]);
+	});
+
+	it('keeps a placeholder for missing environment values', () => {
+		expect(fillTokens('[[shop_origin]] [[legal_name]]', { shop_origin: PROD.shop_origin })).toBe(
+			`${PROD.shop_origin} [[legal_name]]`,
+		);
+	});
+
+	it('escapes values in previews and supports root names from each row', () => {
+		const source = '{{#each entries}}[{{@root.heading}}:{{name}}|{{{trusted}}}]{{/each}}{{missing}}';
+		const data = { heading: 'Ready', entries: [{ name: 'A&B <"C">', trusted: '<b>1</b>' }, { name: 'Second' }] };
+		expect(renderSample(source, data)).toBe('[Ready:A&amp;B &lt;&quot;C&quot;&gt;|<b>1</b>][Ready:Second|]');
+		expect(renderSample(`${source}done`, { ...data, entries: null })).toBe('done');
+		expect(renderSample(`${source}done`, { ...data, entries: [] })).toBe('done');
+	});
+
+	it('chooses the correct branch for present values, missing values and empty lists', () => {
+		const source = '{{#if lines}}ready{{else}}wait{{/if}} {{#unless blocked}}send{{else}}hold{{/unless}}';
+		expect(renderSample(source, { lines: [{}], blocked: false })).toBe('ready send');
+		expect(renderSample(source, { lines: [], blocked: true })).toBe('wait hold');
+		expect(renderSample(source, {})).toBe('wait send');
+	});
+
+	it('explains why a transactional message arrived when the caller supplies no footer', () => {
+		const html = layout({ title: 'Receipt', preheader: 'Your receipt', body: '<p>Paid.</p>' });
+		expect(html).toContain('about your Saha Textile account or order');
+		expect(html).not.toContain('unsubscribe_url');
+	});
+
+	it('renders variables in an else branch and hides totals that do not apply', () => {
+		const source = '{{#if sent}}Sent{{else}}{{status}}{{/if}}';
+		expect(renderSample(source, { sent: false, status: 'Waiting' })).toBe('Waiting');
+		const rows = totals([
+			['Order total', '₹1,000', true],
+			['Discount', '₹100', false, 'hasDiscount'],
+		]);
+		expect(renderSample(rows, { hasDiscount: false })).not.toContain('Discount');
+		expect(renderSample(rows, { hasDiscount: true })).toContain('Discount');
 	});
 });

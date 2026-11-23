@@ -78,4 +78,34 @@ describe('YazlZipArchive (media step 5, A30)', () => {
 		}
 		await expect(collect(new YazlZipArchive().write(entries()))).rejects.toThrow('Spaces did not answer');
 	});
+
+	it('preserves a storage rejection that is not an Error object', async () => {
+		async function* entries(): AsyncIterable<ZipFileEntry | ZipFolderEntry> {
+			yield await Promise.reject('storage disconnected');
+		}
+		await expect(collect(new YazlZipArchive().write(entries()))).rejects.toThrow('storage disconnected');
+	});
+
+	it('writes ZIP64 sizes in the central directory when the entry is declared large', async () => {
+		async function* entries(): AsyncIterable<ZipFileEntry | ZipFolderEntry> {
+			yield {
+				path: 'large.bin',
+				bytes: 0xffff_fffe,
+				read: async function* () {
+					yield text('data');
+				},
+			};
+		}
+		const zip = Buffer.from(await collect(new YazlZipArchive().write(entries())));
+		const entry = zip.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+		expect(entry).toBeGreaterThan(0);
+		expect(zip.readUInt32LE(entry + 24)).toBe(0xffff_ffff);
+		const start = entry + 46 + zip.readUInt16LE(entry + 28);
+		const end = start + zip.readUInt16LE(entry + 30);
+		let zip64Size: bigint | undefined;
+		for (let offset = start; offset < end; offset += 4 + zip.readUInt16LE(offset + 2)) {
+			if (zip.readUInt16LE(offset) === 1) zip64Size = zip.readBigUInt64LE(offset + 4);
+		}
+		expect(zip64Size).toBe(4n);
+	});
 });

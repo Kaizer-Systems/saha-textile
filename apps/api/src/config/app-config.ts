@@ -441,6 +441,20 @@ const ConfigSchema = z.object({
 			path: ['keysKeyPrevious'],
 		})
 		.default({}),
+	/**
+	 * Payroll (accounts brief S, decision D29). `piiKey` (`PAYROLL_PII_KEY`, 32 bytes base64) seals employees' Aadhaar and
+	 * bank account numbers (AES-256-GCM). Optional: without it those two can't be saved; the rest of payroll works.
+	 */
+	payroll: z
+		.object({
+			piiKey: z
+				.string()
+				.optional()
+				.refine((value) => value === undefined || Buffer.from(value, 'base64').length === 32, {
+					message: 'PAYROLL_PII_KEY must be 32 bytes, base64',
+				}),
+		})
+		.default({}),
 	media: z
 		.object({
 			workerConcurrency: z.coerce.number().int().min(1).max(8).default(2),
@@ -620,6 +634,7 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 			domain: env.MAILBOX_DOMAIN || undefined,
 		},
 		edocs: { keysKey: env.EDOC_KEYS_KEY || undefined, keysKeyPrevious: env.EDOC_KEYS_KEY_PREVIOUS || undefined },
+		payroll: { piiKey: env.PAYROLL_PII_KEY || undefined },
 		media: {
 			workerConcurrency: env.MEDIA_WORKER_CONCURRENCY || undefined,
 			gcLive: env.MEDIA_GC_LIVE || undefined,

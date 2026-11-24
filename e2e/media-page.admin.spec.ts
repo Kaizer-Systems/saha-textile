@@ -60,6 +60,19 @@ async function spacesAcceptsThisRun(page: Page) {
 const row = (page: Page, name: string) => page.locator('tr[data-file]', { hasText: name });
 const card = (page: Page, name: string) => page.locator('.fm-folder', { hasText: name });
 
+/**
+ * Opens a folder from its card. A double-click that lands while the list redraws after its first read is lost, and
+ * CI once waited 45 s at the root for a file inside the folder (24 Nov), so it is tried again until the address
+ * names the folder.
+ */
+async function openFolder(page: Page, name: string) {
+	await expect(async () => {
+		if (!/folder=fld_/.test(page.url())) await card(page, name).dblclick();
+		await expect(page).toHaveURL(/folder=fld_/, { timeout: 2_000 });
+	}).toPass({ timeout: 20_000 });
+	await expect(page.locator('#fm_crumbs')).toContainText(name);
+}
+
 test.describe.configure({ mode: 'serial' });
 
 test.describe('Media page (step 1)', () => {
@@ -86,7 +99,7 @@ test.describe('Media page (step 1)', () => {
 		await openRoot(page);
 		await newFolder(page, RUN);
 		await shot(page, 'a23-folder-made');
-		await card(page, RUN).dblclick();
+		await openFolder(page, RUN);
 		await expect(page).toHaveURL(/folder=fld_/);
 		await expect(page.locator('#fm_crumbs')).toContainText(RUN);
 		await page.reload({ waitUntil: 'networkidle' });
@@ -99,7 +112,7 @@ test.describe('Media page (step 1)', () => {
 		page,
 	}) => {
 		await openRoot(page);
-		await card(page, RUN).dblclick();
+		await openFolder(page, RUN);
 		await page
 			.locator('#fm_pick_files')
 			.setInputFiles([
@@ -164,7 +177,7 @@ test.describe('Media page (step 1)', () => {
 		page,
 	}) => {
 		await openRoot(page);
-		await card(page, RUN).dblclick();
+		await openFolder(page, RUN);
 		// A PSD header saying 3000 × 4000, sent with no type, as some computers do; an SVG drawn 4096 px long.
 		const psd = Buffer.alloc(26);
 		psd.write('8BPS', 0, 'latin1');
@@ -195,7 +208,7 @@ test.describe('Media page (step 1)', () => {
 		page,
 	}) => {
 		await openRoot(page);
-		await card(page, RUN).dblclick();
+		await openFolder(page, RUN);
 		// A real PNG from the admin's own pictures; square, so a square profile is suggested and notes are shown.
 		const png = readFileSync('apps/admin/public/assets/images/product.png');
 		await page
@@ -226,7 +239,7 @@ test.describe('Media page (step 1)', () => {
 		page,
 	}) => {
 		await openRoot(page);
-		await card(page, RUN).dblclick();
+		await openFolder(page, RUN);
 		await row(page, 'product-sample.png').click({ button: 'right' });
 		await page.locator('#fm_menu_reprocess').click();
 		const popup = page.locator('#fm_reprocess');
@@ -258,7 +271,7 @@ test.describe('Media page (step 1)', () => {
 		page,
 	}) => {
 		await openRoot(page);
-		await card(page, RUN).dblclick();
+		await openFolder(page, RUN);
 		await row(page, 'product-sample.png').click({ button: 'right' });
 		const chooser = page.waitForEvent('filechooser');
 		await page.locator('#fm_menu_replace').click();
@@ -282,7 +295,7 @@ test.describe('Media page (step 1)', () => {
 		page,
 	}) => {
 		await openRoot(page);
-		await card(page, RUN).dblclick();
+		await openFolder(page, RUN);
 		const other = readFileSync('apps/admin/public/assets/images/address.png');
 		await page
 			.locator('#fm_pick_files')
@@ -309,7 +322,7 @@ test.describe('Media page (step 1)', () => {
 
 	test('the same bytes again asks first; “Use the existing one” leaves it out (B10)', async ({ page }) => {
 		await openRoot(page);
-		await card(page, RUN).dblclick();
+		await openFolder(page, RUN);
 		await page.locator('#fm_pick_files').setInputFiles([pdf('copy-of-chart.pdf')]);
 		await page.locator('#fm_review_upload').click();
 		await expect(page.locator('#fm_duplicate')).toContainText('This file is already in Media');
@@ -322,7 +335,7 @@ test.describe('Media page (step 1)', () => {
 		page,
 	}) => {
 		await openRoot(page);
-		await card(page, RUN).dblclick();
+		await openFolder(page, RUN);
 		await row(page, 'size-chart.pdf').click({ button: 'right' });
 		await expect(page.locator('#fm_menu')).toContainText('Share');
 		await shot(page, 'a22-file-menu');
@@ -340,7 +353,7 @@ test.describe('Media page (step 1)', () => {
 		page,
 	}) => {
 		await openRoot(page);
-		await card(page, RUN).dblclick();
+		await openFolder(page, RUN);
 		await newFolder(page, `${RUN} inner`);
 		await row(page, 'size-chart.pdf').click({ button: 'right' });
 		await page.locator('#fm_menu_move').hover();
@@ -378,7 +391,7 @@ test.describe('Media page (step 1)', () => {
 	}) => {
 		await page.goto(`${ADMIN}/media`, { waitUntil: 'networkidle' });
 		await expect(page.locator('#fm_page')).toBeVisible();
-		await card(page, RUN).dblclick();
+		await openFolder(page, RUN);
 		await card(page, `${RUN} inner`).dblclick();
 		await row(page, 'size-chart.pdf').click({ button: 'right' });
 		await page.locator('#fm_menu_details').click();
@@ -394,7 +407,7 @@ test.describe('Media page (step 1)', () => {
 		page,
 	}) => {
 		await openRoot(page);
-		await card(page, RUN).dblclick();
+		await openFolder(page, RUN);
 		await row(page, 'product-sample.png').click({ button: 'right' });
 		await page.locator('#fm_menu_details').click();
 		await page.locator('#fm_details_tab_text').click();
@@ -425,7 +438,7 @@ test.describe('Media page (step 1)', () => {
 		page,
 	}) => {
 		await openRoot(page);
-		await card(page, RUN).dblclick();
+		await openFolder(page, RUN);
 		await row(page, 'product-sample.png').click({ button: 'right' });
 		await page.locator('#fm_menu_details').click();
 		await expect(page.locator('#fm_details_web_name')).toContainText('product-sample');
@@ -445,7 +458,7 @@ test.describe('Media page (step 1)', () => {
 		page,
 	}) => {
 		await openRoot(page);
-		await card(page, RUN).dblclick();
+		await openFolder(page, RUN);
 		await card(page, `${RUN} inner`).dblclick();
 		await row(page, 'size-chart.pdf').click({ button: 'right' });
 		await page.locator('#fm_menu_share').click();
@@ -464,7 +477,7 @@ test.describe('Media page (step 1)', () => {
 
 	test('keys: ⌘/Ctrl+A picks everything, Esc clears, ? lists the keys (A27, A39)', async ({ page }) => {
 		await openRoot(page);
-		await card(page, RUN).dblclick();
+		await openFolder(page, RUN);
 		await page.locator('body').press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
 		await expect(page.locator('#fm_bulk')).toContainText('selected');
 		await shot(page, 'a27-bulk-bar');

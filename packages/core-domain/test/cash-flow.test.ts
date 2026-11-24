@@ -259,6 +259,25 @@ describe('ratios', () => {
 		expect(ratios(flat, open, close, 365).debtEquity).toBe(0.33);
 	});
 
+	it('counts a loan once when its group sits inside another loan group, as the default chart nests them', () => {
+		// Secured and unsecured loans inside Loans: still ₹2,000 against ₹6,000.
+		expect(ratios(ratioChart, open, close, 365).debtEquity).toBe(0.33);
+		// Bank overdraft moved inside Loans too, with ₹600 drawn: ₹2,600 against ₹6,000.
+		const odInside = {
+			groups: ratioChart.groups.map((g) => (g.id === 'bank_od' ? { ...g, parentId: 'loans_liability' } : g)),
+			ledgers: ratioChart.ledgers,
+		};
+		expect(ratios(odInside, open, { ...close, od: -60_000 }, 365).debtEquity).toBe(0.43);
+		// Reserves kept inside the owners' group count once as well.
+		const reservesInside = {
+			groups: ratioChart.groups.map((g) =>
+				g.id === 'reserves_and_surplus' ? { ...g, parentId: 'capital_account' } : g,
+			),
+			ledgers: ratioChart.ledgers,
+		};
+		expect(ratios(reservesInside, open, close, 365).debtEquity).toBe(0.33);
+	});
+
 	it('reads creditor days against purchases when a purchases ledger moved', () => {
 		const withPurchases = {
 			groups: ratioChart.groups,

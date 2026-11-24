@@ -177,6 +177,25 @@ describe('the GST returns gateway', () => {
 	});
 });
 
+describe('the GSTR-9 gateway', () => {
+	it('names the annual key and calls the annual routes', () => {
+		const query = { gstRegistrationId: 'r1', year: '2025-26' };
+		expect(GST_KEYS.annual(query)).toEqual(['gst-returns', 'annual', query]);
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+		const gateway = TestBed.inject(GstReturnsGateway);
+		const http = TestBed.inject(HttpTestingController);
+		const api = `${runtimeConfig.apiUrl}/admin/accounts/gst/annual`;
+		gateway.annual(query).subscribe();
+		http.expectOne(
+			(req) => req.method === 'GET' && req.urlWithParams === `${api}?gstRegistrationId=r1&year=2025-26`,
+		).flush({});
+		gateway.annualNote({} as never).subscribe();
+		http.expectOne((req) => req.method === 'POST' && req.urlWithParams === `${api}/notes`).flush({});
+		http.verify();
+	});
+});
+
 describe('a GST refusal in words', () => {
 	it('gives each known refusal its own words, without the gst_ start, and any other the general words', () => {
 		expect(gstProblem(refusal('gst_return_approver_only'))).toBe('gst_problem_return_approver_only');
@@ -212,6 +231,7 @@ describe('a GST refusal in words', () => {
 			['bank_account_unknown', 'gst_problem_bank_account_unknown'],
 			['books_need_a_location', 'gst_problem_books_need_a_location'],
 			['challan_shape', 'gst_problem_challan_shape'],
+			['gst_annual_changed', 'gst_problem_annual_changed'],
 		];
 		expect(setOff.map(([code]) => gstProblem(refusal(code as string)))).toEqual(setOff.map(([, key]) => key));
 	});

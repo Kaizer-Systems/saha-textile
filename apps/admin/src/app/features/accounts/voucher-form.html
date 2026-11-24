@@ -35,6 +35,21 @@
 		<div class="col-xl-8">
 			<div class="card">
 				<div class="card-body">
+					<ul class="nav nav-tabs mb-3">
+						@for (k of kinds; track k) {
+						<li class="nav-item">
+							<a
+								class="nav-link"
+								href="javascript:void(0)"
+								[id]="'voucher_kind_' + k"
+								[class.active]="kind() === k"
+								(click)="setKind(k)"
+							>
+								{{ 'accounts_kind_' + k | transloco }}
+							</a>
+						</li>
+						}
+					</ul>
 					<div class="row g-3">
 						<div class="col-md-3">
 							<label
@@ -50,24 +65,6 @@
 								[ngModel]="date()"
 								(ngModelChange)="date.set($event)"
 							/>
-						</div>
-						<div class="col-md-3">
-							<label
-								class="form-label-title"
-								for="voucher_kind"
-							>
-								{{ 'accounts_kind' | transloco }}
-							</label>
-							<select
-								class="form-select"
-								id="voucher_kind"
-								[ngModel]="kind()"
-								(ngModelChange)="kind.set($event)"
-							>
-								@for (k of kinds; track k) {
-								<option [value]="k">{{ 'accounts_kind_' + k | transloco }}</option>
-								}
-							</select>
 						</div>
 						<div class="col-md-3">
 							<label
@@ -113,6 +110,103 @@
 					</div>
 				</div>
 			</div>
+			@if (kind() === 'contra') {
+			<div class="card">
+				<div class="card-body">
+					<div class="row g-3">
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="contra_from"
+							>
+								{{ 'vf_from' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="contra_from"
+								[ngModel]="contra().from"
+								(ngModelChange)="setContra({ from: $event })"
+							>
+								<option value="">—</option>
+								@for (l of moneyLedgers(); track l.id) {
+								<option [value]="l.id">{{ l.name }}</option>
+								}
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="contra_to"
+							>
+								{{ 'vf_to' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="contra_to"
+								[ngModel]="contra().to"
+								(ngModelChange)="setContra({ to: $event })"
+							>
+								<option value="">—</option>
+								@for (l of moneyLedgers(); track l.id) {
+								<option [value]="l.id">{{ l.name }}</option>
+								}
+							</select>
+							@if (contra().from && contra().from === contra().to) {
+							<small class="text-danger d-block">{{ 'vf_contra_same' | transloco }}</small>
+							}
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="contra_amount"
+							>
+								{{ 'vf_amount' | transloco }}
+							</label>
+							<div class="input-group">
+								<span class="input-group-text">₹</span>
+								<input
+									class="form-control"
+									id="contra_amount"
+									inputmode="decimal"
+									[ngModel]="contra().amount"
+									(ngModelChange)="setContra({ amount: $event })"
+								/>
+							</div>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="contra_slip"
+							>
+								{{ 'vf_deposit_slip' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="contra_slip"
+								maxlength="60"
+								[ngModel]="contra().slip"
+								(ngModelChange)="setContra({ slip: $event })"
+							/>
+						</div>
+						<div class="col-md-8">
+							<label
+								class="form-label-title"
+								for="contra_narration"
+							>
+								{{ 'accounts_narration' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="contra_narration"
+								maxlength="500"
+								[ngModel]="narration()"
+								(ngModelChange)="narration.set($event)"
+							/>
+						</div>
+					</div>
+				</div>
+			</div>
+			} @else {
 			<div class="card">
 				<div class="card-body">
 					<div class="title-header option-title">
@@ -232,8 +326,26 @@
 					></textarea>
 				</div>
 			</div>
+			}
 		</div>
 		<div class="col-xl-4">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header option-title">
+						<h5>{{ 'vf_means_' + kind() | transloco }}</h5>
+					</div>
+					<div
+						class="d-flex small gap-2"
+						id="voucher_means"
+					>
+						<i class="ri-checkbox-circle-line text-success"></i>
+						<div>
+							<b>{{ 'vf_means_' + kind() + '_title' | transloco }}</b>
+							<span class="d-block text-muted">{{ 'vf_means_' + kind() + '_body' | transloco }}</span>
+						</div>
+					</div>
+				</div>
+			</div>
 			<div class="card">
 				<div class="card-body">
 					<div class="title-header option-title">

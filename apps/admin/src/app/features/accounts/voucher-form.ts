@@ -22,6 +22,21 @@ const today = (): string => new Date(Date.now() + 5.5 * 3_600_000).toISOString()
 const blankRow = (locationId = ''): JournalRow => ({ ledgerId: '', locationId, debit: '', credit: '', narration: '' });
 type HandKind = Exclude<VoucherKind, 'opening' | 'document'>;
 
+/** How a contra's deposit slip is kept on its bank line, so a saved draft opens with it. */
+const SLIP = 'Deposit slip ';
+
+/** A contra draft's fields from its lines: the debit line is To, the credit line From. */
+export function contraOf(rows: readonly JournalRow[]): { from: string; to: string; amount: string; slip: string } {
+	const to = rows.find((row) => row.debit);
+	const from = rows.find((row) => row.credit);
+	return {
+		from: from?.ledgerId ?? '',
+		to: to?.ledgerId ?? '',
+		amount: to?.debit ?? '',
+		slip: to?.narration.startsWith(SLIP) ? to.narration.slice(SLIP.length) : '',
+	};
+}
+
 /**
  * Accounts › Vouchers › New or a saved draft (accounts brief Q3, Q4, as drawn): date, kind, an optional reversal
  * date, attached files, the lines with ledger and location, and the checks before Post. Save draft keeps a
@@ -51,12 +66,16 @@ export class VoucherFormPage {
 	readonly savingDraft = signal(false);
 	readonly draft = injectQuery(() => ({
 		queryKey: LEDGER_KEYS.draft(this.draftId() ?? ''),
-		queryFn: () => firstValueFrom(this.gateway.draft(this.draftId() ?? '')),
+		// Asked only once there is an id.
+		queryFn: () => firstValueFrom(this.gateway.draft(this.draftId() as string)),
 		enabled: !!this.draftId(),
 	}));
 
-	readonly kinds: HandKind[] = ['journal', 'receipt', 'payment', 'contra'];
+	/** Q4: one form with tabs, in the order drawn. */
+	readonly kinds: HandKind[] = ['receipt', 'payment', 'contra', 'journal'];
 	readonly kind = signal<HandKind>('journal');
+	/** Q4 Contra: money moving between your own cash and bank, written as its two lines. */
+	readonly contra = signal({ from: '', to: '', amount: '', slip: '' });
 	readonly date = signal(today());
 	readonly reverseOn = signal('');
 	readonly narration = signal('');
@@ -84,6 +103,23 @@ export class VoucherFormPage {
 			.sort((a, b) => a.name.localeCompare(b.name)),
 	);
 	readonly activeLocations = computed(() => (this.locations.data() ?? []).filter((l) => l.active));
+	/** Cash and bank ledgers, the only ones a contra moves money between. */
+	readonly moneyLedgers = computed(() => {
+		const groups = this.chart.data()?.groups ?? [];
+		const money = new Set(
+			groups
+				.filter((g) =>
+					['cash_in_hand', 'bank_accounts'].some((key) => g.systemKey === key || g.roles.includes(key)),
+				)
+				.map((g) => g.id),
+		);
+		const parentOf = new Map(groups.map((g) => [g.id, g.parentId]));
+		const under = (groupId: string): boolean => {
+			for (let at: string | null | undefined = groupId; at; at = parentOf.get(at)) if (money.has(at)) return true;
+			return false;
+		};
+		return this.ledgers().filter((l) => under(l.groupId));
+	});
 	readonly checks = computed(() => journalChecks(this.rows(), this.chart.data()?.ledgers ?? []));
 	/** The part of the books this voucher counts in, and its state that month (T1). */
 	readonly part = computed<BookPart>(() => (this.kind() === 'journal' ? 'journal' : 'cash'));
@@ -99,7 +135,8 @@ export class VoucherFormPage {
 			c.enoughLines &&
 			c.locationsSet &&
 			!c.bothSides &&
-			this.periodState() !== 'locked'
+			this.periodState() !== 'locked' &&
+			(this.kind() !== 'contra' || this.contra().from !== this.contra().to)
 		);
 	});
 
@@ -124,6 +161,7 @@ export class VoucherFormPage {
 				}));
 				while (rows.length < 2) rows.push(blankRow());
 				this.rows.set(rows);
+				if (draft.kind === 'contra') this.contra.set(contraOf(rows));
 			});
 		});
 	}
@@ -195,13 +233,36 @@ export class VoucherFormPage {
 		}
 	}
 
+	setKind(kind: HandKind): void {
+		this.kind.set(kind);
+		if (kind === 'contra') this.setContra({});
+	}
+
+	/** A contra's two lines: the money arrives in To (debit) and leaves From (credit), at the first location. */
+	setContra(change: Partial<{ from: string; to: string; amount: string; slip: string }>): void {
+		const next = { ...this.contra(), ...change };
+		this.contra.set(next);
+		const locationId = this.activeLocations()[0]?.id ?? '';
+		this.rows.set([
+			{
+				ledgerId: next.to,
+				locationId,
+				debit: next.amount,
+				credit: '',
+				narration: next.slip ? `${SLIP}${next.slip}` : '',
+			},
+			{ ledgerId: next.from, locationId, debit: '', credit: next.amount, narration: '' },
+		]);
+	}
+
 	setRow(index: number, change: Partial<JournalRow>): void {
 		this.rows.update((rows) => rows.map((row, i) => (i === index ? { ...row, ...change } : row)));
 	}
 
 	addRow(): void {
-		const last = this.rows().at(-1);
-		this.rows.update((rows) => [...rows, blankRow(last?.locationId ?? '')]);
+		// The form always holds at least two lines; a new one starts at the last one's location.
+		const last = this.rows()[this.rows().length - 1] as JournalRow;
+		this.rows.update((rows) => [...rows, blankRow(last.locationId)]);
 	}
 
 	removeRow(index: number): void {

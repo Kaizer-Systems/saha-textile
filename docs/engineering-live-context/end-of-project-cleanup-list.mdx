@@ -148,6 +148,16 @@ The approved pictures replaced these on screen; the code that is still there wai
 | GR1 | The GSTR-1 page's own copy of the Mark filed pop-up (G8)  | `apps/admin/src/app/features/accounts/gst/gstr1-page.ts`, `.html` (`openFile`, `attachAck`, `markFiled`, `#fileTemplate`) | The shared `MarkFiledPopup` (`features/accounts/gst/mark-filed-popup.*`) |
 | GR2 | Periods and locks' own copy of the Mark filed pop-up (G8) | `apps/admin/src/app/features/accounts/periods.ts`, `.html` (`openFile`, `attachAck`, `markFiled`)                         | The shared `MarkFiledPopup`                                              |
 
+## Release Console pull request page (2026-11-24)
+
+The pull request page (brief `E5WE6RSF2AJvpxDyDA1EJt`) replaced these on screen; they stay in the code until the cleanup.
+
+| #   | Piece                                                                                                             | Files                                                                                                                                    | Replaced by                                                                                   | Still used by                                            |
+| --- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| PR1 | The five drawn Pull requests states as product tabs: one PR, a PR with a failed check, and the three checks pages | `apps/release-console-api/src/products/ship.ts` (`pullsScreen`, `prView`, `checksPage`, `prPick`), `PULLS_EXTRA.buttons` in `gh-more.ts` | The pull request page's tabs and merge status (`apps/release-console/src/app/screens/pulls/`) | Nothing on screen: the menu no longer lists those states |
+| PR2 | The old list read: open pull requests without checks or size                                                      | `VendorReadsService.pulls`, `githubAdapter.pulls`, `toPull`, `pullRequestSchema`, `pullRequestsAnswerSchema`                             | `GET …/github/pulls?state=` (`PullsService.list`, `pullRowSchema`)                            | Their own tests                                          |
+| PR3 | The dropdown caret drawn with `::after`, which a `<select>` never shows                                           | `.rc-select::after` in `apps/release-console/src/styles.css`                                                                             | `.rc-select::picker-icon` (customizable select)                                               | Nothing                                                  |
+
 ## Decided, so not on this list (2026-11-16)
 
 The owner chose to remove these with the Legal Pages build instead of keeping them for the end:

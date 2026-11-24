@@ -36,6 +36,7 @@ import {
 	write,
 } from './kit.js';
 import { runLoad } from './loadtest.js';
+import { jobLog } from '../pulls/github-pulls.js';
 import { productionBackup } from './production-backup.js';
 import { startServerDeploy } from '../vendors/github-deploys.js';
 import { VendorError, arr, num, rec, str } from '../vendors/http.js';
@@ -55,29 +56,7 @@ async function logTail(
 	jobId: string,
 	lines = 120,
 ): Promise<Array<{ n: number; text: string; bad: boolean }>> {
-	const res = await fetch(`${GH}/repos/${ctx.repository}/actions/jobs/${jobId}/logs`, {
-		headers: {
-			authorization: `Bearer ${ctx.key}`,
-			'user-agent': 'release-console',
-			accept: 'application/vnd.github+json',
-		},
-		redirect: 'follow',
-		signal: AbortSignal.timeout(20_000),
-	});
-	if (!res.ok)
-		return [
-			{
-				n: 0,
-				text: `GitHub answered ${res.status} for this job’s log (it may still be running, or older than 90 days).`,
-				bad: false,
-			},
-		];
-	const all = (await res.text()).split('\n');
-	const start = Math.max(0, all.length - lines);
-	return all.slice(start).map((l, i) => {
-		const t = l.replace(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z\s?/, '');
-		return { n: start + i + 1, text: t, bad: /##\[error\]|\berror\b|failed|✖|ERR!/i.test(t) };
-	});
+	return jobLog(ctx.repository, ctx.key, jobId, lines);
 }
 
 const logTable = (title: string, lines: Array<{ n: number; text: string; bad: boolean }>) =>

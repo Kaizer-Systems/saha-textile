@@ -99,6 +99,36 @@ describe('pull requests', () => {
 		expect(changes(sent)[1]).toBe('POST /pulls/7/reviews {"event":"REQUEST_CHANGES","body":"Fix the price"}');
 	});
 
+	it('posts a comment on the conversation, asking for words', async () => {
+		const sent = github(PULLS);
+		const comment = PULLS_EXTRA.forms?.['comment'];
+		expect(shown(await comment?.read(ctx({ id: '7' })))).toContain('Comment on #7');
+		expect(shown(await comment?.read(ctx()))).toContain('Open a pull request first.');
+		await expect(comment?.send(ctx(), write({ body: 'Hi' }))).rejects.toThrow('Choose a pull request.');
+		await expect(comment?.send(ctx(), write({ body: ' ' }, '7'))).rejects.toThrow('Write the comment.');
+		expect((await comment?.send(ctx({ id: '7' }), write({ body: 'Looks good' })))?.message).toBe(
+			'#7: comment posted',
+		);
+		expect(changes(sent)).toEqual(['POST /issues/7/comments {"body":"Looks good"}']);
+	});
+
+	it('turns merge when ready on and off through GitHub’s GraphQL', async () => {
+		const sent = github([
+			[/GET .*\/pulls\/7$/, 200, { number: 7, node_id: 'PR_7' }],
+			[/graphql/, 200, { data: {} }],
+		]);
+		const auto = PULLS_EXTRA.forms?.['automerge'];
+		expect(shown(await auto?.read(ctx({ id: '7' })))).toContain('Merge #7 when ready');
+		expect(shown(await auto?.read(ctx()))).toContain('Open a pull request first.');
+		await expect(auto?.send(ctx(), write({ on: true }))).rejects.toThrow('Choose a pull request.');
+		expect((await auto?.send(ctx(), write({ on: true }, '7')))?.message).toBe('#7: merge when ready is on');
+		expect((await auto?.send(ctx({ id: '7' }), write({ on: false })))?.message).toBe('#7: merge when ready is off');
+		const asked = sent.filter((s) => s.includes('graphql'));
+		expect(asked[0]).toContain('enablePullRequestAutoMerge');
+		expect(asked[0]).toContain('"id":"PR_7"');
+		expect(asked[1]).toContain('disablePullRequestAutoMerge');
+	});
+
 	it('closes, reopens, updates and re-runs failed checks, and refuses anything else', async () => {
 		const sent = github([
 			[

@@ -5,14 +5,7 @@ import { Router } from '@angular/router';
 import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-experimental';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-	CfDomainsScreen,
-	DnsScreen,
-	DoAccountScreen,
-	DropletsScreen,
-	PipelinesScreen,
-	PullsScreen,
-} from './vendor-screens';
+import { CfDomainsScreen, DnsScreen, DoAccountScreen, DropletsScreen, PipelinesScreen } from './vendor-screens';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 
@@ -41,7 +34,6 @@ const REPO = {
 
 function make<T>(component: Type<T>, repo: unknown = REPO) {
 	const api = {
-		pulls: vi.fn(async () => answer([{ number: 1 }])),
 		runs: vi.fn(async () => answer([{ id: 1 }])),
 		droplets: vi.fn(async () =>
 			answer([
@@ -75,13 +67,7 @@ function make<T>(component: Type<T>, repo: unknown = REPO) {
 
 describe('the screens read live from a vendor', () => {
 	it('list what each vendor answered, with when it was read', async () => {
-		for (const component of [
-			PullsScreen,
-			PipelinesScreen,
-			DropletsScreen,
-			CfDomainsScreen,
-			DnsScreen,
-		] as Type<unknown>[]) {
+		for (const component of [PipelinesScreen, DropletsScreen, CfDomainsScreen, DnsScreen] as Type<unknown>[]) {
 			const { c } = make(component);
 			expect(c.rows()).toEqual([]);
 			expect(c.readAt()).toBeNull();
@@ -98,11 +84,11 @@ describe('the screens read live from a vendor', () => {
 	});
 
 	it('names the environments a branch deploys to, and a dash for none', async () => {
-		const pulls = make(PullsScreen);
-		await vi.waitFor(() => expect(pulls.api.repositoryBranches).toHaveBeenCalled());
-		await vi.waitFor(() => expect(pulls.c.envOfBranch?.('main')).toBe('Production'));
-		expect(pulls.c.envOfBranch?.('dev')).toBe('Staging');
-		expect(pulls.c.envOfBranch?.('feature/x')).toBe('—');
+		const pipelines = make(PipelinesScreen);
+		await vi.waitFor(() => expect(pipelines.api.repositoryBranches).toHaveBeenCalled());
+		await vi.waitFor(() => expect(pipelines.c.envOfBranch?.('main')).toBe('Production'));
+		expect(pipelines.c.envOfBranch?.('dev')).toBe('Staging');
+		expect(pipelines.c.envOfBranch?.('feature/x')).toBe('—');
 		const runs = make(PipelinesScreen, null);
 		expect(runs.c.envOfBranch?.('main')).toBe('—');
 		const fresh = make(PipelinesScreen);

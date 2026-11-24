@@ -58,3 +58,4 @@ export * from './rotation.js';
 export * from './traces.js';
 export * from './products.js';
 export * from './coverage.js';
+export * from './pulls.js';

@@ -30,6 +30,9 @@ import { TracesController, TracingController } from './local/traces.controller.j
 import { ConsoleStore } from './store/console-store.js';
 import { ProductsController } from './products/products.controller.js';
 import { ProductsService } from './products/products.service.js';
+import { PullsController } from './pulls/pulls.controller.js';
+import { PullsService } from './pulls/pulls.service.js';
+import { RepoCopy } from './pulls/repo-copy.js';
 
 @Module({
 	controllers: [
@@ -39,6 +42,7 @@ import { ProductsService } from './products/products.service.js';
 		LockController,
 		LocalStackController,
 		ProjectsController,
+		PullsController,
 		ServerDeployController,
 		ServersController,
 		SshListController,
@@ -59,6 +63,9 @@ import { ProductsService } from './products/products.service.js';
 		LocalStackService,
 		ProjectsService,
 		VendorReadsService,
+		PullsService,
+		// The console API's own copies of repositories, in its data folder (pull request page, Q2).
+		{ provide: RepoCopy, useFactory: () => new RepoCopy() },
 		AttentionService,
 		KeySourceService,
 		RunnerClient,

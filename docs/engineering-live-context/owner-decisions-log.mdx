@@ -2683,3 +2683,34 @@ rule set builder" (https://claude.ai/artifact/3mjx6XT5w8cpiZkYtgAUNh).
 - **Custom, as the brief listed (C1–C8):** title row, search box and options panel, window-height columns, collapsible
   rail, toolbar and status line, compact rows, reading-pane words that fold to icons below 560 px, phone layout. No new
   component library, font or package.
+
+## Owner decision round (2026-11-24) — Release Console pull request page
+
+- **Why:** the owner's screenshots of Ship › Code › Pull requests: "these dropdowns on this page and also used in many
+  other pages; they seem so out of place with the theme", a long title against the badge, "description header and text
+  are overlapping", "description box not shown fully and also cut off on the right side", and "PR is not clickable like
+  how Pull Requests list pages on github allow which is bad UX. it should be clickable so that the full fledged PR screen
+  can be shown". Then: "it should be that, like, the entire GitHub UI is replaceable here. Why just 500 characters?" and,
+  on reading big pull requests from this Mac: "You can't do these uh, workarounds and hacks when the release console is
+  deployed on a server. What would you do then?"
+- **Fixed without a brief** (existing classes only): fact rows (`.rc-kv`) keep their name's width and wrap a long value
+  inside the row; every console dropdown (`.rc-select`) takes the Repository picker's look through Chrome's customizable
+  select; list rows open their pull request.
+- **Brief** `E5WE6RSF2AJvpxDyDA1EJt` (24 Nov). The owner: "Approve, build it". Every choice as recommended:
+    - **Q1 A:** the description and comments as GitHub draws them (`body_html`), in the console's colours; no Markdown
+      library.
+    - **Q2 A:** past GitHub's 3,000-file list, the console API keeps its own copy of the repository in its data folder
+      (a bare clone, fetched with the repository's key, which reaches git only through its environment); the same code
+      on this Mac and on a server, and the console's image installs `git`. Commits come from GitHub's compare list,
+      which pages past 250 (up to 10,000).
+    - **Q3 A:** Comment, Approve and Request changes from the page, beside Merge and Close (every write with the PIN);
+      Merge when ready when the repository allows it.
+    - **Q4 A:** changes in one column with old and new line numbers.
+    - **Q5 A:** all the additions: the description's outline, the conversation with the newest commit's checks, big
+      pull requests read whole, the Coverage tree for files, keys (`j`/`k`, `n`/`p`, `/`, `1`–`4`, Esc), closed and
+      merged pull requests.
+- **Custom, as the brief listed (C1–C5):** the description's look, the conversation's time line, the outline beside the
+  description, the changed-line tints, the page header; and their phone layout (Actions ▾, Outline ▾, Files ▾). Commits
+  are drawn in the existing `rc-t` table rather than new rows. Numbers use the console's Indian grouping (6,23,963).
+- **Replaced on screen:** the five drawn Pull requests states (now the page's tabs and merge status) and the old list read;
+  both on the end-of-project cleanup list (PR1–PR3).

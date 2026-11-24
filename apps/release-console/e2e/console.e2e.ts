@@ -676,14 +676,18 @@ test('pages without the environment switch label each row with its environment',
 	const base = `browser-test-${info.project.name}`;
 	const at = new Date().toISOString();
 	await sampleGithub(page);
-	await page.route('**/github/pulls', (route) =>
-		route.fulfill({
+	await page.route(/\/github\/pulls\?state=/, (route) => {
+		const headers = {
+			'access-control-allow-origin': route.request().headers()['origin'] ?? '*',
+			'access-control-allow-credentials': 'true',
+			'access-control-allow-headers': 'content-type, x-console-session',
+			'access-control-allow-methods': 'GET, POST, OPTIONS',
+		};
+		if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+		return route.fulfill({
 			status: 200,
 			contentType: 'application/json',
-			headers: {
-				'access-control-allow-origin': route.request().headers()['origin'] ?? '*',
-				'access-control-allow-credentials': 'true',
-			},
+			headers,
 			body: JSON.stringify({
 				state: 'ok',
 				readAt: at,
@@ -695,8 +699,14 @@ test('pages without the environment switch label each row with its environment',
 						branch: 'feat/sale',
 						base: 'staging',
 						draft: false,
+						state: 'open',
 						updatedAt: at,
 						url: 'https://github.com/example/pull/7',
+						commits: 1,
+						additions: 1,
+						deletions: 0,
+						checks: null,
+						review: 'none',
 					},
 					{
 						number: 8,
@@ -705,13 +715,19 @@ test('pages without the environment switch label each row with its environment',
 						branch: 'staging',
 						base: 'main',
 						draft: false,
+						state: 'open',
 						updatedAt: at,
 						url: 'https://github.com/example/pull/8',
+						commits: 1,
+						additions: 1,
+						deletions: 0,
+						checks: null,
+						review: 'none',
 					},
 				],
 			}),
-		}),
-	);
+		});
+	});
 	await unlock(page);
 	// The switch is gone on Ship › Code; a pull request's target branch names its environments.
 	await page.goto(`/p/${base}/r/saha-textile/pulls?tab=list`);
@@ -1278,4 +1294,296 @@ test('Coverage shows the tree with every folder’s numbers, a file at the side,
 	await expect(apps).toBeVisible();
 	await apps.click();
 	await expect(page.locator('.rc-cov-box[title^="apps/release-console-api ·"]')).toBeVisible();
+});
+
+test('Pull requests: a row opens its page with the whole description, the conversation, commits, checks and changed lines', async ({
+	page,
+}, info) => {
+	const at = new Date().toISOString();
+	const title =
+		'feat: everything since PR #6 — shop, admin, orders, accounts, media, Page Builder, Release Console, deployment, and the long tail of fixes';
+	const section = (n: number) =>
+		`<h2>Section ${n}</h2><p>${'Everything built since PR #6, from 7 to 23 November 2026: <strong>1,139 commits</strong> across the shop, the admin and the API. '.repeat(6)}</p><h3>Part ${n}.1</h3><ul><li>One</li><li>Two with <code>code</code></li></ul>`;
+	const body =
+		Array.from({ length: 22 }, (_, i) => section(i + 1)).join('') +
+		'<p>See <a href="https://github.com/o/r/pull/6">#6</a>.</p>';
+	const check = (id: number, name: string, status: string, actionsJob = true) => ({
+		id,
+		name,
+		app: actionsJob ? 'GitHub Actions' : 'SonarCloud',
+		status,
+		startedAt: at,
+		completedAt: status === 'running' ? null : at,
+		url: 'https://github.com/o/r/runs/1',
+		actionsJob,
+	});
+	const pr = {
+		number: 7,
+		title,
+		state: 'open',
+		draft: false,
+		author: 'kaizer03',
+		base: 'dev',
+		head: 'feat/combined-after-pr6',
+		baseSha: 'base0001',
+		headSha: '33d575f3aaaabbbb',
+		url: 'https://github.com/o/r/pull/7',
+		createdAt: at,
+		updatedAt: at,
+		mergedAt: null,
+		mergedBy: '',
+		closedAt: null,
+		bodyHtml: body,
+		bodyLength: 37071,
+		commits: 1339,
+		additions: 623963,
+		deletions: 41288,
+		changedFiles: 4105,
+		mergeable: true,
+		mergeableState: 'blocked',
+		autoMerge: false,
+		canAutoMerge: true,
+		checks: { total: 3, running: 1, passed: 1, failed: 1 },
+		checkList: [
+			check(1, 'Lint & Typecheck', 'passed'),
+			check(2, 'Browser tests on production builds', 'failed'),
+			check(3, 'Sonar', 'running', false),
+		],
+		review: 'required',
+		reviewers: [],
+		labels: [],
+		events: [
+			{
+				kind: 'opened',
+				who: 'kaizer03',
+				at,
+				text: 'opened this pull request',
+				html: '',
+				tone: null,
+				sha: '',
+				checkId: null,
+				url: '',
+			},
+			{
+				kind: 'pushed',
+				who: 'kaizer03',
+				at,
+				text: 'pushed 14 commits d932b3e5 … 33d575f3',
+				html: '',
+				tone: null,
+				sha: '',
+				checkId: null,
+				url: '',
+			},
+			{
+				kind: 'commented',
+				who: 'kaizer03',
+				at,
+				text: 'commented',
+				html: '<p>Please check the media <code>.zip</code> test first.</p>',
+				tone: null,
+				sha: '',
+				checkId: null,
+				url: '',
+			},
+			{
+				kind: 'check-failed',
+				who: '',
+				at,
+				text: 'Browser tests on production builds failed on 33d575f3',
+				html: '',
+				tone: 'red',
+				sha: '',
+				checkId: 2,
+				url: '',
+			},
+		],
+	};
+	const row = {
+		number: 7,
+		title,
+		author: 'kaizer03',
+		branch: pr.head,
+		base: 'dev',
+		draft: false,
+		state: 'open',
+		updatedAt: at,
+		url: pr.url,
+		commits: 1339,
+		additions: 623963,
+		deletions: 41288,
+		checks: { total: 12, running: 10, passed: 2, failed: 0 },
+		review: 'required',
+	};
+	const files = [
+		'apps/release-console/src/app/screens/vendor-screens.ts',
+		'apps/release-console/src/styles.css',
+		'docs/release-console/pulls.md',
+	].map((path) => ({
+		path,
+		previous: null,
+		status: 'modified',
+		additions: 6,
+		deletions: 1,
+		binary: false,
+	}));
+	const diff = {
+		path: files[0]?.path,
+		previous: null,
+		status: 'modified',
+		binary: false,
+		sizeBefore: null,
+		sizeAfter: null,
+		whole: false,
+		source: 'copy',
+		lines: [
+			{ kind: 'hunk', old: null, new: null, text: '@@ -112,7 +112,12 @@ export class VendorState {' },
+			{ kind: 'ctx', old: 112, new: 112, text: '\t\t@for (p of rows(); track p.number) {' },
+			{ kind: 'del', old: 113, new: null, text: '\t\t\t<tr>' },
+			{ kind: 'add', old: null, new: 113, text: '\t\t\t<tr' },
+			{ kind: 'add', old: null, new: 114, text: '\t\t\t\ttabindex="0"' },
+			{ kind: 'add', old: null, new: 115, text: '\t\t\t\t(click)="open(p.number)"' },
+		],
+	};
+	const answers: Array<[string | RegExp, unknown]> = [
+		[/\/github\/pulls\?state=/, { state: 'ok', readAt: at, data: [row] }],
+		[/\/github\/pulls\/7$/, { state: 'ok', readAt: at, data: pr }],
+		[
+			/\/github\/pulls\/7\/commits\?/,
+			{
+				state: 'ok',
+				readAt: at,
+				data: {
+					total: 1339,
+					page: 1,
+					pages: 14,
+					commits: [
+						{
+							sha: '33d575f3aaaabbbb',
+							headline: 'test(e2e): the media .zip test waits for the .zip’s own answer',
+							author: 'kaizer03',
+							date: at,
+							checks: 'running',
+						},
+					],
+				},
+			},
+		],
+		[
+			/\/github\/pulls\/7\/files$/,
+			{
+				state: 'ok',
+				readAt: at,
+				data: {
+					total: 4105,
+					source: 'copy',
+					note: '4,105 files. GitHub lists a pull request’s first 3,000, so this list and every change come from the console’s own copy of the repository.',
+					files,
+				},
+			},
+		],
+		[/\/github\/pulls\/7\/diff\?/, { state: 'ok', readAt: at, data: diff }],
+		[
+			/\/checks\/2\/log$/,
+			{
+				state: 'ok',
+				readAt: at,
+				data: {
+					lines: [
+						{ n: 1331, text: '1) [admin] › e2e/media-page.admin.spec.ts:122:6', bad: false },
+						{ n: 1334, text: 'Error: expect(locator).toBeVisible() failed', bad: true },
+					],
+				},
+			},
+		],
+	];
+	await page.route(/\/api\/projects\/.*\/github\/pulls/, (route) => {
+		const origin = route.request().headers()['origin'] ?? '*';
+		const headers = {
+			'access-control-allow-origin': origin,
+			'access-control-allow-credentials': 'true',
+			'access-control-allow-headers': 'content-type, x-console-session',
+			'access-control-allow-methods': 'GET, POST, OPTIONS',
+		};
+		if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+		const url = route.request().url();
+		const body = answers.find(([re]) => (re instanceof RegExp ? re.test(url) : url.includes(re)))?.[1] ?? {
+			state: 'error',
+			message: 'not stubbed',
+		};
+		return route.fulfill({ status: 200, contentType: 'application/json', headers, body: JSON.stringify(body) });
+	});
+	await unlock(page);
+	await page.goto(`/p/browser-test-${info.project.name}/r/saha-textile/pulls`);
+	await expect(page.getByText('10 running')).toBeVisible();
+	// The dropdown is drawn in the console's look, list included.
+	const which = page.getByRole('combobox', { name: 'Which pull requests' });
+	expect(await which.evaluate((el) => getComputedStyle(el).appearance)).toBe('base-select');
+	// The console's loader shows for a second on every page; the picture waits for it to lift.
+	await expect(page.locator('rc-load-overlay.on')).toHaveCount(0);
+	await page.screenshot({ path: info.outputPath('pull-requests-list.png'), fullPage: true });
+	// The whole row opens the pull request's page, as GitHub's list does.
+	await page.getByRole('cell', { name: new RegExp(title.slice(0, 30)) }).click();
+	await expect(page).toHaveURL(/pr=7/);
+	await expect(page).toHaveURL(/tab=overview/);
+	const heading = page.locator('h3.rc-pr-title');
+	await expect(heading).toContainText('the long tail of fixes');
+	// Two boxes overlap when neither lies wholly beside or below the other.
+	const apart = async (a: import('@playwright/test').Locator, b: import('@playwright/test').Locator) => {
+		const [x, y] = [await a.boundingBox(), await b.boundingBox()];
+		if (!x || !y) throw new Error('not drawn');
+		return (
+			x.x + x.width <= y.x + 0.5 ||
+			y.x + y.width <= x.x + 0.5 ||
+			x.y + x.height <= y.y + 0.5 ||
+			y.y + y.height <= x.y + 0.5
+		);
+	};
+	const badge = heading.locator('.rc-pill');
+	await expect(badge).toHaveText('merge blocked');
+	// On a phone the buttons fold under Actions ▾.
+	const phone = info.project.name === 'phone';
+	if (phone) await page.getByRole('button', { name: 'Actions ▾' }).click();
+	for (const name of ['Merge', 'Review', 'Close, reopen or update'])
+		expect(await apart(badge, page.getByRole('button', { name, exact: true }))).toBe(true);
+	await expect(page.locator('.rc-mergebox')).toContainText('1 of 3 checks running');
+	await expect(page.getByRole('button', { name: 'Merge', exact: true })).toBeDisabled();
+	// The whole description, with its outline; the last section is there too.
+	await expect(page.getByText('Description · 37,071 characters · as GitHub draws it')).toBeVisible();
+	await expect(page.locator('.rc-md h2', { hasText: 'Section 22' })).toHaveCount(1);
+	const outline = page.getByRole('navigation', { name: 'Outline of the description' });
+	// On a phone the outline is a menu over the page, opened by Outline ▾; picking a heading closes it.
+	if (phone) await page.getByRole('button', { name: 'Outline ▾' }).click();
+	await expect(outline.getByRole('button')).toHaveCount(44);
+	if (phone) await page.getByRole('button', { name: 'Outline ▾' }).click();
+	const description = page.locator('.rc-md').first();
+	const box = await description.boundingBox();
+	const panel = await page.locator('.rc-pr-main .rc-panel').first().boundingBox();
+	expect(box && panel && box.x + box.width <= panel.x + panel.width + 0.5).toBe(true);
+	// The console's loader shows for a second on every page; the picture waits for it to lift.
+	await expect(page.locator('rc-load-overlay.on')).toHaveCount(0);
+	await page.screenshot({ path: info.outputPath('pull-request-overview.png'), fullPage: true });
+	if (phone) await page.getByRole('button', { name: 'Outline ▾' }).click();
+	await outline.getByRole('button', { name: 'Section 20' }).click();
+	if (phone) await expect(outline).toBeHidden();
+	await expect(page.locator('.rc-pr-outline button', { hasText: 'Section 20' })).toHaveClass(/on/);
+	// A failed check in the conversation opens its log on the Checks tab.
+	await page.getByRole('button', { name: 'open its log' }).click();
+	await expect(page).toHaveURL(/tab=checks/);
+	await expect(page.locator('.rc-log .l.err')).toContainText('toBeVisible() failed');
+	// The console's loader shows for a second on every page; the picture waits for it to lift.
+	await expect(page.locator('rc-load-overlay.on')).toHaveCount(0);
+	await page.screenshot({ path: info.outputPath('pull-request-checks.png'), fullPage: true });
+	// Keys: 2 opens Commits; 4 opens Files changed, read from the console's own copy past GitHub's 3,000.
+	await page.keyboard.press('2');
+	await expect(page.getByText('1,339 commits, all from GitHub')).toBeVisible();
+	await page.keyboard.press('4');
+	await expect(page.getByText('4,105 files. GitHub lists a pull request’s first 3,000')).toBeVisible();
+	await expect(page.locator('.rc-cov-code .l.add')).toHaveCount(3);
+	await expect(page.locator('.rc-cov-code .l.del')).toHaveCount(1);
+	// The console's loader shows for a second on every page; the picture waits for it to lift.
+	await expect(page.locator('rc-load-overlay.on')).toHaveCount(0);
+	await page.screenshot({ path: info.outputPath('pull-request-files.png'), fullPage: true });
+	await page.keyboard.press('Escape');
+	await expect(page).not.toHaveURL(/pr=7/);
 });

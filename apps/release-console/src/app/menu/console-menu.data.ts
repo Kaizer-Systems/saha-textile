@@ -294,26 +294,16 @@ export const CONSOLE_MENU: ConsoleMenu = {
 		},
 		pulls: {
 			label: 'Pull requests',
-			states: {
-				list: 'Open PRs',
-				detail: 'PR · checks running',
-				failed: 'PR · a check failed',
-				checks: 'Checks · running job',
-				checksFailed: 'Checks · failed job',
-				sonar: 'Checks · outside tool',
-			},
+			// One list, each row opening the pull request's own page with its tabs (brief E5WE6RSF2AJvpxDyDA1EJt): the
+			// five drawn states (one PR, a failed check, the checks pages) became that page's tabs and merge status.
+			states: { list: 'Pull requests' },
 			off: false,
 			tip: null,
 			part: null,
 			offStates: null,
 			partStates: null,
 			captions: {
-				list: 'Open pull requests with live check status',
-				detail: 'One PR: description, commits, checks (queued, running, passed)',
-				failed: 'One PR with a failed check, merge blocked',
-				checks: 'Checks page: all checks left, the running job right',
-				checksFailed: 'Checks page: the failed job with its log',
-				sonar: 'Checks page: an outside tool such as SonarCloud (example)',
+				list: 'Pull requests with their checks and review; each opens its own page',
 			},
 		},
 		pipeline: {

@@ -64,7 +64,13 @@ import {
 	type LockStatus,
 	type NewProject,
 	type Project,
-	type PullRequest,
+	type PullCommitPage,
+	type PullCommits,
+	type PullDiff,
+	type PullFiles,
+	type PullLog,
+	type PullPage,
+	type PullRow,
 	type Readiness,
 	type Repository,
 	type RepositoryFileFound,
@@ -112,7 +118,13 @@ import {
 	lockStatusSchema,
 	okAnswerSchema,
 	projectSchema,
-	pullRequestsAnswerSchema,
+	pullCommitPageAnswerSchema,
+	pullCommitsAnswerSchema,
+	pullDiffAnswerSchema,
+	pullFilesAnswerSchema,
+	pullLogAnswerSchema,
+	pullPageAnswerSchema,
+	pullRowsAnswerSchema,
 	readinessSchema,
 	repositoryFileAnswerSchema,
 	branchesSchema,
@@ -331,8 +343,47 @@ export class ConsoleApi {
 	}
 
 	/* vendor reads */
-	pulls(p: string, r: string): Promise<VendorAnswer<PullRequest[]>> {
-		return this.call('GET', `/api/projects/${p}/repos/${r}/github/pulls`, pullRequestsAnswerSchema);
+	/* Ship › Code › Pull requests: the list and each pull request's page (brief E5WE6RSF2AJvpxDyDA1EJt) */
+	pulls(p: string, r: string, state: 'open' | 'closed' = 'open'): Promise<VendorAnswer<PullRow[]>> {
+		return this.call('GET', `/api/projects/${p}/repos/${r}/github/pulls?state=${state}`, pullRowsAnswerSchema);
+	}
+	pull(p: string, r: string, n: number): Promise<VendorAnswer<PullPage>> {
+		return this.call(
+			'GET',
+			`/api/projects/${p}/repos/${r}/github/pulls/${n}`,
+			pullPageAnswerSchema,
+			undefined,
+			60_000,
+		);
+	}
+	pullCommits(p: string, r: string, n: number, page: number): Promise<VendorAnswer<PullCommits>> {
+		const path = `/api/projects/${p}/repos/${r}/github/pulls/${n}/commits?page=${page}`;
+		return this.call('GET', path, pullCommitsAnswerSchema, undefined, 60_000);
+	}
+	pullCommit(p: string, r: string, n: number, sha: string): Promise<VendorAnswer<PullCommitPage>> {
+		const path = `/api/projects/${p}/repos/${r}/github/pulls/${n}/commits/${sha}`;
+		return this.call('GET', path, pullCommitPageAnswerSchema, undefined, 60_000);
+	}
+	/** A pull request past GitHub's 3,000 files is read from the console's own copy: the first read can take minutes. */
+	pullFiles(p: string, r: string, n: number): Promise<VendorAnswer<PullFiles>> {
+		const path = `/api/projects/${p}/repos/${r}/github/pulls/${n}/files`;
+		return this.call('GET', path, pullFilesAnswerSchema, undefined, 600_000);
+	}
+	pullDiff(
+		p: string,
+		r: string,
+		n: number,
+		path: string,
+		whole: boolean,
+		commit: string | null,
+	): Promise<VendorAnswer<PullDiff>> {
+		const q = new URLSearchParams({ path, whole: whole ? '1' : '0', ...(commit ? { commit } : {}) });
+		const at = `/api/projects/${p}/repos/${r}/github/pulls/${n}/diff?${q.toString()}`;
+		return this.call('GET', at, pullDiffAnswerSchema, undefined, 300_000);
+	}
+	pullLog(p: string, r: string, n: number, job: number): Promise<VendorAnswer<PullLog>> {
+		const path = `/api/projects/${p}/repos/${r}/github/pulls/${n}/checks/${job}/log`;
+		return this.call('GET', path, pullLogAnswerSchema, undefined, 60_000);
 	}
 	runs(p: string, r: string): Promise<VendorAnswer<WorkflowRun[]>> {
 		return this.call('GET', `/api/projects/${p}/repos/${r}/github/runs`, workflowRunsAnswerSchema);

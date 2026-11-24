@@ -13,7 +13,6 @@ import {
 	type KeySource,
 	newProjectSchema,
 	type Project,
-	type PullRequest,
 	type RepositoryFileFound,
 	repositoryFileQuerySchema,
 	type Branches,
@@ -145,11 +144,6 @@ export class ProjectsController {
 	audit(@Query('project') project?: string): AuditEntry[] {
 		if (project) this.projects.project(project);
 		return this.store.auditEntries(project ?? null).slice(0, 500);
-	}
-
-	@Get('projects/:p/repos/:r/github/pulls')
-	pulls(@Param('p') p: string, @Param('r') r: string): Promise<VendorAnswer<PullRequest[]>> {
-		return this.reads.pulls(p, r);
 	}
 
 	@Get('projects/:p/repos/:r/github/runs')

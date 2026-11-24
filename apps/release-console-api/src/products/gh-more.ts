@@ -9,6 +9,7 @@ import type { ProductWrite } from '@saha-textile/release-console-contracts';
 import type { ProductCtx, ProductFormSpec } from './kit.js';
 import { action, bool, confirmed, field, form, formTab, note, option, pick, read, text, write } from './kit.js';
 import { type ScreenExtra } from './cf-zone-more.js';
+import { graphql } from '../pulls/github-pulls.js';
 import { VendorError, arr, num, rec, str } from '../vendors/http.js';
 
 type Rec = Record<string, unknown>;
@@ -213,8 +214,74 @@ const prStateForm: ProductFormSpec = {
 	},
 };
 
+/** A comment on the pull request's conversation (pull request page, Q3). */
+const commentForm: ProductFormSpec = {
+	async read(ctx) {
+		return formTab(
+			form({
+				key: 'comment',
+				title: `Comment on #${ctx.id}`,
+				submit: 'Comment',
+				blocked: ctx.id ? null : 'Open a pull request first.',
+				fields: [
+					field('body', 'Comment', 'textarea', { help: 'Written like GitHub: Markdown, @names, #numbers.' }),
+				],
+			}),
+		);
+	},
+	async send(ctx, w) {
+		const key = await ctx.writeKey();
+		const n = w.id ?? ctx.id;
+		if (!n) throw new VendorError('Choose a pull request.', 400);
+		const body = opt(w, 'body');
+		if (!body) throw new VendorError('Write the comment.', 400);
+		await send(ctx, key, 'POST', `/issues/${n}/comments`, { body });
+		return { message: `#${n}: comment posted`, productId: n, follow: [] };
+	},
+};
+
+const AUTO_MERGE_ON = `mutation($id: ID!) {
+	enablePullRequestAutoMerge(input: { pullRequestId: $id, mergeMethod: MERGE }) { clientMutationId }
+}`;
+const AUTO_MERGE_OFF = `mutation($id: ID!) { disablePullRequestAutoMerge(input: { pullRequestId: $id }) { clientMutationId } }`;
+
+/** Merge when ready (pull request page): GitHub merges it with a merge commit once its checks and reviews pass. */
+const autoMergeForm: ProductFormSpec = {
+	async read(ctx) {
+		return formTab(
+			form({
+				key: 'automerge',
+				title: `Merge #${ctx.id} when ready`,
+				submit: 'Do it',
+				blocked: ctx.id ? null : 'Open a pull request first.',
+				fields: [
+					field('on', 'Merge when ready', 'toggle', {
+						value: true,
+						help: 'GitHub merges it with a merge commit as soon as its checks and reviews pass.',
+					}),
+				],
+			}),
+		);
+	},
+	async send(ctx, w) {
+		const key = await ctx.writeKey();
+		const n = w.id ?? ctx.id;
+		if (!n) throw new VendorError('Choose a pull request.', 400);
+		const pr = rec(await read('GitHub', `${GH}/repos/${ctx.repository}/pulls/${n}`, key, 0));
+		const on = bool(w, 'on');
+		await graphql(key, on ? AUTO_MERGE_ON : AUTO_MERGE_OFF, { id: str(pr['node_id']) });
+		return { message: `#${n}: merge when ready is ${on ? 'on' : 'off'}`, productId: n, follow: [] };
+	},
+};
+
 export const PULLS_EXTRA: ScreenExtra = {
-	forms: { merge: mergeForm, review: reviewForm, prstate: prStateForm },
+	forms: {
+		merge: mergeForm,
+		review: reviewForm,
+		prstate: prStateForm,
+		comment: commentForm,
+		automerge: autoMergeForm,
+	},
 	buttons: {
 		detail: [
 			action('Merge', 'merge', 'primary'),

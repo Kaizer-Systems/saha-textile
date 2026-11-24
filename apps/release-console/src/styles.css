@@ -286,9 +286,12 @@ body {
 	display: grid;
 	gap: 2px;
 }
+/* The name keeps its width and the value takes the rest of the row, wrapping inside it: a long value (a pull
+   request's description) used to take its whole one-line width, so it ran under its name and off the panel. A short
+   value still sits at the right edge; a long one fills the space and reads left to right. */
 .rc-kv div {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) auto;
+	grid-template-columns: minmax(min-content, max-content) minmax(0, 1fr);
 	gap: 10px;
 	padding: 3px 0;
 	border-bottom: 1px dashed rgba(94, 214, 255, 0.1);
@@ -297,7 +300,11 @@ body {
 	font-style: normal;
 	font-family: var(--font-mono);
 	font-size: 11.5px;
-	text-align: right;
+	justify-self: end;
+	min-width: 0;
+	text-align: left;
+	white-space: pre-line;
+	overflow-wrap: anywhere;
 }
 .rc-stat {
 	background: var(--hud-panel);
@@ -799,12 +806,61 @@ body {
 	color: var(--hud-muted);
 	font-size: 12px;
 }
+/* Dropdowns take the top bar's Repository picker look (.pj-switch.repo, .pj-menu, .pj-item): a cyan frame, the
+   dark list with its shadow, and the chosen item marked by a cyan edge. `base-select` lets Chrome draw the open
+   list from these rules too; other browsers keep their own list. */
+.rc-select,
+.rc-select::picker(select) {
+	appearance: base-select;
+}
 .rc-select {
-	border: 1px solid var(--hud-line);
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	max-width: 100%;
+	border: 1px solid var(--hud-cyan-dim);
+	background: rgba(94, 214, 255, 0.07);
 	padding: 4px 10px;
 	color: var(--hud-text);
 	font-family: var(--font-mono);
 	font-size: 12px;
+	cursor: pointer;
+}
+.rc-select:hover,
+.rc-select:open {
+	border-color: var(--hud-cyan);
+}
+.rc-select::picker-icon {
+	color: var(--hud-cyan);
+}
+.rc-select::picker(select) {
+	margin-top: 6px;
+	padding: 0;
+	max-height: 320px;
+	background: #071424;
+	border: 1px solid var(--hud-cyan);
+	box-shadow:
+		0 10px 40px rgba(0, 0, 0, 0.6),
+		0 0 18px rgba(94, 214, 255, 0.18);
+}
+.rc-select option {
+	padding: 8px 12px;
+	border-bottom: 1px solid rgba(94, 214, 255, 0.1);
+	border-left: 3px solid transparent;
+	color: var(--hud-text);
+	font-family: var(--font-mono);
+	font-size: 12px;
+}
+.rc-select option:hover,
+.rc-select option:focus-visible {
+	background: rgba(94, 214, 255, 0.08);
+}
+.rc-select option:checked {
+	background: rgba(94, 214, 255, 0.1);
+	border-left-color: var(--hud-cyan);
+}
+.rc-select option::checkmark {
+	display: none;
 }
 .rc-select::after {
 	content: ' ▾';
@@ -3664,6 +3720,8 @@ figure.gif img {
 .rc-cov-code {
 	position: absolute;
 	inset: 0 12px 0 0;
+	/* A short file's lines keep their own height instead of stretching to fill the box. */
+	align-content: start;
 	max-height: none;
 	overflow: auto;
 	overscroll-behavior: contain;
@@ -3823,5 +3881,338 @@ figure.gif img {
 	}
 	.rc-cov-arrow {
 		transition: none;
+	}
+}
+/* ===== Ship › Code › Pull requests: a pull request's page (brief E5WE6RSF2AJvpxDyDA1EJt, approved 24 Nov 2026) =====
+   Reuses rc-panel, rc-ph, rc-label, rc-pill, rc-btn, rc-chip, rc-mergebox, rc-tabs, rc-kv, rc-checks, rc-check, rc-log,
+   rc-t, rc-cov-tree, rc-cov-code, rc-cov-body, rc-msearch, rc-banner, rc-g-side, rc-center and rc-modal. Only the brief's
+   five custom pieces live here: C1 the description's look, C2 the conversation's time line, C3 the outline beside the
+   description, C4 the changed-line tints, C5 the page header; and how they fold on a phone. */
+
+/* C5 · the page header: title and badge on one line that wraps, buttons at the right, the "wants to merge" line under it */
+.rc-pr-head {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 8px 16px;
+	align-items: start;
+}
+.rc-pr-title {
+	margin: 0;
+	text-wrap: pretty;
+	overflow-wrap: anywhere;
+}
+.rc-pr-title .rc-pill {
+	margin-left: 4px;
+	vertical-align: 2px;
+}
+.rc-pr-acts {
+	justify-content: flex-end;
+}
+.rc-pr-meta {
+	grid-column: 1 / -1;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 8px;
+	align-items: center;
+	color: var(--hud-muted);
+	font-size: 12.5px;
+}
+.rc-pr-meta b {
+	color: var(--hud-text);
+}
+.rc-mergebox:has(.rc-pr-sum) {
+	flex-wrap: wrap;
+}
+.rc-pr-sum {
+	display: flex;
+	flex: 1 1 320px;
+	flex-wrap: wrap;
+	gap: 6px 14px;
+	min-width: 0;
+	font-size: 12.5px;
+}
+.rc-pr-n {
+	margin-left: 6px;
+	padding: 0 5px;
+	border: 1px solid rgba(94, 214, 255, 0.3);
+	color: var(--hud-cyan);
+	font-family: var(--font-mono);
+	font-size: 10.5px;
+}
+
+/* C1 · the description (and each comment) as GitHub draws it, in the console's colours and fonts */
+.rc-md {
+	max-height: 70vh;
+	overflow: auto;
+	overscroll-behavior: contain;
+	padding: 4px 4px 8px;
+	color: #cfe6f3;
+	font-family: var(--font-body);
+	font-size: 14px;
+	line-height: 1.65;
+	overflow-wrap: anywhere;
+}
+.rc-md > :first-child {
+	margin-top: 0;
+}
+.rc-md :is(h1, h2, h3, h4) {
+	margin: 18px 0 6px;
+	color: var(--hud-text);
+	font-family: var(--font-hud);
+	letter-spacing: 0.03em;
+	line-height: 1.25;
+	scroll-margin-top: 6px;
+}
+.rc-md :is(h1, h2) {
+	padding-bottom: 4px;
+	border-bottom: 1px solid var(--hud-line);
+	font-size: 17px;
+}
+.rc-md h3 {
+	color: var(--hud-cyan);
+	font-size: 14.5px;
+}
+.rc-md p {
+	max-width: 92ch;
+	margin: 0 0 10px;
+}
+.rc-md :is(ul, ol) {
+	max-width: 92ch;
+	margin: 0 0 10px;
+	padding-left: 20px;
+}
+.rc-md li {
+	margin: 3px 0;
+}
+.rc-md li::marker {
+	color: var(--hud-cyan-dim);
+}
+.rc-md strong {
+	color: var(--hud-text);
+	font-weight: 600;
+}
+.rc-md a {
+	color: var(--hud-cyan);
+}
+.rc-md code {
+	padding: 1px 5px;
+	background: rgba(94, 214, 255, 0.1);
+	color: #d6ecf8;
+	font-family: var(--font-mono);
+	font-size: 12px;
+}
+.rc-md pre {
+	overflow: auto;
+	padding: 8px 10px;
+	border: 1px solid var(--hud-line);
+	background: rgba(5, 11, 20, 0.6);
+}
+.rc-md pre code {
+	padding: 0;
+	background: none;
+}
+.rc-md blockquote {
+	margin: 0 0 10px;
+	padding-left: 12px;
+	border-left: 3px solid var(--hud-line);
+	color: var(--hud-muted);
+}
+.rc-md hr {
+	margin: 14px 0;
+	border: 0;
+	border-top: 1px dashed var(--hud-line);
+}
+.rc-md table {
+	display: block;
+	overflow: auto;
+	margin: 0 0 10px;
+	border-collapse: collapse;
+	font-size: 13px;
+}
+.rc-md :is(th, td) {
+	padding: 4px 8px;
+	border: 1px solid var(--hud-line);
+}
+.rc-md img {
+	max-width: 100%;
+}
+.rc-pr-comment {
+	grid-column: 2 / -1;
+	max-height: none;
+	padding: 8px 10px;
+	border: 1px solid var(--hud-line);
+	background: rgba(5, 11, 20, 0.5);
+	font-size: 13px;
+}
+
+/* C2 · the conversation's time line: a thin line with an icon per event, comments in a box under their line */
+.rc-pr-tl {
+	display: grid;
+}
+.rc-pr-ev {
+	position: relative;
+	display: grid;
+	grid-template-columns: 22px minmax(0, 1fr) auto;
+	gap: 4px 10px;
+	align-items: baseline;
+	padding: 6px 0;
+	font-size: 12.5px;
+}
+.rc-pr-ev::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 10px;
+	width: 1px;
+	background: var(--hud-line);
+}
+.rc-pr-ic {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 21px;
+	height: 21px;
+	border: 1px solid var(--hud-line);
+	background: #071424;
+	color: var(--hud-cyan);
+	font-family: var(--font-mono);
+	font-size: 11px;
+}
+.rc-pr-ic.ok {
+	border-color: rgba(93, 255, 168, 0.5);
+	color: var(--hud-green);
+}
+.rc-pr-ic.amber {
+	border-color: rgba(255, 181, 71, 0.5);
+	color: var(--hud-amber);
+}
+.rc-pr-ic.red {
+	border-color: rgba(255, 93, 93, 0.5);
+	color: var(--hud-red);
+}
+.rc-pr-ic.muted {
+	color: var(--hud-muted);
+}
+.rc-pr-compose {
+	display: grid;
+	gap: 8px;
+	margin-top: 8px;
+}
+.rc-pr-compose textarea {
+	width: 100%;
+	min-height: 64px;
+	resize: vertical;
+}
+
+/* C3 · the outline beside the description, lighting the heading being read */
+.rc-pr-cols {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 260px;
+	gap: 12px;
+	align-items: start;
+}
+.rc-pr-main,
+.rc-pr-side {
+	display: grid;
+	gap: 12px;
+	align-content: start;
+	min-width: 0;
+}
+.rc-pr-side {
+	position: sticky;
+	top: 8px;
+}
+.rc-pr-outline {
+	display: grid;
+	max-height: 60vh;
+	overflow: auto;
+}
+.rc-pr-outline button {
+	padding: 2px 0;
+	border: 0;
+	background: none;
+	color: var(--hud-muted);
+	font-family: var(--font-body);
+	font-size: 12.5px;
+	text-align: left;
+	cursor: pointer;
+}
+.rc-pr-outline button.h3 {
+	padding-left: 14px;
+	font-size: 12px;
+}
+.rc-pr-outline button:hover {
+	color: var(--hud-text);
+}
+.rc-pr-outline button.on {
+	color: var(--hud-cyan);
+}
+
+/* C4 · changed lines in the Coverage code view: green added, red removed, a cyan row for each @@ section */
+.rc-cov-code .l.add {
+	background: rgba(93, 255, 168, 0.09);
+	border-left-color: rgba(93, 255, 168, 0.5);
+}
+.rc-cov-code .l.add .src {
+	color: var(--hud-green);
+}
+.rc-cov-code .l.del {
+	background: rgba(255, 93, 93, 0.12);
+	border-left-color: var(--hud-red);
+}
+.rc-cov-code .l.del .n {
+	color: var(--hud-red);
+}
+.rc-cov-code .l.hunk {
+	background: rgba(94, 214, 255, 0.08);
+}
+.rc-cov-code .l.hunk .m {
+	color: var(--hud-cyan-dim);
+}
+
+/* On a phone: one column; the outline goes under the description; the file list folds behind "Files ▾". */
+.rc-pr-treebtn,
+.rc-pr-actbtn,
+.rc-pr-outbtn {
+	display: none;
+}
+@media (max-width: 760px) {
+	.rc-pr-head,
+	.rc-pr-cols {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.rc-pr-acts {
+		justify-content: flex-start;
+	}
+	.rc-pr-side {
+		position: static;
+	}
+	.rc-pr-treebtn,
+	.rc-pr-actbtn,
+	.rc-pr-outbtn {
+		display: inline-flex;
+	}
+	/* The buttons under Actions ▾, and the outline as a menu over the page from Outline ▾. */
+	.rc-pr-acts:not(.shown) {
+		display: none;
+	}
+	.rc-pr-outpanel:not(.shown) {
+		display: none;
+	}
+	.rc-pr-outpanel.shown {
+		position: fixed;
+		top: 120px;
+		right: max(12px, env(safe-area-inset-right, 0px));
+		left: max(12px, env(safe-area-inset-left, 0px));
+		z-index: 6;
+		background: #071424;
+		box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+	}
+	.rc-g-side.rc-cov-split.open.rc-pr-split {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.rc-pr-split.tree-hidden .rc-cov-tree {
+		display: none;
 	}
 }

@@ -19,6 +19,7 @@ import { JobsScreen, MessagesScreen } from './ops-screens';
 import { OverviewScreen } from './overview-screen';
 import { PlannedScreen } from './planned-screen';
 import { ProductScreen, injectPlanFeatures, injectProductScreens } from './product-screen';
+import { PullsScreen } from './pulls/pulls-screen';
 import { RotateScreen } from './rotate-screen';
 import { SecretsScreen } from './secrets-screen';
 import { SeoScreen } from './seo-screen';
@@ -26,14 +27,7 @@ import { ServerDeployScreen } from './server-deploy-screen';
 import { ServerStateScreen } from './server-state';
 import { ServicesScreen } from './services-screen';
 import { TracesScreen } from './traces-screen';
-import {
-	CfDomainsScreen,
-	DnsScreen,
-	DoAccountScreen,
-	DropletsScreen,
-	PipelinesScreen,
-	PullsScreen,
-} from './vendor-screens';
+import { CfDomainsScreen, DnsScreen, DoAccountScreen, DropletsScreen, PipelinesScreen } from './vendor-screens';
 import { ConsoleContext } from '../data/console-context';
 import { ConsoleState } from '../data/console-state';
 import { placeOf } from '../menu/menu-search';

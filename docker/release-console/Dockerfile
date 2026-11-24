@@ -40,7 +40,9 @@ ENV NODE_ENV=production \
 	CONSOLE_ORIGIN=http://localhost:4400
 WORKDIR /app
 COPY --from=build --chown=node:node /out/console /app
-RUN mkdir -p /data && chown node:node /data
+# git: the API keeps its own copy of each repository in /data/repositories, for pull requests past
+# GitHub's 3,000-file list (Pull requests page, brief E5WE6RSF2AJvpxDyDA1EJt, Q2).
+RUN apk add --no-cache git && mkdir -p /data && chown node:node /data
 USER node
 VOLUME ["/data"]
 EXPOSE 4400

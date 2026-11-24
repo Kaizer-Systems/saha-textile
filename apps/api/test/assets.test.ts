@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { FixedAsset, FixedAssetWrite } from '@saha-textile/contracts';
+import { ASSET_CATEGORIES, RESIDUAL_PERCENT } from '@saha-textile/core-domain';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AppModule } from '../src/app.module';
@@ -431,5 +432,15 @@ describe('the asset routes and module', () => {
 		expect([code('post'), code('dispose')]).toEqual([200, 200]);
 		expect(Reflect.getMetadata('imports', AssetsModule)).toEqual([LedgerModule]);
 		expect(AppModule.forRoot({} as never).imports).toContain(AssetsModule);
+	});
+
+	it('offers the kinds of asset with their presets and the residual percent, before an asset by id', () => {
+		const c = new AssetsController({} as never);
+		expect(c.categories()).toEqual({ categories: ASSET_CATEGORIES, residualPercent: RESIDUAL_PERCENT });
+		expect(new Reflector().get(PERMISSIONS_KEY, AssetsController.prototype.categories)).toEqual(['accounts.index']);
+		expect(Reflect.getMetadata('path', AssetsController.prototype.categories)).toBe('categories');
+		// Routes are matched in the order they are declared: "categories" must come before ":id".
+		const order = Object.getOwnPropertyNames(AssetsController.prototype);
+		expect(order.indexOf('categories')).toBeLessThan(order.indexOf('get'));
 	});
 });

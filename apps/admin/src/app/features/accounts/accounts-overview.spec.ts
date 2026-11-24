@@ -36,6 +36,7 @@ const overview = (over: Partial<AccountsOverview> = {}): AccountsOverview => ({
 	profitTo: '2026-11-24',
 	stockPaise: 572_120_000,
 	inTransitPaise: 4_620_000,
+	codPaise: 0,
 	waiting: [{ kind: 'voucherDrafts', count: 3 }],
 	...over,
 });
@@ -115,6 +116,8 @@ describe('the accounts overview', () => {
 			'refundsFailed',
 			'cashDifferences',
 			'expenseClaims',
+			'bankLinesToMatch',
+			'paymentsNotInPayout',
 		]);
 		const label = setup(overview()).page.monthLabel();
 		expect(label).toBe('');

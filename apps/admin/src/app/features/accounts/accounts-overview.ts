@@ -25,6 +25,8 @@ export const WAITING_LINKS: Readonly<Record<OverviewWaiting['kind'], { path: str
 	refundsFailed: { path: '/accounts/vouchers/refundVouchers', icon: 'ri-error-warning-line' },
 	cashDifferences: { path: '/cash/differences', icon: 'ri-scales-3-line' },
 	expenseClaims: { path: '/cash/claims', icon: 'ri-receipt-line' },
+	bankLinesToMatch: { path: '/accounts/banks', icon: 'ri-bank-line' },
+	paymentsNotInPayout: { path: '/accounts/settlements', icon: 'ri-exchange-funds-line' },
 };
 
 /** "November" for 2026-11, in the reader's language (Bengali month names keep English digits elsewhere). */

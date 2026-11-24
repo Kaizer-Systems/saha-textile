@@ -67,6 +67,7 @@ describe('the accounts overview', () => {
 			profitPaise: 7_500_000,
 			stockPaise: 572_120_000,
 			inTransitPaise: 4_620_000,
+			codPaise: 0,
 		});
 	});
 

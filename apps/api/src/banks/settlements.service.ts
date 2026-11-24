@@ -13,6 +13,7 @@ import type {
 } from '@saha-textile/contracts';
 import {
 	UNSETTLED_AFTER_DAYS,
+	UNSETTLED_LOOKBACK_DAYS,
 	defaultStockLocation,
 	istDay,
 	payoutProblem,
@@ -44,9 +45,6 @@ import { BooksPostingService } from '../ledger/books-posting';
 import { LedgerService } from '../ledger/ledger.service';
 
 const refuse = (code: string) => new BadRequestException(accountsRefusal(code));
-
-/** How far back the check for gateway payments no payout has paid looks. */
-const UNSETTLED_LOOKBACK_DAYS = 90;
 
 const shift = (day: string, days: number) =>
 	new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);

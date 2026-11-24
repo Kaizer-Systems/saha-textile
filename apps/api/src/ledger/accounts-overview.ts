@@ -11,10 +11,15 @@ import {
 import {
 	istDay,
 	overviewFigures,
+	UNSETTLED_AFTER_DAYS,
+	UNSETTLED_LOOKBACK_DAYS,
 	type AccountsListsReader,
+	type BankStatementRepository,
 	type CashRepository,
 	type GeneralLedgerRepository,
+	type OrderPaymentRepository,
 	type PeriodLockRepository,
+	type SettlementRepository,
 } from '@saha-textile/core-domain';
 
 import { Principal } from '../auth/ownership';
@@ -22,9 +27,12 @@ import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../au
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import {
 	ACCOUNTS_LISTS_READER,
+	BANK_STATEMENT_REPOSITORY,
 	CASH_REPOSITORY,
 	GENERAL_LEDGER_REPOSITORY,
+	ORDER_PAYMENT_REPOSITORY,
 	PERIOD_LOCK_REPOSITORY,
+	SETTLEMENT_REPOSITORY,
 } from '../infra/tokens';
 import { API_TAGS } from '../openapi-tags';
 import { LedgerService } from './ledger.service';
@@ -56,6 +64,9 @@ const WAITING: ReadonlyArray<{ kind: OverviewWaiting['kind']; tab: AccountsListT
 	{ kind: 'refundsFailed', tab: 'refundVouchers', chip: 'failed' },
 ];
 
+const shiftDays = (day: string, days: number) =>
+	new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+
 /**
  * Accounts › Overview (accounts brief Q0): cash, bank, who owes whom today, the month's GST and whether the month is
  * locked, the year's profit, stock at cost, and what is waiting for someone. Balances follow the locations the person
@@ -72,6 +83,16 @@ export class AccountsOverviewService {
 		@Optional()
 		@Inject(CASH_REPOSITORY)
 		private readonly cash: Pick<CashRepository, 'boxes' | 'listSheets' | 'listClaims'> | null = null,
+		/** Banks (accounts brief BA, Q10): lines to match and gateway payments in no payout; optional for the same reason. */
+		@Optional()
+		@Inject(BANK_STATEMENT_REPOSITORY)
+		private readonly statements: Pick<BankStatementRepository, 'summary'> | null = null,
+		@Optional()
+		@Inject(ORDER_PAYMENT_REPOSITORY)
+		private readonly payments: Pick<OrderPaymentRepository, 'listGatewayReceived'> | null = null,
+		@Optional()
+		@Inject(SETTLEMENT_REPOSITORY)
+		private readonly settlements: Pick<SettlementRepository, 'settledPaymentIds'> | null = null,
 	) {}
 
 	async overview(
@@ -85,23 +106,26 @@ export class AccountsOverviewService {
 		const [y, m] = today.split('-').map(Number) as [number, number];
 		const yearStart = `${m >= 4 ? y : y - 1}-04-01`;
 		const balances = (day: string) => this.ledger.balances(day, principal);
-		const [chart, atToday, atMonthEnd, monthBefore, yearBefore, locks, drafts, waiting, cash] = await Promise.all([
-			this.ledger.chart(),
-			balances(today),
-			balances(monthEnd < today ? monthEnd : today),
-			balances(dayBefore(`${month}-01`)),
-			balances(dayBefore(yearStart)),
-			this.periods.list(),
-			this.books.listDrafts(),
-			this.waiting(today),
-			this.cashFigures(today),
-		]);
+		const [chart, atToday, atMonthEnd, monthBefore, yearBefore, locks, drafts, waiting, cash, banks] =
+			await Promise.all([
+				this.ledger.chart(),
+				balances(today),
+				balances(monthEnd < today ? monthEnd : today),
+				balances(dayBefore(`${month}-01`)),
+				balances(dayBefore(yearStart)),
+				this.periods.list(),
+				this.books.listDrafts(),
+				this.waiting(today),
+				this.cashFigures(today),
+				this.bankWaiting(today),
+			]);
 		const figures = overviewFigures(chart, atToday, monthBefore, yearBefore);
 		const locked = lockedMonths(locks);
 		const items: OverviewWaiting[] = [
 			...(drafts.length ? [{ kind: 'voucherDrafts' as const, count: drafts.length }] : []),
 			...waiting,
 			...cash.waiting,
+			...banks,
 		];
 		return {
 			...figures,
@@ -114,6 +138,27 @@ export class AccountsOverviewService {
 			profitTo: today,
 			waiting: items,
 		};
+	}
+
+	/** Banks: statement lines still to match, and gateway payments no payout has paid after 7 days. */
+	private async bankWaiting(today: string): Promise<OverviewWaiting[]> {
+		const toMatch = this.statements
+			? Object.values(await this.statements.summary()).reduce((sum, account) => sum + account.toMatch, 0)
+			: 0;
+		let unpaid = 0;
+		if (this.payments && this.settlements) {
+			const received = await this.payments.listGatewayReceived(
+				shiftDays(today, -UNSETTLED_LOOKBACK_DAYS),
+				shiftDays(today, -UNSETTLED_AFTER_DAYS),
+			);
+			const settled = await this.settlements.settledPaymentIds(received.map((p) => p.id));
+			unpaid = received.filter((p) => !settled.has(p.id)).length;
+		}
+		const waiting: OverviewWaiting[] = [
+			{ kind: 'bankLinesToMatch', count: toMatch },
+			{ kind: 'paymentsNotInPayout', count: unpaid },
+		];
+		return waiting.filter((w) => w.count > 0);
 	}
 
 	/** Cash (accounts brief O): boxes in use, sheets waiting with a difference, claims waiting for approval. */

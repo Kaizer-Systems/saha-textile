@@ -19,6 +19,8 @@ export interface OverviewFigures {
 	profitPaise: number;
 	stockPaise: number;
 	inTransitPaise: number;
+	/** Cash on delivery the couriers hold for the shop (COD receivable), until they remit it. */
+	codPaise: number;
 }
 
 const OUTPUT = ['output_cgst', 'output_sgst', 'output_igst'];
@@ -73,6 +75,7 @@ export function overviewFigures(
 		gstPaise: 0 - moved(output, now, monthBefore) - moved(input, now, monthBefore),
 		profitPaise: 0 - moved(results, now, yearBefore),
 		stockPaise: sum(playing(chart, ['stock_in_hand']), now),
+		codPaise: sum(playing(chart, ['cod_receivable']), now),
 		inTransitPaise: sum(
 			chart.ledgers.filter((ledger) => ledger.systemKey === 'stock_in_transit'),
 			now,

@@ -131,6 +131,9 @@ export const OverviewWaiting = z.object({
 		/** Cash (accounts brief O): sheets closed with a difference, and claims waiting for approval. */
 		'cashDifferences',
 		'expenseClaims',
+		/** Banks (accounts brief BA, Q10): statement lines still to match, and gateway payments in no payout. */
+		'bankLinesToMatch',
+		'paymentsNotInPayout',
 	]),
 	count: z.number().int().positive(),
 });
@@ -157,6 +160,8 @@ export const AccountsOverview = z.object({
 	profitTo: IsoDate,
 	stockPaise: z.number(),
 	inTransitPaise: z.number(),
+	/** Cash on delivery the couriers hold (COD receivable). */
+	codPaise: z.number().default(0),
 	waiting: z.array(OverviewWaiting),
 });
 export type AccountsOverview = z.infer<typeof AccountsOverview>;

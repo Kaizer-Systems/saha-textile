@@ -10,6 +10,8 @@ import { receiptLanding, type LedgerRef, type MoneyRow } from '../ledger/money-p
 
 /** A gateway payment no payout has paid this many days after it came in is flagged. */
 export const UNSETTLED_AFTER_DAYS = 7;
+/** How far back that check looks. */
+export const UNSETTLED_LOOKBACK_DAYS = 90;
 
 export interface Payout {
 	payoutReference: string;

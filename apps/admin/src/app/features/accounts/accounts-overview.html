@@ -46,6 +46,14 @@
 						<h6>{{ 'ov_bank' | transloco }}</h6>
 						<h3 id="ov_bank">{{ inr(o.bankPaise) }}</h3>
 						<p class="small text-muted mb-0">{{ o.bankNames.join(', ') || '—' }}</p>
+						@if (o.codPaise) {
+						<p
+							class="small text-muted mb-0"
+							id="ov_cod"
+						>
+							{{ 'ov_cod_held' | transloco: { amount: inr(o.codPaise) } }}
+						</p>
+						}
 					</div>
 					<div class="icon-box"><i class="ri-bank-line"></i></div>
 				</div>

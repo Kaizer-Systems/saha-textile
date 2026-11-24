@@ -224,11 +224,14 @@ describe('stock counts: reading one', () => {
 			skus: 5,
 			counted: 4,
 			differences: 3,
-			missingUnits: 1,
+			missingPieces: 1,
+			missingTenths: 0,
 			missingValueINR: -100,
-			foundUnits: 3,
+			foundPieces: 3,
+			foundTenths: 0,
 			foundValueINR: 300,
-			netUnits: 2,
+			netPieces: 2,
+			netTenths: 0,
 			netValueINR: 200,
 		});
 	});

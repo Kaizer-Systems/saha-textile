@@ -14,6 +14,8 @@ import { askReason } from '@features/purchasing/shared/popups';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { Pagination } from '@shared/ui/pagination/pagination';
 
+import { countQuantity } from './count-quantity';
+
 import type { AdjustmentRequest, AdjustmentRequestListQuery } from '@saha-textile/contracts';
 
 export type ApprovalTab = AdjustmentRequestListQuery['status'];
@@ -53,6 +55,11 @@ export class Approvals {
 			firstValueFrom(this.gateway.approvals({ status: this.tab(), page: this.page(), pageSize: this.pageSize })),
 	}));
 	readonly own = isOwnRequest;
+
+	/** A count's short or over with pieces and metres kept apart. */
+	qty(pieces: number, tenths: number): string {
+		return countQuantity(this.transloco, pieces, tenths);
+	}
 
 	setTab(tab: ApprovalTab): void {
 		this.tab.set(tab);

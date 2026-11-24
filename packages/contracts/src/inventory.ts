@@ -398,8 +398,11 @@ export const AdjustmentRequest = z.object({
 		.object({
 			skus: z.number().int(),
 			differences: z.number().int(),
+			/** Pieces short and over; fabric short and over in tenths of a metre, kept apart (owner, 24 Nov). */
 			missing: z.number().int(),
 			found: z.number().int(),
+			missingTenths: z.number().int().default(0),
+			foundTenths: z.number().int().default(0),
 		})
 		.nullable(),
 	status: AdjustmentRequestStatus,
@@ -574,11 +577,18 @@ export const StockCount = z.object({
 		skus: z.number().int(),
 		counted: z.number().int(),
 		differences: z.number().int(),
-		missingUnits: z.number().int(),
+		/**
+		 * Pieces and fabric (tenths of a metre) kept apart, short, over and net: they never add up (owner, 24 Nov).
+		 * Money is the one total across both. A count saved before the split reads 0 until it is worked out again.
+		 */
+		missingPieces: z.number().int().default(0),
+		missingTenths: z.number().int().default(0),
 		missingValueINR: z.number().nullable(),
-		foundUnits: z.number().int(),
+		foundPieces: z.number().int().default(0),
+		foundTenths: z.number().int().default(0),
 		foundValueINR: z.number().nullable(),
-		netUnits: z.number().int(),
+		netPieces: z.number().int().default(0),
+		netTenths: z.number().int().default(0),
 		netValueINR: z.number().nullable(),
 	}),
 	postedAt: IsoDateTime.nullable(),

@@ -17,6 +17,8 @@ import { parseQuantity } from '@features/purchasing/shared/variant-grid';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { PluralPipe } from '@shared/pipes/language.pipes';
 
+import { countQuantity } from './count-quantity';
+
 import type { StockCount, StockCountLine } from '@saha-textile/contracts';
 
 /** A typed count as stock units (pieces, or tenths of a metre); null when empty or unreadable. */
@@ -122,6 +124,11 @@ export class CountPage {
 			),
 		);
 		this.recount.set(new Set());
+	}
+
+	/** Short, over or net with pieces and metres kept apart. */
+	qty(pieces: number, tenths: number): string {
+		return countQuantity(this.transloco, pieces, tenths);
 	}
 
 	typedOf(line: StockCountLine): { text: string; note: string } {

@@ -109,6 +109,10 @@ Adjust stock takes pieces out, adds them, or holds and releases them. A write-of
 | `POST /admin/stock/adjustments/:id/reverse` | `stock.approve` and super admin | Reverse, with `{ reason }`             |
 | `GET /admin/stock/adjustments/:id/pdf`      | `stock.index`                   | The print                              |
 
+## Stock counts: totals
+
+A count's Missing, Found and Net boxes (`StockCount.totals`), the counts in Approvals and the count's approval request (`countSummary`) keep pieces and fabric apart, since a piece and a tenth of a metre never add up: `missingPieces` and `missingTenths`, `foundPieces` and `foundTenths`, `netPieces` and `netTenths` (in the request, `missing` and `found` are pieces, beside `missingTenths` and `foundTenths`). The screens word them as before when only pieces differ ("4"), in metres when only fabric does ("1.5 m"), and side by side when both do ("4 pieces and 1.5 m"). Money is the one total across both. A count's page works its totals out again from its lines, so a count saved before the split reads correctly; its posting in the books goes line by line as an `SA/…` stock adjustment (see Stock adjustments).
+
 ## Opening stock
 
 `/opening-stock` reads a CSV with the headings SKU, Quantity (pieces, or metres for fabric), Cost each, Received on (`2026-03-14` or `14/03/2026`; empty means today) and Note. `POST /admin/opening-stock/check` sorts every row into Ready, Cost missing, Unknown SKU, Already has stock, Wrong quantity, Date after today or SKU twice in the sheet, and returns the number the load would get. A missing cost can be typed in the row. Posting (`POST /admin/opening-stock`, with a request key) is allowed only when every row is ready, once per SKU.

@@ -192,11 +192,14 @@ export class StockCountsService {
 			totals: {
 				...count.totals,
 				differences: 0,
-				missingUnits: 0,
+				missingPieces: 0,
+				missingTenths: 0,
 				missingValueINR: null,
-				foundUnits: 0,
+				foundPieces: 0,
+				foundTenths: 0,
 				foundValueINR: null,
-				netUnits: 0,
+				netPieces: 0,
+				netTenths: 0,
 				netValueINR: null,
 			},
 		};
@@ -318,7 +321,8 @@ export class StockCountsService {
 			imageUrl: null,
 			soldBy: 'piece',
 			action: null,
-			quantity: count.totals.netUnits,
+			// A count's request is decided on its summary; its quantity is the net in pieces only.
+			quantity: count.totals.netPieces,
 			reasonCode: 'manual_recount_correction',
 			holdId: null,
 			note: '',
@@ -330,8 +334,10 @@ export class StockCountsService {
 			countSummary: {
 				skus: count.totals.skus,
 				differences: count.totals.differences,
-				missing: count.totals.missingUnits,
-				found: count.totals.foundUnits,
+				missing: count.totals.missingPieces,
+				found: count.totals.foundPieces,
+				missingTenths: count.totals.missingTenths,
+				foundTenths: count.totals.foundTenths,
 			},
 			status: 'pending',
 			requestedBy: actor,
@@ -509,11 +515,14 @@ function emptyTotals(skus: number): StockCount['totals'] {
 		skus,
 		counted: 0,
 		differences: 0,
-		missingUnits: 0,
+		missingPieces: 0,
+		missingTenths: 0,
 		missingValueINR: 0,
-		foundUnits: 0,
+		foundPieces: 0,
+		foundTenths: 0,
 		foundValueINR: 0,
-		netUnits: 0,
+		netPieces: 0,
+		netTenths: 0,
 		netValueINR: 0,
 	};
 }
@@ -528,15 +537,21 @@ function totalsOf(lines: readonly StockCountLine[], seeCost: boolean): StockCoun
 	// With cost seen, refreshed() priced every line (0 where nothing differs), so each value is a number.
 	const value = (rows: readonly StockCountLine[]) =>
 		seeCost ? Math.round(rows.reduce((sum, line) => sum + (line.valueINR as number) * 100, 0)) / 100 : null;
+	// Pieces and tenths of a metre are summed apart; short counts come out positive.
+	const sum = (rows: readonly DifferingLine[], soldBy: StockCountLine['soldBy'], sign: 1 | -1) =>
+		rows.filter((line) => line.soldBy === soldBy).reduce((total, line) => total + sign * line.difference, 0);
 	return {
 		skus: lines.length,
 		counted: lines.filter((line) => line.counted !== null).length,
 		differences: differing.length,
-		missingUnits: missing.reduce((sum, line) => sum - line.difference, 0),
+		missingPieces: sum(missing, 'piece', -1),
+		missingTenths: sum(missing, 'metre', -1),
 		missingValueINR: value(missing),
-		foundUnits: found.reduce((sum, line) => sum + line.difference, 0),
+		foundPieces: sum(found, 'piece', 1),
+		foundTenths: sum(found, 'metre', 1),
 		foundValueINR: value(found),
-		netUnits: differing.reduce((sum, line) => sum + line.difference, 0),
+		netPieces: sum(differing, 'piece', 1),
+		netTenths: sum(differing, 'metre', 1),
 		netValueINR: value(differing),
 	};
 }

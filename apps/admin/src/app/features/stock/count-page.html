@@ -234,22 +234,23 @@
 					<li>
 						{{ 'missing' | transloco }}
 						<span>
-							{{ current.totals.missingUnits }}@if (current.totals.missingValueINR !== null) { · {{
-							current.totals.missingValueINR | rupees }} }
+							{{ qty(current.totals.missingPieces, current.totals.missingTenths) }}@if
+							(current.totals.missingValueINR !== null) { · {{ current.totals.missingValueINR | rupees }}
+							}
 						</span>
 					</li>
 					<li>
 						{{ 'found' | transloco }}
 						<span>
-							{{ current.totals.foundUnits }}@if (current.totals.foundValueINR !== null) { · {{
-							current.totals.foundValueINR | rupees }} }
+							{{ qty(current.totals.foundPieces, current.totals.foundTenths) }}@if
+							(current.totals.foundValueINR !== null) { · {{ current.totals.foundValueINR | rupees }} }
 						</span>
 					</li>
 					<li>
 						{{ 'net' | transloco }}
 						<span>
-							{{ current.totals.netUnits }}@if (current.totals.netValueINR !== null) { · {{
-							current.totals.netValueINR | rupees }} }
+							{{ qty(current.totals.netPieces, current.totals.netTenths) }}@if (current.totals.netValueINR
+							!== null) { · {{ current.totals.netValueINR | rupees }} }
 						</span>
 					</li>
 				</ul>

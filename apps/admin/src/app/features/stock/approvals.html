@@ -47,7 +47,10 @@
 					</td>
 					<td class="text-end text-nowrap">
 						@if (request.kind === 'count' && request.countSummary; as summary) {
-						<strong>−{{ summary.missing }} / +{{ summary.found }}</strong>
+						<strong>
+							−{{ qty(summary.missing, summary.missingTenths) }} / +{{ qty(summary.found,
+							summary.foundTenths) }}
+						</strong>
 						} @else {
 						<strong [class]="request.action === 'remove' ? 'text-danger' : 'text-success'">
 							{{ request.action === 'remove' ? '−' : '+' }}{{ request.quantity | stockQty: request.soldBy

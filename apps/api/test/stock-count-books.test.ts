@@ -160,6 +160,58 @@ describe('a count’s posting in the books', () => {
 	});
 });
 
+describe('a count’s totals keep pieces and metres apart (owner, 24 Nov)', () => {
+	it('sums short, over and net in pieces and in tenths of a metre, and the approval request carries both', async () => {
+		const found = count({
+			status: 'review',
+			lines: [
+				line({ counted: 1 }),
+				line({
+					variantId: 'v2',
+					productId: 'p2',
+					sku: 'MUL',
+					soldBy: 'metre',
+					atStart: 100,
+					expected: 100,
+					counted: 115,
+				}),
+				line({
+					variantId: 'v3',
+					productId: 'p3',
+					sku: 'CHI',
+					soldBy: 'metre',
+					atStart: 40,
+					expected: 40,
+					counted: 35,
+				}),
+			],
+		});
+		const { service } = build(found);
+		const requests = (service as unknown as { requests: { save: { mock: { calls: unknown[][] } } } }).requests;
+		const reviewer = { userId: 'adm_2', permissions: ['stock_count.post', 'stock.cost'] } as never;
+		await service.post('sc_1', reviewer);
+		const request = requests.save.mock.calls[0]![0] as { quantity: number; countSummary: unknown };
+		expect(request.countSummary).toEqual({
+			skus: 3,
+			differences: 3,
+			missing: 4,
+			found: 0,
+			missingTenths: 5,
+			foundTenths: 15,
+		});
+		expect(request.quantity).toBe(-4);
+		const view = await service.get('sc_1', reviewer);
+		expect(view.totals).toMatchObject({
+			missingPieces: 4,
+			missingTenths: 5,
+			foundPieces: 0,
+			foundTenths: 15,
+			netPieces: -4,
+			netTenths: 10,
+		});
+	});
+});
+
 describe('the edit-log line for a count', () => {
 	const base = {
 		who: 'Rina',

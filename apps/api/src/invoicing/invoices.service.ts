@@ -315,7 +315,12 @@ export class InvoicesService {
 			orderNumber: order.orderNumber,
 			shipmentId,
 			seller: {
-				name: shop?.tradeName || shop?.legalName || registration.gstin,
+				name:
+					shop?.tradeName ||
+					shop?.legalName ||
+					registration.tradeName ||
+					registration.legalName ||
+					registration.gstin,
 				gstin: registration.gstin,
 				address: [location.address, location.city, location.pin].filter(Boolean).join(', '),
 				stateCode: sellerState,

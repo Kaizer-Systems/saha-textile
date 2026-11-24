@@ -39,6 +39,7 @@ import {
 	packLines,
 	packListIncomplete,
 	isRequestActive,
+	istDay,
 	openTooLong,
 	type AdminOrderRepository,
 	type OrderNotice,
@@ -216,6 +217,12 @@ export function attentionTimesOf(
  * the staff-only invoice address, and the e-invoice / e-way bill details, typed by hand until an
  * integration exists (Raise asks the port first; "not connected" opens the manual popup).
  */
+/** The moment a parcel left: its shipped day at noon in India, or now when that day is today or not given. */
+export function dispatchedAt(shippedOn: string | null | undefined, now: string): string {
+	if (!shippedOn || shippedOn === istDay(new Date(now))) return now;
+	return new Date(`${shippedOn}T12:00:00+05:30`).toISOString();
+}
+
 @Injectable()
 export class AdminOrdersService {
 	constructor(
@@ -543,9 +550,16 @@ export class AdminOrdersService {
 					},
 					context,
 				);
-				// The parcel's tax invoice, when Tax invoices at dispatch is on (accounts brief D1, D3).
+				// The parcel's tax invoice, when Tax invoices at dispatch is on (accounts brief D1, D3), dated the day
+				// the goods left (CGST s.31): a shipment recorded late still belongs to that day's month and return.
 				await this.invoicesSvc?.issueAtDispatch(
-					{ order: { ...order, lines }, shipmentId, lineIds: parcelLineIds, actorId: actor.id, at },
+					{
+						order: { ...order, lines },
+						shipmentId,
+						lineIds: parcelLineIds,
+						actorId: actor.id,
+						at: dispatchedAt(input.shipped.shippedOn, at),
+					},
 					context,
 				);
 			}

@@ -53,6 +53,12 @@ describe('order helpers: the last cases', () => {
 		expect(countryName('not a code', 'en')).toBe('not a code');
 	});
 
+	it('keeps English digits in foreign money on a Bengali page', () => {
+		expect(money(1234.5, 'GBP', 'bn-IN')).toBe('£1,234.50');
+		expect(money(12, 'USD', 'bn-IN')).toBe('$12.00');
+		expect(money(1234.5, 'GBP', 'bn-IN')).not.toMatch(/[০-৯]/);
+	});
+
 	it('words a payment with no detail, and one with neither reference', () => {
 		expect(paymentLine(null, t)).toBe('');
 		expect(

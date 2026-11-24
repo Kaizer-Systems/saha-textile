@@ -273,8 +273,8 @@ describe('the order page: words', () => {
 		data.set(detail({ currency: 'GBP' }));
 		const { page } = render({ lang: 'bn' });
 		expect(page.money(null)).toBe('—');
-		expect(page.money(12)).toContain('£');
-		expect(page.moneyIn(12, 'USD')).toContain('$');
+		expect(page.money(12)).toBe('£12.00');
+		expect(page.moneyIn(12, 'USD')).toBe('$12.00');
 		expect(page.rupees(1200)).toBe('₹1,200');
 		expect(page.day('2026-11-19')).toContain('Nov');
 		expect(page.when('2026-11-19T10:00:00.000Z')).toContain('Nov');

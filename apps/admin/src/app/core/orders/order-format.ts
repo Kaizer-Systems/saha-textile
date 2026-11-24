@@ -45,7 +45,14 @@ export type Translate = (key: string, params?: Record<string, unknown>) => strin
 export function money(amount: number, currency: string, locale = 'en-IN'): string {
 	if (currency === 'INR') return rupees(amount);
 	try {
-		return new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: 2 }).format(amount);
+		// Amounts keep English digits on every page, Bengali included ("£12.00", never "£১২.০০"); the page's
+		// language still decides the symbol's place and the separators.
+		return new Intl.NumberFormat(locale, {
+			style: 'currency',
+			currency,
+			minimumFractionDigits: 2,
+			numberingSystem: 'latn',
+		}).format(amount);
 	} catch {
 		return `${currency} ${amount.toFixed(2)}`;
 	}

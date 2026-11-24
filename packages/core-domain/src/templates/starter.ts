@@ -93,6 +93,7 @@ const rcmEntry = (
 	name,
 	code,
 	ratePercent,
+	due: null,
 	expenseRole,
 	kinds,
 	from,

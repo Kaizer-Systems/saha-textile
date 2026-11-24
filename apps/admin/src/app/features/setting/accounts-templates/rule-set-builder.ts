@@ -140,6 +140,11 @@ export class RuleSetBuilderPage {
 				caReview: 'pending',
 				limitINR: null,
 				limitPer: null,
+				// A due-date rule starts as monthly GSTR-1 for every State; the rest are picked in the form.
+				due:
+					this.content()?.list === 'dueDates'
+						? { returnType: 'GSTR-1', scheme: 'monthly', day: 11, monthsAfter: 1, states: [], period: null }
+						: null,
 			},
 		]);
 		this.selected.set(key);

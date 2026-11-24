@@ -74,11 +74,30 @@ export const TaxRuleEntry = z.object({
 	/** TDS sections and limits (AT5b, AT5c): the amount in rupees, and what it counts (a payment, a month, a year). */
 	limitINR: z.number().nonnegative().nullable().default(null),
 	limitPer: z.enum(['payment', 'month', 'year']).nullable().default(null),
+	/**
+	 * Return due dates (RS-DUE): which return, under which scheme, for which States (none = all), due on `day` of the
+	 * month `monthsAfter` the period. With `period`, a one-off extension for that month only, which wins over the rule.
+	 */
+	due: z
+		.object({
+			returnType: z.enum(['GSTR-1', 'GSTR-3B', 'GSTR-9']),
+			scheme: z.enum(['monthly', 'qrmp']).nullable().default(null),
+			day: z.number().int().min(1).max(31),
+			monthsAfter: z.number().int().min(1).max(12).default(1),
+			states: z.array(z.string().regex(/^\d{2}$/)).max(40).default([]),
+			period: z
+				.string()
+				.regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+				.nullable()
+				.default(null),
+		})
+		.nullable()
+		.default(null),
 });
 export type TaxRuleEntry = z.infer<typeof TaxRuleEntry>;
 
 /** What a tax rule set lists (AT5-D1): its columns follow it, and it is fixed once the set is published. */
-export const TaxRuleList = z.enum(['reverseCharge', 'tds', 'limits']);
+export const TaxRuleList = z.enum(['reverseCharge', 'tds', 'limits', 'dueDates']);
 export type TaxRuleList = z.infer<typeof TaxRuleList>;
 
 export const TaxRuleSetContent = z.object({

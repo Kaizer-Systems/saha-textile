@@ -191,6 +191,7 @@ describe('accounts templates library (T2)', () => {
 								caReview: 'pending' as const,
 								limitINR: null,
 								limitPer: null,
+								due: null,
 							},
 						],
 					},

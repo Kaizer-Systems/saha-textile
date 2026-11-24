@@ -123,6 +123,7 @@ const tds = (
 	name,
 	code,
 	ratePercent,
+	due: null,
 	expenseRole: null,
 	kinds,
 	from,

@@ -164,6 +164,7 @@ describe('Publish', () => {
 
 const entry = (key: string, over: Partial<TaxRuleEntry> = {}): TaxRuleEntry => ({
 	key,
+	due: null,
 	name: key,
 	code: '998212',
 	ratePercent: 18,

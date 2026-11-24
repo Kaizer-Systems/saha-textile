@@ -4,7 +4,11 @@ import { inject, Injectable } from '@angular/core';
 import { runtimeConfig } from '@core/config/runtime-config';
 
 import type {
+	AgeingSide,
+	AuditReport,
+	AuditReportQuery,
 	FinancialStatement,
+	OutstandingAgeing,
 	PlByLocation,
 	PlByLocationQuery,
 	ReportCatalogue,
@@ -25,6 +29,8 @@ export const REPORT_KEYS = {
 	saved: ['reports', 'saved'] as const,
 	one: (id: string) => ['reports', 'saved', id] as const,
 	run: (run: ReportRunInput) => ['reports', 'run', run] as const,
+	ageing: (side: AgeingSide) => ['reports', 'ageing', side] as const,
+	audit: (query: Partial<AuditReportQuery>) => ['reports', 'audit', query] as const,
 };
 
 /** Reports (accounts brief U, V): statements, the builder and saved reports. */
@@ -39,6 +45,14 @@ export class ReportsGateway {
 
 	plByLocation(query: PlByLocationQuery): Observable<PlByLocation> {
 		return this.http.get<PlByLocation>(this.api('pl-by-location'), { params: { ...query } });
+	}
+
+	ageing(side: AgeingSide): Observable<OutstandingAgeing> {
+		return this.http.get<OutstandingAgeing>(this.api(`ageing/${side}`));
+	}
+
+	audit(query: Partial<AuditReportQuery>): Observable<AuditReport> {
+		return this.http.get<AuditReport>(this.api('audit'), { params: { ...query } });
 	}
 
 	catalogue(): Observable<ReportCatalogue> {

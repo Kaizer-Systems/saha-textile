@@ -101,6 +101,8 @@ export default [
 		path: 'reports/trial-balance',
 		loadComponent: () => import('./reports/trial-balance-page').then((m) => m.TrialBalancePage),
 	},
+	{ path: 'reports/ageing/:side', loadComponent: () => import('./reports/ageing-page').then((m) => m.AgeingPage) },
+	{ path: 'reports/audit', loadComponent: () => import('./reports/audit-page').then((m) => m.AuditPage) },
 	{
 		path: 'reports/new',
 		loadComponent: () => import('./reports/report-builder-page').then((m) => m.ReportBuilderPage),

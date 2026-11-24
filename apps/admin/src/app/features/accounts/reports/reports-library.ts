@@ -37,11 +37,14 @@ export const REPORT_LIBRARY: readonly { group: string; items: readonly LibraryIt
 			{ key: 'sales_register', link: '/accounts/sales-and-purchases/taxInvoices' },
 			{ key: 'purchase_register', link: '/accounts/sales-and-purchases/purchaseBills' },
 			{ key: 'journal_register', link: '/accounts/vouchers/journal' },
+			{ key: 'audit_report', link: '/accounts/reports/audit' },
 		],
 	},
 	{
 		group: 'receivables',
 		items: [
+			{ key: 'customer_ageing', link: '/accounts/reports/ageing/customers' },
+			{ key: 'supplier_ageing', link: '/accounts/reports/ageing/suppliers' },
 			{ key: 'business_statements', link: '/businesses' },
 			{ key: 'supplier_outstanding', link: '/stock/reports', query: { tab: 'unpaid' } },
 		],

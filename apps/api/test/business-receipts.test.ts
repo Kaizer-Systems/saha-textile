@@ -19,13 +19,14 @@ const open = [
 	},
 ];
 
-function harness() {
+function harness(options: { noNotices?: boolean } = {}) {
+	const posted: unknown[][] = [];
 	const settled: Array<{ orderId: string; amountINR: number; receiptNumber: string | null }> = [];
 	const receipts: Array<{ numbers: string[]; balance: number }> = [];
 	const svc = new BusinessReceiptsService(
 		{
-			get: async () => ({ id: 'biz_1' }),
-			recordReceipt: async () => ({ id: 'led_1', documentNumber: 'RC/26-27/000457' }),
+			get: async () => ({ id: 'biz_1', legalName: 'Ganguly Stores' }),
+			recordReceipt: async () => ({ id: 'led_1', documentId: 'rcpt_1', documentNumber: 'RC/26-27/000457' }),
 			receivableINR: async () => 15_000,
 		} as never,
 		{
@@ -34,12 +35,20 @@ function harness() {
 		} as never,
 		{ listOpenOnAccount: async () => open } as never,
 		{ withTransaction: async (work: (context: unknown) => Promise<unknown>) => work({}) } as never,
-		{
-			sendBusinessReceipt: async (_b: unknown, _e: unknown, _i: unknown, numbers: string[], balance: number) =>
-				void receipts.push({ numbers, balance }),
-		} as never,
+		{ businessReceipt: async (...args: unknown[]) => void posted.push(args) } as never,
+		options.noNotices
+			? null
+			: ({
+					sendBusinessReceipt: async (
+						_b: unknown,
+						_e: unknown,
+						_i: unknown,
+						numbers: string[],
+						balance: number,
+					) => void receipts.push({ numbers, balance }),
+				} as never),
 	);
-	return { svc, settled, receipts };
+	return { svc, settled, receipts, posted };
 }
 
 const receipt = (over: Record<string, unknown> = {}) => ({
@@ -92,6 +101,19 @@ describe('receipts on a business account (bz06)', () => {
 		expect((await svc.openOrders('biz_1')).map((row) => row.orderNumber)).toEqual([
 			'ST-2611-000002',
 			'ST-2611-000001',
+		]);
+	});
+
+	it('posts the receipt to the books in the same transaction, and sends no email without the notices', async () => {
+		const { svc, posted } = harness({ noNotices: true });
+		await svc.record('biz_1', receipt() as never, { id: 'adm_1', name: null });
+		expect(posted).toEqual([
+			[
+				{ id: 'rcpt_1', number: 'RC/26-27/000457', businessName: 'Ganguly Stores' },
+				expect.objectContaining({ method: 'bankTransfer', amountINR: 35_000 }),
+				{},
+				'adm_1',
+			],
 		]);
 	});
 });

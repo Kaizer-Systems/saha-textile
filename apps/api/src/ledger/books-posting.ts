@@ -314,8 +314,8 @@ export class BooksPostingService {
 				by,
 			);
 		};
-		const customerPaid = payment.method === 'gateway' && payment.recordedBy === null;
-		if (!customerPaid || !options.keepCustomerPayment) return work();
+		// Money through the gateway is the customer's, already paid (checkout or a payment link): kept, never refused.
+		if (payment.method !== 'gateway' || !options.keepCustomerPayment) return work();
 		return work().catch((error: unknown) => {
 			this.logger.warn(`Payment ${payment.id} kept unposted for staff: ${(error as Error).message}`);
 			return null;

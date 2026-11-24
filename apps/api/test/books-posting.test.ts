@@ -337,14 +337,10 @@ describe('receipts in the books', () => {
 		const shop = setup({ postFails: new Error('voucher_problem:month_locked') });
 		const gateway = { ...payment, method: 'gateway', recordedBy: null };
 		expect(await shop.service.paymentReceived(gateway as never, order, ctx, null)).toBeNull();
-		await expect(
-			setup({ postFails: new Error('voucher_problem:month_locked') }).service.paymentReceived(
-				{ ...gateway, recordedBy: 'adm_1' } as never,
-				order,
-				ctx,
-				null,
-			),
-		).rejects.toThrow('month_locked');
+		const link = setup({ postFails: new Error('voucher_problem:month_locked') });
+		expect(
+			await link.service.paymentReceived({ ...gateway, recordedBy: 'adm_1' } as never, order, ctx, null),
+		).toBeNull();
 	});
 
 	it('reverses a received payment that is undone, and nothing for one never posted', async () => {

@@ -31,6 +31,7 @@ import { BusinessAddressesService } from './business-addresses.service';
 import { BusinessReceiptsService } from './business-receipts.service';
 import { OrderNoticesService } from './order-notices.service';
 import { InvoicingModule } from '../invoicing/invoicing.module';
+import { LedgerModule } from '../ledger/ledger.module';
 import { OrderRoutingModule } from '../routing/order-routing.module';
 import { OrderStock } from './order-stock';
 import { OpenOrdersService } from './open-orders.service';
@@ -44,6 +45,7 @@ import { PaymentRequestsService } from './payment-requests.service';
 		EDocsModule,
 		OrderRoutingModule,
 		InvoicingModule,
+		LedgerModule,
 		AuthModule,
 		CatalogModule,
 		CurrencyModule,

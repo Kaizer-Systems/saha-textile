@@ -35,6 +35,7 @@ import {
 	orderBalance,
 	eDocumentsRequired,
 	isPlaceable,
+	STATUS_MESSAGES,
 	packLines,
 	packListIncomplete,
 	isRequestActive,
@@ -58,6 +59,7 @@ import {
 
 import { EDocsService } from '../edocs/edocs.service';
 import { InvoicesService } from '../invoicing/invoices.service';
+import { BooksPostingService } from '../ledger/books-posting';
 import { AddressBookService } from '../addresses/address-book.service';
 import { codedRefusal } from '../common/coded-refusal';
 import {
@@ -234,6 +236,8 @@ export class AdminOrdersService {
 		@Optional() @Inject(OrderNoticesService) private readonly notices: OrderNoticesService | null = null,
 		@Optional() @Inject(EDocsService) private readonly edocs: EDocsService | null = null,
 		@Optional() @Inject(InvoicesService) private readonly invoicesSvc: InvoicesService | null = null,
+		/** Received payments post to the books in the same transaction (Postings and Convert brief P1). */
+		@Optional() @Inject(BooksPostingService) private readonly books: BooksPostingService | null = null,
 	) {}
 
 	/** Without the e-document settings (tests), the old rule stands: business orders need an IRN. */
@@ -492,13 +496,11 @@ export class AdminOrdersService {
 			throw new BadRequestException(codedRefusal('cancel_reason_needed', 'Give a reason', 'cancel'));
 		}
 		const at = now.toISOString();
-		const tells = allowedNextStatuses(
-			machineOrder(order),
-			machineSettings(settings, await this.eInvoiceEnabled()),
-		).find((row) => row.to === input.to)?.tells;
+		// What the customer is told on reaching this status: the same list the menu's row shows for it.
+		const tells = [...STATUS_MESSAGES[input.to]];
 		// od06: "Customer told · Email · SMS": the messages that have somewhere to go (Settings ›
 		// Communications can still hold one back when it is sent).
-		const told = this.notices?.plan(order, tells ?? []) ?? [];
+		const told = this.notices?.plan(order, tells) ?? [];
 		const saved = await this.transactions.withTransaction(async (context) => {
 			let lines = order.lines;
 			if (input.to === 'cancelled') {
@@ -603,7 +605,7 @@ export class AdminOrdersService {
 				'Someone else changed this order first',
 			);
 		});
-		await this.notices?.send(saved, tells ?? [], {
+		await this.notices?.send(saved, tells, {
 			...(input.shipped
 				? {
 						shipment: {
@@ -704,7 +706,8 @@ export class AdminOrdersService {
 		const order = await this.get(id);
 		// The portal needs the tax invoice's number: on a packed order it is issued now (D1, EI5B).
 		await this.invoicesSvc?.issueBeforeDispatch(order, actor.id ?? null, now.toISOString());
-		const outcome = kind === 'eInvoice' ? await this.eInvoice.raise(order) : await this.eWayBill.raise(order);
+		const port = kind === 'eInvoice' ? this.eInvoice : this.eWayBill;
+		const outcome = await port.raise(order);
 		if (outcome.kind === 'notConnected') return { outcome: 'notConnected' };
 		if (outcome.kind === 'refused') return { outcome: 'refused', message: outcome.message };
 		const at = now.toISOString();
@@ -826,6 +829,8 @@ export class AdminOrdersService {
 				recordedAt: at,
 			};
 			await this.payments.save(payment, context);
+			// A payment still on its way posts nothing; the books refuse in words when they can't take it (AP2).
+			await this.books?.paymentReceived(payment, order, context, actor.id);
 			if (input.received) await this.ledgerReceipt(order, payment, actor, at, context);
 			const saved = await this.settle(order, input.revision, actor, at, context, {
 				kind: 'payment',
@@ -868,6 +873,7 @@ export class AdminOrdersService {
 				receiptNumber: await this.numbers.issue('receipt', context, now),
 			};
 			await this.payments.save(received, context);
+			await this.books?.paymentReceived(received, order, context, actor.id);
 			await this.ledgerReceipt(order, received, actor, at, context);
 			const saved = await this.settle(order, input.revision, actor, at, context, {
 				kind: 'payment',

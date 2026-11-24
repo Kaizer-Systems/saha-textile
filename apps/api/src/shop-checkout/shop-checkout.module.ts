@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { AddressesModule } from '../addresses/addresses.module';
+import { LedgerModule } from '../ledger/ledger.module';
 import { AdminOrdersModule } from '../admin-orders/admin-orders.module';
 import { AuthModule } from '../auth/auth.module';
 import { CartLinesModule } from '../cart/cart-lines.module';
@@ -23,6 +24,7 @@ import { ShopPaymentsService } from './shop-payments.service';
 		CurrencyModule,
 		OrdersSetupModule,
 		AdminOrdersModule,
+		LedgerModule,
 	],
 	controllers: [ShopCheckoutController, PaymentCallbacksController],
 	providers: [ShopCheckoutService, ShopPaymentsService, ShopPaymentSweep],

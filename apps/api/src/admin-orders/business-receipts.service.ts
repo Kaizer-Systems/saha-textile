@@ -9,6 +9,7 @@ import {
 
 import { codedRefusal } from '../common/coded-refusal';
 import { ADMIN_ORDER_REPOSITORY, TRANSACTION_MANAGER } from '../infra/tokens';
+import { BooksPostingService } from '../ledger/books-posting';
 import { BusinessesService } from '../orders-setup/businesses.service';
 import { AdminOrdersService, type Actor } from './admin-orders.service';
 import { OrderNoticesService } from './order-notices.service';
@@ -25,6 +26,7 @@ export class BusinessReceiptsService {
 		private readonly orders: AdminOrdersService,
 		@Inject(ADMIN_ORDER_REPOSITORY) private readonly orderRepo: AdminOrderRepository,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
+		private readonly books: BooksPostingService,
 		@Optional() @Inject(OrderNoticesService) private readonly notices: OrderNoticesService | null = null,
 	) {}
 
@@ -51,8 +53,16 @@ export class BusinessReceiptsService {
 				codedRefusal(`receipt_${refusal}`, 'That split does not fit the open orders', 'allocations'),
 			);
 		}
+		const business = await this.businesses.get(businessId);
 		const entry = await this.transactions.withTransaction(async (context) => {
 			const entry = await this.businesses.recordReceipt(businessId, input, actor.id, context);
+			// The money in the books, in this same transaction (Postings and Convert brief P1).
+			await this.books.businessReceipt(
+				{ id: entry.documentId, number: entry.documentNumber, businessName: business.legalName },
+				input,
+				context,
+				actor.id,
+			);
 			for (const share of allocations) {
 				await this.orders.settleFromReceipt(
 					share.orderId,
@@ -72,13 +82,11 @@ export class BusinessReceiptsService {
 		if (this.notices) {
 			const numbers = new Map(open.map((row) => [row.orderId, row.orderNumber]));
 			await this.notices.sendBusinessReceipt(
-				await this.businesses.get(businessId),
+				business,
 				entry,
 				input,
-				allocations.flatMap((share) => {
-					const number = numbers.get(share.orderId);
-					return number ? [number] : [];
-				}),
+				// checkReceiptSplit took only open orders, so each share has its order's number.
+				allocations.map((share) => String(numbers.get(share.orderId))),
 				await this.businesses.receivableINR(businessId),
 			);
 		}

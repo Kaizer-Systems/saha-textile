@@ -44,6 +44,7 @@ import {
 } from '../infra/tokens';
 import { DocumentNumbersService } from '../orders-setup/document-numbers.service';
 import { AdminOrdersService, type Actor } from './admin-orders.service';
+import { BooksPostingService } from '../ledger/books-posting';
 import { OrderNoticesService } from './order-notices.service';
 
 export const hashPayToken = (token: string): string => createHash('sha256').update(token).digest('hex');
@@ -72,6 +73,8 @@ export class PaymentRequestsService {
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
 		@Inject(NOTIFICATION_PORT) private readonly notifications: NotificationPort,
 		@Optional() @Inject(OrderNoticesService) private readonly notices: OrderNoticesService | null = null,
+		/** Received payments in the books, inline (Postings and Convert brief P1); last so older callers keep working. */
+		@Optional() @Inject(BooksPostingService) private readonly books: BooksPostingService | null = null,
 	) {}
 
 	/**
@@ -266,6 +269,7 @@ export class PaymentRequestsService {
 					recordedAt: at,
 				};
 				await this.payments.save(payment, context);
+				await this.books?.paymentReceived(payment, await this.orders.get(orderId), context, actor.id);
 				recorded = payment;
 			}
 			const status: PaymentRequest['status'] =
@@ -414,19 +418,21 @@ export class PaymentRequestsService {
 			);
 		}
 		const preview = await this.messagePreview(orderId, requestId, channel);
-		if (preview.unavailable || !preview.to) {
+		if (preview.unavailable) {
 			throw new ConflictException(
 				codedRefusal('message_unavailable', 'This message can’t be sent', 'channel', {
-					reason: preview.unavailable ?? 'no_contact',
+					reason: preview.unavailable,
 				}),
 			);
 		}
+		// messagePreview names a reason whenever there is nowhere to send to, so `to` is set from here.
+		const destination = String(preview.to);
 		const order = await this.orders.get(orderId);
 		const result = await this.notifications.send({
 			channel,
 			category: 'transactional',
 			templateKey: 'order_payment_link',
-			destination: preview.to,
+			destination,
 			variables: {
 				name: order.buyer?.name ?? '',
 				order_number: channel === 'sms' ? messageForm(order.orderNumber) : order.orderNumber,
@@ -440,7 +446,7 @@ export class PaymentRequestsService {
 		const at = now.toISOString();
 		const sent: PaymentRequest = {
 			...request,
-			sends: [...request.sends, { channel, to: preview.to, at, by: actor.id ?? 'unknown' }],
+			sends: [...request.sends, { channel, to: destination, at, by: actor.id ?? 'unknown' }],
 		};
 		await this.transactions.withTransaction(async (context) => {
 			await this.requests.save(sent, context);

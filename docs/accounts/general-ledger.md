@@ -107,14 +107,16 @@ A bank receipt or payment with no bank account set is refused with `money_lands_
 
 `BooksPostingService` (`apps/api/src/ledger/books-posting.ts`) posts these inside the step that saves the document, in the same transaction, so the document and its voucher are saved together or not at all. It posts once the books are set up (Settings › Company); before that the documents are saved without vouchers and **Post them** catches them up, which itself refuses with `books_not_set_up` until then:
 
-| Step                                | Posting                                                                          | Key                                       |
-| ----------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------- |
-| Purchases › Post                    | Stock in hand and input CGST/SGST or IGST against Suppliers, rounding either way | `purchaseEntry:<id>`                      |
-| Void of a posted entry              | the entry's voucher reversed, on the day it is voided                            | `purchaseEntry:<id>:void`                 |
-| Record payment on a purchase entry  | Suppliers against cash or the bank set                                           | `supplierPayment:<id>`                    |
-| Reverse a supplier payment          | that payment's voucher reversed                                                  | `supplierPayment:<id>:reversed`           |
-| Send a purchase return (debit note) | Suppliers against stock in hand and input tax                                    | `purchaseReturn:<id>`                     |
-| A debit note settled by refund      | the bank set against Suppliers (credit notes and later bills post nothing more)  | `purchaseReturn:<id>:refund:<settlement>` |
+| Step                                | Posting                                                                                                                 | Key                                       |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Purchases › Post                    | Stock in hand and input CGST/SGST or IGST against Suppliers, rounding either way                                        | `purchaseEntry:<id>`                      |
+| Void of a posted entry              | the entry's voucher reversed, on the day it is voided                                                                   | `purchaseEntry:<id>:void`                 |
+| Record payment on a purchase entry  | Suppliers against cash or the bank set                                                                                  | `supplierPayment:<id>`                    |
+| Reverse a supplier payment          | that payment's voucher reversed                                                                                         | `supplierPayment:<id>:reversed`           |
+| Send a purchase return (debit note) | Suppliers against stock in hand and input tax                                                                           | `purchaseReturn:<id>`                     |
+| A debit note settled by refund      | the bank set against Suppliers (credit notes and later bills post nothing more)                                         | `purchaseReturn:<id>:refund:<settlement>` |
+| A payment received on an order      | where the money landed against Customer advance before the order's tax invoice, against the customer's account after it | `receipt:<payment id>`                    |
+| A business receipt on its account   | where the money landed against Customers                                                                                | `businessReceipt:<document id>`           |
 
 A bill whose input tax can't be claimed carries that tax in the stock cost. Purchases and supplier money post against the default stock location.
 
@@ -123,6 +125,8 @@ After an order's tax invoice, a received payment first fills whatever advance th
 A tax invoice uses the advance its order still holds (receipts credited to Customer advance, less earlier invoices and refund vouchers) before charging the customer's account.
 
 When the books can't take a posting, the step is refused with a code the admin puts in words (`money_lands_not_set:*`, `books_need_a_location`, `voucher_problem:*`), in the error notice and in Record payment on an order.
+
+A payment on an order is posted by Record payment and Mark received on the order page, by a payment typed at Create order, by a paid payment link and by shop checkout. A payment through the gateway (shop checkout or a payment link) is the customer's money, already paid, so it is never refused: when the books can't take it, the payment is kept, the reason is logged and **Post them** posts it once the cause is fixed. A payment still on its way (a transfer not yet in the bank) posts nothing until it is marked received. A business receipt's share of an order on account is recorded on the order as a payment on account, which posts nothing more: the receipt itself was posted.
 
 ## Documents saved before the books took them
 

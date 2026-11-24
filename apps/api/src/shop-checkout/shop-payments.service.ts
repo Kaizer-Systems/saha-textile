@@ -33,9 +33,11 @@ import {
 	type ShippingRuleRepository,
 	type TransactionContext,
 	type TransactionManagerPort,
+	type PaymentGatewayPort,
 } from '@saha-textile/core-domain';
 
 import { historyEntry, metaOf, type Actor, AdminOrdersService } from '../admin-orders/admin-orders.service';
+import { BooksPostingService } from '../ledger/books-posting';
 import { OrderNoticesService } from '../admin-orders/order-notices.service';
 import { OrderStock } from '../admin-orders/order-stock';
 import { PaymentRequestsService } from '../admin-orders/payment-requests.service';
@@ -88,6 +90,11 @@ interface PayPalEvent {
  * - a `review` decision changes nothing: the attempt keeps its state, the order is flagged for staff,
  *   and the enquiry keeps running (a CCAvenue return can come 5–10 minutes before its status record).
  */
+/** What went wrong, for the log: an error's message, else "unknown". */
+export function reasonOf(error: unknown): string {
+	return error instanceof Error ? error.message : 'unknown';
+}
+
 @Injectable()
 export class ShopPaymentsService {
 	private readonly logger = new Logger('ShopPayments');
@@ -109,6 +116,8 @@ export class ShopPaymentsService {
 		@Inject(SHIPPING_RULE_REPOSITORY) private readonly shippingRules: ShippingRuleRepository,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
 		@Optional() @Inject(OrderNoticesService) private readonly notices: OrderNoticesService | null = null,
+		/** Received payments in the books, inline (Postings and Convert brief P1); last so older callers keep working. */
+		@Optional() @Inject(BooksPostingService) private readonly books: BooksPostingService | null = null,
 	) {}
 
 	/* ------------------------------------------------------------------ starting a payment */
@@ -145,7 +154,8 @@ export class ShopPaymentsService {
 			reviewReason: null,
 			refund: null,
 			checks: 0,
-			nextCheckAt: nextAttemptCheck(now, 0)?.toISOString() ?? null,
+			// The check table's first step always exists, so a new attempt always has its first check.
+			nextCheckAt: (nextAttemptCheck(now, 0) as Date).toISOString(),
 			lastCheckedAt: null,
 			createdAt: at,
 			updatedAt: at,
@@ -169,9 +179,7 @@ export class ShopPaymentsService {
 				failureReason: 'The payment could not start',
 				nextCheckAt: null,
 			});
-			this.logger.warn(
-				`Payment for ${order.orderNumber} could not start: ${error instanceof Error ? error.message : 'unknown'}`,
-			);
+			this.logger.warn(`Payment for ${order.orderNumber} could not start: ${reasonOf(error)}`);
 			throw new ServiceUnavailableException(
 				codedRefusal('payment_not_started', 'The payment could not start; please try again', 'pay'),
 			);
@@ -287,9 +295,7 @@ export class ShopPaymentsService {
 				gatewayReference: attempt.gateway === 'paypal' ? attempt.gatewayOrderId : attempt.gatewayReference,
 			});
 		} catch (error) {
-			this.logger.warn(
-				`Status of ${attempt.id} could not be read: ${error instanceof Error ? error.message : 'unknown'}`,
-			);
+			this.logger.warn(`Status of ${attempt.id} could not be read: ${reasonOf(error)}`);
 			return this.attempts.save(this.checked(attempt, now));
 		}
 		// PayPal's return carries only its order id, not a state: identification, not a claim.
@@ -319,7 +325,7 @@ export class ShopPaymentsService {
 					failureReason: status?.failureReason?.slice(0, 300) ?? attempt.failureReason,
 					reviewReason: null,
 				};
-				if (decision.state === 'pending') return this.attempts.save(next);
+				// decidePaymentResult answers a pending status with `pending`, never with `apply`.
 				next.nextCheckAt = null;
 				if (PAID.has(decision.state)) return this.paid(next, status as PaymentReport, now);
 				if (decision.state === 'failed' || decision.state === 'cancelled') return this.unpaid(next, now);
@@ -397,7 +403,10 @@ export class ShopPaymentsService {
 		const saved = await this.transactions.withTransaction(async (context) => {
 			const savedAttempt = await this.attempts.save(attempt, context);
 			if (await this.payments.findByGatewayReference(attempt.gateway, reference)) return savedAttempt;
-			await this.payments.save(await this.paymentOf(attempt, status, reference, now, context), context);
+			const payment = await this.paymentOf(attempt, status, reference, now, context);
+			await this.payments.save(payment, context);
+			// The customer has paid: kept even when the books can't take it (AP-D2), for Post them.
+			await this.books?.paymentReceived(payment, order, context, null);
 			let current = await this.orders.get(order.id);
 			if (current.status === 'awaiting_payment') {
 				if (reserveAgain) await this.stock.reserve(current, current.lines, null, context, at);
@@ -514,23 +523,20 @@ export class ShopPaymentsService {
 				return row;
 			});
 		}
-		const port = gatewayNamed(this.gateways, attempt.gateway);
+		// Only settle() leads here, and it went on only because this gateway is set up.
+		const port = gatewayNamed(this.gateways, attempt.gateway) as PaymentGatewayPort;
 		let outcome: NonNullable<PaymentAttempt['refund']>['outcome'] = 'unknown';
-		if (port) {
-			try {
-				outcome = (
-					await port.refundPayment({
-						gatewayReference: reference,
-						refundReference,
-						amountMinor: attempt.amountMinor,
-						currency: attempt.currency,
-					})
-				).outcome;
-			} catch (error) {
-				this.logger.warn(
-					`Refund of ${attempt.id} got no answer: ${error instanceof Error ? error.message : 'unknown'}`,
-				);
-			}
+		try {
+			outcome = (
+				await port.refundPayment({
+					gatewayReference: reference,
+					refundReference,
+					amountMinor: attempt.amountMinor,
+					currency: attempt.currency,
+				})
+			).outcome;
+		} catch (error) {
+			this.logger.warn(`Refund of ${attempt.id} got no answer: ${reasonOf(error)}`);
 		}
 		const refunded = outcome === 'accepted' || outcome === 'duplicate';
 		const savedPayment = payment;
@@ -636,7 +642,7 @@ export class ShopPaymentsService {
 				await this.settle(attempt, undefined, now);
 				checked += 1;
 			} catch (error) {
-				this.logger.warn(`Attempt ${attempt.id}: ${error instanceof Error ? error.message : 'unknown'}`);
+				this.logger.warn(`Attempt ${attempt.id}: ${reasonOf(error)}`);
 			}
 		}
 		for (const order of await this.orderRepo.listHoldsEnded(now, batch)) {
@@ -654,7 +660,7 @@ export class ShopPaymentsService {
 					released += 1;
 				}
 			} catch (error) {
-				this.logger.warn(`Hold on ${order.orderNumber}: ${error instanceof Error ? error.message : 'unknown'}`);
+				this.logger.warn(`Hold on ${order.orderNumber}: ${reasonOf(error)}`);
 			}
 		}
 		return { checked, released };

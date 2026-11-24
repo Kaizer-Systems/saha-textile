@@ -68,6 +68,7 @@ import {
 	SHIPPING_RULE_REPOSITORY,
 	TRANSACTION_MANAGER,
 } from '../infra/tokens';
+import { BooksPostingService } from '../ledger/books-posting';
 import { DocumentNumbersService } from '../orders-setup/document-numbers.service';
 import { ZonePricingService } from '../orders-setup/zone-pricing.service';
 import { DEFAULT_SHIPPING_SETTINGS, ShippingAdminService } from '../shipping/shipping-admin.service';
@@ -132,6 +133,8 @@ export class AdminOrderCreateService {
 		@Inject(SHIPPING_RULE_REPOSITORY) private readonly shippingRules: ShippingRuleRepository,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
 		@Optional() @Inject(OrderNoticesService) private readonly notices: OrderNoticesService | null = null,
+		/** A payment typed at checkout posts to the books with the order (Postings and Convert brief P1). */
+		@Optional() @Inject(BooksPostingService) private readonly books: BooksPostingService | null = null,
 	) {}
 
 	/** The shop-customer picker on Create order: name, phone or email, active customers only. */
@@ -167,8 +170,9 @@ export class AdminOrderCreateService {
 				kind: coupon.kind,
 				value: coupon.value,
 				combines: coupon.combines,
-				wouldTakeINR: hit ? round2(hit.amountINR + (hit.deliveryAmountINR ?? 0)) : 0,
-				refusal: hit ? null : ((refused?.refusal as CouponOption['refusal']) ?? 'nothingEligible'),
+				wouldTakeINR: hit ? round2(hit.amountINR + hit.deliveryAmountINR) : 0,
+				// A coupon tried is either applied or refused with why: the engine lists every one.
+				refusal: hit ? null : ((refused as { refusal: string }).refusal as CouponOption['refusal']),
 			});
 		}
 		return options.sort((a, b) => Number(!!a.refusal) - Number(!!b.refusal) || b.wouldTakeINR - a.wouldTakeINR);
@@ -197,21 +201,24 @@ export class AdminOrderCreateService {
 			view.lines.map((line, index) => ({
 				productId: line.productId,
 				variantId: line.variationId,
-				quantity: request.items[index]?.quantity ?? line.quantity,
+				// The cart prices one line per item asked for, in order.
+				quantity: (request.items[index] as (typeof request.items)[number]).quantity,
 			})),
 			now,
 		);
-		const lines: CouponLine[] = view.lines.map((line, index) => ({
-			lineId: line.lineId,
-			productId: line.productId,
-			categoryIds: [...new Set(facts[index]?.facts.categoryPaths.flat() ?? [])],
-			amountINR: line.lineTotalINR,
-			onSale:
-				line.setOnSale ||
-				(facts[index]?.facts.currentSaleINR !== null && facts[index]?.facts.currentSaleINR !== undefined),
-			zonePriced: false,
-			isSet: Boolean(line.setHeading),
-		}));
+		const lines: CouponLine[] = view.lines.map((line, index) => {
+			// One fact per priced line, in order.
+			const fact = facts[index] as (typeof facts)[number];
+			return {
+				lineId: line.lineId,
+				productId: line.productId,
+				categoryIds: [...new Set(fact.facts.categoryPaths.flat())],
+				amountINR: line.lineTotalINR,
+				onSale: line.setOnSale || fact.facts.currentSaleINR !== null,
+				zonePriced: false,
+				isSet: Boolean(line.setHeading),
+			};
+		});
 		const definition: CouponDefinition = {
 			...request.coupon,
 			id: 'coupon_try',
@@ -226,7 +233,7 @@ export class AdminOrderCreateService {
 		// cp04: the switched-on coupons that combine, tried together with this one.
 		const others: CouponDefinition[] = [];
 		if (request.coupon.combines) {
-			for (const code of request.withCodes ?? []) {
+			for (const code of request.withCodes) {
 				const coupon = await this.couponRepo.findByCode(code);
 				if (coupon && coupon.enabled && coupon.combines && coupon.code !== request.coupon.code)
 					others.push(coupon);
@@ -261,8 +268,8 @@ export class AdminOrderCreateService {
 		const run = applyCoupons(all, lines, new Map(all.map((row) => [row.id, context])));
 		const applied = run.applied.find((row) => row.couponId === definition.id) ?? null;
 		const before = round2(view.subtotalINR + deliveryINR);
-		const off = round2(run.applied.reduce((sum, row) => sum + row.amountINR + (row.deliveryAmountINR ?? 0), 0));
-		const freeDelivery = run.applied.find((row) => (row.deliveryAmountINR ?? 0) > 0) ?? null;
+		const off = round2(run.applied.reduce((sum, row) => sum + row.amountINR + row.deliveryAmountINR, 0));
+		const freeDelivery = run.applied.find((row) => row.deliveryAmountINR > 0) ?? null;
 		return {
 			refusal: run.refused.find((row) => row.code === definition.code)?.refusal ?? null,
 			applied,
@@ -278,23 +285,27 @@ export class AdminOrderCreateService {
 					reason: share?.reason ?? couponLineReason(definition, couponLine),
 					amountINR: round2(
 						run.applied.reduce(
-							(sum, row) => sum + (row.lines.find((part) => part.lineId === line.lineId)?.amountINR ?? 0),
+							// An applied coupon lists every line, with 0 where it took nothing.
+							(sum, row) =>
+								sum +
+								(row.lines.find((part) => part.lineId === line.lineId) as (typeof row.lines)[number])
+									.amountINR,
 							0,
 						),
 					),
 					byCoupon: run.applied.flatMap((row) => {
-						const part = row.lines.find((piece) => piece.lineId === line.lineId);
-						return part && part.amountINR > 0 ? [{ code: row.code, amountINR: part.amountINR }] : [];
+						const part = row.lines.find(
+							(piece) => piece.lineId === line.lineId,
+						) as (typeof row.lines)[number];
+						return part.amountINR > 0 ? [{ code: row.code, amountINR: part.amountINR }] : [];
 					}),
 				};
 			}),
 			deliveryINR,
-			deliveryOff: freeDelivery
-				? { code: freeDelivery.code, amountINR: freeDelivery.deliveryAmountINR ?? 0 }
-				: null,
+			deliveryOff: freeDelivery ? { code: freeDelivery.code, amountINR: freeDelivery.deliveryAmountINR } : null,
 			used: run.applied.map((row) => ({
 				code: row.code,
-				amountINR: round2(row.amountINR + (row.deliveryAmountINR ?? 0)),
+				amountINR: round2(row.amountINR + row.deliveryAmountINR),
 			})),
 			totalBeforeINR: before,
 			totalAfterINR: round2(before - off),
@@ -399,6 +410,21 @@ export class AdminOrderCreateService {
 			createdAt: at,
 			updatedAt: at,
 		};
+		// On account: a person is refused above (notABusiness), and build() refuses a business without its customer terms.
+		const onAccount =
+			input.payment.method === 'onAccount'
+				? {
+						business: (built.buyer as Extract<Built['buyer'], { kind: 'business' }>).business,
+						dueOn: onAccountDueDate(
+							istDay(now),
+							(
+								(built.buyer as Extract<Built['buyer'], { kind: 'business' }>).business.roles
+									.customer as NonNullable<Business['roles']['customer']>
+							).creditDays,
+						),
+						overrideReason: input.payment.creditOverrideReason,
+					}
+				: null;
 		for (let attempt = 0; ; attempt += 1) {
 			try {
 				const placed = await this.transactions.withTransaction(async (context) => {
@@ -454,42 +480,38 @@ export class AdminOrderCreateService {
 						statusTimeline: [{ status, at }],
 						// Placed at once (paid, cash on delivery or on account): the customer is sent Order
 						// confirmed once it is saved. A payment link sends the gateway's own request instead.
+						// The history so far is its one "created" entry, which then lists Order confirmed.
 						history:
 							status === 'placed'
-								? order.history.map((entry) =>
-										entry.kind === 'created'
-											? {
-													...entry,
-													messages: this.notices?.plan(order, ['order_confirmed']) ?? [],
-												}
-											: entry,
-									)
+								? order.history.map((entry) => ({
+										...entry,
+										messages: this.notices?.plan(order, ['order_confirmed']) ?? [],
+									}))
 								: order.history,
 						lines: order.lines.map((line) => ({ ...line, held: keepsStock(line) })),
-						onAccountDueOn:
-							method === 'onAccount' && built.buyer.kind === 'business'
-								? onAccountDueDate(istDay(now), built.buyer.business.roles.customer?.creditDays ?? 0)
-								: null,
+						onAccountDueOn: onAccount?.dueOn ?? null,
 					};
 					const saved = await this.orders.create(order, input.idempotencyKey, context, metaOf(order));
-					for (const payment of payments) await this.payments.save(payment, context);
+					for (const payment of payments) {
+						await this.payments.save(payment, context);
+						await this.books?.paymentReceived(payment, saved, context, actor.id);
+					}
 					for (const coupon of built.coupons) {
 						await this.couponRepo.recordUse(coupon.id, this.buyerKey(built), saved.id, context);
 					}
-					if (method === 'onAccount' && built.buyer.kind === 'business') {
-						const customer = built.buyer.business.roles.customer;
+					if (onAccount) {
 						await this.ledgers.append(
 							{
 								id: `led_${randomUUID()}`,
-								businessId: built.buyer.business.id,
+								businessId: onAccount.business.id,
 								side: 'receivable',
 								kind: 'orderOnAccount',
 								amountINR: quote.totals.totalINR,
 								documentType: 'order',
 								documentId: saved.id,
 								documentNumber: saved.orderNumber,
-								dueOn: onAccountDueDate(istDay(now), customer?.creditDays ?? 0),
-								note: input.payment.method === 'onAccount' ? input.payment.creditOverrideReason : null,
+								dueOn: onAccount.dueOn,
+								note: onAccount.overrideReason,
 								reversalOf: null,
 								agreement: null,
 								at,
@@ -564,15 +586,15 @@ export class AdminOrderCreateService {
 				}),
 			);
 		}
+		// Staff add an invoice address on the order page later, never here, so a ready one is the billing or the delivery
+		// address, or the address in India given at checkout.
 		const invoice: Built['invoice'] =
 			decision.status === 'ready'
 				? {
 						source:
 							decision.source === 'givenAtCheckout'
 								? 'addressInIndia'
-								: decision.source === 'addedByStaff'
-									? 'staff'
-									: decision.source,
+								: (decision.source as 'billing' | 'delivery'),
 						address: {
 							...(decision.source === 'billing'
 								? billing
@@ -612,22 +634,24 @@ export class AdminOrderCreateService {
 			view.lines.map((line, index) => ({
 				productId: line.productId,
 				variantId: line.variationId,
-				quantity: input.cart.lines[index]?.quantity ?? line.quantity,
+				// The cart prices one line per line asked for, in order.
+				quantity: (input.cart.lines[index] as (typeof input.cart.lines)[number]).quantity,
 			})),
 			now,
 		);
-		const couponLines: CouponLine[] = view.lines.map((line, index) => ({
-			lineId: line.lineId,
-			productId: line.productId,
-			categoryIds: [...new Set(facts[index]?.facts.categoryPaths.flat() ?? [])],
-			amountINR: line.lineTotalINR,
-			onSale:
-				!line.zonePrice &&
-				(line.setOnSale ||
-					(facts[index]?.facts.currentSaleINR !== null && facts[index]?.facts.currentSaleINR !== undefined)),
-			zonePriced: line.zonePrice?.kind === 'priced' && line.zonePrice.rule.tier !== 'retail',
-			isSet: Boolean(line.setHeading),
-		}));
+		const couponLines: CouponLine[] = view.lines.map((line, index) => {
+			// One fact per priced line, in order.
+			const fact = facts[index] as (typeof facts)[number];
+			return {
+				lineId: line.lineId,
+				productId: line.productId,
+				categoryIds: [...new Set(fact.facts.categoryPaths.flat())],
+				amountINR: line.lineTotalINR,
+				onSale: !line.zonePrice && (line.setOnSale || fact.facts.currentSaleINR !== null),
+				zonePriced: line.zonePrice?.kind === 'priced' && line.zonePrice.rule.tier !== 'retail',
+				isSet: Boolean(line.setHeading),
+			};
+		});
 		const codes = [...new Set(input.couponCodes.map((code) => code.toUpperCase()))];
 		const definitions: CouponDefinition[] = [];
 		const contexts = new Map<string, CouponContext>();
@@ -663,7 +687,7 @@ export class AdminOrderCreateService {
 		}
 		const goodsINR = view.subtotalINR;
 		const couponINR = round2(applied.reduce((sum, row) => sum + row.amountINR, 0));
-		const deliveryOffINR = round2(applied.reduce((sum, row) => sum + (row.deliveryAmountINR ?? 0), 0));
+		const deliveryOffINR = round2(applied.reduce((sum, row) => sum + row.deliveryAmountINR, 0));
 		const shippingINR = round2(Math.max(0, (shippingResult.amountINR ?? 0) - deliveryOffINR));
 		const totalINR = round2(goodsINR - couponINR + shippingINR);
 
@@ -678,8 +702,9 @@ export class AdminOrderCreateService {
 		else if (!rights.keepOpen) methodsOff.push({ method: 'keepOpen', reason: 'noPermission' });
 		let credit: AdminCheckoutQuote['credit'] = null;
 		if (buyer.kind === 'business') {
-			const customer = buyer.business.roles.customer;
-			if (!customer || !canOrderAtAll(customer.standing)) {
+			// buyer() has refused a business that doesn't buy from us, so its customer terms are here.
+			const customer = buyer.business.roles.customer as NonNullable<Business['roles']['customer']>;
+			if (!canOrderAtAll(customer.standing)) {
 				throw new ConflictException(
 					codedRefusal('business_blocked', 'This business cannot order now', 'buyer'),
 				);
@@ -736,10 +761,15 @@ export class AdminOrderCreateService {
 						: [],
 				),
 				cannotShip: shippingResult.lines.flatMap((line, index) => {
-					const cartLine = view.lines[parcel[index]?.cartIndex ?? -1];
-					return line.route === 'cantShip'
-						? [{ lineId: cartLine?.lineId ?? line.lineId, reason: 'cantShip' }]
-						: [];
+					if (line.route !== 'cantShip') return [];
+					// The tester answers one line per parcel unit, in order, and each unit names its cart line.
+					const unit = parcel[index] as (typeof parcel)[number];
+					return [
+						{
+							lineId: (view.lines[unit.cartIndex] as (typeof view.lines)[number]).lineId,
+							reason: 'cantShip',
+						},
+					];
 				}),
 				pieces: shippingResult.lines.map((line) => ({
 					lineId: line.lineId,

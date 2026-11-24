@@ -154,6 +154,9 @@ export const GST_ANNUAL_NOTE_REPOSITORY = Symbol('GstAnnualNoteRepository');
 export const REPORT_DEFINITION_REPOSITORY = Symbol('ReportDefinitionRepository');
 export const FIXED_ASSET_REPOSITORY = Symbol('FixedAssetRepository');
 export const RECURRING_ENTRY_REPOSITORY = Symbol('RecurringEntryRepository');
+export const EMPLOYEE_REPOSITORY = Symbol('EmployeeRepository');
+export const ATTENDANCE_REPOSITORY = Symbol('AttendanceRepository');
+export const PAYROLL_RUN_REPOSITORY = Symbol('PayrollRunRepository');
 export const PAYMENT_VOUCHER_REPOSITORY = Symbol('PaymentVoucherRepository');
 /** Where money lands (Postings and Convert brief AP-D1). */
 export const MONEY_LANDING_REPOSITORY = Symbol('MoneyLandingRepository');

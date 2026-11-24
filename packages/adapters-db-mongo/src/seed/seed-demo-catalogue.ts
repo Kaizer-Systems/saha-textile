@@ -40,9 +40,9 @@ const dataFile = (name: string): { data: unknown[] } =>
 		data: unknown[];
 	};
 
-/** Refuses any database but a local one, or the throwaway browser-test database. */
+/** Refuses any database but a local one, or a throwaway test-run database (`…_e2e`: browser tests, the accounts run). */
 export function assertLocalDatabase(name: string | undefined): string {
-	if (!name || !(name.toLowerCase().includes('local') || name === 'saha_textile_e2e')) {
+	if (!name || !(name.toLowerCase().includes('local') || /^saha_textile_[a-z0-9_]*e2e$/.test(name))) {
 		throw new Error(`Refusing to seed catalogue into "${name ?? ''}". The database name must contain "local".`);
 	}
 	return name;

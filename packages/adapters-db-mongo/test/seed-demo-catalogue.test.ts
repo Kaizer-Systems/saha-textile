@@ -20,6 +20,8 @@ describe('assertLocalDatabase', () => {
 	it('allows a local database and refuses anything else', () => {
 		expect(assertLocalDatabase('saha_textile_local')).toBe('saha_textile_local');
 		expect(assertLocalDatabase('saha_textile_e2e')).toBe('saha_textile_e2e');
+		expect(assertLocalDatabase('saha_textile_accounts_e2e')).toBe('saha_textile_accounts_e2e');
+		expect(() => assertLocalDatabase('other_e2e')).toThrow('must contain "local"');
 		expect(() => assertLocalDatabase('saha_textile_prod')).toThrow('must contain "local"');
 		expect(() => assertLocalDatabase(undefined)).toThrow('must contain "local"');
 	});

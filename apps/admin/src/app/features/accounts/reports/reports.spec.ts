@@ -152,6 +152,25 @@ describe('the ageing and audit routes', () => {
 	});
 });
 
+describe('the cash flow and ratios routes', () => {
+	it('names their keys and calls them for the period', () => {
+		const period = { from: '2026-04-01', to: '2027-03-31' };
+		expect(REPORT_KEYS.cashFlow(period)).toEqual(['reports', 'cash-flow', period]);
+		expect(REPORT_KEYS.ratios(period)).toEqual(['reports', 'ratios', period]);
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+		const gateway = TestBed.inject(ReportsGateway);
+		const http = TestBed.inject(HttpTestingController);
+		const api = `${runtimeConfig.apiUrl}/admin/accounts/reports/`;
+		const url = (path: string) => `${api}${path}?from=2026-04-01&to=2027-03-31`;
+		gateway.cashFlow(period).subscribe();
+		http.expectOne((req) => req.method === 'GET' && req.urlWithParams === url('cash-flow')).flush({});
+		gateway.ratios(period).subscribe();
+		http.expectOne((req) => req.method === 'GET' && req.urlWithParams === url('ratios')).flush({});
+		http.verify();
+	});
+});
+
 describe('the reports library (U1)', () => {
 	it('shows every group in order with the saved reports by folder, each linking where it opens', async () => {
 		const { fixture, page } = mount(ReportsLibraryPage, [
@@ -165,9 +184,10 @@ describe('the reports library (U1)', () => {
 			'gst',
 			'stock',
 			'sales',
+			'assets',
 			'cash',
 		]);
-		expect(page.groups()).toHaveLength(7);
+		expect(page.groups()).toHaveLength(8);
 		expect(page.folders()).toEqual([
 			{
 				folder: 'Sales',
@@ -189,6 +209,16 @@ describe('the reports library (U1)', () => {
 		expect(href('report_customer_ageing')).toBe('/accounts/reports/ageing/customers');
 		expect(href('report_supplier_ageing')).toBe('/accounts/reports/ageing/suppliers');
 		expect(href('report_audit_report')).toBe('/accounts/reports/audit');
+		expect(href('report_cash_flow')).toBe('/accounts/reports/cash-flow');
+		expect(href('report_ratios')).toBe('/accounts/reports/ratios');
+		expect(REPORT_LIBRARY[0]?.items.map((i) => i.key)).toEqual([
+			'balance_sheet',
+			'profit_loss',
+			'pl_by_location',
+			'trial_balance',
+			'cash_flow',
+			'ratios',
+		]);
 		expect(REPORT_LIBRARY.find((g) => g.group === 'receivables')?.items.map((i) => i.key)).toEqual([
 			'customer_ageing',
 			'supplier_ageing',

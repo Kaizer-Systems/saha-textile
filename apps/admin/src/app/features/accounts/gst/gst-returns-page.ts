@@ -55,6 +55,7 @@ const GST_PROBLEMS = new Set([
 	'bank_account_unknown',
 	'books_need_a_location',
 	'challan_shape',
+	'gst_annual_changed',
 ]);
 
 /** A prepared return's page: GSTR-3B has its own (G6), GSTR-1 the tables page (G4). */
@@ -132,13 +133,16 @@ export class GstReturnsPage {
 		return shortDate(date);
 	}
 
-	/** A month's return opens its draft; a GSTR-1 or GSTR-3B not started is prepared from the books first. */
+	/** A month's return opens its draft (a GSTR-1 or GSTR-3B not started is prepared first); GSTR-9 opens the year. */
 	async open(row: GstCalendarRow): Promise<void> {
 		if (row.draftId) {
 			void this.router.navigate(returnLink(row.returnType, row.draftId));
 			return;
 		}
-		if (row.returnType === 'GSTR-9') return;
+		if (row.returnType === 'GSTR-9') {
+			void this.router.navigate(['/accounts/gst/annual'], { queryParams: { year: row.period } });
+			return;
+		}
 		const returnType = row.returnType;
 		this.busy.set(true);
 		try {

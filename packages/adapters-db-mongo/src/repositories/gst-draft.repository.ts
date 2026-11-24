@@ -1,7 +1,7 @@
 import { GstReturnDraft, Gstr2bImport, type GstDraftType } from '@saha-textile/contracts';
-import type { GstReturnDraftRepository, Gstr2bRepository } from '@saha-textile/core-domain';
+import type { GstAnnualNoteRepository, GstReturnDraftRepository, Gstr2bRepository } from '@saha-textile/core-domain';
 
-import { GstReturnDraftModel, Gstr2bImportModel } from '../models/bank.model';
+import { GstAnnualNoteModel, GstReturnDraftModel, Gstr2bImportModel } from '../models/bank.model';
 import type { AggregateDoc } from '../models/purchasing.model';
 
 const draftOf = (doc: AggregateDoc): GstReturnDraft => {
@@ -84,5 +84,43 @@ export class MongoGstr2bRepository implements Gstr2bRepository {
 		).exec();
 		if (!result.matchedCount) throw new Error('gstr2b_changed');
 		return { ...doc, version: expectedVersion + 1 };
+	}
+}
+
+/** GSTR-9's notes in MongoDB (`gstAnnualNotes`), one document per registration and year. */
+export class MongoGstAnnualNoteRepository implements GstAnnualNoteRepository {
+	async get(
+		gstRegistrationId: string,
+		year: string,
+	): Promise<{ notes: Record<string, string>; version: number } | null> {
+		const doc = await GstAnnualNoteModel.findById(`${gstRegistrationId}|${year}`).lean<AggregateDoc>().exec();
+		if (!doc) return null;
+		return {
+			notes: (doc['notes'] as Record<string, string> | undefined) ?? {},
+			version: Number(doc['version'] ?? 0),
+		};
+	}
+
+	async save(
+		gstRegistrationId: string,
+		year: string,
+		notes: Record<string, string>,
+		expectedVersion: number | null,
+	): Promise<number> {
+		const _id = `${gstRegistrationId}|${year}`;
+		if (expectedVersion === null) {
+			await GstAnnualNoteModel.create({ _id, gstRegistrationId, year, notes, version: 0 }).catch(
+				(error: { code?: number }) => {
+					throw error.code === 11000 ? new Error('gst_annual_changed', { cause: error }) : error;
+				},
+			);
+			return 0;
+		}
+		const result = await GstAnnualNoteModel.updateOne(
+			{ _id, version: expectedVersion },
+			{ $set: { notes, version: expectedVersion + 1 } },
+		).exec();
+		if (!result.matchedCount) throw new Error('gst_annual_changed');
+		return expectedVersion + 1;
 	}
 }

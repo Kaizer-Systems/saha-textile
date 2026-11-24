@@ -78,6 +78,14 @@ export class Gstr3bInputs {
 		};
 	}
 
+	/** Input tax the books took back between two days at a GSTIN's locations (GSTR-9 table 7). */
+	async reversedFor(gstRegistrationId: string, from: string, to: string): Promise<TaxHeads> {
+		const here = new Set(
+			(await this.locations.list()).filter((l) => l.gstRegistrationId === gstRegistrationId).map((l) => l.id),
+		);
+		return this.reversals(from, to, here);
+	}
+
 	/** 4B(1): input tax the books took back this month at the GSTIN's locations; nothing before the books are set up. */
 	private async reversals(from: string, to: string, here: ReadonlySet<string>): Promise<TaxHeads> {
 		const chart = await this.ledger.chart();

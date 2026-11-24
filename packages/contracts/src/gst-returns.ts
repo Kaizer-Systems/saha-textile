@@ -256,3 +256,55 @@ export const Gstr2bDecision = z.object({
 	version: z.number().int().nonnegative(),
 });
 export type Gstr2bDecision = z.infer<typeof Gstr2bDecision>;
+
+/* GSTR-9 against the books, and the monthly books-to-returns check (G9, G7). */
+
+/** A financial year, `2025-26`. */
+export const FinancialYear = z
+	.string()
+	.regex(/^\d{4}-\d{2}$/, { message: 'year_shape' })
+	.refine((year) => (Number(year.slice(0, 4)) + 1) % 100 === Number(year.slice(5)), { message: 'year_shape' });
+
+export const GstAnnualQuery = z.object({ gstRegistrationId: Id, year: FinancialYear });
+export type GstAnnualQuery = z.infer<typeof GstAnnualQuery>;
+
+export const GstAnnualRow = z.object({
+	table: z.enum(['4', '5', '6', '7', '17']),
+	/** Paise, or a count for table 17 (HSN codes). */
+	returns: z.number().int(),
+	books: z.number().int(),
+	unit: z.enum(['paise', 'count']),
+	/** Why the two differ, as the accountant wrote it. */
+	note: z.string(),
+});
+export type GstAnnualRow = z.infer<typeof GstAnnualRow>;
+
+/** A month's returns against the books (paise); a return's figures are null until it is filed. */
+export const GstMonthCheck = z.object({
+	month: YearMonth,
+	gstr1Tax: z.number().int().nullable(),
+	gstr3bTax: z.number().int().nullable(),
+	booksTax: z.number().int(),
+	gstr3bCredit: z.number().int().nullable(),
+	booksCredit: z.number().int(),
+});
+export type GstMonthCheck = z.infer<typeof GstMonthCheck>;
+
+export const GstAnnual = z.object({
+	gstin: z.string(),
+	year: FinancialYear,
+	rows: z.array(GstAnnualRow),
+	months: z.array(GstMonthCheck),
+	version: z.number().int().nonnegative(),
+});
+export type GstAnnual = z.infer<typeof GstAnnual>;
+
+/** Why a GSTR-9 table differs from the books (G9's "Explained"). */
+export const GstAnnualNoteWrite = z.object({
+	gstRegistrationId: Id,
+	year: FinancialYear,
+	table: z.enum(['4', '5', '6', '7', '17']),
+	note: z.string().trim().max(300),
+	version: z.number().int().nonnegative(),
+});
+export type GstAnnualNoteWrite = z.infer<typeof GstAnnualNoteWrite>;

@@ -84,6 +84,9 @@ export default [
 	{ path: 'gst/returns/:id', loadComponent: () => import('./gst/gstr1-page').then((m) => m.Gstr1Page) },
 	// Input credit check: GSTR-2B against our purchases (G5).
 	{ path: 'gst/2b', loadComponent: () => import('./gst/gstr2b-page').then((m) => m.Gstr2bPage) },
+	// GST reports (G7) and GSTR-9 against the books (G9).
+	{ path: 'gst/reports', loadComponent: () => import('./gst/gst-reports-page').then((m) => m.GstReportsPage) },
+	{ path: 'gst/annual', loadComponent: () => import('./gst/gstr9-page').then((m) => m.Gstr9Page) },
 	{ path: 'invoices/:id', loadComponent: () => import('./invoice-view').then((m) => m.InvoiceViewPage) },
 	{ path: 'returns/:id', loadComponent: () => import('./return-page').then((m) => m.ReturnPage) },
 	{ path: 'credit-notes/:id', loadComponent: () => import('./credit-note-page').then((m) => m.CreditNotePage) },

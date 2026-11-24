@@ -63,7 +63,7 @@
 					</td>
 					<td>{{ row.arn ?? '—' }}</td>
 					<td>
-						@if (row.draftId) {
+						@if (row.draftId || row.returnType === 'GSTR-9') {
 						<button
 							type="button"
 							class="btn btn-sm p-0"
@@ -72,7 +72,7 @@
 						>
 							<i class="ri-eye-line"></i>
 						</button>
-						} @else if (row.returnType !== 'GSTR-9') {
+						} @else {
 						<button
 							*hasPermission="'accounts.edit'"
 							type="button"

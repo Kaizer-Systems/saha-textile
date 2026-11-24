@@ -1,0 +1,169 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'gst_returns_title'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">GSTR-9 · {{ year() }}</h5>
+			<small class="text-muted">{{ 'gstr9_sub' | transloco }} · {{ view.data()?.gstin ?? '—' }}</small>
+		</div>
+		<div class="d-flex align-items-center flex-wrap gap-2">
+			<select
+				class="form-select w-auto"
+				id="gstr9_year"
+				[attr.aria-label]="'gstr9_year' | transloco"
+				[ngModel]="year()"
+				(ngModelChange)="year.set($event)"
+			>
+				@for (y of years; track y) {
+				<option [value]="y">{{ y }}</option>
+				}
+			</select>
+			<select
+				class="form-select w-auto"
+				id="gstr9_registration"
+				[attr.aria-label]="'gst_registration' | transloco"
+				[ngModel]="registrationId()"
+				(ngModelChange)="registrationId.set($event)"
+			>
+				@for (r of active(); track r.id) {
+				<option [value]="r.id">GSTIN: {{ r.gstin }}</option>
+				}
+			</select>
+			@if (view.data(); as v) {
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="gstr9_download"
+				(click)="download(v)"
+			>
+				<i class="ri-file-excel-2-line"></i>
+				{{ 'gstr9_excel' | transloco }}
+			</button>
+			}
+		</div>
+	</div>
+	@if (view.error()) {
+	<div class="alert alert-warning py-2">{{ 'gstr9_problem' | transloco }}</div>
+	} @if (view.data(); as v) {
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'gst_col_table' | transloco }}</th>
+					<th>{{ 'gstr9_col_returns' | transloco }}</th>
+					<th>{{ 'gstr9_col_books' | transloco }}</th>
+					<th>{{ 'gstr9_col_difference' | transloco }}</th>
+					<th>{{ 'gstr9_col_explained' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of v.rows; track row.table) {
+				<tr>
+					<td>{{ 'gstr9_table_' + row.table | transloco }}</td>
+					<td class="text-nowrap">{{ figure(row, row.returns) }}</td>
+					<td class="text-nowrap">{{ figure(row, row.books) }}</td>
+					<td class="text-nowrap">{{ row.unit === 'count' ? '—' : figure(row, row.returns - row.books) }}</td>
+					<td>
+						@if (row.returns === row.books && !row.note) { ✓ } @else {
+						<span [class.text-danger]="!row.note">
+							{{ row.note || ('gstr9_not_explained' | transloco) }}
+						</span>
+						}
+						<button
+							*hasPermission="'accounts.edit'"
+							type="button"
+							class="btn btn-sm ms-1 p-0"
+							[title]="'gstr9_explain' | transloco"
+							(click)="openNote(noteTemplate, row)"
+						>
+							<i class="ri-pencil-line"></i>
+						</button>
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<div class="title-header mt-4">
+		<h5>{{ 'gstr9_months' | transloco }}</h5>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'gstr9_col_month' | transloco }}</th>
+					<th>{{ 'gstr9_col_gstr1' | transloco }}</th>
+					<th>{{ 'gstr9_col_books_tax' | transloco }}</th>
+					<th>{{ 'gstr9_col_gstr3b' | transloco }}</th>
+					<th>{{ 'gstr9_col_3b_credit' | transloco }}</th>
+					<th>{{ 'gstr9_col_books_credit' | transloco }}</th>
+					<th>{{ 'gst_col_checks' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (m of v.months; track m.month) {
+				<tr>
+					<td class="text-nowrap">{{ m.month }}</td>
+					<td class="text-nowrap">{{ money(m.gstr1Tax) }}</td>
+					<td class="text-nowrap">{{ money(m.booksTax) }}</td>
+					<td class="text-nowrap">{{ money(m.gstr3bTax) }}</td>
+					<td class="text-nowrap">{{ money(m.gstr3bCredit) }}</td>
+					<td class="text-nowrap">{{ money(m.booksCredit) }}</td>
+					<td [class.text-danger]="!agrees(m)">{{ agrees(m) ? '✓' : ('gstr9_differs' | transloco) }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<small class="text-muted d-block mt-2">{{ 'gstr9_months_note' | transloco }}</small>
+	<ng-template
+		#noteTemplate
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="modal-title">{{ 'gstr9_table_' + noteTable() | transloco }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			<label
+				class="form-label-title"
+				for="gstr9_note"
+			>
+				{{ 'gstr9_explain_label' | transloco }}
+			</label>
+			<textarea
+				class="form-control"
+				id="gstr9_note"
+				rows="3"
+				maxlength="300"
+				[ngModel]="noteText()"
+				(ngModelChange)="noteText.set($event)"
+			></textarea>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="gstr9_note_save"
+				[disabled]="busy()"
+				(click)="saveNote(v)"
+			>
+				{{ 'save' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+	}
+</app-page-wrapper>

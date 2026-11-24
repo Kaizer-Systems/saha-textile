@@ -98,9 +98,12 @@ export class GstReturnsService {
 	}
 
 	/** GSTR-1 worked out from the GSTIN's invoices and notes of the month (core `gstr1`). */
-	private async gstr1For(registration: GstRegistration, month: string) {
-		const from = `${month}-01`;
-		const to = monthEnd(month);
+	private gstr1For(registration: GstRegistration, month: string) {
+		return this.gstr1Between(registration, `${month}-01`, monthEnd(month), month);
+	}
+
+	/** GSTR-1's tables worked out from the books between two days (GSTR-9 takes a whole year). */
+	async gstr1Between(registration: GstRegistration, from: string, to: string, month: string) {
 		const [invoices, creditNotes, debitNotes] = await Promise.all([
 			this.invoices.listForGstin(registration.gstin, from, to),
 			this.creditNotes.listForGstin(registration.gstin, from, to),

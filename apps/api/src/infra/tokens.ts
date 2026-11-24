@@ -150,6 +150,7 @@ export const BANK_STATEMENT_REPOSITORY = Symbol('BankStatementRepository');
 export const SETTLEMENT_REPOSITORY = Symbol('SettlementRepository');
 export const GST_RETURN_DRAFT_REPOSITORY = Symbol('GstReturnDraftRepository');
 export const GSTR2B_REPOSITORY = Symbol('Gstr2bRepository');
+export const GST_ANNUAL_NOTE_REPOSITORY = Symbol('GstAnnualNoteRepository');
 export const PAYMENT_VOUCHER_REPOSITORY = Symbol('PaymentVoucherRepository');
 /** Where money lands (Postings and Convert brief AP-D1). */
 export const MONEY_LANDING_REPOSITORY = Symbol('MoneyLandingRepository');

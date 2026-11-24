@@ -22,3 +22,15 @@ export interface Gstr2bRepository {
 	 */
 	save(doc: Gstr2bImport, expectedVersion: number | null): Promise<Gstr2bImport>;
 }
+
+/** GSTR-9's notes (accounts brief G9): why each table differs from the books, one record per registration and year. */
+export interface GstAnnualNoteRepository {
+	get(gstRegistrationId: string, year: string): Promise<{ notes: Record<string, string>; version: number } | null>;
+	/** Refused with `gst_annual_changed` when someone saved since `expectedVersion` (null = the first save). */
+	save(
+		gstRegistrationId: string,
+		year: string,
+		notes: Record<string, string>,
+		expectedVersion: number | null,
+	): Promise<number>;
+}

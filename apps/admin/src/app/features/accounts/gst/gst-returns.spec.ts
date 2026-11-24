@@ -266,7 +266,9 @@ describe('the GST returns calendar (G3)', () => {
 		expect(rows[1]?.textContent).toContain('—');
 		expect(rows[0]?.querySelector('button[title="view"]')).not.toBeNull();
 		expect(rows[1]?.querySelector('button[title="gst_prepare"]')).not.toBeNull();
-		expect(rows[2]?.querySelector('button')).toBeNull();
+		// GSTR-9 opens the year against the books; it is never prepared here.
+		expect(rows[2]?.querySelector('button[title="view"]')).not.toBeNull();
+		expect(rows[2]?.querySelector('button[title="gst_prepare"]')).toBeNull();
 		expect(rows[2]?.textContent).toContain('GSTR-9');
 		expect(el(fixture, '#gst_chip_filed')?.textContent).toContain('1');
 		expect(page.day('2026-12-11')).toBeTruthy();
@@ -287,7 +289,7 @@ describe('the GST returns calendar (G3)', () => {
 		expect(calendar).toHaveBeenLastCalledWith({ gstRegistrationId: 'r2', chip: 'all' });
 	});
 
-	it('opens a return’s draft, prepares a GSTR-1 or GSTR-3B not started, and leaves GSTR-9 alone', async () => {
+	it('opens a return’s draft, prepares a GSTR-1 or GSTR-3B not started, and opens GSTR-9’s year', async () => {
 		const prepare = vi
 			.fn()
 			.mockReturnValueOnce(of({ id: 'd11' }))
@@ -302,13 +304,14 @@ describe('the GST returns calendar (G3)', () => {
 		expect(navigate).toHaveBeenLastCalledWith(['/accounts/gst/returns', 'd10']);
 		await page.open(CALENDAR.rows[2] as never);
 		expect(prepare).not.toHaveBeenCalled();
+		expect(navigate).toHaveBeenLastCalledWith(['/accounts/gst/annual'], { queryParams: { year: '2025-26' } });
 		(el(fixture, 'button[title="gst_prepare"]') as HTMLButtonElement).click();
 		await settle(fixture);
 		expect(prepare).toHaveBeenCalledWith({ gstRegistrationId: 'r1', returnType: 'GSTR-1', month: '2026-11' });
 		expect(navigate).toHaveBeenLastCalledWith(['/accounts/gst/returns', 'd11']);
 		await page.open(CALENDAR.rows[1] as never);
 		expect(notifier.showError).toHaveBeenCalledWith('gst_problem_return_filed');
-		expect(navigate).toHaveBeenCalledTimes(2);
+		expect(navigate).toHaveBeenCalledTimes(3);
 		// GSTR-3B has its own page, prepared or not.
 		await page.open({ ...CALENDAR.rows[1], returnType: 'GSTR-3B' } as never);
 		expect(prepare).toHaveBeenLastCalledWith({ gstRegistrationId: 'r1', returnType: 'GSTR-3B', month: '2026-11' });

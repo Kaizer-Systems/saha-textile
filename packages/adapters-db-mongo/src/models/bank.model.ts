@@ -88,3 +88,10 @@ const Gstr2bImportSchema = new Schema<AggregateDoc>(
 );
 Gstr2bImportSchema.index({ gstRegistrationId: 1, month: 1 }, { unique: true });
 export const Gstr2bImportModel = reuse('Gstr2bImport', Gstr2bImportSchema);
+
+/** G9: why each GSTR-9 table differs from the books; `_id` is `<registration>|<year>`. */
+const GstAnnualNoteSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true } },
+	{ ...loose, collection: COLLECTION_NAMES.GstAnnualNote },
+);
+export const GstAnnualNoteModel = reuse('GstAnnualNote', GstAnnualNoteSchema);

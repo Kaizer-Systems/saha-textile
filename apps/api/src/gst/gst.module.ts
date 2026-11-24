@@ -13,6 +13,6 @@ import { Gstr3bInputs } from './gstr3b-inputs';
 	imports: [AccountsTemplatesModule],
 	controllers: [GstReturnsController, Gstr2bController],
 	providers: [GstReturnsService, Gstr2bService, Gstr3bInputs],
-	exports: [GstReturnsService],
+	exports: [GstReturnsService, Gstr3bInputs],
 })
 export class GstModule {}

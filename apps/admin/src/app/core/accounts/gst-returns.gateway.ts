@@ -4,6 +4,9 @@ import { inject, Injectable } from '@angular/core';
 import { runtimeConfig } from '@core/config/runtime-config';
 
 import type {
+	GstAnnual,
+	GstAnnualNoteWrite,
+	GstAnnualQuery,
 	GstCalendar,
 	GstCalendarQuery,
 	GstReturnDraft,
@@ -22,6 +25,7 @@ export const GST_KEYS = {
 	calendar: (query: GstCalendarQuery) => ['gst-returns', 'calendar', query] as const,
 	one: (id: string) => ['gst-returns', 'one', id] as const,
 	twoB: (query: Gstr2bQuery) => ['gst-returns', '2b', query] as const,
+	annual: (query: GstAnnualQuery) => ['gst-returns', 'annual', query] as const,
 };
 
 /** GST returns from the books (accounts brief G3, G4, G6) and GSTR-2B against our purchases (G5). */
@@ -49,6 +53,15 @@ export class GstReturnsGateway {
 	/** Q7 Post the set-off: the set-off journal and the challan's payment. */
 	postSetOff(id: string, write: GstSetOffPostInput): Observable<GstReturnDraft> {
 		return this.http.post<GstReturnDraft>(this.api(`/${encodeURIComponent(id)}/set-off`), write);
+	}
+
+	/** G9 and the monthly books-to-returns check. */
+	annual(query: GstAnnualQuery): Observable<GstAnnual> {
+		return this.http.get<GstAnnual>(`${runtimeConfig.apiUrl}/admin/accounts/gst/annual`, { params: { ...query } });
+	}
+
+	annualNote(write: GstAnnualNoteWrite): Observable<GstAnnual> {
+		return this.http.post<GstAnnual>(`${runtimeConfig.apiUrl}/admin/accounts/gst/annual/notes`, write);
 	}
 
 	private readonly twoBApi = (path = '') => `${runtimeConfig.apiUrl}/admin/accounts/gst/2b${path}`;

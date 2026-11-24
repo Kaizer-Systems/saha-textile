@@ -1,0 +1,51 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'gst_reports_title'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<h5 class="mb-1">{{ 'gst_reports_title' | transloco }}</h5>
+		<select
+			class="form-select w-auto"
+			id="gst_reports_registration"
+			[attr.aria-label]="'gst_registration' | transloco"
+			[ngModel]="registrationId()"
+			(ngModelChange)="registrationId.set($event)"
+		>
+			@for (r of active(); track r.id) {
+			<option [value]="r.id">GSTIN: {{ r.gstin }}</option>
+			}
+		</select>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'gst_reports_col_report' | transloco }}</th>
+					<th>{{ 'gst_reports_col_what' | transloco }}</th>
+					<th>{{ 'gst_reports_col_for_you' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (r of reports; track r.key) {
+				<tr>
+					<td class="text-nowrap">
+						@if (r.link) {
+						<a
+							class="fw-bold"
+							[routerLink]="r.link"
+						>
+							{{ r.name ?? ('gst_report_' + r.key | transloco) }}
+						</a>
+						} @else {
+						<b>{{ r.name ?? ('gst_report_' + r.key | transloco) }}</b>
+						<small class="text-muted d-block">{{ 'gst_report_on_portal' | transloco }}</small>
+						}
+					</td>
+					<td>{{ 'gst_report_' + r.key + '_what' | transloco }}</td>
+					<td>{{ forYou(r) | transloco }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+</app-page-wrapper>

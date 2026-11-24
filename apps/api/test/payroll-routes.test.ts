@@ -4,18 +4,36 @@ import { Reflector } from '@nestjs/core';
 import {
 	MongoAttendanceRepository,
 	MongoEmployeeRepository,
+	MongoPayrollAdvanceRepository,
+	MongoPayrollRulesRepository,
 	MongoPayrollRunRepository,
+	MongoSalaryTemplateRepository,
+	MongoStatutoryFilingRepository,
 } from '@saha-textile/adapters-db-mongo';
 import { describe, expect, it } from 'vitest';
 
 import { AppModule } from '../src/app.module';
 import { PERMISSIONS_KEY } from '../src/auth/session.guard';
 import { APP_CONFIG, loadConfig } from '../src/config/app-config';
-import { ATTENDANCE_REPOSITORY, EMPLOYEE_REPOSITORY, PAYROLL_RUN_REPOSITORY } from '../src/infra/tokens';
+import { PersistenceModule } from '../src/infra/persistence.module';
+import {
+	ATTENDANCE_REPOSITORY,
+	EMPLOYEE_REPOSITORY,
+	PAYROLL_ADVANCE_REPOSITORY,
+	PAYROLL_RULES_REPOSITORY,
+	PAYROLL_RUN_REPOSITORY,
+	SALARY_TEMPLATE_REPOSITORY,
+	STATUTORY_FILING_REPOSITORY,
+} from '../src/infra/tokens';
 import { LedgerModule } from '../src/ledger/ledger.module';
+import { PayrollAdvancesService } from '../src/payroll/payroll-advances.service';
+import { PayrollReturnsService } from '../src/payroll/payroll-returns.service';
+import { PayrollRulesService } from '../src/payroll/payroll-rules.service';
+import { PayrollSetupController } from '../src/payroll/payroll-setup.controller';
 import { PayrollController } from '../src/payroll/payroll.controller';
 import { PayrollModule, employeeStoreFor } from '../src/payroll/payroll.module';
 import { PayrollService } from '../src/payroll/payroll.service';
+import { SalaryTemplatesService } from '../src/payroll/salary-templates.service';
 
 /** Payroll's routes, its module and the key that seals employees' personal numbers (accounts brief S, D29). */
 
@@ -105,13 +123,27 @@ describe('the payroll module', () => {
 
 	it('provides the service and its stores, needs the ledger, and is wired into the app', () => {
 		expect(Reflect.getMetadata('imports', PayrollModule)).toEqual([LedgerModule]);
-		expect(Reflect.getMetadata('controllers', PayrollModule)).toEqual([PayrollController]);
+		expect(Reflect.getMetadata('controllers', PayrollModule)).toEqual([PayrollController, PayrollSetupController]);
 		expect(Reflect.getMetadata('providers', PayrollModule)).toEqual([
 			PayrollService,
+			PayrollRulesService,
+			SalaryTemplatesService,
+			PayrollReturnsService,
+			PayrollAdvancesService,
+			{ provide: PAYROLL_RULES_REPOSITORY, useClass: MongoPayrollRulesRepository },
+			{ provide: SALARY_TEMPLATE_REPOSITORY, useClass: MongoSalaryTemplateRepository },
+			{ provide: STATUTORY_FILING_REPOSITORY, useClass: MongoStatutoryFilingRepository },
+			{ provide: PAYROLL_ADVANCE_REPOSITORY, useClass: MongoPayrollAdvanceRepository },
 			{ provide: EMPLOYEE_REPOSITORY, inject: [APP_CONFIG], useFactory: employeeStoreFor },
 			{ provide: ATTENDANCE_REPOSITORY, useClass: MongoAttendanceRepository },
-			{ provide: PAYROLL_RUN_REPOSITORY, useClass: MongoPayrollRunRepository },
 		]);
+		// The run store is shared app-wide now: the ledger's month checks read it too.
+		const persistence = Reflect.getMetadata('providers', PersistenceModule) as {
+			provide?: unknown;
+			useClass?: unknown;
+		}[];
+		expect(persistence).toContainEqual({ provide: PAYROLL_RUN_REPOSITORY, useClass: MongoPayrollRunRepository });
+		expect(Reflect.getMetadata('exports', PersistenceModule)).toContain(PAYROLL_RUN_REPOSITORY);
 		expect(AppModule.forRoot({} as never).imports).toContain(PayrollModule);
 	});
 });

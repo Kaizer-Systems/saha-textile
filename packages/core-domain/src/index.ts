@@ -27,3 +27,4 @@ export * from './invoicing/index';
 export * from './templates/index';
 export * from './cash/index';
 export * from './bank/index';
+export * from './settlements/index';

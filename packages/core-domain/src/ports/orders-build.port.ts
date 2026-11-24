@@ -117,6 +117,8 @@ export interface OrderPaymentRepository {
 	findById(id: string): Promise<OrderPayment | null>;
 	/** By the gateway's own payment id: a captured payment is recorded once, however often it is reported. */
 	findByGatewayReference(gateway: string, reference: string): Promise<OrderPayment | null>;
+	/** Gateway payments that came in between two days (Q10's check for payments no payout has paid). */
+	listGatewayReceived(from: string, to: string): Promise<OrderPayment[]>;
 	save(payment: OrderPayment, context?: TransactionContext): Promise<OrderPayment>;
 }
 

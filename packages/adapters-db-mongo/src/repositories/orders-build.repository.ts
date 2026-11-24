@@ -367,6 +367,22 @@ export class MongoOrderPaymentRepository implements OrderPaymentRepository {
 		return doc ? OrderPayment.parse(doc) : null;
 	}
 
+	async listGatewayReceived(from: string, to: string): Promise<OrderPayment[]> {
+		const docs = await PaymentModel.find({
+			method: 'gateway',
+			state: { $in: ['received', 'refunded', 'partRefunded'] },
+			receivedOn: { $gte: from, $lte: to },
+		})
+			// `receivedOn` isn't in the payment schema; without this, Mongoose would drop it from the filter.
+			.setOptions({ strictQuery: false })
+			.sort({ receivedOn: 1, _id: 1 })
+			.limit(5000)
+			.session(joined())
+			.lean<OrdersBuildDoc[]>()
+			.exec();
+		return docs.map((doc) => OrderPayment.parse(fromDoc(doc)));
+	}
+
 	async save(payment: OrderPayment, context?: TransactionContext): Promise<OrderPayment> {
 		const parsed = OrderPayment.parse(payment);
 		const { _id, ...rest } = toDoc(parsed);

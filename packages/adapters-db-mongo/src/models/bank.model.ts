@@ -62,3 +62,13 @@ export const BankMatchRuleModel = reuse(
 		{ ...loose, collection: COLLECTION_NAMES.BankMatchRule },
 	),
 );
+
+/** Q10: gateway payouts and courier COD remittances, each payout once per provider. */
+const SettlementSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true }, kind: String, provider: String, payoutReference: String },
+	{ ...loose, collection: COLLECTION_NAMES.Settlement },
+);
+SettlementSchema.index({ kind: 1, provider: 1, payoutReference: 1 }, { unique: true });
+SettlementSchema.index({ kind: 1, date: -1 });
+SettlementSchema.index({ 'rows.paymentId': 1 });
+export const SettlementModel = reuse('Settlement', SettlementSchema);

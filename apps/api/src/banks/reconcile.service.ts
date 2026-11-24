@@ -201,6 +201,8 @@ export class ReconcileService {
 	/** The references the books hold for a voucher: an order payment's UPI or bank reference. */
 	private async references(voucherId: string): Promise<Candidate['references']> {
 		const source = (await this.books.getVoucher(voucherId))?.source;
+		// A payout carries its bank reference (UTR) as the settlement's number.
+		if (source?.type === 'settlement') return source.number ? [{ kind: 'payout', value: source.number }] : [];
 		if (source?.type !== 'orderPayment') return [];
 		const payment = await this.payments.findById(source.id);
 		return payment?.reference ? [{ kind: 'upi', value: payment.reference }] : [];

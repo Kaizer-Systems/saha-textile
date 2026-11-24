@@ -147,6 +147,7 @@ export const CASH_REPOSITORY = Symbol('CashRepository');
 export const TRANSFER_REPOSITORY = Symbol('TransferRepository');
 export const BANK_REPOSITORY = Symbol('BankRepository');
 export const BANK_STATEMENT_REPOSITORY = Symbol('BankStatementRepository');
+export const SETTLEMENT_REPOSITORY = Symbol('SettlementRepository');
 export const PAYMENT_VOUCHER_REPOSITORY = Symbol('PaymentVoucherRepository');
 /** Where money lands (Postings and Convert brief AP-D1). */
 export const MONEY_LANDING_REPOSITORY = Symbol('MoneyLandingRepository');

@@ -22,7 +22,7 @@ Amounts are stored as whole paise (integers), so sums never drift. Screens show 
 
 ## Chart of accounts
 
-The first read of the chart installs it from the [accounts templates](./accounts-templates.md) that the kind of business on Settings › Company unlocks: the shared chart (`CH-COMMON`) and the kind's own. The starter templates hold:
+The first read of the chart seeds it from the [accounts templates](./accounts-templates.md) that the kind of business on Settings › Company unlocks: the shared chart (`CH-COMMON`) and the kind's own. The starter templates hold:
 
 - the usual primary groups (capital, loans, current liabilities, fixed assets, current assets, sales, direct and indirect incomes and expenses, branches, suspense);
 - the ledgers the posting rules need, found by `systemKey` (output and input GST, stock in hand and in transit, customers, suppliers, gateway clearing, customer advances, cost of goods sold and so on);

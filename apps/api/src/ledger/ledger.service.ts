@@ -63,6 +63,7 @@ import {
 } from '@saha-textile/core-domain';
 
 import { accountsRefusal } from './accounts-refusal';
+import { addChartItems } from './chart-additions';
 import { AccountsTemplatesService } from '../accounts-templates/accounts-templates.service';
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import {
@@ -153,12 +154,13 @@ export class LedgerService {
 	}
 
 	/**
-	 * First read: the books are installed from the accounts templates the company's kind unlocks (the shared chart and
-	 * its own, accounts templates T2). Books that already exist are kept and recorded as installed from them.
+	 * First read: the chart is seeded from the accounts templates the company's kind unlocks (the shared chart and its
+	 * own, accounts templates T2), so documents can post. The books count as set up only once a person sets them up
+	 * (AT1, T3): a chart read on a fresh database never chooses the kind for the company.
 	 */
 	private ensureChart(): Promise<void> {
 		this.seeding ??= (async () => {
-			const { chart, picks } = await this.templates.startingChart();
+			const { chart } = await this.templates.startingChart();
 			const now = new Date().toISOString();
 			const groupId = (key: string) => `grp_${key}`;
 			// mergeCharts has checked every ledger's group is in the chart; a broken one fails Ledger.parse loudly.
@@ -192,7 +194,6 @@ export class LedgerService {
 					}),
 				),
 			});
-			await this.templates.recordInstalls(picks);
 		})().catch((error: unknown) => {
 			this.seeding = null;
 			throw error;
@@ -204,6 +205,9 @@ export class LedgerService {
 	async setUpBooks(by: string | null) {
 		if (await this.templates.booksSetUp()) throw new ConflictException(accountsRefusal('books_already_set_up'));
 		await this.ensureChart();
+		// A chart read before the kind was chosen was seeded from another kind's templates: add what this kind's lack.
+		const [{ chart }, books] = await Promise.all([this.templates.startingChart(), this.books.chart()]);
+		await addChartItems(this.books, { kind: 'chart', ...chart }, books, new Date().toISOString());
 		await this.templates.installUnlocked(by);
 		return this.templates.library();
 	}

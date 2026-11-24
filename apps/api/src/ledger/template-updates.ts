@@ -14,15 +14,12 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
-	AccountGroup,
-	Ledger,
 	TemplateInstallWrite,
 	type ChartTemplateContent,
 	type TemplateLibraryRow,
 	type TemplateUpdate,
 } from '@saha-textile/contracts';
 import {
-	chartInstallPlan,
 	keptChanges,
 	latestVersion,
 	versionChanges,
@@ -37,6 +34,7 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { AUDIT_LOG_REPOSITORY, GENERAL_LEDGER_REPOSITORY } from '../infra/tokens';
 import { API_TAGS } from '../openapi-tags';
 import { accountsRefusal } from './accounts-refusal';
+import { addChartItems } from './chart-additions';
 import { LedgerService } from './ledger.service';
 
 /**
@@ -115,48 +113,7 @@ export class TemplateUpdatesService {
 
 	/** The chart version's groups and ledgers the books lack, by key; returns their names. */
 	private async addToBooks(content: ChartTemplateContent, at: string): Promise<string[]> {
-		const chart = await this.ledger.chart();
-		const plan = chartInstallPlan(content, chart);
-		const groupIds = new Map(chart.groups.map((group) => [String(group.systemKey), group.id]));
-		const natures = new Map([
-			...chart.groups.map((group) => [String(group.systemKey), group.nature] as const),
-			...content.groups.map((group) => [group.key, group.nature] as const),
-		]);
-		for (const [index, group] of plan.groups.entries()) {
-			const id = `grp_${group.key}`;
-			await this.books.saveGroup(
-				AccountGroup.parse({
-					id,
-					systemKey: group.key,
-					name: group.name,
-					parentId: group.parentKey ? (groupIds.get(group.parentKey) ?? `grp_${group.parentKey}`) : null,
-					nature: group.nature,
-					tradingAccount: group.tradingAccount,
-					roles: group.roles,
-					order: chart.groups.length + index,
-					createdAt: at,
-					updatedAt: at,
-				}),
-			);
-			groupIds.set(group.key, id);
-		}
-		// A ledger's group is in the books or this version (publishing checks the chart is whole).
-		for (const ledger of plan.ledgers)
-			await this.books.saveLedger(
-				Ledger.parse({
-					id: `led_${ledger.key}`,
-					systemKey: ledger.key,
-					name: ledger.name,
-					groupId: groupIds.get(ledger.groupKey),
-					nature: natures.get(ledger.groupKey),
-					handPosting: ledger.handPosting,
-					roles: ledger.roles,
-					createdAt: at,
-					updatedAt: at,
-				}),
-				null,
-			);
-		return [...plan.groups, ...plan.ledgers].map((item) => item.name);
+		return addChartItems(this.books, content, await this.ledger.chart(), at);
 	}
 }
 

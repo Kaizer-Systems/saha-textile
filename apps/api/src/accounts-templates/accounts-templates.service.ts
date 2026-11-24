@@ -125,9 +125,19 @@ export class AccountsTemplatesService {
 		});
 	}
 
-	/** Whether the company's books are installed (any template recorded as installed). */
+	/**
+	 * Whether the company's books are set up: a chart template recorded as installed (AT1 "Save and set up the books",
+	 * or books kept from before templates). A rule set recorded on its first use doesn't count.
+	 */
 	async booksSetUp(): Promise<boolean> {
-		return (await this.installs.list()).length > 0;
+		const installs = await this.installs.list();
+		if (!installs.length) return false;
+		const charts = new Set(
+			(await this.templates.list())
+				.filter((template) => template.kind === 'chart')
+				.map((template) => template.code),
+		);
+		return installs.some((install) => charts.has(install.code));
 	}
 
 	/** AT1 "What opens" for a kind of company, and whether the books are already set up. */

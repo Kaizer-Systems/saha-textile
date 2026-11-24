@@ -231,7 +231,7 @@ const rentPaid = (patch: Record<string, unknown> = {}) => ({
 });
 
 describe('general ledger (accounts brief Q, T, D10)', () => {
-	it('installs the chart from the templates the kind of business unlocks, on first read (T2)', async () => {
+	it('seeds the chart from the kind’s templates on first read, and sets the books up only when asked (T2, T3)', async () => {
 		const { service, templates } = setup({ kind: 'private_limited' });
 		const chart = await service.chart();
 		expect(chart.ledgers.find((l) => l.systemKey === 'share_capital')).toMatchObject({
@@ -242,26 +242,35 @@ describe('general ledger (accounts brief Q, T, D10)', () => {
 			parentId: 'grp_current_assets',
 			roles: ['cash_in_hand'],
 		});
+		// A read never sets the books up: the kind stays the company's to choose (AT1).
+		expect(templates.installs.rows).toEqual([]);
+		expect(await templates.service.booksSetUp()).toBe(false);
+		const library = await service.setUpBooks('adm_owner');
 		expect(templates.installs.rows.map(({ code, version }) => [code, version])).toEqual([
 			['CH-COMMON', 2],
-			['CH-PVT', 3],
-		]);
-		await service.chart();
-		expect(templates.installs.rows).toHaveLength(2); // Books already set up: setting them up again is refused (the kind changes only through Convert).
-		await expect(service.setUpBooks('adm_owner')).rejects.toThrow('books_already_set_up');
-		const fresh = setup({ kind: 'private_limited' });
-		const library = await fresh.service.setUpBooks('adm_owner');
-		expect(fresh.templates.installs.rows.map(({ code, version }) => [code, version])).toEqual([
-			['CH-COMMON', 2],
-			['CH-PVT', 3],
 			['RS-LIMITS', 1],
 			['RS-RCM', 1],
 			['RS-TDS', 1],
+			['CH-PVT', 3],
 			['RP-SCH3-BS', 1],
 			['RP-SCH3-PL', 1],
 		]);
 		expect(library.find((row) => row.code === 'RS-RCM')).toMatchObject({ installedVersion: 1, locked: false });
-		expect((await fresh.service.chart()).ledgers.some((l) => l.systemKey === 'directors_remuneration')).toBe(true);
+		expect(await templates.service.booksSetUp()).toBe(true);
+		expect((await service.chart()).ledgers.some((l) => l.systemKey === 'directors_remuneration')).toBe(true);
+		// Books already set up: setting them up again is refused (the kind changes only through Convert).
+		await expect(service.setUpBooks('adm_owner')).rejects.toThrow('books_already_set_up');
+		// Read as a proprietorship, then set up as a company: what the company's chart has is added, nothing removed.
+		const options: { kind: 'proprietorship' | 'private_limited' } = { kind: 'proprietorship' };
+		const late = setup(options);
+		expect((await late.service.chart()).ledgers.some((l) => l.systemKey === 'share_capital')).toBe(false);
+		options.kind = 'private_limited';
+		await late.service.setUpBooks('adm_owner');
+		const books = await late.service.chart();
+		expect(books.ledgers.find((l) => l.systemKey === 'share_capital')).toMatchObject({
+			groupId: 'grp_capital_account',
+		});
+		expect(books.ledgers.some((l) => l.systemKey === 'drawings')).toBe(true);
 		// The ledger module brings the templates library with it.
 		expect(new LedgerModule()).toBeInstanceOf(LedgerModule);
 	});

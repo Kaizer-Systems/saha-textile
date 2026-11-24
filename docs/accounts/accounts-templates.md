@@ -42,7 +42,7 @@ The starter charts are split from the starting chart of each kind: what all five
 
 ## Company setup
 
-Settings › Company shows what the kind picked opens: its chart templates with their newest versions, its reports, and each tax rule set with how many entries apply to that kind, and how many templates of other kinds stay locked. The first save sets up the books: the chart is installed from the unlocked chart templates and every unlocked template is recorded as installed at its newest version (`POST /admin/accounts/templates/set-up-books`, `accounts_template.edit`; refused with `books_already_set_up` once done). Books are also set up on the first read of the chart, from the kind saved at that moment.
+Settings › Company shows what the kind picked opens: its chart templates with their newest versions, its reports, and each tax rule set with how many entries apply to that kind, and how many templates of other kinds stay locked. The first save sets up the books: the chart is installed from the unlocked chart templates and every unlocked template is recorded as installed at its newest version (`POST /admin/accounts/templates/set-up-books`, `accounts_template.edit`; refused with `books_already_set_up` once done). Reading the chart before that seeds it so documents can post, but never sets the books up: the kind stays open until this save, which adds whatever the chosen kind's charts have that the seeded chart lacks (nothing is renamed, moved or removed). The books count as set up once a chart template is recorded as installed; a tax rule set recorded on its first use doesn't count.
 
 Once the books are set up the kind is kept: the choice is greyed on Settings › Company and the API refuses a different kind with `kind_locked_books_exist`. Changing the kind of a business goes through Convert.
 
@@ -107,9 +107,9 @@ A newer version than the one installed shows as **Installed · update vN** in th
 
 ## Installing the books
 
-The first read of the chart installs the books from the templates the company's kind unlocks: the newest version of each chart template, merged by `mergeCharts`. Two templates defining the same group or ledger key refuse with `template_duplicate_key:<key>`; a group or ledger pointing at a group none of them has refuses with `template_unknown_parent:<key>` or `template_unknown_group:<key>`.
+The first read of the chart seeds it from the templates the company's kind unlocks: the newest version of each chart template, merged by `mergeCharts`. Two templates defining the same group or ledger key refuse with `template_duplicate_key:<key>`; a group or ledger pointing at a group none of them has refuses with `template_unknown_parent:<key>` or `template_unknown_group:<key>`.
 
-Each group and ledger is installed with its template key as its system key and the template's roles. What was installed is recorded once in `templateInstalls` (code, version, when, by whom). Books that existed before templates are kept as they are and recorded as installed from the templates holding the same chart, so nothing is seeded again.
+Each group and ledger is installed with its template key as its system key and the template's roles. What was installed is recorded in `templateInstalls` (code, version, when, by whom) when the books are set up. A chart that already exists is never seeded again.
 
 The library row for each template says which version is installed and whether a newer one is waiting (`updateAvailable`). A newer version is never installed by itself.
 

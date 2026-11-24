@@ -21,7 +21,15 @@ async function signIn(page: Page, email = SHOPPER): Promise<void> {
 	await page.locator('#login_btn').click();
 	await page.locator('input[formcontrolname="code"]').fill('123456');
 	await page.locator('#login_btn').click();
-	await expect(page).not.toHaveURL(/auth\/login/);
+	try {
+		await expect(page).not.toHaveURL(/auth\/login/);
+	} catch (error) {
+		// CI keeps no screenshots: say what the sign-in card showed when it stayed on the page.
+		const said = await page.locator('[role="alert"], .alert').allInnerTexts();
+		throw new Error(`Sign-in stayed on the login page; it said: ${said.join(' | ') || 'nothing'}`, {
+			cause: error,
+		});
+	}
 }
 
 async function addToBag(page: Page): Promise<void> {

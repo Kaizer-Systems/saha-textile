@@ -27,17 +27,47 @@ test.describe('the header and the page fonts', () => {
 
 	test('nothing moves on a বাংলা page while it loads', async ({ page }) => {
 		await page.addInitScript(() => {
-			(window as unknown as { shift: number }).shift = 0;
+			const record = window as unknown as { shift: number; moved: string[] };
+			record.shift = 0;
+			record.moved = [];
 			new PerformanceObserver((list) => {
 				for (const entry of list.getEntries() as Array<
-					PerformanceEntry & { value: number; hadRecentInput: boolean }
-				>)
-					if (!entry.hadRecentInput) (window as unknown as { shift: number }).shift += entry.value;
+					PerformanceEntry & {
+						value: number;
+						hadRecentInput: boolean;
+						sources?: Array<{
+							node?: Node | null;
+							previousRect: DOMRectReadOnly;
+							currentRect: DOMRectReadOnly;
+						}>;
+					}
+				>) {
+					if (entry.hadRecentInput) continue;
+					record.shift += entry.value;
+					// Which elements moved, and from where to where: CI keeps no screenshots.
+					for (const source of entry.sources ?? []) {
+						const node = source.node as Element | null | undefined;
+						const name = node
+							? `${node.nodeName.toLowerCase()}.${String(node.className ?? '')
+									.trim()
+									.replace(/\s+/g, '.')}`
+							: '?';
+						const rect = (r: DOMRectReadOnly) =>
+							`${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.width)}×${Math.round(r.height)}`;
+						record.moved.push(
+							`${entry.value.toFixed(4)} ${name} ${rect(source.previousRect)} → ${rect(source.currentRect)}`,
+						);
+					}
+				}
 			}).observe({ type: 'layout-shift', buffered: true });
 		});
 		await page.goto('/bn/');
 		await page.waitForLoadState('networkidle');
 		await page.waitForTimeout(1500);
-		expect(await page.evaluate(() => (window as unknown as { shift: number }).shift)).toBeLessThan(0.001);
+		const { shift, moved } = await page.evaluate(() => {
+			const record = window as unknown as { shift: number; moved: string[] };
+			return { shift: record.shift, moved: record.moved };
+		});
+		expect(shift, `moved: ${moved.join(' ; ') || 'nothing'}`).toBeLessThan(0.001);
 	});
 });

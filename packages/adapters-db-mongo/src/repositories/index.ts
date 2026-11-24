@@ -66,3 +66,4 @@ export * from './accounts-lists.reader';
 export * from './report-definition.repository';
 export * from './fixed-asset.repository';
 export * from './payroll.repository';
+export * from './year-close.repository';

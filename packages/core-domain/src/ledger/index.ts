@@ -4,3 +4,4 @@ export * from './roles';
 export * from './money-postings';
 export * from './convert';
 export * from './overview-rules';
+export * from './year-close';

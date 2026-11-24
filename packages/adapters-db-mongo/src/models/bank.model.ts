@@ -148,3 +148,4 @@ export const PayrollRulesModel = payrollModel('PayrollRules', COLLECTION_NAMES.P
 export const SalaryTemplateModel = payrollModel('SalaryTemplate', COLLECTION_NAMES.SalaryTemplate);
 export const StatutoryFilingModel = payrollModel('StatutoryFiling', COLLECTION_NAMES.StatutoryFiling);
 export const PayrollAdvanceModel = payrollModel('PayrollAdvance', COLLECTION_NAMES.PayrollAdvance);
+export const YearCloseModel = payrollModel('YearClose', COLLECTION_NAMES.YearClose);

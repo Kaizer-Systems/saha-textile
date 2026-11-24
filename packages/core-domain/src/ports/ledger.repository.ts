@@ -46,6 +46,7 @@ export interface GeneralLedgerRepository {
 		locationIds: readonly string[],
 	): Promise<StatementLine[]>;
 	/** Debit minus credit of every ledger up to and including a day (Q1 balances), at some locations (all when empty). */
+	/** Year-closing entries (T3) never count here, so every report reads a closed year as it was. */
 	balancesAt(day: string, locationIds: readonly string[]): Promise<Record<string, number>>;
 	/** Vouchers set to undo themselves on or before a day and not yet reversed (Q3 reversal date). */
 	dueReversals(day: string): Promise<JournalVoucher[]>;
@@ -93,4 +94,22 @@ export interface GstReturnRepository {
 export interface MoneyLandingRepository {
 	get(): Promise<import('@saha-textile/contracts').MoneyLanding>;
 	save(landing: import('@saha-textile/contracts').MoneyLanding, expectedUpdatedAt: string | null): Promise<void>;
+}
+
+/** T3: a financial year's close, one record per year (`2026-27`). */
+export interface YearCloseRecord {
+	year: string;
+	accrualsConfirmedBy: string | null;
+	accrualsConfirmedAt: string | null;
+	suspenseNote: string | null;
+	closingVoucherId: string | null;
+	profitPaise: number | null;
+	closedBy: string | null;
+	closedAt: string | null;
+	updatedAt: string;
+}
+
+export interface YearCloseRepository {
+	get(year: string): Promise<YearCloseRecord | null>;
+	save(record: YearCloseRecord): Promise<void>;
 }

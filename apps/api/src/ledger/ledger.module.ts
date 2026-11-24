@@ -17,6 +17,7 @@ import { MoneyLandingController, MoneyLandingService } from './money-landing';
 import { ReportPreviewController, ReportPreviewService } from './report-preview';
 import { RolesController, RolesService } from './roles';
 import { TemplateUpdatesController, TemplateUpdatesService } from './template-updates';
+import { YearCloseController, YearCloseService } from './year-close';
 
 /** The general ledger (accounts brief Q, T, D10): later documents post through LedgerService.post. */
 @Module({
@@ -33,6 +34,7 @@ import { TemplateUpdatesController, TemplateUpdatesService } from './template-up
 		TemplateUpdatesController,
 		AccountsListsController,
 		AccountsOverviewController,
+		YearCloseController,
 	],
 	providers: [
 		LedgerService,
@@ -47,6 +49,7 @@ import { TemplateUpdatesController, TemplateUpdatesService } from './template-up
 		AccountsListsService,
 		AccountsPrints,
 		AccountsOverviewService,
+		YearCloseService,
 	],
 	exports: [LedgerService, EditLogService, MoneyLandingService, BooksPostingService],
 })

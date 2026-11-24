@@ -107,7 +107,7 @@ export class ReportBuilderService {
 			read += found.items.length;
 			if (found.total > MAX_VOUCHERS) throw refuse('report_too_large');
 			for (const voucher of found.items)
-				for (const line of voucher.lines) {
+				for (const line of voucher.source?.type === 'yearClose' ? [] : voucher.lines) {
 					if (!places.has(line.locationId)) continue;
 					const ledger = ledgers.get(line.ledgerId);
 					rows.push({

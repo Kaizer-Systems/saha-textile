@@ -513,3 +513,52 @@ export type ConvertWrite = z.infer<typeof ConvertWrite>;
 
 export const ConvertResult = z.object({ voucherId: Id.nullable(), months: z.number().int().nonnegative() });
 export type ConvertResult = z.infer<typeof ConvertResult>;
+
+/** T3: closing a financial year. */
+export const YearCloseCheckKey = z.enum([
+	'cash',
+	'banks',
+	'stock_count',
+	'transfers',
+	'depreciation',
+	'payroll',
+	'gst',
+	'suspense',
+	'accruals',
+	'closing',
+]);
+export type YearCloseCheckKey = z.infer<typeof YearCloseCheckKey>;
+
+export const YearCloseCheck = z.object({
+	key: YearCloseCheckKey,
+	state: z.enum(['ok', 'attention', 'warning', 'not_in_use']),
+	count: z.number().int(),
+	of: z.number().int().nullable(),
+	amountPaise: z.number().int().nullable(),
+});
+export type YearCloseCheck = z.infer<typeof YearCloseCheck>;
+
+export const YearCloseView = z.object({
+	year: z.string(),
+	from: IsoDate,
+	to: IsoDate,
+	checks: z.array(YearCloseCheck),
+	done: z.number().int(),
+	/** Whether the closing entries, and the close itself, may go ahead now. */
+	canPostClosing: z.boolean(),
+	canClose: z.boolean(),
+	closingVoucherId: Id.nullable(),
+	profitPaise: z.number().int().nullable(),
+	suspenseNote: z.string().nullable(),
+	accrualsConfirmedAt: IsoDateTime.nullable(),
+	closedAt: IsoDateTime.nullable(),
+	closedBy: Id.nullable(),
+});
+export type YearCloseView = z.infer<typeof YearCloseView>;
+
+/** T3 actions: confirm accruals and prepaid expenses are in, or carry what is left in suspense with a note. */
+export const YearCloseConfirm = z.object({
+	accruals: z.boolean().default(false),
+	suspenseNote: z.string().trim().max(300).nullable().default(null),
+});
+export type YearCloseConfirm = z.infer<typeof YearCloseConfirm>;

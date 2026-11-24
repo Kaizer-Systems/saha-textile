@@ -142,6 +142,8 @@ export class MongoGeneralLedgerRepository implements GeneralLedgerRepository {
 				kind: voucher.kind,
 				date: voucher.date,
 				voucherNarration: voucher.narration,
+				// T3: year-closing lines show on ledger statements but never count in balances.
+				...(voucher.source?.type === 'yearClose' ? { closing: true } : {}),
 				...line,
 			})),
 			{ session, ordered: true },
@@ -224,7 +226,7 @@ export class MongoGeneralLedgerRepository implements GeneralLedgerRepository {
 
 	async balancesAt(day: string, locationIds: readonly string[]): Promise<Record<string, number>> {
 		const rows = await JournalLineModel.aggregate<{ _id: string; debit: number; credit: number }>([
-			{ $match: { date: { $lte: day }, ...locationFilter(locationIds) } },
+			{ $match: { date: { $lte: day }, closing: { $ne: true }, ...locationFilter(locationIds) } },
 			{ $group: { _id: '$ledgerId', debit: { $sum: '$debitPaise' }, credit: { $sum: '$creditPaise' } } },
 		]).exec();
 		return Object.fromEntries(rows.map((row) => [row._id, row.debit - row.credit]));

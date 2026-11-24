@@ -187,6 +187,8 @@ export const COLLECTION_NAMES = {
 	SalaryTemplate: 'salaryTemplates',
 	StatutoryFiling: 'statutoryFilings',
 	PayrollAdvance: 'payrollAdvances',
+	/** A financial year's close: checks confirmed, the closing voucher, who closed it (accounts brief T3). */
+	YearClose: 'yearCloses',
 	/** Stock split by location (accounts brief F4). */
 	LocationStock: 'locationStock',
 	/** Settings › Document formats (bundle builder brief F, 2026-11-22): one active format per document. */
@@ -358,6 +360,7 @@ export const GRAPH_RECONCILIATION_OWED = [
 	'salaryTemplates',
 	'statutoryFilings',
 	'payrollAdvances',
+	'yearCloses',
 ] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */

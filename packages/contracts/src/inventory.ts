@@ -584,6 +584,18 @@ export const StockCount = z.object({
 	postedAt: IsoDateTime.nullable(),
 	postedBy: Id.nullable(),
 	approvalRequestId: Id.nullable(),
+	/**
+	 * What posting it made in the books (accounts brief D5): the stock adjustment number, a journal voucher per item
+	 * that differed, and the input tax taken back on shortages (s.17(5)(h)). Null before posting, or with no books.
+	 */
+	posting: z
+		.object({
+			adjustmentNumber: z.string(),
+			journalNumbers: z.array(z.string()),
+			itcReversedINR: z.number().nonnegative(),
+		})
+		.nullable()
+		.default(null),
 	updatedBy: Id.nullable().default(null),
 	version: z.number().int(),
 });

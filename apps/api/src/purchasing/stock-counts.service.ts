@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import type {
 	AdjustmentRequest,
 	StockCount,
@@ -21,6 +21,7 @@ import {
 	fifoDraw,
 	fiscalYearOf,
 	formatDocumentNumber,
+	formatQuantity,
 	formatRupees,
 } from '@saha-textile/core-domain';
 
@@ -32,6 +33,7 @@ import {
 	STOCK_READ_REPOSITORY,
 } from '../infra/tokens';
 import { PurchasingSupport, actorOf, canSeeCost, holds, missing, refuse } from './purchasing-support';
+import { StockAdjustmentBooks } from './stock-adjustment-books';
 import { StockWriter } from './stock-writer';
 
 /** How many times a counter's save is merged and retried when another phone saved first. */
@@ -52,6 +54,8 @@ export class StockCountsService {
 		@Inject(NUMBER_ALLOCATOR) private readonly numbers: NumberAllocatorPort,
 		private readonly writer: StockWriter,
 		private readonly support: PurchasingSupport,
+		/** D5: a count's differences take a stock adjustment number and go to the books like any adjustment. */
+		@Optional() @Inject(StockAdjustmentBooks) private readonly adjustmentBooks: StockAdjustmentBooks | null = null,
 	) {}
 
 	private async load(id: string, context?: TransactionContext): Promise<StockCount> {
@@ -98,6 +102,7 @@ export class StockCountsService {
 			blind: body.blind,
 			counterIds: body.counterIds,
 			counterNames: body.counterIds.map((id) => names.get(id) ?? 'Someone'),
+			posting: null,
 			status: 'counting',
 			startedAt: now,
 			startedBy: actor,
@@ -352,7 +357,16 @@ export class StockCountsService {
 						action: 'stock.count.request',
 						entityType: 'stock_count',
 						entityId: count.id,
-						text: `${name} asked to post count ${count.number} (${count.label}): ${count.totals.skus} SKUs, ${count.totals.differences} differences, net ${count.totals.netUnits >= 0 ? '+' : ''}${count.totals.netUnits}${count.totals.netValueINR !== null ? `, ${formatRupees(count.totals.netValueINR)} at cost` : ''}.`,
+						text: countAuditText({
+							who: name,
+							verb: 'asked to post',
+							count,
+							at: new Date().toISOString(),
+							notCounted: count.lines.filter((line) => line.counted === null).length,
+							approver: null,
+							selfApproved: false,
+							posting: null,
+						}),
 					},
 					context,
 				);
@@ -392,8 +406,11 @@ export class StockCountsService {
 		);
 		const notCounted = fresh.lines.filter((line) => line.counted === null).length;
 		const now = new Date().toISOString();
+		const books = differing.length ? this.adjustmentBooks : null;
 		const posted = await this.support
 			.inTransaction(async (context) => {
+				// The stock adjustment number is taken first, so the stock rows and the vouchers carry it.
+				const adjustmentNumber = books ? await books.number(context, new Date(now)) : null;
 				for (const line of differing) {
 					const difference = line.difference;
 					await this.writer.apply(
@@ -407,7 +424,7 @@ export class StockCountsService {
 							note: line.note ?? `Count ${fresh.number}`,
 							referenceType: 'stock_count',
 							referenceId: fresh.id,
-							referenceNumber: fresh.number,
+							referenceNumber: adjustmentNumber ?? fresh.number,
 							actor,
 							approver,
 							source: 'stock_count',
@@ -415,25 +432,59 @@ export class StockCountsService {
 						context,
 					);
 				}
+				// Each item that differed is its own voucher: its cost, and on a shortage the input tax taken back.
+				let posting: StockCount['posting'] = null;
+				if (books && adjustmentNumber) {
+					const facts = await this.stock.items(differing.map((line) => line.variantId));
+					const journalNumbers: string[] = [];
+					let itcPaise = 0;
+					for (const line of differing) {
+						const done = await books.posted(
+							{
+								id: `${fresh.id}:${line.variantId}`,
+								action: line.difference < 0 ? 'remove' : 'add',
+								quantity: Math.abs(line.difference),
+								reasonCode: 'manual_recount_correction',
+								outcome: line.difference < 0 ? 'writtenOff' : null,
+								hsnCode: facts.get(line.variantId)?.hsnCode ?? null,
+								valueINR: Math.abs(line.valueINR as number),
+							},
+							adjustmentNumber,
+							context,
+							approver ?? actor,
+							new Date(now),
+						);
+						if (done.journalNumber) journalNumbers.push(done.journalNumber);
+						itcPaise += Math.round((done.itcReversedINR ?? 0) * 100);
+					}
+					posting = { adjustmentNumber, journalNumbers, itcReversedINR: itcPaise / 100 };
+				}
 				const next: StockCount = {
 					...fresh,
 					status: 'posted',
 					postedAt: now,
 					postedBy: approver ?? actor,
+					posting,
 					updatedBy: actor,
 				};
 				const version = await this.counts.save(next, fresh.version, context);
 				if (alongside) await alongside(context);
-				const units = describeUnits(
-					differing.map((line) => ({ units: Math.abs(line.difference), soldBy: line.soldBy })),
-				);
 				await this.support.record(
 					{
 						actor: approver ?? actor,
 						action: 'stock.count.post',
 						entityType: 'stock_count',
 						entityId: fresh.id,
-						text: `${await this.support.nameOf(approver ?? actor)} posted count ${fresh.number} (${fresh.label}): ${fresh.totals.skus} SKUs, ${fresh.totals.differences} differences (${units || 'none'}), net ${fresh.totals.netUnits >= 0 ? '+' : ''}${fresh.totals.netUnits}, ${formatRupees(fresh.totals.netValueINR ?? 0)} at cost.${notCounted ? ` ${notCounted} not counted stay as they are.` : ''}${selfApproved ? ' Self-approved.' : ''}`,
+						text: countAuditText({
+							who: await this.support.nameOf(approver ?? actor),
+							verb: 'posted',
+							count: fresh,
+							at: now,
+							notCounted,
+							approver: approver ? await this.support.nameOf(approver) : null,
+							selfApproved,
+							posting,
+						}),
 					},
 					context,
 				);
@@ -488,4 +539,79 @@ function totalsOf(lines: readonly StockCountLine[], seeCost: boolean): StockCoun
 		netUnits: differing.reduce((sum, line) => sum + line.difference, 0),
 		netValueINR: value(differing),
 	};
+}
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+const signed = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n)}`;
+
+/** "24 Nov 2026, 10:40 am IST". */
+function istStamp(iso: string): string {
+	const date = new Date(iso);
+	const day = date.toLocaleDateString('en-IN', {
+		timeZone: 'Asia/Kolkata',
+		day: 'numeric',
+		month: 'short',
+		year: 'numeric',
+	});
+	const time = date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' });
+	return `${day}, ${time.toLowerCase()} IST`;
+}
+
+/**
+ * The edit log's line for a count asked to post or posted, as an auditor reads it (SA 501 physical verification; the
+ * Companies (Accounts) Rules' audit trail): who, when, how many counted, the shortages and the excesses each in pieces
+ * and metres kept apart and at cost (a net alone hides differences that cancel out), the net, the stock adjustment and
+ * journal numbers that trace it to the ledger, the input tax taken back, what was not counted, and who counted and
+ * approved. With nothing different it says so in words.
+ */
+export function countAuditText(input: {
+	who: string;
+	verb: 'asked to post' | 'posted';
+	count: Pick<StockCount, 'number' | 'label' | 'lines' | 'counterNames'>;
+	at: string;
+	notCounted: number;
+	approver: string | null;
+	selfApproved: boolean;
+	posting: StockCount['posting'];
+}): string {
+	const { count } = input;
+	// Each item that differs, once: its difference (pieces, or tenths of a metre) and its value at cost when seen.
+	const differing = count.lines.flatMap((line) =>
+		line.difference ? [{ diff: line.difference, soldBy: line.soldBy, value: line.valueINR }] : [],
+	);
+	const counted = count.lines.length - input.notCounted;
+	const units = (lines: typeof differing) =>
+		describeUnits(lines.map((line) => ({ units: Math.abs(line.diff), soldBy: line.soldBy })));
+	const priced = differing.every((line) => line.value !== null);
+	const valueOf = (lines: typeof differing) =>
+		Math.round(lines.reduce((sum, line) => sum + (line.value as number), 0) * 100) / 100;
+	const cost = (lines: typeof differing) => (priced ? ` (${formatRupees(Math.abs(valueOf(lines)))} at cost)` : '');
+	let text = `${input.who} ${input.verb} count ${count.number} (${count.label}), ${istStamp(input.at)}: ${plural(counted, 'SKU', 'SKUs')} counted`;
+	if (!differing.length) text += `, no differences${input.verb === 'posted' ? '; nothing adjusted' : ''}.`;
+	else {
+		const short = differing.filter((line) => line.diff < 0);
+		const over = differing.filter((line) => line.diff > 0);
+		const parts = [
+			...(short.length ? [`short ${units(short)}${cost(short)}`] : []),
+			...(over.length ? [`over ${units(over)}${cost(over)}`] : []),
+		];
+		const pieces = differing.filter((l) => l.soldBy === 'piece').reduce((sum, l) => sum + l.diff, 0);
+		const tenths = differing.filter((l) => l.soldBy === 'metre').reduce((sum, l) => sum + l.diff, 0);
+		const net = [
+			...(pieces || !tenths ? [`${signed(pieces)} ${Math.abs(pieces) === 1 ? 'piece' : 'pieces'}`] : []),
+			...(tenths ? [`${tenths > 0 ? '+' : '−'}${formatQuantity(Math.abs(tenths), 'metre')}`] : []),
+		].join(' and ');
+		const netValue = valueOf(differing);
+		const netCost = priced
+			? `, ${netValue > 0 ? '+' : netValue < 0 ? '−' : ''}${formatRupees(Math.abs(netValue))} at cost`
+			: '';
+		text += `, ${plural(differing.length, 'differs', 'differ')}: ${parts.join(', ')}; net ${net}${netCost}.`;
+	}
+	if (input.posting)
+		text += ` Stock adjustment ${input.posting.adjustmentNumber}${input.posting.journalNumbers.length ? `, ${plural(input.posting.journalNumbers.length, 'journal', 'journals')} ${input.posting.journalNumbers.join(', ')}` : ''}${input.posting.itcReversedINR ? `; input tax reversed ${formatRupees(input.posting.itcReversedINR)} (s.17(5)(h))` : ''}.`;
+	if (input.notCounted)
+		text += ` ${plural(input.notCounted, 'item', 'items')} not counted ${input.notCounted === 1 ? 'stays as it is' : 'stay as they are'}.`;
+	text += ` Counted by ${count.counterNames.join(', ') || 'the person posting'}${input.approver ? `; approved by ${input.approver}` : ''}.`;
+	if (input.selfApproved) text += ' Self-approved.';
+	return text;
 }

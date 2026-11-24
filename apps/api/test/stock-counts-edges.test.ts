@@ -380,13 +380,19 @@ describe('stock counts: posting (c03)', () => {
 			{ session: 'tx' },
 		);
 		expect(support.record).toHaveBeenCalledWith(
-			expect.objectContaining({ text: expect.stringContaining('net -1, ₹-100 at cost.') }),
+			expect.objectContaining({
+				text: expect.stringContaining(
+					'1 SKU counted, 1 differs: short 1 piece (₹100 at cost); net −1 piece, −₹100 at cost.',
+				),
+			}),
 			{ session: 'tx' },
 		);
 		const found = build({ found: count({ status: 'review', lines: [line({ counted: 6 })] }) });
 		await found.service.post('sc_1', reviewer);
 		expect(found.support.record).toHaveBeenCalledWith(
-			expect.objectContaining({ text: expect.stringContaining('1 differences, net +1, ₹0 at cost.') }),
+			expect.objectContaining({
+				text: expect.stringContaining('1 differs: over 1 piece (₹0 at cost); net +1 piece, ₹0 at cost.'),
+			}),
 			{ session: 'tx' },
 		);
 	});
@@ -412,7 +418,9 @@ describe('stock counts: posting (c03)', () => {
 		expect(writer.refreshShop).toHaveBeenCalledWith(['p1', 'p2']);
 		expect(support.record).toHaveBeenLastCalledWith(
 			expect.objectContaining({
-				text: expect.stringMatching(/net \+1, ₹0 at cost\. 1 not counted stay as they are\. Self-approved\.$/),
+				text: expect.stringMatching(
+					/short 1 piece \(₹0 at cost\), over 2 pieces \(₹0 at cost\); net \+1 piece, ₹0 at cost\. 1 item not counted stays as it is\. Counted by the person posting; approved by Rina\. Self-approved\.$/,
+				),
 			}),
 			{ session: 'tx' },
 		);
@@ -442,8 +450,10 @@ describe('stock counts: applying an approved count', () => {
 		expect(support.record).toHaveBeenLastCalledWith(
 			expect.objectContaining({
 				actor: 'adm_2',
-				// "(0 pieces)", not "(none)": describeUnits([]) never answers '' (reported to the coverage chat).
-				text: 'Rina posted count SC/26-27/000001 (Rack 3): 1 SKUs, 0 differences (0 pieces), net +0, ₹0 at cost.',
+				// Nothing differing is said in words (owner, 24 Nov: audit wording to a CA's standard).
+				text: expect.stringMatching(
+					/^Rina posted count SC\/26-27\/000001 \(Rack 3\), \d+ \w+ \d{4}, .+ IST: 1 SKU counted, no differences; nothing adjusted\. Counted by the person posting\.$/,
+				),
 			}),
 			{ session: 'tx' },
 		);
@@ -455,7 +465,9 @@ describe('stock counts: applying an approved count', () => {
 		expect(short.support.record).toHaveBeenLastCalledWith(
 			expect.objectContaining({
 				actor: 'adm_1',
-				text: expect.stringContaining('(2 pieces), net -2, ₹0 at cost.'),
+				text: expect.stringContaining(
+					'short 2 pieces (₹0 at cost); net −2 pieces, ₹0 at cost. Counted by the person posting; approved by Rina.',
+				),
 			}),
 			{ session: 'tx' },
 		);

@@ -67,13 +67,14 @@ function acrossCart(
 ): Map<string, number> {
 	const firsts = lines.map((line) => sourceFor(result.first, line));
 	let pick = 0;
+	// `firsts` holds one amount per line, so `pick` and `i` always name one of them.
 	firsts.forEach((value, i) => {
-		if (value > (firsts[pick] ?? 0)) pick = i;
+		if (value > (firsts[pick] as number)) pick = i;
 	});
 	return new Map(
 		lines.map((line, i) => {
 			const further = sourceFor(result.further, line);
-			const amount = i === pick ? (firsts[i] ?? 0) + further * (line.units - 1) : further * line.units;
+			const amount = i === pick ? (firsts[i] as number) + further * (line.units - 1) : further * line.units;
 			return [line.lineId, amount];
 		}),
 	);
@@ -92,7 +93,7 @@ export function lineFigures(
 	let countsUnits = false;
 	for (const entry of trace) {
 		if (entry.lineIds.length === 1) {
-			add(entry.lineIds[0] ?? '', entry.amountINR);
+			add(entry.lineIds[0] as string, entry.amountINR);
 			continue;
 		}
 		const result = resultOf(body, entry);
@@ -109,8 +110,9 @@ export function lineFigures(
 	if (countsUnits) {
 		let next = 1;
 		for (const line of lines) {
-			const current = figures.get(line.lineId);
-			if (current && line.units > 0) current.units = { from: next, to: next + line.units - 1 };
+			// Every line has its figures: the map was made from these lines.
+			const current = figures.get(line.lineId) as TryLineFigures;
+			if (line.units > 0) current.units = { from: next, to: next + line.units - 1 };
 			next += line.units;
 		}
 	}
@@ -212,18 +214,20 @@ export function tryExplanation(
 	const lineStep = body.steps.find((step) => step.scope === 'eachLine');
 	if (perLine.length > 1 && lineStep && lineStep.combine !== 'sum') {
 		const amounts = perLine.map((entry) => entry.amountINR).sort((a, b) => b - a);
-		const kept = lineStep.combine === 'highest' ? amounts[0] : amounts[amounts.length - 1];
+		// More than one line here, so both ends of the list are amounts.
+		const kept = (lineStep.combine === 'highest' ? amounts[0] : amounts[amounts.length - 1]) as number;
 		const dropped = amounts.filter((_, i) => i !== (lineStep.combine === 'highest' ? 0 : amounts.length - 1));
 		const key = `ship_explain_${lineStep.combine}_${dropped.length === 1 ? 'one' : 'many'}`;
-		sentences.push(t(key, { kept: rupees(kept ?? 0), dropped: dropped.map(rupees).join(', ') }));
+		sentences.push(t(key, { kept: rupees(kept), dropped: dropped.map(rupees).join(', ') }));
 	} else {
 		for (const entry of perLine) {
-			const lineId = entry.lineIds[0] ?? '';
+			// A per-line entry names exactly one line.
+			const lineId = entry.lineIds[0] as string;
 			const line = lines.find((l) => l.lineId === lineId);
 			if (!line) continue;
 			sentences.push(
 				t('ship_explain_line', {
-					n: number.get(lineId) ?? 0,
+					n: number.get(lineId) as number,
 					state: lineState(t, line, showPercent),
 					result: entryWords(t, entry),
 				}),

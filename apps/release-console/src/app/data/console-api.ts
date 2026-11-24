@@ -167,9 +167,10 @@ const productScreensSchema = z.record(
  * it is the page's own address. While developing (`pnpm console`), the API runs beside Vite on the
  * page's port plus 10 (4400 → 4410), on 127.0.0.1. Every answer is checked against the shared contracts.
  */
-export const CONSOLE_API = import.meta.env.DEV
-	? `http://127.0.0.1:${Number(globalThis.location?.port || 4400) + 10}`
-	: (globalThis.location?.origin ?? '');
+export function consoleApiBase(dev: boolean, location: { port: string; origin: string } | undefined): string {
+	return dev ? `http://127.0.0.1:${Number(location?.port || 4400) + 10}` : (location?.origin ?? '');
+}
+export const CONSOLE_API = consoleApiBase(import.meta.env.DEV, globalThis.location);
 
 /** An answer the API refused, with its reason. */
 /** Which run to read: a CI run's id or this Mac's, and the change whose lines to mark ('commit' or a branch). */

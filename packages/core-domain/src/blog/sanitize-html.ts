@@ -108,12 +108,15 @@ const safeSrc = (value: string): boolean => {
 };
 
 function attributesFor(tag: string, raw: string): string | typeof DROP {
-	const allowed = ALLOWED[tag] ?? [];
+	// Called only for tags ALLOWED has.
+	const allowed = ALLOWED[tag] as readonly string[];
 	if (!allowed.length) return '';
 	const kept: string[] = [];
 	const seen = new Set<string>();
+	let href = '';
 	for (const match of raw.matchAll(ATTRIBUTE)) {
-		const name = (match[1] ?? '').toLowerCase();
+		// The name group always takes part.
+		const name = (match[1] as string).toLowerCase();
 		if (!allowed.includes(name) || seen.has(name)) continue;
 		const value = decodeAttribute(match[2] ?? match[3] ?? match[4] ?? '').trim();
 		if (name === 'href' && !safeHref(value)) continue;
@@ -125,12 +128,10 @@ function attributesFor(tag: string, raw: string): string | typeof DROP {
 			continue;
 		if (name === 'id' && !/^[a-z][a-z0-9-]{0,63}$/.test(value)) continue;
 		seen.add(name);
+		if (name === 'href') href = value;
 		kept.push(`${name}="${escapeAttribute(value)}"`);
 	}
-	if (tag === 'a' && seen.has('href')) {
-		const href = /href="([^"]*)"/.exec(kept.join(' '))?.[1] ?? '';
-		if (/^https?:/i.test(href)) kept.push('rel="noopener"');
-	}
+	if (tag === 'a' && /^https?:/i.test(href)) kept.push('rel="noopener"');
 	if (tag === 'img' && !seen.has('src')) return DROP;
 	return kept.length ? ` ${kept.join(' ')}` : '';
 }
@@ -139,8 +140,8 @@ function escapeText(text: string): string {
 	let out = '';
 	for (let index = 0; index < text.length; index += 1) {
 		const char = text[index] as string;
-		if (char === '<') out += '&lt;';
-		else if (char === '>') out += '&gt;';
+		// Text never holds '<': the reader stops at every one.
+		if (char === '>') out += '&gt;';
 		else if (char === '&') {
 			const entity = ENTITY.exec(text.slice(index));
 			if (entity) {
@@ -185,7 +186,8 @@ export function sanitizeArticleHtml(input: string): string {
 		}
 		index += match[0].length;
 		const closing = match[1] === '/';
-		const original = (match[2] ?? '').toLowerCase();
+		// The tag-name group always takes part.
+		const original = (match[2] as string).toLowerCase();
 
 		if (dropping) {
 			if (closing && original === dropping) dropping = null;
@@ -201,7 +203,8 @@ export function sanitizeArticleHtml(input: string): string {
 			if (!VOID.has(tag)) out += `</${tag}>`;
 			continue;
 		}
-		const attributes = attributesFor(tag, match[3] ?? '');
+		// The attributes group always takes part (empty when there are none).
+		const attributes = attributesFor(tag, match[3] as string);
 		if (attributes === DROP) continue;
 		out += `<${tag}${attributes}>`;
 	}

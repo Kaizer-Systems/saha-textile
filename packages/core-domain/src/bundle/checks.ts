@@ -123,7 +123,8 @@ function garmentBand(input: CheckInput, now: Date): BundleCheck[] {
 		for (const piece of quote.pieces) {
 			if (!garments.has(piece.key) || named.has(piece.key)) continue;
 			const quantity = Math.max(1, piece.quantity);
-			const share = (shares.get(piece.key) ?? 0) / quantity;
+			// splitShares gives every piece it was handed a share.
+			const share = (shares.get(piece.key) as number) / quantity;
 			const own = piece.todayINR / quantity;
 			if (share <= GARMENT_BAND_INR !== own <= GARMENT_BAND_INR) {
 				named.add(piece.key);

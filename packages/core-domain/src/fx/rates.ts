@@ -84,7 +84,8 @@ export function applyFetchedRates(
 		const existing = byCode.get(code);
 		updated.push({
 			code,
-			symbol: existing?.symbol ?? FX_LAUNCH_SYMBOLS[code as LaunchCode] ?? code,
+			// A code without a row here is a launch currency, and every launch currency has a symbol.
+			symbol: existing?.symbol ?? FX_LAUNCH_SYMBOLS[code as LaunchCode],
 			enabled: existing?.enabled ?? true,
 			rateFromINR: rate,
 			paypalActive: existing?.paypalActive ?? true,

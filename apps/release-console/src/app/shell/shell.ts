@@ -228,7 +228,7 @@ export class Shell {
 		effect(() => {
 			const envs = this.ctx.environments();
 			if (envs.length && !envs.some((e) => e.name === this.state.environment()))
-				this.state.setEnvironment(envs[0]?.name ?? 'local');
+				this.state.setEnvironment((envs[0] as Environment).name);
 		});
 	}
 
@@ -271,9 +271,10 @@ export class Shell {
 
 	/** The icon of a console or project search result, from where it leads. */
 	private linkIcon(link: string[], query: Record<string, string>): string {
-		if (link[0] === '/console') return CONSOLE_PAGE_ICONS[link[1] ?? ''] ?? 'tabler/circle';
+		// Every console page and every settings tab has its own icon (shared/icons.ts).
+		if (link[0] === '/console') return CONSOLE_PAGE_ICONS[link[1] as string] as string;
 		if (link.length > 3) return 'tabler/brand-git';
-		if (link[2] === 'settings' && query['tab']) return SETTINGS_TAB_ICONS[query['tab']] ?? 'tabler/settings';
+		if (link[2] === 'settings' && query['tab']) return SETTINGS_TAB_ICONS[query['tab']] as string;
 		return PROJECT_PAGE_ICONS[link[2] ?? ''] ?? 'tabler/circle';
 	}
 	protected groupIcon(g: MenuGroup): string {

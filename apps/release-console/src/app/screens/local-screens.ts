@@ -699,7 +699,8 @@ export class TailScreen {
 		effect(() => {
 			const names = this.containers();
 			if (!this.container() && names.length)
-				this.container.set(names.find((n) => n.includes('api')) ?? names[0] ?? '');
+				// names is not empty here, so the first name is always there.
+				this.container.set(names.find((n) => n.includes('api')) ?? (names[0] as string));
 		});
 	}
 }
@@ -1446,7 +1447,8 @@ export class DeployScreen {
 			.filter((l) => l.event && (l.event['note'] || l.event['step'] || l.event['status']))
 			.slice(-60)
 			.map((l) => {
-				const e = l.event ?? {};
+				// The filter above keeps only lines with an event.
+				const e = l.event as Record<string, unknown>;
 				const time = String(e['time'] ?? '').slice(11, 19);
 				const status = String(e['status'] ?? '');
 				const text = String(

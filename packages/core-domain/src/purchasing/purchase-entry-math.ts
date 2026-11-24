@@ -117,7 +117,8 @@ export function shareByWeight(amountPaise: number, weights: readonly number[]): 
 		.sort((a, b) => b.remainder - a.remainder || a.index - b.index);
 	for (const { index } of order) {
 		if (left <= 0) break;
-		floors[index] = (floors[index] ?? 0) + 1;
+		// `order` holds the indexes of `raw`, which `floors` matches one for one.
+		floors[index] = (floors[index] as number) + 1;
 		left -= 1;
 	}
 	return floors;
@@ -159,8 +160,9 @@ export function computePurchaseEntry(input: EntryMathInput): EntryMathResult {
 
 	const lines: EntryMathLine[] = base.map((entry, index) => {
 		const { line } = entry;
-		const share = shares[index] ?? 0;
-		const shareTax = shareTaxes[index] ?? 0;
+		// shareByWeight gives one share per weight, and the weights are `base`, line for line.
+		const share = shares[index] as number;
+		const shareTax = shareTaxes[index] as number;
 		const split = input.taxType === 'intra_state' ? splitIntraState(entry.tax) : { cgst: 0, sgst: 0 };
 		const costPaise = input.itcClaimable ? entry.taxable + share : entry.taxable + entry.tax + share + shareTax;
 		const priced = billedUnits(line.quantity, line.soldBy);
@@ -200,10 +202,12 @@ export function computePurchaseEntry(input: EntryMathInput): EntryMathResult {
 	const total = taxable + tax + roundOff;
 	const printed = input.printedTotalINR === null ? null : toPaise(input.printedTotalINR);
 	const difference = printed === null ? 0 : printed - total;
-	const costIntoStock = lines.reduce((sum, line, index) => {
-		const entry = input.lines[index];
-		return sum + (entry ? roundPaise(line.unitCostPerStockUnitINR * 100 * entry.quantity) : 0);
-	}, 0);
+	// `lines` is `input.lines` mapped one for one, so every line has its input.
+	const costIntoStock = lines.reduce(
+		(sum, line, index) =>
+			sum + roundPaise(line.unitCostPerStockUnitINR * 100 * (input.lines[index] as EntryMathLineInput).quantity),
+		0,
+	);
 
 	return {
 		lines,
@@ -230,8 +234,8 @@ export function computePurchaseEntry(input: EntryMathInput): EntryMathResult {
 function entryWarnings(input: EntryMathInput, lines: readonly EntryMathLine[]): EntryMathWarning[] {
 	const warnings: EntryMathWarning[] = [];
 	input.lines.forEach((line, index) => {
-		const math = lines[index];
-		if (!math) return;
+		// `lines` is `input.lines` mapped one for one.
+		const math = lines[index] as EntryMathLine;
 		if (line.disabled) {
 			warnings.push({
 				code: 'disabled_product',

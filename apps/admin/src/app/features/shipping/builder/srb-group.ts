@@ -52,7 +52,8 @@ export class SrbGroup {
 
 	/** "line", "cart", "delivery" or "shopper": the closed picker reads "Line › Is discounted" (brief rb04). */
 	groupOf(field: ShippingConditionField): string {
-		return field.split('.')[0] ?? '';
+		// Every field is "<group>.<name>", so the first part is always there.
+		return field.split('.', 1)[0] as string;
 	}
 
 	operators(field: ShippingConditionField | null): readonly ShippingOperator[] {
@@ -93,8 +94,8 @@ export class SrbGroup {
 	}
 
 	setField(index: number, condition: ShippingCondition, field: ShippingConditionField) {
-		const ops = this.operators(field);
-		const op = ops[0] ?? null;
+		// Every field type has operators; the first is where a new condition starts.
+		const op = this.operators(field)[0] as ShippingOperator;
 		const type = SHIPPING_FIELD_TYPES[field];
 		this.replace(index, { ...condition, field, op, value: type === 'boolean' ? true : null });
 	}

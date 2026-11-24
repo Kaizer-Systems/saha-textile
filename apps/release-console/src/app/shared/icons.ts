@@ -357,7 +357,6 @@ export const ALL_ICONS: string[] = [
  * their icons already in the browser's cache (Iconify keeps them for a week) instead of popping in.
  */
 export function warmIcons(): void {
-	if (typeof fetch !== 'function') return;
 	for (const name of ALL_ICONS)
 		void fetch(`https://api.iconify.design/${name}.svg`, { mode: 'cors', priority: 'low' } as RequestInit).catch(
 			() => undefined,

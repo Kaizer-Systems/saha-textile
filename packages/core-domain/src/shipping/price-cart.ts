@@ -171,7 +171,6 @@ export function priceShipping(input: ShippingPricingInput): ShippingPricingOutco
 	const zone = shippingZoneFor(snapshot.delivery.country, settings.homeCountry);
 	const cart = cartFacts(snapshot);
 	const routes: Record<string, ShippingLineRoute> = {};
-	for (const line of snapshot.lines) routes[line.lineId] = routeShippingLine(line, zone, settings, exceptions);
 
 	const cantShip: Array<{ lineId: string; via: ShippingVia; message: LocalizedText | null }> = [];
 	const problems: ShippingPricingProblem[] = [];
@@ -182,8 +181,8 @@ export function priceShipping(input: ShippingPricingInput): ShippingPricingOutco
 	const noMethod: string[] = [];
 
 	for (const line of snapshot.lines) {
-		const route = routes[line.lineId];
-		if (!route) continue;
+		const route = routeShippingLine(line, zone, settings, exceptions);
+		routes[line.lineId] = route;
 		switch (route.kind) {
 			case 'free':
 				freeLines.push(line.lineId);
@@ -219,10 +218,14 @@ export function priceShipping(input: ShippingPricingInput): ShippingPricingOutco
 			usedFallback: false,
 		});
 	if (courierLines.length > 0) {
-		const method = zone === 'domestic' ? settings.domestic : settings.international;
-		let amount = input.courierQuoteINR ?? 0;
+		// A line goes to the courier only when this zone's method is the courier and a quote came with the cart.
+		const method = (zone === 'domestic' ? settings.domestic : settings.international) as Extract<
+			ShippingSettings['domestic'],
+			{ kind: 'courier' }
+		>;
+		const quote = input.courierQuoteINR as number;
 		// On top of a quote (brief cr01): a percentage of the quote, then a fixed amount.
-		if (method.kind === 'courier') amount += (amount * method.extra.percent) / 100 + method.extra.amountINR;
+		const amount = quote + (quote * method.extra.percent) / 100 + method.extra.amountINR;
 		groups.push({
 			kind: 'courier',
 			ruleSetId: null,
@@ -259,7 +262,8 @@ export function priceShipping(input: ShippingPricingInput): ShippingPricingOutco
 				for (const line of outcome.lines)
 					cantShip.push({
 						lineId: line.lineId,
-						via: routes[line.lineId]?.via ?? { kind: 'siteWide' },
+						// Every line the rule set answers for was routed above.
+						via: (routes[line.lineId] as ShippingLineRoute).via,
 						message: line.message,
 					});
 				break;

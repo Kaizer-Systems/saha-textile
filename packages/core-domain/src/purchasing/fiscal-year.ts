@@ -23,7 +23,8 @@ export function fiscalYearOf(day: string): string {
 /** The short form printed in numbers: `26-27`. */
 export function shortFiscalYear(fiscalYear: string): string {
 	const [start, end] = fiscalYear.split('-');
-	return `${(start ?? '').slice(2)}-${end ?? ''}`;
+	// split always gives a first part, even for text with no dash.
+	return `${(start as string).slice(2)}-${end ?? ''}`;
 }
 
 /**

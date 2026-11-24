@@ -89,27 +89,25 @@ export function conditionIsComplete(condition: BundleRuleCondition): boolean {
 	}
 }
 
+type NumericOperator = 'is' | 'isNot' | 'moreThan' | 'atLeast' | 'lessThan' | 'atMost' | 'between';
+
+/** How each number operator compares; a lookup table, so no operator is left without a test. */
+const NUMERIC_TESTS: Readonly<Record<NumericOperator, (fact: number, value: unknown) => boolean>> = {
+	is: (fact, value) => fact === value,
+	isNot: (fact, value) => fact !== value,
+	moreThan: (fact, value) => fact > (value as number),
+	atLeast: (fact, value) => fact >= (value as number),
+	lessThan: (fact, value) => fact < (value as number),
+	atMost: (fact, value) => fact <= (value as number),
+	between: (fact, value) => {
+		const [low, high] = value as [number, number];
+		return fact >= low && fact <= high;
+	},
+};
+
+/** `op` is a number operator: `conditionIsComplete` admits no other for a number or money fact. */
 function numericHolds(fact: number, op: BundleRuleOperator, value: unknown): boolean {
-	switch (op) {
-		case 'is':
-			return fact === value;
-		case 'isNot':
-			return fact !== value;
-		case 'moreThan':
-			return fact > (value as number);
-		case 'atLeast':
-			return fact >= (value as number);
-		case 'lessThan':
-			return fact < (value as number);
-		case 'atMost':
-			return fact <= (value as number);
-		case 'between': {
-			const [low, high] = value as [number, number];
-			return fact >= low && fact <= high;
-		}
-		default:
-			return false;
-	}
+	return NUMERIC_TESTS[op as NumericOperator](fact, value);
 }
 
 /** Whether one condition holds for these facts. An unfinished condition never holds. */
@@ -129,7 +127,8 @@ export function bundleConditionHolds(condition: BundleRuleCondition, facts: Bund
 			return facts.anyPieceOnSale === value;
 		case 'level.pick':
 		case 'extras.has': {
-			const chosen = fact === 'extras.has' ? facts.extras : (facts.picks[condition.level ?? ''] ?? []);
+			// A complete level.pick condition always names its level (conditionIsComplete).
+			const chosen = fact === 'extras.has' ? facts.extras : (facts.picks[condition.level as string] ?? []);
 			const hit = (value as string[]).some((key) => chosen.includes(key));
 			return op === 'isOneOf' ? hit : !hit;
 		}

@@ -24,9 +24,10 @@ const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 
 
 /** 0–99 in words. */
 function belowHundred(n: number): string {
-	if (n < 20) return ONES[n] ?? '';
-	const ten = TENS[Math.floor(n / 10)] ?? '';
-	const one = ONES[n % 10] ?? '';
+	// n is a whole number 0–99, so every index below is in its table.
+	if (n < 20) return ONES[n] as string;
+	const ten = TENS[Math.floor(n / 10)] as string;
+	const one = ONES[n % 10] as string;
 	return one ? `${ten} ${one}` : ten;
 }
 

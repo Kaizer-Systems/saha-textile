@@ -55,7 +55,8 @@ export function intlLocale(locale: string): string {
  */
 export function languageName(code: string): string {
 	try {
-		return new Intl.DisplayNames([intlLocale(code)], { type: 'language' }).of(code) ?? code;
+		// With the default fallback ('code'), `of` answers every well-formed code; a malformed one throws.
+		return new Intl.DisplayNames([intlLocale(code)], { type: 'language' }).of(code) as string;
 	} catch {
 		return code;
 	}

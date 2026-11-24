@@ -145,10 +145,8 @@ export function onHandValue(layers: readonly CostLayerFact[], onHand: number): {
 export function oldestPieceDays(layers: readonly CostLayerFact[], today: string): number | null {
 	const open = layers.filter((layer) => layer.quantityRemaining > 0);
 	if (open.length === 0) return null;
-	const oldest = open.reduce(
-		(first, layer) => (layer.receivedAt < first ? layer.receivedAt : first),
-		open[0]?.receivedAt ?? today,
-	);
+	// At least one layer is open here, so the dates reduce without a starting value.
+	const oldest = open.map((layer) => layer.receivedAt).reduce((first, at) => (at < first ? at : first));
 	return Math.max(0, daysBetween(oldest.slice(0, 10), today));
 }
 

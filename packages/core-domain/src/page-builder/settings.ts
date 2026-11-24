@@ -100,4 +100,5 @@ export function comingUp(
 
 /** When a row next changes what shows: the end of a switch showing now, the start of one still to come. */
 const nextMoment = (row: ComingUpRow): number =>
-	Date.parse(row.state === 'showing' ? (row.until ?? row.from) : row.from);
+	// A switch showing now is listed only while it has an end (comingUp).
+	Date.parse(row.state === 'showing' ? (row.until as string) : row.from);

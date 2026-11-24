@@ -54,7 +54,8 @@ const part = (name: string): string => name.replace(/[\\/]+/g, '-').trim() || 'u
  */
 export function zipEntryName(asset: Pick<MediaAsset, 'displayName' | 'slug' | 'originalStorageKey'>): string {
 	const name = part(asset.displayName ?? asset.slug);
-	const file = (asset.originalStorageKey ?? '').split('/').pop() ?? '';
+	// split always gives a last part.
+	const file = (asset.originalStorageKey ?? '').split('/').pop() as string;
 	const dot = file.lastIndexOf('.');
 	const ending = dot > 0 ? file.slice(dot).toLowerCase() : '';
 	return ending && !name.toLowerCase().endsWith(ending) ? `${name}${ending}` : name;
@@ -107,13 +108,14 @@ export async function zipContents(
 		const inside = [...live.values()].filter((folder) => chainOf(folder).every((id) => live.has(id)));
 		const pathOf = (folder: MediaFolder): string =>
 			chainOf(folder)
-				.map((id) => part(live.get(id)?.name ?? ''))
+				// Every id in a chain inside is in `live` (that is what `inside` checks).
+				.map((id) => part((live.get(id) as MediaFolder).name))
 				.join('/');
 		const files = (await deps.browse.listInFolders(inside.map((folder) => folder.id))).filter(takes);
 		const holding = new Set<string>();
 		for (const asset of files) {
-			const folder = live.get(asset.folderId ?? '');
-			if (!folder) continue;
+			// listInFolders answers only files in the folders asked for, all of them in `live`.
+			const folder = live.get(asset.folderId as string) as MediaFolder;
 			for (const id of [...folder.ancestors, folder.id]) holding.add(id);
 			const path = unique(`${pathOf(folder)}/${zipEntryName(asset)}`, taken);
 			items.push({ assetId: asset.id, key: asset.originalStorageKey, path, bytes: asset.originalByteSize });
@@ -129,7 +131,7 @@ export async function zipContents(
 		});
 	}
 
-	let name = chosenFolders.length === 1 && !chosenFiles.length ? (chosenFolders[0]?.name ?? topName) : topName;
+	let name = chosenFolders.length === 1 && !chosenFiles.length ? (chosenFolders[0] as MediaFolder).name : topName;
 	if (!(chosenFolders.length === 1 && !chosenFiles.length)) {
 		const parentId = chosenFolders[0]?.parentId ?? chosenFiles[0]?.folderId ?? null;
 		const parent = parentId ? await deps.folders.findById(parentId) : null;

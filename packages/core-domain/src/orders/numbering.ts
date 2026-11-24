@@ -34,7 +34,8 @@ export const isGstDocument = (type: NumberedDocumentType): boolean => GST_TYPES.
 /** `26-27` from `2026-27`. */
 const shortYear = (financialYear: string): string => {
 	const [start, end] = financialYear.split('-');
-	return `${(start ?? '').slice(2)}-${end ?? ''}`;
+	// split always gives a first part, even for text with no dash.
+	return `${(start as string).slice(2)}-${end ?? ''}`;
 };
 
 /** The counter's key: one per series and financial year, or one for ever. */

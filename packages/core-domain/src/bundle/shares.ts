@@ -10,22 +10,19 @@ export function splitShares(
 	const out = new Map<string, number>();
 	if (pieces.length === 0) return out;
 	const totalPaise = Math.round(setPriceINR * 100);
-	const weights = pieces.map((piece) => Math.max(0, piece.weightINR));
-	const weightSum = weights.reduce((sum, w) => sum + w, 0);
-	const raw = weights.map((weight) =>
-		weightSum > 0 ? (totalPaise * weight) / weightSum : totalPaise / pieces.length,
-	);
-	const floored = raw.map(Math.floor);
-	let remainder = totalPaise - floored.reduce((sum, p) => sum + p, 0);
+	const weightSum = pieces.reduce((sum, piece) => sum + Math.max(0, piece.weightINR), 0);
+	const parts = pieces.map((piece) => {
+		const weight = Math.max(0, piece.weightINR);
+		const raw = weightSum > 0 ? (totalPaise * weight) / weightSum : totalPaise / pieces.length;
+		return { key: piece.key, weight, frac: raw - Math.floor(raw), paise: Math.floor(raw) };
+	});
+	let remainder = totalPaise - parts.reduce((sum, part) => sum + part.paise, 0);
 	// Hand out the leftover paise by largest fractional part, ties to the heavier piece.
-	const order = raw
-		.map((value, at) => ({ at, frac: value - Math.floor(value), weight: weights[at] ?? 0 }))
-		.sort((a, b) => b.frac - a.frac || b.weight - a.weight);
-	for (const { at } of order) {
+	for (const part of [...parts].sort((a, b) => b.frac - a.frac || b.weight - a.weight)) {
 		if (remainder <= 0) break;
-		floored[at] = (floored[at] ?? 0) + 1;
+		part.paise += 1;
 		remainder -= 1;
 	}
-	pieces.forEach((piece, at) => out.set(piece.key, (floored[at] ?? 0) / 100));
+	for (const part of parts) out.set(part.key, part.paise / 100);
 	return out;
 }

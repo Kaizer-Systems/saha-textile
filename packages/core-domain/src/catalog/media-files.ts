@@ -175,11 +175,12 @@ export function heicColourProfile(bytes: Uint8Array): Uint8Array | null {
 			bytes[i + 6] === 0x6f &&
 			bytes[i + 7] === 0x66
 		) {
+			// i starts at 4, so the four size bytes before the box name are always there.
 			const size =
-				((bytes[i - 4] ?? 0) << 24) |
-				((bytes[i - 3] ?? 0) << 16) |
-				((bytes[i - 2] ?? 0) << 8) |
-				(bytes[i - 1] ?? 0);
+				((bytes[i - 4] as number) << 24) |
+				((bytes[i - 3] as number) << 16) |
+				((bytes[i - 2] as number) << 8) |
+				(bytes[i - 1] as number);
 			const end = i - 4 + size;
 			if (size > 16 && end <= bytes.length) return bytes.slice(i + 8, end);
 			return null;
@@ -200,7 +201,8 @@ export function withColourProfile(jpeg: Uint8Array, icc: Uint8Array): Uint8Array
 	const kept: Uint8Array[] = [];
 	let at = 2;
 	while (at + 4 <= jpeg.length && jpeg[at] === 0xff && jpeg[at + 1] !== 0xda) {
-		const length = ((jpeg[at + 2] ?? 0) << 8) | (jpeg[at + 3] ?? 0);
+		// The loop runs only while at + 4 bytes are there.
+		const length = ((jpeg[at + 2] as number) << 8) | (jpeg[at + 3] as number);
 		const isIcc = jpeg[at + 1] === 0xe2 && String.fromCharCode(...jpeg.slice(at + 4, at + 15)) === 'ICC_PROFILE';
 		if (!isIcc) kept.push(jpeg.slice(at, at + 2 + length));
 		at += 2 + length;

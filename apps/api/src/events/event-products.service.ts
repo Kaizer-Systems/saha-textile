@@ -192,9 +192,7 @@ export class EventProductsService {
 		for (const product of products) {
 			const term = new Map(
 				product.optionGroups.flatMap((group) =>
-					group.terms.map(
-						(option) => [`${group.attributeCode}:${option.code}`, option.label['en'] ?? ''] as const,
-					),
+					group.terms.map((option) => [`${group.attributeCode}:${option.code}`, option.label.en] as const),
 				),
 			);
 			const own = rows.filter((row) => row.productId === product.id);

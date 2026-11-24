@@ -58,7 +58,8 @@ export type ShopPathTarget =
  */
 export function shopPath(href: string, locales: readonly string[]): string | null {
 	if (!href.startsWith('/') || href.startsWith('//')) return null;
-	let path = href.split(/[?#]/)[0] ?? '';
+	// split always gives a first part.
+	let path = href.split(/[?#]/)[0] as string;
 	path = path.replace(/\/+$/, '');
 	const first = path.split('/')[1] ?? '';
 	if (locales.includes(first)) path = path.slice(first.length + 1);
@@ -167,14 +168,16 @@ export const SECTION_LATER_CODE_KB: Readonly<Record<SectionType, number>> = {
 };
 
 /** Items a section draws when its settings name none: the shop's defaults (YouTube rail, newest blog posts). */
-const DEFAULT_ITEMS: Partial<Record<SectionType, number>> = { youtube_videos: 8, blog_posts: 3 };
+/** Blog posts a section without chosen posts shows (the newest ones). */
+const NEWEST_BLOG_POSTS = 3;
+const DEFAULT_ITEMS: Partial<Record<SectionType, number>> = { youtube_videos: 8, blog_posts: NEWEST_BLOG_POSTS };
 
 const sectionPictures = (section: PageSection): number =>
 	'pieces' in section ? section.pieces.reduce((sum, piece) => sum + piece.pictures.length, 0) : 0;
 
 function sectionItems(section: PageSection): number {
 	if (section.type === 'product_row') return section.cards;
-	if (section.type === 'blog_posts') return section.postIds.length || (DEFAULT_ITEMS.blog_posts ?? 0);
+	if (section.type === 'blog_posts') return section.postIds.length || NEWEST_BLOG_POSTS;
 	return DEFAULT_ITEMS[section.type] ?? 0;
 }
 
@@ -289,7 +292,8 @@ const pictureIds = (sections: readonly PageSection[]): Set<string> => {
  */
 function movedIds(before: readonly string[], after: readonly string[]): Set<string> {
 	const rank = new Map(before.map((id, index) => [id, index]));
-	const seq = after.map((id) => rank.get(id) ?? -1);
+	// `after` holds only ids that `before` has too.
+	const seq = after.map((id) => rank.get(id) as number);
 	// Longest increasing run, with links back to rebuild it.
 	const tails: number[] = [];
 	const back: number[] = new Array<number>(seq.length).fill(-1);

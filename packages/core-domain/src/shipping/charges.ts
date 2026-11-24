@@ -56,7 +56,8 @@ export function resolveShippingCharges(
 		const index = categoryChain.findIndex((c) => (c.shipping?.[key] ?? null) !== null);
 		const node = index >= 0 ? categoryChain[index] : undefined;
 		if (node) {
-			charges[kind] = node.shipping?.[key] ?? shopDefault[kind];
+			// findIndex picked this category because it sets this charge.
+			charges[kind] = node.shipping?.[key] as number;
 			sources[kind] = { from: index === 0 ? 'mainCategory' : 'parentCategory', categoryId: node.id };
 			continue;
 		}

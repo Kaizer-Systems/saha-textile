@@ -57,7 +57,8 @@ export class ShippingSnapshotService {
 		const categoryCache = new Map<string, Category | null>();
 		const category = async (id: string): Promise<Category | null> => {
 			if (!categoryCache.has(id)) categoryCache.set(id, await this.categories.findById(id));
-			return categoryCache.get(id) ?? null;
+			// Set just above for this id, as the category or null.
+			return categoryCache.get(id) as Category | null;
 		};
 
 		const built: ShippingSnapshotLine[] = [];
@@ -173,11 +174,9 @@ function sourceViews(
 	const view = (source: { from: string; categoryId: string | null }): ShippingChargeSourceView => {
 		if (source.from === 'product') return { from: 'product', name: null };
 		if (source.categoryId === null) return { from: 'shopDefault', name: null };
-		const category = chain.find((c) => c.id === source.categoryId);
-		return {
-			from: 'category',
-			name: category ? (category.name['en'] ?? Object.values(category.name)[0] ?? null) : null,
-		};
+		// A category source is always one of the chain's own categories.
+		const category = chain.find((c) => c.id === source.categoryId) as Category;
+		return { from: 'category', name: category.name['en'] ?? Object.values(category.name)[0] ?? null };
 	};
 	return {
 		domestic: view(sources.domestic),

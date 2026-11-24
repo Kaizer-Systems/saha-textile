@@ -37,10 +37,8 @@ export function repositoryMenu(repo: Repository): ConsoleMenu {
 	const own = repo.menus.filter((k) => CONSOLE_MENU.screens[k]);
 	if (own.length)
 		groups.push({ label: repo.name, own: true, subs: [{ label: 'only in this repository', items: own }] });
-	for (const label of ['Ship', 'Watch', 'Run']) {
-		const g = groupOf(label);
-		if (g) groups.push(g);
-	}
+	// The console's own menu data always has these groups, and a screen for every item (console-menu.data.ts).
+	for (const label of ['Ship', 'Watch', 'Run']) groups.push(groupOf(label) as MenuGroup);
 	for (const slot of repo.cloud) {
 		const name = VENDOR_NAMES[slot.vendor];
 		const full = slot.vendor === 'digitalocean' ? groupOf('DigitalOcean') : undefined;
@@ -96,32 +94,27 @@ export function repositoryMenu(repo: Repository): ConsoleMenu {
 			subs: [{ label: null, items: [laterKey(slot.id)] }],
 		});
 	}
-	const governance = groupOf('Governance');
-	if (governance) groups.push(governance);
+	groups.push(groupOf('Governance') as MenuGroup);
 
 	const keys = new Set(['overview', ...groups.flatMap((g) => g.subs.flatMap((s) => s.items))]);
 	const screens: Record<string, ScreenInfo> = {};
-	for (const k of keys) {
-		const s = CONSOLE_MENU.screens[k] ?? extra[k];
-		if (s) screens[k] = s;
-	}
-	// Live deploy's tabs are the repository's environments, not the brief's sample states.
-	const deploy = screens['deploy'];
-	if (deploy)
-		screens['deploy'] = {
-			...deploy,
-			states: Object.fromEntries(repo.environments.map((e) => [e.name, e.label])),
-			captions: Object.fromEntries(
-				repo.environments.map((e) => [
-					e.name,
-					e.cloudId === null
-						? `${e.label}: the local pipeline and stack, run from here`
-						: `${e.label}: deploys run by GitHub Actions with a 10-minute watch and rollback, once its server exists`,
-				]),
-			),
-			partStates: null,
-			offStates: null,
-		};
+	for (const k of keys) screens[k] = (CONSOLE_MENU.screens[k] ?? extra[k]) as ScreenInfo;
+	// Live deploy's tabs are the repository's environments, not the brief's sample states (Ship always has it).
+	const deploy = screens['deploy'] as ScreenInfo;
+	screens['deploy'] = {
+		...deploy,
+		states: Object.fromEntries(repo.environments.map((e) => [e.name, e.label])),
+		captions: Object.fromEntries(
+			repo.environments.map((e) => [
+				e.name,
+				e.cloudId === null
+					? `${e.label}: the local pipeline and stack, run from here`
+					: `${e.label}: deploys run by GitHub Actions with a 10-minute watch and rollback, once its server exists`,
+			]),
+		),
+		partStates: null,
+		offStates: null,
+	};
 	const aliases = Object.fromEntries(Object.entries(CONSOLE_MENU.aliases).filter(([k]) => keys.has(k)));
 	return { menu: groups, aliases, later: CONSOLE_MENU.later.filter((k) => keys.has(k)), screens };
 }

@@ -200,28 +200,23 @@ export const fitsProfileShape = (
 	shape: { width: number; height: number } | null,
 ): boolean => fitsShape(source, shape);
 
+/** The profile each purpose's files were made for, apart from reviews (made once per photo) and brand pictures. */
+const PROFILE_FOR_PURPOSE: Readonly<Record<Exclude<MediaPurpose, 'review' | 'brand'>, string>> = {
+	product: 'product_3x4',
+	category: 'category_3x4',
+	banner: 'banner_keep_shape',
+	blog: 'blog_cover_2x1',
+	store: 'store_photo_4x3',
+	avatar: 'square_1x1',
+	icon: 'square_1x1',
+};
+
 /** The profile today's purpose-based pipeline made a role's files for. Null: made once per photo. */
 const profileForRole = (purpose: MediaPurpose, role: string): string | null => {
 	if (PER_PHOTO_ROLES.has(role) || purpose === 'review') return null;
-	switch (purpose) {
-		case 'product':
-			return 'product_3x4';
-		case 'category':
-			return 'category_3x4';
-		case 'banner':
-			return 'banner_keep_shape';
-		case 'blog':
-			return 'blog_cover_2x1';
-		case 'store':
-			return 'store_photo_4x3';
-		case 'avatar':
-		case 'icon':
-			return 'square_1x1';
-		case 'brand':
-			return role === 'brand_icon' ? 'browser_icon_1x1' : role === 'brand_logo' ? 'logo_keep_shape' : null;
-		default:
-			return null;
-	}
+	if (purpose === 'brand')
+		return role === 'brand_icon' ? 'browser_icon_1x1' : role === 'brand_logo' ? 'logo_keep_shape' : null;
+	return PROFILE_FOR_PURPOSE[purpose];
 };
 
 /** The fill today's pipeline used: white padding for off-shape photos, a crop for avatars, white behind icons. */

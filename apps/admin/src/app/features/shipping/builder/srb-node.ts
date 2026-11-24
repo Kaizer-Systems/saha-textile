@@ -22,6 +22,7 @@ import { SrbGroup, type SrbCategoryOption } from './srb-group';
 import type {
 	ShippingAmountSource,
 	ShippingBand,
+	ShippingBandField,
 	ShippingBandsNode,
 	ShippingChargeKind,
 	ShippingIfNode,
@@ -30,6 +31,17 @@ import type {
 	ShippingResultNode,
 	ShippingStep,
 } from '@saha-textile/contracts';
+
+/** What each band field is measured in: grams, rupees or a count. */
+const BAND_UNITS: Readonly<Record<ShippingBandField, string>> = {
+	'line.quantity': '#',
+	'line.sellingPrice': '₹',
+	'line.chargeableWeight': 'g',
+	'cart.subtotal': '₹',
+	'cart.units': '#',
+	'cart.lines': '#',
+	'cart.chargeableWeight': 'g',
+};
 
 /**
  * One block of the rule builder and everything inside it (brief rb02–rb10): an empty slot with
@@ -100,13 +112,9 @@ export class SrbNode {
 		this.patchBands(node, { bands: [...node.bands, { id: blockId('band'), from, to: null, then: null }] });
 	}
 
-	/** The unit a band field is measured in, for "From (g)" (brief rb10). */
+	/** The unit a band field is measured in, for "From (g)" (brief rb10); a band with no field yet counts. */
 	bandUnit(node: ShippingBandsNode): string {
-		const field = node.field ?? '';
-		if (field.endsWith('chargeableWeight')) return 'g';
-		if (field === 'cart.subtotal' || field.endsWith('sellingPrice') || field.endsWith('mrp')) return '₹';
-		if (field.endsWith('discountPercent')) return '%';
-		return '#';
+		return node.field ? BAND_UNITS[node.field] : '#';
 	}
 
 	/** A band whose charge is a plain amount shows just the ₹ box in its row (brief rb10). */
@@ -212,7 +220,8 @@ export class SrbNode {
 	/** A language's name in its own script (English, বাংলা), whatever the admin's language. */
 	languageName(code: string): string {
 		try {
-			return new Intl.DisplayNames([code], { type: 'language' }).of(code) ?? code;
+			// With the default fallback ('code'), of() answers a name or the code itself, never undefined.
+			return new Intl.DisplayNames([code], { type: 'language' }).of(code) as string;
 		} catch {
 			return code;
 		}

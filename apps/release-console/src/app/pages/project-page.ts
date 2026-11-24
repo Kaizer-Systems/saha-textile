@@ -506,13 +506,14 @@ export class ProjectPage {
 
 	protected readonly title = computed(() => {
 		if (this.page() === 'settings')
-			return SETTINGS_TABS.find(([k]) => k === this.settingsTab())?.[1] ?? 'Connections';
+			// settingsTab() is always one of the tabs.
+			return (SETTINGS_TABS.find(([k]) => k === this.settingsTab()) as [string, string])[1];
 		if (this.page() === 'overview') return 'Project overview';
 		return PROJECT_PAGES.find(([k]) => k === this.page())?.[1] ?? 'Project overview';
 	});
 	protected readonly settingsTab = computed(() => {
 		const t = this.tab();
-		return SETTINGS_TABS.some(([k]) => k === t) ? (t ?? 'connections') : 'connections';
+		return SETTINGS_TABS.some(([k]) => k === t) ? (t as string) : 'connections';
 	});
 
 	protected readonly attention = injectQuery(() => ({
@@ -548,7 +549,8 @@ export class ProjectPage {
 	protected readonly envIcon = environmentIcon;
 	protected readonly headIcon = computed(() =>
 		this.page() === 'settings'
-			? (SETTINGS_TAB_ICONS[this.settingsTab()] ?? 'tabler/plug-connected')
+			? // Every settings tab has an icon.
+				(SETTINGS_TAB_ICONS[this.settingsTab()] as string)
 			: (PROJECT_PAGE_ICONS[this.page()] ?? 'tabler/layout-dashboard'),
 	);
 	/** What an Attention row is about: a key, a pipeline or an approval. */

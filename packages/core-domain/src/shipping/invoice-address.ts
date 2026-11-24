@@ -57,13 +57,14 @@ export function isCompleteIndianAddress(address: Partial<InvoiceAddressLike> | n
 	return missingInvoiceFields(address).length === 0;
 }
 
+// Only ever called for a complete address (isCompleteIndianAddress), so every field read here is filled.
 const asHome = (address: Partial<InvoiceAddressLike>, homeCountry: string): InvoiceAddressLike => ({
-	fullName: (address.fullName ?? '').trim(),
-	line1: (address.line1 ?? '').trim(),
+	fullName: (address.fullName as string).trim(),
+	line1: (address.line1 as string).trim(),
 	line2: address.line2 ?? null,
-	city: (address.city ?? '').trim(),
-	state: address.state ?? null,
-	postalCode: (address.postalCode ?? '').replace(/\s+/g, ''),
+	city: (address.city as string).trim(),
+	state: address.state as string,
+	postalCode: (address.postalCode as string).replace(/\s+/g, ''),
 	country: homeCountry,
 });
 

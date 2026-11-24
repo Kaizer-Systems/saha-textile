@@ -296,7 +296,13 @@ export class BusinessSetOffPopup {
 		const copy = this.signedCopy();
 		const basis: SetOffWrite['basis'] = this.agreement()
 			? { kind: 'standingAgreement' }
-			: { kind: 'oneOff', reference: this.letter().trim(), signedOn: this.on(), mediaId: copy?.assetId ?? '' };
+			: // canSave() holds: without an agreement, a one-off has its signed copy.
+				{
+					kind: 'oneOff',
+					reference: this.letter().trim(),
+					signedOn: this.on(),
+					mediaId: (copy as { assetId: string }).assetId,
+				};
 		this.busy.set(true);
 		this.error.set(null);
 		try {

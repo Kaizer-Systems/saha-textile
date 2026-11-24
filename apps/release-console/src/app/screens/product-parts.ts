@@ -254,7 +254,8 @@ export class ProductMonitorPart {
 				name: s.name,
 				unit: s.unit,
 				values,
-				colour: this.colours[i % this.colours.length] ?? '#5ed6ff',
+				// The index wraps round the list, so it always names a colour.
+				colour: this.colours[i % this.colours.length] as string,
 				last: values.length ? fmt(values[values.length - 1] as number) : '—',
 				min: values.length ? fmt(Math.min(...values)) : '—',
 				max: values.length ? fmt(Math.max(...values)) : '—',

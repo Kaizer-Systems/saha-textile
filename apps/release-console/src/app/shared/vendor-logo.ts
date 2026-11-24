@@ -72,7 +72,8 @@ export class VendorLogo {
 		const l = VENDOR_LOGOS[this.vendor()];
 		const sources = [
 			l.icon ? iconUrl(l.icon, this.size(), l.color) : null,
-			l.domain ? siteIconUrl(l.domain) : null,
+			// Every vendor has a domain; not every one has a logo icon.
+			siteIconUrl(l.domain),
 		].filter((x): x is string => !!x);
 		return sources[this.attempt()] ?? null;
 	});

@@ -1314,7 +1314,8 @@ export class DoCreateScreen {
 	protected readonly draft = computed<DropletDraft>(() => {
 		const kept = this.drafts.get(this.key());
 		if (kept) return kept;
-		const first = this.envs().find((e) => !/prod/i.test(e)) ?? this.envs()[0] ?? 'staging';
+		// envs() is never empty: it falls back to staging itself.
+		const first = this.envs().find((e) => !/prod/i.test(e)) ?? (this.envs()[0] as string);
 		return serverDraftOf(this.ctx.projectId() ?? 'project', first);
 	});
 
@@ -1502,15 +1503,16 @@ export class DoCreateScreen {
 			make('vcpus', 'vCPU', (n) => String(n)),
 			make('memoryMb', 'Memory', gb),
 			make('diskGb', 'Disk', (n) => `${n} GB`),
-		];
+		] as const;
 	});
 	protected readonly sliderPick = computed(() => {
+		// sliders() always answers its three sliders, in this order.
 		const [cpu, mem, dsk] = this.sliders();
 		const fams: readonly SizeFamily[] = this.sliderGroup() === 'shared' ? ['v5shared'] : ['v5general'];
 		return cheapestAtLeast(this.catalog()?.sizes ?? [], fams, this.draft().region, {
-			vcpus: cpu?.value ?? 0,
-			memoryMb: mem?.value ?? 0,
-			diskGb: dsk?.value ?? 0,
+			vcpus: cpu.value,
+			memoryMb: mem.value,
+			diskGb: dsk.value,
 		});
 	});
 	private setSlider(key: string, index: number): void {
@@ -1576,7 +1578,7 @@ export class DoCreateScreen {
 	// ---- finalize
 	protected setQuantity(v: string): void {
 		const n = Math.max(1, Math.min(10, Math.round(Number(v)) || 1));
-		this.patch({ quantity: n, names: namesFor(this.draft().names[0] ?? 'droplet', n) });
+		this.patch({ quantity: n, names: namesFor(this.draft().names[0] as string, n) });
 	}
 	protected setName(v: string): void {
 		const name = v.trim();
@@ -1624,7 +1626,7 @@ export class DoCreateScreen {
 		this.emailEdits.set(this.emails().filter((x) => x !== e));
 	}
 	protected readonly confirmProblem = computed(() => {
-		if (this.problems().length) return this.problems()[0] ?? '';
+		if (this.problems().length) return this.problems()[0] as string;
 		if (this.typed().trim() !== this.draft().environment) return `Type ${this.draft().environment} to confirm.`;
 		const pw = this.password();
 		if (pw.length < 12) return 'The admin password needs at least 12 characters.';

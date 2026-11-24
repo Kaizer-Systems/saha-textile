@@ -118,19 +118,22 @@ export function eDocumentsMissing(order: StatusMachineOrder, settings: StatusMac
 	return irnMissing || ewbMissing;
 }
 
+/** Why a status that does not follow `from` can't be chosen. */
+function offListReason(to: OrderStatus, from: OrderStatus): StatusBlockReason {
+	if (to === 'cancelled') return 'alreadyShipped';
+	if (to === 'shipped' || to === 'out_for_delivery') return 'packFirst';
+	if (to === 'delivered') return 'shipFirst';
+	if (to === 'packed') return from === 'open' || from === 'awaiting_payment' ? 'notPaid' : 'packFirst';
+	return 'packFirst';
+}
+
 function blockFor(
 	to: OrderStatus,
 	order: StatusMachineOrder,
 	settings: StatusMachineSettings,
 ): StatusBlockReason | null {
 	const from = order.status;
-	if (!NEXT[from].includes(to)) {
-		if (to === 'cancelled') return 'alreadyShipped';
-		if (to === 'shipped' || to === 'out_for_delivery') return 'packFirst';
-		if (to === 'delivered') return 'shipFirst';
-		if (to === 'packed') return from === 'open' || from === 'awaiting_payment' ? 'notPaid' : 'packFirst';
-		return 'packFirst';
-	}
+	if (!NEXT[from].includes(to)) return offListReason(to, from);
 	if (to === 'placed' && !order.placeable) return 'notPaid';
 	if (to === 'placed' && from === 'open' && order.lines.length === 0) return 'closeOpenOrderFirst';
 	if (to === 'packed' && order.invoiceAddressNeeded) return 'addInvoiceAddressFirst';
@@ -138,8 +141,8 @@ function blockFor(
 	if (to === 'out_for_delivery' && settings.outForDeliveryOnlyFromCourier && !settings.courierConnected)
 		return 'onlyFromCourier';
 	if (to === 'shipped' && eDocumentsMissing(order, settings)) return 'eDocumentsMissing';
+	// Cancelled follows only statuses before Shipped (NEXT), so a shipped order never gets here.
 	if (to === 'cancelled') {
-		if (RANK[from] >= RANK.shipped) return 'alreadyShipped';
 		if (RANK[from] > RANK.processing && order.lines.some((line) => !line.madeToOrder)) return 'readyPastPacked';
 		if (RANK[from] >= RANK.processing && order.lines.some((line) => line.madeToOrder)) {
 			// Made-to-order pieces can't be cancelled once accepted (Processing).
@@ -172,8 +175,7 @@ export function canMoveTo(
 	to: OrderStatus,
 	settings: StatusMachineSettings,
 ): { allowed: true } | { allowed: false; reason: StatusBlockReason } {
-	if (!NEXT[order.status].includes(to))
-		return { allowed: false, reason: blockFor(to, order, settings) ?? 'packFirst' };
+	if (!NEXT[order.status].includes(to)) return { allowed: false, reason: offListReason(to, order.status) };
 	const reason = blockFor(to, order, settings);
 	return reason ? { allowed: false, reason } : { allowed: true };
 }

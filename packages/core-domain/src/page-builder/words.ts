@@ -36,23 +36,32 @@ const channel = (value: number): number => {
 };
 const gamma = (linear: number): number => (linear <= 0.0031308 ? linear * 12.92 : 1.055 * linear ** (1 / 2.4) - 0.055);
 
+/** The three 0–255 channels of `#rrggbb`, or null for anything else. */
+function rgbOf(hex: string): [number, number, number] | null {
+	const match = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
+	if (!match) return null;
+	// The three groups always take part when the pattern matches.
+	const [, r, g, b] = match as unknown as [string, string, string, string];
+	return [Number.parseInt(r, 16), Number.parseInt(g, 16), Number.parseInt(b, 16)];
+}
+
 /** WCAG relative luminance of `#rrggbb`. */
 export function luminance(hex: string): number {
-	const match = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
-	if (!match) return 0;
-	const [r, g, b] = [match[1], match[2], match[3]].map((part) => channel(Number.parseInt(part ?? '0', 16)));
-	return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0);
+	const rgb = rgbOf(hex);
+	if (!rgb) return 0;
+	const [r, g, b] = rgb;
+	return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
 }
 
 export const contrast = (a: number, b: number): number => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 
 /** `color-mix(in srgb, colour 62%, #000)`: the shop's darker brand step. */
 function darker(hex: string, keep = 0.62): string {
-	const match = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
-	if (!match) return '#000000';
-	return `#${[match[1], match[2], match[3]]
+	const rgb = rgbOf(hex);
+	if (!rgb) return '#000000';
+	return `#${rgb
 		.map((part) =>
-			Math.round(Number.parseInt(part ?? '0', 16) * keep)
+			Math.round(part * keep)
 				.toString(16)
 				.padStart(2, '0'),
 		)

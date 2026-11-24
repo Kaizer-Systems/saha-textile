@@ -190,43 +190,41 @@ function checkNode(
 				child(band.then, band.id, 'band');
 			}
 			const sorted = [...node.bands].sort((a, b) => (a.from ?? -Infinity) - (b.from ?? -Infinity));
-			for (let i = 1; i < sorted.length; i += 1) {
-				const prev = sorted[i - 1];
-				const cur = sorted[i];
-				if (!prev || !cur) continue;
-				const prevTo = prev.to ?? Infinity;
-				const curFrom = cur.from ?? -Infinity;
-				if (curFrom > prevTo)
-					issues.push({
-						code: 'bands_gap',
-						severity: 'error',
-						blockId: cur.id,
-						stepId,
-						params: { from: prevTo, to: curFrom },
-					});
-				if (curFrom < prevTo)
-					issues.push({
-						code: 'bands_overlap',
-						severity: 'error',
-						blockId: cur.id,
-						stepId,
-						params: { from: curFrom, to: prevTo },
-					});
-			}
+			// Each band against the one before it (reduce hands both over as bands, never undefined).
+			if (sorted.length > 0)
+				sorted.reduce((prev, cur) => {
+					const prevTo = prev.to ?? Infinity;
+					const curFrom = cur.from ?? -Infinity;
+					if (curFrom > prevTo)
+						issues.push({
+							code: 'bands_gap',
+							severity: 'error',
+							blockId: cur.id,
+							stepId,
+							params: { from: prevTo, to: curFrom },
+						});
+					if (curFrom < prevTo)
+						issues.push({
+							code: 'bands_overlap',
+							severity: 'error',
+							blockId: cur.id,
+							stepId,
+							params: { from: curFrom, to: prevTo },
+						});
+					return cur;
+				});
 			const first = sorted[0];
 			const last = sorted[sorted.length - 1];
-			const lowOpen = first !== undefined && first.from !== null && first.from > 0;
-			const highOpen = last !== undefined && last.to !== null;
-			if ((lowOpen || highOpen) && node.otherwise === null) {
+			// Where the bands stop short: below the first band's start (above 0), above the last band's end.
+			const below = first !== undefined && first.from !== null && first.from > 0 ? first.from : null;
+			const above = last !== undefined && last.to !== null ? last.to : null;
+			if ((below !== null || above !== null) && node.otherwise === null) {
 				issues.push({
 					code: 'bands_uncovered',
 					severity: 'error',
 					blockId: node.id,
 					stepId,
-					params: {
-						below: lowOpen && first ? (first.from ?? 0) : -1,
-						above: highOpen && last ? (last.to ?? 0) : -1,
-					},
+					params: { below: below ?? -1, above: above ?? -1 },
 				});
 			}
 			if (node.otherwise !== null) checkNode(node.otherwise, step, issues, seeId, use);

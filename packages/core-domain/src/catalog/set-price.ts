@@ -81,9 +81,10 @@ export function chosenPieces(pricing: SetPricing, choice: SetChoice = {}): strin
 }
 
 export function setPriceINR(pricing: SetPricing, choice: SetChoice = {}): number {
-	const fixed = pricing.policy === 'fixed_bundle_price' && pricing.fixedPriceINR !== null;
+	const fixedPrice = pricing.policy === 'fixed_bundle_price' ? pricing.fixedPriceINR : null;
+	const fixed = fixedPrice !== null;
 	const extras = new Set(choice.extras ?? []);
-	let total = fixed ? (pricing.fixedPriceINR ?? 0) : 0;
+	let total = fixedPrice ?? 0;
 	for (const group of pricing.groups) {
 		const priceOf = (ids: readonly string[]) =>
 			group.pieces

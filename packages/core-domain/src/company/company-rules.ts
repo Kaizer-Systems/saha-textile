@@ -166,8 +166,9 @@ export function appropriate(profile: Pick<CompanyProfile, 'partners'>, profitBef
 	return {
 		partners: partners.map((partner, index) => {
 			const share = twoDecimals((rest * partner.profitSharePercent) / 100);
-			const interestINR = interest[index] ?? 0;
-			const remunerationINR = remuneration[index] ?? 0;
+			// Both lists are `partners` mapped one for one.
+			const interestINR = interest[index] as number;
+			const remunerationINR = remuneration[index] as number;
 			return {
 				id: partner.id,
 				interestINR,

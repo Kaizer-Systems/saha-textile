@@ -274,7 +274,8 @@ function assertQuantity(row: PricedCartLine, quantity: number): void {
 				path: 'quantity',
 				message:
 					problem === 'below_shortest_cut'
-						? `The shortest cut is ${((row.shortestCutTenths ?? 0) / 10).toFixed(1)} m`
+						? // Only a product with a shortest cut refuses a length below it.
+							`The shortest cut is ${((row.shortestCutTenths as number) / 10).toFixed(1)} m`
 						: 'Up to 99 pieces on one line',
 				code: problem,
 			},

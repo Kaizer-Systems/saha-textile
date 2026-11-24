@@ -54,7 +54,8 @@ export function rankTrending(rows: readonly DailyProductClicks[], now: Date): Tr
 		const weight = 0.5 ** (age / TRENDING_HALF_LIFE_DAYS);
 		scores.set(row.productId, (scores.get(row.productId) ?? 0) + row.clicks * weight);
 	}
+	// Product ids are the map's keys, so two rows never share one.
 	return [...scores]
 		.map(([productId, score]) => ({ productId, score }))
-		.sort((a, b) => b.score - a.score || (a.productId < b.productId ? -1 : a.productId > b.productId ? 1 : 0));
+		.sort((a, b) => b.score - a.score || (a.productId < b.productId ? -1 : 1));
 }

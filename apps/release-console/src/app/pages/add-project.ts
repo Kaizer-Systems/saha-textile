@@ -83,7 +83,8 @@ export function placeNote(vendor: SecretsVendor, text: string): string {
 	const place = parseSecretsPlace(text);
 	if (!place)
 		return 'Whole environment: saha-textile-local/Development (or its short name, saha-textile-local/dev). One folder: saha-textile-local/Development/api.';
-	const typed = text.split(/[/·|]/)[1]?.trim() ?? '';
+	// A place always has a project and an environment part, so the second piece is always there.
+	const typed = (text.split(/[/·|]/)[1] as string).trim();
 	const env =
 		typed.toLowerCase() === place.environment ? place.environment : `${typed} (short name ${place.environment})`;
 	return `Reads project ${place.project}, environment ${env}, ${
@@ -213,7 +214,10 @@ export const SOURCE_NOTES: Record<SourceCodeVendor, string> = {
 	'azure-repos': 'pull requests, Azure Pipelines',
 };
 /** Own menus a repository can list in its `.release-console.json`. */
-export const OWN_MENUS = CONSOLE_MENU.menu.find((g) => g.label === 'Shop')?.subs.flatMap((s) => s.items) ?? [];
+// The console's own menu file always has its Shop group.
+export const OWN_MENUS = (
+	CONSOLE_MENU.menu.find((g) => g.label === 'Shop') as (typeof CONSOLE_MENU.menu)[number]
+).subs.flatMap((s) => s.items);
 
 export const slugOf = (text: string): string =>
 	text
@@ -1319,7 +1323,8 @@ export class AddProject {
 	protected readonly refreshing = signal<Set<string>>(new Set());
 	protected readonly githubRepos = computed(() => this.repos().filter((r) => r.vendor === 'github'));
 	protected shortName(repository: string): string {
-		return repository.split('/')[1] ?? repository;
+		// Every repository here was added as owner/name (addRepo) or renamed to GitHub's owner/name.
+		return repository.split('/')[1] as string;
 	}
 	protected listOf(repository: string): Branches | undefined {
 		return this.lists()[repository];
@@ -1555,7 +1560,7 @@ export class AddProject {
 			name: this.name().trim(),
 			workspace: this.workspace().trim(),
 			repositories: this.repos().map((r) => {
-				const short = r.repository.split('/')[1] ?? r.repository;
+				const short = this.shortName(r.repository);
 				return {
 					id: slugOf(short),
 					name: short,
@@ -1653,7 +1658,7 @@ export class AddProject {
 				target: '',
 			});
 			for (const r of github) {
-				const short = r.repository.split('/')[1] ?? r.repository;
+				const short = this.shortName(r.repository);
 				await this.api.setSlotKeys(projectId, {
 					repositoryId: slugOf(short),
 					slot: 'source-code',

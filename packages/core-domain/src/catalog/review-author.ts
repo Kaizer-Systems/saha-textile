@@ -6,7 +6,8 @@
 export function publicReviewerName(displayName: string | null | undefined): string {
 	const parts = (displayName ?? '').trim().split(/\s+/).filter(Boolean);
 	if (parts.length === 0) return '';
-	const first = parts[0] ?? '';
-	const last = parts.length > 1 ? (parts[parts.length - 1] ?? '') : '';
+	// parts is not empty here.
+	const first = parts[0] as string;
+	const last = parts.length > 1 ? (parts[parts.length - 1] as string) : '';
 	return last ? `${first} ${last.charAt(0).toUpperCase()}.` : first;
 }

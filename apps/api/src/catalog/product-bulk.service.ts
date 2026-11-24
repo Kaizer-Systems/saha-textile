@@ -202,7 +202,8 @@ export class ProductBulkService {
 		const title = Object.fromEntries(
 			Object.entries(product.title).map(([locale, text]) => [locale, copyTitle(locale, text)]),
 		);
-		const slug = await this.builder.freeSlug(slugFrom(title['en'] ?? `${product.sku}${suffix}`));
+		// Every product has an English title, so its copy has one too.
+		const slug = await this.builder.freeSlug(slugFrom(title['en'] as string));
 		const {
 			createdAt: _created,
 			updatedAt: _updated,

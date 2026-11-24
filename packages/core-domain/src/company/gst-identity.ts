@@ -70,7 +70,8 @@ export function gstinCheckCharacter(first14: string): string {
 		const product = value * (index % 2 === 0 ? 1 : 2);
 		sum += Math.floor(product / 36) + (product % 36);
 	}
-	return GSTIN_ALPHABET[(36 - (sum % 36)) % 36] ?? '';
+	// The index is 0–35 and the alphabet has 36 characters.
+	return GSTIN_ALPHABET[(36 - (sum % 36)) % 36] as string;
 }
 
 export type GstinProblem = 'shape' | 'state' | 'check_digit';

@@ -34,7 +34,8 @@ export function nextSwitchAt(schedule: readonly ScheduleEntry[], now: Date): Dat
 
 /** Entries that overlap another entry's time, for the "the later start wins" warning in the list. */
 export function overlappingEntries(schedule: readonly ScheduleEntry[]): ScheduleEntry[] {
-	const end = (entry: ScheduleEntry) => (entry.until === null ? Number.POSITIVE_INFINITY : at(entry.until));
+	// Read only for entries with an end (the filter checks both first).
+	const end = (entry: ScheduleEntry) => at(entry.until as string);
 	return schedule.filter((entry) =>
 		schedule.some(
 			(other) =>

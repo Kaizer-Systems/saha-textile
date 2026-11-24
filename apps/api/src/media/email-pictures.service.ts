@@ -55,7 +55,8 @@ export class EmailPicturesService {
 			})),
 			total,
 			matching,
-			next: rows.length === PAGE ? (rows[rows.length - 1]?.key ?? null) : null,
+			// A full page has a last row.
+			next: rows.length === PAGE ? (rows[rows.length - 1] as (typeof rows)[number]).key : null,
 		};
 	}
 

@@ -34,15 +34,14 @@ export function orderChildMoney(
 	lineQuantity: number,
 	spreadCouponINR = 0,
 ): OrderChildMoney[] {
-	const totals = children.map((child) => round2(child.priceINR * lineQuantity));
-	const paying = children
-		.map((child, at) => ({ key: child.key, weightINR: totals[at] ?? 0 }))
+	const rows = children.map((child) => ({ child, lineTotalINR: round2(child.priceINR * lineQuantity) }));
+	const paying = rows
+		.map((row) => ({ key: row.child.key, weightINR: row.lineTotalINR }))
 		.filter((row) => row.weightINR > 0);
 	const coupon =
 		paying.length && spreadCouponINR > 0 ? splitShares(spreadCouponINR, paying) : new Map<string, number>();
-	return children.map((child, at) => {
+	return rows.map(({ child, lineTotalINR }) => {
 		const quantity = child.quantity * lineQuantity;
-		const lineTotalINR = totals[at] ?? 0;
 		return {
 			key: child.key,
 			quantity,

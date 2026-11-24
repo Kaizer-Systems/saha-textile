@@ -62,7 +62,8 @@ export class ProductDraftsService {
 		}
 		return ProductDraftList.parse({
 			items: page.items.map((draft) => {
-				const product = draft.productId ? (products.get(draft.productId) ?? null) : null;
+				// Every draft's product was read above, as itself or as null.
+				const product = draft.productId ? (products.get(draft.productId) as Product | null) : null;
 				const picture = pictureOf(draft);
 				return {
 					id: draft.id,

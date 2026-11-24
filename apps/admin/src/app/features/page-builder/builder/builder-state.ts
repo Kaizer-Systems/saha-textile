@@ -105,8 +105,9 @@ export function newSection(type: SectionType, taken: readonly string[]): PageSec
 export function moveSection(sections: readonly PageSection[], from: number, to: number): PageSection[] {
 	if (from === to || from < 0 || to < 0 || from >= sections.length || to >= sections.length) return [...sections];
 	const next = [...sections];
+	// `from` is in range (checked above), so a section comes out.
 	const [moved] = next.splice(from, 1);
-	if (moved) next.splice(to, 0, moved);
+	next.splice(to, 0, moved as PageSection);
 	return next;
 }
 

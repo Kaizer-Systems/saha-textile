@@ -36,7 +36,8 @@ export function currencyDisplayName(code: string, lang: string, translate: (key:
 	const key = CURRENCY_NAME_KEYS[code];
 	if (key) return translate(key);
 	try {
-		return new Intl.DisplayNames([lang], { type: 'currency' }).of(code) ?? code;
+		// With the default fallback ('code'), of() answers a name or the code itself, never undefined.
+		return new Intl.DisplayNames([lang], { type: 'currency' }).of(code) as string;
 	} catch {
 		return code;
 	}

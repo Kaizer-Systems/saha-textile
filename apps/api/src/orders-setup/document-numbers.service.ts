@@ -71,8 +71,9 @@ export class DocumentNumbersService {
 		if (format.kind === 'yearMonthRandom') return renderYearMonthOrderNumber(format, at, () => randomInt(0, 10));
 		if (format.kind === 'randomGroups') return renderRandomOrderNumber(format, () => randomInt(0, 10));
 		const financialYear = fiscalYearOf(istDay(at));
-		const key = orderSeriesKey(format, financialYear);
-		const sequence = await this.allocator.next(key?.series ?? 'doc:order', key?.period ?? 'all', context);
+		// A sequenced format always has a counter: only the random kinds, answered above, have none.
+		const key = orderSeriesKey(format, financialYear) as { series: string; period: string };
+		const sequence = await this.allocator.next(key.series, key.period, context);
 		return renderSequencedOrderNumber(format, financialYear, sequence);
 	}
 

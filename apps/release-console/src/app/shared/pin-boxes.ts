@@ -91,7 +91,8 @@ export class PinBoxes {
 
 	protected type(i: number, box: HTMLInputElement): void {
 		const { digits, focus } = fillDigits(this.digits(), i, box.value);
-		box.value = digits[i] ?? '';
+		// fillDigits always answers all six slots.
+		box.value = digits[i] as string;
 		this.digits.set(digits);
 		this.changed.emit(this.value());
 		this.focus(focus);

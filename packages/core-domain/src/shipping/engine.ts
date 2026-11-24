@@ -159,9 +159,8 @@ function priceResult(
 				const total = lines.reduce((sum, l) => sum + chargeFor(l, result.charge) * l.units, 0);
 				return amount(total, { units });
 			}
-			const line = lines[0];
-			if (!line) return amount(0);
-			const each = chargeFor(line, result.charge);
+			// A line or unit step prices exactly one line at a time.
+			const each = chargeFor(lines[0] as ShippingSnapshotLine, result.charge);
 			return result.per === 'once'
 				? amount(each, { unitAmountINR: each })
 				: amount(each * units, { units, unitAmountINR: each });

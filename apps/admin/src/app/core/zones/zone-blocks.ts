@@ -139,8 +139,8 @@ export function zoneFormulaCanPriceAddOns(formula: ZonePriceFormula): boolean {
 	}
 }
 
-const rupees = (value: number | null | undefined): string =>
-	value === null || value === undefined ? '₹ …' : `₹${value.toLocaleString('en-IN')}`;
+// Every amount a rule words is a number: formulas hold numbers, and floor and ceiling are read only when set.
+const rupees = (value: number): string => `₹${value.toLocaleString('en-IN')}`;
 
 /** A formula in words: "10% less than the regular selling price". */
 export function formulaWords(formula: ZonePriceFormula, t: Translate): string {
@@ -153,7 +153,7 @@ export function formulaWords(formula: ZonePriceFormula, t: Translate): string {
 				base: t(`zone_base_${formula.base}`),
 			});
 		case 'flatPrice': {
-			const skus = Object.keys(formula.skuPrices ?? {}).length;
+			const skus = Object.keys(formula.skuPrices).length;
 			return skus
 				? t('zone_words_flat_with_skus', { amount: rupees(formula.amountINR), count: skus })
 				: t('zone_words_flat', { amount: rupees(formula.amountINR) });

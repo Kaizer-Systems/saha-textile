@@ -2,9 +2,11 @@ import { fieldKey, operatorKey } from './blocks';
 
 import type {
 	ShippingAmountSource,
+	ShippingBandsNode,
 	ShippingChargeKind,
 	ShippingCondition,
 	ShippingConditionGroup,
+	ShippingIfNode,
 	ShippingNode,
 	ShippingResult,
 	ShippingRuleSetBody,
@@ -111,7 +113,7 @@ function group(value: ShippingConditionGroup, words: Words): string {
 	const parts = value.items.map((item) => (item.kind === 'group' ? group(item, words) : condition(item, words)));
 	if (parts.length === 0) return '…';
 	const joiner = words.t(value.join === 'all' ? 'ship_pw_and' : 'ship_pw_or');
-	if (parts.length === 1) return parts[0] ?? '…';
+	if (parts.length === 1) return parts[0] as string;
 	// "A, and B or C, and D": the joiner after a comma once the list is longer than two.
 	return parts.length === 2 ? parts.join(` ${joiner} `) : parts.join(`, ${joiner} `);
 }
@@ -119,18 +121,19 @@ function group(value: ShippingConditionGroup, words: Words): string {
 function condition(value: ShippingCondition, words: Words): string {
 	const { t, nameOf } = words;
 	if (value.field === null || value.op === null || value.value === null) return '…';
+	const field = value.field;
 	if (typeof value.value === 'boolean' && (value.op === 'is' || value.op === 'isNot')) {
 		const holds = (value.op === 'is') === value.value;
 		return t(`ship_pw_c_${value.field.replace(/\./g, '_')}_${holds ? 'yes' : 'no'}`);
 	}
 	const shown = (item: unknown): string => {
 		if (typeof item === 'number')
-			return MONEY.has(value.field ?? '')
+			return MONEY.has(field)
 				? rupees(item)
-				: value.field === 'line.discountPercent'
+				: field === 'line.discountPercent'
 					? `${item}%`
 					: item.toLocaleString('en-IN');
-		if (typeof item === 'string') return value.field === 'delivery.zone' ? t(`ship_zone_${item}`) : nameOf(item);
+		if (typeof item === 'string') return field === 'delivery.zone' ? t(`ship_zone_${item}`) : nameOf(item);
 		return '';
 	};
 	const list = (items: unknown[]): string => {
@@ -199,7 +202,7 @@ function result(value: ShippingNode | null, step: ShippingStep, words: Words, si
 	}
 }
 
-function nested(value: ShippingNode, step: ShippingStep, words: Words): string {
+function nested(value: ShippingIfNode | ShippingBandsNode, step: ShippingStep, words: Words): string {
 	const { t } = words;
 	if (value.kind === 'if')
 		return t('ship_pw_if_nested', {
@@ -207,21 +210,18 @@ function nested(value: ShippingNode, step: ShippingStep, words: Words): string {
 			then: result(value.then, step, words, 'then'),
 			otherwise: result(value.otherwise, step, words, 'otherwise'),
 		});
-	if (value.kind === 'bands') {
-		const parts = value.bands.map((band) =>
-			t('ship_pw_band', {
-				from: band.from ?? 0,
-				to: band.to === null ? t('ship_pw_band_open') : String(band.to),
-				then: result(band.then, step, words, 'then'),
-			}),
-		);
-		return t('ship_pw_bands', {
-			field: value.field ? t(fieldKey(value.field)).toLocaleLowerCase() : '…',
-			bands: parts.join('; '),
-			otherwise: result(value.otherwise, step, words, 'otherwise'),
-		});
-	}
-	return result(value, step, words, 'then');
+	const parts = value.bands.map((band) =>
+		t('ship_pw_band', {
+			from: band.from ?? 0,
+			to: band.to === null ? t('ship_pw_band_open') : String(band.to),
+			then: result(band.then, step, words, 'then'),
+		}),
+	);
+	return t('ship_pw_bands', {
+		field: value.field ? t(fieldKey(value.field)).toLocaleLowerCase() : '…',
+		bands: parts.join('; '),
+		otherwise: result(value.otherwise, step, words, 'otherwise'),
+	});
 }
 
 function firstAndFurther(

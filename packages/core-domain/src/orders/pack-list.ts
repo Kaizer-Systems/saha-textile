@@ -19,5 +19,5 @@ export function packLines<T extends PackLine>(lines: readonly T[]): T[] {
  */
 export function packListIncomplete(order: { lines: readonly PackLine[]; packTicks?: readonly string[] }): boolean {
 	const ticked = new Set(order.packTicks ?? []);
-	return packLines(order.lines).some((line) => Boolean(line.lineId) && !ticked.has(line.lineId ?? ''));
+	return packLines(order.lines).some(({ lineId }) => (lineId ? !ticked.has(lineId) : false));
 }

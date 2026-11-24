@@ -85,7 +85,8 @@ export function newRepository(
 	role: string,
 	menus: string[],
 ): Repository {
-	const name = repository.split('/')[1] ?? repository;
+	// add() only lets owner/name through, so the name part is always there.
+	const name = repository.split('/')[1] as string;
 	return {
 		id: slugOf(name),
 		name,

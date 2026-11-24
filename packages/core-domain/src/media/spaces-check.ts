@@ -44,8 +44,11 @@ export async function checkSpaces(deps: SpacesCheckDeps, now: Date): Promise<Med
 	for (let at = 0; at < ids.length; at += BATCH) {
 		for (const asset of await deps.findManyByIds(ids.slice(at, at + BATCH))) known.add(asset.id);
 	}
-	const unknownIds = ids.filter((id) => !known.has(id));
-	const unrecordedKeys = unknownIds.flatMap((id) => byAsset.get(id)?.keys ?? []);
+	// `ids` are byAsset's own keys, so each unknown one has its entry.
+	const unrecorded = ids
+		.filter((id) => !known.has(id))
+		.map((id) => byAsset.get(id) as { bytes: number; keys: string[] });
+	const unrecordedKeys = unrecorded.flatMap((entry) => entry.keys);
 
 	// Pictures the website uses whose files are gone.
 	const used = await deps.referencedIds();
@@ -81,7 +84,7 @@ export async function checkSpaces(deps: SpacesCheckDeps, now: Date): Promise<Med
 		missingCount,
 		unrecorded: {
 			count: unrecordedKeys.length,
-			bytes: unknownIds.reduce((sum, id) => sum + (byAsset.get(id)?.bytes ?? 0), 0),
+			bytes: unrecorded.reduce((sum, entry) => sum + entry.bytes, 0),
 			sample: unrecordedKeys.slice(0, SAMPLE),
 		},
 	};

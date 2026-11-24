@@ -21,7 +21,8 @@ import type { ShopEvent } from '@saha-textile/contracts';
 /** `2027-09-27T23:59` → `27 Sep 2027, 23:59 IST`: the admin always reads India time. */
 export function istLabel(iso: string | null): string {
 	if (!iso) return '—';
-	const [date = '', time = ''] = utcToIstInput(iso).split('T');
+	// utcToIstInput always answers "YYYY-MM-DDTHH:mm", so both parts are there.
+	const [date, time] = utcToIstInput(iso).split('T') as [string, string];
 	const [y, m, d] = date.split('-').map(Number) as [number, number, number];
 	const month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1];
 	return `${d} ${month} ${y}, ${time} IST`;

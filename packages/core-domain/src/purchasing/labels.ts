@@ -226,7 +226,8 @@ export function code128(text: string): { values: number[]; runs: number[]; modul
 	const data = [...text].map((char) => char.charCodeAt(0) - 32);
 	const check = (START_B + data.reduce((sum, value, index) => sum + value * (index + 1), 0)) % 103;
 	const values = [START_B, ...data, check, STOP];
-	const runs = values.flatMap((value) => [...(PATTERNS[value] ?? '')].map(Number));
+	// Every value is 0–106 (set B data, its check value, start and stop), and PATTERNS has all 107.
+	const runs = values.flatMap((value) => [...(PATTERNS[value] as string)].map(Number));
 	return { values, runs, modules: runs.reduce((sum, width) => sum + width, 0) };
 }
 

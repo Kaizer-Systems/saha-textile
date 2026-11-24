@@ -41,7 +41,8 @@ export function nextAttemptCheck(createdAt: Date, checks: number): Date | null {
 	const start = createdAt.getTime();
 	const step = CHECK_AT_MINUTES[checks];
 	if (step !== undefined) return new Date(start + step * 60_000);
-	const last = CHECK_AT_MINUTES[CHECK_AT_MINUTES.length - 1] ?? 60;
+	// The list is a fixed, non-empty table.
+	const last = CHECK_AT_MINUTES[CHECK_AT_MINUTES.length - 1] as number;
 	const minutes = last + (checks - CHECK_AT_MINUTES.length + 1) * 60;
 	return minutes > HOURLY_UNTIL_MINUTES ? null : new Date(start + minutes * 60_000);
 }

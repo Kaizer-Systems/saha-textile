@@ -120,6 +120,12 @@ export interface BundleQuote {
 const lineOf = (item: QuoteItem, unit: number): number =>
 	item.perTenth ? Math.round(unit * item.quantity * 10) / 100 : unit * item.quantity;
 
+/** A record built from the bundle's levels has an entry for every level's code. */
+const ofLevel = <T>(record: Readonly<Record<string, T>>, level: Pick<QuoteLevel, 'code'>): T => record[level.code] as T;
+
+/** One of the level's own items: picks only ever hold the level's own keys (`picksOf`, `includedKeys`). */
+const itemOf = (level: QuoteLevel, key: string): QuoteItem => level.items.find((row) => row.key === key) as QuoteItem;
+
 export const isChoiceLevel = (level: Pick<QuoteLevel, 'take' | 'items'>): boolean => level.items.length > level.take;
 
 /** A choice level's included pieces: its first `take` offered items. */
@@ -160,9 +166,8 @@ function factsFor(
 	let separately = 0;
 	let onSale = false;
 	for (const level of bundle.levels) {
-		for (const key of picks[level.code] ?? []) {
-			const item = level.items.find((row) => row.key === key);
-			if (!item) continue;
+		for (const key of ofLevel(picks, level)) {
+			const item = itemOf(level, key);
 			count += item.perTenth ? 1 : item.quantity;
 			subtotal += lineOf(item, item.priceInSetINR);
 			separately += lineOf(item, item.todayINR);
@@ -193,7 +198,7 @@ export function quoteBundle(bundle: QuoteBundle, choice: QuoteChoice = {}, now: 
 	let picks: Record<string, string[]> = Object.fromEntries(
 		bundle.levels.map((level) => [
 			level.code,
-			picksOf(level, choice.picks?.[level.code], allOffered[level.code] ?? []),
+			picksOf(level, choice.picks?.[level.code], ofLevel(allOffered, level)),
 		]),
 	);
 	const firstFacts = factsFor(bundle, picks, askedExtras, today);
@@ -211,19 +216,16 @@ export function quoteBundle(bundle: QuoteBundle, choice: QuoteChoice = {}, now: 
 		if (action.kind === 'hideItem') offered[action.level] = current.filter((k) => !action.items.includes(k));
 	}
 	picks = Object.fromEntries(
-		bundle.levels.map((level) => [
-			level.code,
-			picksOf(level, choice.picks?.[level.code], offered[level.code] ?? []),
-		]),
+		bundle.levels.map((level) => [level.code, picksOf(level, choice.picks?.[level.code], ofLevel(offered, level))]),
 	);
 	for (const level of bundle.levels) {
 		if (level.items.length === 0) problems.push({ kind: 'level_empty', level: level.code });
-		const chosen = picks[level.code] ?? [];
+		const chosen = ofLevel(picks, level);
 		if (isChoiceLevel(level) && chosen.length !== level.take) {
 			problems.push({ kind: 'pick_count', level: level.code, take: level.take });
 		}
 		for (const key of chosen) {
-			if (!(offered[level.code] ?? []).includes(key))
+			if (!ofLevel(offered, level).includes(key))
 				problems.push({ kind: 'pick_not_offered', level: level.code, key });
 		}
 	}
@@ -254,15 +256,14 @@ export function quoteBundle(bundle: QuoteBundle, choice: QuoteChoice = {}, now: 
 	const fixed = bundle.method.base.kind === 'fixed';
 	if (fixed) running = bundle.params[(bundle.method.base as { input: string }).input] ?? 0;
 	for (const level of bundle.levels) {
-		const chosen = picks[level.code] ?? [];
+		const chosen = ofLevel(picks, level);
 		const priceOf = (keys: readonly string[]) =>
 			keys.reduce((sum, key) => {
-				const item = level.items.find((row) => row.key === key);
-				return item && !freePicks.has(key) ? sum + lineOf(item, item.priceInSetINR) : sum;
+				const item = itemOf(level, key);
+				return freePicks.has(key) ? sum : sum + lineOf(item, item.priceInSetINR);
 			}, 0);
 		for (const key of chosen) {
-			const item = level.items.find((row) => row.key === key);
-			if (!item) continue;
+			const item = itemOf(level, key);
 			const free = freePicks.has(key);
 			const inSet = free ? 0 : lineOf(item, item.priceInSetINR);
 			pieces.push({
@@ -280,7 +281,7 @@ export function quoteBundle(bundle: QuoteBundle, choice: QuoteChoice = {}, now: 
 		if (!isChoiceLevel(level)) continue;
 		if (level.priceMode === 'own') running += priceOf(chosen);
 		else if (level.priceMode === 'difference') {
-			running += Math.max(0, priceOf(chosen) - priceOf(includedKeys(level, offered[level.code] ?? [])));
+			running += Math.max(0, priceOf(chosen) - priceOf(includedKeys(level, ofLevel(offered, level))));
 		}
 	}
 	const piecesPaid = subtotal;
@@ -306,19 +307,17 @@ export function quoteBundle(bundle: QuoteBundle, choice: QuoteChoice = {}, now: 
 		}
 	}
 
-	const extras: QuotedExtra[] = extrasChosen.flatMap((key) => {
-		const item = bundle.extras.find((row) => row.key === key);
-		if (!item) return [];
+	const extras: QuotedExtra[] = extrasChosen.map((key) => {
+		// extrasChosen keeps only the bundle's own extras.
+		const item = bundle.extras.find((row) => row.key === key) as QuoteItem;
 		const free = freeExtras.has(key) || item.priceInSetINR === 0;
-		return [
-			{
-				key,
-				quantity: item.quantity,
-				priceINR: free ? 0 : lineOf(item, item.priceInSetINR),
-				todayINR: lineOf(item, item.todayINR),
-				free,
-			},
-		];
+		return {
+			key,
+			quantity: item.quantity,
+			priceINR: free ? 0 : lineOf(item, item.priceInSetINR),
+			todayINR: lineOf(item, item.todayINR),
+			free,
+		};
 	});
 	const extrasINR = extras.reduce((sum, extra) => sum + extra.priceINR, 0);
 	const extrasToday = extras.reduce((sum, extra) => sum + extra.todayINR, 0);
@@ -363,7 +362,7 @@ export function combinations(
 	levels: readonly Pick<QuoteLevel, 'code' | 'take' | 'items'>[],
 	limit = 5000,
 ): Record<string, string[]>[] {
-	const perLevel = levels.map((level) => {
+	const optionsOf = (level: Pick<QuoteLevel, 'code' | 'take' | 'items'>): string[][] => {
 		const keys = level.items.map((item) => item.key);
 		if (!isChoiceLevel(level)) return [keys];
 		const out: string[][] = [];
@@ -377,18 +376,19 @@ export function combinations(
 		};
 		walk(0, []);
 		return out;
-	});
+	};
 	let result: Record<string, string[]>[] = [{}];
-	levels.forEach((level, at) => {
+	for (const level of levels) {
+		const options = optionsOf(level);
 		const next: Record<string, string[]>[] = [];
 		for (const partial of result) {
-			for (const pick of perLevel[at] ?? []) {
+			for (const pick of options) {
 				if (next.length >= limit) break;
 				next.push({ ...partial, [level.code]: pick });
 			}
 		}
 		result = next;
-	});
+	}
 	return levels.length ? result : [];
 }
 

@@ -113,6 +113,8 @@ export function applyCoupons(
 	contexts: ReadonlyMap<string, CouponContext>,
 ): CouponRun {
 	const remaining = new Map(lines.map((line) => [line.lineId, line.amountINR]));
+	// Every line is in `remaining` from here on.
+	const leftOn = (lineId: string): number => remaining.get(lineId) as number;
 	const refused: CouponRun['refused'] = [];
 	const accepted: CouponDefinition[] = [];
 	for (const coupon of coupons) {
@@ -142,13 +144,13 @@ export function applyCoupons(
 	for (const coupon of ordered) {
 		const reasons = lines.map((line) => ({ line, reason: couponLineReason(coupon, line) }));
 		const eligible = reasons.filter((row) => row.reason === 'applied');
-		const eligibleTotal = round2(eligible.reduce((sum, row) => sum + (remaining.get(row.line.lineId) ?? 0), 0));
+		const eligibleTotal = round2(eligible.reduce((sum, row) => sum + leftOn(row.line.lineId), 0));
 		if (eligibleTotal < coupon.minOrderINR && coupon.kind !== 'freeDelivery') {
 			refused.push({ code: coupon.code, refusal: 'belowMinimum' });
 			continue;
 		}
 		if (coupon.kind === 'freeDelivery') {
-			const goods = round2(lines.reduce((sum, line) => sum + (remaining.get(line.lineId) ?? 0), 0));
+			const goods = round2(lines.reduce((sum, line) => sum + leftOn(line.lineId), 0));
 			if (goods < coupon.minOrderINR) {
 				refused.push({ code: coupon.code, refusal: 'belowMinimum' });
 				continue;
@@ -168,7 +170,7 @@ export function applyCoupons(
 			continue;
 		}
 		if (eligibleTotal <= 0) {
-			refused.push({ code: coupon.code, refusal: eligible.length ? 'nothingEligible' : 'nothingEligible' });
+			refused.push({ code: coupon.code, refusal: 'nothingEligible' });
 			continue;
 		}
 		let total =
@@ -181,7 +183,7 @@ export function applyCoupons(
 		const shares: AppliedCouponLine[] = [];
 		let given = 0;
 		eligible.forEach((row, index) => {
-			const left = remaining.get(row.line.lineId) ?? 0;
+			const left = leftOn(row.line.lineId);
 			const share =
 				index === eligible.length - 1 ? round2(total - given) : round2((total * left) / eligibleTotal);
 			const amount = Math.min(share, left);

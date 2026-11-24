@@ -168,7 +168,7 @@ export function placeFromAddress(address: string): { stateCode: string | null; c
 		.map((part) => part.replace(/\b\d{6}\b/g, '').trim())
 		.filter(Boolean);
 	for (let index = parts.length - 1; index >= 0; index -= 1) {
-		const code = stateCodeOfPart(parts[index] ?? '');
+		const code = stateCodeOfPart(parts[index] as string);
 		if (!code) continue;
 		const before = parts[index - 1] ?? '';
 		return { stateCode: code, city: /[A-Za-z]/.test(before) && !/\d/.test(before) ? before : '' };

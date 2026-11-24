@@ -47,6 +47,7 @@ function setup(
 		clearing?: boolean;
 		customer?: boolean;
 		scope?: string[] | null;
+		problem?: string | null;
 	} = {},
 ) {
 	const saved: unknown[] = [];
@@ -56,7 +57,10 @@ function setup(
 	const service = new CounterSalesService(
 		{
 			price: vi.fn(async (input: { lines: unknown[] }) => ({
-				lines: [line('a', 1250), line('b', 350, 2)].slice(0, input.lines.length),
+				lines: [{ ...line('a', 1250), problem: options.problem ?? null }, line('b', 350, 2)].slice(
+					0,
+					input.lines.length,
+				),
 				subtotalINR: input.lines.length === 1 ? 1250 : 1950,
 			})),
 		} as never,
@@ -190,6 +194,9 @@ describe('a counter sale (P2)', () => {
 		await refused({}, { cashHandedINR: 900 }, 'cash_handed_short');
 		await refused({ openSheet: false }, {}, 'cash_sheet_not_open');
 		await refused({ clearing: false }, {}, 'role_not_mapped:upi_card_clearing');
+		await refused({ problem: 'out_of_stock' }, {}, 'counter_line_problem:out_of_stock:SKU-a');
+		// Only a few left is still sold.
+		await expect(setup({ problem: 'limited' }).service.sell(sale(), principal, NOW)).resolves.toBeTruthy();
 		// No limit set: any cash is taken.
 		await expect(setup({ limit: null }).service.sell(sale(), principal, NOW)).resolves.toBeTruthy();
 	});
@@ -259,7 +266,7 @@ describe('the counter bill’s address', () => {
 describe('counter routes', () => {
 	it('sells as the person acting, behind cash.count, and is wired into the API', async () => {
 		const sell = vi.fn(async () => 'sold');
-		const controller = new CounterController({ sell } as never);
+		const controller = new CounterController({ sell } as never, {} as never);
 		expect(await controller.sell(sale(), principal)).toBe('sold');
 		expect(sell).toHaveBeenCalledWith(sale(), principal);
 		expect(new Reflector().get(PERMISSIONS_KEY, CounterController.prototype.sell)).toEqual(['cash.count']);

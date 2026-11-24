@@ -189,5 +189,8 @@ describe('previews and PDFs', () => {
 		expect(rendered[1]?.html.match(/break-before:page/g)).toHaveLength(1);
 		expect(rendered[1]?.footerHtml).toBeUndefined();
 		expect(ourBlocks('taxInvoice').length).toBeGreaterThan(0);
+		// A counter sale prints on the 80 mm roll whatever the format's paper (P2).
+		await service.renderActiveCopies('taxInvoice', [plain], 'roll80');
+		expect(rendered[2]?.html).toContain('dz-paper-roll80');
 	});
 });

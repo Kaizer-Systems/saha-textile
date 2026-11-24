@@ -27,6 +27,7 @@ import { Pagination } from '@shared/ui/pagination/pagination';
 import { ProductBoxSkeleton } from '@shared/ui/skeleton/product-box-skeleton/product-box-skeleton';
 
 import { cartKidRows, CartKidRow } from './cart-kids';
+import { CounterSale } from './counter-sale';
 import { OrderBuyerCard } from './order-buyer-card';
 import { OrderProductCard } from './order-product-card';
 import { OrderSetPopup } from './order-set-popup';
@@ -70,6 +71,7 @@ export interface CartRow {
 		AsyncPipe,
 		OrderBuyerCard,
 		OrderProductCard,
+		CounterSale,
 	],
 })
 export class CreateOrder {
@@ -83,6 +85,8 @@ export class CreateOrder {
 	private readonly notifier = inject(NotificationService);
 	/** True while the cart is being added to an open order. */
 	readonly addingBusy = signal(false);
+	/** Counter mode (accounts brief P1) replaces this screen while it is on. */
+	readonly counterOn = signal(false);
 
 	private readonly categoriesQuery = injectCategoriesQuery(() => ({ type: 'product', status: 1 }));
 	category$: Observable<ICategoryModel | undefined> = toObservable(this.categoriesQuery.data);
@@ -111,7 +115,8 @@ export class CreateOrder {
 			key: line.key,
 			quantity: line.quantity,
 			soldBy: line.soldBy,
-			priced: priced.length === sent.length ? (priced[index] ?? null) : null,
+			// Same length: the server answered every line, so each index has its row.
+			priced: priced.length === sent.length ? (priced[index] as AdminCartLine) : null,
 		}));
 	});
 	readonly subtotal = computed(() => {

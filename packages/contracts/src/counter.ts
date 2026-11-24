@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import { Id } from './common';
 import { PriceINR } from './common';
+import { AdminCartLine } from './order-admin';
+import { BundleChoice } from './product-bundle';
 import { IsoDate } from './purchasing';
 
 /**
@@ -28,6 +30,8 @@ export const CounterLineWrite = z.object({
 	quantity: z.number().int().min(1).max(999),
 	/** Found by scanning its SKU (shown on the line, P1). */
 	scanned: z.boolean().default(false),
+	/** A set's choices, made in the Configure pop-up, as Create order takes them. */
+	bundle: BundleChoice.optional(),
 });
 export type CounterLineWrite = z.infer<typeof CounterLineWrite>;
 
@@ -58,6 +62,50 @@ export const CounterSaleWrite = z.object({
 	expectedTotalINR: PriceINR.nonnegative(),
 });
 export type CounterSaleWrite = z.infer<typeof CounterSaleWrite>;
+
+/** Where this person sells over a counter: stores in their reach with a day-sheet box, and whether its sheet is open. */
+export const CounterHere = z.object({
+	/** The header chip's location when it is one of these stores. */
+	current: Id.nullable(),
+	stores: z.array(
+		z.object({
+			locationId: Id,
+			name: z.string(),
+			/** "Kolkata, West Bengal": what a bill without the buyer's address says (P1). */
+			place: z.string(),
+			sheetOpen: z.boolean(),
+		}),
+	),
+});
+export type CounterHere = z.infer<typeof CounterHere>;
+
+export const CounterScanQuery = z.object({ code: z.string().trim().min(1).max(80) });
+export type CounterScanQuery = z.infer<typeof CounterScanQuery>;
+
+/** What a scanned SKU is. */
+export const CounterScan = z.object({
+	productId: Id,
+	variationId: Id.nullable(),
+	sku: z.string(),
+	title: z.string(),
+	soldBy: z.enum(['piece', 'metre']),
+});
+export type CounterScan = z.infer<typeof CounterScan>;
+
+export const CounterQuoteWrite = z.object({ locationId: Id, lines: z.array(CounterLineWrite).max(200) });
+export type CounterQuoteWrite = z.infer<typeof CounterQuoteWrite>;
+
+/** P1's items and totals: priced as the sale will be, with the tax the invoice will show (sold in the store's State). */
+export const CounterQuote = z.object({
+	lines: z.array(AdminCartLine),
+	taxableINR: z.number(),
+	cgstINR: z.number(),
+	sgstINR: z.number(),
+	totalINR: z.number(),
+	/** A line the invoice can't take yet (no HSN, or no rate for it), by SKU. */
+	problems: z.array(z.object({ sku: z.string(), problem: z.string() })),
+});
+export type CounterQuote = z.infer<typeof CounterQuote>;
 
 export const CounterSale = z.object({
 	orderId: Id,

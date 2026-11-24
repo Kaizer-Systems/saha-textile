@@ -1,0 +1,306 @@
+@if (stores().length) { @if (!on()) {
+<!-- P1: counter mode is offered only at a store with a day-sheet box. -->
+<div class="card">
+	<div class="card-body">
+		<div class="form-check form-switch mb-0 ps-0">
+			<label class="switch">
+				<input
+					type="checkbox"
+					id="counter_on"
+					[checked]="false"
+					(change)="toggle(true)"
+				/>
+				<span class="switch-state"></span>
+			</label>
+			<label
+				class="ms-2"
+				for="counter_on"
+			>
+				{{ 'counter_switch' | transloco }}
+			</label>
+		</div>
+		<p class="help-text mb-0">{{ 'counter_switch_help' | transloco }}</p>
+	</div>
+</div>
+} @else {
+<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+	<div>
+		<h5 class="mb-1">{{ 'create_order' | transloco }}</h5>
+		@if (store(); as s) {
+		<small class="text-muted">
+			{{ (s.sheetOpen ? 'counter_sheet_open' : 'counter_sheet_not_open') | transloco: { store: s.name } }}
+		</small>
+		}
+	</div>
+	<div class="d-flex align-items-center flex-wrap gap-2">
+		@if (stores().length > 1 && !here.data()?.current) {
+		<select
+			class="form-select w-auto"
+			id="counter_store"
+			[attr.aria-label]="'counter_store' | transloco"
+			[ngModel]="store()?.locationId ?? ''"
+			(ngModelChange)="picked.set($event || null)"
+		>
+			<option value="">{{ 'counter_store_pick' | transloco }}</option>
+			@for (s of stores(); track s.locationId) {
+			<option [value]="s.locationId">{{ s.name }}</option>
+			}
+		</select>
+		}
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="counter_take_payment"
+			[disabled]="!canPay()"
+			(click)="takePayment()"
+		>
+			<i class="ri-wallet-line"></i>
+			{{ 'counter_take_payment' | transloco: { amount: rupees(total()) } }}
+		</button>
+	</div>
+</div>
+<div class="row">
+	<div class="col-xxl-8">
+		<div class="card">
+			<div class="card-body theme-form theme-form-2">
+				<div class="row g-3 align-items-end">
+					<div class="col-md-4">
+						<div class="form-check form-switch mb-0 ps-0">
+							<label class="switch">
+								<input
+									type="checkbox"
+									id="counter_off"
+									[checked]="true"
+									(change)="toggle(false)"
+								/>
+								<span class="switch-state"></span>
+							</label>
+							<label
+								class="ms-2"
+								for="counter_off"
+							>
+								{{ 'counter_switch' | transloco }}
+							</label>
+						</div>
+						<p class="help-text mb-0">{{ 'counter_switch_help' | transloco }}</p>
+					</div>
+					<div class="col-md-8">
+						<label
+							class="form-label-title"
+							for="counter_scan"
+						>
+							{{ 'counter_scan' | transloco }}
+						</label>
+						<input
+							class="form-control"
+							id="counter_scan"
+							autocomplete="off"
+							maxlength="80"
+							[ngModel]="code()"
+							(ngModelChange)="code.set($event)"
+							(keydown.enter)="$event.preventDefault(); scan()"
+						/>
+					</div>
+				</div>
+			</div>
+		</div>
+		@if (search()) {
+		<div class="card">
+			<div class="card-body">
+				<div class="title-header">
+					<div class="d-flex align-items-center">
+						<h5>{{ 'counter_found' | transloco: { text: search() } }}</h5>
+					</div>
+				</div>
+				<div class="product-section">
+					<div class="row g-4 row-cols-xxl-4 row-cols-md-3 row-cols-sm-2 row-cols-1">
+						@for (card of cards.data()?.items ?? []; track card.productId) {
+						<div class="col">
+							<app-order-product-card
+								[card]="card"
+								[currency]="'INR'"
+								(add)="add($event)"
+							/>
+						</div>
+						}
+					</div>
+					@if (!cards.isPending() && !(cards.data()?.items?.length)) {
+					<app-no-data
+						[class]="'no-data-added shipping-no-data'"
+						[image]="'assets/svg/no-product.svg'"
+						[text]="'no_products_found'"
+					/>
+					}
+				</div>
+			</div>
+		</div>
+		}
+		<div class="card">
+			<div class="card-body">
+				<div class="title-header">
+					<div class="d-flex align-items-center">
+						<h5>{{ 'items' | transloco }}</h5>
+					</div>
+				</div>
+				@if (!lines().length) {
+				<p class="help-text mb-0">{{ 'counter_no_items' | transloco }}</p>
+				} @else {
+				<div class="table-responsive">
+					<table class="all-package theme-table no-footer table">
+						<thead>
+							<tr>
+								<th>{{ 'counter_item' | transloco }}</th>
+								<th>{{ 'ord_col_qty' | transloco }}</th>
+								<th class="text-end">{{ 'price' | transloco }}</th>
+								<th class="text-end">{{ 'total' | transloco }}</th>
+								<th></th>
+							</tr>
+						</thead>
+						<tbody>
+							@for (row of rows(); track row.line.key) {
+							<tr>
+								<td>
+									{{ row.priced?.title ?? '…' }}
+									<small class="d-block text-muted">
+										{{ row.priced?.sku ?? '' }} @if (row.line.scanned) { · {{ 'counter_scanned' |
+										transloco }} }
+									</small>
+									@if (row.priced?.problem; as p) { @if (p !== 'limited') {
+									<small class="d-block text-danger">{{ 'ord_cart_problem_' + p | transloco }}</small>
+									} }
+								</td>
+								<td class="text-nowrap">
+									<button
+										type="button"
+										class="btn btn-sm p-1"
+										[title]="'decrease_quantity' | transloco"
+										(click)="change(row.line.key, -1)"
+									>
+										<i class="ri-subtract-line"></i>
+									</button>
+									{{ quantityWords(row.line) }}
+									<button
+										type="button"
+										class="btn btn-sm p-1"
+										[title]="'increase_quantity' | transloco"
+										(click)="change(row.line.key, 1)"
+									>
+										<i class="ri-add-line"></i>
+									</button>
+								</td>
+								<td class="text-end">{{ row.priced ? rupees(row.priced.unitPriceINR) : '—' }}</td>
+								<td class="text-end">{{ row.priced ? rupees(row.priced.lineTotalINR) : '—' }}</td>
+								<td class="text-end">
+									<a
+										href="javascript:void(0)"
+										class="text-danger"
+										[title]="'delete' | transloco"
+										(click)="remove(row.line.key)"
+									>
+										<i class="ri-delete-bin-line"></i>
+									</a>
+								</td>
+							</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+				} @for (p of quote.data()?.problems ?? []; track p.sku) {
+				<p class="small text-danger mt-2 mb-0">
+					{{ 'counter_problem_invoice_' + p.problem | transloco: { sku: p.sku } }}
+				</p>
+				}
+			</div>
+		</div>
+	</div>
+	<div class="col-xxl-4">
+		<div class="card">
+			<div class="card-body theme-form theme-form-2">
+				<div class="title-header">
+					<div class="d-flex align-items-center">
+						<h5>{{ 'counter_customer' | transloco }}</h5>
+					</div>
+				</div>
+				<label
+					class="form-label-title"
+					for="counter_phone"
+				>
+					{{ 'phone' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="counter_phone"
+					inputmode="tel"
+					maxlength="20"
+					[ngModel]="phone()"
+					(ngModelChange)="phone.set($event)"
+					(blur)="lookUp()"
+				/>
+				<p class="help-text mb-3">{{ 'counter_phone_help' | transloco }}</p>
+				<label
+					class="form-label-title"
+					for="counter_name"
+				>
+					{{ 'name' | transloco }}
+				</label>
+				<input
+					class="form-control mb-3"
+					id="counter_name"
+					maxlength="120"
+					[ngModel]="name()"
+					(ngModelChange)="name.set($event)"
+				/>
+				<label
+					class="form-label-title"
+					for="counter_address"
+				>
+					{{ 'counter_billing_address' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="counter_address"
+					maxlength="500"
+					[class.is-invalid]="addressNeeded() && !address().trim()"
+					[ngModel]="address()"
+					(ngModelChange)="address.set($event)"
+				/>
+				<p class="help-text mb-3">{{ 'counter_address_help' | transloco: { place: store()?.place ?? '' } }}</p>
+				<label
+					class="form-label-title"
+					for="counter_gstin"
+				>
+					{{ 'counter_gstin' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="counter_gstin"
+					maxlength="15"
+					[ngModel]="gstin()"
+					(ngModelChange)="gstin.set($event)"
+				/>
+			</div>
+		</div>
+		<div class="card pos-detail-card">
+			<div class="card-body">
+				<ul class="summary-total">
+					<li>
+						<h4>{{ 'counter_taxable' | transloco }}</h4>
+						<h4 class="price">{{ rupees(lines().length ? (quote.data()?.taxableINR ?? 0) : 0) }}</h4>
+					</li>
+					<li>
+						<h4>{{ 'counter_cgst_sgst' | transloco }}</h4>
+						<h4 class="price">
+							{{ rupees(lines().length ? (quote.data()?.cgstINR ?? 0) + (quote.data()?.sgstINR ?? 0) : 0)
+							}}
+						</h4>
+					</li>
+					<li class="list-total">
+						<h4>{{ 'total' | transloco }}</h4>
+						<h4 class="price">{{ rupees(total()) }}</h4>
+					</li>
+				</ul>
+			</div>
+		</div>
+	</div>
+</div>
+} }

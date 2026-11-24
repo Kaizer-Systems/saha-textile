@@ -1,12 +1,19 @@
 import { randomUUID } from 'node:crypto';
 
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { type InvoiceCheck, type Order, TaxInvoice, type TaxInvoiceAccounting } from '@saha-textile/contracts';
+import {
+	type InvoiceCheck,
+	type Order,
+	type OrderLine,
+	TaxInvoice,
+	type TaxInvoiceAccounting,
+} from '@saha-textile/contracts';
 import {
 	buildInvoiceLines,
 	type CompanyRepository,
 	defaultStockLocation,
 	gstStateName,
+	type InvoiceLineInput,
 	invoicePosting,
 	istDay,
 	type LocationRepository,
@@ -192,6 +199,46 @@ export class InvoicesService {
 		return this.issue(order, lineIds, null, actorId, at, context);
 	}
 
+	/**
+	 * What a counter sale's invoice will say before it is made (P1): its lines and tax, sold in the store's State, and
+	 * the lines it can't take yet, by SKU.
+	 */
+	async counterPreview(lines: readonly OrderLine[]): Promise<{
+		totals: { taxableINR: number; cgstINR: number; sgstINR: number };
+		problems: { sku: string; problem: string }[];
+	}> {
+		const inputs = await this.inputsOf(lines.flatMap((line) => (line.role === 'bundle' ? [] : [line])));
+		const built = buildInvoiceLines(inputs, { interState: false, shippingINR: 0 });
+		const skuOf = new Map(inputs.map((input) => [input.lineId, input.sku]));
+		return {
+			totals: {
+				taxableINR: built.totals.taxableINR,
+				cgstINR: built.totals.cgstINR,
+				sgstINR: built.totals.sgstINR,
+			},
+			problems: built.problems.map((p) => ({ sku: skuOf.get(p.lineId) as string, problem: p.problem })),
+		};
+	}
+
+	/** An invoice's line inputs: the HSN snapshot on the line, else the product's own. */
+	private async inputsOf(lines: readonly OrderLine[]): Promise<InvoiceLineInput[]> {
+		const inputs: InvoiceLineInput[] = [];
+		for (const line of lines) {
+			const hsn =
+				line.tax?.hsn || (await this.products.findById(line.productId).catch(() => null))?.hsnCode || null;
+			inputs.push({
+				lineId: line.lineId as string,
+				sku: line.sku,
+				title: line.title['en'] ?? Object.values(line.title)[0] ?? line.sku,
+				hsn,
+				quantity: line.quantity,
+				unit: 'PCS',
+				lineTotalINR: line.lineTotalINR,
+			});
+		}
+		return inputs;
+	}
+
 	/** The order's invoice waiting for its parcel or, failing that, its latest one (e-documents cite it). */
 	async currentFor(orderId: string): Promise<TaxInvoice | null> {
 		const issued = (await this.invoices.listForOrder(orderId)).filter((i) => i.status === 'issued');
@@ -228,21 +275,7 @@ export class InvoicesService {
 		const abroad = !!delivery?.country && !['IN', 'India'].includes(delivery.country);
 		const placeOfSupply = abroad ? '96' : (delivery?.gstStateCode ?? sellerState);
 		const interState = placeOfSupply !== sellerState;
-		const inputs = [];
-		for (const line of shipped) {
-			// The HSN snapshot on the line, else the product's own.
-			const hsn =
-				line.tax?.hsn || (await this.products.findById(line.productId).catch(() => null))?.hsnCode || null;
-			inputs.push({
-				lineId: line.lineId,
-				sku: line.sku,
-				title: line.title['en'] ?? Object.values(line.title)[0] ?? line.sku,
-				hsn,
-				quantity: line.quantity,
-				unit: 'PCS' as const,
-				lineTotalINR: line.lineTotalINR,
-			});
-		}
+		const inputs = await this.inputsOf(shipped);
 		// The delivery charge goes on the order's first invoice.
 		const shippingINR = earlier.length ? 0 : (order.shipping?.chargeINR ?? 0);
 		const built = buildInvoiceLines(inputs, { interState, shippingINR });

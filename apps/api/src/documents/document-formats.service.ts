@@ -213,11 +213,12 @@ export class DocumentFormatsService {
 	async renderActiveCopies(
 		doc: DocumentKind,
 		copies: readonly [DocumentData, ...DocumentData[]],
+		paper: DocumentPaper | null = null,
 	): Promise<Uint8Array> {
 		const format = await this.formats.findActive(doc);
 		const blocks = format?.blocks ?? ourBlocks(doc);
 		return this.pdf(
-			{ name: format?.name ?? 'Saha Textile standard', paper: format?.paper ?? 'a4', blocks },
+			{ name: format?.name ?? 'Saha Textile standard', paper: paper ?? format?.paper ?? 'a4', blocks },
 			copies,
 		);
 	}

@@ -1,0 +1,248 @@
+@if (data(); as d) {
+<div class="modal-header">
+	<h5
+		class="mb-0"
+		id="counter_payment_title"
+	>
+		{{ 'counter_take_payment' | transloco: { amount: rupees(d.totalINR) } }}
+	</h5>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	></button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	<div class="table-responsive mb-3">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'counter_how' | transloco }}</th>
+					<th class="text-end">{{ 'amount' | transloco }}</th>
+					<th>{{ 'counter_reference' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>{{ 'ord_method_upi' | transloco }}</td>
+					<td>
+						<div class="input-group">
+							<span class="input-group-text">₹</span>
+							<input
+								class="form-control text-end"
+								id="counter_upi"
+								inputmode="decimal"
+								[attr.aria-label]="'ord_method_upi' | transloco"
+								[ngModel]="upi()"
+								(ngModelChange)="upi.set($event)"
+							/>
+						</div>
+					</td>
+					<td>
+						<input
+							class="form-control"
+							id="counter_upi_ref"
+							maxlength="120"
+							[attr.aria-label]="'counter_reference' | transloco"
+							[ngModel]="upiRef()"
+							(ngModelChange)="upiRef.set($event)"
+						/>
+					</td>
+				</tr>
+				<tr>
+					<td>{{ 'ord_method_cash' | transloco }}</td>
+					<td>
+						<div class="input-group">
+							<span class="input-group-text">₹</span>
+							<input
+								class="form-control text-end"
+								id="counter_cash"
+								inputmode="decimal"
+								[attr.aria-label]="'ord_method_cash' | transloco"
+								[disabled]="!d.store.sheetOpen"
+								[ngModel]="cash()"
+								(ngModelChange)="cash.set($event)"
+							/>
+						</div>
+					</td>
+					<td class="text-muted small align-middle">
+						{{ (d.store.sheetOpen ? 'counter_cash_where' : 'counter_cash_sheet_closed') | transloco }}
+					</td>
+				</tr>
+				<tr>
+					<td>{{ 'ord_method_card' | transloco }}</td>
+					<td>
+						<div class="input-group">
+							<span class="input-group-text">₹</span>
+							<input
+								class="form-control text-end"
+								id="counter_card"
+								inputmode="decimal"
+								[attr.aria-label]="'ord_method_card' | transloco"
+								[ngModel]="card()"
+								(ngModelChange)="card.set($event)"
+							/>
+						</div>
+					</td>
+					<td>
+						<input
+							class="form-control"
+							id="counter_card_ref"
+							maxlength="120"
+							[attr.aria-label]="'counter_reference' | transloco"
+							[ngModel]="cardRef()"
+							(ngModelChange)="cardRef.set($event)"
+						/>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	@if (paidINR() !== d.totalINR) {
+	<p class="small text-danger mb-3">
+		{{ 'counter_payments_add_up' | transloco: { paid: rupees(paidINR()), total: rupees(d.totalINR) } }}
+	</p>
+	}
+	<div class="row g-3">
+		<div class="col-md-4">
+			<label
+				class="form-label-title"
+				for="counter_handed"
+			>
+				{{ 'counter_cash_handed' | transloco }}
+			</label>
+			<div class="input-group">
+				<span class="input-group-text">₹</span>
+				<input
+					class="form-control"
+					id="counter_handed"
+					inputmode="decimal"
+					[disabled]="!cashINR()"
+					[ngModel]="handed()"
+					(ngModelChange)="handed.set($event)"
+				/>
+			</div>
+		</div>
+		<div class="col-md-4">
+			<label
+				class="form-label-title"
+				for="counter_change"
+			>
+				{{ 'counter_change' | transloco }}
+			</label>
+			<div class="input-group">
+				<span class="input-group-text">₹</span>
+				<input
+					class="form-control"
+					id="counter_change"
+					disabled
+					[value]="changeINR().toFixed(2)"
+				/>
+			</div>
+		</div>
+		<div class="col-md-4">
+			<span class="form-label-title d-block">{{ 'counter_print' | transloco }}</span>
+			<div class="form-check">
+				<input
+					class="form-check-input"
+					type="radio"
+					name="counter_print"
+					id="counter_print_a4"
+					[checked]="print() === 'a4'"
+					(change)="print.set('a4')"
+				/>
+				<label
+					class="form-check-label"
+					for="counter_print_a4"
+				>
+					{{ 'counter_print_a4' | transloco }}
+				</label>
+			</div>
+			<div class="form-check">
+				<input
+					class="form-check-input"
+					type="radio"
+					name="counter_print"
+					id="counter_print_roll"
+					[checked]="print() === 'roll80'"
+					(change)="print.set('roll80')"
+				/>
+				<label
+					class="form-check-label"
+					for="counter_print_roll"
+				>
+					{{ 'counter_print_roll' | transloco }}
+				</label>
+			</div>
+		</div>
+	</div>
+	<p class="text-muted small mt-3 mb-1">{{ 'accounts_what_changes' | transloco }}</p>
+	<ul class="list-unstyled small mb-0">
+		<li class="d-flex border-bottom gap-2 py-2">
+			<i class="ri-file-list-3-line"></i>
+			<div>
+				<b>{{ 'counter_effect_invoice_title' | transloco }}</b>
+				<span class="text-muted">· taxInvoices</span>
+				<span class="d-block">{{ 'counter_effect_invoice' | transloco }}</span>
+			</div>
+		</li>
+		<li class="d-flex border-bottom gap-2 py-2">
+			<i class="ri-stack-line"></i>
+			<div>
+				<b>{{ 'counter_effect_stock_title' | transloco }}</b>
+				<span class="text-muted">· inventoryLedger</span>
+				<span class="d-block">
+					{{ 'counter_effect_stock' | transloco: { count: d.pieces, store: d.store.name } }}
+				</span>
+			</div>
+		</li>
+		<li class="d-flex border-bottom gap-2 py-2">
+			<i class="ri-wallet-line"></i>
+			<div>
+				<b>{{ 'counter_effect_cash_title' | transloco }}</b>
+				<span class="text-muted">· cashSheetLines</span>
+				<span class="d-block">
+					@if (!cashINR()) { {{ 'counter_effect_no_cash' | transloco }} } @if (cashINR() && changeINR()) { {{
+					'counter_effect_cash_change' | transloco: { cash: rupees(cashINR()), change: rupees(changeINR()) }
+					}} } @if (cashINR() && !changeINR()) { {{ 'counter_effect_cash' | transloco: { cash:
+					rupees(cashINR()) } }} }
+				</span>
+			</div>
+		</li>
+		<li class="d-flex gap-2 py-2">
+			<i class="ri-book-2-line"></i>
+			<div>
+				<b>{{ 'counter_effect_books_title' | transloco }}</b>
+				<span class="text-muted">· journalLines</span>
+				<span class="d-block">{{ booksWords() }}</span>
+			</div>
+		</li>
+	</ul>
+	@if (problem(); as p) {
+	<div
+		class="alert alert-danger mt-3 mb-0"
+		role="alert"
+	>
+		{{ p.key | transloco: p.params }}
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<button
+		type="button"
+		class="btn btn-outline"
+		(click)="modal.dismiss()"
+	>
+		{{ 'back' | transloco }}
+	</button>
+	<button
+		type="button"
+		class="btn btn-theme"
+		[disabled]="!canTake()"
+		(click)="take()"
+	>
+		{{ 'counter_take' | transloco: { amount: rupees(d.totalINR) } }}
+	</button>
+</div>
+}

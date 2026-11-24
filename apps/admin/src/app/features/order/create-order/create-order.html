@@ -2,6 +2,9 @@
 <app-loader />
 }
 <div class="container-fluid">
+	<!-- Counter mode (accounts brief P1): shown at a store; when on, it is the whole screen. -->
+	<app-counter-sale (active)="counterOn.set($event)" />
+	@if (!counterOn()) {
 	<div class="row">
 		<div class="col-xxl-8">
 			@if (draft.addingTo(); as adding) {
@@ -277,4 +280,5 @@
 			</div>
 		</div>
 	</div>
+	}
 </div>

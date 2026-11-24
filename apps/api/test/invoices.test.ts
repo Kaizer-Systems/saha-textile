@@ -221,3 +221,22 @@ describe('a counter sale is invoiced at once (accounts brief P2)', () => {
 		).rejects.toThrow('tax_invoices_off');
 	});
 });
+
+describe('what a counter invoice will say, before it is made (accounts brief P1)', () => {
+	it('takes the tax out of each line in the store’s State, leaves a set’s own line out, and names lines it can’t take', async () => {
+		const { service } = setup(true);
+		const lines = order('5007').lines;
+		const preview = await service.counterPreview([
+			...lines,
+			{ ...lines[0]!, lineId: 'set_1', role: 'bundle' as const },
+		] as never);
+		// ₹36,500 at 5%: taxable 34,761.90, CGST and SGST 869.05 each.
+		expect(preview).toEqual({
+			totals: { taxableINR: 34_761.9, cgstINR: 869.05, sgstINR: 869.05 },
+			problems: [],
+		});
+		expect((await service.counterPreview(order(null).lines as never)).problems).toEqual([
+			{ sku: 'ST-KAT-0901', problem: 'hsn_missing' },
+		]);
+	});
+});

@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { CounterBuyerWrite, CounterExchangeWrite, CounterSaleWrite, CounterSummaryQuery } from '../src/counter';
+import {
+	CounterBuyerWrite,
+	CounterExchangeWrite,
+	CounterHere,
+	CounterQuote,
+	CounterQuoteWrite,
+	CounterSaleWrite,
+	CounterScan,
+	CounterScanQuery,
+	CounterSummaryQuery,
+} from '../src/counter';
 import { OrderPayment, PaymentMethod } from '../src/order-payment';
 
 /** Counter mode (accounts brief P): what a counter sale, an exchange and the day's summary take. */
@@ -34,5 +44,30 @@ describe('counter contracts', () => {
 		const shape = OrderPayment.shape.ledgerId;
 		expect(shape.parse(undefined)).toBeUndefined();
 		expect(shape.parse('led_till')).toBe('led_till');
+	});
+
+	it('says where a person sells, what a scan found, and prices a counter cart with its tax', () => {
+		expect(
+			CounterHere.parse({
+				current: null,
+				stores: [{ locationId: 'loc_gar', name: 'Gariahat store', place: 'Kolkata, West Bengal', sheetOpen: true }],
+			}).stores,
+		).toHaveLength(1);
+		expect(CounterScanQuery.parse({ code: ' TNT-WHT ' }).code).toBe('TNT-WHT');
+		expect(CounterScanQuery.safeParse({ code: '' }).success).toBe(false);
+		expect(
+			CounterScan.parse({ productId: 'p1', variationId: null, sku: 'TNT-WHT', title: 'Tant', soldBy: 'piece' }).sku,
+		).toBe('TNT-WHT');
+		expect(CounterQuoteWrite.parse({ locationId: 'loc_gar', lines: [] }).lines).toEqual([]);
+		expect(
+			CounterQuote.parse({
+				lines: [],
+				taxableINR: 0,
+				cgstINR: 0,
+				sgstINR: 0,
+				totalINR: 0,
+				problems: [{ sku: 'X', problem: 'hsn_missing' }],
+			}).problems,
+		).toHaveLength(1);
 	});
 });

@@ -165,6 +165,8 @@ export class CounterSalesService {
 			{ buyer: null, currency: 'INR', lines: write.lines.map((l) => ({ ...l, addons: [] })) },
 			now,
 		);
+		const blocked = priced.lines.find((line) => line.problem && line.problem !== 'limited');
+		if (blocked) throw refuse(`counter_line_problem:${blocked.problem}:${blocked.sku}`);
 		const totalINR = round2(priced.subtotalINR);
 		if (Math.abs(totalINR - write.expectedTotalINR) > 0.005)
 			throw new ConflictException(accountsRefusal('counter_price_changed'));

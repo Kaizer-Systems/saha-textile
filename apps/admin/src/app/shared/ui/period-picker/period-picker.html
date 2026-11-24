@@ -13,20 +13,23 @@
 		(keydown.enter)="dropdown.toggle()"
 		(keydown.space)="dropdown.toggle()"
 	>
-		{{ label() || (selected() | transloco) }}
+		{{ label() || (labelPrefix() + selected() | transloco) }}
 	</a>
 	<div
 		ngbDropdownMenu
 		[style.min-width.px]="240"
 	>
-		@for (preset of presets; track preset) {
+		@for (preset of choices(); track preset) {
 		<button
 			type="button"
 			ngbDropdownItem
+			class="d-flex justify-content-between gap-3"
 			[class.active]="preset === selected()"
 			(click)="choose(preset, dropdown)"
 		>
-			{{ preset | transloco }}
+			{{ labelPrefix() + preset | transloco }}@if (hint()(preset); as days) {
+			<small class="text-muted">{{ days }}</small>
+			}
 		</button>
 		} @if (selected() === 'custom') {
 		<div class="px-3 pt-2 pb-2">

@@ -1,4 +1,4 @@
-import { Component, inject, output, signal } from '@angular/core';
+import { Component, type OnInit, inject, input, output, signal } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import {
@@ -13,9 +13,19 @@ import {
 
 import type { DashboardPeriodQuery } from '@saha-textile/contracts';
 
-type Preset = 'last_12_months' | 'last_30_days' | 'last_month' | 'last_quarter' | 'current_quarter' | 'custom';
+type DashboardPreset = DashboardPeriodQuery['period'];
 
-const PRESETS: readonly Preset[] = [
+/** Every period the picker can offer: the dashboard's six, and the accounts lists' five more (accounts brief A). */
+export type PeriodPreset = DashboardPreset | 'today' | 'last_7_days' | 'this_month' | 'this_fy' | 'last_fy';
+
+/** A complete choice: a preset, or a custom range of India days. */
+export interface PeriodChoice {
+	period: PeriodPreset;
+	from?: string;
+	to?: string;
+}
+
+const PRESETS: readonly DashboardPreset[] = [
 	'last_12_months',
 	'last_30_days',
 	'last_month',
@@ -24,7 +34,23 @@ const PRESETS: readonly Preset[] = [
 	'custom',
 ];
 
-const DEFAULT_PRESET: Preset = 'last_12_months';
+const DEFAULT_PRESET: PeriodPreset = 'last_12_months';
+const DASHBOARD_PRESETS = new Set<PeriodPreset>(PRESETS);
+
+/** The accounts lists' choices, in the order A1 draws them (the financial year runs 1 April to 31 March). */
+export const ACCOUNTS_PRESETS: readonly PeriodPreset[] = [
+	'today',
+	'last_7_days',
+	'last_30_days',
+	'this_month',
+	'last_month',
+	'current_quarter',
+	'last_quarter',
+	'this_fy',
+	'last_fy',
+	'last_12_months',
+	'custom',
+];
 
 /**
  * `DASHBOARD_CUSTOM_RANGE_MAX_MONTHS` from the contracts. Repeated here because this app takes
@@ -46,14 +72,23 @@ const toNgbDate = (date: Date): NgbDate => new NgbDate(date.getFullYear(), date.
 	templateUrl: './period-picker.html',
 	imports: [TranslocoModule, NgbDropdown, NgbDropdownAnchor, NgbDropdownItem, NgbDropdownMenu, NgbInputDatepicker],
 })
-export class PeriodPicker {
+export class PeriodPicker implements OnInit {
 	readonly formatter = inject(NgbDateParserFormatter);
 
-	/** Emits only a complete choice, so a tile never asks for half a custom range. */
-	readonly changed = output<DashboardPeriodQuery>();
+	/** The choices offered (the dashboard's six unless a page passes its own) and the one picked at first. */
+	readonly choices = input<readonly PeriodPreset[]>(PRESETS);
+	readonly start = input<PeriodPreset>(DEFAULT_PRESET);
+	/** Put before each choice's name to find its words ("period_" on the accounts lists). */
+	readonly labelPrefix = input('');
+	/** The days a choice covers, shown beside it in the menu ("24 Oct – 23 Nov 2026"); none by default. */
+	readonly hint = input<(preset: PeriodPreset) => string | null>(() => null);
 
-	readonly presets = PRESETS;
-	readonly selected = signal<Preset>(DEFAULT_PRESET);
+	/** Emits only a complete dashboard choice, so a tile never asks for half a custom range. */
+	readonly changed = output<DashboardPeriodQuery>();
+	/** Every complete choice, whatever the list of choices. */
+	readonly picked = output<PeriodChoice>();
+
+	readonly selected = signal<PeriodPreset>(DEFAULT_PRESET);
 	readonly fromDate = signal<NgbDate | null>(null);
 	readonly toDate = signal<NgbDate | null>(null);
 	readonly hoveredDate = signal<NgbDate | null>(null);
@@ -70,6 +105,16 @@ export class PeriodPicker {
 
 	readonly today = toNgbDate(new Date());
 
+	ngOnInit(): void {
+		this.selected.set(this.start());
+	}
+
+	/** The choice goes out to every listener that can take it: the dashboard only knows its own six. */
+	private emit(choice: PeriodChoice): void {
+		this.picked.emit(choice);
+		if (DASHBOARD_PRESETS.has(choice.period)) this.changed.emit(choice as DashboardPeriodQuery);
+	}
+
 	label(): string {
 		const from = this.fromDate();
 		const to = this.toDate();
@@ -78,12 +123,12 @@ export class PeriodPicker {
 			: '';
 	}
 
-	choose(preset: Preset, dropdown: NgbDropdown): void {
+	choose(preset: PeriodPreset, dropdown: NgbDropdown): void {
 		this.selected.set(preset);
 		if (preset === 'custom') return;
 		this.fromDate.set(null);
 		this.toDate.set(null);
-		this.changed.emit({ period: preset });
+		this.emit({ period: preset });
 		dropdown.close();
 	}
 
@@ -91,7 +136,7 @@ export class PeriodPicker {
 		const from = this.fromDate();
 		if (from && !this.toDate() && !date.before(from)) {
 			this.toDate.set(date);
-			this.changed.emit({
+			this.emit({
 				period: 'custom',
 				from: this.formatter.format(from),
 				to: this.formatter.format(date),

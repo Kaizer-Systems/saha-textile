@@ -107,7 +107,8 @@ export function businessReceiptData(
 	seller: DocumentData['seller'],
 ): DocumentData {
 	const amount = Math.abs(entry.amountINR);
-	const [method, reference] = (entry.note ?? '').split(' · ');
+	// A split always gives at least one part, so the method is always a word (perhaps empty).
+	const [method, reference] = (entry.note ?? '').split(' · ') as [string, string?];
 	const number = entry.documentNumber ?? '';
 	return {
 		doc: 'receipt',
@@ -123,7 +124,7 @@ export function businessReceiptData(
 				? `${gstStateName(business.gstin.slice(0, 2)) ?? ''} (${business.gstin.slice(0, 2)})`
 				: '',
 			amount: money(amount),
-			method: PAYMENT_METHOD_WORDS[method ?? ''] ?? method ?? '',
+			method: PAYMENT_METHOD_WORDS[method] ?? method,
 			reference: reference ?? '',
 			taxOnAdvance: ADVANCE_TAX,
 			amountInWords: rupeesInWords(amount),
@@ -133,7 +134,7 @@ export function businessReceiptData(
 	};
 }
 
-const SIDE_ACCOUNT: Readonly<Record<string, string>> = {
+const SIDE_ACCOUNT: Readonly<Record<LedgerEntry['side'], string>> = {
 	receivable: 'Receivable from',
 	payable: 'Payable to',
 };
@@ -150,7 +151,7 @@ export function journalData(
 	const first = entries[0];
 	const number = first?.documentNumber ?? '';
 	const rows: DocumentRow[] = entries.map((entry) => {
-		const account = `${SIDE_ACCOUNT[entry.side] ?? entry.side} ${business.legalName}`;
+		const account = `${SIDE_ACCOUNT[entry.side]} ${business.legalName}`;
 		const lowers = entry.amountINR < 0;
 		const amount = money(Math.abs(entry.amountINR));
 		const debit = entry.side === 'receivable' ? !lowers : lowers;

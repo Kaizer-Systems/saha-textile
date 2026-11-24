@@ -157,11 +157,78 @@ describe('profit and loss by location (U3)', () => {
 	});
 });
 
+describe('cash flow and ratios for a period', () => {
+	/** Cash, sales, debtors and capital: the shop sold ₹2,440 in the period and is still owed ₹1,000 of it. */
+	const chart = {
+		groups: [
+			{ id: 'g_cash', systemKey: 'cash_in_hand', parentId: null, nature: 'asset' },
+			{ id: 'g_sales', systemKey: 'sales_accounts', parentId: null, nature: 'income' },
+			{ id: 'g_debtors', systemKey: 'sundry_debtors', parentId: null, nature: 'asset' },
+			{ id: 'g_capital', systemKey: 'capital_account', parentId: null, nature: 'equity' },
+		],
+		ledgers: [
+			{ id: 'led_cash', systemKey: 'cash', groupId: 'g_cash' },
+			{ id: 'led_sales', systemKey: 'sales', groupId: 'g_sales' },
+			{ id: 'led_debtors', systemKey: null, groupId: 'g_debtors' },
+			{ id: 'led_capital', systemKey: 'capital', groupId: 'g_capital' },
+		],
+	};
+	const balances: Record<string, Record<string, number>> = {
+		'2026-03-31': { led_cash: 50_000, led_capital: -50_000 },
+		'2026-11-30': { led_cash: 194_000, led_sales: -244_000, led_debtors: 100_000, led_capital: -50_000 },
+	};
+	const period = { from: '2026-04-01', to: '2026-11-30' };
+	const setup = () => {
+		const ledger = {
+			chart: async () => chart,
+			balancesAtLocations: vi.fn(
+				async (day: string, _principal: unknown, _only: readonly string[]) => balances[day] ?? {},
+			),
+		};
+		return { service: new StatementsService(ledger as never, {} as never, {} as never), ledger };
+	};
+
+	it('works the cash flow out from the balances the day before the period and on its last day, at every location', async () => {
+		const { service, ledger } = setup();
+		const flow = await service.cashFlow(period, owner);
+		expect(ledger.balancesAtLocations).toHaveBeenCalledWith('2026-03-31', owner, []);
+		expect(ledger.balancesAtLocations).toHaveBeenCalledWith('2026-11-30', owner, []);
+		expect(flow).toMatchObject({
+			from: '2026-04-01',
+			to: '2026-11-30',
+			openingCash: 50_000,
+			closingCash: 194_000,
+			netChange: 144_000,
+			sections: { operating: 144_000, investing: 0, financing: 0 },
+		});
+	});
+
+	it('works the ratios out over the period’s days, both days counted', async () => {
+		const { values } = await setup().service.ratios(period, owner);
+		// 1 April to 30 November is 244 days: ₹1,000 owed on ₹2,440 of sales is 100 days of sales.
+		expect(values.debtorDays).toBe(100);
+		expect(values.grossMargin).toBe(100);
+		expect(values.currentRatio).toBeNull();
+	});
+
+	it('refuses a period that ends before it starts', async () => {
+		const backwards = { from: '2026-12-01', to: '2026-11-30' };
+		await expect(setup().service.cashFlow(backwards, owner)).rejects.toMatchObject(
+			refusal('report_period_backwards'),
+		);
+		await expect(setup().service.ratios(backwards, owner)).rejects.toMatchObject(
+			refusal('report_period_backwards'),
+		);
+	});
+});
+
 describe('the statement routes', () => {
 	it('hand each call to its service; the audit report needs accounts.lock, the rest accounts.index', () => {
 		const statements = {
 			statement: vi.fn((...args: unknown[]) => ['statement', ...args]),
 			plByLocation: vi.fn((...args: unknown[]) => ['plByLocation', ...args]),
+			cashFlow: vi.fn((...args: unknown[]) => ['cashFlow', ...args]),
+			ratios: vi.fn((...args: unknown[]) => ['ratios', ...args]),
 		};
 		const books = {
 			ageing: vi.fn((...args: unknown[]) => ['ageing', ...args]),
@@ -177,6 +244,10 @@ describe('the statement routes', () => {
 			c.plByLocation(period),
 			c.ageing('suppliers'),
 			c.audit(audit),
+			c.cashFlow(period, owner),
+			c.cashFlow(period),
+			c.ratios(period, owner),
+			c.ratios(period),
 		]).toEqual([
 			['statement', 'profitLoss', { asAt: '2026-11-30' }, owner],
 			['statement', 'balanceSheet', {}, undefined],
@@ -184,14 +255,27 @@ describe('the statement routes', () => {
 			['plByLocation', period, undefined],
 			['ageing', 'suppliers'],
 			['auditReport', audit],
+			['cashFlow', period, owner],
+			['cashFlow', period, undefined],
+			['ratios', period, owner],
+			['ratios', period, undefined],
 		]);
 		const perm = (m: keyof StatementsController) =>
 			new Reflector().get(PERMISSIONS_KEY, StatementsController.prototype[m]);
-		expect([perm('statement'), perm('plByLocation'), perm('ageing'), perm('audit')]).toEqual([
+		expect([
+			perm('statement'),
+			perm('plByLocation'),
+			perm('ageing'),
+			perm('audit'),
+			perm('cashFlow'),
+			perm('ratios'),
+		]).toEqual([
 			['accounts.index'],
 			['accounts.index'],
 			['accounts.index'],
 			['accounts.lock'],
+			['accounts.index'],
+			['accounts.index'],
 		]);
 	});
 });

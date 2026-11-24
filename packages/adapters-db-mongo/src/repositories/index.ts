@@ -67,3 +67,4 @@ export * from './report-definition.repository';
 export * from './fixed-asset.repository';
 export * from './payroll.repository';
 export * from './year-close.repository';
+export * from './books-import.repository';

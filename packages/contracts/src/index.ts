@@ -89,6 +89,7 @@ export * from './counter';
 export * from './transfers';
 export * from './bank';
 export * from './bank-statement';
+export * from './books-import';
 export * from './bank-reconcile';
 export * from './settlements';
 export * from './gst-returns';

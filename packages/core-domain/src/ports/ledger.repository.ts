@@ -8,6 +8,7 @@ import type {
 	PeriodLock,
 	VoucherDraft,
 	VoucherKind,
+	BooksImport,
 } from '@saha-textile/contracts';
 
 import type { StatementLine } from '../ledger/ledger-rules';
@@ -107,6 +108,13 @@ export interface YearCloseRecord {
 	closedBy: string | null;
 	closedAt: string | null;
 	updatedAt: string;
+}
+
+/** I1: books brought in from another program, each undoable until a new entry is posted. */
+export interface BooksImportRepository {
+	list(): Promise<(BooksImport & { vouchersAtImport: number })[]>;
+	get(id: string): Promise<(BooksImport & { vouchersAtImport: number }) | null>;
+	save(entry: BooksImport & { vouchersAtImport: number }): Promise<void>;
 }
 
 export interface YearCloseRepository {

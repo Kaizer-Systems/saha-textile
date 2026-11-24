@@ -17,6 +17,7 @@ import { MoneyLandingController, MoneyLandingService } from './money-landing';
 import { ReportPreviewController, ReportPreviewService } from './report-preview';
 import { RolesController, RolesService } from './roles';
 import { TemplateUpdatesController, TemplateUpdatesService } from './template-updates';
+import { BooksImportController, BooksImportService } from './books-import';
 import { YearCloseController, YearCloseService } from './year-close';
 
 /** The general ledger (accounts brief Q, T, D10): later documents post through LedgerService.post. */
@@ -35,6 +36,7 @@ import { YearCloseController, YearCloseService } from './year-close';
 		AccountsListsController,
 		AccountsOverviewController,
 		YearCloseController,
+		BooksImportController,
 	],
 	providers: [
 		LedgerService,
@@ -50,6 +52,7 @@ import { YearCloseController, YearCloseService } from './year-close';
 		AccountsPrints,
 		AccountsOverviewService,
 		YearCloseService,
+		BooksImportService,
 	],
 	exports: [LedgerService, EditLogService, MoneyLandingService, BooksPostingService],
 })

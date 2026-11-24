@@ -162,6 +162,7 @@ export const SALARY_TEMPLATE_REPOSITORY = Symbol('SalaryTemplateRepository');
 export const STATUTORY_FILING_REPOSITORY = Symbol('StatutoryFilingRepository');
 export const PAYROLL_ADVANCE_REPOSITORY = Symbol('PayrollAdvanceRepository');
 export const YEAR_CLOSE_REPOSITORY = Symbol('YearCloseRepository');
+export const BOOKS_IMPORT_REPOSITORY = Symbol('BooksImportRepository');
 export const PAYMENT_VOUCHER_REPOSITORY = Symbol('PaymentVoucherRepository');
 /** Where money lands (Postings and Convert brief AP-D1). */
 export const MONEY_LANDING_REPOSITORY = Symbol('MoneyLandingRepository');

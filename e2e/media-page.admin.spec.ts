@@ -126,7 +126,29 @@ test.describe('Media page (step 1)', () => {
 		// The test folder, chosen in the list, then the bar's Download .zip.
 		await card(page, RUN).click();
 		await expect(page.locator('#fm_bulk_zip')).toBeVisible();
+		// The box comes after three requests in a row (plan, storage check, create). CI once showed no box within 10 s
+		// and kept no log (24 Nov), so this waits for the create request's own answer and, if it never comes or is
+		// refused, says what the media requests answered and what the page showed.
+		const seen: string[] = [];
+		page.on('response', (response) => {
+			const path = new URL(response.url()).pathname;
+			if (path.includes('/media/library/'))
+				seen.push(`${response.request().method()} ${path} ${response.status()}`);
+		});
+		const asked = page.waitForResponse(
+			(response) =>
+				response.request().method() === 'POST' &&
+				new URL(response.url()).pathname.endsWith('/media/library/zips'),
+			{ timeout: 30_000 },
+		);
 		await page.locator('#fm_bulk_zip').click();
+		const created = await asked.catch(async () => {
+			const shown = await page.locator('#toast-container, .modal.show').allInnerTexts();
+			throw new Error(
+				`no .zip was created. Requests: ${seen.join(', ') || 'none'}. Page: ${shown.join(' | ') || 'nothing'}`,
+			);
+		});
+		expect(created.status(), `${await created.text()} (requests: ${seen.join(', ')})`).toBe(201);
 		// Nothing else is running, so the .zip shows as its own box, not as a tray row.
 		const box = page.locator('#fm_zip_box');
 		await expect(box).toBeVisible();

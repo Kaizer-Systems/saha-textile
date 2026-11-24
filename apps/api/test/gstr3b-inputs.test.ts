@@ -200,3 +200,23 @@ describe('GSTR-3B’s figures from the books and 2B (G6)', () => {
 		expect(noStock.entries.postedBetween).not.toHaveBeenCalled();
 	});
 });
+
+describe('credit the books took back over any days (GSTR-9 table 7)', () => {
+	it('reads the reversals between two days at the GSTIN’s own locations', async () => {
+		const { inputs, ledger } = build();
+		expect(await inputs.reversedFor('reg_wb', '2026-04-01', '2027-03-31')).toEqual({
+			igst: 300,
+			cgst: 0,
+			sgst: 50,
+		});
+		expect(ledger.listVouchers).toHaveBeenCalledWith(
+			expect.objectContaining({ from: '2026-04-01', to: '2027-03-31', page: 1 }),
+		);
+		// Only the other GSTIN's line at its own location counts for it.
+		expect(await build().inputs.reversedFor('reg_tr', '2026-04-01', '2027-03-31')).toEqual({
+			igst: 0,
+			cgst: 100,
+			sgst: 0,
+		});
+	});
+});

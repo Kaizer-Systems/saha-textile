@@ -102,12 +102,12 @@ export class BrandService {
 
 	async save(input: BrandSettings): Promise<BrandSettings> {
 		await Promise.all(assetIds(input).map((id) => this.requireBrandAsset(id)));
-		// Only the pictures the kit points at keep a stored version.
+		// Only the pictures the kit points at keep a stored version. The schema defaults the versions to {}.
 		const used = new Set(assetIds(input));
 		const value: BrandSettings = {
 			...input,
 			imageVersions: Object.fromEntries(
-				Object.entries(input.imageVersions ?? {}).filter(([assetId]) => used.has(assetId)),
+				Object.entries(input.imageVersions).filter(([assetId]) => used.has(assetId)),
 			),
 		};
 		const before = await this.settingsValue();

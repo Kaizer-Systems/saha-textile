@@ -82,11 +82,12 @@ export class OrderSettingsService {
 	}
 
 	private rows(settings: DocumentNumberingSettings): DocumentNumberingRow[] {
+		// numberingExamples writes the four fixed types and every series, so each example below is there.
 		const examples = numberingExamples(settings, fiscalYearOf(istDay(new Date())));
 		const fixed: DocumentNumberingRow[] = (['order', 'parcel', 'return', 'paymentRequest'] as const).map(
 			(type) => ({
 				type,
-				example: examples[type] ?? '',
+				example: examples[type] as string,
 				resetsEachYear: type === 'order' ? settings.order.kind === 'financialYearSequence' : false,
 				locked: false,
 				gst: false,
@@ -96,7 +97,7 @@ export class OrderSettingsService {
 			...fixed,
 			...NumberedDocumentType.options.map((type) => ({
 				type,
-				example: examples[type] ?? '',
+				example: examples[type] as string,
 				resetsEachYear: settings.series[type].reset === 'fy',
 				locked: settings.lockedTypes.includes(type),
 				gst: GST_DOCUMENT_TYPES.includes(type),

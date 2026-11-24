@@ -190,6 +190,8 @@ export class ShopCheckoutService {
 		const actor = { id: built.customer.id, name: built.customer.displayName ?? built.billing.fullName };
 		const lines = this.orderLines(built, at);
 		const deliveryCountry = built.delivery.countryCode ?? built.delivery.country;
+		// Pay is off for an empty cart, the one checkout without a shipping quote, so the quote is here.
+		const shipped = built.shipping as ShippingCartTryResult;
 		const base: Omit<Order, 'id' | 'orderNumber'> = {
 			userId: built.customer.id,
 			currency: quote.currency,
@@ -204,13 +206,13 @@ export class ShopCheckoutService {
 				zone: quote.shipping.zone,
 				deliveryCountry,
 				trace: quote.shipping.reason,
-				ruleSets: (built.shipping?.groups ?? []).flatMap((group) =>
+				ruleSets: shipped.groups.flatMap((group) =>
 					group.ruleSetId && group.version
 						? [{ id: group.ruleSetId, version: group.version, name: group.ruleSetName ?? '' }]
 						: [],
 				),
 				pending: false,
-				pieces: (built.shipping?.lines ?? []).map((line) => ({
+				pieces: shipped.lines.map((line) => ({
 					lineId: line.lineId,
 					units: line.units,
 					discounted: line.discounted,
@@ -483,7 +485,8 @@ export class ShopCheckoutService {
 				now: now.toISOString(),
 				buyer: { kind: 'person', customerId: customer.id, isFirstOrder: firstOrder },
 				usesByThisBuyer: await this.coupons.usesBy(coupon.id, `customer:${customer.id}`),
-				usesInAll: coupon.usedCount ?? 0,
+				// The coupon schema defaults the count to 0, so it is always a number.
+				usesInAll: coupon.usedCount,
 				deliveryINR: shippingResult?.amountINR ?? 0,
 			});
 		}
@@ -495,11 +498,11 @@ export class ShopCheckoutService {
 		}
 		const goodsINR = round2(view.lines.reduce((sum, line) => sum + line.lineTotalINR, 0));
 		const couponINR = round2(run.applied.reduce((sum, row) => sum + row.amountINR, 0));
+		// The engine gives every applied coupon its delivery share (0 unless it is free delivery).
 		const shippingINR = round2(
 			Math.max(
 				0,
-				(shippingResult?.amountINR ?? 0) -
-					run.applied.reduce((sum, row) => sum + (row.deliveryAmountINR ?? 0), 0),
+				(shippingResult?.amountINR ?? 0) - run.applied.reduce((sum, row) => sum + row.deliveryAmountINR, 0),
 			),
 		);
 		const totalINR = round2(goodsINR - couponINR + shippingINR);

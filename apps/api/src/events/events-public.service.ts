@@ -51,11 +51,12 @@ export class EventsPublicService {
 	private async images(event: ShopEvent, locale: string): Promise<ResolvedImage[]> {
 		if (!event.showPopup || !event.popupAssetIds.length || !this.media) return [];
 		const media = this.media;
-		const assets = await Promise.all(event.popupAssetIds.map((id) => media.findById(id)));
+		// Each picture is read with its own id, so the stored version is looked up by that id (a never-run `?? ''` went).
+		const assets = await Promise.all(
+			event.popupAssetIds.map(async (id) => ({ id, asset: await media.findById(id) })),
+		);
 		return assets
-			.map((asset, index) =>
-				this.image(asset ?? undefined, locale, event.imageVersions?.[event.popupAssetIds[index] ?? '']),
-			)
+			.map(({ id, asset }) => this.image(asset ?? undefined, locale, event.imageVersions?.[id]))
 			.filter((image): image is ResolvedImage => image !== null);
 	}
 

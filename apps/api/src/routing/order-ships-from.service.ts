@@ -87,9 +87,10 @@ export class OrderShipsFromService {
 			const match = lines.find((l) => l.lineId === (line.lineId ?? line.sku));
 			if (line.held && match) own.set(match.variantId, (own.get(match.variantId) ?? 0) + line.quantity);
 		});
+		// own.has() is checked first, so the count is there (a never-run `?? 0` went).
 		const split = (await this.stockSplit.locationStock(lines.map((l) => l.variantId))).map((row) =>
 			row.locationId === keptAt && own.has(row.variantId)
-				? { ...row, reserved: Math.max(0, row.reserved - (own.get(row.variantId) ?? 0)) }
+				? { ...row, reserved: Math.max(0, row.reserved - (own.get(row.variantId) as number)) }
 				: row,
 		);
 		const freeAt = (variantId: string, locationId: string) => {

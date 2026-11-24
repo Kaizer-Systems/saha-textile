@@ -271,10 +271,12 @@ export class InboxService {
 		const uploaded = attachments.reduce((sum, file) => sum + file.data.length, 0);
 		if (uploaded > MAX_SEND_ATTACHMENT_BYTES) throw new PayloadTooLargeException({ code: 'attachments_too_large' });
 
-		const conversation = request.threadId
-			? await this.books.guard(mailbox, () => this.gmail.getThread(credentials, request.threadId ?? ''))
+		// Read once into a const, so the call below sees it set (a never-run `?? ''` went).
+		const threadId = request.threadId;
+		const conversation = threadId
+			? await this.books.guard(mailbox, () => this.gmail.getThread(credentials, threadId))
 			: null;
-		if (request.threadId && !conversation) throw new NotFoundException('Conversation not found');
+		if (threadId && !conversation) throw new NotFoundException('Conversation not found');
 		// Someone replied after the writer last looked (C5): checked here at the moment of sending,
 		// not only in the browser, so two people cannot both answer without knowing.
 		if (purpose === 'send' && conversation && request.knownMessageIds && !request.sendAnyway) {
@@ -359,7 +361,8 @@ export class InboxService {
 			throw new ConflictException({ code: 'already_sending' });
 		}
 		const { mailbox, credentials, from, outgoing } = await this.prepare(adminUserId, mailboxId, request);
-		const messageId = `outbox-${randomUUID()}@${from.address.split('@')[1] ?? 'mail.invalid'}`;
+		// Send-as addresses are email addresses (the contract checks them), so the domain part is always there.
+		const messageId = `outbox-${randomUUID()}@${from.address.split('@')[1] as string}`;
 		const mail: OutgoingMail = { ...outgoing, messageId };
 		const draftId = request.draftId;
 		let draft: { draftId: string; threadId: string | null };

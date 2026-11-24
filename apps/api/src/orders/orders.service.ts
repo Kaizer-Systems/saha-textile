@@ -154,8 +154,7 @@ export class OrdersService {
 		const typed = orderNumber.trim();
 		const order =
 			(await this.orders.findByOrderNumber(typed)) ?? (await this.orders.findByOrderNumber(typed.toUpperCase()));
-		if (!order || order.userId !== userId) throw new NotFoundException('Order not found');
-		return shopOrderView(order);
+		return ownOrderView(order, userId);
 	}
 
 	listByUser(userId: string, query: PageQuery): Promise<Paginated<Order>> {
@@ -219,4 +218,13 @@ export class OrdersService {
 		const rand = randomUUID().slice(0, 6).toUpperCase();
 		return `SAHA-TEXTILE-${stamp}-${rand}`;
 	}
+}
+
+/**
+ * The shopper's own order as the shop shows it; anyone else's is "not found". Kept out of the async method: V8
+ * counted the else of an if-throw right after an await as never run (or less than never).
+ */
+function ownOrderView(order: Order | null, userId: string): ShopOrderView {
+	if (!order || order.userId !== userId) throw new NotFoundException('Order not found');
+	return shopOrderView(order);
 }

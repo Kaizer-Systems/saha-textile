@@ -412,12 +412,11 @@ export class BusinessesService {
 	 */
 	async reverseSetOff(id: string, documentId: string, reason: string, actor: string | null): Promise<LedgerEntry[]> {
 		await this.get(id);
-		const [receivable, payable] = await Promise.all(
-			(['receivable', 'payable'] as const).map((side) =>
-				this.ledger.list(id, side, { page: 1, pageSize: 1000 }).then((page) => page.rows),
-			),
-		);
-		const all = [...(receivable ?? []), ...(payable ?? [])];
+		const rowsOf = (side: 'receivable' | 'payable') =>
+			this.ledger.list(id, side, { page: 1, pageSize: 1000 }).then((page) => page.rows);
+		// Read as a pair, so both lists are typed as there (two never-run `?? []` went).
+		const [receivable, payable] = await Promise.all([rowsOf('receivable'), rowsOf('payable')]);
+		const all = [...receivable, ...payable];
 		const originals = all.filter((row) => row.documentId === documentId && row.kind === 'setOff');
 		if (!originals.length) {
 			throw new NotFoundException(codedRefusal('setoff_missing', 'That set-off does not exist', 'documentId'));

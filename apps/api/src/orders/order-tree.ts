@@ -1,5 +1,5 @@
 import type { CartViewChild, OrderLine } from '@saha-textile/contracts';
-import { orderChildMoney } from '@saha-textile/core-domain';
+import { type OrderChildMoney, orderChildMoney } from '@saha-textile/core-domain';
 
 /**
  * A cart line as an order's line tree (bundle builder brief E05–E09, approved 2026-11-22), shared by the shop
@@ -80,16 +80,16 @@ export function childLines(
 		line.setHeading ? couponINR : 0,
 	);
 	return line.children.map((child, at2) => {
-		const row = money[at2];
-		const unitPriceINR = row?.unitPriceINR ?? 0;
-		const lineTotalINR = row?.lineTotalINR ?? 0;
+		// orderChildMoney returns one row per child, in order, so the row is always there.
+		const row = money[at2] as OrderChildMoney;
+		const { unitPriceINR, lineTotalINR } = row;
 		return {
 			lineId: idOf(child.key),
 			productId: child.productId,
 			variationId: child.variantId,
 			title: { en: child.title },
 			sku: child.sku || child.productId,
-			quantity: row?.quantity ?? child.quantity * line.quantity,
+			quantity: row.quantity,
 			attributes: (child.variantLabel ? { Variation: child.variantLabel } : {}) as Record<string, string>,
 			addons: [],
 			imageAssetId: child.image?.assetId ?? null,
@@ -107,7 +107,7 @@ export function childLines(
 				discounted: false,
 				addOnsZonePriced: false,
 			},
-			couponINR: row?.couponINR ?? 0,
+			couponINR: row.couponINR,
 			categoryIds: [],
 			held: false,
 			addedAt: at,

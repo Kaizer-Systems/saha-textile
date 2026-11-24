@@ -121,9 +121,9 @@ export class StoreLocationsAdminService {
 			phone: body.phone,
 			hours: body.hours,
 			photoAssetIds: [...new Set(body.photoAssetIds)],
-			// Only the store's own photos keep a stored version.
+			// Only the store's own photos keep a stored version. The schema defaults the versions to {}.
 			imageVersions: Object.fromEntries(
-				Object.entries(body.imageVersions ?? {}).filter(([assetId]) => body.photoAssetIds.includes(assetId)),
+				Object.entries(body.imageVersions).filter(([assetId]) => body.photoAssetIds.includes(assetId)),
 			),
 			displayOrder,
 			active: false,

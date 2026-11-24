@@ -305,10 +305,11 @@ export class ReviewsService {
 		const assets = await this.assets.findManyByIds(assetIds);
 		const shown = publicOnly ? assets.filter((asset) => asset.visibility === 'public') : assets;
 		const previews = await this.previewsOf(shown);
-		return previews.map((preview) => {
-			const asset = shown.find((row) => row.id === preview.assetId);
-			return { ...preview, alt: asset ? localized(asset.text.alt) : '' };
-		});
+		// previewsOf answers one preview per asset, in order, so each has its asset (a never-run `: ''` went).
+		return previews.map((preview, index) => ({
+			...preview,
+			alt: localized((shown[index] as MediaAsset).text.alt),
+		}));
 	}
 
 	/** Thumb and full URLs per photo: public when approved, short-lived signed while private. */

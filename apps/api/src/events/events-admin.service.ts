@@ -41,14 +41,12 @@ const clean = (values: Readonly<Record<string, string>>): Record<string, string>
 	);
 
 /** Problems travel as field issues, the one part of an error body the API filter passes on. */
-/** Only the event's own popup pictures keep a stored version (R4-1; media step 4d). */
+/** Only the event's own popup pictures keep a stored version (R4-1; media step 4d). The schema defaults them to {}. */
 const ownVersions = (body: {
 	popupAssetIds: readonly string[];
-	imageVersions?: Readonly<Record<string, string>>;
+	imageVersions: Readonly<Record<string, string>>;
 }): Record<string, string> =>
-	Object.fromEntries(
-		Object.entries(body.imageVersions ?? {}).filter(([assetId]) => body.popupAssetIds.includes(assetId)),
-	);
+	Object.fromEntries(Object.entries(body.imageVersions).filter(([assetId]) => body.popupAssetIds.includes(assetId)));
 
 const refusal = (problems: readonly ShopEventProblem[]): BadRequestException =>
 	new BadRequestException({

@@ -143,21 +143,22 @@
 								{{ (row.returnable ? 'ret_can_return' : 'ret_cannot_return') | transloco }}
 							</small>
 						</td>
-						<td>{{ row.bought }}</td>
-						<td>{{ row.returnedBefore }}</td>
+						<td>{{ row.bought | stockQty: (row.unit === 'MTR' ? 'metre' : 'piece') }}</td>
+						<td>{{ row.returnedBefore | stockQty: (row.unit === 'MTR' ? 'metre' : 'piece') }}</td>
 						<td>
 							<input
 								class="form-control form-control-sm"
 								type="number"
 								min="0"
-								[max]="row.bought - row.returnedBefore"
+								[max]="(row.bought - row.returnedBefore) / perShown(row)"
+								[step]="1 / perShown(row)"
 								[disabled]="!row.returnable || row.bought <= row.returnedBefore"
 								[attr.aria-label]="('ret_return_now' | transloco) + ': ' + row.title"
-								[ngModel]="quantities()[row.lineId] ?? 0"
-								(ngModelChange)="setQuantity(row.lineId, $event)"
+								[ngModel]="(quantities()[row.lineId] ?? 0) / perShown(row)"
+								(ngModelChange)="setQuantity(row.lineId, $event, row.unit)"
 							/>
 						</td>
-						<td class="text-end text-nowrap">{{ rupees(row.unitPriceINR) }}</td>
+						<td class="text-end text-nowrap">{{ rupees(row.unitPriceINR * perShown(row)) }}</td>
 					</tr>
 					}
 				</tbody>

@@ -89,6 +89,11 @@ describe('the order’s returns card (B1, B2, B10, B11)', () => {
 		card.setQuantity('b', -1);
 		card.setQuantity('c', Number.NaN);
 		expect(card.quantities()).toEqual({ a: 2, b: 0, c: 0 });
+		// Fabric is typed in metres and kept in tenths of a metre, as the invoice counts it.
+		card.setQuantity('f', 2.3, 'MTR');
+		expect([card.quantities()['f'], card.perShown({ unit: 'MTR' }), card.perShown({ unit: 'PCS' })]).toEqual([
+			23, 10, 1,
+		]);
 		expect(card.picked()).toBe(true);
 		await card.start();
 		expect(gateway.start).toHaveBeenCalledWith(

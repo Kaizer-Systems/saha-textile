@@ -38,13 +38,14 @@ A **price adjustment** is a credit note without goods: each line lowered by an a
 
 ## Rules
 
-| Rule                     | Detail                                                                                                     |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| Deadline (CGST Act s.34) | 30 November after the end of the invoice's financial year                                                  |
-| One note, one invoice    | Several notes may quote one invoice; together they never give back more than it, in pieces or money        |
-| Part of a line           | Each piece's share of the line; the last pieces take what is left, so the notes add up to the line exactly |
-| Delivery share           | ₹0 until the CA answers B7.3 ("free delivery" or "waits for the CA")                                       |
-| Written-off pieces       | Not added back; Issue takes back their input tax (s.17(5)(h), decision D9), see Posting                    |
+| Rule                     | Detail                                                                                                                                                                                                                                                        |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Deadline (CGST Act s.34) | 30 November after the end of the invoice's financial year                                                                                                                                                                                                     |
+| One note, one invoice    | Several notes may quote one invoice; together they never give back more than it, in pieces or money                                                                                                                                                           |
+| Part of a line           | Each piece's share of the line; the last pieces take what is left, so the notes add up to the line exactly                                                                                                                                                    |
+| Delivery share           | ₹0 until the CA answers B7.3 ("free delivery" or "waits for the CA")                                                                                                                                                                                          |
+| Written-off pieces       | Not added back; Issue takes back their input tax (s.17(5)(h), decision D9), see Posting                                                                                                                                                                       |
+| Fabric by the metre      | Return lines carry the invoice line's unit (`MTR`). Quantities stay in tenths of a metre; the order's returns card, the return page, the credit note page and the counter exchange show and take metres (2.3 typed is 23 kept), and the price reads per metre |
 
 ## Posting
 

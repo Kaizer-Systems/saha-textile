@@ -214,12 +214,14 @@
 											class="form-control form-control-sm"
 											type="number"
 											min="0"
-											[max]="line.quantity"
+											[max]="line.quantity / perShown(line)"
+											[step]="1 / perShown(line)"
 											[attr.aria-label]="('inv_qty' | transloco) + ': ' + line.title"
-											[ngModel]="quantity(line.lineId, line.quantity)"
-											(ngModelChange)="setQuantity(line.lineId, $event, line.quantity)"
+											[ngModel]="quantity(line.lineId, line.quantity) / perShown(line)"
+											(ngModelChange)="setQuantity(line.lineId, $event, line.quantity, line.unit)"
 										/>
-										} @else if (!line.delivery) { {{ line.quantity }} } @else { — }
+										} @else if (!line.delivery) { {{ line.quantity | stockQty: (line.unit === 'MTR'
+										? 'metre' : 'piece') }} } @else { — }
 									</td>
 									<td class="text-end text-nowrap">{{ inr(line.taxableINR) }}</td>
 									@if (n.interState) {
@@ -496,7 +498,8 @@
 						<span class="text-muted">· inventoryLedger</span>
 						@for (line of goods(); track line.lineId) { @if (line.outcome !== 'write_off') {
 						<span class="d-block">
-							{{ 'cn_cancel_stock_line' | transloco: { qty: line.quantity, sku: line.sku } }}
+							{{ 'cn_cancel_stock_line' | transloco : { qty: (line.quantity | stockQty: (line.unit ===
+							'MTR' ? 'metre' : 'piece')), sku: line.sku, } }}
 						</span>
 						} }
 					</div>

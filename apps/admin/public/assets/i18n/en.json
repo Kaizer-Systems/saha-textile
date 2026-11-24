@@ -8267,7 +8267,7 @@
 	"cn_pill_not_filed": "Not filed: can cancel",
 	"cn_pill_filed": "Filed",
 	"cn_cancel_changes": "What this changes",
-	"cn_cancel_stock_line": "−{{qty}} {{sku}} (the piece it added back), at the same cost.",
+	"cn_cancel_stock_line": "−{{qty}} {{sku}} (what it added back), at the same cost.",
 	"cn_cancel_tax": "+{{amount}} back in {{month}}.",
 	"cn_cancel_input_tax": "The input tax taken back, {{amount}}, is restored.",
 	"cn_cancel_order_return": "Return {{number}} back to Checked; refund due cleared.",

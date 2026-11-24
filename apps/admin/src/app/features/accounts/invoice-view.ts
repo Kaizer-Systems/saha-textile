@@ -10,7 +10,7 @@ import { firstValueFrom, map } from 'rxjs';
 
 import { INVOICE_KEYS, INVOICE_PRINTS, type InvoicePrint, InvoicesGateway } from '@core/accounts/invoices.gateway';
 import { LOCATION_KEYS, LocationsGateway } from '@core/locations/locations.gateway';
-import { apiProblem, openPdf, saveBlob } from '@core/purchasing/purchasing-format';
+import { apiProblem, openPdf, saveBlob, StockQuantityPipe } from '@core/purchasing/purchasing-format';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 
@@ -26,7 +26,7 @@ type InvoiceTab = 'details' | 'accounting' | 'checks' | 'log' | 'prints';
  */
 @Component({
 	selector: 'app-invoice-view',
-	imports: [PageWrapper, TranslocoModule, RouterLink, NgbDropdownModule],
+	imports: [PageWrapper, TranslocoModule, RouterLink, NgbDropdownModule, StockQuantityPipe],
 	templateUrl: './invoice-view.html',
 })
 export class InvoiceViewPage {

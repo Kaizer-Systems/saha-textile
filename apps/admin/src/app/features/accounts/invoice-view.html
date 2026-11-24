@@ -108,7 +108,8 @@
 										{{ line.title }}
 										<small class="text-muted d-block">
 											{{ line.sku }} · HSN {{ line.hsn }} · {{ 'inv_qty' | transloco }} {{
-											line.quantity }} · {{ line.ratePercent }}%
+											line.quantity | stockQty: (line.unit === 'MTR' ? 'metre' : 'piece') }} · {{
+											line.ratePercent }}%
 										</small>
 									</td>
 									<td class="text-end text-nowrap">{{ inr(line.taxableINR) }}</td>

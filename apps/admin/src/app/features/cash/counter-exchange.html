@@ -86,10 +86,11 @@
 											class="form-control w-auto"
 											type="number"
 											min="0"
-											[max]="row.left"
+											[max]="row.left / perShown(row)"
+											[step]="1 / perShown(row)"
 											[attr.aria-label]="'ord_col_qty' | transloco"
 											[disabled]="!row.returnable"
-											[ngModel]="back()[row.lineId]?.quantity ?? 0"
+											[ngModel]="(back()[row.lineId]?.quantity ?? 0) / perShown(row)"
 											(ngModelChange)="setBack(row, $event)"
 										/>
 									</td>
@@ -175,7 +176,7 @@
 										{{ row.title }}
 										<small class="d-block text-muted">{{ row.sku }}</small>
 									</td>
-									<td>{{ row.quantity }}</td>
+									<td>{{ row.quantity | stockQty: row.soldBy }}</td>
 									<td class="text-end">
 										{{ outValue(i) === null ? '…' : rupees(outValue(i) ?? 0) }}
 									</td>

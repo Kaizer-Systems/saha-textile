@@ -9,7 +9,7 @@ import { firstValueFrom, map } from 'rxjs';
 
 import { COUNTER_KEYS, CounterGateway, counterProblemKey } from '@core/counter/counter.gateway';
 import { money } from '@core/orders/order-format';
-import { apiProblem, openPdf, shortDate } from '@core/purchasing/purchasing-format';
+import { apiProblem, openPdf, shortDate, StockQuantityPipe } from '@core/purchasing/purchasing-format';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 
@@ -21,6 +21,8 @@ interface BackRow {
 	sku: string;
 	title: string;
 	left: number;
+	/** Pieces, or fabric counted in tenths of a metre (MTR). */
+	unit: 'PCS' | 'MTR';
 	unitPriceINR: number;
 	returnable: boolean;
 }
@@ -32,7 +34,9 @@ interface OutRow {
 	variationId: string | null;
 	sku: string;
 	title: string;
+	/** Pieces, or tenths of a metre for fabric. */
 	quantity: number;
+	soldBy: 'piece' | 'metre';
 }
 
 export const EXCHANGE_REASONS: readonly ReturnReason[] = [
@@ -54,7 +58,7 @@ let counter = 0;
 @Component({
 	selector: 'app-counter-exchange',
 	templateUrl: './counter-exchange.html',
-	imports: [TranslocoModule, FormsModule, PageWrapper],
+	imports: [TranslocoModule, FormsModule, PageWrapper, StockQuantityPipe],
 })
 export class CounterExchangePage {
 	private readonly gateway = inject(CounterGateway);
@@ -87,6 +91,7 @@ export class CounterExchangePage {
 			sku: line.sku,
 			title: line.title,
 			left: line.bought - line.returnedBefore,
+			unit: line.unit,
 			unitPriceINR: line.unitPriceINR,
 			returnable: line.returnable && line.bought > line.returnedBefore,
 		})),
@@ -141,9 +146,16 @@ export class CounterExchangePage {
 		}
 	}
 
+	/** Fabric is kept in tenths of a metre: its box and limit read in metres; pieces as they are. */
+	perShown(row: Pick<BackRow, 'unit'>): number {
+		return row.unit === 'MTR' ? 10 : 1;
+	}
+
 	setBack(row: BackRow, quantity: number): void {
 		const current = this.back()[row.lineId];
-		const clamped = Math.max(0, Math.min(row.left, Math.floor(Number(quantity) || 0)));
+		const typed = Number(quantity) || 0;
+		const units = row.unit === 'MTR' ? Math.round(typed * 10) : Math.floor(typed);
+		const clamped = Math.max(0, Math.min(row.left, units));
 		this.back.update((all) => ({ ...all, [row.lineId]: { quantity: clamped, goes: current?.goes ?? 'stock' } }));
 	}
 
@@ -173,6 +185,7 @@ export class CounterExchangePage {
 						sku: found.sku,
 						title: found.title,
 						quantity: step,
+						soldBy: found.soldBy,
 					},
 				]);
 			this.code.set('');

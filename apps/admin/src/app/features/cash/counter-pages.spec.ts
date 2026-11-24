@@ -147,6 +147,14 @@ describe('an exchange at the counter (P3)', () => {
 		page.setBack(tant!, 1);
 		page.setGoes(tant!, 'stock');
 		expect(page.backINR()).toBe(1250);
+		// Fabric comes back in metres typed, kept in tenths of a metre; never more than is left.
+		const cloth = { ...tant!, lineId: 'm', unit: 'MTR' as const, left: 30 };
+		page.setBack(cloth, 2.3);
+		const before = page.back()['m']!.quantity;
+		page.setBack(cloth, 4);
+		expect([before, page.back()['m']!.quantity, page.perShown(cloth), page.perShown(tant!)]).toEqual([
+			23, 30, 10, 1,
+		]);
 		await page.scan();
 		page.code.set('PTC');
 		await page.scan();

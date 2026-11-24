@@ -11,7 +11,7 @@ import { firstValueFrom, map } from 'rxjs';
 
 import { LEDGER_KEYS, LedgerGateway } from '@core/accounts/ledger.gateway';
 import { RETURN_KEYS, ReturnsGateway, returnProblemKey } from '@core/accounts/returns.gateway';
-import { apiProblem, openPdf } from '@core/purchasing/purchasing-format';
+import { apiProblem, openPdf, StockQuantityPipe } from '@core/purchasing/purchasing-format';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
@@ -29,7 +29,7 @@ import type { CreditNote, CreditNoteCancelChecks, CreditNoteLine } from '@saha-t
  */
 @Component({
 	selector: 'app-credit-note-page',
-	imports: [PageWrapper, TranslocoModule, FormsModule, RouterLink, DocumentLockBanner],
+	imports: [PageWrapper, TranslocoModule, FormsModule, RouterLink, DocumentLockBanner, StockQuantityPipe],
 	templateUrl: './credit-note-page.html',
 })
 export class CreditNotePage {
@@ -161,11 +161,15 @@ export class CreditNotePage {
 		return this.quantities()[lineId] ?? current;
 	}
 
-	setQuantity(lineId: string, value: number, max: number): void {
-		this.quantities.update((all) => ({
-			...all,
-			[lineId]: Math.min(max, Math.max(0, Math.floor(Number(value) || 0))),
-		}));
+	/** Fabric is kept in tenths of a metre: its quantity box and limit read in metres; pieces as they are. */
+	perShown(line: Pick<CreditNoteLine, 'unit'>): number {
+		return line.unit === 'MTR' ? 10 : 1;
+	}
+
+	setQuantity(lineId: string, value: number, max: number, unit: CreditNoteLine['unit'] = 'PCS'): void {
+		const typed = Number(value) || 0;
+		const units = unit === 'MTR' ? Math.round(typed * 10) : Math.floor(typed);
+		this.quantities.update((all) => ({ ...all, [lineId]: Math.min(max, Math.max(0, units)) }));
 	}
 
 	private async run(work: () => Promise<void>, done: string | null = null): Promise<void> {

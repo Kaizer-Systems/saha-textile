@@ -8,7 +8,7 @@ import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom, map } from 'rxjs';
 
 import { RETURN_KEYS, ReturnsGateway, returnProblemKey } from '@core/accounts/returns.gateway';
-import { apiProblem, openPdf } from '@core/purchasing/purchasing-format';
+import { apiProblem, openPdf, StockQuantityPipe } from '@core/purchasing/purchasing-format';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 
@@ -27,7 +27,7 @@ export const OUTCOMES: readonly ReturnOutcome[] = ['restock', 'damaged', 'write_
 /** A return (accounts brief B3, as drawn): where it is, each piece checked, then the credit note. */
 @Component({
 	selector: 'app-return-page',
-	imports: [PageWrapper, TranslocoModule, FormsModule, RouterLink],
+	imports: [PageWrapper, TranslocoModule, FormsModule, RouterLink, StockQuantityPipe],
 	templateUrl: './return-page.html',
 })
 export class ReturnPage {

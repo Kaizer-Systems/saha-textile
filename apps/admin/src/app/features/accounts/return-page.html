@@ -94,7 +94,7 @@
 										{{ line.title }}
 										<small class="text-muted d-block">{{ line.sku }}</small>
 									</td>
-									<td>{{ line.quantity }}</td>
+									<td>{{ line.quantity | stockQty: (line.unit === 'MTR' ? 'metre' : 'piece') }}</td>
 									<td>
 										<select
 											class="form-select form-select-sm"

@@ -208,6 +208,11 @@ describe('a credit note’s page (B4, B5, B8, B9)', () => {
 		page.setQuantity('a', 5, 2);
 		page.setQuantity('b', Number.NaN, 2);
 		expect([page.quantity('a', 2), page.quantity('b', 2)]).toEqual([2, 0]);
+		// Fabric is typed in metres and kept in tenths of a metre.
+		page.setQuantity('f', 1.7, 25, 'MTR');
+		expect([page.quantity('f', 25), page.perShown({ unit: 'MTR' }), page.perShown({ unit: 'PCS' })]).toEqual([
+			17, 10, 1,
+		]);
 		expect(page.inr(4680)).toBe('₹4,680.00');
 	});
 

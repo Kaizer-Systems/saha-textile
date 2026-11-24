@@ -8,13 +8,13 @@ import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
 import { RETURN_KEYS, ReturnsGateway, returnProblemKey } from '@core/accounts/returns.gateway';
-import { apiProblem } from '@core/purchasing/purchasing-format';
+import { apiProblem, StockQuantityPipe } from '@core/purchasing/purchasing-format';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { OrderDocuments } from './order-documents';
 
-import type { RefundTo, ReturnHow, ReturnReason } from '@saha-textile/contracts';
+import type { OrderReturnsView, RefundTo, ReturnHow, ReturnReason } from '@saha-textile/contracts';
 
 export const RETURN_REASONS: readonly ReturnReason[] = [
 	'damaged_on_arrival',
@@ -38,7 +38,7 @@ export const ADJUSTMENT_REASONS = [
  */
 @Component({
 	selector: 'app-order-returns',
-	imports: [TranslocoModule, FormsModule, RouterLink, OrderDocuments],
+	imports: [TranslocoModule, FormsModule, RouterLink, OrderDocuments, StockQuantityPipe],
 	templateUrl: './order-returns.html',
 })
 export class OrderReturnsCard {
@@ -98,8 +98,15 @@ export class OrderReturnsCard {
 		return `₹${new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
 	}
 
-	setQuantity(lineId: string, value: number): void {
-		this.quantities.update((all) => ({ ...all, [lineId]: Math.max(0, Math.floor(Number(value) || 0)) }));
+	/** Fabric is kept in tenths of a metre: its box, limit and price read in metres; pieces as they are. */
+	perShown(row: Pick<OrderReturnsView['returnable'][number], 'unit'>): number {
+		return row.unit === 'MTR' ? 10 : 1;
+	}
+
+	setQuantity(lineId: string, value: number, unit: OrderReturnsView['returnable'][number]['unit'] = 'PCS'): void {
+		const typed = Number(value) || 0;
+		const units = unit === 'MTR' ? Math.round(typed * 10) : Math.floor(typed);
+		this.quantities.update((all) => ({ ...all, [lineId]: Math.max(0, units) }));
 	}
 
 	setLowerBy(lineId: string, value: number): void {

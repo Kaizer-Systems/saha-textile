@@ -8267,7 +8267,7 @@
 	"cn_pill_not_filed": "ফাইল হয়নি: বাতিল করা যায়",
 	"cn_pill_filed": "ফাইল হয়েছে",
 	"cn_cancel_changes": "এতে কী বদলাবে",
-	"cn_cancel_stock_line": "−{{qty}} {{sku}} (যে পিস স্টকে ফিরেছিল), একই দামে।",
+	"cn_cancel_stock_line": "−{{qty}} {{sku}} (যা স্টকে ফিরেছিল), একই দামে।",
 	"cn_cancel_tax": "{{month}}-এ +{{amount}} ফিরে আসে।",
 	"cn_cancel_input_tax": "ফেরত দেওয়া ইনপুট ট্যাক্স {{amount}} আবার পাওয়া যায়।",
 	"cn_cancel_order_return": "রিটার্ন {{number}} আবার ‘যাচাই হয়েছে’-তে; ফেরতের বাকি মুছে যায়।",

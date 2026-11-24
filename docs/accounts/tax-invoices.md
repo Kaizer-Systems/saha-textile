@@ -51,6 +51,17 @@ The rate comes from the line's HSN (`gstRateFor`) until the CA confirms the rate
 | 61–63 (garments and made-up textiles) | 5% up to ₹2,500 a piece, 18% above |
 | Anything else, or no HSN              | No rate: the invoice is refused    |
 
+### Pieces and metres
+
+Each line carries its unit of quantity code (UQC): `PCS` for products sold by the piece, `MTR` for fabric sold by the metre (the product's `soldBy`). The books keep metre quantities in whole tenths of a metre, so 2.5 m is stored as `25`; returns, credit notes and stock compare in those tenths. Documents convert at the edge with the core helpers `documentQuantity`, `documentQuantityText` and `documentUnitPrice`:
+
+| Stored line                       | Printed and sent               |
+| --------------------------------- | ------------------------------ |
+| `quantity 25`, `unit MTR`, ₹1,050 | 2.5 m at ₹420 a metre, UQC MTR |
+| `quantity 3`, `unit PCS`, ₹1,500  | 3 pc at ₹500 a piece, UQC PCS  |
+
+This applies to the invoice print, credit and debit notes, the return note, and the e-invoice and e-way bill JSON (quantity in metres, unit price per metre). For an `MTR` line the rate band above is read on the price per metre.
+
 Every invoice is marked `ratesPendingCa`. The admin screens show it ("Rates wait for the CA" on the order's invoice card, and in the invoice's Checks); the printed copies don't carry it.
 
 The place of supply is the delivery State (`96` abroad). The same State as the seller's registration means CGST and SGST, split in half; another State means IGST. The order's delivery charge goes on its first invoice, taxed at the highest rate on that invoice.

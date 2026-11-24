@@ -93,7 +93,7 @@ describe('tax invoice print (accounts brief D1, AE5)', () => {
 			interState: false,
 			buyer: { ...invoice.buyer, gstin: null, stateCode: '19' },
 			lines: [
-				{ ...invoice.lines[0], unit: 'MTR', quantity: 2.5, cgstINR: 869.05, sgstINR: 869.05, igstINR: 0 },
+				{ ...invoice.lines[0], unit: 'MTR', quantity: 25, cgstINR: 869.05, sgstINR: 869.05, igstINR: 0 },
 				{ ...invoice.lines[0], lineId: 'b', cgstINR: 869.05, sgstINR: 869.05, igstINR: 0 },
 			],
 			cgstINR: 1_738.1,
@@ -103,7 +103,8 @@ describe('tax invoice print (accounts brief D1, AE5)', () => {
 		});
 		const data = taxInvoiceData(home, { name: 'K.R. Marketing', lines: [] }, 'triplicate', null);
 		expect(data.taxHeading).toBe('CGST + SGST');
-		expect(data.rows?.[0]?.cells['qty']).toBe('2.5 m');
+		// 2.5 m kept as 25 tenths prints as metres, at the rate per metre.
+		expect([data.rows?.[0]?.cells['qty'], data.rows?.[0]?.cells['rate']]).toEqual(['2.5 m', '₹14,600.00']);
 		expect(data.hsnSummary).toHaveLength(1);
 		expect(data.totals?.totals?.map((t) => t.label)).toEqual([
 			'Taxable value',

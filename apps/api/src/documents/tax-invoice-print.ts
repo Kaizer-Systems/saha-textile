@@ -1,5 +1,5 @@
 import { INVOICE_COPY_LABELS, type InvoiceCopy, type TaxInvoice } from '@saha-textile/contracts';
-import { gstStateName, rupeesInWords } from '@saha-textile/core-domain';
+import { documentQuantityText, documentUnitPrice, gstStateName, rupeesInWords } from '@saha-textile/core-domain';
 
 import { longDate } from '../purchasing/purchase-order-document';
 import type { DocumentData, DocumentRow } from './document-data';
@@ -32,8 +32,8 @@ export function taxInvoiceData(
 		cells: {
 			item: `${index + 1}. ${line.title}`,
 			hsn: line.hsn,
-			qty: `${line.quantity} ${line.unit === 'MTR' ? 'm' : 'pc'}`,
-			rate: money(line.unitPriceINR),
+			qty: documentQuantityText(line),
+			rate: money(documentUnitPrice(line)),
 			taxable: money(line.taxableINR),
 			gstRate: `${line.ratePercent}%`,
 			tax: money(line.cgstINR + line.sgstINR + line.igstINR),

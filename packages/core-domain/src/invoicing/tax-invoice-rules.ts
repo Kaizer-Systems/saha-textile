@@ -54,7 +54,8 @@ export function buildInvoiceLines(
 			continue;
 		}
 		const unitPriceINR = line.quantity > 0 ? line.lineTotalINR / line.quantity : 0;
-		const rate = gstRateFor(line.hsn, unitPriceINR);
+		// Fabric is kept in tenths of a metre; its rate band is read on the price per metre.
+		const rate = gstRateFor(line.hsn, line.unit === 'MTR' ? unitPriceINR * 10 : unitPriceINR);
 		if (rate === null) {
 			problems.push({ lineId: line.lineId, problem: 'hsn_rate_missing' });
 			continue;
@@ -68,6 +69,28 @@ export function buildInvoiceLines(
 	const shippingRate = Math.max(0, ...out.map((l) => l.ratePercent));
 	const shipping = options.shippingINR > 0 ? splitTax(options.shippingINR, shippingRate, options.interState) : null;
 	return { problems, lines: out, totals: invoiceTotals(out, shipping) };
+}
+
+/**
+ * A line's quantity as a document shows it (print, e-invoice, e-way bill, returns): metres for fabric, which the books
+ * keep in tenths of a metre so lengths add up exactly, and pieces as they are. "2.5 m", never "25".
+ */
+export function documentQuantity(line: Pick<TaxInvoiceLine, 'quantity' | 'unit'>): number {
+	return line.unit === 'MTR' ? line.quantity / 10 : line.quantity;
+}
+
+/** The quantity with its unit, as a document prints it: "2.5 m" or "3 pc". */
+export function documentQuantityText(line: Pick<TaxInvoiceLine, 'quantity' | 'unit'>): string {
+	return `${documentQuantity(line)} ${line.unit === 'MTR' ? 'm' : 'pc'}`;
+}
+
+/** The tax-included rate a document shows: per metre for fabric, per piece otherwise. */
+export function documentUnitPrice(
+	line: Pick<TaxInvoiceLine, 'quantity' | 'unit' | 'unitPriceINR' | 'totalINR'>,
+): number {
+	return line.unit === 'MTR' && line.quantity > 0
+		? rupees(Math.round(paise(line.totalINR) / documentQuantity(line)))
+		: line.unitPriceINR;
 }
 
 function lineFacts(line: InvoiceLineInput, hsn: string, unitPriceINR: number, rate: number) {

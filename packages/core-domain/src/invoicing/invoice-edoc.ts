@@ -1,6 +1,7 @@
 import type { TaxInvoice } from '@saha-textile/contracts';
 
 import type { EDocLine, EDocParty, EDocSale, GovSupplyType } from '../edocs/edoc-rules';
+import { documentQuantity } from './tax-invoice-rules';
 
 const paise = (inr: number): number => Math.round(inr * 100);
 const rupees = (p: number): number => p / 100;
@@ -22,9 +23,9 @@ export function saleFromTaxInvoice(
 		description: line.title.slice(0, 300),
 		hsn: line.hsn,
 		isService: false,
-		qty: line.quantity,
+		qty: documentQuantity(line),
 		unit: line.unit === 'MTR' ? 'm' : 'pc',
-		unitPriceINR: line.quantity > 0 ? rupees(Math.round(paise(line.taxableINR) / line.quantity)) : 0,
+		unitPriceINR: line.quantity > 0 ? rupees(Math.round(paise(line.taxableINR) / documentQuantity(line))) : 0,
 		grossINR: line.taxableINR,
 		discountINR: 0,
 		taxableINR: line.taxableINR,

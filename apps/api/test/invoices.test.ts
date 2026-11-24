@@ -53,7 +53,7 @@ const order = (hsn: string | null): Order =>
 		totalPaid: 36_500,
 	}) as unknown as Order;
 
-const setup = (on: boolean) => {
+const setup = (on: boolean, product: Record<string, unknown> = { hsnCode: null }) => {
 	const inserted: { id: string; shipmentId: string | null; status: string; lines: { lineId: string }[] }[] = [];
 	const posted: { lines: { debitPaise?: number; creditPaise?: number }[] }[] = [];
 	const service = new InvoicesService(
@@ -92,7 +92,7 @@ const setup = (on: boolean) => {
 		{
 			get: async () => ({ tradeName: 'K.R. Marketing', legalName: 'Proprietor', gstin: '19DBYPS6736R1ZZ' }),
 		} as never,
-		{ findById: async () => ({ hsnCode: null }) } as never,
+		{ findById: async () => product } as never,
 		{ issue: async (_t: string, _c: unknown, _at: Date, scope?: string) => `TI/26-27/000001@${scope}` } as never,
 		{
 			post: async (request: { lines: { debitPaise?: number; creditPaise?: number }[] }) => (
@@ -154,6 +154,14 @@ describe('tax invoices at dispatch (accounts brief D1, D3)', () => {
 		const debit = lines.reduce((s, l) => s + (l.debitPaise ?? 0), 0);
 		const credit = lines.reduce((s, l) => s + (l.creditPaise ?? 0), 0);
 		expect(debit).toBe(credit);
+	});
+
+	it('bills fabric sold by the metre in metres (MTR), keeping the order’s tenths of a metre inside', async () => {
+		const { service } = setup(true, { hsnCode: '5208', soldBy: 'metre' });
+		const fabric = order(null);
+		fabric.lines[0] = { ...fabric.lines[0]!, quantity: 25, lineTotalINR: 1_050, lineTotalPaid: 1_050 };
+		const invoice = await service.issueAtDispatch(dispatch(fabric), {} as never);
+		expect(invoice?.lines[0]).toMatchObject({ quantity: 25, unit: 'MTR', ratePercent: 5, totalINR: 1_050 });
 	});
 
 	it('refuses to ship a line with no HSN, naming its SKU', async () => {

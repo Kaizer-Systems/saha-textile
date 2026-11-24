@@ -48,7 +48,9 @@ export const ReturnLine = z.object({
 	sku: z.string(),
 	title: z.string(),
 	quantity: z.number().int().positive(),
-	/** What the buyer paid a piece, tax included, as on the invoice. */
+	/** Pieces, or fabric by the metre (MTR) counted in tenths of a metre, as the invoice line counts it. */
+	unit: z.enum(['PCS', 'MTR']).default('PCS'),
+	/** What the buyer paid a piece (or a tenth of a metre), tax included, as on the invoice. */
 	unitPriceINR: z.number().nonnegative(),
 	outcome: ReturnOutcome.nullable().default(null),
 	note: z.string().trim().max(300).default(''),
@@ -314,6 +316,8 @@ export const OrderReturnsView = z.object({
 			title: z.string(),
 			bought: z.number().int().nonnegative(),
 			returnedBefore: z.number().int().nonnegative(),
+			/** Pieces, or tenths of a metre for fabric (MTR); bought, returned and the price follow it. */
+			unit: z.enum(['PCS', 'MTR']).default('PCS'),
 			returnable: z.boolean(),
 			categoryName: z.string().nullable(),
 			unitPriceINR: z.number().nonnegative(),

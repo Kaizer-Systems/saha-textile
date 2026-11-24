@@ -215,6 +215,7 @@ export class ReturnsService {
 						title: line.title,
 						bought: line.quantity,
 						returnedBefore: asked.get(line.lineId) ?? 0,
+						unit: line.unit,
 						returnable: orderLine?.returnable !== false,
 						categoryName: null,
 						unitPriceINR: line.unitPriceINR,
@@ -295,6 +296,7 @@ export class ReturnsService {
 				sku: row.sku,
 				title: row.title,
 				quantity: pick.quantity,
+				unit: row.unit,
 				unitPriceINR: row.unitPriceINR,
 			});
 		}

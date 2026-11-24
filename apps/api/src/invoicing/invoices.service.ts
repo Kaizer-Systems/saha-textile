@@ -224,15 +224,16 @@ export class InvoicesService {
 	private async inputsOf(lines: readonly OrderLine[]): Promise<InvoiceLineInput[]> {
 		const inputs: InvoiceLineInput[] = [];
 		for (const line of lines) {
-			const hsn =
-				line.tax?.hsn || (await this.products.findById(line.productId).catch(() => null))?.hsnCode || null;
+			// The product says whether it is sold by the metre (its quantities kept in tenths) and gives the HSN a line lacks.
+			const product = await this.products.findById(line.productId).catch(() => null);
+			const hsn = line.tax?.hsn || product?.hsnCode || null;
 			inputs.push({
 				lineId: line.lineId as string,
 				sku: line.sku,
 				title: line.title['en'] ?? Object.values(line.title)[0] ?? line.sku,
 				hsn,
 				quantity: line.quantity,
-				unit: 'PCS',
+				unit: product?.soldBy === 'metre' ? 'MTR' : 'PCS',
 				lineTotalINR: line.lineTotalINR,
 			});
 		}

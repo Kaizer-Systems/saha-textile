@@ -76,7 +76,7 @@ const debit = DebitNote.parse({
 	interState: true,
 	placeOfSupply: '96',
 	buyer: { name: 'Rang Mahal', gstin: '27AAKFR1234M1Z2', address: 'Mumbai', stateCode: '27' },
-	lines: [line({ unit: 'MTR', quantity: 2.5, igstINR: 222.86, cgstINR: 0, sgstINR: 0 })],
+	lines: [line({ unit: 'MTR', quantity: 25, igstINR: 222.86, cgstINR: 0, sgstINR: 0 })],
 	cgstINR: 0,
 	sgstINR: 0,
 	igstINR: 222.86,
@@ -110,7 +110,7 @@ describe('note prints (Rule 53)', () => {
 		const data = debitNoteData(debit, seller);
 		expect(data.values['reason']).toBe('October already filed (undoes credit note CN/26-27/000012)');
 		expect(data.taxHeading).toBe('IGST');
-		expect(data.rows?.[0]?.cells['qty']).toBe('2.5 m');
+		expect([data.rows?.[0]?.cells['qty'], data.rows?.[0]?.cells['rate']]).toEqual(['2.5 m', '₹1,872.00']);
 		expect(data.parties?.['party']?.lines).toContain('GSTIN 27AAKFR1234M1Z2');
 		expect(
 			debitNoteData({ ...debit, buyer: { ...debit.buyer, stateCode: '96' } }, seller).parties?.['party']?.lines,
@@ -139,7 +139,8 @@ const entry = OrderReturn.parse({
 			outcome: 'damaged',
 			note: 'Zari pulled',
 		},
-		{ lineId: 'b', sku: 'COT-1', title: 'Cotton', quantity: 2, unitPriceINR: 1_000 },
+		// 2 m of fabric, counted in tenths of a metre as the order is.
+		{ lineId: 'b', sku: 'COT-1', title: 'Cotton', quantity: 20, unit: 'MTR', unitPriceINR: 100 },
 	],
 	reason: 'damaged_on_arrival',
 	how: 'pickup',
@@ -162,6 +163,7 @@ describe('return note print (B3)', () => {
 			'Damaged, kept (not for sale): Zari pulled',
 			'Not checked yet',
 		]);
+		expect(data.rows?.map((r) => r.cells['qty'])).toEqual(['1 pc', '2 m']);
 		expect(data.parties?.['customer']?.lines).toContain('Ananya Das');
 		expect(returnNoteData({ ...entry, note: 'Box torn' }, { buyer: note.buyer }, seller).values['reason']).toBe(
 			'Damaged on arrival: Box torn',

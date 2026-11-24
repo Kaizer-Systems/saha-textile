@@ -3,7 +3,14 @@ import { describe, expect, it } from 'vitest';
 
 import { eInvoiceProblems } from '../src/edocs/edoc-rules';
 import { DELIVERY_SAC, saleFromTaxInvoice } from '../src/invoicing/invoice-edoc';
-import { buildInvoiceLines, gstRateFor, invoicePosting } from '../src/invoicing/tax-invoice-rules';
+import {
+	buildInvoiceLines,
+	documentQuantity,
+	documentQuantityText,
+	documentUnitPrice,
+	gstRateFor,
+	invoicePosting,
+} from '../src/invoicing/tax-invoice-rules';
 
 describe('tax invoices (accounts brief D1, D3; today’s rates until the CA confirms)', () => {
 	it('gives today’s rate by HSN chapter and the ₹2,500 garment band', () => {
@@ -229,9 +236,10 @@ describe('e-invoice edge cases (D1 + addendum 2)', () => {
 				sku: 'S1',
 				title: 'Cloth',
 				hsn: '5208',
-				quantity: 2.5,
+				// 2.5 m, kept in tenths of a metre as every metre quantity is.
+				quantity: 25,
 				unit: 'MTR',
-				unitPriceINR: 420,
+				unitPriceINR: 42,
 				ratePercent: 5,
 				taxableINR: 1_000,
 				cgstINR: 0,
@@ -260,7 +268,7 @@ describe('e-invoice edge cases (D1 + addendum 2)', () => {
 		const sale = saleFromTaxInvoice(invoiceOf({}), { seller: party('19'), buyer: party('96') });
 		expect(sale.supplyType).toBe('EXPWOP');
 		expect(sale.lines).toHaveLength(1);
-		expect(sale.lines[0]).toMatchObject({ unit: 'm', unitPriceINR: 400 });
+		expect(sale.lines[0]).toMatchObject({ qty: 2.5, unit: 'm', unitPriceINR: 400 });
 	});
 
 	it('gives a line of no pieces no unit price', () => {
@@ -271,5 +279,33 @@ describe('e-invoice edge cases (D1 + addendum 2)', () => {
 		);
 		expect(sale.supplyType).toBe('B2B');
 		expect(sale.lines[0]).toMatchObject({ unit: 'pc', unitPriceINR: 0 });
+	});
+});
+
+describe('fabric sold by the metre on documents', () => {
+	it('shows metres and the rate per metre, reading the GST band on the price per metre', () => {
+		const built = buildInvoiceLines(
+			[{ lineId: 'f', sku: 'MUL', title: 'Mulmul', hsn: '5208', quantity: 25, unit: 'MTR', lineTotalINR: 1_050 }],
+			{ interState: false, shippingINR: 0 },
+		);
+		const line = built.lines[0]!;
+		expect([line.quantity, line.unit, line.unitPriceINR, line.ratePercent]).toEqual([25, 'MTR', 42, 5]);
+		expect([documentQuantity(line), documentUnitPrice(line), documentQuantityText(line)]).toEqual([
+			2.5,
+			420,
+			'2.5 m',
+		]);
+		expect(documentUnitPrice({ quantity: 0, unit: 'MTR', unitPriceINR: 0, totalINR: 0 })).toBe(0);
+		expect(documentQuantityText({ quantity: 3, unit: 'PCS' })).toBe('3 pc');
+		expect([
+			documentQuantity({ quantity: 3, unit: 'PCS' }),
+			documentUnitPrice({ quantity: 3, unit: 'PCS', unitPriceINR: 500, totalINR: 1_500 }),
+		]).toEqual([3, 500]);
+		// A garment by the metre over ₹2,500 a metre is in the 18% band, though a tenth costs less.
+		const garment = buildInvoiceLines(
+			[{ lineId: 'g', sku: 'G', title: 'Made-up', hsn: '6302', quantity: 10, unit: 'MTR', lineTotalINR: 3_000 }],
+			{ interState: false, shippingINR: 0 },
+		);
+		expect(garment.lines[0]!.ratePercent).toBe(18);
 	});
 });

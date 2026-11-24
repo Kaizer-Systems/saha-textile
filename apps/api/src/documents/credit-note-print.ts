@@ -7,7 +7,7 @@ import type {
 	ReturnReason,
 	TaxInvoice,
 } from '@saha-textile/contracts';
-import { gstStateName, rupeesInWords } from '@saha-textile/core-domain';
+import { documentQuantityText, documentUnitPrice, gstStateName, rupeesInWords } from '@saha-textile/core-domain';
 
 import { longDate } from '../purchasing/purchase-order-document';
 import type { DocumentData, DocumentRow } from './document-data';
@@ -51,8 +51,8 @@ function noteBody(note: Note, totalLabel: string) {
 			index: String(index + 1),
 			item: line.delivery ? 'Delivery charge share' : line.title,
 			hsn: line.hsn,
-			qty: line.delivery ? '—' : `${line.quantity} ${line.unit === 'MTR' ? 'm' : 'pc'}`,
-			rate: money(line.unitPriceINR),
+			qty: line.delivery ? '—' : documentQuantityText(line),
+			rate: money(line.delivery ? line.unitPriceINR : documentUnitPrice(line)),
 			taxable: money(line.taxableINR),
 			gstRate: `${line.ratePercent}%`,
 			tax: money(line.cgstINR + line.sgstINR + line.igstINR),
@@ -171,7 +171,7 @@ export function returnNoteData(
 			cells: {
 				index: String(index + 1),
 				item: line.title,
-				qty: String(line.quantity),
+				qty: documentQuantityText(line),
 				condition: [line.outcome ? CONDITION_WORDS[line.outcome] : 'Not checked yet', line.note]
 					.filter(Boolean)
 					.join(': '),

@@ -302,10 +302,11 @@ const draft = (over: Record<string, unknown> = {}) => ({
 	month: '2026-11',
 	status: 'prepared',
 	summary: [
-		{ table: '4A', records: 12, taxable: 4_250_000, tax: 765_000 },
-		{ table: '7', records: 30, taxable: 1_800_000, tax: 90_000 },
-		{ table: '9B', records: 1, taxable: -4_360_000, tax: -218_000 },
-		{ table: '12', records: 4, taxable: 6_050_000, tax: 855_000 },
+		// The return holds rupees, not paise.
+		{ table: '4A', records: 12, taxable: 42_500, tax: 7_650 },
+		{ table: '7', records: 30, taxable: 18_000, tax: 900.5 },
+		{ table: '9B', records: 1, taxable: -43_600, tax: -2_180 },
+		{ table: '12', records: 4, taxable: 60_500, tax: 8_550 },
 		{ table: '13', records: 43, taxable: 0, tax: 0 },
 	],
 	problems: [],
@@ -340,7 +341,7 @@ async function gstr1(over: Record<string, unknown> = {}, extra: Record<string, u
 }
 
 describe('a GST return’s steps and amounts', () => {
-	it('marks the steps done, waited for and ahead, and signs a note’s amount', () => {
+	it('marks the steps done, waited for and ahead, and signs a note’s amount in rupees', () => {
 		expect([...GST_STEPS]).toEqual(['prepared', 'checked', 'approved', 'filed', 'locked']);
 		expect([0, 1, 2].map((i) => stepIcon('prepared', i))).toEqual([
 			'ri-checkbox-circle-line text-success',
@@ -349,9 +350,10 @@ describe('a GST return’s steps and amounts', () => {
 		]);
 		expect(stepIcon('approved', 3)).toBe('ri-time-line text-warning');
 		expect(stepIcon('filed', 4)).toBe('ri-checkbox-circle-line text-success');
-		expect(signedRupees(-4_360_000).startsWith('−')).toBe(true);
-		expect(signedRupees(-4_360_000)).toContain('43,600');
-		expect(signedRupees(765_000).startsWith('−')).toBe(false);
+		expect(signedRupees(43_600)).toBe('₹43,600.00');
+		expect(signedRupees(-43_600)).toBe('−₹43,600.00');
+		expect(signedRupees(900.5)).toBe('₹900.50');
+		expect(signedRupees(0)).toBe('₹0.00');
 	});
 });
 
@@ -374,7 +376,9 @@ describe('a GSTR-1 (G4, G8)', () => {
 		const cells = (r: HTMLElement) => [...r.querySelectorAll('td')] as HTMLElement[];
 		expect(cells(rows[0] as HTMLElement)[4]?.classList.contains('text-danger')).toBe(true);
 		expect(cells(rows[1] as HTMLElement)[4]?.classList.contains('text-danger')).toBe(false);
-		expect(cells(rows[2] as HTMLElement)[2]?.textContent).toContain('−');
+		expect(cells(rows[0] as HTMLElement)[2]?.textContent?.trim()).toBe('₹42,500.00');
+		expect(cells(rows[1] as HTMLElement)[3]?.textContent?.trim()).toBe('₹900.50');
+		expect(cells(rows[2] as HTMLElement)[2]?.textContent?.trim()).toBe('−₹43,600.00');
 		expect(
 			cells(rows[4] as HTMLElement)
 				.slice(2, 4)

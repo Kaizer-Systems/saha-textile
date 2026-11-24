@@ -19,7 +19,7 @@ import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { FmPicker } from '@features/media/file-manager/fm-picker';
 
-import { GST_CHIPS, GST_STATUS_PILL, GstReturnsPage, gstProblem } from './gst-returns-page';
+import { GST_CHIPS, GST_STATUS_PILL, GstReturnsPage, gstProblem, returnLink } from './gst-returns-page';
 import { GST_STEPS, Gstr1Page, signedRupees, stepIcon } from './gstr1-page';
 
 vi.mock('@core/purchasing/purchasing-format', async (original) => ({
@@ -154,6 +154,26 @@ describe('the GST returns gateway', () => {
 		}
 		http.verify();
 	});
+
+	it('names the GSTR-2B key and calls the GSTR-2B routes', () => {
+		const query = { gstRegistrationId: 'r1', month: '2026-10', chip: 'note' } as const;
+		expect(GST_KEYS.twoB(query)).toEqual(['gst-returns', '2b', query]);
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+		const gateway = TestBed.inject(GstReturnsGateway);
+		const http = TestBed.inject(HttpTestingController);
+		const api = `${runtimeConfig.apiUrl}/admin/accounts/gst/2b`;
+		const calls: [() => unknown, string, string][] = [
+			[() => gateway.twoB(query), 'GET', '?gstRegistrationId=r1&month=2026-10&chip=note'],
+			[() => gateway.import2b({} as never), 'POST', ''],
+			[() => gateway.decide2b({} as never), 'POST', '/decisions'],
+		];
+		for (const [call, method, path] of calls) {
+			(call() as { subscribe: () => void }).subscribe();
+			http.expectOne((req) => req.method === method && req.urlWithParams === api + path).flush({});
+		}
+		http.verify();
+	});
 });
 
 describe('a GST refusal in words', () => {
@@ -165,6 +185,27 @@ describe('a GST refusal in words', () => {
 		expect(gstProblem(new Error('down'))).toBe('gst_problem_failed');
 		expect([...GST_CHIPS]).toEqual(['due', 'filed', 'all']);
 		expect(GST_STATUS_PILL.filed).toBe('status-success');
+	});
+
+	it('knows the GSTR-3B and GSTR-2B refusals, and a GSTR-2B refusal keeps its own start', () => {
+		expect(gstProblem(refusal('gst_gstr1_not_filed'))).toBe('gst_problem_gstr1_not_filed');
+		expect(gstProblem(refusal('gst_return_qrmp_later'))).toBe('gst_problem_return_qrmp_later');
+		const twoB = [
+			'gstr2b_file_unreadable',
+			'gstr2b_line_unreadable',
+			'gstr2b_other_gstin',
+			'gstr2b_month_filed',
+			'gstr2b_not_imported',
+			'gstr2b_line_unknown',
+			'gstr2b_changed',
+		];
+		expect(twoB.map((code) => gstProblem(refusal(code)))).toEqual(twoB.map((code) => `gst_problem_${code}`));
+	});
+
+	it('opens a GSTR-3B on its own page and every other return on the tables page', () => {
+		expect(returnLink('GSTR-3B', 'd3')).toEqual(['/accounts/gst/returns/3b', 'd3']);
+		expect(returnLink('GSTR-1', 'd1')).toEqual(['/accounts/gst/returns', 'd1']);
+		expect(returnLink('GSTR-9', 'd9')).toEqual(['/accounts/gst/returns', 'd9']);
 	});
 });
 
@@ -212,6 +253,7 @@ describe('the GST returns calendar (G3)', () => {
 		expect(rows[0]?.querySelector('button[title="view"]')).not.toBeNull();
 		expect(rows[1]?.querySelector('button[title="gst_prepare"]')).not.toBeNull();
 		expect(rows[2]?.querySelector('button')).toBeNull();
+		expect(rows[2]?.textContent).toContain('GSTR-9');
 		expect(el(fixture, '#gst_chip_filed')?.textContent).toContain('1');
 		expect(page.day('2026-12-11')).toBeTruthy();
 	});
@@ -260,6 +302,13 @@ describe('the GST returns calendar (G3)', () => {
 		await page.open({ ...CALENDAR.rows[1], returnType: 'GSTR-3B', draftId: 'd9' } as never);
 		expect(navigate).toHaveBeenLastCalledWith(['/accounts/gst/returns/3b', 'd9']);
 		expect(page.busy()).toBe(false);
+	});
+
+	it('offers to prepare a GSTR-3B not started, as a GSTR-1', async () => {
+		const threeB = { ...CALENDAR, rows: [row({ returnType: 'GSTR-3B', dueOn: '2026-12-20' })] };
+		const { fixture } = mount(GstReturnsPage, { gst: { calendar: vi.fn(() => of(threeB)) }, company });
+		await settle(fixture);
+		expect(el(fixture, 'tbody button[title="gst_prepare"]')).not.toBeNull();
 	});
 
 	it('lets someone who may not edit see a return, but not prepare one', async () => {

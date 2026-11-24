@@ -23,6 +23,7 @@
 			"@core/interceptors/global-error-handler.interceptor": [
 				"./src/type-shims/core/interceptors/global-error-handler.interceptor.ts"
 			],
+			"@core/interceptors/loader.interceptor": ["./src/type-shims/core/interceptors/loader.interceptor.ts"],
 			"@data-access/interfaces/menu.interface": ["./src/type-shims/data-access/interfaces/menu.interface.ts"],
 			"@data-access/interfaces/refund.interface": ["../admin/src/app/data-access/interfaces/refund.interface.ts"],
 			"@data-access/queries/category.queries": ["./src/type-shims/data-access/queries/category.queries.ts"],

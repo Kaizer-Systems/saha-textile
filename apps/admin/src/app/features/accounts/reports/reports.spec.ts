@@ -130,6 +130,28 @@ const SAVED = [
 	{ id: 's3', name: 'Weekly sales', folder: 'Sales' },
 ];
 
+describe('the ageing and audit routes', () => {
+	it('names their keys and calls them', () => {
+		const query = { from: '2026-11-01', to: '2026-11-30', chip: 'edits', page: 2, q: 'INV' } as const;
+		expect(REPORT_KEYS.ageing('suppliers')).toEqual(['reports', 'ageing', 'suppliers']);
+		expect(REPORT_KEYS.audit(query)).toEqual(['reports', 'audit', query]);
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+		const gateway = TestBed.inject(ReportsGateway);
+		const http = TestBed.inject(HttpTestingController);
+		const api = `${runtimeConfig.apiUrl}/admin/accounts/reports/`;
+		gateway.ageing('customers').subscribe();
+		http.expectOne((req) => req.method === 'GET' && req.urlWithParams === `${api}ageing/customers`).flush({});
+		gateway.audit(query).subscribe();
+		http.expectOne(
+			(req) =>
+				req.method === 'GET' &&
+				req.urlWithParams === `${api}audit?from=2026-11-01&to=2026-11-30&chip=edits&page=2&q=INV`,
+		).flush({});
+		http.verify();
+	});
+});
+
 describe('the reports library (U1)', () => {
 	it('shows every group in order with the saved reports by folder, each linking where it opens', async () => {
 		const { fixture, page } = mount(ReportsLibraryPage, [
@@ -164,6 +186,15 @@ describe('the reports library (U1)', () => {
 		expect(href('report_supplier_outstanding')).toBe('/stock/reports?tab=unpaid');
 		expect(href('report_sales_builder')).toBe('/accounts/reports/new?data=invoices');
 		expect(href('Weekly sales')).toBe('/accounts/reports/saved/s3');
+		expect(href('report_customer_ageing')).toBe('/accounts/reports/ageing/customers');
+		expect(href('report_supplier_ageing')).toBe('/accounts/reports/ageing/suppliers');
+		expect(href('report_audit_report')).toBe('/accounts/reports/audit');
+		expect(REPORT_LIBRARY.find((g) => g.group === 'receivables')?.items.map((i) => i.key)).toEqual([
+			'customer_ageing',
+			'supplier_ageing',
+			'business_statements',
+			'supplier_outstanding',
+		]);
 		expect(el(fixture, '#reports_new')?.getAttribute('href')).toBe('/accounts/reports/new');
 	});
 

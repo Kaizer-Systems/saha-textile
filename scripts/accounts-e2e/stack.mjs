@@ -163,3 +163,49 @@ export async function setProductHsn(productId, hsnCode) {
 		await db.close();
 	}
 }
+
+/**
+ * A second admin for the permission checks: the test administrator's account copied under another address (there is
+ * no create-user API; people arrive by invitation), given a password through the local credentials tool.
+ */
+export async function secondAdmin(email, password) {
+	const db = await connection();
+	let id;
+	try {
+		if (db.name !== DATABASE) throw new Error(`Refusing to change ${db.name}.`);
+		const users = db.collection('adminUsers');
+		const first = await users.findOne({ email: ADMIN_EMAIL });
+		if (!first) throw new Error('No test administrator to copy.');
+		id = `adm_e2e_${Date.now().toString(36)}`;
+		const { _id: _first, ...rest } = first;
+		await users.insertOne({
+			...rest,
+			_id: id,
+			email,
+			username: email.split('@')[0],
+			displayName: 'Store manager (test)',
+		});
+	} finally {
+		await db.close();
+	}
+	run(
+		'Give the second admin a password',
+		'node',
+		[
+			'--import',
+			'tsx',
+			'src/set-local-test-credentials.ts',
+			'--i-am-local',
+			'--audience',
+			'admin',
+			'--email',
+			email,
+			'--password',
+			password,
+		],
+		{
+			cwd: resolve(ROOT, 'apps/api'),
+		},
+	);
+	return id;
+}

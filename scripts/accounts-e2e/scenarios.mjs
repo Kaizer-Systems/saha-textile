@@ -4,7 +4,8 @@
  * GST and reports are checked too.
  */
 
-import { setProductHsn, variantOf } from './stack.mjs';
+import { Admin } from './client.mjs';
+import { secondAdmin, setProductHsn, variantOf } from './stack.mjs';
 
 const ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 /** A valid GSTIN: state, the PAN, entity 1, Z, then the check character. */
@@ -882,6 +883,175 @@ export const scenarios = [
 				JSON.stringify(sep3.summary.slice(0, 3)),
 			);
 			return `3B rows ${sep3.summary.map((r) => r.table).join(',')}`;
+		},
+	},
+	{
+		name: 'Statements: profit and loss, balance sheet and ratios for the year to date, against hand figures',
+		async run({ admin, check }) {
+			const today = new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10);
+			// Sales ₹17,828.57 less returns ₹4,457.14 = ₹13,371.43; cost of goods ₹9,000: profit ₹4,371.43.
+			const pl = await admin.ok('GET', '/admin/accounts/reports/statements/profitLoss', undefined, {
+				asAt: today,
+			});
+			const plText = JSON.stringify(pl);
+			check(pl.problems?.length === 0, 'The profit and loss layout has no problems', JSON.stringify(pl.problems));
+			check(
+				plText.includes('437143') || plText.includes('4371.43'),
+				'Profit for the year ₹4,371.43',
+				plText.slice(0, 300),
+			);
+			const bs = await admin.ok('GET', '/admin/accounts/reports/statements/balanceSheet', undefined, {
+				asAt: today,
+			});
+			const bsText = JSON.stringify(bs);
+			check(bs.problems?.length === 0, 'The balance sheet layout has no problems', JSON.stringify(bs.problems));
+			// Assets: cash 20,000 + HDFC 4,17,000 + UPI clearing 18,720 (sales 1 and 3, and the refused late sale's
+			// ₹4,680 still held as the customer's advance) + stock 51,000 = ₹5,06,720. Funds and liabilities: capital
+			// 5,00,000 + profit 4,371.43 + advance 4,680 − GST 2,331.43 (input 3,000 net of output 668.57) = ₹5,06,720.
+			const total = (key) => bs.rows.find((r) => r.key === key)?.thisYearPaise;
+			check(
+				total('funds_and_liabilities') === 50_672_000,
+				'Funds and liabilities ₹5,06,720',
+				String(total('funds_and_liabilities')),
+			);
+			check(
+				bs.rows.filter((r) => r.depth === 0).every((r) => r.thisYearPaise === 50_672_000),
+				'Both sides of the balance sheet ₹5,06,720',
+				bs.rows
+					.filter((r) => r.depth === 0)
+					.map((r) => `${r.key} ${r.thisYearPaise}`)
+					.join(', '),
+			);
+			const ratios = await admin.ok('GET', '/admin/accounts/reports/ratios', undefined, {
+				from: '2026-04-01',
+				to: today,
+			});
+			// Gross margin = 4,371.43 ÷ 13,371.43 = 32.69%.
+			check(ratios.values.grossMargin === 32.69, 'Gross margin 32.69%', String(ratios.values.grossMargin));
+			const cash = await admin.ok('GET', '/admin/accounts/reports/cash-flow', undefined, {
+				from: '2026-04-01',
+				to: today,
+			});
+			// Cash and bank opened at ₹5,00,000 (brought in on 31 March) and stand at ₹4,37,000.
+			check(
+				cash.closingCash - cash.openingCash === cash.netChange,
+				'Cash flow: the lines add up to the change in cash',
+				`${cash.netChange}`,
+			);
+			const tb = await admin.ok('GET', '/admin/accounts/export', undefined, {
+				format: 'trial_balance_csv',
+				from: '2026-04-01',
+				to: today,
+			});
+			const back = await admin.ok('POST', '/admin/accounts/import/check', {
+				source: 'template_csv',
+				start: 'date',
+				startOn: today,
+				fileName: tb.fileName,
+				text: tb.text,
+			});
+			check(
+				back.balanced && back.rows.every((r) => r.how === 'by_name'),
+				'The exported trial balance reads straight back in, balanced, every ledger matched',
+				`${back.debitPaise}/${back.creditPaise}`,
+			);
+			return `profit and balance sheet checked`;
+		},
+	},
+	{
+		name: 'Locks: August locked; a journal dated in August is refused; reopened by the super admin, it posts',
+		async run({ admin, check }) {
+			const parts = ['sales', 'purchases', 'stock', 'cash', 'bank', 'journal', 'payroll'];
+			await admin.ok('POST', '/admin/accounts/periods', {
+				months: ['2026-08'],
+				parts,
+				state: 'locked',
+				reason: 'August checked and closed',
+			});
+			const cash = ctx.chart.ledgers.find((l) => l.systemKey === 'cash');
+			const journal = (key) => ({
+				kind: 'contra',
+				date: '2026-08-20',
+				narration: 'Cash deposited',
+				lines: [
+					{
+						ledgerId: ctx.bankLedgerId,
+						locationId: ctx.storeId,
+						debitPaise: 100_000,
+						creditPaise: 0,
+						narration: '',
+					},
+					{ ledgerId: cash.id, locationId: ctx.storeId, debitPaise: 0, creditPaise: 100_000, narration: '' },
+				],
+				reverseOn: null,
+				attachments: [],
+				idempotencyKey: key,
+				draftId: null,
+			});
+			const refused = await admin.try('POST', '/admin/accounts/vouchers', journal(key('j1')));
+			check(
+				refused.status >= 400,
+				'A contra dated in locked August is refused',
+				`${refused.status} ${refused.code}`,
+			);
+			await admin.ok('POST', '/admin/accounts/periods', {
+				months: ['2026-08'],
+				parts,
+				state: 'open',
+				reason: 'A deposit was missed',
+			});
+			const posted = await admin.ok('POST', '/admin/accounts/vouchers', journal(key('j2')));
+			check(!!posted.id, 'Reopened, the same contra posts', posted.number);
+			const aug = await admin.ok('GET', '/admin/accounts/balances', undefined, { on: '2026-08-31' });
+			check(
+				(aug[ctx.bankLedgerId] ?? 0) === 48_100_000 && (aug[cash.id] ?? 0) === 1_900_000,
+				'HDFC ₹4,81,000 and cash ₹19,000 at 31 August',
+				`${aug[ctx.bankLedgerId]} / ${aug[cash.id]}`,
+			);
+			return posted.number;
+		},
+	},
+	{
+		name: 'Permissions: a store manager may not lock months, read the edit log or close the year',
+		async run({ admin, check }) {
+			const email = 'manager-e2e@example.test';
+			const password = 'Accounts-E2E-Manager-2026!';
+			const userId = await secondAdmin(email, password);
+			// A store manager: books and documents, but neither locking nor templates.
+			const manager = await admin.ok('POST', '/admin/roles', {
+				key: 'store-manager-e2e',
+				label: 'Store manager (test)',
+				description: null,
+				baseRole: 'admin',
+				permissions: ['accounts.index', 'accounts.edit', 'accounts.post'],
+			});
+			const authority = await admin.ok('GET', `/admin/users/${userId}/authority`);
+			for (const role of authority.roles ?? [])
+				await admin.try('DELETE', `/admin/users/${userId}/roles/${role.id ?? role.roleId}`);
+			await admin.ok('POST', `/admin/users/${userId}/roles`, { roleId: manager.id });
+			const staff = new Admin('store manager');
+			await staff.signIn(email, password);
+			const lock = await staff.try('POST', '/admin/accounts/periods', {
+				months: ['2026-09'],
+				parts: ['sales'],
+				state: 'locked',
+				reason: 'Trying to lock',
+			});
+			check(lock.status === 403, 'Locking a month is refused (403)', String(lock.status));
+			const audit = await staff.try('GET', '/admin/accounts/reports/audit', undefined, {
+				from: '2026-04-01',
+				to: '2026-11-30',
+			});
+			check(audit.status === 403, 'The edit log is refused (403)', String(audit.status));
+			const close = await staff.try('POST', '/admin/accounts/year-close/2026-27/close');
+			check(close.status === 403, 'Closing the year is refused (403)', String(close.status));
+			const rules = await staff.try('POST', '/admin/payroll/rules', {});
+			check(
+				rules.status === 403 || rules.status === 400,
+				'Adding payroll rules is refused',
+				String(rules.status),
+			);
+			return 'store manager refused';
 		},
 	},
 ];

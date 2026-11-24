@@ -166,6 +166,8 @@ export const COLLECTION_NAMES = {
 	BankMatchRule: 'bankMatchRules',
 	/** Gateway payouts and courier COD remittances (accounts brief Q10). */
 	Settlement: 'settlements',
+	/** GST returns prepared from the books, before and after approval (accounts brief G4). */
+	GstReturnDraft: 'gstReturnDrafts',
 	/** Stock split by location (accounts brief F4). */
 	LocationStock: 'locationStock',
 	/** Settings › Document formats (bundle builder brief F, 2026-11-22): one active format per document. */
@@ -324,6 +326,7 @@ export const GRAPH_RECONCILIATION_OWED = [
 	'bankImports',
 	'bankMatchRules',
 	'settlements',
+	'gstReturnDrafts',
 ] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */

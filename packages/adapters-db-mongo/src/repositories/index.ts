@@ -61,4 +61,5 @@ export * from './transfer.repository';
 export * from './bank.repository';
 export * from './bank-statement.repository';
 export * from './settlement.repository';
+export * from './gst-draft.repository';
 export * from './accounts-lists.reader';

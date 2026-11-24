@@ -72,3 +72,11 @@ SettlementSchema.index({ kind: 1, provider: 1, payoutReference: 1 }, { unique: t
 SettlementSchema.index({ kind: 1, date: -1 });
 SettlementSchema.index({ 'rows.paymentId': 1 });
 export const SettlementModel = reuse('Settlement', SettlementSchema);
+
+/** G4: GST return drafts, one per registration, return and month. */
+const GstReturnDraftSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true }, gstRegistrationId: String, returnType: String, month: String },
+	{ ...loose, collection: COLLECTION_NAMES.GstReturnDraft },
+);
+GstReturnDraftSchema.index({ gstRegistrationId: 1, returnType: 1, month: 1 }, { unique: true });
+export const GstReturnDraftModel = reuse('GstReturnDraft', GstReturnDraftSchema);

@@ -1,8 +1,10 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { GstReturnDraft, TaxInvoice } from '@saha-textile/contracts';
+import type { GstReturnDraft, TaxInvoice, TaxRuleEntry } from '@saha-textile/contracts';
+import { DUE_DATES } from '@saha-textile/core-domain';
 import { describe, expect, it, vi } from 'vitest';
 
+import { AccountsTemplatesModule } from '../src/accounts-templates/accounts-templates.module';
 import { PERMISSIONS_KEY } from '../src/auth/session.guard';
 import { GstReturnsController } from '../src/gst/gst-returns.controller';
 import { GstReturnsService } from '../src/gst/gst-returns.service';
@@ -127,6 +129,8 @@ function build(
 		debitNotes?: unknown[];
 		originals?: TaxInvoice[];
 		saveFails?: unknown;
+		/** The installed due-date rule set's entries (RS-DUE); the starter rules unless given. */
+		rules?: readonly TaxRuleEntry[];
 	} = {},
 ) {
 	const store = new Map((options.drafts ?? []).map((d) => [d.id, d]));
@@ -153,6 +157,9 @@ function build(
 	};
 	const credit = { listForGstin: vi.fn(async () => options.creditNotes ?? []) };
 	const debit = { listForGstin: vi.fn(async () => options.debitNotes ?? []) };
+	const templates = {
+		ruleSetEntries: vi.fn(async (_code: string, _day: string) => [...(options.rules ?? DUE_DATES.entries)]),
+	};
 	const service = new GstReturnsService(
 		drafts as never,
 		{ list: async () => options.filings ?? [] } as never,
@@ -160,9 +167,27 @@ function build(
 		invoices as never,
 		credit as never,
 		debit as never,
+		templates,
 	);
-	return { service, drafts, store, invoices, credit, debit };
+	return { service, drafts, store, invoices, credit, debit, templates };
 }
+
+/** An entry of the due-date rule set, as the CA adds one. */
+const dueEntry = (key: string, due: NonNullable<TaxRuleEntry['due']>): TaxRuleEntry => ({
+	key,
+	name: key,
+	code: '',
+	ratePercent: 0,
+	expenseRole: null,
+	kinds: null,
+	from: '2017-07-01',
+	to: null,
+	source: '',
+	caReview: 'pending',
+	limitINR: null,
+	limitPer: null,
+	due,
+});
 
 const prepare = (over: Record<string, unknown> = {}) =>
 	({ gstRegistrationId: 'reg_wb', returnType: 'GSTR-1', month: '2026-11', ...over }) as never;
@@ -388,6 +413,43 @@ describe('the returns calendar (G3)', () => {
 		expect(due.rows.every((r) => r.status !== 'filed')).toBe(true);
 	});
 
+	it('reads the due-date rule set installed on the day in India, and refuses when none is installed', async () => {
+		const { service, templates } = build();
+		await service.calendar({ gstRegistrationId: 'reg_qrmp', chip: 'all' }, new Date('2026-11-27T20:00:00Z'));
+		expect(templates.ruleSetEntries).toHaveBeenCalledWith('RS-DUE', '2026-11-28');
+		const none = calendarOf('all', { rules: [] });
+		await expect(none).rejects.toBeInstanceOf(BadRequestException);
+		await expect(none).rejects.toMatchObject(refusal('gst_due_dates_not_installed'));
+	});
+
+	it('leaves out the annual return when no rule gives its date', async () => {
+		const noAnnual = DUE_DATES.entries.filter((entry) => entry.due?.returnType !== 'GSTR-9');
+		const all = await calendarOf('all', { rules: noAnnual });
+		expect(all.rows.map((r) => r.returnType)).not.toContain('GSTR-9');
+		expect(all.counts).toEqual({ due: 14, filed: 0, all: 14 });
+	});
+
+	it('takes an extension for one month, and puts GSTR-1 first when both fall due the same day', async () => {
+		// The CA extends May's GSTR-1 to 20 June, the day its GSTR-3B is due.
+		const extended = [
+			...DUE_DATES.entries,
+			dueEntry('gstr1_may_extended', {
+				returnType: 'GSTR-1',
+				scheme: 'monthly',
+				day: 20,
+				monthsAfter: 1,
+				states: ['19'],
+				period: '2026-05',
+			}),
+		];
+		const all = await calendarOf('all', { rules: extended });
+		const may = all.rows.filter((r) => r.period === '2026-05');
+		expect(may.map((r) => [r.returnType, r.dueOn])).toEqual([
+			['GSTR-1', '2026-06-20'],
+			['GSTR-3B', '2026-06-20'],
+		]);
+	});
+
 	it('refuses a registration it doesn’t know, and reads today when no day is given', async () => {
 		await expect(calendarOf('all', {}, 'reg_gone')).rejects.toMatchObject(refusal('gst_registration_unknown'));
 		const today = await build().service.calendar({ gstRegistrationId: 'reg_wb', chip: 'all' });
@@ -434,5 +496,7 @@ describe('the GST return routes', () => {
 		]);
 		expect(Reflect.getMetadata('providers', GstModule)).toEqual([GstReturnsService]);
 		expect(Reflect.getMetadata('controllers', GstModule)).toEqual([GstReturnsController]);
+		// Due dates come from the rule sets the templates library keeps.
+		expect(Reflect.getMetadata('imports', GstModule)).toEqual([AccountsTemplatesModule]);
 	});
 });

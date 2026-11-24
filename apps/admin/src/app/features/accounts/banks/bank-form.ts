@@ -20,6 +20,8 @@ const BANK_CODES = new Set([
 	'bank_opening_needs_date',
 	'bank_opening_is_posted',
 	'books_need_a_location',
+	'bank_layout_incomplete',
+	'bank_layout_unknown',
 ]);
 
 /** A refusal in the bank screens' words; anything else is the general failure. */

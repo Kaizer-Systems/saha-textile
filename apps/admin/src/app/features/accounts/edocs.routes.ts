@@ -55,6 +55,10 @@ export default [
 	{ path: 'banks', loadComponent: () => import('./banks/banks-list').then((m) => m.BanksListPage) },
 	{ path: 'banks/new', loadComponent: () => import('./banks/bank-form').then((m) => m.BankFormPage) },
 	{ path: 'banks/:id/edit', loadComponent: () => import('./banks/bank-form').then((m) => m.BankFormPage) },
+	{
+		path: 'banks/:id/import',
+		loadComponent: () => import('./banks/statement-import').then((m) => m.StatementImportPage),
+	},
 	{ path: 'banks/:id', loadComponent: () => import('./banks/bank-page').then((m) => m.BankPage) },
 	{ path: 'ledgers/:id', loadComponent: () => import('./ledger-statement').then((m) => m.LedgerStatementPage) },
 	{ path: 'periods', loadComponent: () => import('./periods').then((m) => m.PeriodsPage) },

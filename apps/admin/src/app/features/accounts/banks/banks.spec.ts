@@ -201,6 +201,8 @@ describe('adding and changing a bank account (BA2)', () => {
 	});
 });
 
+const noLines = () => of({ items: [], total: 0, counts: {} });
+
 describe('a bank account’s page (BA3)', () => {
 	it('shows its details, limit or rate where it has them, and links to its statement', async () => {
 		const { fixture, page } = mount(
@@ -220,10 +222,13 @@ describe('a bank account’s page (BA3)', () => {
 						}),
 					),
 				),
+				lines: vi.fn(noLines),
 			},
 			'bank_1',
 		);
 		await settle(fixture);
+		page.tab.set('details');
+		fixture.detectChanges();
 		const text = fixture.nativeElement.textContent as string;
 		expect(text).toContain('₹40,00,000.00');
 		expect(text).toContain('7.1%');
@@ -231,8 +236,10 @@ describe('a bank account’s page (BA3)', () => {
 			'/accounts/ledgers/led_1',
 		);
 		expect([page.money(null), page.balance(-5)]).toEqual(['—', '₹0.05 Cr']);
-		const bare = mount(BankPage, { one: vi.fn(() => of(account({ lands: [] }))) }, 'bank_1');
+		const bare = mount(BankPage, { one: vi.fn(() => of(account({ lands: [] }))), lines: vi.fn(noLines) }, 'bank_1');
 		await settle(bare.fixture);
+		bare.page.tab.set('details');
+		bare.fixture.detectChanges();
 		expect(bare.fixture.nativeElement.textContent).toContain('—');
 		expect(drCr(0)).toBe('₹0.00 Dr');
 		const none = mount(BankPage, { one: vi.fn() });
@@ -255,6 +262,11 @@ describe('the bank gateway', () => {
 			[() => gateway.ifsc('HDFC0001234'), 'GET', '/ifsc?code=HDFC0001234'],
 			[() => gateway.add({} as never), 'POST', ''],
 			[() => gateway.edit('b/1', {} as never), 'PUT', '/b%2F1'],
+			[() => gateway.layouts(), 'GET', '/layouts'],
+			[() => gateway.saveLayout({} as never), 'PUT', '/layouts'],
+			[() => gateway.preview('b/1', {} as never), 'POST', '/b%2F1/lines/preview'],
+			[() => gateway.saveLines('b/1', {} as never), 'POST', '/b%2F1/lines'],
+			[() => gateway.lines('b/1', { from: '2026-11-01', page: 2 }), 'GET', '/b%2F1/lines?from=2026-11-01&page=2'],
 		];
 		for (const [call, method, path] of calls) {
 			(call() as { subscribe: () => void }).subscribe();

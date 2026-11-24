@@ -19,6 +19,16 @@
 				<i class="ri-file-list-3-line"></i>
 				{{ 'bank_statement' | transloco }}
 			</a>
+			<button
+				*hasPermission="'accounts.edit'"
+				type="button"
+				class="btn btn-outline"
+				id="bank_import"
+				(click)="importStatement()"
+			>
+				<i class="ri-upload-2-line"></i>
+				{{ 'bank_import' | transloco }}
+			</button>
 			<a
 				*hasPermission="'accounts.edit'"
 				class="btn btn-theme"
@@ -29,6 +39,95 @@
 			</a>
 		</div>
 	</div>
+	<ul class="nav nav-tabs mb-3">
+		@for (t of tabs; track t) {
+		<li class="nav-item">
+			<button
+				type="button"
+				class="nav-link"
+				[id]="'bank_tab_' + t"
+				[class.active]="tab() === t"
+				(click)="tab.set(t)"
+			>
+				{{ 'bank_tab_' + t | transloco }}
+			</button>
+		</li>
+		}
+	</ul>
+	@switch (tab()) { @case ('lines') {
+	<div class="d-flex align-items-center mb-3 flex-wrap gap-2">
+		@for (item of chips; track item) {
+		<button
+			type="button"
+			class="align-items-center btn btn-sm d-flex"
+			[class.btn-theme]="chip() === item"
+			[class.btn-outline]="chip() !== item"
+			[attr.aria-pressed]="chip() === item"
+			(click)="setChip(item)"
+		>
+			{{ 'bank_line_status_' + item | transloco }}@if (item !== 'all' && lines.data()?.counts?.[item] !==
+			undefined) {
+			<span class="ms-1">{{ lines.data()?.counts?.[item] }}</span>
+			}
+		</button>
+		}
+		<app-period-picker
+			[choices]="presets"
+			[start]="'current_quarter'"
+			[labelPrefix]="'period_'"
+			[hint]="hint"
+			(picked)="setPeriod($event)"
+		/>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'date' | transloco }}</th>
+					<th>{{ 'description' | transloco }}</th>
+					<th>{{ 'reference' | transloco }}</th>
+					<th class="text-end">{{ 'bank_col_out' | transloco }}</th>
+					<th class="text-end">{{ 'bank_col_in' | transloco }}</th>
+					<th class="text-end">{{ 'balance' | transloco }}</th>
+					<th>{{ 'status' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (line of lines.data()?.items ?? []; track line.id) {
+				<tr>
+					<td class="text-nowrap">{{ day(line.date) }}</td>
+					<td>{{ line.description }}</td>
+					<td>{{ line.reference || '—' }}</td>
+					<td class="text-end text-nowrap">{{ paise(line.outPaise) }}</td>
+					<td class="text-end text-nowrap">{{ paise(line.inPaise) }}</td>
+					<td class="text-end text-nowrap">
+						{{ line.balancePaise === null ? '—' : balance(line.balancePaise) }}
+					</td>
+					<td>{{ 'bank_line_status_' + line.status | transloco }}</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="7"
+						class="text-muted"
+					>
+						{{ 'bank_lines_empty' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if ((lines.data()?.total ?? 0) > pageSize) {
+	<nav class="custom-pagination">
+		<app-pagination
+			[total]="lines.data()?.total ?? 0"
+			[currentPage]="page()"
+			[pageSize]="pageSize"
+			(setPage)="page.set($event)"
+		/>
+	</nav>
+	} } @case ('details') {
 	<div class="card">
 		<div class="card-body">
 			<ul class="list-unstyled small row g-2 mb-0">
@@ -77,5 +176,5 @@
 			</ul>
 		</div>
 	</div>
-	}
+	} } }
 </app-page-wrapper>

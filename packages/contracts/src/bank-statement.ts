@@ -30,6 +30,8 @@ export const BankLayout = z.object({
 		amount: Column,
 		drcr: Column,
 		balance: Column,
+		/** The bank's value date: matched so the column is named, not read into the line (BA5). */
+		valueDate: Column.optional(),
 	}),
 	updatedAt: IsoDateTime,
 });

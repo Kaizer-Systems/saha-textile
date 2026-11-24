@@ -1,0 +1,115 @@
+<div class="modal-header">
+	<h5
+		class="mb-0"
+		id="bank_import_title"
+	>
+		{{ 'bank_import_title' | transloco }}
+	</h5>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	></button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	<div class="row g-3">
+		<div class="col-md-6">
+			<label
+				class="form-label-title"
+				for="bank_import_into"
+			>
+				{{ 'bank_import_into' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="bank_import_into"
+				[ngModel]="into()"
+				(ngModelChange)="into.set($event)"
+			>
+				@for (a of accounts(); track a.id) {
+				<option [value]="a.id">{{ a.shortName }}</option>
+				}
+			</select>
+		</div>
+		<div class="col-md-6">
+			<label
+				class="form-label-title"
+				for="bank_import_file"
+			>
+				{{ 'bank_import_file' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="bank_import_file"
+				type="file"
+				accept=".csv,.tsv,.txt,text/csv,.xlsx,.xls"
+				(change)="read($any($event.target).files?.[0])"
+			/>
+			<small class="text-muted d-block mt-1">{{ 'bank_import_file_help' | transloco }}</small>
+			@if (problem(); as key) {
+			<small class="text-danger d-block mt-1">{{ key | transloco }}</small>
+			}
+		</div>
+		<div class="col-md-6">
+			<label
+				class="form-label-title"
+				for="bank_import_layout"
+			>
+				{{ 'bank_import_layout' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="bank_import_layout"
+				[ngModel]="layoutId()"
+				(ngModelChange)="layoutId.set($event)"
+			>
+				@for (l of layouts(); track l.id) {
+				<option [value]="l.id">
+					{{ 'bank_import_layout_saved' | transloco: { name: l.name, date: l.updatedAt.slice(0, 10) } }}
+				</option>
+				}
+				<option value="">{{ 'bank_import_layout_new' | transloco }}</option>
+			</select>
+			<small class="text-muted d-block mt-1">{{ 'bank_import_layout_help' | transloco }}</small>
+		</div>
+		<div class="col-md-6">
+			<div class="form-check form-switch mt-4 mb-0 ps-0">
+				<label class="switch">
+					<input
+						type="checkbox"
+						id="bank_import_pdf"
+						disabled
+						[checked]="false"
+					/>
+					<span class="switch-state"></span>
+				</label>
+				<label
+					class="ms-2"
+					for="bank_import_pdf"
+				>
+					{{ 'bank_import_pdf' | transloco }}
+				</label>
+			</div>
+			<small class="text-muted d-block mt-1">{{ 'bank_import_pdf_help' | transloco }}</small>
+		</div>
+	</div>
+</div>
+<div class="modal-footer">
+	<button
+		type="button"
+		class="btn btn-outline"
+		(click)="modal.dismiss()"
+	>
+		{{ 'cancel' | transloco }}
+	</button>
+	<button
+		type="button"
+		class="btn btn-theme"
+		id="bank_import_read"
+		[disabled]="!ready()"
+		(click)="go()"
+	>
+		{{ 'bank_import_read' | transloco }}
+	</button>
+</div>

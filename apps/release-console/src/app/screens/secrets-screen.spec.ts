@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'vitest';
+
 import { tierOf } from './secrets-screen';
 
 describe('Secrets screen', () => {

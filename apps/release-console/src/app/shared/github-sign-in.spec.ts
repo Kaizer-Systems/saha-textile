@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'vitest';
+
 import { connectResult, lineClass, oneTimeCode, pendingAsk } from './github-sign-in';
 
 const line = (seq: number, text: string, event: Record<string, unknown> | null = null) => ({

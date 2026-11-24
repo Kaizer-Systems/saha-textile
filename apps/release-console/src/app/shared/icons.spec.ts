@@ -66,8 +66,8 @@ describe('icons', () => {
 			role: '',
 			sourceCode: { vendor: 'github', repository: 'acme/shop', keyId: null },
 			environments: [],
-			cloud: [{ id: 'aws', vendor: 'aws', keyIds: [] }],
-			edge: [{ id: 'cloudflare', vendor: 'cloudflare', zones: ['example.com'], keyIds: [] }],
+			cloud: [{ id: 'aws', vendor: 'aws', account: '', keyIds: [] }],
+			edge: [{ id: 'cloudflare', vendor: 'cloudflare', account: '', zones: ['example.com'], keyIds: [] }],
 			secrets: [{ id: 'doppler', vendor: 'doppler', address: '', keyIds: [] }],
 			menus: ['payments'],
 		};

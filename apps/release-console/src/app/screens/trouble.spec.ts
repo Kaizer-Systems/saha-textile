@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { describe, expect, it } from 'vitest';
+
 import { TROUBLE_STEPS, troubleFor } from './trouble';
 
 describe('troubleshooting steps', () => {
@@ -21,7 +23,7 @@ describe('troubleshooting steps', () => {
 	it('names only commands that exist in the root package.json', () => {
 		const commands = Object.values(TROUBLE_STEPS)
 			.flat()
-			.flatMap((s) => [...s.matchAll(/`pnpm ([a-z:-]+)`/g)].map((m) => m[1]));
+			.flatMap((s) => [...s.matchAll(/`pnpm ([a-z:-]+)`/g)].map((m) => m[1] ?? ''));
 		const scripts = (
 			JSON.parse(readFileSync(join(process.cwd(), '../../package.json'), 'utf8')) as {
 				scripts: Record<string, string>;

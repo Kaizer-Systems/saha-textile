@@ -91,7 +91,7 @@ const job = (status: 'running' | 'passed') => ({
 	startedAt: AT,
 	finishedAt: null,
 	exitCode: null,
-	lines: [{ seq: 1, stream: 'out' as const, text: 'ok' }],
+	lines: [{ seq: 1, stream: 'out' as const, text: 'ok', event: null }],
 });
 
 async function render(opts: { runs?: CoverageRuns; url?: string; root?: CoverageNode; ids?: null; main?: null } = {}) {

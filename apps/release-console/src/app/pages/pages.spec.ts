@@ -22,6 +22,7 @@ const ref = (state: KeyRef['state']): KeyRef => ({
 	label: 'DigitalOcean API · read',
 	envNames: ['CONSOLE_DO_READ_TOKEN'],
 	account: '',
+	target: '',
 	rights: [],
 	expiresAt: '2026-11-20T00:00:00.000Z',
 	checkedAt: null,
@@ -120,7 +121,7 @@ describe('branch per environment (owner, 20 Nov)', () => {
 		expect(suggestBranch({ name: 'preview', runsOn: 'digitalocean' }, list)).toBe('');
 	});
 	it('keeps Next off until every environment has a branch from the list, once connected', () => {
-		const envs = [
+		const envs: { label: string; branches: Record<string, string> }[] = [
 			{ label: 'Local', branches: { 'o/r': 'feat/combined-after-pr6' } },
 			{ label: 'Staging', branches: {} },
 		];

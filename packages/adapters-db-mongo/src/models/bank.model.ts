@@ -102,3 +102,11 @@ const ReportDefinitionSchema = new Schema<AggregateDoc>(
 	{ ...loose, collection: COLLECTION_NAMES.ReportDefinition },
 );
 export const ReportDefinitionModel = reuse('ReportDefinition', ReportDefinitionSchema);
+
+/** R1: fixed assets, one per tag. */
+const FixedAssetSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true }, tag: String },
+	{ ...loose, collection: COLLECTION_NAMES.FixedAsset },
+);
+FixedAssetSchema.index({ tag: 1 }, { unique: true });
+export const FixedAssetModel = reuse('FixedAsset', FixedAssetSchema);

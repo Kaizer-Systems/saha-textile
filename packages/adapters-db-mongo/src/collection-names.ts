@@ -174,6 +174,8 @@ export const COLLECTION_NAMES = {
 	GstAnnualNote: 'gstAnnualNotes',
 	/** Reports saved from the builder: choices, never figures (accounts brief V2). */
 	ReportDefinition: 'reportDefinitions',
+	/** The fixed asset register (accounts brief R1–R4). */
+	FixedAsset: 'fixedAssets',
 	/** Stock split by location (accounts brief F4). */
 	LocationStock: 'locationStock',
 	/** Settings › Document formats (bundle builder brief F, 2026-11-22): one active format per document. */
@@ -336,6 +338,7 @@ export const GRAPH_RECONCILIATION_OWED = [
 	'gstr2bImports',
 	'gstAnnualNotes',
 	'reportDefinitions',
+	'fixedAssets',
 ] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */

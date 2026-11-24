@@ -74,3 +74,4 @@ export * from './gst-draft.repository';
 export * from './accounts-lists.port';
 export * from './accounts-templates.repository';
 export * from './report-definition.repository';
+export * from './fixed-asset.repository';

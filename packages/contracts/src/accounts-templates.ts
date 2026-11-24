@@ -84,7 +84,10 @@ export const TaxRuleEntry = z.object({
 			scheme: z.enum(['monthly', 'qrmp']).nullable().default(null),
 			day: z.number().int().min(1).max(31),
 			monthsAfter: z.number().int().min(1).max(12).default(1),
-			states: z.array(z.string().regex(/^\d{2}$/)).max(40).default([]),
+			states: z
+				.array(z.string().regex(/^\d{2}$/))
+				.max(40)
+				.default([]),
 			period: z
 				.string()
 				.regex(/^\d{4}-(0[1-9]|1[0-2])$/)

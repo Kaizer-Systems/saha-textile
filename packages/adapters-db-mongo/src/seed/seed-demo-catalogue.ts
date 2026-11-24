@@ -18,7 +18,7 @@ import {
 import { AddonTemplateModel } from '../models/merchandising.model';
 import { MongoNotificationTemplateRepository } from '../repositories/index';
 import { CATALOG_NOTIFICATION_TEMPLATES } from './notification-templates';
-import { LEGACY_ADDRESSES, approvedLegacyRows, legacyTargetIsLive } from './legacy-addresses';
+import { LEGACY_ADDRESSES, type LegacyAddressRow, approvedLegacyRows, legacyTargetIsLive } from './legacy-addresses';
 import { mapDemoCatalogue, type DemoCatalogue } from './map-demo-catalogue';
 
 export interface DemoCatalogueSeedResult {
@@ -181,6 +181,15 @@ function documents(mapped: DemoCatalogue) {
  * when the documents already match. Photo assets are inserted only when missing,
  * so a real pipeline upload is left alone.
  */
+/** A legacy address's redirect row: a page gone for good (410) has no target to send anyone to. */
+export const legacyRedirectDoc = (row: LegacyAddressRow) => ({
+	_id: `redir_${row.sourcePath.replace(/[^a-z0-9]+/g, '_')}`,
+	sourcePath: row.sourcePath,
+	statusCode: row.statusCode,
+	...(row.targetPath ? { targetPath: row.targetPath } : {}),
+	reason: 'legacy_woo',
+});
+
 export async function seedDemoCatalogue(dbName: string | undefined): Promise<DemoCatalogueSeedResult> {
 	return writeCatalogue(
 		dbName,
@@ -239,13 +248,7 @@ export async function writeCatalogue(
 			throw new Error(`Legacy target is not a live page: ${row.sourcePath} -> ${row.targetPath}`);
 		}
 	}
-	const redirectDocs = legacy.map((row) => ({
-		_id: `redir_${row.sourcePath.replace(/[^a-z0-9]+/g, '_')}`,
-		sourcePath: row.sourcePath,
-		statusCode: row.statusCode,
-		...(row.targetPath ? { targetPath: row.targetPath } : {}),
-		reason: 'legacy_woo',
-	}));
+	const redirectDocs = legacy.map(legacyRedirectDoc);
 	const seoDocs = seoRouteDocs(mapped);
 	written += await upsertChanged(SeoRedirectModel, redirectDocs as never, ['sourcePath']);
 	written += await upsertChanged(SeoRouteModel, seoDocs as never);

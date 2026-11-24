@@ -682,7 +682,8 @@ export class MongoMediaAssetRepository
 					(owner['slug'] as string | undefined) ??
 					String(owner['_id']);
 				const label = `${entry.owner} · ${name}`;
-				const values = JSON.stringify(owner).match(/"(med_[^"]+)"/g) ?? [];
+				// The owner was found by one of these ids at this path, so its JSON always holds at least one.
+				const values = JSON.stringify(owner).match(/"(med_[^"]+)"/g) as RegExpMatchArray;
 				for (const quoted of new Set(values)) {
 					const id = quoted.slice(1, -1);
 					if (!wanted.has(id)) continue;

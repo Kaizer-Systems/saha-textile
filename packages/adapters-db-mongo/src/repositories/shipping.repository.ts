@@ -170,7 +170,8 @@ export class MongoShippingRuleRepository implements ShippingRuleRepository {
 		)
 			.lean<Array<Pick<ShippingRuleSetDoc, '_id' | 'activeVersion'>>>()
 			.exec();
-		const ids = sets.flatMap((s) => (s.activeVersion === null ? [] : [versionId(s._id, s.activeVersion)]));
+		// The query asked only for sets with an active version.
+		const ids = sets.map((s) => versionId(s._id, s.activeVersion as number));
 		if (ids.length === 0) return [];
 		const docs = await ShippingRuleSetVersionModel.find({ _id: { $in: ids } })
 			.lean<ShippingRuleSetVersionDoc[]>()

@@ -151,8 +151,9 @@ export class MongoLanguageCoverageRepository implements LanguageCoverageReposito
 		const rows = await ProductModel.find({ 'media.altOverrides': { $exists: true, $ne: {} } }, { media: 1 })
 			.lean<{ _id: string; media: Document }[]>()
 			.exec();
+		// The query found only products whose alt overrides are there and not empty.
 		return rows.filter((row) =>
-			Object.values((row.media?.altOverrides ?? {}) as Record<string, Document>).some(
+			Object.values(row.media.altOverrides as Record<string, Document>).some(
 				(alt) => alt && typeof alt === 'object' && code in alt,
 			),
 		);
@@ -174,20 +175,21 @@ export class MongoLanguageCoverageRepository implements LanguageCoverageReposito
 			const cursor = entry.model.collection.find(held, {
 				projection: Object.fromEntries(roots.map((root) => [root, 1])),
 			});
+			// Each array that held the language is written back without it. (Never-run check removed: the plain fields
+			// were erased above, so every document found here still holds the language in at least one array.)
 			for await (const doc of cursor) {
-				const set: Document = {};
 				for (const root of roots) {
 					const steps = arrays
 						.filter((field) => field.path.startsWith(`${root}.$[].`))
 						.map((field) => field.path.split('.$[].').slice(1).join('.').split('.'));
 					const value = doc[root];
-					if (steps.map((path) => stripPath(value, path, code)).some(Boolean)) set[root] = value;
+					if (steps.map((path) => stripPath(value, path, code)).some(Boolean))
+						await entry.model.collection.updateOne({ _id: doc._id }, { $set: { [root]: value } });
 				}
-				if (Object.keys(set).length) await entry.model.collection.updateOne({ _id: doc._id }, { $set: set });
 			}
 		}
 		for (const product of await this.productsWithAltOverrides(code)) {
-			const overrides = { ...((product.media.altOverrides ?? {}) as Record<string, Document>) };
+			const overrides = { ...(product.media.altOverrides as Record<string, Document>) };
 			for (const alt of Object.values(overrides)) if (alt && typeof alt === 'object') delete alt[code];
 			await ProductModel.updateOne({ _id: product._id }, { $set: { 'media.altOverrides': overrides } }).exec();
 			changed += 1;

@@ -109,7 +109,8 @@ export class MongoBlogPostRepository implements BlogPostRepository {
 			},
 			{ upsert: true },
 		).exec();
-		return (await this.findById(id)) ?? post;
+		// Just written by the upsert above.
+		return (await this.findById(id)) as BlogPost;
 	}
 
 	async remove(id: string): Promise<void> {
@@ -168,7 +169,8 @@ class MongoBlogTermRepository<T extends BlogCategory | BlogTag> implements BlogT
 	async save(term: T): Promise<T> {
 		const { id, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = term;
 		await this.termModel.updateOne({ _id: id }, { $set: rest }, { upsert: true }).exec();
-		return (await this.findById(id)) ?? term;
+		// Just written by the upsert above.
+		return (await this.findById(id)) as T;
 	}
 
 	async remove(id: string): Promise<void> {

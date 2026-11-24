@@ -139,7 +139,10 @@ export async function convertBundlesToLevels(): Promise<string> {
 	if (docs.length === 0) return 'no bundles to convert';
 	const ids = [
 		...new Set(
-			docs.flatMap((doc) => (doc.groups ?? []).flatMap((g) => (g.components ?? []).map((c) => c.productId))),
+			// Never-run line removed: the query reads only bundles with at least one group.
+			docs.flatMap((doc) =>
+				(doc.groups as LegacyGroup[]).flatMap((g) => (g.components ?? []).map((c) => c.productId)),
+			),
 		),
 	];
 	const products = await ProductModel.find({ _id: { $in: ids } }, { basePriceINR: 1 })

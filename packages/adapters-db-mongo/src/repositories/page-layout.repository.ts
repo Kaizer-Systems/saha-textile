@@ -471,7 +471,7 @@ export class MongoPageLayoutRepository implements PageLayoutRepository, PreviewT
 				.map((revision) => revision._id);
 			if (drop.length) {
 				const result = await PageLayoutRevisionModel.deleteMany({ _id: { $in: drop } }).exec();
-				removed += result.deletedCount ?? 0;
+				removed += result.deletedCount;
 			}
 		}
 		return removed;

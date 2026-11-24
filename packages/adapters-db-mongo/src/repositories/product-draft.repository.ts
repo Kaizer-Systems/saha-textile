@@ -80,6 +80,7 @@ export class MongoProductDraftRepository implements ProductDraftRepository {
 
 	async removeForProduct(productId: string): Promise<number> {
 		const result = await ProductDraftModel.deleteMany({ productId }).exec();
-		return result.deletedCount ?? 0;
+		// Never-run line removed: the driver always reports how many it deleted.
+		return result.deletedCount;
 	}
 }

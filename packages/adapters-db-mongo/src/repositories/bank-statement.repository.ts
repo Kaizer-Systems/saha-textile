@@ -1,4 +1,4 @@
-import { BankLayout, BankLine, MatchRule, type BankImport, type BankLineQuery } from '@saha-textile/contracts';
+import { BankImport, BankLayout, BankLine, MatchRule, type BankLineQuery } from '@saha-textile/contracts';
 import type { BankStatementRepository, TransactionContext } from '@saha-textile/core-domain';
 
 import { BankImportModel, BankLayoutModel, BankLineModel, BankMatchRuleModel } from '../models/bank.model';
@@ -102,6 +102,19 @@ export class MongoBankStatementRepository implements BankStatementRepository {
 			.lean<AggregateDoc[]>()
 			.exec();
 		return docs.map((doc) => BankLine.parse(withId(doc)));
+	}
+
+	async earliestLine(bankAccountId: string): Promise<BankLine | null> {
+		const doc = await BankLineModel.findOne({ bankAccountId })
+			.sort({ date: 1, _id: 1 })
+			.lean<AggregateDoc>()
+			.exec();
+		return doc ? BankLine.parse(withId(doc)) : null;
+	}
+
+	async importById(id: string): Promise<BankImport | null> {
+		const doc = await BankImportModel.findById(id).lean<AggregateDoc>().exec();
+		return doc ? BankImport.parse(withId(doc)) : null;
 	}
 
 	async heldVoucherIds(bankAccountId: string, statuses: readonly BankLine['status'][]): Promise<Set<string>> {

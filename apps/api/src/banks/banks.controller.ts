@@ -7,6 +7,7 @@ import {
 	BankLineLink,
 	BankLineQuery,
 	BookEntryQuery,
+	BrsQuery,
 	IfscQuery,
 	MatchRuleWrite,
 	ReconcilePeriod,
@@ -69,6 +70,17 @@ export class BanksController {
 	})
 	reconcileEntries(@Param('id') id: string, @Query(new ZodValidationPipe(BookEntryQuery)) query: BookEntryQuery) {
 		return this.reconcile.findEntries(id, query.q);
+	}
+
+	@Get(':id/brs')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({
+		operationId: 'bankReconciliationStatement',
+		summary: 'Bank reconciliation statement as at a day (BA9)',
+	})
+	brs(@Param('id') id: string, @Query(new ZodValidationPipe(BrsQuery)) query: BrsQuery) {
+		return this.reconcile.brs(id, query.asAt);
 	}
 
 	@Post(':id/reconcile/accept-sure')

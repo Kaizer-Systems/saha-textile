@@ -84,3 +84,35 @@ export type BookEntryQuery = z.infer<typeof BookEntryQuery>;
 /** The period the person is looking at: Accept, Reject and Accept all act on the suggestions shown for it. */
 export const ReconcilePeriod = z.object({ from: IsoDate, to: IsoDate });
 export type ReconcilePeriod = z.infer<typeof ReconcilePeriod>;
+
+/** BA9: the bank reconciliation statement as at a day. */
+export const BrsQuery = z.object({ asAt: IsoDate });
+export type BrsQuery = z.infer<typeof BrsQuery>;
+
+export const BrsRowKind = z.enum([
+	'unpresented',
+	'uncredited',
+	'bank_in',
+	'bank_out',
+	'bank_charges',
+	'before_start',
+]);
+export type BrsRowKind = z.infer<typeof BrsRowKind>;
+
+export const BrsItem = z.object({ date: IsoDate, text: z.string(), paise: z.number().int() });
+export type BrsItem = z.infer<typeof BrsItem>;
+
+export const Brs = z.object({
+	asAt: IsoDate,
+	/** Debit less credit of the account's ledger at the end of the day, in paise. */
+	bookPaise: z.number().int(),
+	/** Each step from the books to the bank, signed as it changes the balance, with the items behind it. */
+	rows: z.array(z.object({ kind: BrsRowKind, paise: z.number().int(), items: z.array(BrsItem) })),
+	/** The books, with every step, as the bank should show it. */
+	computedPaise: z.number().int(),
+	/** The bank's balance by its statements (the first import's opening plus every line to the day); null before any. */
+	statementPaise: z.number().int().nullable(),
+	/** The first day of the imported statements; items before it are in the statement's opening. */
+	startsOn: IsoDate.nullable(),
+});
+export type Brs = z.infer<typeof Brs>;

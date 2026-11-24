@@ -68,6 +68,20 @@ Reconcile (BA7, from the account's page, `/accounts/banks/:id/reconcile`) shows 
 
 Matching rules (BA10, `/accounts/banks/matching-rules`) lists the rules in order with a switch each. The app's own rules can be switched off and their words and GST rate changed, not removed; Add rule adds words that make a bank-charge entry, interest, or leave the line for a person, optionally only on money coming in.
 
+## Bank reconciliation statement
+
+BA9 (`/accounts/banks/:id/brs`, from Reconcile) goes, as at a chosen day, from the balance in the books to the balance on the bank's statement. Reconciling starts at the account's first imported line; the steps are, each listing its items:
+
+| Step                                                          | Items                                                                                                                    |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Add: payments and cheques we issued, not yet through the bank | Entries on the account's ledger paying out, not held by a line accepted by that day                                      |
+| Less: entered by us, not yet in the bank                      | Entries paying in, not held by an accepted line                                                                          |
+| Add or less: in or out of the bank, not yet in our books      | Statement lines to the day not accepted, money in and money out                                                          |
+| Less: bank charges not yet entered                            | Lines the bank-charges rule would make an entry for                                                                      |
+| Difference already there when the statements start            | The first import's opening less the books before its first day (the account's opening voucher counts as the books' side) |
+
+The result is checked against the statements' own balance (the first import's opening plus every line to the day): a tick when they agree, otherwise the difference to look into. PDF prints the page through the browser. `GET /admin/accounts/banks/:id/brs?asAt=` (`accounts.index`).
+
 ## API
 
 `GET /admin/accounts/banks`, `GET /admin/accounts/banks/:id`, `GET /admin/accounts/banks/ifsc?code=` (`accounts.index`); `POST /admin/accounts/banks`, `PUT /admin/accounts/banks/:id` (`accounts.edit`). Collection `bankAccounts` (unique ledger, unique IFSC and number).
@@ -91,4 +105,4 @@ Matching rules (BA10, `/accounts/banks/matching-rules`) lists the rules in order
 
 Collections `bankLayouts`, `bankLines` (unique account and key; `match`, `rejectedKeys`), `bankImports` (one per save: file, opening, closing, saved, skipped) and `bankMatchRules` (rules added, and the app's own once changed).
 
-The bank reconciliation statement and settlements follow in the same chunk.
+Settlements (gateway payouts and cash on delivery) and settling receipts against bills follow in the same chunk.

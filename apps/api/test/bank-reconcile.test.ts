@@ -56,7 +56,13 @@ const voucher = (id: string, over: Partial<Voucher> = {}): Voucher => ({
 function build(
 	lines: BankLine[],
 	vouchers: Voucher[],
-	options: { locationId?: string | null; locations?: unknown[]; rules?: MatchRule[] } = {},
+	options: {
+		locationId?: string | null;
+		locations?: unknown[];
+		rules?: MatchRule[];
+		openingVoucherId?: string | null;
+		openingPaise?: number;
+	} = {},
 ) {
 	const store = new Map(lines.map((l) => [l.id, l]));
 	const rules: MatchRule[] = [...(options.rules ?? [])];
@@ -75,6 +81,11 @@ function build(
 			[...store.values()]
 				.filter((l) => l.bankAccountId === accountId && l.date >= from && l.date <= to)
 				.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id)),
+		earliestLine: async (accountId: string) =>
+			[...store.values()]
+				.filter((l) => l.bankAccountId === accountId)
+				.sort((a, b) => a.date.localeCompare(b.date))[0] ?? null,
+		importById: async (id: string) => (id === 'imp_1' ? { id, openingPaise: options.openingPaise ?? 0 } : null),
 		heldVoucherIds: async (accountId: string, statuses: string[]) =>
 			new Set(
 				[...store.values()]
@@ -98,6 +109,11 @@ function build(
 						})),
 				),
 		getVoucher: async (id: string) => vouchers.find((v) => v.id === id) ?? null,
+		balanceBefore: async (ledgerId: string, day: string) =>
+			vouchers
+				.filter((v) => v.date < day)
+				.flatMap((v) => v.lines.filter((l) => l.ledgerId === ledgerId))
+				.reduce((sum, l) => sum + l.debitPaise - l.creditPaise, 0),
 	};
 	const service = new ReconcileService(
 		repo as never,
@@ -108,6 +124,7 @@ function build(
 							id: 'bank_1',
 							ledgerId: 'led_bank',
 							locationId: options.locationId === undefined ? null : options.locationId,
+							openingVoucherId: options.openingVoucherId ?? null,
 						}
 					: null,
 		} as never,
@@ -440,6 +457,7 @@ describe('the reconcile routes', () => {
 			c.saveMatchRule({ when: 'words' } as never, p),
 			c.reconcileView('b', period as never),
 			c.reconcileEntries('b', { q: 'nila' }),
+			c.brs('b', { asAt: '2026-11-30' }),
 			c.acceptSure('b', period, p),
 			c.acceptLine('b', 'l', period, p),
 			c.rejectLine('b', 'l', period, p),
@@ -450,6 +468,7 @@ describe('the reconcile routes', () => {
 			['saveRule', { when: 'words' }, p],
 			['view', 'b', period],
 			['findEntries', 'b', 'nila'],
+			['brs', 'b', '2026-11-30'],
 			['acceptSure', 'b', period, p],
 			['accept', 'b', 'l', period, p],
 			['reject', 'b', 'l', period, p],
@@ -457,12 +476,94 @@ describe('the reconcile routes', () => {
 			['unmatch', 'b', 'l', p],
 		]);
 		const perm = (m: keyof BanksController) => new Reflector().get(PERMISSIONS_KEY, BanksController.prototype[m]);
-		expect([perm('matchRules'), perm('reconcileView'), perm('reconcileEntries')]).toEqual(
-			Array(3).fill(['accounts.index']),
+		expect([perm('matchRules'), perm('reconcileView'), perm('reconcileEntries'), perm('brs')]).toEqual(
+			Array(4).fill(['accounts.index']),
 		);
 		expect(
 			(['saveMatchRule', 'acceptSure', 'acceptLine', 'rejectLine', 'linkLine', 'unmatchLine'] as const).map(perm),
 		).toEqual(Array(6).fill(['accounts.edit']));
 		expect(Reflect.getMetadata('providers', BanksModule)).toContain(ReconcileService);
+	});
+});
+
+describe('the bank reconciliation statement (BA9)', () => {
+	const entry = (id: string, date: string, paise: number, narration = id) =>
+		voucher(id, {
+			number: id.toUpperCase(),
+			date,
+			narration,
+			lines: [{ ledgerId: 'led_bank', debitPaise: Math.max(0, paise), creditPaise: Math.max(0, -paise) }],
+		});
+	const BOOKS_BRS = [
+		entry('jv_open', '2026-11-01', 1_000_000, 'Opening balance'),
+		entry('jv_upi', '2026-11-26', 150_000),
+		entry('jv_chq', '2026-11-20', -4_500_000, 'Cheque 000416 Haritala Estates'),
+		entry('jv_dep', '2026-11-28', 200_000, 'Cash deposited'),
+	];
+	const BANK = () => [
+		line('l_first', { date: '2026-11-01', description: 'NEFT CR X', inPaise: 300_000 }),
+		line('l_upi', {
+			status: 'accepted',
+			match: {
+				voucherIds: ['jv_upi'],
+				why: 'upi_ref',
+				sure: true,
+				by: null,
+				at,
+				entry: null,
+				gstPercent: null,
+				ruleId: null,
+			},
+		}),
+		line('l_nadia', { date: '2026-11-27', description: 'NEFT DR NADIA WEAVERS', inPaise: 0, outPaise: 1_200_000 }),
+		line('l_sms', { date: '2026-11-28', description: 'SMS ALERT CHG', inPaise: 0, outPaise: 5_900 }),
+	];
+
+	it('goes from the books to the bank item by item, and agrees with the statements', async () => {
+		const { service } = build(BANK(), BOOKS_BRS, { openingVoucherId: 'jv_open', openingPaise: 1_000_000 });
+		const brs = await service.brs('bank_1', '2026-11-30');
+		expect([brs.bookPaise, brs.startsOn, brs.computedPaise, brs.statementPaise]).toEqual([
+			-3_150_000,
+			'2026-11-01',
+			244_100,
+			244_100,
+		]);
+		expect(brs.rows.map((r) => [r.kind, r.paise, r.items.map((i) => i.text)])).toEqual([
+			['unpresented', 4_500_000, ['JV_CHQ · Cheque 000416 Haritala Estates']],
+			['uncredited', -200_000, ['JV_DEP · Cash deposited']],
+			['bank_in', 300_000, ['NEFT CR X']],
+			['bank_out', -1_200_000, ['NEFT DR NADIA WEAVERS']],
+			['bank_charges', -5_900, ['SMS ALERT CHG']],
+			['before_start', 0, []],
+		]);
+	});
+
+	it('shows a difference already there when the statements start, and nothing before the first one', async () => {
+		const later = BOOKS_BRS.map((v) => (v.id === 'jv_open' ? { ...v, date: '2026-10-01' } : v));
+		const { service } = build(BANK(), later, { openingVoucherId: 'jv_open', openingPaise: 900_000 });
+		const brs = await service.brs('bank_1', '2026-11-30');
+		expect(brs.rows.at(-1)).toEqual({
+			kind: 'before_start',
+			paise: -100_000,
+			items: [{ date: '2026-11-01', text: '', paise: -100_000 }],
+		});
+		expect(brs.computedPaise).toBe(brs.statementPaise);
+		// Without the account knowing its opening voucher, one inside the statements' days shows as outstanding.
+		const inside = BOOKS_BRS.map((v) => (v.id === 'jv_open' ? { ...v, date: '2026-11-05' } : v));
+		const noOpening = build(BANK(), inside, { openingPaise: 1_000_000 });
+		const withEntry = await noOpening.service.brs('bank_1', '2026-11-30');
+		expect(withEntry.rows[1]?.items.map((i) => i.text)).toEqual([
+			'JV_OPEN · Opening balance',
+			'JV_DEP · Cash deposited',
+		]);
+		expect(await service.brs('bank_1', '2026-10-31')).toEqual({
+			asAt: '2026-10-31',
+			bookPaise: 1_000_000,
+			rows: [],
+			computedPaise: 1_000_000,
+			statementPaise: null,
+			startsOn: '2026-11-01',
+		});
+		expect((await build([], BOOKS_BRS).service.brs('bank_1', '2026-11-30')).startsOn).toBeNull();
 	});
 });

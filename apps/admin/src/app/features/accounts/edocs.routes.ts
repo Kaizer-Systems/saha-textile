@@ -60,6 +60,10 @@ export default [
 		loadComponent: () => import('./banks/matching-rules').then((m) => m.MatchingRulesPage),
 	},
 	{
+		path: 'banks/:id/brs',
+		loadComponent: () => import('./banks/brs-page').then((m) => m.BrsPage),
+	},
+	{
 		path: 'banks/:id/reconcile',
 		loadComponent: () => import('./banks/reconcile-page').then((m) => m.ReconcilePage),
 	},

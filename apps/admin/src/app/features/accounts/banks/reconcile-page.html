@@ -10,6 +10,13 @@
 		<div class="d-flex flex-wrap gap-2">
 			<a
 				class="btn btn-outline"
+				id="bank_brs_link"
+				[routerLink]="['/accounts/banks', id(), 'brs']"
+			>
+				{{ 'bank_brs_title' | transloco }}
+			</a>
+			<a
+				class="btn btn-outline"
 				id="bank_rules_link"
 				[routerLink]="['/accounts/banks/matching-rules']"
 			>

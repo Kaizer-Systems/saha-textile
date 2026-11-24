@@ -23,6 +23,9 @@ export interface BankStatementRepository {
 	saveLine(line: BankLine, context?: TransactionContext): Promise<void>;
 	/** Every line of the account in the period, oldest first (BA7 works them all). */
 	inPeriod(bankAccountId: string, from: string, to: string): Promise<BankLine[]>;
+	/** The account's first statement line, where reconciling starts (BA9). */
+	earliestLine(bankAccountId: string): Promise<BankLine | null>;
+	importById(id: string): Promise<BankImport | null>;
 	/** Entries already held by the account's lines in these states, so no other line is offered them. */
 	heldVoucherIds(bankAccountId: string, statuses: readonly BankLine['status'][]): Promise<Set<string>>;
 }

@@ -1,0 +1,87 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'accounts_banks'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">{{ 'bank_brs_title' | transloco }}</h5>
+			<small class="text-muted">
+				{{ 'bank_brs_sub' | transloco: { name: account.data()?.shortName ?? '', date: day(asAt()) } }}
+			</small>
+		</div>
+		<div class="d-flex align-items-center theme-form flex-wrap gap-2">
+			<label
+				class="mb-0"
+				for="bank_brs_as_at"
+			>
+				{{ 'bank_brs_as_at' | transloco }}
+			</label>
+			<input
+				class="form-control w-auto"
+				id="bank_brs_as_at"
+				type="date"
+				[ngModel]="asAt()"
+				(ngModelChange)="asAt.set($event)"
+			/>
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="bank_brs_print"
+				(click)="print()"
+			>
+				<i class="ri-file-pdf-line"></i>
+				{{ 'bank_brs_print' | transloco }}
+			</button>
+		</div>
+	</div>
+	@if (brs.data(); as b) {
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th></th>
+					<th class="text-end">{{ 'bank_col_amount' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>{{ 'bank_brs_book' | transloco }}</td>
+					<td class="text-end text-nowrap">{{ balance(b.bookPaise) }}</td>
+				</tr>
+				@for (row of b.rows; track row.kind) {
+				<tr>
+					<td>
+						{{ 'bank_brs_row_' + row.kind | transloco }} @for (item of row.items; track $index) {
+						<small class="text-muted d-block">
+							{{ day(item.date) }}@if (item.text) { · {{ item.text }} } · {{ signed(item.paise) }}
+						</small>
+						}
+					</td>
+					<td class="text-end text-nowrap">{{ signed(row.paise) }}</td>
+				</tr>
+				}
+				<tr>
+					<td>
+						<b>{{ 'bank_brs_bank' | transloco }}</b>
+					</td>
+					<td
+						class="text-end text-nowrap"
+						id="bank_brs_result"
+						[class.text-success]="b.statementPaise === b.computedPaise"
+						[class.text-danger]="b.statementPaise !== null && b.statementPaise !== b.computedPaise"
+					>
+						<b>{{ balance(b.computedPaise) }} @if (b.statementPaise === b.computedPaise) { ✓ }</b>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	@if (b.statementPaise === null) {
+	<div class="alert alert-info mt-3 py-2">{{ 'bank_brs_none' | transloco }}</div>
+	} @if (b.statementPaise !== null && b.statementPaise !== b.computedPaise) {
+	<div class="alert alert-danger mt-3 py-2">
+		{{ 'bank_brs_differs' | transloco: { amount: balance(b.statementPaise), diff: signed(b.statementPaise -
+		b.computedPaise) } }}
+	</div>
+	} }
+</app-page-wrapper>

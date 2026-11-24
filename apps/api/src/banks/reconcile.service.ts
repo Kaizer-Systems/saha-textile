@@ -6,6 +6,9 @@ import type {
 	BankLine,
 	BankLineLink,
 	BookEntry,
+	Brs,
+	BrsItem,
+	BrsRowKind,
 	MatchRule,
 	MatchRuleWrite,
 	ReconcilePeriod,
@@ -96,7 +99,7 @@ export class ReconcileService {
 		@Inject(BANK_STATEMENT_REPOSITORY) private readonly repo: BankStatementRepository,
 		@Inject(BANK_REPOSITORY) private readonly banks: Pick<BankRepository, 'get'>,
 		@Inject(GENERAL_LEDGER_REPOSITORY)
-		private readonly books: Pick<GeneralLedgerRepository, 'statementLines' | 'getVoucher'>,
+		private readonly books: Pick<GeneralLedgerRepository, 'statementLines' | 'getVoucher' | 'balanceBefore'>,
 		@Inject(ORDER_PAYMENT_REPOSITORY) private readonly payments: Pick<OrderPaymentRepository, 'findById'>,
 		@Inject(LOCATION_REPOSITORY) private readonly locations: Pick<LocationRepository, 'list'>,
 		@Inject(TRANSACTION_MANAGER) private readonly tx: TransactionManagerPort,
@@ -367,6 +370,89 @@ export class ReconcileService {
 			)
 			.sort((a, b) => b.date.localeCompare(a.date))
 			.slice(0, 50);
+	}
+
+	/**
+	 * BA9: the bank reconciliation statement as at a day. From the balance in the books: entries not yet through the
+	 * bank (paid out, or paid in), statement lines not yet in the books (money in, money out, bank charges), and any
+	 * difference already there when the first imported statement starts; together they give the bank's balance, checked
+	 * against the statements' own (their opening plus every line to the day).
+	 */
+	async brs(id: string, asAt: string): Promise<Brs> {
+		const account = await this.account(id);
+		const bookPaise = await this.books.balanceBefore(account.ledgerId, shift(asAt, 1), []);
+		const first = await this.repo.earliestLine(id);
+		if (!first || first.date > asAt)
+			return {
+				asAt,
+				bookPaise,
+				rows: [],
+				computedPaise: bookPaise,
+				statementPaise: null,
+				startsOn: first?.date ?? null,
+			};
+		const start = first.date;
+		const [{ lines, found }, entries, before, opening] = await Promise.all([
+			this.suggestions(account, { from: start, to: asAt }),
+			this.entries(account, start, asAt),
+			this.books.balanceBefore(account.ledgerId, start, []),
+			this.repo.importById(first.importId),
+		]);
+		// The account's opening voucher is the books' side of the statement's opening, never an item outstanding.
+		let bookBefore = before;
+		const openingEntry = account.openingVoucherId ? entries.get(account.openingVoucherId) : undefined;
+		if (openingEntry) {
+			bookBefore += openingEntry.inPaise - openingEntry.outPaise;
+			entries.delete(openingEntry.voucherId);
+		}
+		const cleared = new Set(
+			lines.flatMap((line) =>
+				line.status === 'accepted' ? (line.match as NonNullable<BankLine['match']>).voucherIds : [],
+			),
+		);
+		const outstanding = [...entries.values()].filter((e) => !cleared.has(e.voucherId) && (e.inPaise || e.outPaise));
+		const open = lines.filter((line) => line.status !== 'accepted');
+		const isCharge = (line: BankLine) => {
+			const suggestion = found.get(line.id);
+			return suggestion?.kind === 'new' && suggestion.entry === 'bank_charge';
+		};
+		const fromEntry = (e: BookEntry, paise: number): BrsItem => ({
+			date: e.date,
+			text: `${e.number} · ${e.narration}`,
+			paise,
+		});
+		const fromLine = (line: BankLine, paise: number): BrsItem => ({
+			date: line.date,
+			text: line.description,
+			paise,
+		});
+		const statementOpening = (opening as NonNullable<typeof opening>).openingPaise;
+		const groups: [BrsRowKind, BrsItem[]][] = [
+			['unpresented', outstanding.filter((e) => e.outPaise).map((e) => fromEntry(e, e.outPaise))],
+			['uncredited', outstanding.filter((e) => e.inPaise).map((e) => fromEntry(e, -e.inPaise))],
+			['bank_in', open.filter((l) => l.inPaise).map((l) => fromLine(l, l.inPaise))],
+			['bank_out', open.filter((l) => l.outPaise && !isCharge(l)).map((l) => fromLine(l, -l.outPaise))],
+			['bank_charges', open.filter(isCharge).map((l) => fromLine(l, -l.outPaise))],
+			[
+				'before_start',
+				statementOpening === bookBefore
+					? []
+					: [{ date: start, text: '', paise: statementOpening - bookBefore }],
+			],
+		];
+		const rows = groups.map(([kind, items]) => ({
+			kind,
+			items,
+			paise: items.reduce((sum, i) => sum + i.paise, 0),
+		}));
+		return {
+			asAt,
+			bookPaise,
+			rows,
+			computedPaise: rows.reduce((sum, row) => sum + row.paise, bookPaise),
+			statementPaise: lines.reduce((sum, line) => sum + line.inPaise - line.outPaise, statementOpening),
+			startsOn: start,
+		};
 	}
 
 	private async apply(

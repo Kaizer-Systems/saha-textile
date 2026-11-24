@@ -279,6 +279,7 @@ describe('the bank gateway', () => {
 			[() => gateway.unmatch('b/1', 'l/1'), 'POST', '/b%2F1/lines/l%2F1/unmatch'],
 			[() => gateway.entries('b/1', 'nila'), 'GET', '/b%2F1/reconcile/entries?q=nila'],
 			[() => gateway.rules(), 'GET', '/matching-rules'],
+			[() => gateway.brs('b/1', '2026-11-28'), 'GET', '/b%2F1/brs?asAt=2026-11-28'],
 			[() => gateway.saveRule({} as never), 'PUT', '/matching-rules'],
 		];
 		for (const [call, method, path] of calls) {

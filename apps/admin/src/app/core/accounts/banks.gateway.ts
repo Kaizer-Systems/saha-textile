@@ -15,6 +15,7 @@ import type {
 	BankLinePage,
 	BankLineQuery,
 	BookEntry,
+	Brs,
 	IfscLookup,
 	MatchRule,
 	MatchRuleWrite,
@@ -36,6 +37,7 @@ export const BANK_KEYS = {
 	reconcile: (id: string, query: ReconcileQuery) => ['banks', 'reconcile', id, query] as const,
 	entries: (id: string, q: string) => ['banks', 'entries', id, q] as const,
 	rules: ['banks', 'rules'] as const,
+	brs: (id: string, asAt: string) => ['banks', 'brs', id, asAt] as const,
 };
 
 /** The admin repeats the contract's chips (a spec holds them equal). */
@@ -124,6 +126,10 @@ export class BanksGateway {
 
 	saveRule(write: MatchRuleWrite): Observable<MatchRule> {
 		return this.http.put<MatchRule>(this.api('/matching-rules'), write);
+	}
+
+	brs(id: string, asAt: string): Observable<Brs> {
+		return this.http.get<Brs>(this.api(`/${encodeURIComponent(id)}/brs`), { params: { asAt } });
 	}
 
 	private line(id: string, lineId: string, action: string): string {

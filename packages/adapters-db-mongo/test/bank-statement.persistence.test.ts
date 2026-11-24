@@ -103,6 +103,10 @@ describe.skipIf(!hasMongoEnv())('bank statements (integration, rs0)', () => {
 				context,
 			);
 		});
+		expect((await repo.earliestLine('bank_1'))?.id).toBe('a');
+		expect(await repo.earliestLine('bank_9')).toBeNull();
+		expect((await repo.importById('imp_1'))?.closingPaise).toBe(300);
+		expect(await repo.importById('imp_9')).toBeNull();
 		await expect(repo.insertLines([line('a2', { key: 'k_a' })])).rejects.toMatchObject({ code: 11000 });
 		expect([...(await repo.keysIn('bank_1', ['k_a', 'k_d', 'k_new']))]).toEqual(['k_a']);
 		const all = await repo.lines('bank_1', {

@@ -662,8 +662,8 @@ export class FileManager {
 			}
 			const details = await lastValueFrom(this.gateway.details(file.id));
 			preview.url = URL.createObjectURL(photo);
-			const contentType =
-				measured && measured !== 'heic' ? PHOTO_KIND_TYPES[measured] : photo.type || 'image/jpeg';
+			// Never-run check removed: a HEIC always became a new JPEG above, so what is measured is never a HEIC.
+			const contentType = measured ? PHOTO_KIND_TYPES[measured] : photo.type || 'image/jpeg';
 			const popup = this.modals.open(FmReplace, {
 				size: 'lg',
 				centered: true,
@@ -726,7 +726,9 @@ export class FileManager {
 		} catch (error) {
 			this.notifications.showError(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
 		} finally {
-			if (preview.url) setTimeout(() => URL.revokeObjectURL(preview.url ?? ''), 60_000);
+			// Never-run line removed: the address is read once, so the timer keeps the one it was given.
+			const url = preview.url;
+			if (url) setTimeout(() => URL.revokeObjectURL(url), 60_000);
 		}
 	}
 
@@ -855,9 +857,13 @@ export class FileManager {
 		const refused = this.refusedTemplate();
 		if (!onDemand || !refused) return;
 		const many = photos.length > 1;
+		// Never-run line removed: openReprocess() comes here only with a first photo.
 		const what = many
 			? translateCount(this.transloco, 'fm_rp_for_photos', photos.length, { versions: choice.label })
-			: this.transloco.translate('fm_rp_for_photo', { versions: choice.label, name: photos[0]?.name ?? '' });
+			: this.transloco.translate('fm_rp_for_photo', {
+					versions: choice.label,
+					name: (photos[0] as MediaFileRow).name,
+				});
 		const bytes = estimateVersionBytes(
 			photos.reduce((sum, row) => sum + row.bytes, 0),
 			choice.versions.length,
@@ -877,7 +883,8 @@ export class FileManager {
 				parts.length === 1 && !many
 					? [
 							await lastValueFrom(
-								this.gateway.addVersions(ids[0] ?? '', { versions: choice.versions, ...held }),
+								// Never-run line removed: one part of one photo always holds that photo.
+								this.gateway.addVersions(ids[0] as string, { versions: choice.versions, ...held }),
 							),
 						]
 					: await this.uploads.operation(
@@ -887,7 +894,8 @@ export class FileManager {
 							(index) =>
 								lastValueFrom(
 									this.gateway.addVersionsToMany({
-										fileIds: parts[index] ?? [],
+										// Never-run line removed: the tray asks only for the parts it was given.
+										fileIds: parts[index] as string[],
 										versions: choice.versions,
 										...held,
 									}),
@@ -1013,10 +1021,11 @@ export class FileManager {
 		const template = this.renameTemplate();
 		if (folders.length + files.length !== 1 || !template) return;
 		const folder = folders[0];
-		const file = files[0];
 		if (folder)
 			this.renaming.set({ type: 'folder', id: folder.id, base: folder.name, extension: '', before: folder.name });
-		else if (file) {
+		else {
+			// Never-run check removed: one item is picked, so when it is not a folder it is a file.
+			const file = files[0] as MediaFileRow;
 			const dot = file.name.lastIndexOf('.');
 			const extension = dot > 0 ? file.name.slice(dot) : '';
 			this.renaming.set({
@@ -1116,7 +1125,7 @@ export class FileManager {
 		if (!folders.length && !files.length) return;
 		const body: MediaSelection = { folderIds: folders.map((row) => row.id), fileIds: files.map((row) => row.id) };
 		if (folders.length || files.some((row) => row.usedOn > 0)) {
-			const check = await this.change(this.gateway.checkTrash(body), false);
+			const check = await this.change(this.gateway.checkTrash(body));
 			if (!check) return;
 			if (check.inUse.length) {
 				const template = this.inUseTemplate();
@@ -1141,8 +1150,9 @@ export class FileManager {
 			(folders.length || viaKey) &&
 			!(await this.confirm({
 				kind: 'trash',
-				folder: folders.length === 1 && !files.length ? (folders[0] ?? null) : null,
-				fileName: files.length === 1 && !folders.length ? (files[0]?.name ?? null) : null,
+				// Never-run lines removed: a list of one always has its first item.
+				folder: folders.length === 1 && !files.length ? (folders[0] as MediaFolderRow) : null,
+				fileName: files.length === 1 && !folders.length ? (files[0] as MediaFileRow).name : null,
 				count: folders.length + files.length,
 			}))
 		)
@@ -1192,7 +1202,8 @@ export class FileManager {
 			this.transloco.translate('fm_op_undoing'),
 			'ri-arrow-go-back-line',
 			{ folderIds: [], fileIds: ids },
-			(part) => this.gateway.undo(part.fileIds[0] ?? ''),
+			// Never-run line removed: parts of one hold one change each.
+			(part) => this.gateway.undo(part.fileIds[0] as string),
 			1,
 		);
 		if (result) this.notifications.showSuccess(this.transloco.translate('fm_undone'));
@@ -1208,7 +1219,8 @@ export class FileManager {
 		const id = this.dropOn();
 		return id ? this.placeName(id) : null;
 	});
-	private readonly blank = typeof Image === 'undefined' ? null : Object.assign(new Image(), { src: BLANK_PICTURE });
+	// The admin runs only in the browser, where Image always exists.
+	private readonly blank = Object.assign(new Image(), { src: BLANK_PICTURE });
 
 	dragStart(item: FmItemRef, event: DragEvent): void {
 		// Dragging something not picked carries just that item and leaves the picks alone: picking it
@@ -1222,7 +1234,7 @@ export class FileManager {
 				};
 		event.dataTransfer?.setData(MEDIA_DRAG_TYPE, '1');
 		if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
-		if (this.blank) event.dataTransfer?.setDragImage(this.blank, 0, 0);
+		event.dataTransfer?.setDragImage(this.blank, 0, 0);
 		this.menu.set(null);
 		this.dragging.set({
 			folderIds: folders.map((row) => row.id),
@@ -1467,7 +1479,8 @@ export class FileManager {
 	dropOver(event: DragEvent): void {
 		if (!this.fromComputer(event)) return;
 		event.preventDefault();
-		if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+		// Never-run check removed: a drag from the computer always carries its data, or it would not be one.
+		(event.dataTransfer as DataTransfer).dropEffect = 'copy';
 	}
 
 	dropLeave(): void {
@@ -1639,7 +1652,8 @@ export class FileManager {
 				label,
 				icon,
 				parts.map((part) => part.folderIds.length + part.fileIds.length),
-				(index) => lastValueFrom(call(parts[index] ?? { folderIds: [], fileIds: [] })),
+				// Never-run line removed: the tray asks only for the parts it was given.
+				(index) => lastValueFrom(call(parts[index] as { folderIds: string[]; fileIds: string[] })),
 			);
 			return {
 				done: answers.reduce((sum, answer) => sum + answer.done, 0),
@@ -1654,15 +1668,16 @@ export class FileManager {
 		}
 	}
 
-	/** A change that answers something: the answer, or null after saying what went wrong. */
-	private async change<T>(work: Observable<T>, refresh = true): Promise<T | null> {
+	/**
+	 * A check that answers something: the answer, or null after saying what went wrong. Never-run line removed:
+	 * its one caller asks before changing anything, so the lists are never refreshed here.
+	 */
+	private async change<T>(work: Observable<T>): Promise<T | null> {
 		try {
 			return await lastValueFrom(work);
 		} catch (error) {
 			this.notifications.showError(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
 			return null;
-		} finally {
-			if (refresh) void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY });
 		}
 	}
 

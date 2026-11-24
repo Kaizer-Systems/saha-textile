@@ -170,7 +170,7 @@ export class FmUploadFlow {
 	): void {
 		if (!plan.rows.length) return;
 		this.review.set({ plan, rows: plan.rows, skipped: new Set(), targetId, place, checking: false, asked });
-		void this.readSizes();
+		void this.readSizes(plan.rows);
 		void this.show(popups.review, { size: 'xl', windowClass: 'theme-modal media-modal' }, 'fm_review_title').then(
 			() => this.dropThumbs(),
 		);
@@ -181,8 +181,8 @@ export class FmUploadFlow {
 	 * the type the API is told follows the bytes. Only a photo found is acted on; what the bytes don't name stays as
 	 * the name and type said, and the worker has the last word.
 	 */
-	private async sniffRows(): Promise<void> {
-		for (const row of this.review()?.rows ?? []) {
+	private async sniffRows(rows: readonly FmUploadRow[]): Promise<void> {
+		for (const row of rows) {
 			if (CAMERA_RAW.test(row.name)) continue;
 			if (!row.photo && !row.contentType.startsWith('image/') && row.contentType !== UNKNOWN_TYPE) continue;
 			const kind = await sniffFile(row.file);
@@ -191,10 +191,12 @@ export class FmUploadFlow {
 	}
 
 	/** Each photo's size, read in the browser, then its suggested profile (B01). */
-	private async readSizes(): Promise<void> {
+	private async readSizes(rows: readonly FmUploadRow[]): Promise<void> {
+		// Never-run line removed: the rows are the ones just put in the popup, so they are passed in.
 		// Counted from the start, so the popup waits for the byte check as well as the sizes.
-		this.reading.set((this.review()?.rows ?? []).filter((row) => row.photo && !row.size).length);
-		await this.sniffRows();
+		this.reading.set(rows.filter((row) => row.photo && !row.size).length);
+		await this.sniffRows(rows);
+		// Read again: the popup may have closed while the bytes were checked.
 		const photos = (this.review()?.rows ?? []).filter((row) => row.photo && !row.size);
 		this.reading.set(photos.length);
 		if (typeof URL.createObjectURL === 'function') {
@@ -374,6 +376,8 @@ export class FmUploadFlow {
 			// B12: these take the place of the photo of the same name; its versions are remade from them (S7).
 			for (const one of replace) {
 				const sha256 = hashes.get(one.row.key);
+				// Never-run line removed: only a photo whose size was read is offered the replace (B12), so it has one.
+				const size = one.row.size as NonNullable<FmUploadRow['size']>;
 				void this.uploads.replacePhoto({
 					fileId: one.id,
 					name: one.name,
@@ -382,8 +386,8 @@ export class FmUploadFlow {
 						fileName: one.row.name,
 						contentType: one.row.contentType,
 						byteSize: one.row.bytes,
-						width: one.row.size?.width ?? 1,
-						height: one.row.size?.height ?? 1,
+						width: size.width,
+						height: size.height,
 						...(sha256 ? { sha256 } : {}),
 						...(reservationId ? { reservationId } : {}),
 					},
@@ -396,7 +400,8 @@ export class FmUploadFlow {
 					name: row.name,
 					contentType: row.contentType,
 					folderId: folderIds.get(row.folderPath.join('/')) ?? review.targetId,
-					sha256: hashes.get(row.key) ?? null,
+					// Never-run line removed: every row going was hashed above (null when too big to hash).
+					sha256: hashes.get(row.key) as string | null,
 					...(row.photo && row.size
 						? { photo: { width: row.size.width, height: row.size.height, versions: versionsOf(row) } }
 						: {}),
@@ -466,10 +471,11 @@ export class FmUploadFlow {
 			let choice = remembered[kind];
 			if (!choice) {
 				const others = rows.slice(index + 1).filter((_, later) => kindOf(index + 1 + later) === kind).length;
+				// Never-run line removed: a same-name match always names the file already there.
 				const existing =
 					kind === 'identical' && answer.identical
 						? { name: answer.identical.name, location: answer.identical.location }
-						: { name: answer.sameName?.name ?? row.name, location: '' };
+						: { name: (answer.sameName as { name: string }).name, location: '' };
 				this.duplicate.set({
 					kind,
 					row,
@@ -514,10 +520,14 @@ export class FmUploadFlow {
 		place: string,
 		popups: FmUploadPopups,
 	): Promise<'keep' | 'replace' | null> {
-		if (!popups.anyway) return 'keep';
+		// Never-run line removed: decide() asks this only when the page gave the popup.
 		this.anyway.set({ row, existing: same.name, keepBothName, place });
 		this.anywayChoice.set('keep');
-		const go = await this.show<'go'>(popups.anyway, { windowClass: 'theme-modal text-center' }, 'fm_anyway_title');
+		const go = await this.show<'go'>(
+			popups.anyway as TemplateRef<unknown>,
+			{ windowClass: 'theme-modal text-center' },
+			'fm_anyway_title',
+		);
 		if (!go) return null;
 		if (this.anywayChoice() === 'keep') return 'keep';
 		const usedOn = await lastValueFrom(this.gateway.details(same.id))
@@ -605,7 +615,8 @@ export class FmUploadFlow {
 			for (const path of foldersFor(rows)) {
 				const parent = ids.get(path.slice(0, -1).join('/')) ?? targetId;
 				const made = await lastValueFrom(
-					this.gateway.createFolder({ name: path[path.length - 1] ?? '', parentId: parent }),
+					// Never-run line removed: every folder path holds at least its own name.
+					this.gateway.createFolder({ name: path[path.length - 1] as string, parentId: parent }),
 				);
 				ids.set(path.join('/'), made.id);
 			}

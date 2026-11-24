@@ -28,5 +28,6 @@ export async function heicToJpeg(file: File, convert: HeicConvert = heicTo): Pro
 		if (made.size <= PHOTO_LIMIT) break;
 	}
 	const name = /\.(heic|heif)$/i.test(file.name) ? file.name.replace(/\.(heic|heif)$/i, '.jpg') : `${file.name}.jpg`;
-	return new File([made ?? new Blob()], name, { type: 'image/jpeg', lastModified: file.lastModified });
+	// Never-run fallback removed: there is always at least one quality step, so a JPEG was made.
+	return new File([made as Blob], name, { type: 'image/jpeg', lastModified: file.lastModified });
 }

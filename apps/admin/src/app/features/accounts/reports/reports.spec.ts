@@ -211,6 +211,8 @@ describe('the reports library (U1)', () => {
 		expect(href('report_audit_report')).toBe('/accounts/reports/audit');
 		expect(href('report_cash_flow')).toBe('/accounts/reports/cash-flow');
 		expect(href('report_ratios')).toBe('/accounts/reports/ratios');
+		expect(href('report_asset_register')).toBe('/accounts/assets');
+		expect(href('report_depreciation')).toBe('/accounts/assets/depreciation');
 		expect(REPORT_LIBRARY[0]?.items.map((i) => i.key)).toEqual([
 			'balance_sheet',
 			'profit_loss',

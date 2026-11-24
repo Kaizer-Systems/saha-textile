@@ -7,6 +7,7 @@ import { LocationsModule } from '../locations/locations.module';
 import { ReportBuilderController } from './report-builder.controller';
 import { ReportBuilderService } from './report-builder.service';
 import { BooksExportController, BooksExportService } from './books-export';
+import { CaroStockController, CaroStockService } from './caro-stock';
 import { BooksReportsService } from './books-reports.service';
 import { StatementsController } from './statements.controller';
 import { StatementsService } from './statements.service';
@@ -14,7 +15,7 @@ import { StatementsService } from './statements.service';
 /** Reports (accounts brief U, V): statements, and the report library and builder. */
 @Module({
 	imports: [LedgerModule, AccountsTemplatesModule, LocationsModule],
-	controllers: [StatementsController, ReportBuilderController, BooksExportController],
-	providers: [StatementsService, ReportBuilderService, BooksReportsService, BooksExportService],
+	controllers: [StatementsController, ReportBuilderController, BooksExportController, CaroStockController],
+	providers: [StatementsService, ReportBuilderService, BooksReportsService, BooksExportService, CaroStockService],
 })
 export class ReportsModule {}

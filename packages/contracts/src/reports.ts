@@ -218,3 +218,31 @@ export const Ratios = z.object({
 	values: z.record(z.string(), z.number().nullable()),
 });
 export type Ratios = z.infer<typeof Ratios>;
+
+/** CARO 2020 3(ii)(a): each posted count's discrepancy by class of stock, flagged at 10% or more. */
+export const CaroClassRow = z.object({
+	soldBy: z.enum(['piece', 'metre']),
+	bookQty: z.number().int(),
+	countedQty: z.number().int(),
+	differenceQty: z.number().int(),
+	percent: z.number().nullable(),
+	differenceINR: z.number(),
+	reportable: z.boolean(),
+});
+export type CaroClassRow = z.infer<typeof CaroClassRow>;
+
+export const CaroStockReport = z.object({
+	from: IsoDate,
+	to: IsoDate,
+	counts: z.array(
+		z.object({
+			id: Id,
+			number: z.string(),
+			label: z.string(),
+			postedAt: IsoDateTime,
+			classes: z.array(CaroClassRow),
+		}),
+	),
+	reportable: z.number().int(),
+});
+export type CaroStockReport = z.infer<typeof CaroStockReport>;

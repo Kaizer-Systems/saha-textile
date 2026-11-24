@@ -118,6 +118,10 @@ export default [
 	{ path: 'reports/cash-flow', loadComponent: () => import('./reports/cash-flow-page').then((m) => m.CashFlowPage) },
 	{ path: 'reports/ratios', loadComponent: () => import('./reports/cash-flow-page').then((m) => m.RatiosPage) },
 	{
+		path: 'reports/caro-stock',
+		loadComponent: () => import('./reports/caro-stock-page').then((m) => m.CaroStockPage),
+	},
+	{
 		path: 'reports/new',
 		loadComponent: () => import('./reports/report-builder-page').then((m) => m.ReportBuilderPage),
 	},

@@ -10694,5 +10694,20 @@
 	"export_logged_body": "Who, when, what period: in the audit report.",
 	"export_private": "Personal data left out",
 	"export_private_body": "Aadhaar and bank numbers never leave in an export.",
-	"export_made": "Export made"
+	"export_made": "Export made",
+	"report_caro_stock": "Stock verification (CARO 3(ii)(a))",
+	"caro_sub": "Each posted stock count, by class of stock: a discrepancy of 10% or more in aggregate is to be reported by the auditor.",
+	"caro_reportable": "{{n}} class difference reaches 10%: the auditor reports it, with how it was dealt with in the books.",
+	"caro_none_reportable": "No class difference reaches 10% in this period.",
+	"caro_col_count": "Count",
+	"caro_col_posted": "Posted",
+	"caro_col_class": "Class",
+	"caro_col_book": "Book",
+	"caro_col_counted": "Counted",
+	"caro_col_difference": "Difference",
+	"caro_col_value": "Value at cost",
+	"caro_class_piece": "Pieces",
+	"caro_class_metre": "Fabric by the metre",
+	"caro_report_it": "10% or more",
+	"caro_no_counts": "No stock count posted in this period."
 }

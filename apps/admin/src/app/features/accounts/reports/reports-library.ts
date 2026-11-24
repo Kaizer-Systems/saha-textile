@@ -72,6 +72,7 @@ export const REPORT_LIBRARY: readonly { group: string; items: readonly LibraryIt
 			{ key: 'stock_register', link: '/stock/reports', query: { tab: 'register' } },
 			{ key: 'in_transit', link: '/transfers/stock' },
 			{ key: 'reorder', link: '/stock/reorder' },
+			{ key: 'caro_stock', link: '/accounts/reports/caro-stock' },
 		],
 	},
 	{

@@ -10694,5 +10694,20 @@
 	"export_logged_body": "কে, কবে, কোন সময়কাল: অডিট রিপোর্টে।",
 	"export_private": "ব্যক্তিগত তথ্য বাদ",
 	"export_private_body": "আধার ও ব্যাংক নম্বর কখনো এক্সপোর্টে যায় না।",
-	"export_made": "এক্সপোর্ট তৈরি হলো"
+	"export_made": "এক্সপোর্ট তৈরি হলো",
+	"report_caro_stock": "স্টক যাচাই (CARO 3(ii)(a))",
+	"caro_sub": "প্রতিটি পোস্ট করা স্টক গণনা, স্টকের শ্রেণি অনুযায়ী: মোট 10% বা বেশি পার্থক্য অডিটরকে জানাতে হয়।",
+	"caro_reportable": "{{n}}টি শ্রেণির পার্থক্য 10% ছুঁয়েছে: খাতায় কীভাবে ঠিক করা হলো তা সহ অডিটর এটি জানাবেন।",
+	"caro_none_reportable": "এই সময়ে কোনো শ্রেণির পার্থক্য 10% ছোঁয়নি।",
+	"caro_col_count": "গণনা",
+	"caro_col_posted": "পোস্ট",
+	"caro_col_class": "শ্রেণি",
+	"caro_col_book": "খাতায়",
+	"caro_col_counted": "গোনা",
+	"caro_col_difference": "পার্থক্য",
+	"caro_col_value": "খরচে মূল্য",
+	"caro_class_piece": "পিস",
+	"caro_class_metre": "মিটারে কাপড়",
+	"caro_report_it": "10% বা বেশি",
+	"caro_no_counts": "এই সময়ে কোনো স্টক গণনা পোস্ট হয়নি।"
 }

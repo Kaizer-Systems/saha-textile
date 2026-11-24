@@ -7,6 +7,7 @@ import type {
 	AgeingSide,
 	AuditReport,
 	AuditReportQuery,
+	CaroStockReport,
 	CashFlow,
 	FinancialStatement,
 	OutstandingAgeing,
@@ -35,6 +36,7 @@ export const REPORT_KEYS = {
 	ageing: (side: AgeingSide) => ['reports', 'ageing', side] as const,
 	cashFlow: (query: PeriodQuery) => ['reports', 'cash-flow', query] as const,
 	ratios: (query: PeriodQuery) => ['reports', 'ratios', query] as const,
+	caroStock: (query: PeriodQuery) => ['reports', 'caro-stock', query] as const,
 	audit: (query: Partial<AuditReportQuery>) => ['reports', 'audit', query] as const,
 };
 
@@ -50,6 +52,10 @@ export class ReportsGateway {
 
 	plByLocation(query: PlByLocationQuery): Observable<PlByLocation> {
 		return this.http.get<PlByLocation>(this.api('pl-by-location'), { params: { ...query } });
+	}
+
+	caroStock(query: PeriodQuery): Observable<CaroStockReport> {
+		return this.http.get<CaroStockReport>(this.api('caro-stock'), { params: { ...query } });
 	}
 
 	cashFlow(query: PeriodQuery): Observable<CashFlow> {

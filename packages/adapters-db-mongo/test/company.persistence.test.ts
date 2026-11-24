@@ -63,6 +63,8 @@ describe.skipIf(!hasMongoEnv())('company setup persistence (integration, rs0)', 
 		});
 		await repo.saveRegistration(reg, null);
 		expect((await repo.findRegistrationByGstin(GSTIN))?.id).toBe(id);
+		expect((await repo.getRegistration(id))?.gstin).toBe(GSTIN);
+		expect(await repo.getRegistration(`gst_${randomUUID()}`)).toBeNull();
 		const twin = GstRegistration.parse({ ...reg, id: `gst_${randomUUID()}` });
 		await expect(repo.saveRegistration(twin, null)).rejects.toBeInstanceOf(StaleVersionError);
 		expect((await repo.listRegistrations()).map((row) => row.terms[0]?.scheme)).toEqual(['monthly']);

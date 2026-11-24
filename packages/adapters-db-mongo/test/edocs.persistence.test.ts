@@ -70,6 +70,11 @@ describe.skipIf(!hasMongoEnv())('e-document persistence (integration, rs0)', () 
 		await repo.replace({ ...base, status: 'cancelled' });
 		await repo.insert({ ...base, id: randomUUID(), ewbNumber: '34101234551271' });
 		expect((await repo.findActive('eWayBill', 'inv_1'))?.ewbNumber).toBe('34101234551271');
+		expect(await repo.findActive('eWayBill', 'inv_none')).toBeNull();
+		// From a day onwards, with no end.
+		expect(
+			(await repo.list({ kind: 'eWayBill', gstin: GSTIN, from: '2026-11-22', page: 1, pageSize: 10 })).total,
+		).toBe(2);
 		const list = await repo.list({ kind: 'eWayBill', gstin: GSTIN, q: '5512', page: 1, pageSize: 10 });
 		expect(list.total).toBe(2);
 	});

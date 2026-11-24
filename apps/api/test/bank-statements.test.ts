@@ -167,7 +167,7 @@ describe('statement routes', () => {
 		const st = Object.fromEntries(
 			['layouts', 'saveLayout', 'preview', 'save', 'lines'].map((m) => [m, vi.fn(async () => m)]),
 		);
-		const c = new BanksController({} as never, st as never);
+		const c = new BanksController({} as never, st as never, {} as never);
 		const p = { userId: 'u' } as never;
 		expect([
 			await c.layouts(),

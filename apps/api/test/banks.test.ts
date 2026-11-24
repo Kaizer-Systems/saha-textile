@@ -245,7 +245,7 @@ describe('bank routes', () => {
 			add: vi.fn(async () => 'add'),
 			edit: vi.fn(async () => 'edit'),
 		};
-		const c = new BanksController(svc as never, {} as never);
+		const c = new BanksController(svc as never, {} as never, {} as never);
 		const p = manager;
 		expect([
 			await c.list(p),

@@ -66,10 +66,11 @@ function setup(
 		} as never,
 		{
 			reserve: vi.fn(async () => void moves.push('reserve')),
-			sell: vi.fn(
-				async (_order: unknown, lines: { held: boolean }[]) =>
-					void moves.push(`sell:${lines.every((l) => l.held)}`),
-			),
+			sell: vi.fn(async (_order: unknown, lines: { held: boolean; lineId?: string }[]) => {
+				moves.push(`sell:${lines.every((l) => l.held)}`);
+				// The cost each piece left at, as the stock store answers.
+				return new Map(lines.flatMap((l) => (l.lineId ? [[l.lineId, 2500] as const] : [])));
+			}),
 		} as never,
 		{
 			issueAtCounter: vi.fn(async (order: { orderNumber: string }) => ({

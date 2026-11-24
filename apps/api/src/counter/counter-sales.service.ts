@@ -272,7 +272,17 @@ export class CounterSalesService {
 			let order = { ...base, id: `ord_${randomUUID()}`, orderNumber } as Order;
 			await this.stock.reserve(order, order.lines, actorId, context, at);
 			order = { ...order, lines: order.lines.map((line) => ({ ...line, held: line.role !== 'bundle' })) };
-			await this.stock.sell(order, order.lines, actorId, context, at);
+			// The pieces leave at once, costed from the oldest layers; the invoice posts that cost (found by the full
+			// accounts run: without it the counter sale booked no cost of goods and left the stock in the books).
+			const costs = await this.stock.sell(order, order.lines, actorId, context, at);
+			order = {
+				...order,
+				lines: order.lines.map((line) => ({
+					...line,
+					held: false,
+					unitCostINR: (line.lineId ? costs.get(line.lineId) : undefined) ?? line.unitCostINR ?? null,
+				})),
+			};
 			const saved = await this.orders.create(order, `counter:${order.id}`, context, metaOf(order));
 			const invoice = await this.invoices.issueAtCounter(saved, actorId, at, context);
 			const receiptNumbers: string[] = [];

@@ -142,7 +142,7 @@ export class CatalogService {
 
 	/** P11: the unit is fixed once the product has stock, stock history or orders. */
 	private async soldByFacts(product: Product, rows: readonly ProductVariant[]) {
-		const hasStock = rows.some((row) => row.stock.quantity > 0 || (row.stock.held ?? 0) > 0);
+		const hasStock = rows.some((row) => row.stock.quantity > 0 || row.stock.held > 0);
 		const moved = this.stockRead
 			? await this.stockRead.withMovements(rows.map((row) => row.id))
 			: new Set<string>();
@@ -517,7 +517,7 @@ export class CatalogService {
 				gallery: product.media.gallery,
 				compound: product.media.compound,
 				altOverrides: product.media.altOverrides,
-				versions: product.media.versions ?? {},
+				versions: product.media.versions,
 				shareImage: product.media.shareImage ?? null,
 				faqEnabled: product.faqEnabled,
 				faq: (await this.productFaq(product.id)).map((entry) => ({
@@ -547,9 +547,9 @@ export class CatalogService {
 				mrpINR: mrpPriceINR(row.priceINR, row.compareAtPriceINR, row.salePriceINR) ?? row.compareAtPriceINR,
 				sellingINR: sellingPriceINR(row.priceINR, row.salePriceINR),
 				quantity: row.stock.quantity,
-				held: row.stock.held ?? 0,
-				inOrders: row.stock.reserved ?? 0,
-				freeToSell: row.stock.quantity - (row.stock.held ?? 0) - (row.stock.reserved ?? 0),
+				held: row.stock.held,
+				inOrders: row.stock.reserved,
+				freeToSell: row.stock.quantity - row.stock.held - row.stock.reserved,
 				available: row.status === 'live',
 				weightGrams: row.shippingProfile?.weightGrams ?? null,
 				lengthCm: row.shippingProfile?.lengthCm ?? null,
@@ -558,7 +558,7 @@ export class CatalogService {
 				barcode: row.barcode ?? null,
 				hsnCode: row.taxProfile?.hsnCode ?? null,
 				image: row.media?.primaryAssetId
-					? { assetId: row.media.primaryAssetId, versionId: row.media.primaryVersionId ?? null }
+					? { assetId: row.media.primaryAssetId, versionId: row.media.primaryVersionId }
 					: null,
 			})),
 		});
@@ -706,13 +706,7 @@ export class CatalogService {
 			...(body.content ? applyProductContent(product, body.content) : {}),
 			...(body.videos ? { videos: body.videos } : {}),
 		};
-		const stocked = (list: readonly ProductVariant[]) => list.reduce((sum, row) => sum + row.stock.quantity, 0);
-		const received = nextRows.reduce(
-			(sum, row) => sum + Math.max(0, row.stock.quantity - (rows.get(row.id)?.stock.quantity ?? 0)),
-			0,
-		);
-		next.lifetimeUnitsReceived = product.lifetimeUnitsReceived + received;
-		if (stocked([...rows.values()]) === 0 && stocked(nextRows) > 0) next.backInStockAt = now;
+		// Units received and "back in stock" are set by purchase entries: this form never changes stock (F01).
 		const renamed = next.slug !== product.slug;
 		if (renamed && (await this.products.findBySlug(next.slug, 'admin'))) {
 			throw new BadRequestException('That address is already taken');

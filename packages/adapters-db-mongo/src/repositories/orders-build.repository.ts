@@ -275,8 +275,9 @@ export class MongoAdminOrderRepository implements AdminOrderRepository {
 		const counts = await Promise.all(
 			filters.map((name) => OrderModel.countDocuments(withListFilter(base, name)).exec()),
 		);
+		// Promise.all answers one count per filter, in order.
 		const out: Record<string, number> = Object.fromEntries(
-			filters.map((name, index) => [name, counts[index] ?? 0]),
+			filters.map((name, index) => [name, counts[index] as number]),
 		);
 		// ol02: the Needs attention tile's line counts each stored reason.
 		const reasons = ['invoiceAddressNeeded', 'requestExpiredUnpaid', 'pendingAtBank', 'paymentReview'] as const;
@@ -284,7 +285,7 @@ export class MongoAdminOrderRepository implements AdminOrderRepository {
 			reasons.map((reason) => OrderModel.countDocuments({ ...base, attention: reason }).exec()),
 		);
 		reasons.forEach((reason, index) => {
-			out[`attention:${reason}`] = reasonCounts[index] ?? 0;
+			out[`attention:${reason}`] = reasonCounts[index] as number;
 		});
 		out.toPack = await OrderModel.countDocuments({
 			...base,
@@ -310,7 +311,8 @@ export class MongoAdminOrderRepository implements AdminOrderRepository {
 		return docs.map((doc) => ({
 			orderId: doc._id,
 			orderNumber: doc.orderNumber,
-			dueINR: Number(doc.balance?.dueINR ?? 0),
+			// The query only finds orders with something due.
+			dueINR: Number((doc.balance as { dueINR: number }).dueINR),
 			placedAt: (doc.createdAt ?? new Date(0)).toISOString(),
 			dueOn: doc.onAccountDueOn ?? null,
 		}));
@@ -519,7 +521,8 @@ export function toBusiness(doc: OrdersBuildDoc): Business {
 			? [
 					{
 						id: `${doc._id}_contact`,
-						name: String(row.contactName ?? row.legalName ?? ''),
+						// A row without a legal name fails Business.parse below whatever the contact is called.
+						name: String(row.contactName ?? row.legalName),
 						role: '',
 						email: (row.email as string | null) ?? null,
 						mobile: null,
@@ -536,7 +539,8 @@ export function toBusiness(doc: OrdersBuildDoc): Business {
 		pan: row.pan ?? null,
 		stateCode: row.stateCode ?? '',
 		stateName: row.stateName ?? '',
-		registeredAddress: row.address ?? { line: '', city: '', pin: '000000' },
+		// Every supplier row is saved with its address; an empty one could never pass the contract anyway.
+		registeredAddress: row.address,
 		addresses: row.addresses ?? [],
 		contacts: contacts.map((contact) => ({
 			...(contact as object),

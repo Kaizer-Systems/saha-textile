@@ -340,6 +340,7 @@ const numbering = (order: DocumentNumberingSettings['order']): DocumentNumbering
 		openingStock: series('OS'),
 		pettyExpense: series('PC'),
 		expenseClaim: series('EC'),
+		stockTransfer: series('TR'),
 	},
 	lockedTypes: [],
 	revision: 0,

@@ -16,6 +16,7 @@ import {
 	gstr1,
 	istDay,
 	termsOn,
+	type AdminUserRepository,
 	type CompanyRepository,
 	type CreditNoteRepository,
 	type DebitNoteRepository,
@@ -26,6 +27,7 @@ import {
 
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import {
+	ADMIN_USER_REPOSITORY,
 	COMPANY_REPOSITORY,
 	CREDIT_NOTE_REPOSITORY,
 	DEBIT_NOTE_REPOSITORY,
@@ -68,7 +70,15 @@ export class GstReturnsService {
 		@Inject(DEBIT_NOTE_REPOSITORY) private readonly debitNotes: Pick<DebitNoteRepository, 'listForGstin'>,
 		/** Due dates come from the installed due-date rule set (RS-DUE), which the CA keeps current. */
 		private readonly templates: Pick<AccountsTemplatesService, 'ruleSetEntries'>,
+		@Inject(ADMIN_USER_REPOSITORY) private readonly admins: Pick<AdminUserRepository, 'findById'>,
 	) {}
+
+	/** Who took a step, by name; the user id when the account has no name, '' with no one signed in. */
+	private async nameOf(principal: AuthenticatedPrincipal | undefined): Promise<string> {
+		if (!principal) return '';
+		const user = await this.admins.findById(principal.userId).catch(() => null);
+		return user?.displayName || user?.email || user?.username || principal.userId;
+	}
 
 	private async registration(id: string) {
 		const registration = await this.company.getRegistration(id);
@@ -127,15 +137,22 @@ export class GstReturnsService {
 			checkedAt: null,
 			approvedBy: null,
 			approvedAt: null,
+			preparedByName: await this.nameOf(principal),
+			checkedByName: '',
+			approvedByName: '',
+			arn: null,
+			filedOn: null,
 			version: existing?.version ?? 0,
 		};
 		return this.save(draft, existing ? existing.version : null);
 	}
 
+	/** A draft as it stands: once its ARN is entered it reads filed, with the ARN and day. */
 	async get(id: string): Promise<GstReturnDraft> {
 		const draft = await this.drafts.get(id);
 		if (!draft) throw new NotFoundException(accountsRefusal('gst_draft_not_found'));
-		return draft;
+		const filing = await this.filed(draft.gstRegistrationId, draft.returnType, draft.month);
+		return filing ? { ...draft, status: 'filed', arn: filing.arn, filedOn: filing.filedOn } : draft;
 	}
 
 	/** G4: Accountant checked (from prepared), then Approve (CA), only with `accounts.lock` and nothing to fix. */
@@ -145,12 +162,30 @@ export class GstReturnsService {
 		const at = now.toISOString();
 		if (write.to === 'checked') {
 			if (draft.status !== 'prepared') throw refuse('gst_return_wrong_step');
-			return this.save({ ...draft, status: 'checked', checkedBy: by, checkedAt: at }, write.version);
+			return this.save(
+				{
+					...draft,
+					status: 'checked',
+					checkedBy: by,
+					checkedAt: at,
+					checkedByName: await this.nameOf(principal),
+				},
+				write.version,
+			);
 		}
 		if (draft.status !== 'checked') throw refuse('gst_return_wrong_step');
 		if (!principal?.permissions.includes('accounts.lock')) throw refuse('gst_return_approver_only');
 		if (draft.problems.length) throw refuse('gst_return_has_problems');
-		return this.save({ ...draft, status: 'approved', approvedBy: by, approvedAt: at }, write.version);
+		return this.save(
+			{
+				...draft,
+				status: 'approved',
+				approvedBy: by,
+				approvedAt: at,
+				approvedByName: await this.nameOf(principal),
+			},
+			write.version,
+		);
 	}
 
 	private async save(draft: GstReturnDraft, expectedVersion: number | null) {

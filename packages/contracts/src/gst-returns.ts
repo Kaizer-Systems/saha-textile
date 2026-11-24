@@ -44,6 +44,13 @@ export const GstReturnDraft = z.object({
 	checkedAt: IsoDateTime.nullable().default(null),
 	approvedBy: Id.nullable().default(null),
 	approvedAt: IsoDateTime.nullable().default(null),
+	/** Who took each step, by name, as G4's subtitle says it. */
+	preparedByName: z.string().default(''),
+	checkedByName: z.string().default(''),
+	approvedByName: z.string().default(''),
+	/** Once filed on the portal: its ARN and day, from the filing (G8). */
+	arn: z.string().nullable().default(null),
+	filedOn: IsoDate.nullable().default(null),
 	version: z.number().int().nonnegative().default(0),
 });
 export type GstReturnDraft = z.infer<typeof GstReturnDraft>;

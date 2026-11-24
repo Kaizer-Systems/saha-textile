@@ -78,6 +78,9 @@ export default [
 	{ path: 'banks/:id', loadComponent: () => import('./banks/bank-page').then((m) => m.BankPage) },
 	{ path: 'ledgers/:id', loadComponent: () => import('./ledger-statement').then((m) => m.LedgerStatementPage) },
 	{ path: 'periods', loadComponent: () => import('./periods').then((m) => m.PeriodsPage) },
+	// Accounts › GST returns (G3) and a return prepared from the books (G4, G8).
+	{ path: 'gst/returns', loadComponent: () => import('./gst/gst-returns-page').then((m) => m.GstReturnsPage) },
+	{ path: 'gst/returns/:id', loadComponent: () => import('./gst/gstr1-page').then((m) => m.Gstr1Page) },
 	{ path: 'invoices/:id', loadComponent: () => import('./invoice-view').then((m) => m.InvoiceViewPage) },
 	{ path: 'returns/:id', loadComponent: () => import('./return-page').then((m) => m.ReturnPage) },
 	{ path: 'credit-notes/:id', loadComponent: () => import('./credit-note-page').then((m) => m.CreditNotePage) },

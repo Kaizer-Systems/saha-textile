@@ -116,6 +116,11 @@ const draft = (id: string, over: Partial<GstReturnDraft> = {}): GstReturnDraft =
 	checkedAt: null,
 	approvedBy: null,
 	approvedAt: null,
+	preparedByName: '',
+	checkedByName: '',
+	approvedByName: '',
+	arn: null,
+	filedOn: null,
 	version: 0,
 	...over,
 });
@@ -168,6 +173,7 @@ function build(
 		credit as never,
 		debit as never,
 		templates,
+		{ findById: async (id: string) => (id === 'adm_acc' ? { displayName: 'Sudip Ghosh' } : null) } as never,
 	);
 	return { service, drafts, store, invoices, credit, debit, templates };
 }

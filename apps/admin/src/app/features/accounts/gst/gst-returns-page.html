@@ -1,0 +1,102 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'gst_returns_title'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">{{ 'gst_returns_title' | transloco }}</h5>
+			<small class="text-muted">{{ heading() }}</small>
+		</div>
+		<select
+			class="form-select w-auto"
+			id="gst_registration"
+			[attr.aria-label]="'gst_registration' | transloco"
+			[ngModel]="registrationId()"
+			(ngModelChange)="registrationId.set($event)"
+		>
+			@for (r of active(); track r.id) {
+			<option [value]="r.id">GSTIN: {{ r.gstin }}</option>
+			}
+		</select>
+	</div>
+	@if (calendarProblem(); as problem) {
+	<div class="alert alert-warning py-2">{{ problem | transloco }}</div>
+	}
+	<div class="d-flex align-items-center mb-3 flex-wrap gap-2">
+		@for (c of chips; track c) {
+		<button
+			type="button"
+			class="align-items-center btn btn-sm d-flex"
+			[id]="'gst_chip_' + c"
+			[class.btn-theme]="chip() === c"
+			[class.btn-outline]="chip() !== c"
+			[attr.aria-pressed]="chip() === c"
+			(click)="chip.set(c)"
+		>
+			{{ 'gst_chip_' + c | transloco }}
+			<span class="ms-1">{{ calendar.data()?.counts?.[c] ?? 0 }}</span>
+		</button>
+		}
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'gst_col_return' | transloco }}</th>
+					<th>{{ 'gst_col_for' | transloco }}</th>
+					<th>{{ 'gst_col_due' | transloco }}</th>
+					<th>{{ 'status' | transloco }}</th>
+					<th>ARN</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of calendar.data()?.rows ?? []; track row.returnType + row.period) {
+				<tr>
+					<td>{{ row.returnType }}</td>
+					<td>{{ row.period }}</td>
+					<td class="text-nowrap">{{ day(row.dueOn) }}</td>
+					<td>
+						<div [class]="pill[row.status]">
+							<span>{{ 'gst_status_' + row.status | transloco }}</span>
+						</div>
+					</td>
+					<td>{{ row.arn ?? '—' }}</td>
+					<td>
+						@if (row.draftId) {
+						<button
+							type="button"
+							class="btn btn-sm p-0"
+							[title]="'view' | transloco"
+							(click)="open(row)"
+						>
+							<i class="ri-eye-line"></i>
+						</button>
+						} @else if (row.returnType === 'GSTR-1') {
+						<button
+							*hasPermission="'accounts.edit'"
+							type="button"
+							class="btn btn-sm p-0"
+							[disabled]="busy()"
+							[title]="'gst_prepare' | transloco"
+							(click)="open(row)"
+						>
+							<i class="ri-file-add-line"></i>
+						</button>
+						}
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="6"
+						class="text-muted"
+					>
+						{{ 'gst_empty' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+</app-page-wrapper>

@@ -56,6 +56,11 @@ describe('return drafts', () => {
 			checkedAt: null,
 			approvedBy: null,
 			approvedAt: null,
+			preparedByName: '',
+			checkedByName: '',
+			approvedByName: '',
+			arn: null,
+			filedOn: null,
 			version: 0,
 		});
 	});
@@ -68,6 +73,11 @@ describe('return drafts', () => {
 			checkedAt: '2026-12-03T05:00:00.000Z',
 			approvedBy: 'adm_ca',
 			approvedAt: '2026-12-04T05:00:00.000Z',
+			preparedByName: 'Sudip Ghosh',
+			checkedByName: 'Sudip Ghosh',
+			approvedByName: 'R. Ghosh & Co.',
+			arn: 'AA191126123456Z',
+			filedOn: '2026-12-10',
 			version: 2,
 		};
 		expect(GstReturnDraft.parse(signed)).toEqual(signed);

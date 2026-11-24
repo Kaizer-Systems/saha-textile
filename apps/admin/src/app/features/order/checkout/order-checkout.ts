@@ -481,7 +481,8 @@ export class OrderCheckout {
 		const buyer = this.buyer();
 		if (!buyer) return '';
 		if (buyer.kind === 'business') return buyer.business.tradeName || buyer.business.legalName;
-		return buyer.customer.name.trim().split(/\s+/)[0] ?? buyer.customer.name;
+		// split() always answers at least one part.
+		return buyer.customer.name.trim().split(/\s+/)[0] as string;
 	});
 
 	/** What a saved address's country calls its postal code (PIN code, Postcode, ZIP code). */
@@ -503,11 +504,10 @@ export class OrderCheckout {
 	countryName(code: string | null | undefined): string {
 		if (!code) return '';
 		try {
-			return (
-				new Intl.DisplayNames([this.transloco.getActiveLang() === 'bn' ? 'bn' : 'en'], { type: 'region' }).of(
-					code.toUpperCase(),
-				) ?? code
-			);
+			// With the default fallback ('code'), of() answers a name or the code itself, never undefined.
+			return new Intl.DisplayNames([this.transloco.getActiveLang() === 'bn' ? 'bn' : 'en'], {
+				type: 'region',
+			}).of(code.toUpperCase()) as string;
 		} catch {
 			return code;
 		}
@@ -552,11 +552,12 @@ export class OrderCheckout {
 			const order = detail.order;
 			this.placed = true;
 			let toast = 'ord_order_placed';
-			if (this.method() === 'paymentLink' && (order.balance?.dueINR ?? 0) > 0) {
+			const due = order.balance?.dueINR ?? 0;
+			if (this.method() === 'paymentLink' && due > 0) {
 				try {
 					await firstValueFrom(
 						this.gateway.requestPayment(order.id, {
-							amountINR: order.balance?.dueINR ?? order.totalINR,
+							amountINR: due,
 							currency: order.currency,
 							revision: order.revision,
 						}),

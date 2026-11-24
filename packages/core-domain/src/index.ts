@@ -31,3 +31,4 @@ export * from './settlements/index';
 export * from './gst/index';
 export * from './reports/index';
 export * from './assets/index';
+export * from './payroll/index';

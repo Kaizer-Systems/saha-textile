@@ -4,7 +4,7 @@ slug: /payments/ccavenue
 description: "The INR gateway role: HDFC's documentation and the calls this project will make."
 status: scaffolded
 audience: [backend, operator]
-last_verified: '2026-11-22'
+last_verified: '2026-11-24'
 search_keywords: CCAvenue HDFC VAS K R MARKETING ONLINE integration kit non-seamless initiateTransaction encResp orderStatusTracker refundOrder DoWebTrans working key access code
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts
@@ -87,7 +87,7 @@ A transaction request encrypts a `name=value&…` string. A merchant-API request
 
 ### Status vocabularies
 
-CCAvenue uses two different `order_status` sets. The hosted-checkout response uses **Success, Failure, Aborted, Invalid, Timeout**. The merchant API (Status, Lookup, Pending) uses **Aborted, Auto-Cancelled, Auto-Reversed, Awaited, Cancelled, Chargeback, Invalid, Fraud, Initiated, Refunded, Shipped, Successful, Systemrefund, Unsuccessful, Timeout**. The HDFC VAS guide prints a third, shorter list for its status enquiry. [Dynamic Event Notification](/payments/ccavenue/dynamic-event-notification#3-parameters) adds `initiated` to the hosted list for its echo URL, and uses **Successful/Shipped, Unsuccessful, Auto-Reversed** for reconciliation. The pages keep them separate.
+CCAvenue uses two different `order_status` sets. The hosted-checkout response uses **Success, Failure, Aborted, Invalid, Timeout**. The merchant API (Status, Lookup, Pending) uses **Aborted, Auto-Cancelled, Auto-Reversed, Awaited, Cancelled, Chargeback, Invalid, Fraud, Initiated, Refunded, Shipped, Successful, Systemrefund, Unsuccessful, Timeout**. The HDFC VAS guide prints a third, shorter list for its status enquiry. [Dynamic Event Notification](/payments/ccavenue/dynamic-event-notification#3-parameters) adds `initiated` to the hosted list for its echo URL, and uses **Successful/Shipped, Unsuccessful, Auto-Reversed** for reconciliation. The pages keep them separate. HDFC's meanings for `Initiated`, `Awaited` and "record not found" are in [Account settings and behaviour](#account-settings-and-behaviour).
 
 Two operational points from the merchant API that the hosted flow does not mention: **only confirmed orders are settled**, and unconfirmed orders are **auto-cancelled** after 12 days (5 days in one place in the kit revision). Auto-confirm is an account setting, and this integration requires it ([Account settings and behaviour](#account-settings-and-behaviour)).
 
@@ -97,7 +97,7 @@ HDFC PG Helpdesk answered these points in writing. They apply to CCAvenue accoun
 
 | Topic                         | Behaviour                                                                                                                                                                                                                                                                                                                                                                       |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| IP and URL allow-list         | An HDFC reseller account can have **Ignore IP and URL** enabled. No IP or URL then needs whitelisting: merchant API calls work from any IP address, including a developer machine, and the reply returns to the IP that sent the request.                                                                                                                                       |
+| IP and URL allow-list         | An HDFC reseller account can have **Ignore IP and URL** enabled. No IP or URL then needs whitelisting: merchant API calls work from any IP address, including a developer machine, and the reply returns to the IP that sent the request. With the option enabled, the PG console shows no whitelisting settings.                                                               |
 | Registered URL                | HDFC registers the URL that transactions start from. One account can hold several URLs, and all of them work. A test account accepts a `localhost` `redirect_url`, so the complete payment return can be tested on a developer machine. The test and live environments each hold their own primary website URL; a change to the test one is requested through HDFC's KITS team. |
 | URLs for API calls            | No URL needs whitelisting for API calls. The payment response is received by the merchant's own service, which may pass it on to its API address.                                                                                                                                                                                                                               |
 | Keys per registered URL       | The merchant dashboard's Settings › API Keys page lists one Merchant ID for the account, and a separate access code and working key for each registered URL. A star marks the primary URL, whose working key encrypts the server-to-server notifications. A request is encrypted with the key of the URL it is sent for.                                                        |
@@ -106,9 +106,13 @@ HDFC PG Helpdesk answered these points in writing. They apply to CCAvenue accoun
 | Order confirmation            | With **auto-confirm** enabled, every successful order is confirmed automatically, and no `confirmOrder` call is made.                                                                                                                                                                                                                                                           |
 | Return delay                  | A response can reach the return URL 5–10 minutes after payment, because of processing delays. HDFC recommends a buffer of 5–10 minutes before calling the Status API. The VAS guide (best practice H(a)) asks for the call as soon as the response arrives.                                                                                                                     |
 | Status API call limit         | HDFC states no defined limit on the number of Status API calls. The recommended buffer of 5–10 minutes before the first call still applies.                                                                                                                                                                                                                                     |
-| `Awaited` orders              | No maximum time applies. An order stays `Awaited` until the customer's bank responds.                                                                                                                                                                                                                                                                                           |
+| `Initiated` orders            | The customer reached the CCAvenue payment page but did not complete the payment: the page was closed, the transaction was abandoned, or no further action was taken. HDFC treats `Initiated` as a final status with a failed outcome, and the customer starts a new transaction.                                                                                                |
+| `Awaited` orders              | Seen mostly with net banking, while the gateway waits for the bank's confirmation. The status is pending, not final, and changes to `Shipped` once the bank approves at reconciliation. No maximum time applies; an order stays `Awaited` until the customer's bank responds.                                                                                                   |
+| Record not found              | The Status API answers "record not found" (RNF) when the transaction never reached or registered on the gateway. It can also answer it for a while when the enquiry runs before the transaction is complete and before the bank has shared its records.                                                                                                                         |
 | Server-to-server notification | A webhook URL can be configured on the account. A failed post is retried twice, nine minutes apart. The format is on [Dynamic Event Notification](/payments/ccavenue/dynamic-event-notification).                                                                                                                                                                               |
 | Partial refunds               | More than one partial refund against the same transaction works once HDFC enables it for the account. Without it, a second refund fails with "Multiple refunds not allowed" (51311, 51328).                                                                                                                                                                                     |
+| Test credentials              | The test (UAT) credentials are separate from the live account's API keys. Removing or re-registering the live keys leaves the test credentials valid, and no new test credentials are issued.                                                                                                                                                                                   |
+| Security audit                | The security audit, test transactions and validation checks take place at an account's original go-live. For an account that is already live and active, HDFC states that no further audit is needed for a new integration.                                                                                                                                                     |
 
 ### Transcription pages
 
@@ -347,16 +351,16 @@ A deploy swaps old and new copies side by side, so it causes no gap ([Deploys wi
 
 ### Open questions for HDFC
 
-Neither the documents nor HDFC's answers settle these.
+Neither the documents nor HDFC's answers settle this.
 
-1. **Status during the return delay.** Before a delayed return arrives, does the Status API answer `Initiated` or `Awaited`, or "no record" (51419, 51313, 51308)? The first is `pending`. The second, beside a paid callback, is `review`.
-2. **STRING format.** The kit revision documents XML and JSON only, but its ASP.NET sample still sends `request_type=STRING`. Only JSON is planned here.
+1. **STRING format.** The kit revision documents XML and JSON only, but its ASP.NET sample still sends `request_type=STRING`. Only JSON is planned here.
 
 ## Limitations
 
 - Nothing here has run against CCAvenue. The encryption matches OpenSSL and the transcribed kit scheme, using a generated key, and the reply shapes come from the printed samples. The first test transaction may show differences.
 - Testing against CCAvenue needs the test Merchant ID, Access Code and Working Key, and the site's URL registered on the test account. On an account with Ignore IP and URL, no IP is registered, and the test can run from a developer machine.
-- A paid callback that meets a "no record" status answer goes to `review`. If CCAvenue answers "no record" during the return delay, a genuine payment waits for an operator instead of settling automatically.
+- A paid callback that meets a "no record" status answer (51419, 51313, 51308) goes to `review`. HDFC states that the Status API can answer "record not found" for a while before the bank shares a transaction's records, so a genuine payment can wait for an operator instead of settling automatically.
+- The status map reads a Status API `Initiated` as `pending`, while HDFC describes `Initiated` as final with a failed outcome. An abandoned attempt therefore stays `pending`, and the sweep keeps asking about it for two days, instead of reading as failed.
 - Without the CCAvenue keys the shop keeps Pay off for rupees (`noGateway`) and the admin can't request a rupee payment online.
 - The sweep asks again about attempts left `pending` (2, 5, 10, 15, 30 and 60 minutes after Pay, then hourly for two days), so a return lost during a reboot or crash settles by itself.
 - The cipher has no authentication tag and uses a fixed IV. The return route must answer every failure identically and be rate limited, or an attacker could learn from the differences.

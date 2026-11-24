@@ -3,7 +3,7 @@ title: CCAvenue Dynamic Event Notification
 description: CCAvenue's server-to-server event posts (the webhook), transcribed from HDFC's Dynamic Event Notification document, with the parameters of each event.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-11-21'
+last_verified: '2026-11-24'
 search_keywords: CCAvenue webhook Dynamic Event Notification order status echo URL reconciliation risk status payment type status encResp server to server
 source_of_truth:
     - packages/adapters-payments/src
@@ -117,7 +117,7 @@ The same parameters as the Order Status table, from `order_id` to `merchant_para
 
 - `POST /payments/ccavenue/notify` receives the order status echo; the other event posts have no handler. A lost payment return is also settled by the status enquiry ([During a restart](/payments/ccavenue#during-a-restart)).
 - The echo URL repeats the hosted return server-to-server, with the same encryption and the same `&`-separated format, so `verifyCallback`'s decryption and parsing apply to it. Like the browser return, it is a claim that `decidePaymentResult` checks against the status enquiry.
-- The callback status map has no entry for the echo URL's `initiated`, so it reads as `review`. The reconciliation values are merchant-API words, which the status-enquiry map already covers ([How CCAvenue's values map](/payments/ccavenue#how-ccavenues-values-map)).
+- The callback status map has no entry for the echo URL's `initiated`, so it reads as `review`. HDFC describes `initiated` as a customer who reached the payment page without completing the payment: a final status with a failed outcome ([Account settings and behaviour](/payments/ccavenue#account-settings-and-behaviour)). The reconciliation values are merchant-API words, which the status-enquiry map already covers ([How CCAvenue's values map](/payments/ccavenue#how-ccavenues-values-map)).
 - A `risk_status` of `High` corresponds to the fraud flag `High` that the status-enquiry map turns into `review`.
 - The post is encrypted with the primary URL's working key. Each registered URL has its own working key, and the dashboard's API Keys page marks the primary URL with a star ([Account settings and behaviour](/payments/ccavenue#account-settings-and-behaviour)). An integration that sends requests with another URL's keys needs the primary URL's working key as well to read these posts.
 

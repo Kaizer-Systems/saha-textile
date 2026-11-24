@@ -3,7 +3,7 @@ title: CCAvenue audit and go-live
 description: HDFC integration checklist, security-audit checks, hygiene, go-live steps, and best practices, as printed.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-11-21'
+last_verified: '2026-11-24'
 search_keywords: CCAvenue security audit go-live SSL status API receipt
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts
@@ -15,6 +15,8 @@ source_of_truth:
 # CCAvenue audit and go-live
 
 Two sources are transcribed here. The integration checklist is the three-page "Non Seamless Merchant & Seamless Merchant" PDF. Sections 4, 5, and 6 are from the HDFC VAS CCAvenue integration guide.
+
+The security audit takes place at an account's original go-live. For an account that is already live and active, HDFC states that a new integration needs no further audit ([Account settings and behaviour](/payments/ccavenue#account-settings-and-behaviour)). The checks below still describe what a correct integration does.
 
 ## Requirements for integration
 

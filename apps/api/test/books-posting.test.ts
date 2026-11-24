@@ -38,7 +38,7 @@ function setup(
 	const ledger = {
 		post: vi.fn(async (request: { idempotencyKey: string; lines: unknown[] }) => {
 			if (options.postFails) throw options.postFails;
-			return { id: `jv_${request.idempotencyKey}`, lines: request.lines };
+			return { id: `jv_${request.idempotencyKey}`, number: 'JV/26-27/000013', lines: request.lines };
 		}),
 		voucherByKey: vi.fn(async (key: string) => vouchers.get(key) ?? null),
 		chart: vi.fn(async () => ({
@@ -399,5 +399,80 @@ describe('receipts in the books', () => {
 		});
 		expect(await spent.service.advanceHeldINR('ord_1')).toBe(0);
 		expect(await setup({ advancesLedgers: [] }).service.advanceHeldINR('ord_1')).toBe(0);
+	});
+});
+
+describe('stock adjustments in the books (D5)', () => {
+	const adjustment = {
+		id: 'sa_1',
+		number: 'SA/26-27/0004',
+		action: 'remove' as const,
+		outcome: 'writtenOff' as const,
+		reasonCode: 'damage' as const,
+		valueINR: 620,
+		ratePercent: 5,
+		at: '2026-11-22T06:00:00.000Z',
+	};
+
+	it('posts a write-off and its input tax reversal in one journal voucher (E1: ₹620 at 5%)', async () => {
+		const { service, posted } = setup();
+		expect(await service.stockAdjusted(adjustment, ctx, 'adm_owner')).toEqual({
+			journalNumber: 'JV/26-27/000013',
+			itcINR: 31,
+		});
+		expect(posted()[0]).toMatchObject({
+			date: '2026-11-22',
+			idempotencyKey: 'stockAdjustment:sa_1',
+			narration: 'Stock adjustment SA/26-27/0004; input tax reversed, s.17(5)(h)',
+			source: { type: 'stockAdjustment', id: 'sa_1', number: 'SA/26-27/0004' },
+			lines: [
+				{ ledger: { role: 'stock_loss' }, debitPaise: 62_000, locationId: 'loc_wh' },
+				{ ledger: { role: 'stock_in_hand' }, creditPaise: 62_000, locationId: 'loc_wh' },
+				{ ledger: { role: 'stock_loss' }, debitPaise: 3_100, locationId: 'loc_wh' },
+				{ ledger: { role: 'input_cgst' }, creditPaise: 1_550, locationId: 'loc_wh' },
+				{ ledger: { role: 'input_sgst' }, creditPaise: 1_550, locationId: 'loc_wh' },
+			],
+		});
+	});
+
+	it('posts an addition back into stock without tax, and nothing for no value or before the books are set up', async () => {
+		const { service, posted } = setup();
+		const added = await service.stockAdjusted(
+			{ ...adjustment, action: 'add', outcome: null, reasonCode: 'manual_recount_correction', valueINR: 310 },
+			ctx,
+			null,
+		);
+		expect(added).toEqual({ journalNumber: 'JV/26-27/000013', itcINR: null });
+		expect(posted()[0]).toMatchObject({ narration: 'Stock adjustment SA/26-27/0004' });
+		expect(
+			await service.stockAdjusted({ ...adjustment, reasonCode: 'supplier_shortage', valueINR: 0 }, ctx, null),
+		).toEqual({ journalNumber: null, itcINR: null });
+		const early = setup({ notSetUp: true });
+		expect(await early.service.stockAdjusted(adjustment, ctx, null)).toEqual({ journalNumber: null, itcINR: null });
+		expect(await early.service.willPost()).toBe(false);
+		expect(await service.willPost()).toBe(true);
+		expect(early.ledger.post).not.toHaveBeenCalled();
+	});
+
+	it('reverses a posted adjustment once, and nothing when it never posted', async () => {
+		const original = {
+			lines: [{ ledgerId: 'led_loss', locationId: 'loc_wh', debitPaise: 62_000, creditPaise: 0 }],
+		};
+		const { service, posted } = setup({ vouchers: { 'stockAdjustment:sa_1': original as never } });
+		const reversal = {
+			id: 'sa_1',
+			number: 'SA/26-27/0004',
+			reversalId: 'sa_2',
+			reversalNumber: 'SA/26-27/0005',
+			at: adjustment.at,
+		};
+		expect(await service.stockAdjustmentReversed(reversal, ctx, 'adm_owner')).toBe('JV/26-27/000013');
+		expect(posted()[0]).toMatchObject({
+			idempotencyKey: 'stockAdjustment:sa_1:reversed',
+			narration: 'Reversal of stock adjustment SA/26-27/0004 by SA/26-27/0005',
+			source: { type: 'stockAdjustment', id: 'sa_2', number: 'SA/26-27/0005' },
+			lines: [{ ledger: { id: 'led_loss' }, debitPaise: 0, creditPaise: 62_000 }],
+		});
+		expect(await setup().service.stockAdjustmentReversed(reversal, ctx, null)).toBeNull();
 	});
 });

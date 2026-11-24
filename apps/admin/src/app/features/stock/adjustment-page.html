@@ -1,0 +1,211 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'sa_title'"
+>
+	@if (detail.data(); as d) { @let r = d.request; @let state = status(d);
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">
+				{{ r.number ?? ('sa_not_numbered' | transloco) }}
+				<div
+					class="d-inline-block ms-2"
+					[class.status-success]="state === 'posted'"
+					[class.status-danger]="state === 'reversed' || state === 'rejected'"
+					[class.status-pending]="state === 'pending' || state === 'approved'"
+				>
+					<span>{{ 'sa_status_' + state | transloco }}</span>
+				</div>
+			</h5>
+			<small class="text-muted">
+				{{ 'sa_title_line' | transloco: { date: (r.decidedAt ?? r.requestedAt | shortDate), by:
+				r.requestedByName ?? '—' } }}@if (!r.selfApproved && r.decidedByName && r.status !== 'rejected') { · {{
+				'approved_by' | transloco: { name: r.decidedByName } }} }
+			</small>
+		</div>
+		<div class="d-flex flex-wrap gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="sa_print"
+				[disabled]="busy()"
+				(click)="print()"
+			>
+				<i class="ri-printer-line"></i>
+				{{ 'inv_print' | transloco }}
+			</button>
+			@if (d.canReverse) {
+			<button
+				type="button"
+				class="btn btn-outline text-danger"
+				id="sa_reverse_open"
+				(click)="reverse(d)"
+			>
+				<i class="ri-arrow-go-back-line"></i>
+				{{ 'sa_reverse' | transloco }}
+			</button>
+			}
+		</div>
+	</div>
+	<div class="row g-3">
+		<div class="col-xl-8">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'details' | transloco }}</h5>
+					</div>
+					<div class="row g-3 small">
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'sa_item' | transloco }}</span>
+							@if (r.variantId) {
+							<a [routerLink]="['/stock/items', r.variantId]"><b>{{ r.title }}</b></a>
+							} @else {
+							<b>{{ r.title }}</b>
+							}
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'sa_change' | transloco }}</span>
+							<b>{{ signed(r) }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'reason' | transloco }}</span>
+							<b>
+								{{ r.reasonCode ? ('reason_code_' + r.reasonCode | transloco) : '—' }}@if (r.outcome) {
+								· {{ 'sa_outcome_' + r.outcome | transloco }} }
+							</b>
+							@if (r.note) {
+							<span class="text-muted d-block">{{ r.note }}</span>
+							}
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'sa_value_at_cost' | transloco }}</span>
+							<b>
+								@if (d.whatChanged.valueINR !== null) { {{ d.whatChanged.valueINR | rupees }}@if
+								(r.action === 'remove') { {{ 'sa_oldest_first' | transloco }} } } @else { — }
+							</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'sa_itc_reversed' | transloco }}</span>
+							<b>
+								@if (d.whatChanged.itc?.amountINR; as amount) { {{ amount | rupees }} · {{
+								d.whatChanged.itc?.journalNumber }} } @else { — }
+							</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'date' | transloco }}</span>
+							<b>{{ r.decidedAt ?? r.requestedAt | shortDate }}</b>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'cn_edit_log' | transloco }}</h5>
+					</div>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'log_when' | transloco }}</th>
+									<th>{{ 'log_who' | transloco }}</th>
+									<th>{{ 'log_what' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (row of log(); track $index) {
+								<tr>
+									<td class="text-nowrap">{{ row.at | shortDateTime }}</td>
+									<td>{{ row.who }}</td>
+									<td>{{ row.key | transloco: row.params }}</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-4">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'cn_what_changed' | transloco }}</h5>
+					</div>
+					<ul class="list-unstyled small mb-0">
+						@if (d.whatChanged.ledger; as ledger) {
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i class="ri-checkbox-circle-line text-success"></i>
+							<div>
+								<b>{{ 'sa_changed_ledger' | transloco }}</b>
+								<span class="text-muted">· inventoryLedger</span>
+								<span class="d-block">
+									{{ 'sa_changed_ledger_line' | transloco: { change: signed(r), before:
+									(ledger.onHandBefore | stockQty: r.soldBy), after: (ledger.onHandAfter | stockQty:
+									r.soldBy) } }}
+								</span>
+							</div>
+						</li>
+						} @if (d.whatChanged.layers.length) {
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i class="ri-checkbox-circle-line text-success"></i>
+							<div>
+								<b>{{ 'sa_changed_layers' | transloco }}</b>
+								<span class="text-muted">· inventoryCostLayers</span>
+								@for (layer of d.whatChanged.layers; track $index) {
+								<span class="d-block">
+									{{ (r.action === 'remove' ? 'sa_changed_layer_taken' : 'sa_changed_layer_added') |
+									transloco: { qty: (layer.quantity | stockQty: r.soldBy), cost: cost(layer,
+									r.soldBy), source: layer.source ?? r.number ?? '—' } }}
+								</span>
+								}
+							</div>
+						</li>
+						} @if (d.whatChanged.valueINR !== null && r.action) {
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i class="ri-checkbox-circle-line text-success"></i>
+							<div>
+								<b>{{ 'sa_changed_reports' | transloco }}</b>
+								<span class="d-block">
+									{{ (r.action === 'remove' ? 'sa_changed_reports_out' : 'sa_changed_reports_in') |
+									transloco: { value: (d.whatChanged.valueINR | rupees) } }}
+								</span>
+							</div>
+						</li>
+						} @if (d.whatChanged.itc; as itc) {
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i class="ri-checkbox-circle-line text-success"></i>
+							<div>
+								@if (itc.amountINR) {
+								<b>{{ 'sa_changed_itc' | transloco }}</b>
+								<span class="text-muted">· journalVouchers, gstEntries</span>
+								<span class="d-block">−{{ itc.amountINR | rupees }} · {{ itc.journalNumber }}</span>
+								} @else {
+								<b>{{ 'sa_changed_books' | transloco }}</b>
+								<span class="text-muted">· journalVouchers</span>
+								<span class="d-block">{{ itc.journalNumber }}</span>
+								}
+							</div>
+						</li>
+						}
+					</ul>
+					@if (d.canReverse) {
+					<div class="alert alert-light small mt-3 mb-0 border">
+						{{ 'sa_reverse_note' | transloco: { next: d.reverseNumber, change: opposite(r) } }}
+					</div>
+					} @else if (d.reversedBy; as by) {
+					<div class="alert alert-light small mt-3 mb-0 border">
+						{{ 'sa_reversed_note' | transloco }}
+						<a [routerLink]="['/stock/adjustments', by.id]">{{ by.number ?? '—' }}</a>
+					</div>
+					} @else if (d.reverses; as of) {
+					<div class="alert alert-light small mt-3 mb-0 border">
+						{{ 'sa_reverses_note' | transloco }}
+						<a [routerLink]="['/stock/adjustments', of.id]">{{ of.number ?? '—' }}</a>
+					</div>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+	}
+</app-page-wrapper>

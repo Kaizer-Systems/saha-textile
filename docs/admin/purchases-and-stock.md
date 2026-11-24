@@ -32,24 +32,25 @@ Stock is never typed. It moves only through documents: purchase entries, purchas
 
 ## Menus and routes
 
-| Menu                  | Route                                                                  | Permission                                      |
-| --------------------- | ---------------------------------------------------------------------- | ----------------------------------------------- |
-| Purchases › Suppliers | `/suppliers`                                                           | `supplier.index`                                |
-| Purchase orders       | `/purchase-orders`                                                     | `purchase_order.index`                          |
-| Purchase entries      | `/purchase-entries` (labels at `/purchase-entries/:id/labels`)         | `purchase.index`                                |
-| Purchase returns      | `/purchase-returns`                                                    | `purchase_return.index`                         |
-| Opening stock         | `/opening-stock`                                                       | `stock.opening`                                 |
-| Stock                 | `/stock`, `/stock/items/:id`, `/stock/held`                            | `stock.index`                                   |
-| Approvals             | `/stock/approvals`                                                     | `stock.approve`                                 |
-| Stock counts          | `/stock-counts`, `/stock-counts/:id`                                   | `stock_count.count`                             |
-| Reorder and reports   | `/stock/reorder`, `/stock/reports` (`?tab=unpaid`), `/stock/movements` | `stock_report.index`                            |
-| Settings              | `/setting/purchases`                                                   | `setting.index` to read, `setting.edit` to save |
+| Menu                  | Route                                                                  | Permission                                             |
+| --------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------ |
+| Purchases › Suppliers | `/suppliers`                                                           | `supplier.index`                                       |
+| Purchase orders       | `/purchase-orders`                                                     | `purchase_order.index`                                 |
+| Purchase entries      | `/purchase-entries` (labels at `/purchase-entries/:id/labels`)         | `purchase.index`                                       |
+| Purchase returns      | `/purchase-returns`                                                    | `purchase_return.index`                                |
+| Opening stock         | `/opening-stock`                                                       | `stock.opening`                                        |
+| Stock                 | `/stock`, `/stock/items/:id`, `/stock/held`                            | `stock.index`                                          |
+| Approvals             | `/stock/approvals`                                                     | `stock.approve`                                        |
+| A stock adjustment    | `/stock/adjustments/:id`                                               | `stock.index`; Reverse `stock.approve` and super admin |
+| Stock counts          | `/stock-counts`, `/stock-counts/:id`                                   | `stock_count.count`                                    |
+| Reorder and reports   | `/stock/reorder`, `/stock/reports` (`?tab=unpaid`), `/stock/movements` | `stock_report.index`                                   |
+| Settings              | `/setting/purchases`                                                   | `setting.index` to read, `setting.edit` to save        |
 
 The Stock menu group and its Approvals item show how many requests wait. The bell lists approvals waiting, decisions on the reader's own requests (opening one marks it seen), late purchase orders the reader made, unpaid bills near the input-credit limit and held stock past its reminder. Both read `GET /admin/stock/alerts`; the API sends each part only to people who may act on it.
 
 ## Numbers
 
-Internal numbers come from `numberCounters`, one counter per series and financial year, allocated inside the posting transaction: `PE/26-27/000014` (purchase entry, on posting), `PO/…` (purchase order, on creation), `OS/…` (opening stock, on posting) and `SC/…` (stock count, on start). The financial year follows the India date and resets on 1 April. Debit-note and challan formats (`DN/…`, `DC/…`) are placeholders until the CA approves them. Formats live in `InventorySettings.numberFormats`.
+Internal numbers come from `numberCounters`, one counter per series and financial year, allocated inside the posting transaction: `PE/26-27/000014` (purchase entry, on posting), `PO/…` (purchase order, on creation), `OS/…` (opening stock, on posting), `SC/…` (stock count, on start) and `SA/…` (a stock adjustment, when it is applied, never while it waits). The financial year follows the India date and resets on 1 April. Debit-note and challan formats (`DN/…`, `DC/…`) are placeholders until the CA approves them. Formats live in `InventorySettings.numberFormats`.
 
 ## Quantities and money
 
@@ -91,6 +92,22 @@ Internal numbers come from `numberCounters`, one counter per series and financia
 - **Saving over a newer copy.** Each save carries the `updatedAt` it was read with; a save over a newer copy is refused (409) naming who saved and when.
 - **Documents keep what they printed.** A purchase order stores the shop lines it was sent with (`shopSnapshot`); its PDF always prints that copy, and a re-send keeps the first one. Drafts print today's details. Until shop details are first saved, documents print the Brand Kit's shop name and whatever the purchases settings held.
 - **Audit.** Each save writes one sentence with every field's old and new value and whether the State changed; a State change adds a sentence naming how many suppliers moved.
+
+## Stock adjustments
+
+Adjust stock takes pieces out, adds them, or holds and releases them. A write-off or addition by someone without `stock.approve` waits in Approvals; with it, it applies at once.
+
+- **What happens to removed pieces.** "Written off: input tax credit reversed" (the default) or "Kept, held as damaged". Kept pieces become a hold with the reason Damaged, which never waits and posts nothing. Pieces already held are always written off.
+- **The note before saving.** The popup's preview shows the `SA/…` number the adjustment would take and, once the books are set up, its journal voucher number and the input tax it reverses. Nothing is taken until it applies (`DocumentNumbersService.preview`).
+- **When it applies.** In one transaction: the `SA/…` number is taken first (the stock ledger row and an added cost layer carry it), the stock moves, and one journal voucher posts: stock loss against stock in hand at cost for a write-off (the reverse for an addition), plus the input tax taken back for damage, loss, free samples, recounts and other write-offs (s.17(5)(h)). The tax is the cost at the oldest layers times the item's GST rate for its HSN; an HSN with no rate reverses nothing. Before the books are set up the number is still taken and nothing posts. The adjustment keeps its number, outcome, input tax reversed, journal voucher and what it changed (on hand before and after, and the cost layers drawn or made with their source documents).
+- **Its page (E3).** `/stock/adjustments/:id` shows Details, the edit log (asked, approved or made, the voucher posted, reversed) and What it changed: stock ledger, cost layers, stock reports and input credit. Cost, value and input tax show only with `stock.cost`. Print uses Settings › Document formats › Stock adjustment. Stock history and the Approvals list link to it.
+- **Reverse.** A super admin reverses a posted adjustment with a reason: an opposite adjustment with its own `SA/…` number, a voucher reversing the original's, and the original marked reversed (it stays as it was). Written-off pieces come back at the cost they left at. A reversal isn't reversed again, and reversing an addition whose pieces have since left is refused (`stock_moved_meanwhile`).
+
+| Route                                       | Permission                      | Does                                   |
+| ------------------------------------------- | ------------------------------- | -------------------------------------- |
+| `GET /admin/stock/adjustments/:id`          | `stock.index`                   | The adjustment, what it changed, links |
+| `POST /admin/stock/adjustments/:id/reverse` | `stock.approve` and super admin | Reverse, with `{ reason }`             |
+| `GET /admin/stock/adjustments/:id/pdf`      | `stock.index`                   | The print                              |
 
 ## Opening stock
 

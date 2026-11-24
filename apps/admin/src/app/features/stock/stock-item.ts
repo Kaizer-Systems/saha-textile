@@ -29,9 +29,14 @@ export function movementPill(row: Pick<HistoryRow, 'source' | 'quantityDelta' | 
 }
 
 /** Where a movement's document opens, by its type. */
-export function documentLink(row: Pick<HistoryRow, 'documentType' | 'documentId'>): string[] | null {
+export function documentLink(
+	row: Pick<HistoryRow, 'documentType' | 'documentId'> & Partial<Pick<HistoryRow, 'source'>>,
+): string[] | null {
 	if (!row.documentId) return null;
 	switch (row.documentType) {
+		case 'stock_adjustment':
+			// A write-off or addition has its page (E3); holds and releases have none.
+			return row.source === 'manual_adjustment' ? ['/stock/adjustments', row.documentId] : null;
 		case 'purchase_entry':
 			return ['/purchase-entries', row.documentId];
 		case 'purchase_return':

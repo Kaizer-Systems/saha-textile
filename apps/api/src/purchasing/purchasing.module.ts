@@ -12,6 +12,9 @@ import { PurchaseEntryBuilder } from './purchase-entry-builder';
 import { PurchaseItemsService } from './purchase-items.service';
 import { DocumentsModule } from '../documents/documents.module';
 import { LedgerModule } from '../ledger/ledger.module';
+import { OrdersSetupModule } from '../orders-setup/orders-setup.module';
+import { StockAdjustmentBooks } from './stock-adjustment-books';
+import { StockAdjustmentPages, StockAdjustmentPagesController } from './stock-adjustment-pages';
 import { PurchaseOrderDocument } from './purchase-order-document';
 import { PurchaseOrdersController } from './purchase-orders.controller';
 import { PurchaseOrdersService } from './purchase-orders.service';
@@ -43,7 +46,7 @@ import { SuppliersService } from './suppliers.service';
  * opening stock, reorder and reports. Admin only.
  */
 @Module({
-	imports: [AuthModule, MailboxesModule, MediaModule, DocumentsModule, LedgerModule],
+	imports: [AuthModule, MailboxesModule, MediaModule, DocumentsModule, LedgerModule, OrdersSetupModule],
 	controllers: [
 		SuppliersController,
 		PurchaseItemsController,
@@ -52,6 +55,7 @@ import { SuppliersService } from './suppliers.service';
 		PurchaseReturnsController,
 		PurchasingPrintsController,
 		StockController,
+		StockAdjustmentPagesController,
 		StockCountsController,
 		OpeningStockController,
 		StockReportsController,
@@ -59,6 +63,8 @@ import { SuppliersService } from './suppliers.service';
 		ShopDetailsController,
 	],
 	providers: [
+		StockAdjustmentBooks,
+		StockAdjustmentPages,
 		PurchasingSupport,
 		SuppliersService,
 		PurchaseItemsService,

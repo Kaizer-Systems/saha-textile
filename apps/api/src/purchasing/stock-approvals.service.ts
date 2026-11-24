@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import type { AdjustmentRequest, AdjustmentRequestListQuery } from '@saha-textile/contracts';
 import {
 	type AdjustmentRequestRepository,
@@ -11,6 +11,7 @@ import {
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import { ADJUSTMENT_REQUEST_REPOSITORY } from '../infra/tokens';
 import { PurchasingSupport, actorOf, canSeeCost, missing, refuse } from './purchasing-support';
+import { StockAdjustmentBooks } from './stock-adjustment-books';
 import { StockCountsService } from './stock-counts.service';
 import { REASON_WORDS } from './stock.service';
 import { StockWriter } from './stock-writer';
@@ -27,6 +28,8 @@ export class StockApprovalsService {
 		private readonly writer: StockWriter,
 		private readonly counts: StockCountsService,
 		private readonly support: PurchasingSupport,
+		/** D5: SA numbers and the books (accounts brief E1, E3). */
+		@Optional() @Inject(StockAdjustmentBooks) private readonly adjustmentBooks: StockAdjustmentBooks | null = null,
 	) {}
 
 	async list(query: AdjustmentRequestListQuery, principal: AuthenticatedPrincipal | undefined) {
@@ -85,6 +88,9 @@ export class StockApprovalsService {
 		const requester = request.requestedByName ?? (await this.support.nameOf(request.requestedBy));
 		const decided = await this.support
 			.inTransaction(async (context) => {
+				// D5: approved, it takes its SA number and goes to the books with it (E3).
+				const books = this.adjustmentBooks;
+				const number = books ? await books.number(context) : null;
 				const done = await this.writer.apply(
 					{
 						variantId: request.variantId as string,
@@ -96,13 +102,29 @@ export class StockApprovalsService {
 						note: request.note,
 						referenceType: 'stock_adjustment',
 						referenceId: request.id,
-						referenceNumber: null,
+						referenceNumber: number,
 						actor: request.requestedBy,
 						approver: actor,
 						source: 'manual_adjustment',
 					},
 					context,
 				);
+				const posting = books
+					? await books.posted(
+							{
+								id: request.id,
+								action: request.action as 'remove' | 'add',
+								quantity: request.quantity,
+								reasonCode: request.reasonCode,
+								outcome: request.outcome ?? (request.action === 'remove' ? 'writtenOff' : null),
+								hsnCode: fact.hsnCode,
+								valueINR: done.valueINR,
+							},
+							number as string,
+							context,
+							actor,
+						)
+					: undefined;
 				const next: AdjustmentRequest = {
 					...request,
 					status: 'applied',
@@ -110,6 +132,8 @@ export class StockApprovalsService {
 					decidedByName: name,
 					decidedAt: now,
 					valueAtCostINR: request.action === 'remove' ? done.valueINR : request.valueAtCostINR,
+					...posting,
+					applied: { onHandBefore: done.onHandBefore, onHandAfter: done.onHandAfter, layers: done.layers },
 				};
 				await this.requests.save(next, null, context);
 				await this.support.record(

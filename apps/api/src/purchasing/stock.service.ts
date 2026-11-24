@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import type {
+	AdjustmentOutcome,
 	AdjustmentPreview,
 	AdjustmentRequest,
 	AdjustmentResult,
@@ -48,6 +49,7 @@ import {
 	STOCK_READ_REPOSITORY,
 } from '../infra/tokens';
 import { PurchasingSupport, actorOf, canSeeCost, holds, missing, refuse } from './purchasing-support';
+import { StockAdjustmentBooks } from './stock-adjustment-books';
 import { StockWriter } from './stock-writer';
 
 export const REASON_WORDS: Record<InventoryReasonCode, string> = {
@@ -97,7 +99,21 @@ export class StockService {
 		@Inject(PURCHASE_ORDER_REPOSITORY) private readonly orders: PurchaseOrderRepository,
 		private readonly writer: StockWriter,
 		private readonly support: PurchasingSupport,
+		/** D5: SA numbers and the books (accounts brief E1, E3). */
+		@Optional() @Inject(StockAdjustmentBooks) private readonly adjustmentBooks: StockAdjustmentBooks | null = null,
 	) {}
+
+	/** E1: a removal kept and held as damaged is a hold (still ours, nothing reversed); it never waits. */
+	private normalized(write: StockAdjustmentWrite): StockAdjustmentWrite {
+		return write.action === 'remove' && write.outcome === 'keptDamaged'
+			? { ...write, action: 'hold', holdReason: 'damaged', reasonCode: null }
+			: write;
+	}
+
+	/** D5: what a write-off or addition is (written off unless kept), for its number and the books. */
+	private outcomeOf(write: StockAdjustmentWrite): AdjustmentOutcome | null {
+		return write.action === 'remove' ? (write.outcome ?? 'writtenOff') : null;
+	}
 
 	/** List rows with value, last received and age, from each item's open layers. */
 	private async rows(facts: readonly StockItemFacts[], seeCost: boolean): Promise<StockListRow[]> {
@@ -180,12 +196,13 @@ export class StockService {
 		const seeCost = canSeeCost(principal);
 		const fact = (await this.stock.items([variantId])).get(variantId);
 		if (!fact) throw missing('Item');
-		const [[row], ledger, layers] = await Promise.all([
+		const [rows, ledger, layers] = await Promise.all([
 			this.rows([fact], seeCost),
 			this.stock.ledger({ variantId, page: page.page, pageSize: page.pageSize }),
 			seeCost ? this.stock.layersOf(variantId) : Promise.resolve([]),
 		]);
-		if (!row) throw missing('Item');
+		// One fact in, one row out.
+		const row = rows[0] as StockListRow;
 		const names = await this.support.names(
 			ledger.items.flatMap((entry) => [entry.actorUserId, entry.approverUserId]),
 		);
@@ -245,9 +262,10 @@ export class StockService {
 
 	/** i04: what the change would do, whether it needs approval, and why it cannot happen, before Save. */
 	async preview(
-		write: StockAdjustmentWrite,
+		input: StockAdjustmentWrite,
 		principal: AuthenticatedPrincipal | undefined,
 	): Promise<AdjustmentPreview> {
+		const write = this.normalized(input);
 		const fact = await this.writer.facts(write.variantId);
 		const hold = await this.holdFor(write, fact);
 		const refusal = adjustmentRefusal({
@@ -276,6 +294,21 @@ export class StockService {
 			costBreakdown: canSeeCost(principal) && draw ? draw.breakdown || null : null,
 			needsApproval: adjustmentNeedsApproval(write.action, holds(principal, 'stock.approve')),
 			refusal,
+			posting:
+				this.adjustmentBooks && (write.action === 'remove' || write.action === 'add')
+					? await this.adjustmentBooks
+							.preview({
+								id: '',
+								action: write.action,
+								quantity: write.quantity,
+								reasonCode: write.reasonCode,
+								outcome: this.outcomeOf(write),
+								hsnCode: fact.hsnCode,
+								valueINR: draw?.valueINR ?? 0,
+							})
+							// The tax on the cost shows only to those who may see cost.
+							.then((posting) => (canSeeCost(principal) ? posting : { ...posting, itcINR: null }))
+					: null,
 		};
 	}
 
@@ -299,9 +332,10 @@ export class StockService {
 	 * never wait. A repeated press of Save (same request key) returns the first result.
 	 */
 	async adjust(
-		write: StockAdjustmentWrite,
+		input: StockAdjustmentWrite,
 		principal: AuthenticatedPrincipal | undefined,
 	): Promise<AdjustmentResult> {
+		const write = this.normalized(input);
 		const actor = actorOf(principal);
 		const previous = await this.requests.findByRequestKey(write.requestKey);
 		if (previous) {
@@ -359,6 +393,7 @@ export class StockService {
 			decidedAt: null,
 			rejectReason: null,
 			selfApproved: false,
+			outcome: this.outcomeOf(write),
 		};
 
 		if (adjustmentNeedsApproval(write.action, canApprove)) {
@@ -384,6 +419,9 @@ export class StockService {
 		};
 		const result = await this.support
 			.inTransaction(async (context) => {
+				// D5: a write-off or addition takes its SA number and goes to the books with it (E1, E3).
+				const books = write.action === 'remove' || write.action === 'add' ? this.adjustmentBooks : null;
+				const number = books ? await books.number(context) : null;
 				const done = await this.writer.apply(
 					{
 						variantId: fact.variantId,
@@ -395,17 +433,36 @@ export class StockService {
 						note: write.note,
 						referenceType: 'stock_adjustment',
 						referenceId: applied.id,
-						referenceNumber: null,
+						referenceNumber: number,
 						actor,
 						approver: write.action === 'remove' || write.action === 'add' ? actor : null,
 						source: 'manual_adjustment',
 					},
 					context,
 				);
+				const posting =
+					books && (write.action === 'remove' || write.action === 'add')
+						? await books.posted(
+								{
+									id: applied.id,
+									action: write.action,
+									quantity: write.quantity,
+									reasonCode: write.reasonCode,
+									outcome: this.outcomeOf(write),
+									hsnCode: fact.hsnCode,
+									valueINR: done.valueINR,
+								},
+								number as string,
+								context,
+								actor,
+							)
+						: undefined;
 				const record = {
 					...applied,
 					holdId: done.holdId,
 					valueAtCostINR: write.action === 'remove' ? done.valueINR : applied.valueAtCostINR,
+					...posting,
+					applied: { onHandBefore: done.onHandBefore, onHandAfter: done.onHandAfter, layers: done.layers },
 				};
 				await this.requests.save(record, write.requestKey, context);
 				const freeBefore = done.onHandBefore - done.heldBefore;

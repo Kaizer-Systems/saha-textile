@@ -117,7 +117,9 @@
 								{{ 'reject' | transloco }}
 							</button>
 						</div>
-						} }
+						} } @else if (request.number) {
+						<a [routerLink]="['/stock/adjustments', request.id]">{{ request.number }}</a>
+						}
 					</td>
 				</tr>
 				} @empty {

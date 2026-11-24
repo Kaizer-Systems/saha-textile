@@ -302,6 +302,13 @@ export const StockVariantDetail = z.object({
 });
 export type StockVariantDetail = z.infer<typeof StockVariantDetail>;
 
+/**
+ * Accounts brief E1, for a removal: written off (its input tax credit is reversed, s.17(5)(h)), or kept and held as
+ * damaged (still ours, nothing reversed).
+ */
+export const AdjustmentOutcome = z.enum(['writtenOff', 'keptDamaged']);
+export type AdjustmentOutcome = z.infer<typeof AdjustmentOutcome>;
+
 /** The four things the Adjust window does (i04). */
 export const AdjustmentAction = z.enum(['remove', 'add', 'hold', 'release']);
 export type AdjustmentAction = z.infer<typeof AdjustmentAction>;
@@ -335,6 +342,8 @@ export const StockAdjustmentWrite = z
 		note: NoteText,
 		photoAssetIds: z.array(Id).max(6).default([]),
 		requestKey: z.string().min(8).max(80),
+		/** Accounts brief E1 "What happens to it" for a removal; written off when left out. */
+		outcome: AdjustmentOutcome.optional(),
 	})
 	.superRefine((value, ctx) => {
 		if (value.action === 'remove' || value.action === 'add') {
@@ -354,6 +363,16 @@ export type StockAdjustmentWrite = z.infer<typeof StockAdjustmentWrite>;
 
 export const AdjustmentRequestStatus = z.enum(['pending', 'approved', 'rejected', 'applied']);
 export type AdjustmentRequestStatus = z.infer<typeof AdjustmentRequestStatus>;
+
+/** One cost layer an adjustment drew (a write-off) or made (pieces added), as it was at the time (E3). */
+export const AdjustmentLayer = z.object({
+	quantity: z.number().int(),
+	/** Per stock unit (per piece, or per tenth of a metre), as the cost layers keep it. */
+	unitCostINR: z.number(),
+	/** The document that brought the layer in (OS/…, a purchase entry), or this adjustment's own number. */
+	source: z.string().nullable(),
+});
+export type AdjustmentLayer = z.infer<typeof AdjustmentLayer>;
 
 /** A write-off or addition waiting for someone with `stock.approve` (P2), or one applied. */
 export const AdjustmentRequest = z.object({
@@ -392,6 +411,27 @@ export const AdjustmentRequest = z.object({
 	decidedAt: IsoDateTime.nullable(),
 	rejectReason: z.string().nullable(),
 	selfApproved: z.boolean(),
+	/*
+	 * Accounts brief D5 (E1, E3), left out on adjustments made before it: the SA number taken when posted, what
+	 * happened to removed pieces, the input tax reversed and its journal voucher, and the reversal links.
+	 */
+	number: z.string().nullable().optional(),
+	outcome: AdjustmentOutcome.nullable().optional(),
+	itcReversedINR: z.number().nullable().optional(),
+	journalNumber: z.string().nullable().optional(),
+	/** The adjustment this one reverses, and the one that reversed this. */
+	reverses: Id.nullable().optional(),
+	reversedBy: Id.nullable().optional(),
+	reversedAt: IsoDateTime.nullable().optional(),
+	/** What applying it did to the stock (E3 "What it changed"): on hand before and after, and the cost layers. */
+	applied: z
+		.object({
+			onHandBefore: z.number().int(),
+			onHandAfter: z.number().int(),
+			layers: z.array(AdjustmentLayer),
+		})
+		.nullable()
+		.optional(),
 });
 export type AdjustmentRequest = z.infer<typeof AdjustmentRequest>;
 
@@ -412,8 +452,39 @@ export const AdjustmentPreview = z.object({
 	needsApproval: z.boolean(),
 	/** Why it cannot go ahead (free-to-sell below paid orders, not enough held…), or null. */
 	refusal: z.string().nullable(),
+	/** E1's note: the SA number it takes when posted, and for a write-off the input tax reversed and its voucher. */
+	posting: z
+		.object({ number: z.string(), itcINR: z.number().nullable(), journalNumber: z.string().nullable() })
+		.nullable()
+		.optional(),
 });
 export type AdjustmentPreview = z.infer<typeof AdjustmentPreview>;
+
+/** Accounts brief E3: a posted adjustment with what it changed. */
+export const AdjustmentDetail = z.object({
+	request: AdjustmentRequest,
+	whatChanged: z.object({
+		ledger: z
+			.object({ change: z.number().int(), onHandBefore: z.number().int(), onHandAfter: z.number().int() })
+			.nullable(),
+		layers: z.array(AdjustmentLayer),
+		/** Value at cost and the input tax reversed: null without `stock.cost`. */
+		valueINR: z.number().nullable(),
+		itc: z.object({ amountINR: z.number().nullable(), journalNumber: z.string().nullable() }).nullable(),
+	}),
+	/** The adjustment this one reverses, and the one that reversed it (the edit log names both). */
+	reverses: z.object({ id: Id, number: z.string().nullable() }).nullable(),
+	reversedBy: z.object({ id: Id, number: z.string().nullable(), byName: z.string().nullable() }).nullable(),
+	/** Reverse shows for a super admin on a posted adjustment nobody has reversed (and that reverses nothing). */
+	canReverse: z.boolean(),
+	/** The SA number Reverse would take (not taken), when it may be reversed. */
+	reverseNumber: z.string().nullable(),
+});
+export type AdjustmentDetail = z.infer<typeof AdjustmentDetail>;
+
+/** E3 Reverse (super admin): an opposite adjustment, with why. */
+export const AdjustmentReverseWrite = z.object({ reason: NoteText });
+export type AdjustmentReverseWrite = z.infer<typeof AdjustmentReverseWrite>;
 
 export const AdjustmentDecision = z.object({ reason: NoteText.default('') });
 export type AdjustmentDecision = z.infer<typeof AdjustmentDecision>;

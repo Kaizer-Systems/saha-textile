@@ -60,6 +60,16 @@ export class DocumentNumbersService {
 		return renderSeriesNumber(format, financialYear, sequence);
 	}
 
+	/** The number the next document of a series would get, without taking it (accounts brief E1's note). */
+	async preview(type: NumberedDocumentType, at = new Date(), scope?: string): Promise<string> {
+		const settings = await this.numbering.get();
+		const format = settings.series[type];
+		const financialYear = fiscalYearOf(istDay(at));
+		const counter = `${PURCHASE_COUNTERS[type] ?? `doc:${type}`}${scope ? `@${scope}` : ''}`;
+		const sequence = await this.allocator.peek(counter, format.reset === 'fy' ? financialYear : 'all');
+		return renderSeriesNumber(format, financialYear, sequence);
+	}
+
 	/**
 	 * A new order number in the current format (OD18 Final: `ST-YYMM-NNNNNN`, the IST year and month the
 	 * record is created, then crypto-random digits). Uniqueness is the order's unique index on the

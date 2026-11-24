@@ -124,6 +124,12 @@ Replaced or unreachable once bundles moved to the bundle builder (brief UE6GxSvK
 | --- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | LO1 | Turning a Stores page entry into a location (`locationFromStore`, `placeFromAddress`, `shortCodeFor`) and their tests | `packages/core-domain/src/locations/location-rules.ts`, `packages/core-domain/test/location-rules.test.ts` | Owner, 2026-11-23: the Stores page lists shops of a separate company, so nothing turns them into this business's locations |
 
+## Accounts books set-up (2026-11-24)
+
+| #   | Piece                                                                                                         | Files                                                                                                       | Why unused                                                                                                                                             |
+| --- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| AB1 | Recording books seeded before templates as installed (`AccountsTemplatesService.recordInstalls`) and its test | `apps/api/src/accounts-templates/accounts-templates.service.ts`, `apps/api/test/accounts-templates.test.ts` | a0c7dab8: a chart read no longer sets the books up; only Settings › Company "Save and set up the books" does, and existing books were recorded already |
+
 ## Inbox redesign (2026-11-24)
 
 The approved pictures replaced these on screen; the code that is still there waits for this pass.

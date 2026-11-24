@@ -10,6 +10,7 @@ import { NO_PAGE_COVER } from '@core/interceptors/loader.interceptor';
 import { QUIET, queryParams } from './purchasing.gateway';
 
 import type {
+	AdjustmentDetail,
 	AdjustmentPreview,
 	AdjustmentRequest,
 	AdjustmentRequestListQuery,
@@ -64,6 +65,7 @@ export const STOCK_KEYS = {
 	stock: ['stock'] as const,
 	held: ['stock', 'held'] as const,
 	approvals: ['stock', 'approvals'] as const,
+	adjustment: (id: string) => ['stock', 'adjustments', id] as const,
 	counts: ['stock-counts'] as const,
 	alerts: ['stock', 'alerts'] as const,
 	reports: ['stock-reports'] as const,
@@ -239,6 +241,26 @@ export class StockGateway {
 	}
 
 	/* opening stock */
+	/* posted adjustments (accounts brief D5, E3) */
+
+	adjustment(id: string): Observable<AdjustmentDetail> {
+		return this.http.get<AdjustmentDetail>(this.api(`stock/adjustments/${this.id(id)}`));
+	}
+
+	/** Super admin: the opposite adjustment and a reversing voucher; the original is marked reversed. */
+	reverseAdjustment(id: string, reason: string): Observable<AdjustmentRequest> {
+		return this.http.post<AdjustmentRequest>(
+			this.api(`stock/adjustments/${this.id(id)}/reverse`),
+			{ reason },
+			QUIET,
+		);
+	}
+
+	/** A stock adjustment on its document format. */
+	adjustmentPdf(id: string): Observable<Blob> {
+		return this.http.get(this.api(`stock/adjustments/${encodeURIComponent(id)}/pdf`), { responseType: 'blob' });
+	}
+
 	/** The stock count sheet (expected figures only where this person may see them), on its document format. */
 	countSheetPdf(id: string): Observable<Blob> {
 		return this.http.get(this.api(`stock-counts/${encodeURIComponent(id)}/sheet-pdf`), { responseType: 'blob' });

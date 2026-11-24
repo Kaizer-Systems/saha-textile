@@ -1,6 +1,8 @@
 import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
 import type {
+	AdjustmentOutcome,
 	BusinessReceiptWrite,
+	InventoryReasonCode,
 	MoneyLanding,
 	Order,
 	OrderPayment,
@@ -9,15 +11,19 @@ import type {
 	SupplierPayment,
 } from '@saha-textile/contracts';
 import {
+	adjustmentInputTaxINR,
 	bankLanding,
 	billTotals,
 	defaultStockLocation,
+	inputTaxReversalPosting,
 	istDay,
 	purchaseEntryPosting,
 	purchaseReturnPosting,
 	receiptLanding,
 	receiptPosting,
 	resolveRole,
+	reversesInputTax,
+	stockAdjustmentPosting,
 	supplierPaymentFrom,
 	supplierPaymentPosting,
 	supplierRefundPosting,
@@ -109,6 +115,74 @@ export class BooksPostingService {
 			context,
 			by,
 		);
+	}
+
+	/** Whether documents post to the books now (they do once the books are set up, Settings › Company). */
+	willPost(): Promise<boolean> {
+		return this.templates.booksSetUp();
+	}
+
+	/**
+	 * Accounts brief D5: a posted stock adjustment in one journal voucher (posting rules, "Stock lost, damaged and written
+	 * off"): its value between stock loss and stock in hand, and for a write-off for a loss reason its input tax taken
+	 * back (s.17(5)(h), D9). Returns the voucher's number and the tax reversed; nothing before the books are set up.
+	 */
+	async stockAdjusted(
+		adjustment: {
+			id: string;
+			number: string;
+			action: 'remove' | 'add';
+			outcome: AdjustmentOutcome | null | undefined;
+			reasonCode: InventoryReasonCode | null;
+			valueINR: number;
+			ratePercent: number;
+			at: string;
+		},
+		context: TransactionContext,
+		by: string | null,
+	): Promise<{ journalNumber: string | null; itcINR: number | null }> {
+		if (!(await this.templates.booksSetUp())) return { journalNumber: null, itcINR: null };
+		const itcINR = reversesInputTax(adjustment.action, adjustment.outcome, adjustment.reasonCode)
+			? adjustmentInputTaxINR(adjustment.valueINR, adjustment.ratePercent)
+			: null;
+		const rows = [
+			...stockAdjustmentPosting(adjustment.action, adjustment.valueINR),
+			...inputTaxReversalPosting(itcINR ?? 0),
+		].map(({ role, ...amounts }) => ({ ledger: { role }, ...amounts }));
+		if (!rows.length) return { journalNumber: null, itcINR };
+		const voucher = await this.post(
+			rows,
+			{
+				date: istDay(new Date(adjustment.at)),
+				narration: `Stock adjustment ${adjustment.number}${itcINR ? '; input tax reversed, s.17(5)(h)' : ''}`,
+				source: { type: 'stockAdjustment', id: adjustment.id, number: adjustment.number },
+				key: `stockAdjustment:${adjustment.id}`,
+			},
+			await this.stockLocation(),
+			context,
+			by,
+		);
+		return { journalNumber: voucher.number, itcINR };
+	}
+
+	/** E3 Reverse: the adjustment's voucher reversed on the day (nothing when it never posted). */
+	async stockAdjustmentReversed(
+		adjustment: { id: string; number: string; reversalId: string; reversalNumber: string; at: string },
+		context: TransactionContext,
+		by: string | null,
+	) {
+		const voucher = await this.reverse(
+			`stockAdjustment:${adjustment.id}`,
+			{
+				date: istDay(new Date(adjustment.at)),
+				narration: `Reversal of stock adjustment ${adjustment.number} by ${adjustment.reversalNumber}`,
+				source: { type: 'stockAdjustment', id: adjustment.reversalId, number: adjustment.reversalNumber },
+				key: `stockAdjustment:${adjustment.id}:reversed`,
+			},
+			context,
+			by,
+		);
+		return voucher?.number ?? null;
 	}
 
 	/** The opposite of what a document posted, once; nothing when it never posted (saved before the books took it). */

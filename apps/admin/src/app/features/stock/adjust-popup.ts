@@ -14,6 +14,7 @@ import { FmPicker, type FmPicked } from '@features/media/file-manager/fm-picker'
 import { parseQuantity } from '@features/purchasing/shared/variant-grid';
 
 import type {
+	AdjustmentOutcome,
 	AdjustmentPreview,
 	AdjustmentResult,
 	HoldReason,
@@ -36,6 +37,8 @@ export const ADJUST_REASONS: Readonly<Record<'remove' | 'add', readonly Inventor
 	],
 	add: ['manual_recount_correction', 'system_migration_correction', 'other'],
 };
+/** E1 "What happens to it" for removed pieces (accounts brief D5). */
+export const ADJUST_OUTCOMES: readonly AdjustmentOutcome[] = ['writtenOff', 'keptDamaged'];
 export const HOLD_REASONS: readonly HoldReason[] = [
 	'waiting_for_supplier',
 	'photoshoot',
@@ -94,6 +97,9 @@ export class AdjustPopup {
 	readonly busy = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly holdReasons = HOLD_REASONS;
+	readonly outcomes = ADJUST_OUTCOMES;
+	/** E1: removed pieces are written off (input tax reversed) or kept, held as damaged (a hold, never waits). */
+	readonly outcome = signal<AdjustmentOutcome>('writtenOff');
 	private readonly key = requestKey('adjust');
 	private readonly changes = new Subject<StockAdjustmentWrite | null>();
 
@@ -116,7 +122,11 @@ export class AdjustPopup {
 		const parsed = parseQuantity(this.quantity(), row.soldBy);
 		return parsed && 'units' in parsed ? parsed.units : null;
 	});
-	readonly needsApproval = computed(() => adjustmentNeedsApproval(this.action(), this.canApprove()));
+	/** What the server will do: pieces kept as damaged are a hold. */
+	readonly effectiveAction = computed<AdjustAction>(() =>
+		this.action() === 'remove' && this.outcome() === 'keptDamaged' && !this.holdId() ? 'hold' : this.action(),
+	);
+	readonly needsApproval = computed(() => adjustmentNeedsApproval(this.effectiveAction(), this.canApprove()));
 	readonly problem = computed(() =>
 		adjustProblem({
 			action: this.action(),
@@ -176,6 +186,8 @@ export class AdjustPopup {
 			reasonCode: action === 'remove' || action === 'add' ? this.reason() : null,
 			holdReason: action === 'hold' ? this.holdReason() : null,
 			holdId: action === 'release' || action === 'remove' ? this.holdId() : null,
+			// Pieces already held are written off; only free pieces can be kept as damaged.
+			...(action === 'remove' ? { outcome: this.holdId() ? 'writtenOff' : this.outcome() } : {}),
 			note: this.note().trim(),
 			photoAssetIds: this.photos().map((photo) => photo.assetId),
 			requestKey: this.key,
@@ -185,6 +197,11 @@ export class AdjustPopup {
 	changed(): void {
 		this.error.set(null);
 		this.changes.next(this.problem() === 'adjust_note_required' || !this.problem() ? this.body() : null);
+	}
+
+	setOutcome(outcome: AdjustmentOutcome): void {
+		this.outcome.set(outcome);
+		this.changed();
 	}
 
 	async addPhotos(): Promise<void> {
@@ -206,7 +223,7 @@ export class AdjustPopup {
 
 	/** The button says what happens (i04b): "Ask for approval", "Write off 2 now", "Move 1 to held"… */
 	buttonKey(): string {
-		const action = this.action();
+		const action = this.effectiveAction();
 		if ((action === 'remove' || action === 'add') && this.needsApproval()) return 'ask_for_approval';
 		return `adjust_do_${action}`;
 	}

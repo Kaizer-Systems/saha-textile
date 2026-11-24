@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { Inject, Injectable, Optional } from '@nestjs/common';
-import type { InventoryReasonCode } from '@saha-textile/contracts';
+import type { AdjustmentLayer, InventoryReasonCode } from '@saha-textile/contracts';
 import {
 	type InventoryCostLayerRepository,
 	type SearchOutboxRepository,
@@ -41,6 +41,8 @@ export interface StockChange {
 	approver: string | null;
 	/** A count correction is its own movement source; everything else is a manual adjustment. */
 	source: 'manual_adjustment' | 'stock_count';
+	/** Pieces added back by a reversal come in at the cost they left at, not the latest known cost (D5). */
+	unitCostINR?: number | null;
 }
 
 export interface StockChangeResult {
@@ -51,6 +53,8 @@ export interface StockChangeResult {
 	valueINR: number;
 	breakdown: string;
 	holdId: string | null;
+	/** The cost layers drawn (a removal, oldest first) or made (an addition); none for holds (E3). */
+	layers: AdjustmentLayer[];
 }
 
 /**
@@ -83,7 +87,15 @@ export class StockWriter {
 	/** The value of `quantity` units at cost and the sentence for it ("1 at ₹8,600 + 1 at ₹9,295.61"). */
 	async valueOf(fact: StockItemFacts, quantity: number) {
 		const open = await this.stock.openLayers([fact.variantId]);
-		return fifoDraw(open, quantity, fact.soldBy);
+		const draw = fifoDraw(open, quantity, fact.soldBy);
+		const sources = new Map(open.map((layer) => [layer.id, layer.sourceNumber]));
+		// Every part is drawn from one of these open layers.
+		const layers = draw.parts.map((part) => ({
+			quantity: part.quantity,
+			unitCostINR: part.unitCostINR,
+			source: sources.get(part.layerId) as string | null,
+		}));
+		return { ...draw, layers };
 	}
 
 	async apply(change: StockChange, context: TransactionContext): Promise<StockChangeResult> {
@@ -94,6 +106,7 @@ export class StockWriter {
 		let holdId: string | null = change.holdId;
 		let valueINR = 0;
 		let breakdown = '';
+		let layers: AdjustmentLayer[] = [];
 
 		if (change.action === 'remove') {
 			quantityDelta = -change.quantity;
@@ -103,12 +116,13 @@ export class StockWriter {
 			for (const part of draw.parts) await this.movement.consumeLayer(part.layerId, part.quantity, context);
 			valueINR = draw.valueINR;
 			breakdown = draw.breakdown;
+			layers = draw.layers;
 		} else if (change.action === 'add') {
 			quantityDelta = change.quantity;
 			// Found pieces carry the latest cost we know for the item, so stock value stays honest.
 			const known = await this.stock.layersOf(change.variantId);
 			const latest = [...known].sort((a, b) => b.receivedAt.localeCompare(a.receivedAt))[0];
-			const unitCostINR = latest?.unitCostINR ?? 0;
+			const unitCostINR = change.unitCostINR ?? latest?.unitCostINR ?? 0;
 			await this.layers.createLayer(
 				{
 					id: `lay_${randomUUID()}`,
@@ -125,6 +139,7 @@ export class StockWriter {
 				context,
 			);
 			valueINR = Math.round(change.quantity * unitCostINR * 100) / 100;
+			layers = [{ quantity: change.quantity, unitCostINR, source: change.referenceNumber }];
 		} else if (change.action === 'hold') {
 			heldDelta = change.quantity;
 		} else {
@@ -194,6 +209,7 @@ export class StockWriter {
 			valueINR,
 			breakdown,
 			holdId,
+			layers,
 		};
 	}
 

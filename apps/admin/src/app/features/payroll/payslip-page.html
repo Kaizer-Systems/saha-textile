@@ -1,0 +1,99 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'payroll_payslip'"
+>
+	<div class="d-flex justify-content-between align-items-center d-print-none mb-3">
+		<a routerLink="/payroll/runs">{{ 'payroll_back_to_run' | transloco }}</a>
+		<button
+			type="button"
+			class="btn btn-outline"
+			id="payslip_print"
+			[title]="'print_document' | transloco"
+			(click)="print()"
+		>
+			<i class="ri-printer-line"></i>
+			{{ 'print_document' | transloco }}
+		</button>
+	</div>
+	@if (payslip.data(); as p) {
+	<div class="row g-3">
+		<div class="col-xl-8">
+			<div class="card">
+				<div class="card-body">
+					<div class="d-flex justify-content-between border-bottom mb-3 flex-wrap gap-2 pb-2">
+						<div>
+							<h5 class="mb-0">{{ p.company }}</h5>
+							<small class="text-muted">
+								{{ 'payroll_payslip_for' | transloco: { month: monthText() } }}
+							</small>
+						</div>
+						<div class="text-end">
+							<b>{{ p.name }}</b>
+							<small class="d-block text-muted">
+								@if (p.code) { {{ p.code }} · } {{ p.location }} @if (p.uan) { · UAN {{ p.uan }} }
+							</small>
+						</div>
+					</div>
+					<div class="row g-3">
+						<div class="col-md-6">
+							<h6>{{ 'payroll_earnings' | transloco }}</h6>
+							<table class="mb-0 table">
+								<tbody>
+									@for (e of p.earnings; track e.head) {
+									<tr>
+										<td>{{ 'payroll_head_' + e.head | transloco }}</td>
+										<td class="text-end text-nowrap">{{ money(e.paise) }}</td>
+									</tr>
+									}
+									<tr class="fw-semibold">
+										<td>
+											{{ 'payroll_gross_days' | transloco: { paid: p.paidDays, days: p.daysInMonth
+											} }}
+										</td>
+										<td class="text-end text-nowrap">{{ money(p.grossPaise) }}</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+						<div class="col-md-6">
+							<h6>{{ 'payroll_deductions' | transloco }}</h6>
+							<table class="mb-0 table">
+								<tbody>
+									@for (d of p.deductions; track d.key) {
+									<tr>
+										<td>
+											@switch (d.key) { @case ('pf') { {{ 'payroll_deduct_pf' | transloco: {
+											wages: money(d.wagesPaise ?? 0) } }} } @case ('advance') { @if (d.recovery;
+											as r) { {{ 'payroll_deduct_advance_n' | transloco: { n: r.n, of: r.of } }} }
+											@else { {{ 'payroll_deduct_advance' | transloco }} } } @default { {{
+											'payroll_deduct_' + d.key | transloco }} } }
+										</td>
+										<td class="text-end text-nowrap">{{ money(d.paise) }}</td>
+									</tr>
+									}
+									<tr class="fw-semibold">
+										<td>{{ 'payroll_total' | transloco }}</td>
+										<td class="text-end text-nowrap">{{ money(p.totalDeductionsPaise) }}</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+					<div class="d-flex justify-content-between border-top mt-3 pt-2">
+						<b>{{ 'payroll_net_pay' | transloco }}</b>
+						<b class="text-nowrap">{{ money(p.netPaise) }}</b>
+					</div>
+					<small class="d-block text-muted">
+						{{ p.netWords }} @if (p.paidTo && p.paidOn) { · {{ 'payroll_paid_to' | transloco: { bank:
+						p.paidTo.bank, last4: p.paidTo.last4, date: day(p.paidOn) } }} }
+					</small>
+					<small class="d-block text-muted mt-2">
+						{{ 'payroll_rules_used' | transloco: { from: day(p.rulesFrom), schemes: day(p.schemesFrom ??
+						p.rulesFrom) } }}
+					</small>
+				</div>
+			</div>
+		</div>
+	</div>
+	}
+</app-page-wrapper>

@@ -13,6 +13,8 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
+import { currentMonth } from './attendance-page';
+
 import type { EmployeeView, EmployeeWriteInput, SalaryStructureWrite } from '@saha-textile/contracts';
 
 export const STRUCTURE_HEADS = ['basic', 'da', 'hra', 'special', 'conveyance', 'other'] as const;
@@ -97,6 +99,16 @@ export class EmployeesPage {
 		queryKey: LOCATION_KEYS.list,
 		queryFn: () => firstValueFrom(this.locationsGateway.list()),
 	}));
+	readonly schemes = injectQuery(() => ({
+		queryKey: PAYROLL_KEYS.schemes(currentMonth()),
+		queryFn: () => firstValueFrom(this.gateway.schemes(currentMonth())),
+	}));
+	readonly templates = injectQuery(() => ({
+		queryKey: PAYROLL_KEYS.structures,
+		queryFn: () => firstValueFrom(this.gateway.structures()),
+	}));
+	readonly templateId = signal('');
+	readonly templatePay = signal(0);
 	readonly editing = signal<EmployeeView | null>(null);
 	readonly form = signal<EmployeeWriteInput>(blank());
 	readonly busy = signal(false);
@@ -124,6 +136,20 @@ export class EmployeesPage {
 
 	patchStructure(head: (typeof STRUCTURE_HEADS)[number], value: number): void {
 		this.form.update((f) => ({ ...f, structure: { ...f.structure, [head]: value } }));
+	}
+
+	/** S4: fill the structure from a template on the pay typed. */
+	async applyTemplate(): Promise<void> {
+		const template = this.templates.data()?.find((t) => t.id === this.templateId());
+		if (!template) return;
+		try {
+			const preview = await firstValueFrom(
+				this.gateway.previewStructure({ components: template.components, payINR: this.templatePay() }),
+			);
+			this.form.update((f) => ({ ...f, structure: { ...f.structure, ...preview.structure } }));
+		} catch (error) {
+			this.notifier.showError(this.transloco.translate(`payroll_problem_${apiProblem(error, 'failed')}`));
+		}
 	}
 
 	async save(): Promise<void> {

@@ -66,6 +66,44 @@
 			</tbody>
 		</table>
 	</div>
+	<h6 class="mt-4 mb-1">{{ 'payroll_schemes_title' | transloco }}</h6>
+	<small class="text-muted d-block mb-2">{{ 'payroll_schemes_sub' | transloco }}</small>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'payroll_col_scheme' | transloco }}</th>
+					<th>{{ 'payroll_col_starts_at' | transloco }}</th>
+					<th>{{ 'payroll_col_you_have' | transloco }}</th>
+					<th>{{ 'payroll_col_status' | transloco }}</th>
+					<th>{{ 'payroll_col_next_step' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (l of schemes.data() ?? []; track l.scheme) {
+				<tr>
+					<td>{{ 'payroll_scheme_' + l.scheme | transloco }}</td>
+					<td>
+						@if (l.startsAt === null) { {{ 'payroll_scheme_any_staff' | transloco }} } @else { {{
+						'payroll_scheme_starts' | transloco: { n: l.startsAt } }} }
+					</td>
+					<td>
+						@if (l.eligible === null) { {{ l.headcount }} } @else { {{ 'payroll_scheme_have_eligible' |
+						transloco: { n: l.headcount, eligible: l.eligible } }} }
+					</td>
+					<td>
+						<span class="badge bg-light text-dark border">
+							{{ 'payroll_scheme_status_' + l.status | transloco }}
+						</span>
+					</td>
+					<td>
+						{{ 'payroll_scheme_next_' + l.scheme + '_' + l.status | transloco: { n: l.eligible ?? 0 } }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
 	<ng-template
 		#employeeModal
 		let-modal
@@ -303,6 +341,40 @@
 				</div>
 			</div>
 			<span class="form-label-title d-block mt-3">{{ 'payroll_structure' | transloco }}</span>
+			@if (templates.data()?.length) {
+			<div class="d-flex align-items-center mb-2 flex-wrap gap-2">
+				<select
+					class="form-select w-auto"
+					id="emp_template"
+					[attr.aria-label]="'payroll_apply_structure' | transloco"
+					[ngModel]="templateId()"
+					(ngModelChange)="templateId.set($event)"
+				>
+					<option value="">{{ 'payroll_apply_structure' | transloco }}</option>
+					@for (t of templates.data() ?? []; track t.id) {
+					<option [value]="t.id">{{ t.name }}</option>
+					}
+				</select>
+				<input
+					class="form-control w-auto"
+					id="emp_template_pay"
+					type="number"
+					min="0"
+					[attr.aria-label]="'payroll_monthly_pay' | transloco"
+					[placeholder]="'payroll_monthly_pay' | transloco"
+					[ngModel]="templatePay()"
+					(ngModelChange)="templatePay.set(+$event)"
+				/>
+				<button
+					type="button"
+					class="btn btn-sm btn-outline"
+					[disabled]="!templateId() || templatePay() <= 0"
+					(click)="applyTemplate()"
+				>
+					{{ 'payroll_apply' | transloco }}
+				</button>
+			</div>
+			}
 			<div class="row g-2">
 				@for (h of heads; track h) {
 				<div class="col-md-2">

@@ -80,6 +80,11 @@ export default [
 		loadComponent: () => import('./cash-boxes/cash-boxes').then((m) => m.CashBoxesSettings),
 	},
 	{
+		// Payroll rules as dated versions (accounts brief S1).
+		path: 'payroll-rules',
+		loadComponent: () => import('@features/payroll/payroll-rules-page').then((m) => m.PayrollRulesPage),
+	},
+	{
 		// Accounts templates AT2 (owner-approved 2026-11-24).
 		path: 'accounts-templates',
 		loadComponent: () =>

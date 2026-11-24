@@ -1,0 +1,244 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'payroll_advances'"
+>
+	@if (employeeId()) { @if (one.data(); as a) {
+	<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">
+				{{ 'payroll_advance_title' | transloco: { name: a.name } }}
+				<span class="badge bg-light text-dark ms-1 border">
+					{{ 'payroll_advance_' + state(a) | transloco }}
+				</span>
+			</h5>
+			<small class="text-muted">
+				@for (g of a.given; track g.id) { {{ 'payroll_advance_given_line' | transloco: { amount:
+				money(g.amountPaise), date: day(g.givenOn) } }} · } {{ 'payroll_advance_per_month_line' | transloco: {
+				amount: money(a.perMonthPaise) } }}
+			</small>
+		</div>
+		<div class="d-flex gap-2">
+			<a
+				class="btn btn-outline"
+				routerLink="/payroll/advances"
+			>
+				{{ 'payroll_all_advances' | transloco }}
+			</a>
+			<button
+				*hasPermission="'accounts.post'"
+				type="button"
+				class="btn btn-theme"
+				(click)="open(giveModal)"
+			>
+				{{ 'payroll_give_advance' | transloco }}
+			</button>
+		</div>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'payroll_col_month' | transloco }}</th>
+					<th>{{ 'payroll_col_recovered' | transloco }}</th>
+					<th>{{ 'payroll_col_left' | transloco }}</th>
+					<th>{{ 'payroll_col_how' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (r of a.rows; track r.month) {
+				<tr>
+					<td>{{ month(r.month) }}</td>
+					<td class="text-nowrap">{{ money(r.recoveredPaise) }}</td>
+					<td class="text-nowrap">{{ money(r.leftPaise) }}</td>
+					<td>@if (r.how === 'none') { — } @else { {{ 'payroll_how_' + r.how | transloco }} }</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<small class="text-muted d-block mt-2">{{ 'payroll_advance_note' | transloco }}</small>
+	} } @else {
+	<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+		<h5 class="mb-0">{{ 'payroll_advances' | transloco }}</h5>
+		<button
+			*hasPermission="'accounts.post'"
+			type="button"
+			class="btn btn-theme"
+			(click)="open(giveModal)"
+		>
+			{{ 'payroll_give_advance' | transloco }}
+		</button>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'payroll_col_employee' | transloco }}</th>
+					<th>{{ 'payroll_col_given' | transloco }}</th>
+					<th>{{ 'payroll_col_left' | transloco }}</th>
+					<th>{{ 'payroll_advance_month' | transloco }}</th>
+					<th>{{ 'payroll_col_status' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (a of list.data() ?? []; track a.employeeId) {
+				<tr>
+					<td><a [routerLink]="['/payroll/advances', a.employeeId]">{{ a.name }}</a></td>
+					<td class="text-nowrap">{{ money(given(a)) }}</td>
+					<td class="text-nowrap">{{ money(a.leftPaise) }}</td>
+					<td class="text-nowrap">{{ money(a.perMonthPaise) }}</td>
+					<td>
+						<span class="badge bg-light text-dark border">
+							{{ 'payroll_advance_' + state(a) | transloco }}
+						</span>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="5"
+						class="text-muted"
+					>
+						{{ 'payroll_advances_none' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	}
+	<ng-template
+		#giveModal
+		let-modal
+	>
+		@let f = form();
+		<div class="modal-header">
+			<h5 class="modal-title">{{ 'payroll_give_advance' | transloco }}</h5>
+			<button
+				type="button"
+				class="btn-close"
+				[attr.aria-label]="'close' | transloco"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			<label
+				class="form-label-title"
+				for="adv_emp"
+			>
+				{{ 'payroll_col_employee' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="adv_emp"
+				[ngModel]="f.employeeId"
+				(ngModelChange)="patch({ employeeId: $event })"
+			>
+				<option value="">—</option>
+				@for (e of staff(); track e.id) {
+				<option [value]="e.id">{{ e.name }}</option>
+				}
+			</select>
+			<div class="row g-3 mt-1">
+				<div class="col-sm-6">
+					<label
+						class="form-label-title"
+						for="adv_amount"
+					>
+						{{ 'payroll_advance_amount' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="adv_amount"
+						type="number"
+						min="1"
+						[ngModel]="f.amountINR"
+						(ngModelChange)="patch({ amountINR: +$event })"
+					/>
+				</div>
+				<div class="col-sm-6">
+					<label
+						class="form-label-title"
+						for="adv_on"
+					>
+						{{ 'payroll_advance_given_on' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="adv_on"
+						type="date"
+						[ngModel]="f.givenOn"
+						(ngModelChange)="patch({ givenOn: $event })"
+					/>
+				</div>
+				<div class="col-sm-6">
+					<label
+						class="form-label-title"
+						for="adv_from"
+					>
+						{{ 'payroll_paid_from' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="adv_from"
+						[ngModel]="f.ledgerId"
+						(ngModelChange)="patch({ ledgerId: $event })"
+					>
+						<option value="">—</option>
+						@for (b of banks(); track b.id) {
+						<option [value]="b.id">{{ b.name }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-sm-6">
+					<label
+						class="form-label-title"
+						for="adv_month"
+					>
+						{{ 'payroll_advance_month' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="adv_month"
+						type="number"
+						min="0"
+						[ngModel]="f.perMonthINR"
+						(ngModelChange)="patch({ perMonthINR: +$event })"
+					/>
+				</div>
+			</div>
+			<label
+				class="form-label-title mt-3"
+				for="adv_note"
+			>
+				{{ 'payroll_note' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="adv_note"
+				maxlength="200"
+				[ngModel]="f.note"
+				(ngModelChange)="patch({ note: $event })"
+			/>
+			<small class="text-muted d-block mt-2">{{ 'payroll_advance_posting' | transloco }}</small>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				[disabled]="busy() || !f.employeeId || !f.ledgerId || f.amountINR <= 0"
+				(click)="give()"
+			>
+				{{ 'payroll_give_advance' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+</app-page-wrapper>

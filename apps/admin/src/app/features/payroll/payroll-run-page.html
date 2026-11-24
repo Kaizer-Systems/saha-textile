@@ -129,7 +129,14 @@
 							<tbody>
 								@for (row of r?.rows ?? []; track row.employeeId) {
 								<tr>
-									<td>{{ row.name }}</td>
+									<td>
+										<a
+											[routerLink]="['/payroll/runs', month(), 'payslips', row.employeeId]"
+											[title]="'payroll_payslip' | transloco"
+										>
+											{{ row.name }}
+										</a>
+									</td>
 									<td>{{ locationName(row.locationId) }}</td>
 									<td>{{ row.paidDays }}</td>
 									<td class="text-nowrap">{{ money(row.grossPaise) }}</td>

@@ -367,7 +367,10 @@ export class BooksPostingService {
 		if (!(await this.templates.booksSetUp())) return null;
 		if (!CAME_IN.has(payment.state)) return null;
 		const work = async () => {
-			const landed = await this.lands((landing) => receiptLanding(payment.method, landing));
+			// A counter payment knows where it landed (its cash box, the UPI and card clearing).
+			const landed = payment.ledgerId
+				? { id: payment.ledgerId }
+				: await this.lands((landing) => receiptLanding(payment.method, landing));
 			if (!landed) return null;
 			const locationId = order.shipsFromLocationId ?? (await this.stockLocation());
 			return this.post(

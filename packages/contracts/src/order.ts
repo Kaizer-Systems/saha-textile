@@ -79,7 +79,8 @@ export const OrderPaymentStatus = z.enum([
 ]);
 export type OrderPaymentStatus = z.infer<typeof OrderPaymentStatus>;
 
-export const OrderChannel = z.enum(['shop', 'admin']);
+/** `counter`: sold over a store's counter (accounts brief P). */
+export const OrderChannel = z.enum(['shop', 'admin', 'counter']);
 export type OrderChannel = z.infer<typeof OrderChannel>;
 
 export const OrderLineAddon = z.object({

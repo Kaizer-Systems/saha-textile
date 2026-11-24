@@ -177,6 +177,21 @@ export class InvoicesService {
 		return this.tx.withTransaction((context) => this.issue(order, lineIds, null, actorId, at, context));
 	}
 
+	/**
+	 * A counter sale (accounts brief P2): the goods leave at once, so every line is invoiced now, in the sale's own
+	 * transaction. Refused while the tax invoices switch is off: a counter sale can't go without its invoice.
+	 */
+	async issueAtCounter(
+		order: Order,
+		actorId: string | null,
+		at: string,
+		context: TransactionContext,
+	): Promise<TaxInvoice> {
+		if (!(await this.enabled())) throw new BadRequestException(accountsRefusal('tax_invoices_off'));
+		const lineIds = order.lines.flatMap((line) => (line.lineId && line.role !== 'bundle' ? [line.lineId] : []));
+		return this.issue(order, lineIds, null, actorId, at, context);
+	}
+
 	/** The order's invoice waiting for its parcel or, failing that, its latest one (e-documents cite it). */
 	async currentFor(orderId: string): Promise<TaxInvoice | null> {
 		const issued = (await this.invoices.listForOrder(orderId)).filter((i) => i.status === 'issued');

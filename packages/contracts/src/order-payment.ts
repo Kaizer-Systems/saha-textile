@@ -18,7 +18,17 @@ import { IsoDate } from './purchasing';
  *   (DLT whitelist) and it survives a replaced request. A request is never for more than is due.
  */
 
-export const PaymentMethod = z.enum(['gateway', 'upi', 'bankTransfer', 'cashOnDelivery', 'onAccount', 'setOff']);
+/** `cash` and `card` are taken at a store's counter (accounts brief P2). */
+export const PaymentMethod = z.enum([
+	'gateway',
+	'upi',
+	'bankTransfer',
+	'cashOnDelivery',
+	'onAccount',
+	'setOff',
+	'cash',
+	'card',
+]);
 export type PaymentMethod = z.infer<typeof PaymentMethod>;
 
 /** Payment methods staff type in by hand (each needs a reference the customer gave). */
@@ -77,6 +87,8 @@ export const OrderPayment = z.object({
 	receivedOn: IsoDate.nullable(),
 	/** RC series number, once issued (receipt). */
 	receiptNumber: z.string().nullable().default(null),
+	/** The ledger the money landed in, fixed when it was taken (a counter's cash box, the UPI and card clearing). */
+	ledgerId: Id.nullable().optional(),
 	note: z.string().max(500).nullable().default(null),
 	proofMediaId: Id.nullable().default(null),
 	recordedBy: z.string().nullable(),

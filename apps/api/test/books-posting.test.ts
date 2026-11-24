@@ -320,6 +320,12 @@ describe('receipts in the books', () => {
 		).rejects.toThrow('period_locked');
 	});
 
+	it('posts a counter payment to the ledger it landed in, whatever its method (accounts brief P2)', async () => {
+		const { service, posted } = setup();
+		await service.paymentReceived({ ...payment, method: 'cash', ledgerId: 'led_till' } as never, order, ctx, null);
+		expect(posted()[0]?.lines[0]).toMatchObject({ ledger: { id: 'led_till' } });
+	});
+
 	it('posts nothing for a payment not received or one that moves no money', async () => {
 		const { service, ledger } = setup();
 		expect(await service.paymentReceived({ ...payment, state: 'pending' } as never, order, ctx, null)).toBeNull();

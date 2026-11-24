@@ -9135,5 +9135,7 @@
 	"cash_problem_role": "খাতায় এখনও \"{{role}}\"-এর লেজার নেই। সেটিংস › অ্যাকাউন্টস টেমপ্লেট-এ শেয়ার করা চার্টের আপডেট ইনস্টল করুন।",
 	"ov_cash_boxes": "{{count}}টি ক্যাশ বাক্স",
 	"ov_waiting_cashDifferences": "গরমিল নিয়ে বন্ধ {{count}}টি ক্যাশ শিট",
-	"ov_waiting_expenseClaims": "অনুমোদনের অপেক্ষায় {{count}}টি খরচের দাবি"
+	"ov_waiting_expenseClaims": "অনুমোদনের অপেক্ষায় {{count}}টি খরচের দাবি",
+	"ord_method_cash": "ক্যাশ",
+	"ord_method_card": "কার্ড"
 }

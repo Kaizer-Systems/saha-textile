@@ -57,7 +57,7 @@ interface Waiting {
 }
 
 /** Ways of paying that move money (on account and set off post nothing). */
-const MOVES_MONEY: ReadonlySet<PaymentMethod> = new Set(['gateway', 'upi', 'bankTransfer', 'cashOnDelivery']);
+const MOVES_MONEY: ReadonlySet<PaymentMethod> = new Set(['gateway', 'upi', 'bankTransfer', 'cashOnDelivery', 'cash', 'card']);
 /** A business receipt's way of paying leads its note ("bankTransfer · NEFT 1 · …"). */
 const RECEIPT_METHODS = ['upi', 'bankTransfer', 'cash', 'cheque'] as const;
 const PAGE = 100;

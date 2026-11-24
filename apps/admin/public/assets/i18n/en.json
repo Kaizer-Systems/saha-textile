@@ -9135,5 +9135,7 @@
 	"cash_problem_role": "The books have no ledger for \"{{role}}\" yet. Install the shared chart's update in Settings › Accounts templates.",
 	"ov_cash_boxes": "{{count}} cash boxes",
 	"ov_waiting_cashDifferences": "{{count}} cash sheets closed with a difference",
-	"ov_waiting_expenseClaims": "{{count}} expense claims waiting for approval"
+	"ov_waiting_expenseClaims": "{{count}} expense claims waiting for approval",
+	"ord_method_cash": "Cash",
+	"ord_method_card": "Card"
 }

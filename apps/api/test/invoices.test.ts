@@ -197,3 +197,27 @@ describe('tax invoices at dispatch (accounts brief D1, D3)', () => {
 		});
 	});
 });
+
+describe('a counter sale is invoiced at once (accounts brief P2)', () => {
+	it('issues every line now, in the sale’s transaction, and refuses while the switch is off', async () => {
+		const { service, inserted } = setup(true);
+		const sale = order('5007');
+		// A set's own line is never invoiced; its pieces are.
+		const withSet = {
+			...sale,
+			lines: [...sale.lines, { ...sale.lines[0]!, lineId: 'set_1', role: 'bundle' as const }],
+		};
+		const invoice = await service.issueAtCounter(
+			withSet as never,
+			'adm_priya',
+			'2026-11-23T06:10:00.000Z',
+			{} as never,
+		);
+		expect(invoice.shipmentId).toBeNull();
+		expect(invoice.lines.map((l) => l.lineId)).not.toContain('set_1');
+		expect(inserted).toHaveLength(1);
+		await expect(
+			setup(false).service.issueAtCounter(order('5007'), null, '2026-11-23T06:10:00.000Z', {} as never),
+		).rejects.toThrow('tax_invoices_off');
+	});
+});

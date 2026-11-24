@@ -488,7 +488,7 @@ describe('changing and disposing of an asset (R2, R4)', () => {
 		expect(page.name()).toBe('Main billing counter');
 		(el(fixture, '#asset_save') as HTMLButtonElement).click();
 		await settle(fixture);
-		const [id, edit] = calls.update.mock.lastCall as [string, Record<string, unknown>];
+		const [id, edit] = calls.update.mock.lastCall as unknown as [string, Record<string, unknown>];
 		expect(id).toBe('as1');
 		expect(edit).toMatchObject({ name: 'Main billing counter', version: 5 });
 		expect(edit).not.toHaveProperty('costINR');

@@ -288,6 +288,82 @@ export const LIMITS_V2: TaxRuleSetContent = {
 	],
 };
 
+/** One GST due-date rule of RS-DUE. */
+const dueRule = (
+	key: string,
+	name: string,
+	due: NonNullable<TaxRuleEntry['due']>,
+	source: string,
+	from = '2017-07-01',
+): TaxRuleEntry => ({
+	key,
+	name,
+	code: '',
+	ratePercent: 0,
+	expenseRole: null,
+	kinds: null,
+	from,
+	to: null,
+	source,
+	caReview: 'pending',
+	limitINR: null,
+	limitPer: null,
+	due,
+});
+
+/** QRMP States whose GSTR-3B falls due on the 22nd (the rest on the 24th), by GST State code. */
+export const QRMP_22ND_STATES = ['22', '23', '24', '26', '27', '29', '30', '31', '32', '33', '34', '35', '36', '37'];
+
+/**
+ * RS-DUE v1: when GST returns fall due. Changed by CBIC notification (and extended for single months), so kept as data:
+ * a month's extension is added as an entry with its `period`.
+ */
+export const DUE_DATES: TaxRuleSetContent = {
+	kind: 'taxRules',
+	list: 'dueDates',
+	entries: [
+		dueRule(
+			'gstr1_monthly',
+			'GSTR-1, monthly filers',
+			{ returnType: 'GSTR-1', scheme: 'monthly', day: 11, monthsAfter: 1, states: [], period: null },
+			'CGST Rules 2017 rule 59(1); to be confirmed by the CA.',
+		),
+		dueRule(
+			'gstr1_qrmp',
+			'GSTR-1, quarterly (QRMP), for the quarter',
+			{ returnType: 'GSTR-1', scheme: 'qrmp', day: 13, monthsAfter: 1, states: [], period: null },
+			'CGST Rules 2017 rule 59(1) second proviso; to be confirmed by the CA.',
+			'2021-01-01',
+		),
+		dueRule(
+			'gstr3b_monthly',
+			'GSTR-3B, monthly filers',
+			{ returnType: 'GSTR-3B', scheme: 'monthly', day: 20, monthsAfter: 1, states: [], period: null },
+			'CGST Rules 2017 rule 61(5); to be confirmed by the CA.',
+		),
+		dueRule(
+			'gstr3b_qrmp_22',
+			'GSTR-3B, quarterly (QRMP), States due on the 22nd',
+			{ returnType: 'GSTR-3B', scheme: 'qrmp', day: 22, monthsAfter: 1, states: QRMP_22ND_STATES, period: null },
+			'CGST Rules 2017 rule 61(5) proviso; Notification 01/2020-Central Tax; to be confirmed by the CA.',
+			'2021-01-01',
+		),
+		dueRule(
+			'gstr3b_qrmp_24',
+			'GSTR-3B, quarterly (QRMP), every other State (24th)',
+			{ returnType: 'GSTR-3B', scheme: 'qrmp', day: 24, monthsAfter: 1, states: [], period: null },
+			'CGST Rules 2017 rule 61(5) proviso; Notification 01/2020-Central Tax; to be confirmed by the CA.',
+			'2021-01-01',
+		),
+		dueRule(
+			'gstr9_annual',
+			'GSTR-9, annual return (from the year’s last month, March)',
+			{ returnType: 'GSTR-9', scheme: null, day: 31, monthsAfter: 9, states: [], period: null },
+			'CGST Act 2017 s.44 and CGST Rules 2017 rule 80; to be confirmed by the CA.',
+		),
+	],
+};
+
 /* ---------------------------------------------------------------------------------------------- */
 /* Statements (AT6)                                                                                */
 /* ---------------------------------------------------------------------------------------------- */

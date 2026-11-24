@@ -11,10 +11,10 @@ import type {
 	TaxInvoice,
 } from '@saha-textile/contracts';
 import {
-	annualReturn,
+	dueFromRules,
+	financialYear,
 	gstr1,
 	istDay,
-	returnDueOn,
 	termsOn,
 	type CompanyRepository,
 	type CreditNoteRepository,
@@ -33,6 +33,7 @@ import {
 	GST_RETURN_REPOSITORY,
 	TAX_INVOICE_REPOSITORY,
 } from '../infra/tokens';
+import { AccountsTemplatesService } from '../accounts-templates/accounts-templates.service';
 import { accountsRefusal } from '../ledger/accounts-refusal';
 
 const refuse = (code: string) => new BadRequestException(accountsRefusal(code));
@@ -65,6 +66,8 @@ export class GstReturnsService {
 		@Inject(TAX_INVOICE_REPOSITORY) private readonly invoices: Pick<TaxInvoiceRepository, 'listForGstin' | 'get'>,
 		@Inject(CREDIT_NOTE_REPOSITORY) private readonly creditNotes: Pick<CreditNoteRepository, 'listForGstin'>,
 		@Inject(DEBIT_NOTE_REPOSITORY) private readonly debitNotes: Pick<DebitNoteRepository, 'listForGstin'>,
+		/** Due dates come from the installed due-date rule set (RS-DUE), which the CA keeps current. */
+		private readonly templates: Pick<AccountsTemplatesService, 'ruleSetEntries'>,
 	) {}
 
 	private async registration(id: string) {
@@ -163,11 +166,14 @@ export class GstReturnsService {
 	/** G3: each month's returns and each year's annual return, with their due dates and where they stand. */
 	async calendar(query: GstCalendarQuery, now = new Date()): Promise<GstCalendar> {
 		const registration = await this.registration(query.gstRegistrationId);
-		const [drafts, filings] = await Promise.all([
+		const today = istDay(now);
+		const [drafts, filings, rules] = await Promise.all([
 			this.drafts.listForRegistration(registration.id),
 			this.filings.list(),
+			this.templates.ruleSetEntries('RS-DUE', today),
 		]);
-		const thisMonth = istDay(now).slice(0, 7);
+		if (!rules.length) throw refuse('gst_due_dates_not_installed');
+		const thisMonth = today.slice(0, 7);
 		const rows: GstCalendarRow[] = [];
 		const years = new Set<string>();
 		for (let back = CALENDAR_MONTHS; back >= 1; back--) {
@@ -175,7 +181,7 @@ export class GstReturnsService {
 			const terms = termsOn(registration, `${month}-01`);
 			if (!terms) continue;
 			for (const returnType of ['GSTR-1', 'GSTR-3B'] as const) {
-				const dueOn = returnDueOn(returnType, month, terms.scheme, registration.stateCode);
+				const dueOn = dueFromRules(rules, returnType, month, terms.scheme, registration.stateCode);
 				if (!dueOn) continue;
 				const filing = filings.find(
 					(f) => f.gstRegistrationId === registration.id && f.returnType === returnType && f.month === month,
@@ -193,11 +199,13 @@ export class GstReturnsService {
 			if (terms.annualReturn && month.endsWith('-03')) years.add(month);
 		}
 		for (const month of years) {
-			const annual = annualReturn(month);
+			const year = financialYear(month);
+			const dueOn = dueFromRules(rules, 'GSTR-9', year.lastMonth, 'monthly', registration.stateCode);
+			if (!dueOn) continue;
 			rows.push({
 				returnType: 'GSTR-9',
-				period: annual.period,
-				dueOn: annual.dueOn,
+				period: year.label,
+				dueOn,
 				status: 'not_started',
 				arn: null,
 				draftId: null,

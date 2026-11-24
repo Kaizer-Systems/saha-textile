@@ -11,6 +11,7 @@ import type {
 	TemplateNew,
 	TemplatePublish,
 	TemplatesOpen,
+	TaxRuleEntry,
 	TaxRuleSetContent,
 	TemplateLibraryRow,
 	TemplateVersion,
@@ -223,6 +224,16 @@ export class AccountsTemplatesService {
 	 * D2's "What": the reverse-charge list (RS-RCM) in force on the day the supply was received, for this company's
 	 * kind. Each choice names the rule set and version it came from, so a self-invoice keeps the rule it was made with.
 	 */
+	/** Every entry of a tax rule set's installed version on a day; the caller picks by its own dates (RS-DUE). */
+	async ruleSetEntries(code: string, day: string): Promise<TaxRuleEntry[]> {
+		await this.ensureLibrary();
+		const template = await this.templates.findByCode(code);
+		if (!template) return [];
+		const installed = await this.installedVersion(template);
+		const version = versionOn({ versions: template.versions.filter((v) => v.version <= installed) }, day);
+		return version?.content.kind === 'taxRules' ? (version.content as TaxRuleSetContent).entries : [];
+	}
+
 	async rcmChoices(day: string): Promise<RcmChoice[]> {
 		await this.ensureLibrary();
 		const template = await this.templates.findByCode('RS-RCM');

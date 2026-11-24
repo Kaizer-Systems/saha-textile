@@ -189,8 +189,10 @@ export function ruleSetProblems(
 		if (!template.appliesTo.all && entry.kinds?.some((kind) => !template.appliesTo.kinds.includes(kind)))
 			problems.add(`template_entry_kind:${entry.key}`);
 		// TDS sections and limits need their amount (AT5b, AT5c); a limit has no rate.
-		if (content.list !== 'reverseCharge' && entry.limitINR === null)
+		if ((content.list === 'tds' || content.list === 'limits') && entry.limitINR === null)
 			problems.add(`template_entry_limit:${entry.key}`);
+		// A due-date rule needs its return, day and months (RS-DUE); nothing else in a set has one.
+		if ((content.list === 'dueDates') !== (entry.due !== null)) problems.add(`template_entry_due:${entry.key}`);
 		if (content.list === 'limits' && entry.ratePercent !== 0) problems.add(`template_entry_rate:${entry.key}`);
 	}
 	for (const kind of kindsOf(template)) {

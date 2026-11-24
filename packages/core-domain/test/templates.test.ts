@@ -76,6 +76,7 @@ describe('accounts templates (T2)', () => {
 			'RS-RCM',
 			'RS-TDS',
 			'RS-LIMITS',
+			'RS-DUE',
 			'RP-NCE-PL',
 			'RP-NCE-BS-PROP',
 			'RP-NCE-BS-FIRM',
@@ -145,6 +146,7 @@ describe('accounts templates (T2)', () => {
 			'RS-RCM',
 			'RS-TDS',
 			'RS-LIMITS',
+			'RS-DUE',
 			'RP-NCE-PL',
 			'RP-NCE-BS-PROP',
 			'RP-NCE-BS-FIRM',
@@ -207,6 +209,7 @@ describe('what a kind opens (AT1)', () => {
 			{ code: 'RS-RCM', name: 'Reverse-charge list', version: 1, entries: 4 },
 			{ code: 'RS-TDS', name: 'TDS sections', version: 1, entries: 9 },
 			{ code: 'RS-LIMITS', name: 'Limits', version: 2, entries: 8 },
+			{ code: 'RS-DUE', name: 'GST return due dates', version: 1, entries: 6 },
 		]);
 		expect(opens.reports.map((r) => r.code)).toEqual(['RP-NCE-PL', 'RP-NCE-BS-PROP', 'RP-NCE-BS']);
 		expect(opens.locked).toBe(10);

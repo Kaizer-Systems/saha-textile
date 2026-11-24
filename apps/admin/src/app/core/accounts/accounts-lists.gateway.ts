@@ -52,6 +52,11 @@ export class AccountsListsGateway {
 		}
 	}
 
+	/** The picked documents of one tab as one PDF (A1 picks bar). */
+	printPicked(tab: AccountsListTab, ids: readonly string[]): Observable<Blob> {
+		return this.http.post(this.api(`accounts/lists/${tab}/pdf`), { ids }, { responseType: 'blob' });
+	}
+
 	pdf(path: string): Observable<Blob> {
 		return this.http.get(this.api(path), { responseType: 'blob' });
 	}

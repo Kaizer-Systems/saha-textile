@@ -7688,6 +7688,7 @@
 	"al_export_ca": "CA-র জন্য এক্সপোর্ট",
 	"al_every_reason": "সব কারণ",
 	"al_no_print": "এই ভাউচারের আলাদা প্রিন্ট নেই।",
+	"al_problem_nothing_to_print": "বাছাই করা কোনো ডকুমেন্টের প্রিন্ট এখনও নেই (ড্রাফট আর অপেক্ষার অনুরোধের প্রিন্ট হয় না)।",
 	"al_totals_credit_notes": "এই সময়ে ইস্যু {{taxable}} করযোগ্য · ফেরত ট্যাক্স {{tax}} · সংখ্যা {{count}}",
 	"accounts_day_book": "ডে বুক",
 	"accounts_periods": "মাস বন্ধ ও লক",

@@ -66,6 +66,17 @@ const START: Readonly<Record<ListKind, PeriodChoice['period']>> = {
 	dayBook: 'this_month',
 };
 
+/** The lists whose documents print (journal and contra vouchers have no print of their own). */
+const PRINTABLE = new Set<ListKind>([
+	'receipts',
+	'paymentVouchers',
+	'creditNotes',
+	'debitNotes',
+	'refundVouchers',
+	'selfInvoices',
+	'stockAdjustments',
+]);
+
 /** Every reason a stock adjustment can carry, once each (A9 "Every reason"). */
 export const ADJUSTMENT_REASONS = [...new Set([...ADJUST_REASONS.remove, ...ADJUST_REASONS.add])];
 
@@ -179,6 +190,9 @@ export class AccountsListPage {
 				{ label: 'inv_print', actionToPerform: 'print', icon: 'ri-printer-line', permission: 'accounts.index' },
 			],
 			bulkActions: [
+				...(PRINTABLE.has(this.kind())
+					? [{ label: 'inv_print', actionToPerform: 'print_picked', icon: 'ri-printer-line', direct: true }]
+					: []),
 				{ label: 'al_export_picked', actionToPerform: 'export', icon: 'ri-download-2-line', direct: true },
 			],
 			bulkDelete: false,
@@ -230,12 +244,14 @@ export class AccountsListPage {
 	}
 
 	async onAction(action: ITableClickedAction): Promise<void> {
-		if (action.actionToPerform === 'export') {
+		if (action.actionToPerform === 'export' || action.actionToPerform === 'print_picked') {
 			const ids = (action.data as string[] | undefined) ?? [];
-			this.save(
-				ids.flatMap((id) => this.seen.get(id) ?? []),
-				'picked',
-			);
+			if (action.actionToPerform === 'export')
+				this.save(
+					ids.flatMap((id) => this.seen.get(id) ?? []),
+					'picked',
+				);
+			else await this.printPicked(ids);
 			return;
 		}
 		const row = action.data as ListTableRow | undefined;
@@ -251,6 +267,13 @@ export class AccountsListPage {
 			return;
 		}
 		await this.run(async () => openPdf(await firstValueFrom(this.gateway.pdf(path))));
+	}
+
+	/** One PDF of the picked documents, those without a print left out. */
+	printPicked(ids: readonly string[]): Promise<void> {
+		return this.run(async () =>
+			openPdf(await firstValueFrom(this.gateway.printPicked(this.kind() as AccountsListTab, ids))),
+		);
 	}
 
 	/** Export CSV: every row of the chip, period and search, page by page. */
@@ -277,7 +300,10 @@ export class AccountsListPage {
 		try {
 			await work();
 		} catch (error) {
-			this.notifier.showError(apiProblem(error, this.transloco.translate('purchasing_action_failed')));
+			const problem = apiProblem(error, this.transloco.translate('purchasing_action_failed'));
+			this.notifier.showError(
+				problem === 'nothing_to_print' ? this.transloco.translate('al_problem_nothing_to_print') : problem,
+			);
 		} finally {
 			this.busy.set(false);
 		}

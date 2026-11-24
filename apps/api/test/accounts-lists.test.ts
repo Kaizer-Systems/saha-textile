@@ -96,11 +96,24 @@ describe('accounts lists', () => {
 		expect(reader.dayBook).toHaveBeenCalledWith(query);
 	});
 
-	it('serves both through the admin routes', async () => {
+	it('serves both, and the picked print, through the admin routes', async () => {
 		const lists = { list: vi.fn(async () => 'list'), dayBook: vi.fn(async () => 'day') };
-		const controller = new AccountsListsController(lists as never);
+		const prints = { picked: vi.fn(async () => ({ fileName: 'creditNotes-2.pdf', data: new Uint8Array([7]) })) };
+		const controller = new AccountsListsController(lists as never, prints as never);
 		expect(await controller.list('creditNotes', query, owner)).toBe('list');
 		expect(lists.list).toHaveBeenCalledWith('creditNotes', query, owner);
 		expect(await controller.dayBook(query, owner)).toBe('day');
+		const headers: Record<string, string> = {};
+		const reply = {
+			header: (name: string, value: string) => {
+				headers[name] = value;
+				return reply;
+			},
+			send: vi.fn(),
+		};
+		await controller.print('creditNotes', { ids: ['cn_1', 'cn_2'] }, reply as never);
+		expect(prints.picked).toHaveBeenCalledWith('creditNotes', ['cn_1', 'cn_2']);
+		expect(headers['Content-Disposition']).toBe('attachment; filename="creditNotes-2.pdf"');
+		expect(reply.send).toHaveBeenCalledWith(Buffer.from([7]));
 	});
 });

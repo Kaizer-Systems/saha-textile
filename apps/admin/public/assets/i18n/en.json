@@ -7688,6 +7688,7 @@
 	"al_export_ca": "Export for the CA",
 	"al_every_reason": "Every reason",
 	"al_no_print": "This voucher has no print of its own.",
+	"al_problem_nothing_to_print": "None of the picked documents has a print yet (drafts and requests still waiting have none).",
 	"al_totals_credit_notes": "Issued in this period {{taxable}} taxable · Tax reversed {{tax}} · Count {{count}}",
 	"accounts_day_book": "Day book",
 	"accounts_periods": "Periods and locks",

@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 
 import { AccountsTemplatesModule } from '../accounts-templates/accounts-templates.module';
+import { DocumentsModule } from '../documents/documents.module';
 import { LocationsModule } from '../locations/locations.module';
 import { OrdersSetupModule } from '../orders-setup/orders-setup.module';
 import { AccountsListsController, AccountsListsService } from './accounts-lists';
+import { AccountsPrints } from './accounts-prints';
 import { BooksCatchUpController, BooksCatchUpService } from './books-catch-up';
 import { BooksPostingService } from './books-posting';
 import { ConvertController, ConvertService } from './convert';
@@ -17,7 +19,7 @@ import { TemplateUpdatesController, TemplateUpdatesService } from './template-up
 
 /** The general ledger (accounts brief Q, T, D10): later documents post through LedgerService.post. */
 @Module({
-	imports: [AccountsTemplatesModule, LocationsModule, OrdersSetupModule],
+	imports: [AccountsTemplatesModule, LocationsModule, OrdersSetupModule, DocumentsModule],
 	controllers: [
 		LedgerController,
 		DocumentLocksController,
@@ -41,6 +43,7 @@ import { TemplateUpdatesController, TemplateUpdatesService } from './template-up
 		ReportPreviewService,
 		TemplateUpdatesService,
 		AccountsListsService,
+		AccountsPrints,
 	],
 	exports: [LedgerService, EditLogService, MoneyLandingService, BooksPostingService],
 })

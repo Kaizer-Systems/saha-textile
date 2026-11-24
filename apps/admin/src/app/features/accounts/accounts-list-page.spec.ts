@@ -204,6 +204,13 @@ describe('the accounts lists gateway', () => {
 		).toBe('issued');
 		gateway.dayBook({ from: '2026-11-01' }).subscribe();
 		http.expectOne((req) => req.url.endsWith('/admin/accounts/day-book')).flush({});
+		gateway.printPicked('creditNotes', ['cn_1']).subscribe();
+		const picked = http.expectOne((req) => req.url.endsWith('/admin/accounts/lists/creditNotes/pdf'));
+		expect([picked.request.method, picked.request.body, picked.request.responseType]).toEqual([
+			'POST',
+			{ ids: ['cn_1'] },
+			'blob',
+		]);
 		gateway.pdf('stock/adjustments/sa_1/pdf').subscribe();
 		expect(
 			http.expectOne((req) => req.url.endsWith('/admin/stock/adjustments/sa_1/pdf')).request.responseType,
@@ -243,6 +250,18 @@ function setup(list: string, options: { fails?: boolean; permissions?: string[] 
 		dayBook: vi.fn(() => of(page([row({ id: 'd1' })]))),
 		pdfPath: vi.fn((r: AccountsListRow) => (r.tab === 'journal' ? null : 'accounts/x/pdf')),
 		pdf: vi.fn(() => (options.fails ? throwError(() => new Error('offline')) : of(new Blob(['%PDF'])))),
+		printPicked: vi.fn((_tab: string, ids: readonly string[]) =>
+			ids.includes('draft')
+				? throwError(() => ({
+						error: {
+							error: {
+								message: 'nothing_to_print',
+								issues: [{ code: 'nothing_to_print', message: 'nothing_to_print' }],
+							},
+						},
+					}))
+				: of(new Blob(['%PDF'])),
+		),
 	};
 	const notifier = { showError: vi.fn(), showSuccess: vi.fn() };
 	TestBed.resetTestingModule();
@@ -337,6 +356,15 @@ describe('the accounts list page', () => {
 		expect(notifier.showError).toHaveBeenCalledWith('al_no_print');
 		await page.onAction({ actionToPerform: 'print' } as never);
 		await page.onAction({ actionToPerform: 'other', data: { id: 'r1', row: row() } } as never);
+		await page.onAction({ actionToPerform: 'print_picked', data: ['r1', 'r2'] } as never);
+		expect(gateway.printPicked).toHaveBeenCalledWith('receipts', ['r1', 'r2']);
+		await page.onAction({ actionToPerform: 'print_picked' } as never);
+		await page.printPicked(['draft']);
+		expect(notifier.showError).toHaveBeenCalledWith('al_problem_nothing_to_print');
+		expect(page.tableConfig().bulkActions?.map((action) => action.actionToPerform)).toEqual([
+			'print_picked',
+			'export',
+		]);
 		const saved = vi.spyOn(document, 'createElement');
 		await page.onAction({ actionToPerform: 'export', data: ['r1', 'gone'] } as never);
 		await page.onAction({ actionToPerform: 'export' } as never);
@@ -361,6 +389,7 @@ describe('the accounts list page', () => {
 		fixture.detectChanges();
 		await vi.waitFor(() => expect(page.list.data()).toBeTruthy());
 		expect(page.chips()).toContain('journals');
+		expect(page.tableConfig().bulkActions?.map((action) => action.actionToPerform)).toEqual(['export']);
 		expect(gateway.dayBook).toHaveBeenCalled();
 		const empty = setup('contra');
 		empty.gateway.list.mockReturnValue(of({ items: [], total: 0, counts: {}, totals: {} }) as never);

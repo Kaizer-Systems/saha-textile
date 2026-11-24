@@ -1,8 +1,9 @@
-import { Controller, Get, Header, Inject, Injectable, Param, Query } from '@nestjs/common';
+import { Body, Controller, Get, Header, HttpCode, Inject, Injectable, Param, Post, Query, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	AccountsListQuery,
 	AccountsListTab,
+	AccountsPrintWrite,
 	type AccountsListPage,
 	type AccountsListRow,
 } from '@saha-textile/contracts';
@@ -13,6 +14,8 @@ import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../au
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { ACCOUNTS_LISTS_READER, ADMIN_USER_REPOSITORY } from '../infra/tokens';
 import { API_TAGS } from '../openapi-tags';
+import { AccountsPrints } from './accounts-prints';
+import type { FastifyReply } from 'fastify';
 import { canSeeCost } from '../purchasing/purchasing-support';
 
 /**
@@ -72,7 +75,10 @@ export class AccountsListsService {
 @Audience('admin')
 @Controller('admin/accounts')
 export class AccountsListsController {
-	constructor(private readonly lists: AccountsListsService) {}
+	constructor(
+		private readonly lists: AccountsListsService,
+		private readonly prints: AccountsPrints,
+	) {}
 
 	@Get('lists/:tab')
 	@Header('Cache-Control', 'no-store')
@@ -98,5 +104,25 @@ export class AccountsListsController {
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
 		return this.lists.dayBook(query, principal);
+	}
+
+	@Post('lists/:tab/pdf')
+	@HttpCode(200)
+	@RequirePermissions('accounts.index')
+	@ApiOperation({
+		operationId: 'accountsListPrint',
+		summary: 'The picked documents of one tab as one PDF (A1 picks bar)',
+	})
+	async print(
+		@Param('tab', new ZodValidationPipe(AccountsListTab)) tab: AccountsListTab,
+		@Body(new ZodValidationPipe(AccountsPrintWrite)) body: AccountsPrintWrite,
+		@Res() reply: FastifyReply,
+	) {
+		const file = await this.prints.picked(tab, body.ids);
+		void reply
+			.header('Content-Type', 'application/pdf')
+			.header('Content-Disposition', `attachment; filename="${file.fileName}"`)
+			.header('Cache-Control', 'no-store')
+			.send(Buffer.from(file.data));
 	}
 }

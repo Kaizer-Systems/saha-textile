@@ -44,7 +44,9 @@ const WORKSPACES = {
 		angular: true,
 		generated: { file: 'public/assets/css/theme-dark.gen.css', script: 'styles' },
 	},
-	api: { dir: 'apps/api' },
+	// test/purchasing-flow.test.ts runs purchases and stock end to end on MongoDB, so the API gets the
+	// test login too. Every API test that touches a database names its own `saha_textile_it_*` database.
+	api: { dir: 'apps/api', mongo: true },
 	'release-console': { dir: 'apps/release-console', angular: true },
 	'release-console-api': { dir: 'apps/release-console-api' },
 	'adapters-db-mongo': { dir: 'packages/adapters-db-mongo', mongo: true },

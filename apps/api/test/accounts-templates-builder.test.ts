@@ -54,7 +54,13 @@ describe('New template (AT2)', () => {
 		);
 		expect(rules.draft?.content).toEqual({ kind: 'taxRules', entries: [] });
 		const report = await service.create({ ...newChart, code: 'RP-NCE-BS', kind: 'report' }, null, now);
-		expect(report.draft?.content).toEqual({ kind: 'report', lines: [] });
+		expect(report.draft?.content).toEqual({
+			kind: 'report',
+			columns: 'thisAndLast',
+			notes: false,
+			level: null,
+			lines: [],
+		});
 		const row = (await service.library()).find((r) => r.code === 'CH-FIRM-DEED');
 		expect(row).toMatchObject({ latestVersion: null, validFrom: null, caReview: null, hasDraft: true });
 		expect((await service.opens('partnership')).charts.map((c) => c.code)).toEqual(['CH-COMMON', 'CH-FIRM']);

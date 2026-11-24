@@ -8,6 +8,7 @@ import { QUIET } from '../purchasing/purchasing.gateway';
 import type {
 	AccountsTemplate,
 	BusinessKind,
+	ReportPreview,
 	RoleRow,
 	TemplateChanges,
 	TemplateDraftWrite,
@@ -63,6 +64,13 @@ export class AccountsTemplatesGateway {
 			{ expectedUpdatedAt },
 			QUIET,
 		);
+	}
+	/** AT6 Preview with this company: the saved report on the books on a day (today when none is given). */
+	preview(code: string, asAt: string | null): Observable<ReportPreview> {
+		return this.http.get<ReportPreview>(`${this.base()}/${encodeURIComponent(code)}/preview`, {
+			...QUIET,
+			params: asAt ? { asAt } : {},
+		});
 	}
 	/** AT4 roles in this company's books, and pointing one at another ledger (super admin). */
 	roles(): Observable<RoleRow[]> {

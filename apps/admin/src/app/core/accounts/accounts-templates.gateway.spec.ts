@@ -23,6 +23,8 @@ describe('accounts templates gateway (T2, T3)', () => {
 			[gateway.saveDraft('CH-PROP', {} as never), 'PUT', `${base}/CH-PROP/draft`],
 			[gateway.changes('CH-PROP'), 'GET', `${base}/CH-PROP/changes`],
 			[gateway.publish('CH-PROP', '2026-11-24T00:00:00.000Z'), 'POST', `${base}/CH-PROP/publish`],
+			[gateway.preview('RP-NCE-BS', '2026-11-24'), 'GET', `${base}/RP-NCE-BS/preview`],
+			[gateway.preview('RP-CASH', null), 'GET', `${base}/RP-CASH/preview`],
 			[gateway.roles(), 'GET', '/admin/accounts/roles'],
 			[gateway.pointRole('cash', 'led_till'), 'PUT', '/admin/accounts/roles/cash'],
 		];
@@ -30,6 +32,8 @@ describe('accounts templates gateway (T2, T3)', () => {
 			const done = firstValueFrom(call);
 			const req = http.expectOne((r) => r.url.endsWith(path) && r.method === method);
 			if (path.endsWith('/opens')) expect(req.request.params.get('kind')).toBe('llp');
+			if (path.endsWith('/preview'))
+				expect(req.request.params.get('asAt')).toBe(path.includes('NCE') ? '2026-11-24' : null);
 			req.flush({});
 			await done;
 		}

@@ -77,10 +77,32 @@ export type TaxRuleEntry = z.infer<typeof TaxRuleEntry>;
 export const TaxRuleSetContent = z.object({ kind: z.literal('taxRules'), entries: z.array(TaxRuleEntry).default([]) });
 export type TaxRuleSetContent = z.infer<typeof TaxRuleSetContent>;
 
-/** A report's layout (filled in by the report builder, step T6). */
+/** What a report line adds up: the ledgers playing a role, every ledger under a group, or one ledger, by key. */
+export const ReportSource = z.object({ kind: z.enum(['role', 'group', 'ledger']), key: Key });
+export type ReportSource = z.infer<typeof ReportSource>;
+
+/**
+ * One line of a report (AT6 "Lines"): its own sources plus the lines under it. Income and expense ledgers count their
+ * movement for the year, every other ledger its closing balance; a line holding any liability, equity or income reads
+ * credit balances as positive.
+ */
+export const ReportLine = z.object({
+	key: Key,
+	label: z.string().trim().min(1).max(160),
+	parentKey: Key.nullable().default(null),
+	sources: z.array(ReportSource).default([]),
+});
+export type ReportLine = z.infer<typeof ReportLine>;
+
+/** A report's layout (AT6): its lines and the drawn settings (columns, a note per line, the ICAI level). */
 export const ReportTemplateContent = z.object({
 	kind: z.literal('report'),
-	lines: z.array(z.record(z.string(), z.unknown())).default([]),
+	columns: z.enum(['thisYear', 'thisAndLast']).default('thisAndLast'),
+	/** "Notes: one per line": each line lists the ledgers behind it. */
+	notes: z.boolean().default(false),
+	/** Non-corporate statements' level (ICAI Level I–IV), or worked out from turnover and borrowings. */
+	level: z.enum(['auto', 'I', 'II', 'III', 'IV']).nullable().default(null),
+	lines: z.array(ReportLine).default([]),
 });
 export type ReportTemplateContent = z.infer<typeof ReportTemplateContent>;
 
@@ -223,3 +245,29 @@ export type RoleRow = z.infer<typeof RoleRow>;
 /** AT4: a super admin points a ledger role at another ledger. */
 export const RolePoint = z.object({ ledgerId: Id });
 export type RolePoint = z.infer<typeof RolePoint>;
+
+/** AT6 "Preview with this company": the report as the books stand on a day, with the year before beside it. */
+export const ReportPreviewQuery = z.object({ asAt: IsoDate.optional() });
+export type ReportPreviewQuery = z.infer<typeof ReportPreviewQuery>;
+
+const PreviewFigure = z.object({ thisYearPaise: z.number().int(), lastYearPaise: z.number().int().nullable() });
+
+export const ReportPreviewRow = PreviewFigure.extend({
+	key: Key,
+	label: z.string(),
+	depth: z.number().int().nonnegative(),
+	side: z.enum(['debit', 'credit']),
+	/** The ledgers behind the line, when the report has a note per line. */
+	ledgers: z.array(PreviewFigure.extend({ name: z.string() })),
+});
+export type ReportPreviewRow = z.infer<typeof ReportPreviewRow>;
+
+export const ReportPreview = z.object({
+	asAt: IsoDate,
+	/** The last column's day, or null when the report shows this year only. */
+	lastAsAt: IsoDate.nullable(),
+	rows: z.array(ReportPreviewRow),
+	/** Sources the books don't have, as `report_source_unknown:<kind>:<key>`. */
+	problems: z.array(z.string()),
+});
+export type ReportPreview = z.infer<typeof ReportPreview>;

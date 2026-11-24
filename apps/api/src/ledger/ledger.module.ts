@@ -10,6 +10,7 @@ import { DocumentLockAsksController, EditLogService } from './edit-log';
 import { DocumentLocksController, LedgerController } from './ledger.controller';
 import { LedgerService } from './ledger.service';
 import { MoneyLandingController, MoneyLandingService } from './money-landing';
+import { ReportPreviewController, ReportPreviewService } from './report-preview';
 import { RolesController, RolesService } from './roles';
 
 /** The general ledger (accounts brief Q, T, D10): later documents post through LedgerService.post. */
@@ -23,6 +24,7 @@ import { RolesController, RolesService } from './roles';
 		BooksCatchUpController,
 		ConvertController,
 		RolesController,
+		ReportPreviewController,
 	],
 	providers: [
 		LedgerService,
@@ -32,6 +34,7 @@ import { RolesController, RolesService } from './roles';
 		BooksCatchUpService,
 		ConvertService,
 		RolesService,
+		ReportPreviewService,
 	],
 	exports: [LedgerService, EditLogService, MoneyLandingService, BooksPostingService],
 })

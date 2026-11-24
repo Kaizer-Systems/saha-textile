@@ -1,0 +1,357 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'at_title'"
+>
+	@if (template.data(); as t) {
+	<div class="card">
+		<div class="card-body theme-form theme-form-2">
+			<div class="title-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+				<h5>{{ t.name }} · {{ t.code }}</h5>
+				@if (content()) {
+				<span class="d-flex gap-2">
+					<button
+						type="button"
+						class="btn btn-outline"
+						id="rb_preview"
+						[disabled]="busy() || dirty()"
+						(click)="show()"
+					>
+						{{ 'rb_preview' | transloco }}
+					</button>
+					@if (canEdit()) {
+					<button
+						type="button"
+						class="btn btn-outline"
+						id="rb_save"
+						[disabled]="busy()"
+						(click)="saveDraft()"
+					>
+						{{ 'tb_save_draft' | transloco }}
+					</button>
+					<button
+						type="button"
+						class="btn btn-theme"
+						id="rb_publish"
+						[disabled]="busy() || dirty() || !t.draft"
+						(click)="publish()"
+					>
+						{{ 'rb_publish' | transloco }}
+					</button>
+					}
+				</span>
+				}
+			</div>
+			@for (p of problems(); track $index) {
+			<div class="alert alert-danger py-2">{{ p }}</div>
+			} @if (content(); as c) {
+			<div class="row g-3">
+				<div class="col-lg-6">
+					<div class="box rounded border p-3">
+						<div class="d-flex justify-content-between align-items-center mb-2">
+							<b>{{ 'rb_lines' | transloco }}</b>
+							@if (canEdit()) {
+							<button
+								type="button"
+								class="btn btn-outline btn-sm"
+								id="rb_add_top"
+								(click)="addLine(null)"
+							>
+								{{ 'rb_add_line' | transloco }}
+							</button>
+							}
+						</div>
+						@for (node of tree(); track node.line.key) {
+						<ng-container *ngTemplateOutlet="lineRow; context: { $implicit: node, depth: 0 }" />
+						} @empty {
+						<p class="text-muted mb-0">{{ 'rb_empty' | transloco }}</p>
+						}
+					</div>
+				</div>
+				<div class="col-lg-6 d-grid gap-3">
+					<div class="box rounded border p-3">
+						<b class="d-block mb-2">{{ 'rb_settings' | transloco }}</b>
+						<p class="mb-2">
+							<span class="text-muted">{{ 'at_applies_to' | transloco }}:</span>
+							{{ appliesTo() }}
+						</p>
+						<label
+							class="form-label-title"
+							for="rb_columns"
+						>
+							{{ 'rb_columns' | transloco }}
+						</label>
+						<select
+							class="form-select mb-2"
+							id="rb_columns"
+							[disabled]="!canEdit()"
+							[ngModel]="c.columns"
+							(ngModelChange)="setting({ columns: $event })"
+						>
+							<option value="thisYear">{{ 'rb_columns_thisYear' | transloco }}</option>
+							<option value="thisAndLast">{{ 'rb_columns_thisAndLast' | transloco }}</option>
+						</select>
+						<label class="d-block mb-2">
+							<input
+								type="checkbox"
+								id="rb_notes"
+								[disabled]="!canEdit()"
+								[checked]="c.notes"
+								(change)="setting({ notes: $any($event.target).checked })"
+							/>
+							{{ 'rb_notes' | transloco }}
+						</label>
+						<label
+							class="form-label-title"
+							for="rb_level"
+						>
+							{{ 'rb_level' | transloco }}
+							<span class="badge bg-light text-dark ms-1">{{ 'at_ca_review' | transloco }}</span>
+						</label>
+						<select
+							class="form-select"
+							id="rb_level"
+							[disabled]="!canEdit()"
+							[ngModel]="c.level ?? ''"
+							(ngModelChange)="setting({ level: $event || null })"
+						>
+							<option value="">{{ 'rb_level_none' | transloco }}</option>
+							@for (l of levels; track l) {
+							<option [value]="l">{{ 'rb_level_' + l | transloco }}</option>
+							}
+						</select>
+					</div>
+					<div class="box rounded border p-3">
+						@if (line(); as l) {
+						<div class="d-flex justify-content-between align-items-center mb-2">
+							<b>{{ 'tb_selected' | transloco: { name: l.label } }}</b>
+						</div>
+						<label
+							class="form-label-title"
+							for="rb_label"
+						>
+							{{ 'rb_line_label' | transloco }}
+						</label>
+						<input
+							class="form-control mb-2"
+							id="rb_label"
+							maxlength="160"
+							[disabled]="!canEdit()"
+							[ngModel]="l.label"
+							(ngModelChange)="patchLine(l.key, { label: $event })"
+						/>
+						@if (isNew(l.key)) {
+						<label
+							class="form-label-title"
+							for="rb_key"
+						>
+							{{ 'tb_key' | transloco }}
+						</label>
+						<input
+							class="form-control mb-2"
+							id="rb_key"
+							[disabled]="!canEdit()"
+							[ngModel]="l.key"
+							(change)="patchLine(l.key, { key: $any($event.target).value })"
+						/>
+						}
+						<label
+							class="form-label-title"
+							for="rb_under"
+						>
+							{{ 'rb_under' | transloco }}
+						</label>
+						<select
+							class="form-select mb-2"
+							id="rb_under"
+							[disabled]="!canEdit()"
+							[ngModel]="l.parentKey ?? ''"
+							(ngModelChange)="patchLine(l.key, { parentKey: $event || null })"
+						>
+							<option value="">{{ 'rb_top' | transloco }}</option>
+							@for (p of parents(); track p.key) {
+							<option [value]="p.key">{{ p.label }}</option>
+							}
+						</select>
+						@for (k of kinds; track k) {
+						<label
+							class="form-label-title"
+							[for]="'rb_sources_' + k"
+						>
+							{{ 'rb_sources_' + k | transloco }}
+						</label>
+						<input
+							class="form-control mb-2"
+							[id]="'rb_sources_' + k"
+							[disabled]="!canEdit()"
+							[ngModel]="keysOf(l, k)"
+							(change)="setSources(l, k, $any($event.target).value)"
+						/>
+						}
+						<p class="help-text mb-0">{{ 'rb_sources_help' | transloco }}</p>
+						} @else {
+						<p class="text-muted mb-0">{{ 'rb_pick' | transloco }}</p>
+						}
+					</div>
+				</div>
+			</div>
+			<div class="row g-3 mt-1">
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="rb_valid_from"
+					>
+						{{ 'tb_valid_from' | transloco }}
+					</label>
+					<input
+						type="date"
+						class="form-control"
+						id="rb_valid_from"
+						[disabled]="!canEdit()"
+						[ngModel]="validFrom()"
+						(ngModelChange)="validFrom.set($event); dirty.set(true)"
+					/>
+				</div>
+				<div class="col-md-8">
+					<label
+						class="form-label-title"
+						for="rb_version_source"
+					>
+						{{ 'tb_version_source' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="rb_version_source"
+						maxlength="500"
+						[disabled]="!canEdit()"
+						[ngModel]="source()"
+						(ngModelChange)="source.set($event); dirty.set(true)"
+					/>
+				</div>
+			</div>
+			<p class="help-text mt-2 mb-0">{{ 'rb_checks' | transloco }}</p>
+			@if (preview(); as pv) {
+			<div class="d-flex align-items-end mt-4 mb-2 flex-wrap gap-2">
+				<b class="me-auto">{{ 'rb_preview_title' | transloco }}</b>
+				<div>
+					<label
+						class="form-label-title"
+						for="rb_as_at"
+					>
+						{{ 'rb_as_at' | transloco }}
+					</label>
+					<input
+						type="date"
+						class="form-control"
+						id="rb_as_at"
+						[ngModel]="asAt()"
+						(ngModelChange)="asAt.set($event)"
+					/>
+				</div>
+				<button
+					type="button"
+					class="btn btn-outline"
+					id="rb_preview_again"
+					[disabled]="busy() || dirty()"
+					(click)="show()"
+				>
+					{{ 'rb_preview' | transloco }}
+				</button>
+			</div>
+			@for (m of pv.problems; track m) {
+			<div class="alert alert-warning py-2">{{ missing(m) }}</div>
+			}
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'rb_line' | transloco }}</th>
+							<th class="text-end">{{ day(pv.asAt) }}</th>
+							@if (pv.lastAsAt) {
+							<th class="text-end">{{ day(pv.lastAsAt) }}</th>
+							}
+						</tr>
+					</thead>
+					<tbody>
+						@for (r of pv.rows; track r.key) {
+						<tr>
+							<td [style.padding-left.px]="12 + r.depth * 16">{{ r.label }}</td>
+							<td class="text-end text-nowrap">{{ rupees(r.thisYearPaise) }}</td>
+							@if (pv.lastAsAt) {
+							<td class="text-end text-nowrap">{{ rupees(r.lastYearPaise ?? 0) }}</td>
+							}
+						</tr>
+						@for (n of r.ledgers; track $index) {
+						<tr class="small text-muted">
+							<td [style.padding-left.px]="28 + r.depth * 16">{{ n.name }}</td>
+							<td class="text-end text-nowrap">{{ rupees(n.thisYearPaise) }}</td>
+							@if (pv.lastAsAt) {
+							<td class="text-end text-nowrap">{{ rupees(n.lastYearPaise ?? 0) }}</td>
+							}
+						</tr>
+						} } @empty {
+						<tr>
+							<td
+								colspan="3"
+								class="text-muted py-4 text-center"
+							>
+								{{ 'rb_empty' | transloco }}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			} } @else {
+			<p class="text-muted mb-0">{{ 'rb_not_a_report' | transloco }}</p>
+			}
+			<a
+				class="d-inline-block mt-3"
+				routerLink="/setting/accounts-templates"
+			>
+				{{ 'tb_back' | transloco }}
+			</a>
+		</div>
+	</div>
+	}
+</app-page-wrapper>
+
+<ng-template
+	#lineRow
+	let-node
+	let-depth="depth"
+>
+	<div [style.padding-left.px]="depth * 16">
+		<a
+			href="javascript:void(0)"
+			class="text-reset fw-semibold"
+			[class.text-primary]="selected() === node.line.key"
+			(click)="selected.set(node.line.key)"
+		>
+			{{ node.line.label }}
+		</a>
+		@if (node.line.sources.length) {
+		<small class="text-muted ms-1">= {{ sourcesText(node.line) }}</small>
+		} @if (canEdit()) {
+		<a
+			href="javascript:void(0)"
+			class="ms-2"
+			[title]="'rb_add_line' | transloco"
+			(click)="addLine(node.line.key)"
+		>
+			<i class="ri-add-line"></i>
+		</a>
+		@if (isNew(node.line.key) && !node.lines.length) {
+		<a
+			href="javascript:void(0)"
+			class="text-danger ms-1"
+			[title]="'delete' | transloco"
+			(click)="remove(node.line.key)"
+		>
+			<i class="ri-delete-bin-line"></i>
+		</a>
+		} }
+	</div>
+	@for (child of node.lines; track child.line.key) {
+	<ng-container *ngTemplateOutlet="lineRow; context: { $implicit: child, depth: depth + 1 }" />
+	}
+</ng-template>

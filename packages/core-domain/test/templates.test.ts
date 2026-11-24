@@ -160,7 +160,18 @@ describe('what a kind opens (AT1)', () => {
 			code: 'RP-NCE-BS',
 			name: 'Balance sheet',
 			kind: 'report' as const,
-			versions: [{ ...templates[0]!.versions[0]!, content: { kind: 'report' as const, lines: [] } }],
+			versions: [
+				{
+					...templates[0]!.versions[0]!,
+					content: {
+						kind: 'report' as const,
+						columns: 'thisAndLast' as const,
+						notes: false,
+						level: null,
+						lines: [],
+					},
+				},
+			],
 		};
 		const opens = whatOpens([...templates, report], 'proprietorship', '2026-11-24');
 		expect(opens.charts).toEqual([

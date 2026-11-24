@@ -11,6 +11,7 @@ import type {
 } from '@saha-textile/contracts';
 
 import { ROLE_REGISTRY, missingRoles, rolesOf } from '../ledger/roles';
+import { reportProblems } from './report-rules';
 
 /** AT1, AT2: a template is open for a kind of company when it is shared or lists that kind; otherwise locked, with why. */
 export function lockState(
@@ -148,14 +149,14 @@ const holders = (items: readonly { key: string; roles: readonly string[] }[]) =>
 	items.map((item) => ({ id: item.key, systemKey: item.key, roles: item.roles }));
 
 /** The kinds of company a template is for. */
-const kindsOf = (template: Pick<AccountsTemplate, 'appliesTo'>): readonly BusinessKind[] =>
+export const kindsOf = (template: Pick<AccountsTemplate, 'appliesTo'>): readonly BusinessKind[] =>
 	template.appliesTo.all ? KINDS : template.appliesTo.kinds;
 
 /**
  * The chart a kind of company opens: every published chart template it unlocks except `code`, with `extra` added, as
  * role holders. Refused like `mergeCharts` when the charts don't fit together.
  */
-function chartFor(
+export function chartFor(
 	kind: BusinessKind,
 	library: readonly AccountsTemplate[],
 	code: string,
@@ -221,7 +222,7 @@ export function publishProblems(template: AccountsTemplate, library: readonly Ac
 	if (template.versions.length && draft.validFrom <= latestVersion(template).validFrom)
 		problems.add('template_dates_overlap');
 	if (draft.content.kind === 'taxRules') return [...problems, ...ruleSetProblems(template, draft.content, library)];
-	if (draft.content.kind !== 'chart') return [...problems];
+	if (draft.content.kind === 'report') return [...problems, ...reportProblems(template, draft.content, library)];
 	const content = draft.content;
 	for (const kind of kindsOf(template)) {
 		let chart: ReturnType<typeof chartFor>;

@@ -91,6 +91,11 @@ export default [
 		loadComponent: () => import('./accounts-templates/rule-set-builder').then((m) => m.RuleSetBuilderPage),
 	},
 	{
+		// Accounts templates AT6: a report template, the report builder (owner-approved 2026-11-24).
+		path: 'accounts-templates/reports/:code',
+		loadComponent: () => import('./accounts-templates/report-builder').then((m) => m.ReportBuilderPage),
+	},
+	{
 		// Accounts templates AT3: one template, the chart builder (owner-approved 2026-11-24).
 		path: 'accounts-templates/:code',
 		loadComponent: () => import('./accounts-templates/template-builder').then((m) => m.TemplateBuilderPage),

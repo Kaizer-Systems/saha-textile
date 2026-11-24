@@ -201,7 +201,18 @@ describe('accounts templates library (T2)', () => {
 		expect(await installedV2.service.rcmChoices('2026-11-01')).toEqual([]);
 		const notRules = {
 			...rcm,
-			versions: [{ ...rcm.versions[0]!, content: { kind: 'report' as const, lines: [] } }],
+			versions: [
+				{
+					...rcm.versions[0]!,
+					content: {
+						kind: 'report' as const,
+						columns: 'thisAndLast' as const,
+						notes: false,
+						level: null,
+						lines: [],
+					},
+				},
+			],
 		};
 		expect(await serviceFor(null, [notRules]).service.rcmChoices('2026-11-01')).toEqual([]);
 		const stores = memoryTemplateStores();

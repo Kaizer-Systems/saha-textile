@@ -43,7 +43,7 @@ import { accountsRefusal } from '../ledger/accounts-refusal';
 const EMPTY: Record<TemplateKind, TemplateContent> = {
 	chart: { kind: 'chart', groups: [], ledgers: [] },
 	taxRules: { kind: 'taxRules', entries: [] },
-	report: { kind: 'report', lines: [] },
+	report: { kind: 'report', columns: 'thisAndLast', notes: false, level: null, lines: [] },
 };
 
 /** A template and the version of it the books take. */

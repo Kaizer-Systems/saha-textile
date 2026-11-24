@@ -105,7 +105,9 @@
 							[routerLink]="
 								row.kind === 'taxRules'
 									? ['/setting/accounts-templates/rules', row.code]
-									: ['/setting/accounts-templates', row.code]
+									: row.kind === 'report'
+										? ['/setting/accounts-templates/reports', row.code]
+										: ['/setting/accounts-templates', row.code]
 							"
 						>
 							{{ row.code }}

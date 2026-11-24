@@ -220,7 +220,12 @@ describe('tax rule sets (AT5)', () => {
 
 	it('leaves report layouts to the report builder', () => {
 		const report: AccountsTemplate = { ...byCode('RS-RCM'), code: 'RP-TEST', kind: 'report', versions: [] };
-		expect(publishProblems(draftOf(report, { kind: 'report', lines: [] }), library)).toEqual([]);
+		expect(
+			publishProblems(
+				draftOf(report, { kind: 'report', columns: 'thisAndLast', notes: false, level: null, lines: [] }),
+				library,
+			),
+		).toEqual([]);
 	});
 
 	it('compares a draft with the newest version: added, removed, renamed and changed entries', () => {

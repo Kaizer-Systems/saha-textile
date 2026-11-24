@@ -92,6 +92,7 @@ const sidebars: SidebarsConfig = {
 			items: [
 				'accounts/general-ledger',
 				'accounts/accounts-lists',
+				'accounts/cash',
 				'accounts/accounts-templates',
 				'accounts/tax-invoices',
 				'accounts/returns-and-credit-notes',

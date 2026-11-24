@@ -310,9 +310,8 @@ export class FormCategory {
 	 * F03: a changed HSN asks whether the products that follow the category (its old code, or
 	 * none) take the new one; products with their own code are named and left alone.
 	 */
-	private async askProductsHsn(next: string | null): Promise<boolean | null> {
-		if (!this.id || next === this.savedHsn) return false;
-		const impact = await firstValueFrom(this.categoryService.hsnImpact(this.id)).catch(() => null);
+	private async askProductsHsn(id: string, next: string | null): Promise<boolean | null> {
+		const impact = await firstValueFrom(this.categoryService.hsnImpact(id)).catch(() => null);
 		// Nothing follows the category's code: there is nobody to ask about.
 		if (!impact || impact.using === 0) return false;
 		const shown = impact.own.slice(0, 6);
@@ -334,13 +333,14 @@ export class FormCategory {
 	submit() {
 		this.form.markAllAsTouched();
 		const name = this.fields.text('name');
-		if (!name['en']?.trim()) {
+		const english = name['en']?.trim();
+		if (!english) {
 			this.switchLanguage('en');
 			this.form.get('name')?.setErrors({ required: true });
 			return;
 		}
 		if (this.isBlog()) {
-			this.saveBlog(name);
+			this.saveBlog(name, english);
 			return;
 		}
 		if (!this.form.valid) return;
@@ -374,7 +374,7 @@ export class FormCategory {
 		};
 		// F03: a changed HSN on a saved category first asks about the products that follow it.
 		if (this.id && hsn !== this.savedHsn) {
-			void this.askProductsHsn(hsn).then((update) => {
+			void this.askProductsHsn(this.id, hsn).then((update) => {
 				if (update !== null) this.send({ ...body, updateProductsHsn: update });
 			});
 			return;
@@ -393,13 +393,13 @@ export class FormCategory {
 		});
 	}
 
-	private saveBlog(name: Record<string, string>) {
+	private saveBlog(name: Record<string, string>, english: string) {
 		if (this.form.controls['slug'].invalid) return;
 		const raw = this.form.getRawValue() as Record<string, unknown>;
 		const typed = typeof raw['slug'] === 'string' ? raw['slug'].trim() : '';
 		const slug =
 			typed ||
-			(name['en'] ?? '')
+			english
 				.toLowerCase()
 				.normalize('NFKD')
 				.replace(/[^a-z0-9]+/g, '-')
@@ -441,7 +441,7 @@ export class FormCategory {
 }
 
 /** A typed shipping value: empty means "inherit", anything else a non-negative number. */
-function shippingValue(value: unknown): number | null {
+export function shippingValue(value: unknown): number | null {
 	if (value === null || value === undefined || value === '') return null;
 	const n = Number(value);
 	return Number.isFinite(n) && n >= 0 ? n : null;

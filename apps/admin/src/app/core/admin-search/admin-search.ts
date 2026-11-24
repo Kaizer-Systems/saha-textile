@@ -291,20 +291,26 @@ function score(indexed: IndexedEntry, tokens: string[]): number {
 /** Edit distance, stopping early once it passes `limit`. */
 export function distance(a: string, b: string, limit = 2): number {
 	if (Math.abs(a.length - b.length) > limit) return limit + 1;
+	// One row of the table at a time: `diagonal`, `above` and `left` are the three cells each new cell is worked from.
 	let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+	let last = b.length;
 	for (let i = 1; i <= a.length; i++) {
 		const current = [i];
+		let left = i;
+		let diagonal = i - 1;
 		let rowBest = i;
-		for (let j = 1; j <= b.length; j++) {
-			const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-			const value = Math.min((previous[j] ?? 0) + 1, (current[j - 1] ?? 0) + 1, (previous[j - 1] ?? 0) + cost);
-			current.push(value);
-			rowBest = Math.min(rowBest, value);
+		for (const [j, above] of previous.slice(1).entries()) {
+			const cost = a[i - 1] === b[j] ? 0 : 1;
+			left = Math.min(above + 1, left + 1, diagonal + cost);
+			current.push(left);
+			rowBest = Math.min(rowBest, left);
+			diagonal = above;
 		}
 		if (rowBest > limit) return limit + 1;
 		previous = current;
+		last = left;
 	}
-	return previous[b.length] ?? limit + 1;
+	return last;
 }
 
 /** The nearest indexed word to a mistyped one, for words of four letters or more. */
@@ -343,14 +349,11 @@ export function searchAdmin(index: IndexedEntry[], query: string, limit = 8): Se
 	if (direct.length) return { entries: direct, corrected: null };
 
 	const vocabulary = new Set(index.flatMap((row) => [...row.title, ...row.keywords, ...row.trail]));
-	const fixed = tokens.map((token) => closest(token, vocabulary) ?? token);
-	const changed = tokens.findIndex((token, at) => token !== fixed[at]);
-	if (changed < 0) return { entries: [], corrected: null };
-	const entries = rank(fixed);
-	return {
-		entries,
-		corrected: entries.length ? { typed: tokens[changed] ?? '', used: fixed[changed] ?? '' } : null,
-	};
+	const read = tokens.map((typed) => ({ typed, used: closest(typed, vocabulary) ?? typed }));
+	const change = read.find((word) => word.typed !== word.used);
+	if (!change) return { entries: [], corrected: null };
+	const entries = rank(read.map((word) => word.used));
+	return { entries, corrected: entries.length ? { typed: change.typed, used: change.used } : null };
 }
 
 /** The entry for an address: the tab or section when the address names one, else the page. */

@@ -67,7 +67,7 @@ export function textAsEditorHtml(text: string): string {
 export function editorText(html: string): string {
 	const marked = html.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|li|blockquote)>/gi, '\n');
 	const doc = new DOMParser().parseFromString(marked, 'text/html');
-	return (doc.body.textContent ?? '').replace(/\n{3,}/g, '\n\n').trim();
+	return (doc.body.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 /** How long the compose box waits after the last keystroke before it saves to Gmail. */
@@ -306,7 +306,8 @@ export function gmailLink(address: string, threadId: string): string {
 
 /** The URL name of a mailbox: the part of its address before the @ (all are on the shop's domain). */
 export function mailboxKey(address: string): string {
-	return address.split('@')[0] ?? address;
+	const at = address.indexOf('@');
+	return at < 0 ? address : address.slice(0, at);
 }
 
 /**

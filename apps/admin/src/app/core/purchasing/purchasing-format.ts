@@ -178,7 +178,7 @@ export function apiIssues(error: unknown): ApiIssue[] {
 			return {
 				code,
 				message: typeof issue.message === 'string' ? issue.message : code,
-				target: path.length > 1 ? (path[1] ?? null) : null,
+				target: path.length > 1 ? String(path[1]) : null,
 			};
 		});
 }

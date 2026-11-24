@@ -112,6 +112,14 @@ describe('Admin App', () => {
 		expect((document.querySelector('#appIcon') as HTMLLinkElement).href).toBe('https://cdn.test/i.png');
 		const dark = document.querySelector<HTMLLinkElement>('#appIconDark');
 		expect([dark?.href, dark?.media]).toEqual(['https://cdn.test/d.png', '(prefers-color-scheme: dark)']);
+		// A new dark icon updates the same link.
+		brand.data = {
+			admin: { icons: { '32': 'https://cdn.test/i.png' }, iconsDark: { '32': 'https://cdn.test/d2.png' } },
+		};
+		render();
+		TestBed.tick();
+		expect(document.querySelectorAll('#appIconDark')).toHaveLength(1);
+		expect(document.querySelector<HTMLLinkElement>('#appIconDark')?.href).toBe('https://cdn.test/d2.png');
 		brand.data = { admin: { icons: { '32': 'https://cdn.test/i.png' }, iconsDark: {} } };
 		render();
 		TestBed.tick();

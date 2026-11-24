@@ -54,7 +54,9 @@ const HEADINGS: ReadonlyArray<[Column, RegExp]> = [
 ];
 
 /** Which column holds what, from the heading row; null when the sheet has no code or quantity column. */
-export function findColumns(heading: readonly string[]): Partial<Record<Column, number>> | null {
+export function findColumns(
+	heading: readonly string[],
+): (Partial<Record<Column, number>> & Record<'code' | 'quantity' | 'price', number>) | null {
 	const found: Partial<Record<Column, number>> = {};
 	heading.forEach((cell, index) => {
 		const text = cell.trim();
@@ -65,7 +67,10 @@ export function findColumns(heading: readonly string[]): Partial<Record<Column, 
 			}
 		}
 	});
-	return found.code === undefined || found.quantity === undefined || found.price === undefined ? null : found;
+	const { code, quantity, price } = found;
+	return code === undefined || quantity === undefined || price === undefined
+		? null
+		: { ...found, code, quantity, price };
 }
 
 const number = (text: string | undefined): number => {
@@ -81,11 +86,11 @@ export function importRows(table: readonly string[][]): { rows: PurchaseImportRo
 	if (!columns) return { rows: [], problem: 'import_columns_missing' };
 	const rows: PurchaseImportRow[] = [];
 	body.forEach((cells, index) => {
-		const code = (cells[columns.code ?? 0] ?? '').trim();
+		const code = (cells[columns.code] ?? '').trim();
 		if (!code) return;
 		const gst = columns.gst === undefined ? Number.NaN : number(cells[columns.gst]);
-		const quantity = number(cells[columns.quantity ?? 0]);
-		const price = number(cells[columns.price ?? 0]);
+		const quantity = number(cells[columns.quantity]);
+		const price = number(cells[columns.price]);
 		rows.push({
 			row: index + 2,
 			code,

@@ -23,9 +23,10 @@ const LABELLED_GROUPS = new Set([
 
 /** The translation key for a group (`stock`) or an action (`stock.cost`), or null to keep the registry name. */
 export function permissionLabelKey(codeOrResource: string): string | null {
-	const resource = codeOrResource.split('.')[0] ?? '';
+	const dot = codeOrResource.indexOf('.');
+	const resource = dot < 0 ? codeOrResource : codeOrResource.slice(0, dot);
 	if (!LABELLED_GROUPS.has(resource)) return null;
-	return codeOrResource.includes('.') ? `perm_${codeOrResource.replace('.', '_')}` : `perm_group_${codeOrResource}`;
+	return dot < 0 ? `perm_group_${codeOrResource}` : `perm_${codeOrResource.replace('.', '_')}`;
 }
 
 @Component({

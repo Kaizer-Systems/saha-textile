@@ -252,6 +252,13 @@ describe('Languages', () => {
 		expect(render('server').translate.setActiveLang).not.toHaveBeenCalled();
 	});
 
+	it('starts in English when the saved language cannot be read', () => {
+		localStorage.setItem('language', '{not json');
+		const unreadable = render();
+		expect(unreadable.widget.selectedLanguage.code).toBe('en');
+		expect(unreadable.translate.setActiveLang).toHaveBeenCalledWith('en');
+	});
+
 	it('saves the choice and opens and closes', () => {
 		const { widget } = render();
 		widget.clickHeaderOnMobile();
@@ -438,6 +445,10 @@ describe('Sidebar', () => {
 		expect(item(sidebar, 1).active).toBe(true);
 		expect(item(sidebar, 2).active).toBe(false);
 		expect(item(sidebar, 3).active).toBe(false);
+	});
+
+	it('shows no Brand Kit logos until the brand has loaded', () => {
+		expect(render().sidebar.logos()).toBeUndefined();
 	});
 
 	it('walks a path already holding its slash', () => {

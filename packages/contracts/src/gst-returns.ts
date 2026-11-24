@@ -53,6 +53,17 @@ export const Gstr3bAdjustment = GstTaxHeads.extend({
 });
 export type Gstr3bAdjustment = z.infer<typeof Gstr3bAdjustment>;
 
+/** The challan a GSTR-3B's cash was paid with. */
+export const GstChallan = z.object({
+	number: z.string(),
+	paidOn: IsoDate,
+	bankAccountId: Id,
+	amountPaise: z.number().int().nonnegative(),
+	setOffNumber: z.string().nullable(),
+	challanNumber: z.string().nullable(),
+});
+export type GstChallan = z.infer<typeof GstChallan>;
+
 export const GstReturnDraft = z.object({
 	id: Id,
 	gstRegistrationId: Id,
@@ -83,9 +94,26 @@ export const GstReturnDraft = z.object({
 	/** GSTR-3B only: the set-off journal and the challan's payment, once posted (Q7 Post the set-off). */
 	setOffVoucherId: Id.nullable().default(null),
 	challanVoucherId: Id.nullable().default(null),
+	/** GSTR-3B only: the challan paid (PMT-06), once posted. */
+	challan: GstChallan.nullish(),
 	version: z.number().int().nonnegative().default(0),
 });
 export type GstReturnDraft = z.infer<typeof GstReturnDraft>;
+
+/** Q7 Post the set-off: the challan paid on the portal and the bank account it was paid from. */
+export const GstSetOffPost = z.object({
+	bankAccountId: Id,
+	paidOn: IsoDate,
+	/** The challan's CPIN or CIN, as the portal shows it. */
+	challan: z
+		.string()
+		.trim()
+		.transform((value) => value.toUpperCase().replace(/\s+/g, ''))
+		.pipe(z.string().regex(/^[A-Z0-9]{6,20}$/, { message: 'challan_shape' })),
+	version: z.number().int().nonnegative(),
+});
+export type GstSetOffPost = z.infer<typeof GstSetOffPost>;
+export type GstSetOffPostInput = z.input<typeof GstSetOffPost>;
 
 /** Prepare (or prepare again, before approval) a return from the books; a GSTR-3B carries the accountant's changes. */
 export const GstReturnPrepare = z.object({

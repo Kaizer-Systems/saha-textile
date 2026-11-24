@@ -48,6 +48,13 @@ const GST_PROBLEMS = new Set([
 	'gstr2b_not_imported',
 	'gstr2b_line_unknown',
 	'gstr2b_changed',
+	'gst_set_off_not_3b',
+	'gst_set_off_not_approved',
+	'gst_set_off_posted',
+	'gst_set_off_nothing',
+	'bank_account_unknown',
+	'books_need_a_location',
+	'challan_shape',
 ]);
 
 /** A prepared return's page: GSTR-3B has its own (G6), GSTR-1 the tables page (G4). */

@@ -8,6 +8,7 @@ import { NgbModal, type NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom, map } from 'rxjs';
 
+import { BANK_KEYS, BanksGateway } from '@core/accounts/banks.gateway';
 import { GST_KEYS, GstReturnsGateway } from '@core/accounts/gst-returns.gateway';
 import { saveBlob, shortDate } from '@core/purchasing/purchasing-format';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -93,6 +94,7 @@ export class Gstr3bPage {
 	private readonly transloco = inject(TranslocoService);
 	private readonly notifier = inject(NotificationService);
 	private readonly queries = inject(QueryClient);
+	private readonly banks = inject(BanksGateway);
 
 	readonly steps = GST_STEPS;
 	readonly pill = GST_STATUS_PILL;
@@ -206,6 +208,51 @@ export class Gstr3bPage {
 			draft,
 			draft.adjustments.filter((_, i) => i !== index),
 		);
+	}
+
+	// Q7 Post the set-off.
+	readonly postOpen = signal(false);
+	readonly bankAccounts = injectQuery(() => ({
+		queryKey: BANK_KEYS.list,
+		queryFn: () => firstValueFrom(this.banks.list()),
+		enabled: this.postOpen(),
+	}));
+	readonly payFrom = signal('');
+	readonly paidOn = signal(new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10));
+	readonly challan = signal('');
+	private postModal: NgbModalRef | null = null;
+	/** Posting waits for the CA's approval and happens once. */
+	readonly canPost = computed(() => {
+		const d = this.draft.data();
+		return !!d?.setOff && ['approved', 'filed'].includes(d.status) && !d.setOffVoucherId && !d.challanVoucherId;
+	});
+	/** The cash the challan pays: tax left after the set-off, and reverse charge. */
+	readonly cashPaise = computed(() => {
+		const s = this.draft.data()?.setOff;
+		if (!s) return 0;
+		const add = (t: { igst: number; cgst: number; sgst: number }) => t.igst + t.cgst + t.sgst;
+		return add(s.cash) + add(s.reverseChargeCash);
+	});
+	openPost(template: TemplateRef<unknown>): void {
+		this.postOpen.set(true);
+		this.challan.set('');
+		this.postModal = this.modals.open(template, { centered: true });
+	}
+
+	async postSetOff(draft: GstReturnDraft): Promise<void> {
+		const ok = await this.run(
+			() =>
+				firstValueFrom(
+					this.gateway.postSetOff(draft.id, {
+						bankAccountId: this.payFrom(),
+						paidOn: this.paidOn(),
+						challan: this.challan(),
+						version: draft.version,
+					}),
+				),
+			'gstr3b_set_off_posted',
+		);
+		if (ok) this.postModal?.close();
 	}
 
 	/** G8 Mark filed, the shared pop-up. */

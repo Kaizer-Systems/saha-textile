@@ -9,6 +9,7 @@ import type {
 	GstReturnDraft,
 	GstReturnPrepareInput,
 	GstReturnStep,
+	GstSetOffPostInput,
 	Gstr2bDecision,
 	Gstr2bImportWrite,
 	Gstr2bQuery,
@@ -43,6 +44,11 @@ export class GstReturnsGateway {
 
 	step(id: string, write: GstReturnStep): Observable<GstReturnDraft> {
 		return this.http.post<GstReturnDraft>(this.api(`/${encodeURIComponent(id)}/step`), write);
+	}
+
+	/** Q7 Post the set-off: the set-off journal and the challan's payment. */
+	postSetOff(id: string, write: GstSetOffPostInput): Observable<GstReturnDraft> {
+		return this.http.post<GstReturnDraft>(this.api(`/${encodeURIComponent(id)}/set-off`), write);
 	}
 
 	private readonly twoBApi = (path = '') => `${runtimeConfig.apiUrl}/admin/accounts/gst/2b${path}`;

@@ -379,3 +379,56 @@ export function rule37(
 	}
 	return { reversed, reclaimed, entries };
 }
+
+/** A posting row by role (paise), as the books' posting rules write them. */
+export interface GstPostingRow {
+	role: string;
+	debitPaise?: number;
+	creditPaise?: number;
+}
+
+const OUTPUT_ROLE: Record<keyof TaxHeads, string> = { igst: 'output_igst', cgst: 'output_cgst', sgst: 'output_sgst' };
+const INPUT_ROLE: Record<keyof TaxHeads, string> = { igst: 'input_igst', cgst: 'input_cgst', sgst: 'input_sgst' };
+
+/**
+ * Q7 "Post the set-off": the set-off journal and the challan's payment.
+ *
+ * - Journal: output tax debited by the credit used against each head; input credit credited by the credit each head
+ *   gave, reverse-charge credit first from Input GST (reverse charge), where self-invoices put it.
+ * - Challan: output tax debited by the cash for each head and GST payable on reverse charge by its cash; the bank is
+ *   credited with `cashPaise` by the caller.
+ */
+export function setOffPostings(
+	s: SetOff,
+	reverseChargeCash: TaxHeads,
+): { journal: GstPostingRow[]; challan: GstPostingRow[]; cashPaise: number } {
+	const against: TaxHeads = {
+		igst: s.igstUsed.igst + s.cgstUsed.igst + s.sgstUsed.igst,
+		cgst: s.igstUsed.cgst + s.cgstUsed.cgst,
+		sgst: s.igstUsed.sgst + s.sgstUsed.sgst,
+	};
+	const from: TaxHeads = {
+		igst: total(s.igstUsed),
+		cgst: s.cgstUsed.cgst + s.cgstUsed.igst,
+		sgst: s.sgstUsed.sgst + s.sgstUsed.igst,
+	};
+	let rcmCredit = 0;
+	const journal: GstPostingRow[] = HEADS.map((head) => ({ role: OUTPUT_ROLE[head], debitPaise: against[head] }));
+	for (const head of HEADS) {
+		const fromRcm = Math.min(from[head], Math.max(0, reverseChargeCash[head]));
+		rcmCredit += fromRcm;
+		journal.push({ role: INPUT_ROLE[head], creditPaise: from[head] - fromRcm });
+	}
+	journal.push({ role: 'input_gst_rcm', creditPaise: rcmCredit });
+	const rcmCash = total(reverseChargeCash);
+	const challan: GstPostingRow[] = [
+		...HEADS.map((head) => ({ role: OUTPUT_ROLE[head], debitPaise: s.cash[head] })),
+		{ role: 'rcm_payable', debitPaise: rcmCash },
+	];
+	const nonZero = (row: GstPostingRow) => (row.debitPaise ?? 0) > 0 || (row.creditPaise ?? 0) > 0;
+	return {
+		journal: journal.filter(nonZero),
+		challan: challan.filter(nonZero),
+		cashPaise: total(s.cash) + rcmCash,
+	};
+}

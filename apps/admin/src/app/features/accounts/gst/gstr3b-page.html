@@ -36,6 +36,17 @@
 				<i class="ri-bank-line"></i>
 				{{ 'gstr3b_set_off_and_pay' | transloco }}
 			</button>
+			} @if (canPost()) {
+			<button
+				*hasPermission="'accounts.post'"
+				type="button"
+				class="btn btn-theme"
+				id="gst_post_setoff"
+				[disabled]="busy()"
+				(click)="openPost(postTemplate)"
+			>
+				{{ 'gstr3b_post_set_off' | transloco }}
+			</button>
 			} @if (open()) {
 			<button
 				*hasPermission="'accounts.edit'"
@@ -215,6 +226,37 @@
 			}
 		</div>
 		<div class="col-xl-4">
+			@if (d.challan; as c) {
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'gstr3b_after_posting' | transloco }}</h5>
+					</div>
+					<ul class="list-unstyled small mb-0">
+						@if (d.setOffVoucherId) {
+						<li class="border-bottom py-2">
+							<i class="ri-file-list-3-line text-success me-1"></i>
+							<b>{{ 'gstr3b_posted_journal' | transloco }}</b>
+							<div class="text-muted">
+								<a [routerLink]="['/accounts/vouchers', d.setOffVoucherId]">{{ c.setOffNumber }}</a>
+								· {{ 'gstr3b_posted_journal_body' | transloco }}
+							</div>
+						</li>
+						} @if (d.challanVoucherId) {
+						<li class="border-bottom py-2">
+							<i class="ri-bank-line text-success me-1"></i>
+							<b>{{ 'gstr3b_posted_challan' | transloco }}</b>
+							<div class="text-muted">
+								<a [routerLink]="['/accounts/vouchers', d.challanVoucherId]">{{ c.challanNumber }}</a>
+								· {{ 'gstr3b_posted_challan_body' | transloco: { challan: c.number, amount:
+								paise(c.amountPaise), date: day(c.paidOn) } }}
+							</div>
+						</li>
+						}
+					</ul>
+				</div>
+			</div>
+			}
 			<div class="card">
 				<div class="card-body">
 					<div class="title-header">
@@ -252,6 +294,103 @@
 			</div>
 		</div>
 	</div>
+	<ng-template
+		#postTemplate
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="modal-title">{{ 'gstr3b_post_title' | transloco: { month: monthName() } }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			<p class="small text-muted">{{ 'gstr3b_post_help' | transloco: { amount: paise(cashPaise()) } }}</p>
+			<label
+				class="form-label-title"
+				for="gst_pay_from"
+			>
+				{{ 'gstr3b_pay_from' | transloco }}
+			</label>
+			<select
+				class="form-select mb-3"
+				id="gst_pay_from"
+				[ngModel]="payFrom()"
+				(ngModelChange)="payFrom.set($event)"
+			>
+				<option value="">—</option>
+				@for (b of bankAccounts.data()?.items ?? []; track b.id) {
+				<option [value]="b.id">{{ b.shortName }} · {{ b.numberShown }}</option>
+				}
+			</select>
+			<div class="row g-3">
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="gst_challan"
+					>
+						{{ 'gstr3b_challan' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="gst_challan"
+						maxlength="20"
+						[ngModel]="challan()"
+						(ngModelChange)="challan.set($event)"
+					/>
+				</div>
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="gst_paid_on"
+					>
+						{{ 'gstr3b_paid_on' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="gst_paid_on"
+						type="date"
+						[ngModel]="paidOn()"
+						(ngModelChange)="paidOn.set($event)"
+					/>
+				</div>
+			</div>
+			<b class="d-block small mt-3">{{ 'accounts_what_changes' | transloco }}</b>
+			<ul class="list-unstyled small mb-0">
+				<li class="border-bottom py-2">
+					<i class="ri-file-list-3-line me-1"></i>
+					<b>{{ 'gstr3b_posted_journal' | transloco }}</b>
+					<div class="text-muted">{{ 'gstr3b_posted_journal_body' | transloco }}</div>
+				</li>
+				<li class="border-bottom py-2">
+					<i class="ri-bank-line me-1"></i>
+					<b>{{ 'gstr3b_posted_challan' | transloco }}</b>
+					<div class="text-muted">{{ 'gstr3b_post_challan_body' | transloco }}</div>
+				</li>
+			</ul>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="gst_post_confirm"
+				[disabled]="busy() || !payFrom() || challan().trim().length < 6"
+				(click)="postSetOff(d)"
+			>
+				{{ 'gstr3b_post_set_off' | transloco }}
+			</button>
+		</div>
+	</ng-template>
 	<ng-template
 		#changeTemplate
 		let-modal

@@ -166,7 +166,7 @@ function deleteAcross(key: string, title: string, colls: Coll[]): ProductFormSpe
 		},
 	};
 }
-const c0 = ({ c, r }: { c: Coll; r: Rec }) => c.nameOf(r).split(' · ')[0] ?? c.idOf(r);
+const c0 = ({ c, r }: { c: Coll; r: Rec }) => c.nameOf(r).split(' · ')[0] as string;
 
 /* ===== Workers ===== */
 
@@ -451,11 +451,12 @@ const pages: Coll = {
 		field('branch', 'Production branch', 'text', { value: str(r?.['production_branch']), required: true }),
 	],
 	async save(w, r, a, k) {
-		if (!r) throw new VendorError('A Pages project is made on Cloudflare’s page.', 400);
-		await cfSend('PATCH', `/accounts/${a}/pages/projects/${str(r['name'])}`, k, {
+		// collForm refuses a new one first (newBlocked), so a project is always picked.
+		const project = r as Rec;
+		await cfSend('PATCH', `/accounts/${a}/pages/projects/${str(project['name'])}`, k, {
 			production_branch: text(w, 'branch'),
 		});
-		return `Pages project ${str(r['name'])} saved`;
+		return `Pages project ${str(project['name'])} saved`;
 	},
 	remove: async (r, a, k) => {
 		await cfSend('DELETE', `/accounts/${a}/pages/projects/${str(r['name'])}`, k);
@@ -492,10 +493,11 @@ const turnstile: Coll = {
 		field('mode', 'Widget mode', 'select', { value: str(r?.['mode']) || 'managed', options: MODES }),
 	],
 	async save(w, r, a, k) {
-		if (!r) throw new VendorError('A new widget is made on Cloudflare’s page.', 400);
+		// collForm refuses a new one first (newBlocked), so a widget is always picked.
+		const widget = r as Rec;
 		const mode = opt(w, 'mode');
 		if (!MODES.some((m) => m.value === mode)) throw new VendorError('Choose a mode.', 400);
-		await cfSend('PUT', `/accounts/${a}/challenges/widgets/${str(r['sitekey'])}`, k, {
+		await cfSend('PUT', `/accounts/${a}/challenges/widgets/${str(widget['sitekey'])}`, k, {
 			name: text(w, 'name'),
 			domains: list(w, 'domains'),
 			mode,
@@ -742,8 +744,10 @@ const redirectLists: Coll = {
 	newBlocked: 'A list is made by Rules › Upload bulk redirects on the domain.',
 	fields: (r) => [field('description', 'Note', 'text', { value: str(r?.['description']) })],
 	async save(w, r, a, k) {
-		if (!r) throw new VendorError('A list is made by Upload bulk redirects.', 400);
-		await cfSend('PUT', `/accounts/${a}/rules/lists/${str(r['id'])}`, k, { description: opt(w, 'description') });
+		// collForm refuses a new one first (newBlocked), so a list is always picked.
+		await cfSend('PUT', `/accounts/${a}/rules/lists/${str((r as Rec)['id'])}`, k, {
+			description: opt(w, 'description'),
+		});
 		return 'List saved';
 	},
 	remove: async (r, a, k) => {
@@ -798,8 +802,10 @@ export const MEMBERS_FORMS = {
 	vectorizedelete: deleteAcross('vectorizedelete', 'Delete a Vectorize index', [vectorize]),
 };
 
-Object.assign(ALERTS_EXTRA.forms ?? {}, { member: MEMBERS_FORMS.member, memberdelete: MEMBERS_FORMS.memberdelete });
-Object.assign(BUILD_EXTRA.forms ?? {}, {
+// Both extras declare their forms above.
+type Forms = NonNullable<ScreenExtra['forms']>;
+Object.assign(ALERTS_EXTRA.forms as Forms, { member: MEMBERS_FORMS.member, memberdelete: MEMBERS_FORMS.memberdelete });
+Object.assign(BUILD_EXTRA.forms as Forms, {
 	vectorize: MEMBERS_FORMS.vectorize,
 	vectorizedelete: MEMBERS_FORMS.vectorizedelete,
 });

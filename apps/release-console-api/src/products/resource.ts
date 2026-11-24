@@ -49,6 +49,11 @@ export interface FormPart {
 	send(ctx: ProductCtx, w: Write, key: string, item: Item | null): Promise<Sent>;
 }
 
+/** An Edit or Operate form: it sends only once an item is chosen, so `send` always gets one. */
+export interface ItemFormPart extends Omit<FormPart, 'send'> {
+	send(ctx: ProductCtx, w: Write, key: string, item: Item): Promise<Sent>;
+}
+
 export interface ResourceSpec {
 	vendor: ProductScreen['vendor'];
 	noun: string;
@@ -69,8 +74,8 @@ export interface ResourceSpec {
 	tables?(ctx: ProductCtx, i: Item): Promise<ProductTable[]>;
 	links?(i: Item): ProductLink[];
 	create?: FormPart;
-	edit?: FormPart;
-	op?: FormPart & { label?: string };
+	edit?: ItemFormPart;
+	op?: ItemFormPart & { label?: string };
 	destroy?: Omit<FormPart, 'title' | 'submit' | 'fields' | 'send'> & {
 		submit?: string;
 		fields?: FormPart['fields'];
@@ -124,6 +129,12 @@ export function resource(spec: ResourceSpec): ProductScreen {
 		return { items, item, picker };
 	}
 
+	/** formOf refuses before send() when an item is needed and none is chosen. */
+	const withItem = (part: ItemFormPart): FormPart => ({
+		...part,
+		send: (ctx, w, key, item) => part.send(ctx, w, key, item as Item),
+	});
+
 	function formOf(key: string, part: FormPart, needsItem: boolean): ProductFormSpec {
 		return {
 			async read(ctx) {
@@ -164,20 +175,20 @@ export function resource(spec: ResourceSpec): ProductScreen {
 	const tabs: ProductScreen['tabs'] = {};
 	const forms: Record<string, ProductFormSpec> = { ...(spec.forms ?? {}) };
 
-	const envOf = (ctx: ProductCtx, i: Item) =>
+	// Asked only when the spec is labelled, so one of the two is set.
+	const envOf = (ctx: ProductCtx, i: Item): string =>
 		spec.envTag
 			? (ctx.envTags()[`do:${spec.envTag}:${spec.id(i)}`] ?? 'no environment')
-			: spec.envFrom
-				? spec.envFrom(ctx, i)
-				: null;
+			: (spec.envFrom as NonNullable<ResourceSpec['envFrom']>)(ctx, i);
 	const labelled = !!(spec.envTag || spec.envFrom);
 
 	tabs['list'] = async (ctx) => {
 		const items = await spec.items(ctx);
 		if (spec.envTag && items.length < 2000) ctx.pruneEnvTags(spec.envTag, items.map(spec.id));
-		const columns: ResourceSpec['columns'] = labelled
-			? [...spec.columns, ['env', 'Environment', false, () => null]]
-			: spec.columns;
+		const headers = [
+			...spec.columns.map(([k, l, m]) => col(k, l, m)),
+			...(labelled ? [col('env', 'Environment', false)] : []),
+		];
 		const [stats, notes, extra] = await Promise.all([
 			spec.stats?.(items, ctx) ?? [],
 			spec.notes?.(items, ctx) ?? [],
@@ -189,7 +200,7 @@ export function resource(spec: ResourceSpec): ProductScreen {
 			tables: [
 				table(
 					spec.nouns[0]?.toUpperCase() + spec.nouns.slice(1),
-					columns.map(([k, l, m]) => col(k, l, m)),
+					headers,
 					items.map((i) =>
 						row(
 							spec.id(i),
@@ -224,7 +235,7 @@ export function resource(spec: ResourceSpec): ProductScreen {
 				facts: [
 					...(spec.facts?.(item) ??
 						spec.columns.map(([, l, , cell]) => [l, String(cell(item) ?? '—'), null] as ProductFact)),
-					...(labelled ? [['Environment', envOf(ctx, item) ?? '—', null] as ProductFact] : []),
+					...(labelled ? [['Environment', envOf(ctx, item), null] as ProductFact] : []),
 				],
 				tables: spec.tables ? await spec.tables(ctx, item) : [],
 				links: spec.links?.(item) ?? [],
@@ -243,11 +254,11 @@ export function resource(spec: ResourceSpec): ProductScreen {
 		tabs['create'] = forms['create'].read;
 	}
 	if (spec.edit) {
-		forms['edit'] = formOf('edit', spec.edit, true);
+		forms['edit'] = formOf('edit', withItem(spec.edit), true);
 		tabs['edit'] = forms['edit'].read;
 	}
 	if (spec.op) {
-		forms['op'] = formOf('op', spec.op, true);
+		forms['op'] = formOf('op', withItem(spec.op), true);
 		tabs['op'] = forms['op'].read;
 	}
 	if (spec.destroy) {
@@ -263,8 +274,9 @@ export function resource(spec: ResourceSpec): ProductScreen {
 				blocked: d.blocked,
 				danger: true,
 				typed: true,
-				async send(ctx, w, key, item) {
-					if (!item) throw new VendorError(`Choose a ${spec.noun}.`, 400);
+				async send(ctx, w, key, chosenItem) {
+					// formOf found the item before sending (it refuses a missing one).
+					const item = chosenItem as Item;
 					const sent = await d.remove(ctx, key, item, w);
 					if (spec.envTag) ctx.setEnvTag(`do:${spec.envTag}:${spec.id(item)}`, null);
 					return (

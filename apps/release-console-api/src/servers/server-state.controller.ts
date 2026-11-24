@@ -190,7 +190,8 @@ export class ServerStateController {
 
 		const shop = await (async (): Promise<ServerState['shop']> => {
 			const target = serverTargetOf(env.name);
-			const token = target ? this.keyFile.get(OPS_KEY[target] ?? '') : null;
+			// OPS_KEY names a key for every server target.
+			const token = target ? this.keyFile.get(OPS_KEY[target] as string) : null;
 			const api = env.domains.find((h) => /^api[.-]/.test(h));
 			if (!api) return { state: 'none', message: `${env.label} names no API host.`, queues: [] };
 			if (!token)

@@ -247,7 +247,8 @@ export class ProjectsService {
 		);
 		if (!stale.length) return;
 		this.store.update((f) => {
-			const tags = { ...(f.envTags[slot] ?? {}) };
+			// Stale tags were just read from this slot, so it is there.
+			const tags = { ...(f.envTags[slot] as Record<string, string>) };
 			for (const k of stale) delete tags[k];
 			return { ...f, envTags: { ...f.envTags, [slot]: tags } };
 		});

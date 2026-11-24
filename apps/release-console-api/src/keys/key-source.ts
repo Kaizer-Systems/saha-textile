@@ -39,7 +39,8 @@ export class KeySourceService {
 			);
 			this.cache = { mtimeMs, values, readAt: new Date(mtimeMs).toISOString() };
 		}
-		return this.cache?.values ?? null;
+		// Set just above when it was missing or stale.
+		return (this.cache as { values: Map<string, string> }).values;
 	}
 
 	/** One name's value, or `null` when the file lacks it or holds it blank. */
@@ -57,7 +58,7 @@ export class KeySourceService {
 		return {
 			file: keysFile(),
 			present: values !== null,
-			readAt: values ? (this.cache?.readAt ?? null) : null,
+			readAt: values ? (this.cache as { readAt: string }).readAt : null,
 			names,
 			missing: absent.filter((n) => !OPTIONAL_KEY_NAMES.includes(n) && !covered(n)),
 			optionalBlank: absent.filter((n) => OPTIONAL_KEY_NAMES.includes(n) || covered(n)),

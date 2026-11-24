@@ -354,9 +354,9 @@ interface TermOut {
 	ok: boolean;
 	lines: string[];
 }
-async function termView(ctx: ProductCtx, commands: string[], containerHint?: RegExp) {
+async function termView(ctx: ProductCtx) {
 	const { d } = await containerPick(ctx);
-	const running = d.containers.filter((c) => c.state === 'running' && (!containerHint || containerHint.test(c.name)));
+	const running = d.containers.filter((c) => c.state === 'running');
 	const list = await ctx.helper<Array<{ id: string; label: string }>>('GET', '/inspect/commands').catch(() => []);
 	return {
 		running,
@@ -379,19 +379,21 @@ export const terminalScreen: ProductScreen = {
 	vendor: 'local',
 	tabs: {
 		live: async (ctx) => {
-			const { running, list, run } = await termView(ctx, []);
+			const { running, list, run } = await termView(ctx);
 			const choices = running.flatMap((c) =>
 				list
 					.filter(
 						(cmd) =>
-							!/mongo|redis|meili/.test(cmd.id) || new RegExp(cmd.id.split('-')[0] ?? '').test(c.name),
+							!/mongo|redis|meili/.test(cmd.id) ||
+							new RegExp(cmd.id.split('-')[0] as string).test(c.name),
 					)
 					.map((cmd) => ({ value: `${c.name}|${cmd.id}`, label: `${c.name} › ${cmd.label}` })),
 			);
 			const p = pick('Command', choices, ctx.id);
 			if (!p.value) return view({ notes: [running.length ? note('No commands.', 'muted') : helperDown] });
-			const [c, cmd] = p.value.split('|');
-			const out = await run(c ?? '', cmd ?? '');
+			// Every choice is "container|command".
+			const [c, cmd] = p.value.split('|') as [string, string];
+			const out = await run(c, cmd);
 			return view(
 				{
 					tables: [outTable(out)],
@@ -406,7 +408,7 @@ export const terminalScreen: ProductScreen = {
 			);
 		},
 		split: async (ctx) => {
-			const { running, run } = await termView(ctx, []);
+			const { running, run } = await termView(ctx);
 			const api = running.find((c) => /api/.test(c.name)) ?? running[0];
 			const mongo = running.find((c) => /mongo/.test(c.name));
 			if (!api) return view({ notes: [helperDown] });
@@ -653,8 +655,9 @@ export const networkScreen: ProductScreen = {
 							[...groups]
 								.sort((a, b) => b[1] - a[1])
 								.map(([k, n]) => {
-									const [state, peer] = k.split('|');
-									return row(k, k, { state: state ?? '', peer: peer ?? '', n });
+									// Every group key is "state|address".
+									const [state, peer] = k.split('|') as [string, string];
+									return row(k, k, { state, peer, n });
 								}),
 							'No TCP connections.',
 						),
@@ -1156,7 +1159,7 @@ export const cronScreen: ProductScreen = {
 									`${s.queue}:${s.key}`,
 									s.key,
 									{
-										name: s.key.split(':')[0] ?? s.key,
+										name: s.key.split(':')[0] as string,
 										q: s.queue,
 										next: `${when(new Date(s.next).toISOString())} (${s.next < now ? 'overdue' : `in ${Math.round((s.next - now) / 60000)} min`})`,
 									},

@@ -315,7 +315,8 @@ const actionWords = (a: Act) =>
 			? `Worker ${arr(a['value'])
 					.map((x) => str(x))
 					.join(', ')}`
-			: str(a['type']) || '—';
+			: // Only actions emailAction made reach here, and each has a type ("drop" here).
+				str(a['type']);
 
 function emailAction(w: ProductWrite): Act {
 	const kind = opt(w, 'action');
@@ -390,7 +391,8 @@ const emailRuleForm: ProductFormSpec = {
 		const id = w.id ?? ctx.id;
 		if (isNew(id)) await cfSend('POST', `/zones/${z.id}/email/routing/rules`, k, body);
 		else await cfSend('PUT', `/zones/${z.id}/email/routing/rules/${id}`, k, body);
-		return { message: `${address}: ${actionWords(body.actions[0] ?? {})}`, productId: z.id, follow: [] };
+		// The rule has the one action emailAction made.
+		return { message: `${address}: ${actionWords(body.actions[0] as Act)}`, productId: z.id, follow: [] };
 	},
 };
 

@@ -129,7 +129,8 @@ function vendorMessage(vendor: string, url: string, status: number, body: unknow
 		(typeof b['message'] === 'string' && b['message']) ||
 		(errors[0] && typeof errors[0]['message'] === 'string' ? errors[0]['message'] : '') ||
 		'';
-	const path = url.replace(/^https:\/\/[^/]+/, '').split('?')[0] ?? '';
+	// split always gives a first part.
+	const path = url.replace(/^https:\/\/[^/]+/, '').split('?')[0] as string;
 	if (status === 403 || status === 401) {
 		const hint = vendor === 'Cloudflare' ? CF_HINTS.find(([re]) => re.test(path))?.[1] : undefined;
 		return `${vendor} refused ${path} with this key (${status})${said ? `: ${said}` : ''}. ${hint ? `Add the permission ${hint} to the console’s Cloudflare token.` : 'The key needs that permission.'}`;
@@ -233,7 +234,10 @@ export const action = (label: string, form: string, tone: ProductAction['tone'] 
 	tone,
 });
 
-export function view(v: Partial<ProductView>, picker: ProductPicker | null = null): ProductTab {
+/** A view tab: what `view()` makes, typed so callers may add to it without checking its type. */
+export type ViewTab = Extract<ProductTab, { type: 'view' }>;
+
+export function view(v: Partial<ProductView>, picker: ProductPicker | null = null): ViewTab {
 	return {
 		type: 'view',
 		picker,

@@ -29,7 +29,8 @@ const UNITS: Record<string, number> = {
 export function parseSize(text: string): number | null {
 	const m = /^\s*([\d.]+)\s*([a-zA-Z]+)\s*$/.exec(text);
 	if (!m) return null;
-	const unit = UNITS[(m[2] ?? '').toUpperCase()];
+	// Both groups take part whenever the pattern matches.
+	const unit = UNITS[(m[2] as string).toUpperCase()];
 	const value = Number(m[1]);
 	return unit === undefined || Number.isNaN(value) ? null : Math.round(value * unit);
 }

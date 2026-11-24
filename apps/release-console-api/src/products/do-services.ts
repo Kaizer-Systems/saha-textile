@@ -153,7 +153,6 @@ export const loadBalancersScreen = resource({
 		],
 		cost: '$12 a month per node.',
 		async send(_ctx, w, key, l) {
-			if (!l) throw new VendorError('Choose a load balancer.', 400);
 			const body = { ...l, region: regionSlug(l['region']), size_unit: int(w, 'nodes', 1, 100) };
 			for (const k of ['id', 'ip', 'status', 'created_at', 'ipv6', 'size'])
 				delete (body as Record<string, unknown>)[k];
@@ -216,7 +215,7 @@ const recordsTab = async (ctx: ProductCtx) => {
 				),
 			],
 		});
-	const records = (await doAll(`/domains/${p.value}/records`, 'domain_records', ctx.key)) ?? [];
+	const records = await doAll(`/domains/${p.value}/records`, 'domain_records', ctx.key);
 	return view(
 		{
 			tables: [
@@ -274,9 +273,7 @@ export const doDnsScreen: ProductScreen = (() => {
 			ctx.id,
 		);
 		const records =
-			key === 'edit' && p.value
-				? ((await doAll(`/domains/${p.value}/records`, 'domain_records', ctx.key)) ?? [])
-				: [];
+			key === 'edit' && p.value ? await doAll(`/domains/${p.value}/records`, 'domain_records', ctx.key) : [];
 		return formTab(
 			form({
 				key,
@@ -532,7 +529,8 @@ export const monitoringScreen = resource({
 		submit: 'Create policy',
 		fields: (ctx) => [
 			field('metric', 'Measure', 'select', {
-				value: METRICS[0]?.[0] ?? '',
+				// METRICS is a fixed, non-empty list.
+				value: (METRICS[0] as [string, string])[0],
 				options: METRICS.map(([v, l]) => option(v, l)),
 			}),
 			field('value', 'Above', 'number', { value: 85, min: 0, max: 100_000 }),
@@ -585,7 +583,6 @@ export const monitoringScreen = resource({
 			field('enabled', 'On', 'toggle', { value: p?.['enabled'] === true }),
 		],
 		async send(_ctx, w, key, p) {
-			if (!p) throw new VendorError('Choose a policy.', 400);
 			await doSend('PUT', `/monitoring/alerts/${str(p['uuid'])}`, key, {
 				...p,
 				value: int(w, 'value', 0, 100_000),
@@ -712,7 +709,6 @@ export const inferenceScreen = resource({
 		submit: 'Save agent',
 		fields: (_ctx, a) => [field('instruction', 'Instructions', 'textarea', { value: str(a?.['instruction']) })],
 		async send(_ctx, w, key, a) {
-			if (!a) throw new VendorError('Choose an agent.', 400);
 			await doSend('PUT', `/gen-ai/agents/${str(a['uuid'])}`, key, {
 				uuid: str(a['uuid']),
 				instruction: text(w, 'instruction'),
@@ -786,7 +782,7 @@ export const vpcPeeringScreen = resource({
 		title: 'New VPC peering',
 		submit: 'Create peering',
 		fields: async (ctx) => {
-			const vpcs = (await doAll('/vpcs', 'vpcs', ctx.key)) ?? [];
+			const vpcs = await doAll('/vpcs', 'vpcs', ctx.key);
 			const opts = vpcs.map((v) => option(str(v['id']), `${str(v['name'])} · ${str(v['ip_range'])}`));
 			return [
 				field('name', 'Name', 'text', { required: true }),
@@ -843,13 +839,14 @@ export async function s3(
 	if (res.status === 404 && /NoSuch(Lifecycle|CORS|Bucket)Configuration|NoSuchCORS/.test(body)) return '';
 	if (!res.ok)
 		throw new VendorError(
-			`Spaces answered ${res.status} to ${path.split('?')[0] || '/'}${/<Code>([^<]+)/.exec(body)?.[1] ? `: ${/<Code>([^<]+)/.exec(body)?.[1]}` : ''}.`,
+			// Every caller's path starts with "/", so the part before "?" is never empty.
+			`Spaces answered ${res.status} to ${path.split('?')[0] as string}${/<Code>([^<]+)/.exec(body)?.[1] ? `: ${/<Code>([^<]+)/.exec(body)?.[1]}` : ''}.`,
 			res.status,
 		);
 	return body;
 }
 export const tags = (xml: string, tag: string) =>
-	[...xml.matchAll(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, 'g'))].map((m) => m[1] ?? '');
+	[...xml.matchAll(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, 'g'))].map((m) => m[1] as string);
 const tag1 = (xml: string, tag: string) => tags(xml, tag)[0] ?? '';
 
 /**
@@ -869,8 +866,11 @@ export async function buckets(ctx: ProductCtx): Promise<Array<{ name: string; cr
 	}
 	const found = new Map<string, string>();
 	for (const k of ctx.keyRefs)
-		if (k.kind.startsWith('spaces') && k.target)
-			found.set(k.target.split('/')[1] ?? '', k.target.split('/')[0] ?? SPACES_REGION);
+		if (k.kind.startsWith('spaces') && k.target) {
+			// A key's target is "region/bucket"; a split always has the region part.
+			const [region, name = ''] = k.target.split('/') as [string, ...string[]];
+			found.set(name, region);
+		}
 	const [keys, cdn] = await Promise.all([
 		doSoft('/spaces/keys?per_page=100', ctx.key),
 		doAll('/cdn/endpoints', 'endpoints', ctx.key, true),
@@ -880,7 +880,8 @@ export async function buckets(ctx: ProductCtx): Promise<Array<{ name: string; cr
 			if (str(g['bucket']) && !found.has(str(g['bucket']))) found.set(str(g['bucket']), SPACES_REGION);
 	for (const e of cdn ?? []) {
 		const m = /^([a-z0-9.-]+)\.([a-z0-9]+)\.digitaloceanspaces\.com$/.exec(str(e['origin']));
-		if (m?.[1] && m[2]) found.set(m[1], m[2]);
+		// Both groups are "+", so a match always has a bucket and a region.
+		if (m) found.set(m[1] as string, m[2] as string);
 	}
 	found.delete('');
 	return [...found].map(([name, region]) => ({ name, created: '', region }));
@@ -930,12 +931,13 @@ export const spacesScreen: ProductScreen = {
 				ctx.id,
 			);
 			if (!p.value) return view({ notes: [note('No buckets.', 'muted')] });
-			const regionOf = (name: string) => list_.find((b) => b.name === name)?.region ?? SPACES_REGION;
+			// The picked bucket is one of the list's.
+			const { region } = list_.find((b) => b.name === p.value) as { region: string };
 			const [objects, versioning, lifecycle, cors] = await Promise.all([
-				s3(ctx, '/?list-type=2&max-keys=50', regionOf(p.value), p.value),
-				s3(ctx, '/?versioning', regionOf(p.value), p.value).catch(() => ''),
-				s3(ctx, '/?lifecycle', regionOf(p.value), p.value).catch(() => ''),
-				s3(ctx, '/?cors', regionOf(p.value), p.value).catch(() => ''),
+				s3(ctx, '/?list-type=2&max-keys=50', region, p.value),
+				s3(ctx, '/?versioning', region, p.value).catch(() => ''),
+				s3(ctx, '/?lifecycle', region, p.value).catch(() => ''),
+				s3(ctx, '/?cors', region, p.value).catch(() => ''),
 			]);
 			const contents = tags(objects, 'Contents');
 			return view(
@@ -946,7 +948,7 @@ export const spacesScreen: ProductScreen = {
 						tone: tag1(versioning, 'Status') === 'Enabled' ? 'ok' : 'amber',
 					},
 					facts: [
-						fact('Region', regionOf(p.value)),
+						fact('Region', region),
 						fact('Lifecycle rules', tags(lifecycle, 'Rule').length || 'none'),
 						fact('CORS rules', tags(cors, 'CORSRule').length || 'none'),
 						fact(
@@ -1312,10 +1314,11 @@ async function findings(ctx: ProductCtx): Promise<Finding[]> {
 				});
 		}),
 	);
-	if ((keys ?? []).length > 5)
+	const keyCount = (keys ?? []).length;
+	if (keyCount > 5)
 		out.push({
 			id: 'keys',
-			what: `${(keys ?? []).length} SSH keys on the account`,
+			what: `${keyCount} SSH keys on the account`,
 			where: 'account',
 			level: 'amber',
 			fix: 'Remove keys nobody uses (Cloud account › SSH keys).',
@@ -1419,7 +1422,7 @@ export const doAccountScreen: ProductScreen = {
 	vendor: 'digitalocean',
 	tabs: {
 		keys: async (ctx) => {
-			const keys = (await doAll('/account/keys', 'ssh_keys', ctx.key)) ?? [];
+			const keys = await doAll('/account/keys', 'ssh_keys', ctx.key);
 			return view({
 				tables: [
 					table(
@@ -1573,7 +1576,7 @@ export const doAccountScreen: ProductScreen = {
 		},
 		'key-remove': {
 			read: async (ctx) => {
-				const keys = (await doAll('/account/keys', 'ssh_keys', ctx.key)) ?? [];
+				const keys = await doAll('/account/keys', 'ssh_keys', ctx.key);
 				return formTab(
 					form({
 						key: 'key-remove',

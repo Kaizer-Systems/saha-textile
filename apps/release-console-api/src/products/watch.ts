@@ -6,7 +6,7 @@
  */
 import { LATENCY_BUCKETS_MS } from '@saha-textile/release-console-contracts';
 
-import type { ProductCtx, ProductScreen } from './kit.js';
+import type { ProductCtx, ProductFormSpec, ProductScreen } from './kit.js';
 import {
 	action,
 	ago,
@@ -418,7 +418,8 @@ export const tracesScreen: ProductScreen = {
 				worst.errorRate > 0.02
 					? `${Math.round(worst.errorRate * 100)}% of its requests fail with a server error: Watch › Issues has the error lines.`
 					: '',
-				(worst.p95 ?? 0) > 1000 ? `It is slow (p95 ${Math.round(worst.p95 ?? 0)} ms).` : '',
+				// Over 1000 ms means it has a p95.
+				(worst.p95 ?? 0) > 1000 ? `It is slow (p95 ${Math.round(worst.p95 as number)} ms).` : '',
 				slowDb.length
 					? `MongoDB recorded ${slowDb.length} slow queries; the slowest took ${Math.max(...slowDb.map((s) => num(s['ms'])))} ms (Database monitor).`
 					: m?.profile && num(rec(m.profile)['was']) === 0
@@ -1278,9 +1279,8 @@ export const cdnScreen: ProductScreen = {
 					}),
 				),
 			async send(ctx, w) {
-				const op = cfCacheScreen.forms?.['op'];
-				if (!op) throw new VendorError('Purge is not available.', 500);
-				return op.send(ctx, w);
+				// The cache screen's purge form (cf-zone.ts) is always there.
+				return (cfCacheScreen.forms?.['op'] as ProductFormSpec).send(ctx, w);
 			},
 		},
 	},

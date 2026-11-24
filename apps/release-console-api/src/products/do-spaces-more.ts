@@ -108,7 +108,8 @@ const corsForm: ProductFormSpec = {
 const filesTab = async (ctx: ProductCtx) => {
 	const all = await bucketChoices(ctx);
 	const p = pick('Bucket', all, ctx.id);
-	const [name, region] = (p.value ?? '').split('|');
+	// split always gives a first part.
+	const [name, region] = (p.value ?? '').split('|') as [string, string | undefined];
 	const xml = name ? await s3(ctx, '/?list-type=2&max-keys=200', region, name) : '';
 	const keys = tags(xml, 'Key');
 	const sizes = tags(xml, 'Size').map(Number);
@@ -117,7 +118,7 @@ const filesTab = async (ctx: ProductCtx) => {
 		{
 			tables: [
 				table(
-					`Files in ${name ?? ''} (first 200)`,
+					`Files in ${name} (first 200)`,
 					[col('key', 'File', true), col('size', 'Size', true), col('at', 'Changed', true)],
 					keys.map((k, n) =>
 						row(k, k, {
@@ -170,7 +171,8 @@ const fileDelete: ProductFormSpec = {
 		const [name = '', region = 'sgp1'] = opt(w, 'bucket').split('|');
 		const key = text(w, 'key').replace(/^\/+/, '');
 		if (!name || !key || key.includes('..')) throw new VendorError('Choose a bucket and a file path.', 400);
-		confirmed(w, key.split('/').pop() ?? key);
+		// A non-empty path always has a last part.
+		confirmed(w, key.split('/').pop() as string);
 		await s3(ctx, `/${key.split('/').map(encodeURIComponent).join('/')}`, region, name, 'DELETE');
 		return { message: `${key} deleted from ${name}`, productId: null, follow: [] };
 	},

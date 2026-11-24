@@ -20,15 +20,15 @@ type Item = { id: string; name: string };
 const LISTS: Record<TagKind, (ctx: ProductCtx, key: string) => Promise<Item[]>> = {
 	droplet: async (_c, k) => (await dropletsOf(k)).map((d) => ({ id: String(num(d['id'])), name: str(d['name']) })),
 	database: async (_c, k) =>
-		((await doAll('/databases', 'databases', k)) ?? []).map((d) => ({ id: str(d['id']), name: str(d['name']) })),
+		(await doAll('/databases', 'databases', k)).map((d) => ({ id: str(d['id']), name: str(d['name']) })),
 	spaces: async (ctx) => (await buckets(ctx)).map((b) => ({ id: b.name, name: b.name })),
 	k8s: async (_c, k) =>
-		((await doAll('/kubernetes/clusters', 'kubernetes_clusters', k)) ?? []).map((c) => ({
+		(await doAll('/kubernetes/clusters', 'kubernetes_clusters', k)).map((c) => ({
 			id: str(c['id']),
 			name: str(c['name']),
 		})),
 	app: async (_c, k) =>
-		((await doAll('/apps', 'apps', k)) ?? []).map((a) => ({ id: str(a['id']), name: str(rec(a['spec'])['name']) })),
+		(await doAll('/apps', 'apps', k)).map((a) => ({ id: str(a['id']), name: str(rec(a['spec'])['name']) })),
 };
 const NOUN: Record<TagKind, string> = {
 	droplet: 'server',

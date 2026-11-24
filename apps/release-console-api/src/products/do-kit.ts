@@ -23,7 +23,9 @@ export const doSend = (method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', path: string
 export const envAttached = (ctx: ProductCtx, ids: unknown[]): string =>
 	envOfDroplets(ctx.repo.environments, ctx.envTags(), ids) ?? '—';
 
-/** Every page of a list (200 a page, at most 10 pages). */
+/** Every page of a list (200 a page, at most 10 pages); only a soft read can answer null (a refusal). */
+export function doAll(path: string, field: string, key: string, soft?: false): Promise<Record<string, unknown>[]>;
+export function doAll(path: string, field: string, key: string, soft: true): Promise<Record<string, unknown>[] | null>;
 export async function doAll(
 	path: string,
 	field: string,
@@ -81,7 +83,7 @@ export function laterAction(label: string, start: (key: string) => Promise<numbe
 	};
 }
 
-export const dropletsOf = async (key: string) => (await doAll('/droplets', 'droplets', key)) ?? [];
+export const dropletsOf = async (key: string) => await doAll('/droplets', 'droplets', key);
 export const dropletName = (droplets: Record<string, unknown>[], id: unknown) =>
 	str(droplets.find((d) => num(d['id']) === num(id))?.['name']) || String(id);
 export const regionSlug = (v: unknown) => (typeof v === 'string' ? v : str(rec(v)['slug']));
@@ -129,7 +131,8 @@ async function cpuSeries(ctx: ProductCtx, hostId: string): Promise<ProductSeries
 	for (let i = 1; i < times.length; i++) {
 		const t0 = times[i - 1] as number;
 		const t1 = times[i] as number;
-		const dt = (total.get(t1) ?? 0) - (total.get(t0) ?? 0);
+		// Both times come from `total`'s own keys.
+		const dt = (total.get(t1) as number) - (total.get(t0) as number);
 		const di = (idle.get(t1) ?? 0) - (idle.get(t0) ?? 0);
 		if (dt > 0) points.push([t1, round(Math.max(0, Math.min(100, (1 - di / dt) * 100)))]);
 	}

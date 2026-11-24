@@ -31,10 +31,9 @@ import { VendorError, arr, num, rec, str } from '../vendors/http.js';
 
 const GH = 'https://api.github.com';
 
-function addForm(screen: ProductScreen | undefined, key: string, spec: ProductFormSpec, asTab = true): void {
-	if (!screen) return;
+function addForm(screen: ProductScreen, key: string, spec: ProductFormSpec): void {
 	screen.forms = { ...(screen.forms ?? {}), [key]: spec };
-	if (asTab) screen.tabs[key] = spec.read;
+	screen.tabs[key] = spec.read;
 }
 
 /* ----- DigitalOcean ----- */
@@ -125,7 +124,8 @@ const appCreate: ProductFormSpec = {
 				{
 					name: 'web',
 					github: { repo, branch: text(w, 'branch'), deploy_on_push: true },
-					source_dir: text(w, 'dir') || '/',
+					// text() refuses an empty folder, so it is always given.
+					source_dir: text(w, 'dir'),
 					http_port: int(w, 'port', 1, 65_535),
 					instance_count: 1,
 					instance_size_slug: 'apps-s-1vcpu-0.5gb',
@@ -499,7 +499,7 @@ const secretWrite: ProductFormSpec = {
 					}),
 					field('name', 'Name', 'select', {
 						options: [...names.map((n) => option(n, n)), option('other', 'Another name…')],
-						value: names[1] ?? null,
+						value: names[1] as string,
 					}),
 					field('other', 'Other name', 'text', {
 						help: 'CAPITAL_LETTERS_AND_DIGITS, only when Another name is chosen.',
@@ -538,34 +538,34 @@ const secretWrite: ProductFormSpec = {
 
 /** Adds the remaining tabs and forms to the screens they belong to. */
 export function addExtras(screens: Record<string, ProductScreen>): void {
-	addForm(screens['doautoscale'], 'op', autoscaleOp);
-	addForm(screens['apps'], 'create', appCreate);
-	addForm(screens['registry'], 'edit', registryEdit);
-	addForm(screens['donetadv'], 'edit', peeringEdit);
-	addForm(screens['loadbalancers'], 'op', lbMembers);
-	addForm(screens['inference'], 'create', agentCreate);
-	addForm(screens['spaces'], 'create', bucketCreate);
-	addForm(screens['spaces'], 'destroy', bucketDestroy);
-	addForm(screens['spaces'], 'op', keyRotate);
-	const fn = screens['functions'];
-	if (fn)
-		addForm(fn, 'op', {
-			read: async () =>
-				formTab(
-					form({
-						key: 'op',
-						title: 'Deploy functions',
-						submit: 'Deploy',
-						blocked:
-							'Functions are deployed from code with doctl serverless deploy (in the repository’s pipeline); the console shows what is deployed and its triggers.',
-					}),
-				),
-			async send() {
-				throw new VendorError('Functions deploy from code.', 400);
-			},
-		});
-	const secrets = screens['dosecrets'];
-	if (secrets) {
+	// Every screen named here is registered before the extras are added (registry.ts).
+	const screen = (name: string) => screens[name] as ProductScreen;
+	addForm(screen('doautoscale'), 'op', autoscaleOp);
+	addForm(screen('apps'), 'create', appCreate);
+	addForm(screen('registry'), 'edit', registryEdit);
+	addForm(screen('donetadv'), 'edit', peeringEdit);
+	addForm(screen('loadbalancers'), 'op', lbMembers);
+	addForm(screen('inference'), 'create', agentCreate);
+	addForm(screen('spaces'), 'create', bucketCreate);
+	addForm(screen('spaces'), 'destroy', bucketDestroy);
+	addForm(screen('spaces'), 'op', keyRotate);
+	addForm(screen('functions'), 'op', {
+		read: async () =>
+			formTab(
+				form({
+					key: 'op',
+					title: 'Deploy functions',
+					submit: 'Deploy',
+					blocked:
+						'Functions are deployed from code with doctl serverless deploy (in the repository’s pipeline); the console shows what is deployed and its triggers.',
+				}),
+			),
+		async send() {
+			throw new VendorError('Functions deploy from code.', 400);
+		},
+	});
+	const secrets = screen('dosecrets');
+	{
 		secrets.tabs['detail'] = async (ctx) => {
 			const apps = await appsWithSecrets(ctx);
 			const p = pick(
@@ -632,7 +632,6 @@ export function addExtras(screens: Record<string, ProductScreen>): void {
 			});
 		};
 	}
-	const cfAccount = screens['cfaccount'];
-	if (cfAccount) cfAccount.tabs['billing'] = cfBilling;
+	screen('cfaccount').tabs['billing'] = cfBilling;
 	screens['secrets'] = { ...secretsWriteScreen, tabs: { write: secretWrite.read }, forms: { write: secretWrite } };
 }

@@ -31,7 +31,8 @@ export interface AppFile {
  */
 export function appFile(dir: string | undefined, urlPath: string): AppFile | null {
 	if (!dir || urlPath === '/api' || urlPath.startsWith('/api/')) return null;
-	const path = decodeURIComponent((urlPath.split('?')[0] ?? '/').split('#')[0] ?? '/');
+	// split always gives a first part.
+	const path = decodeURIComponent((urlPath.split('?')[0] as string).split('#')[0] as string);
 	const root = normalize(dir);
 	const wanted = normalize(join(root, path));
 	const inside = wanted === root || wanted.startsWith(root.endsWith(sep) ? root : root + sep);

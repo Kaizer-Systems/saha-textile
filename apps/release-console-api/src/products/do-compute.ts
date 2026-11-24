@@ -207,9 +207,7 @@ const dropletEditForm = async (ctx: ProductCtx) => {
 	const [d, sizes] = await Promise.all([oneDroplet(ctx, picker.value), doAll('/sizes', 'sizes', ctx.key)]);
 	const region = regionSlug(d['region']);
 	const current = str(d['size_slug']);
-	const usable = (sizes ?? []).filter(
-		(s) => s['available'] === true && arr(s['regions']).some((r) => str(r) === region),
-	);
+	const usable = sizes.filter((s) => s['available'] === true && arr(s['regions']).some((r) => str(r) === region));
 	return formTab(
 		form({
 			key: 'edit',
@@ -307,7 +305,7 @@ const dropletOpForm = async (ctx: ProductCtx) => {
 				}),
 				field('image', 'Image (rebuild only)', 'select', {
 					value: str(rec(d['image'])['slug']) || null,
-					options: (images ?? [])
+					options: images
 						.filter((i) => str(i['slug']))
 						.map((i) => option(str(i['slug']), `${str(i['distribution'])} ${str(i['name'])}`)),
 				}),
@@ -514,7 +512,7 @@ const restoreSend = async (ctx: ProductCtx, w: Write): Promise<Sent> => {
 const dropletHistory = async (ctx: ProductCtx) => {
 	const { picker } = await dropletPicker(ctx);
 	if (!picker.value) return noDroplet;
-	const acts = (await doAll(`/droplets/${picker.value}/actions`, 'actions', ctx.key)) ?? [];
+	const acts = await doAll(`/droplets/${picker.value}/actions`, 'actions', ctx.key);
 	return view(
 		{
 			tables: [
@@ -591,7 +589,7 @@ export const dropletScreen: ProductScreen = {
 
 const volumesList = async (ctx: ProductCtx) => {
 	const [vols, droplets] = await Promise.all([doAll('/volumes', 'volumes', ctx.key), dropletsOf(ctx.key)]);
-	const all = vols ?? [];
+	const all = vols;
 	const gib = all.reduce((a, v) => a + num(v['size_gigabytes']), 0);
 	return view({
 		stats: [
@@ -640,7 +638,7 @@ const volumesList = async (ctx: ProductCtx) => {
 };
 
 async function volumePicker(ctx: ProductCtx) {
-	const vols = (await doAll('/volumes', 'volumes', ctx.key)) ?? [];
+	const vols = await doAll('/volumes', 'volumes', ctx.key);
 	return {
 		vols,
 		picker: pick(
@@ -657,7 +655,7 @@ const noVolume = view({
 
 const volumeCreateForm = async (ctx: ProductCtx) => {
 	const [regions, droplets] = await Promise.all([doAll('/regions', 'regions', ctx.key), dropletsOf(ctx.key)]);
-	const usable = (regions ?? []).filter(
+	const usable = regions.filter(
 		(r) => r['available'] === true && arr(r['features']).some((f) => str(f) === 'storage'),
 	);
 	return formTab(
@@ -1149,7 +1147,7 @@ export const volumeScreen: ProductScreen = {
 /* ===== Backups and snapshots (account-wide) ===== */
 
 async function allSnapshots(key: string) {
-	return (await doAll('/snapshots', 'snapshots', key)) ?? [];
+	return await doAll('/snapshots', 'snapshots', key);
 }
 
 const backupsList = async (ctx: ProductCtx) => {

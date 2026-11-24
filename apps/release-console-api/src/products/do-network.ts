@@ -102,7 +102,7 @@ const firewalls = async (ctx: ProductCtx) => {
 		dropletsOf(ctx.key),
 		cloudflareRanges().catch(() => [] as string[]),
 	]);
-	const all = fws ?? [];
+	const all = fws;
 	const covered = new Set<number>();
 	for (const f of all)
 		for (const d of droplets)
@@ -238,7 +238,7 @@ const createForm = async (ctx: ProductCtx) => {
 };
 
 const ruleForm = async (ctx: ProductCtx) => {
-	const fws = (await doAll('/firewalls', 'firewalls', ctx.key)) ?? [];
+	const fws = await doAll('/firewalls', 'firewalls', ctx.key);
 	const p = pick(
 		'Firewall',
 		fws.map((f) => ({ value: str(f['id']), label: str(f['name']) })),
@@ -309,7 +309,7 @@ async function sendRule(ctx: ProductCtx, w: Write) {
 }
 
 const vpcs = async (ctx: ProductCtx) => {
-	const list_ = (await doAll('/vpcs', 'vpcs', ctx.key)) ?? [];
+	const list_ = await doAll('/vpcs', 'vpcs', ctx.key);
 	const members = await Promise.all(
 		list_.map(async (v) => (await doAll(`/vpcs/${str(v['id'])}/members`, 'members', ctx.key, true)) ?? []),
 	);
@@ -337,7 +337,9 @@ const vpcs = async (ctx: ProductCtx) => {
 						name: str(v['name']),
 						region: str(v['region']),
 						range: str(v['ip_range']),
-						members: (members[i] ?? []).map((m) => str(m['name'])).join(', ') || 'none',
+						// One member list was read per network, in the same order.
+						members:
+							(members[i] as Record<string, unknown>[]).map((m) => str(m['name'])).join(', ') || 'none',
 						def: v['default'] === true ? 'yes' : '',
 						at: when(str(v['created_at'])),
 					}),
@@ -427,7 +429,7 @@ const ips = async (ctx: ProductCtx) => {
 
 const destroyForm = async (ctx: ProductCtx) => {
 	const [fws, droplets] = await Promise.all([doAll('/firewalls', 'firewalls', ctx.key), dropletsOf(ctx.key)]);
-	const list_ = fws ?? [];
+	const list_ = fws;
 	const p = pick(
 		'Firewall',
 		list_.map((f) => ({ value: str(f['id']), label: str(f['name']) })),
@@ -478,14 +480,14 @@ export const networkScreen: ProductScreen = {
 				doAll('/vpcs', 'vpcs', ctx.key),
 			]);
 			const rows = [
-				...(fws ?? []).map((f) =>
+				...fws.map((f) =>
 					row(str(f['id']), str(f['name']), {
 						at: when(str(f['created_at'])),
 						what: `Firewall ${str(f['name'])} created`,
 						state: str(f['status']),
 					}),
 				),
-				...(nets ?? []).map((v) =>
+				...nets.map((v) =>
 					row(str(v['id']), str(v['name']), {
 						at: when(str(v['created_at'])),
 						what: `VPC ${str(v['name'])} created (${str(v['ip_range'])})`,
@@ -536,7 +538,7 @@ export const networkScreen: ProductScreen = {
 		rule: { read: ruleForm, send: sendRule },
 		vpc: {
 			async read(ctx) {
-				const regions = (await doAll('/regions', 'regions', ctx.key)) ?? [];
+				const regions = await doAll('/regions', 'regions', ctx.key);
 				return formTab(
 					form({
 						key: 'vpc',
@@ -621,7 +623,7 @@ export const networkScreen: ProductScreen = {
 				const covers = (fw: Rule, d: Rule) =>
 					arr(fw['droplet_ids']).some((x) => num(x) === num(d['id'])) ||
 					arr(fw['tags']).some((t) => arr(d['tags']).some((u) => str(u) === str(t)));
-				const others = (fws ?? []).filter((x) => str(x['id']) !== id);
+				const others = fws.filter((x) => str(x['id']) !== id);
 				const left = droplets.filter(
 					(d) => covers(f, d) && /production/.test(str(d['name'])) && !others.some((o) => covers(o, d)),
 				);

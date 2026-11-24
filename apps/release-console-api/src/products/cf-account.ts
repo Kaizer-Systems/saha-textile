@@ -533,8 +533,10 @@ export const cfZeroTrustScreen: ProductScreen = {
 							col('hosts', 'Public hostnames', true),
 							col('warp', 'Private network'),
 						],
-						list_.map((t, i) =>
-							row(
+						list_.map((t, i) => {
+							// One hostnames read per tunnel, in the same order.
+							const h = hosts[i] as Awaited<ReturnType<typeof hostnames>>;
+							return row(
 								str(t['id']),
 								str(t['name']),
 								{
@@ -544,15 +546,15 @@ export const cfZeroTrustScreen: ProductScreen = {
 										arr(t['connections'])
 											.map((c) => str(rec(c)['colo_name']))
 											.join(', ') || 'none',
-									hosts: (hosts[i]?.ingress ?? [])
+									hosts: h.ingress
 										.filter((x) => str(x['hostname']))
 										.map((x) => `${str(x['hostname'])} → ${str(x['service'])}`)
 										.join(' · '),
-									warp: hosts[i]?.warp ? 'on' : 'off',
+									warp: h.warp ? 'on' : 'off',
 								},
 								toneOf(str(t['status'])),
-							),
-						),
+							);
+						}),
 						'No tunnels yet: each server create makes one (tunnels work without Zero Trust being switched on).',
 						true,
 					),
@@ -627,7 +629,8 @@ export const cfZeroTrustScreen: ProductScreen = {
 					fields: [
 						field('hostname', 'Hostname', 'text', {
 							required: true,
-							help: `Like grafana-staging.${ctx.zones[0] ?? 'example.com'}`,
+							// acct() above has already refused a slot with no domain.
+							help: `Like grafana-staging.${ctx.zones[0] as string}`,
 						}),
 						field('service', 'Service on the server', 'text', {
 							value: 'http://localhost:3000',
@@ -1249,7 +1252,9 @@ export const cfAgentScreen: ProductScreen = {
 				pages.map((x) => ({ value: x, label: `https://${host}${x}` })),
 				ctx.id,
 			);
-			const r = await fetchText(`https://${host}${p.value ?? '/'}`);
+			// The page list is never empty, so a page is always picked.
+			const path = p.value as string;
+			const r = await fetchText(`https://${host}${path}`);
 			const title = /<title>([^<]*)<\/title>/i.exec(r.body)?.[1] ?? '—';
 			const canonical = /<link[^>]+rel="canonical"[^>]+href="([^"]+)"/i.exec(r.body)?.[1] ?? '—';
 			const robots =
@@ -1262,7 +1267,7 @@ export const cfAgentScreen: ProductScreen = {
 			return view(
 				{
 					head: {
-						name: `https://${host}${p.value ?? '/'}`,
+						name: `https://${host}${path}`,
 						status: String(r.status || 'no answer'),
 						tone: r.status === 200 ? 'ok' : 'red',
 					},

@@ -99,7 +99,7 @@ const mergeForm: ProductFormSpec = {
 			!['main', 'dev', 'staging'].includes(str(head['ref']))
 		)
 			await send(ctx, key, 'DELETE', `/git/refs/heads/${encodeURIComponent(str(head['ref']))}`);
-		return { message: `#${n} merged (${method})`, productId: n ?? null, follow: [] };
+		return { message: `#${n} merged (${method})`, productId: n, follow: [] };
 	},
 };
 
@@ -186,13 +186,13 @@ const prStateForm: ProductFormSpec = {
 		const what = opt(w, 'what');
 		if (what === 'close' || what === 'reopen') {
 			await send(ctx, key, 'PATCH', `/pulls/${n}`, { state: what === 'close' ? 'closed' : 'open' });
-			return { message: `#${n} ${what === 'close' ? 'closed' : 'reopened'}`, productId: n ?? null, follow: [] };
+			return { message: `#${n} ${what === 'close' ? 'closed' : 'reopened'}`, productId: n, follow: [] };
 		}
 		if (what === 'update') {
 			await send(ctx, key, 'PUT', `/pulls/${n}/update-branch`, {
 				expected_head_sha: str(rec(pr['head'])['sha']),
 			});
-			return { message: `#${n}: branch brought up to date`, productId: n ?? null, follow: [] };
+			return { message: `#${n}: branch brought up to date`, productId: n, follow: [] };
 		}
 		if (what === 'recheck') {
 			const runs = await list(
@@ -205,7 +205,7 @@ const prStateForm: ProductFormSpec = {
 			for (const r of failed) await send(ctx, key, 'POST', `/actions/runs/${num(r['id'])}/rerun-failed-jobs`);
 			return {
 				message: `#${n}: ${failed.length} failed run${failed.length === 1 ? '' : 's'} started again`,
-				productId: n ?? null,
+				productId: n,
 				follow: [],
 			};
 		}
@@ -506,7 +506,8 @@ const variablesForm: ProductFormSpec = {
 		const key = await ctx.writeKey();
 		const id = w.id ?? ctx.id;
 		const existing = id && id !== 'new' ? id.split(':') : null;
-		const scope = existing ? (existing[0] ?? '') : opt(w, 'scope');
+		// A split always has its first part (the scope; empty for the repository's own variables).
+		const scope = existing ? (existing[0] as string) : opt(w, 'scope');
 		const name = existing ? (existing[1] ?? '') : text(w, 'name').toUpperCase();
 		if (!/^[A-Z_][A-Z0-9_]{0,99}$/.test(name)) throw new VendorError('Name: capitals, digits and _.', 400);
 		const base = scope ? `/environments/${encodeURIComponent(scope)}/variables` : '/actions/variables';

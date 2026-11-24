@@ -28,14 +28,14 @@ import { VendorError, arr, num, rec, str } from '../vendors/http.js';
 
 const PORTAL = 'https://cloud.digitalocean.com';
 
-async function regionOptions(ctx: ProductCtx, feature?: string) {
-	const regions = (await doAll('/regions', 'regions', ctx.key)) ?? [];
+async function regionOptions(ctx: ProductCtx) {
+	const regions = await doAll('/regions', 'regions', ctx.key);
 	return regions
-		.filter((r) => r['available'] === true && (!feature || arr(r['features']).some((f) => str(f) === feature)))
+		.filter((r) => r['available'] === true)
 		.map((r) => option(str(r['slug']), `${str(r['name'])} · ${str(r['slug'])}`));
 }
 async function sizeOptions(ctx: ProductCtx, prefix = 's-') {
-	const sizes = (await doAll('/sizes', 'sizes', ctx.key)) ?? [];
+	const sizes = await doAll('/sizes', 'sizes', ctx.key);
 	return sizes
 		.filter((s) => s['available'] === true && str(s['slug']).startsWith(prefix))
 		.map((s) =>
@@ -129,7 +129,7 @@ export const autoscaleScreen = resource({
 		title: 'New autoscale pool',
 		submit: 'Create pool',
 		fields: async (ctx) => {
-			const keys = (await doAll('/account/keys', 'ssh_keys', ctx.key)) ?? [];
+			const keys = await doAll('/account/keys', 'ssh_keys', ctx.key);
 			return [
 				field('name', 'Name', 'text', { required: true, value: `${ctx.repo.id}-web` }),
 				field('region', 'Region', 'select', { value: 'blr1', options: await regionOptions(ctx) }),
@@ -196,7 +196,6 @@ export const autoscaleScreen = resource({
 		},
 		cost: 'A higher minimum is billed from the next hour.',
 		async send(_ctx, w, key, p) {
-			if (!p) throw new VendorError('Choose a pool.', 400);
 			const min = int(w, 'min', 1, 50);
 			const body = {
 				name: str(p['name']),
@@ -369,7 +368,6 @@ export const kubernetesScreen = resource({
 		},
 		cost: 'More nodes are billed from the hour they start.',
 		async send(_ctx, w, key, c) {
-			if (!c) throw new VendorError('Choose a cluster.', 400);
 			const pool = rec(arr(c['node_pools'])[0]);
 			const id = str(c['id']);
 			await doSend('PUT', `/kubernetes/clusters/${id}`, key, {
@@ -412,7 +410,6 @@ export const kubernetesScreen = resource({
 		],
 		typed: true,
 		async send(_ctx, w, key, c) {
-			if (!c) throw new VendorError('Choose a cluster.', 400);
 			const id = str(c['id']);
 			await doSend('POST', `/kubernetes/clusters/${id}/upgrade`, key, { version: text(w, 'version') });
 			return {
@@ -549,7 +546,6 @@ export const appsScreen = resource({
 		],
 		cost: 'More or bigger instances are billed from the deployment.',
 		async send(_ctx, w, key, a) {
-			if (!a) throw new VendorError('Choose an app.', 400);
 			const spec = structuredClone(rec(a['spec']));
 			const services = arr(spec['services']).map(rec);
 			if (!services[0]) throw new VendorError('This app has no service to scale.', 400);
@@ -582,7 +578,6 @@ export const appsScreen = resource({
 			];
 		},
 		async send(_ctx, w, key, a) {
-			if (!a) throw new VendorError('Choose an app.', 400);
 			const id = str(a['id']);
 			if (text(w, 'what') === 'rollback')
 				await doSend('POST', `/apps/${id}/rollback`, key, { deployment_id: text(w, 'to'), skip_pin: false });
@@ -717,7 +712,6 @@ export const functionsScreen = resource({
 				? null
 				: 'This namespace has no triggers to edit; functions and triggers are deployed from code with doctl serverless deploy.',
 		async send(_ctx, w, key, n) {
-			if (!n) throw new VendorError('Choose a namespace.', 400);
 			const cron = text(w, 'cron');
 			if (!/^([\d*/,-]+\s+){4}[\d*/,-]+$/.test(cron))
 				throw new VendorError('Schedule: five cron fields, like 0 3 * * *.', 400);
@@ -753,7 +747,7 @@ export const functionsScreen = resource({
 /* ===== Network file storage ===== */
 
 async function nfsShares(ctx: ProductCtx) {
-	const regions = ((await doAll('/regions', 'regions', ctx.key)) ?? []).filter((r) => r['available'] === true);
+	const regions = (await doAll('/regions', 'regions', ctx.key)).filter((r) => r['available'] === true);
 	const per = await Promise.all(
 		regions.map(async (r) =>
 			((await doAll(`/nfs?region=${str(r['slug'])}`, 'shares', ctx.key, true)) ?? []).map((s) => ({
@@ -798,7 +792,7 @@ export const nfsScreen = resource({
 		title: 'New network file share',
 		submit: 'Create share',
 		fields: async (ctx) => {
-			const vpcs = (await doAll('/vpcs', 'vpcs', ctx.key)) ?? [];
+			const vpcs = await doAll('/vpcs', 'vpcs', ctx.key);
 			return [
 				field('name', 'Name', 'text', { required: true, value: `${ctx.repo.id}-shared` }),
 				field('size', 'Size (GiB)', 'number', { value: 50, min: 50, max: 16_384 }),
@@ -836,7 +830,6 @@ export const nfsScreen = resource({
 		],
 		cost: 'Billed per GiB a month from the resize.',
 		async send(_ctx, w, key, s) {
-			if (!s) throw new VendorError('Choose a share.', 400);
 			const size = int(w, 'size', num(s['size_gib']) + 1, 16_384);
 			await doSend('POST', `/nfs/${str(s['id'])}/actions`, key, {
 				type: 'resize',
@@ -857,7 +850,6 @@ export const nfsScreen = resource({
 		],
 		cost: 'Snapshots are billed per GiB stored.',
 		async send(_ctx, w, key, s) {
-			if (!s) throw new VendorError('Choose a share.', 400);
 			await doSend('POST', `/nfs/${str(s['id'])}/actions`, key, {
 				type: 'snapshot',
 				region: str(s['region']),
@@ -1017,7 +1009,6 @@ export const databasesScreen = resource({
 		],
 		cost: 'The new size and node count bill from the resize.',
 		async send(_ctx, w, key, d) {
-			if (!d) throw new VendorError('Choose a database.', 400);
 			await doSend('PUT', `/databases/${str(d['id'])}/resize`, key, {
 				size: text(w, 'size'),
 				num_nodes: int(w, 'nodes', 1, 3),
@@ -1040,7 +1031,6 @@ export const databasesScreen = resource({
 			];
 		},
 		async send(_ctx, w, key, d) {
-			if (!d) throw new VendorError('Choose a database.', 400);
 			await doSend('PUT', `/databases/${str(d['id'])}/firewall`, key, {
 				rules: list(w, 'droplets').map((v) => ({ type: 'droplet', value: v })),
 			});
@@ -1199,7 +1189,6 @@ export const registryScreen = resource({
 		],
 		notes: [note('Pushes are refused while it runs (a few minutes).', 'amber')],
 		async send(_ctx, w, key, r) {
-			if (!r) throw new VendorError('No registry.', 400);
 			await doSend('POST', `/registry/${str(r['name'])}/garbage-collection`, key, { type: text(w, 'type') });
 			return {
 				message: `Garbage collection started on ${str(r['name'])}`,
@@ -1238,7 +1227,7 @@ export const imagesScreen = resource({
 	vendor: 'digitalocean',
 	noun: 'image',
 	nouns: 'custom images and snapshots',
-	items: async (ctx) => (await doAll('/images?private=true', 'images', ctx.key)) ?? [],
+	items: async (ctx) => await doAll('/images?private=true', 'images', ctx.key),
 	id: (i) => String(num(i['id'])),
 	name: (i) => str(i['name']),
 	status: (i) => str(i['status']),
@@ -1326,7 +1315,6 @@ export const imagesScreen = resource({
 			field('description', 'Description', 'text', { value: str(i?.['description']) }),
 		],
 		async send(_ctx, w, key, i) {
-			if (!i) throw new VendorError('Choose an image.', 400);
 			await doSend('PUT', `/images/${num(i['id'])}`, key, {
 				name: text(w, 'name'),
 				distribution: text(w, 'distribution'),
@@ -1344,7 +1332,6 @@ export const imagesScreen = resource({
 		],
 		cost: 'Each region’s copy is billed as stored space.',
 		async send(_ctx, w, key, i) {
-			if (!i) throw new VendorError('Choose an image.', 400);
 			const a = await doSend('POST', `/images/${num(i['id'])}/actions`, key, {
 				type: 'transfer',
 				region: text(w, 'region'),

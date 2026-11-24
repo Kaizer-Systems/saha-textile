@@ -234,9 +234,8 @@ export const cfOverviewScreen: ProductScreen = {
 					submit: 'Remove site',
 					danger: true,
 					confirmName: z.name,
-					blocked: ctx.zones.includes(z.name)
-						? `${z.name} is this project’s live domain: removing it takes the shop offline, so the console refuses. Do it on Cloudflare’s page if you really mean it.`
-						: null,
+					// zoneOf() reads the project's own first domain, so this is always its live domain.
+					blocked: `${z.name} is this project’s live domain: removing it takes the shop offline, so the console refuses. Do it on Cloudflare’s page if you really mean it.`,
 				}),
 			);
 		},
@@ -500,7 +499,8 @@ const dnsAdd: ProductFormSpec = {
 		if (!RECORD_TYPES.includes(type)) throw new VendorError('Choose a record type.', 400);
 		const body = {
 			type,
-			name: text(w, 'name') || '@',
+			// A required box: text() refuses an empty name.
+			name: text(w, 'name'),
 			content: text(w, 'content'),
 			proxied: ['A', 'AAAA', 'CNAME'].includes(type) && w.values['proxied'] === true,
 			ttl: int(w, 'ttl', 1, 86_400),
@@ -1055,7 +1055,7 @@ export const cfSslScreen: ProductScreen = {
 	tabs: {
 		mode: async (ctx) => {
 			const v = await settingsView(ctx, 'Encryption mode', SSL_MODE);
-			if (v.type === 'view') v.view.actions = [action('Change the mode', 'mode', 'primary')];
+			v.view.actions = [action('Change the mode', 'mode', 'primary')];
 			return v;
 		},
 		edge: async (ctx) => {
@@ -1090,8 +1090,7 @@ export const cfSslScreen: ProductScreen = {
 					),
 				],
 			});
-			if (v.type === 'view')
-				v.view.actions = [action('Change HTTPS settings', 'settings'), action('HSTS', 'edit')];
+			v.view.actions = [action('Change HTTPS settings', 'settings'), action('HSTS', 'edit')];
 			return v;
 		},
 		origin: async (ctx) => {
@@ -1655,7 +1654,7 @@ export const cfBotsScreen: ProductScreen = {
 				],
 				notes: [note('DDoS protection is always on, on every plan; these settings tune challenges.', 'muted')],
 			});
-			if (v.type === 'view') v.view.actions = [action('Change these settings', 'ddos')];
+			v.view.actions = [action('Change these settings', 'ddos')];
 			return v;
 		},
 		edit: async (ctx) => {
@@ -1835,7 +1834,7 @@ export const cfSpeedScreen: ProductScreen = {
 	tabs: {
 		settings: async (ctx) => {
 			const v = await settingsView(ctx, 'Speed settings', SPEED);
-			if (v.type === 'view') v.view.actions = [action('Change speed settings', 'settings')];
+			v.view.actions = [action('Change speed settings', 'settings')];
 			return v;
 		},
 		observatory: async (ctx) => {
@@ -1986,8 +1985,7 @@ export const cfCacheScreen: ProductScreen = {
 					fact('Cache Reserve', /free/i.test(z.plan) ? 'needs a paid add-on' : '—'),
 				],
 			});
-			if (v.type === 'view')
-				v.view.actions = [action('Purge', 'op', 'primary'), action('Change caching settings', 'settings')];
+			v.view.actions = [action('Purge', 'op', 'primary'), action('Change caching settings', 'settings')];
 			return v;
 		},
 		rules: async (ctx) => {
@@ -2023,7 +2021,7 @@ export const cfNetworkScreen: ProductScreen = {
 	tabs: {
 		settings: async (ctx) => {
 			const v = await settingsView(ctx, 'Network', NETWORK);
-			if (v.type === 'view') v.view.actions = [action('Change network settings', 'settings')];
+			v.view.actions = [action('Change network settings', 'settings')];
 			return v;
 		},
 		history: settingsHistory(NETWORK),
@@ -2267,9 +2265,11 @@ export const cfRulesScreen: ProductScreen = {
 					.split('\n')
 					.map((l) => l.split(',').map((x) => x.trim()))
 					.filter((r) => r[0]);
-				const items = rows.map(([from, to, status]) => {
-					if (!from || !to || !/^https:\/\//.test(to))
-						throw new VendorError(`Each line: from, https://to, status (${from ?? ''}).`, 400);
+				const items = rows.map((r) => {
+					// Empty lines were dropped above, so every row has its first part.
+					const [from, to, status] = r as [string, string?, string?];
+					if (!to || !/^https:\/\//.test(to))
+						throw new VendorError(`Each line: from, https://to, status (${from}).`, 400);
 					return {
 						redirect: {
 							source_url: from.replace(/^https?:\/\//, ''),

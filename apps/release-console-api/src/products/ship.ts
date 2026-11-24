@@ -36,6 +36,7 @@ import {
 	write,
 } from './kit.js';
 import { runLoad } from './loadtest.js';
+import { productionBackup } from './production-backup.js';
 import { startServerDeploy } from '../vendors/github-deploys.js';
 import { VendorError, arr, num, rec, str } from '../vendors/http.js';
 
@@ -224,7 +225,7 @@ const prView = (failingOnly: boolean) => async (ctx: ProductCtx) => {
 					commits.map((c) =>
 						row(str(c['sha']), str(rec(c['commit'])['message']), {
 							sha: str(c['sha']).slice(0, 7),
-							msg: str(rec(c['commit'])['message']).split('\n')[0] ?? '',
+							msg: str(rec(c['commit'])['message']).split('\n')[0] as string,
 							who: str(rec(rec(c['commit'])['author'])['name']),
 						}),
 					),
@@ -324,10 +325,10 @@ const startForm = async (ctx: ProductCtx) => {
 			fields: [
 				field('workflow', 'Workflow', 'select', {
 					options: active.map((f) => option(String(num(f['id'])), str(f['name']), str(f['path']))),
-					value:
-						String(
-							num(active.find((f) => str(f['path']).endsWith('ci.yml'))?.['id'] ?? active[0]?.['id']),
-						) || null,
+					// String(num(…)) is never empty ("0" when there is no workflow).
+					value: String(
+						num(active.find((f) => str(f['path']).endsWith('ci.yml'))?.['id'] ?? active[0]?.['id']),
+					),
 					required: true,
 				}),
 				field('ref', 'Branch', 'select', {
@@ -603,7 +604,7 @@ const approvalCard = async (ctx: ProductCtx) => {
 						.map((x) =>
 							row(str(x['sha']), str(x['sha']), {
 								sha: str(x['sha']).slice(0, 7),
-								msg: str(rec(x['commit'])['message']).split('\n')[0] ?? '',
+								msg: str(rec(x['commit'])['message']).split('\n')[0] as string,
 								who: str(rec(rec(x['commit'])['author'])['name']),
 							}),
 						),
@@ -718,7 +719,7 @@ export const approvalsScreen: ProductScreen = {
 						comment: text(w, 'comment', false) || `${state} in the Release Console`,
 					},
 				);
-				return { message: `Release to ${env} ${state}`, productId: id ?? null, follow: [] };
+				return { message: `Release to ${env} ${state}`, productId: id, follow: [] };
 			},
 		},
 	},
@@ -772,8 +773,9 @@ const releasePlan = (mode: 'plan' | 'blocked') => async (ctx: ProductCtx) => {
 			notes: stop
 				? [
 						note(
+							// A release-step failure always names its step (deployFailureOf).
 							failure?.kind === 'release-step'
-								? `${failure.step ?? 'A release step'} failed: ${failure.message}. The deploy stopped before the switch; the shop kept serving the previous release.`
+								? `${failure.step as string} failed: ${failure.message}. The deploy stopped before the switch; the shop kept serving the previous release.`
 								: failure?.kind === 'refused-secrets'
 									? `The server refused the release: ${failure.names.join(', ')} in Infisical differ from what the database, Redis or search run with. Nothing changed; deploy again with rotation from Live deploy.`
 									: failure
@@ -988,7 +990,8 @@ const rollbackChoose = async (ctx: ProductCtx) => {
 				'Versions you can deploy again (release tags)',
 				[col('name', 'Tag', true), col('env', 'Where'), col('at', 'Made', true), col('sha', 'Commit', true)],
 				releaseTags.map((t) =>
-					row(t.name, t.name, { name: t.name, env: t.env, at: when(t.at ?? ''), sha: t.sha }),
+					// releases() keeps only tags with a time.
+					row(t.name, t.name, { name: t.name, env: t.env, at: when(t.at as string), sha: t.sha }),
 				),
 				'No release tags yet: each healthy deploy now gets one (staging-…, production-…).',
 			),
@@ -1105,7 +1108,10 @@ const freezesOf = (ctx: ProductCtx): Freeze[] =>
 			const m = /^Freeze (\d{4}-\d{2}-\d{2}) to (\d{4}-\d{2}-\d{2})(?: on ([^:]+))?: (.*)$/.exec(
 				e.detail.replace(/ \([^)]*\)$/, ''),
 			);
-			return m ? { from: m[1] ?? '', to: m[2] ?? '', env: m[3] ?? 'every environment', why: m[4] ?? '' } : null;
+			// The dates and the reason always take part in a match; the environment is optional.
+			return m
+				? { from: m[1] as string, to: m[2] as string, env: m[3] ?? 'every environment', why: m[4] as string }
+				: null;
 		})
 		.filter((f): f is Freeze => !!f);
 /** A day's releases by environment, from GitHub's deployments ("✓ 2 releases · Staging, Production"). */
@@ -1131,12 +1137,13 @@ export const calendarScreen: ProductScreen = {
 				months.map((m) => ({ value: m, label: m })),
 				ctx.id,
 			);
-			const month = p.value ?? months[0] ?? '';
+			// The three months are always there, so one is always picked.
+			const month = p.value as string;
 			const deps = await ghSoft(ctx, '/deployments?per_page=100');
 			const freezes = freezesOf(ctx);
-			const [y, m] = month.split('-').map(Number);
-			const first = new Date(Date.UTC(y ?? 2026, (m ?? 1) - 1, 1));
-			const days = new Date(Date.UTC(y ?? 2026, m ?? 1, 0)).getUTCDate();
+			const [y, m] = month.split('-').map(Number) as [number, number];
+			const first = new Date(Date.UTC(y, m - 1, 1));
+			const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
 			const lead = (first.getUTCDay() + 6) % 7;
 			const cell = (d: number) => {
 				const day = `${month}-${String(d).padStart(2, '0')}`;
@@ -1151,8 +1158,11 @@ export const calendarScreen: ProductScreen = {
 					),
 				);
 			const hours = new Array<number>(24).fill(0);
-			for (const [t, , , n] of ctx.localRequests(7 * 24 * 60))
-				hours[(new Date(t).getUTCHours() + 5) % 24] = (hours[(new Date(t).getUTCHours() + 5) % 24] ?? 0) + n;
+			for (const [t, , , n] of ctx.localRequests(7 * 24 * 60)) {
+				// An hour of the day, 0–23: always one of the 24 slots.
+				const h = (new Date(t).getUTCHours() + 5) % 24;
+				hours[h] = (hours[h] as number) + n;
+			}
 			const quiet = hours
 				.map((n, h) => [h, n] as const)
 				.filter(([, n]) => n > 0)
@@ -1170,7 +1180,7 @@ export const calendarScreen: ProductScreen = {
 									`week ${i + 1}`,
 									Object.fromEntries(
 										w.map((c, k) => [
-											['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][k] ?? '',
+											['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][k] as string,
 											c,
 										]),
 									),
@@ -1260,17 +1270,14 @@ export const rehearsalScreen: ProductScreen = {
 			const staging = ctx.repo.environments.find((e) => e.name === 'staging');
 			const runs = await deployRuns(ctx);
 			const lastStaging = runs.find((r) => /staging/i.test(str(r['display_title']) + str(r['name'])));
+			const backup = await productionBackup(ctx);
 			const checks: Array<[string, boolean, string]> = [
 				[
 					'A staging server',
 					!!staging?.cloudId,
 					staging?.cloudId ? 'linked' : 'create it in DigitalOcean › Droplets',
 				],
-				[
-					'A production backup to restore',
-					false,
-					'the nightly database backup starts with the production server',
-				],
+				['A production backup to restore', backup.ready, backup.detail],
 				['The deploy workflow', true, `${DEPLOY_WORKFLOW} in the repository`],
 				['Last staging release', !!lastStaging, lastStaging ? runLabel(lastStaging) : 'none yet'],
 			];

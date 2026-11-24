@@ -168,9 +168,8 @@ export class ServerDeployController {
 		);
 		if (view.run?.id !== runId || !view.run.waiting.length)
 			throw new HelperError('That run is not waiting for an approval any more.', 409);
-		await this.vendor(() =>
-			reviewServerDeploy(c.repo.sourceCode.repository, runId, view.run?.waiting ?? [], approve, c.key),
-		);
+		const waiting = view.run.waiting;
+		await this.vendor(() => reviewServerDeploy(c.repo.sourceCode.repository, runId, waiting, approve, c.key));
 		this.store.audit(
 			c.project.id,
 			approve ? 'server-deploy-approved' : 'server-deploy-rejected',

@@ -53,7 +53,8 @@ export function referrerOf(refererHost: unknown, host: unknown): string {
 
 /** The service a host serves: the first label of the local host names. */
 export function serviceOf(host: string): string {
-	const first = host.split('.')[0] ?? '';
+	// split always gives a first label.
+	const first = host.split('.')[0] as string;
 	if (first.startsWith('api')) return 'api';
 	if (first.startsWith('admin')) return 'admin';
 	return 'storefront';
@@ -67,7 +68,8 @@ const STATIC = /\.(js|mjs|css|map|png|jpe?g|webp|avif|gif|svg|ico|woff2?|ttf|jso
  * segments. Query strings, where personal data could ride, are never kept.
  */
 export function routeOf(uri: string): string {
-	const path = ((uri.split('?')[0] ?? '/').split('#')[0] ?? '/').replace(/\/pay\/[^/]+/gi, '/pay/:token');
+	// split always gives a first part.
+	const path = ((uri.split('?')[0] as string).split('#')[0] as string).replace(/\/pay\/[^/]+/gi, '/pay/:token');
 	const ext = STATIC.exec(path)?.[1];
 	if (ext) return `static .${ext.toLowerCase()}`;
 	const parts = path
@@ -126,15 +128,16 @@ export function percentile(buckets: number[], q: number): number | null {
 	const target = q * total;
 	let before = 0;
 	for (let i = 0; i < buckets.length; i++) {
-		const n = buckets[i] ?? 0;
+		const n = buckets[i] as number;
 		if (before + n >= target && n > 0) {
-			const lower = i === 0 ? 0 : (LATENCY_BUCKETS_MS[i - 1] ?? 0);
+			// Bucket i - 1 always has an upper bound: only the last bucket is open-ended.
+			const lower = i === 0 ? 0 : (LATENCY_BUCKETS_MS[i - 1] as number);
 			const upper = LATENCY_BUCKETS_MS[i] ?? lower * 2;
 			return Math.round(lower + (upper - lower) * ((target - before) / n));
 		}
 		before += n;
 	}
-	return LATENCY_BUCKETS_MS.at(-1) ?? null;
+	return LATENCY_BUCKETS_MS.at(-1) as number;
 }
 
 /** Apdex with a 0.5 s target: under 0.5 s counts fully, under 2 s counts half. */
@@ -194,7 +197,8 @@ export function summarise(requests: EdgeRequest[], minute: number): Summary[] {
 		row.count++;
 		if (r.status >= 500) row.e5++;
 		else if (r.status >= 400) row.e4++;
-		row.buckets[bucketOf(r.ms)] = (row.buckets[bucketOf(r.ms)] ?? 0) + 1;
+		// The buckets cover every duration, the slowest open-ended.
+		row.buckets[bucketOf(r.ms)] = (row.buckets[bucketOf(r.ms)] as number) + 1;
 		rows.set(key, row);
 	}
 	return [...rows.values()].map((r) => ({ minute, ...r }));
@@ -236,15 +240,17 @@ export function notFoundOf(
 	return [...rows.values()];
 }
 
-const add = (a: number[], b: number[]) => a.map((v, i) => v + (b[i] ?? 0));
+// Every bucket list has the same length.
+const add = (a: number[], b: number[]) => a.map((v, i) => v + (b[i] as number));
 const timing = (count: number, e5: number, e4: number, buckets: number[], minutes: number) => ({
 	count,
 	perMinute: Math.round((count / minutes) * 10) / 10,
 	p50: percentile(buckets, 0.5),
 	p95: percentile(buckets, 0.95),
 	p99: percentile(buckets, 0.99),
-	errorRate: count ? e5 / count : 0,
-	clientErrorRate: count ? e4 / count : 0,
+	// Each group holds at least one request.
+	errorRate: e5 / count,
+	clientErrorRate: e4 / count,
 	apdex: apdex(buckets),
 });
 
@@ -438,13 +444,13 @@ export class RequestLog {
 				...timing(g.count, g.e5, g.e4, g.b, minutes),
 				buckets: g.b,
 			}))
-			.sort((a, b) => (b.p95 ?? 0) - (a.p95 ?? 0))
+			.sort((a, b) => (b.p95 as number) - (a.p95 as number))
 			.slice(0, 40);
 		const series: RequestsView['series'] = [...group((r) => String(r.minute)).entries()]
 			.map(([m, g]): [number, number | null, number, number] => [
 				Number(m),
 				percentile(g.b, 0.95),
-				g.count ? g.e5 / g.count : 0,
+				g.e5 / g.count,
 				g.count,
 			])
 			.sort((a, b) => a[0] - b[0]);

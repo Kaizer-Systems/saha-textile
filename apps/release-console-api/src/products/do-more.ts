@@ -19,19 +19,24 @@ const opt = (w: ProductWrite, key: string) => {
 };
 const isNew = (id: string | null | undefined) => !id || id === 'new';
 
-/** A one-form tab: pick one, then the fields; `go` does the change and says what happened. */
-function picker(
+type Item = { value: string; label: string; raw?: Rec };
+type Items<T> = (ctx: ProductCtx, k: string) => Promise<T[]>;
+type Fields<T> = (it: T | null, ctx: ProductCtx) => Promise<ProductField[]> | ProductField[];
+type More = { submit?: string; danger?: boolean; confirm?: boolean; notes?: string[] };
+/** The name a delete asks to be typed: the label up to its first " · ". */
+const nameOf = (it: Item) => it.label.split(' · ')[0] as string;
+
+/**
+ * A one-form tab with a "new" choice first: pick one or new, then the fields; `go` does the change
+ * (null for new) and says what happened.
+ */
+function pickerOrNew<T extends Item>(
 	key: string,
 	title: string,
-	items: (ctx: ProductCtx, k: string) => Promise<Array<{ value: string; label: string; raw?: Rec }>>,
-	fields: (it: { value: string; raw?: Rec } | null, ctx: ProductCtx) => Promise<ProductField[]> | ProductField[],
-	go: (
-		ctx: ProductCtx,
-		k: string,
-		it: { value: string; label: string; raw?: Rec } | null,
-		w: ProductWrite,
-	) => Promise<string>,
-	more: { submit?: string; danger?: boolean; confirm?: boolean; allowNew?: string; notes?: string[] } = {},
+	items: Items<T>,
+	fields: Fields<T>,
+	go: (ctx: ProductCtx, k: string, it: T | null, w: ProductWrite) => Promise<string>,
+	more: More & { allowNew?: string },
 ): ProductFormSpec {
 	return {
 		async read(ctx) {
@@ -45,7 +50,7 @@ function picker(
 					title,
 					submit: more.submit ?? 'Save',
 					danger: !!more.danger,
-					confirmName: more.confirm && it ? (it.label.split(' · ')[0] ?? it.value) : null,
+					confirmName: more.confirm && it ? nameOf(it) : null,
 					blocked: !it && !more.allowNew ? 'Nothing here yet.' : null,
 					fields: await fields(it, ctx),
 					notes: (more.notes ?? []).map((n) => note(n, 'muted')),
@@ -59,16 +64,29 @@ function picker(
 			const it = isNew(id) ? null : ((await items(ctx, k)).find((x) => x.value === id) ?? null);
 			if (!isNew(id) && !it) throw new VendorError('That one is gone; pick it again.', 404);
 			if (!it && !more.allowNew) throw new VendorError('Choose one.', 400);
-			if (more.confirm && it) confirmed(w, it.label.split(' · ')[0] ?? it.value);
+			if (more.confirm && it) confirmed(w, nameOf(it));
 			return { message: await go(ctx, k, it, w), productId: it?.value ?? null, follow: [] };
 		},
 	};
 }
 
+/** A one-form tab: pick one, then the fields; `go` does the change to the picked one. */
+function picker<T extends Item>(
+	key: string,
+	title: string,
+	items: Items<T>,
+	fields: Fields<T>,
+	go: (ctx: ProductCtx, k: string, it: T, w: ProductWrite) => Promise<string>,
+	more: More = {},
+): ProductFormSpec {
+	// With no "new" choice, send() refuses before `go` when nothing is picked, so `it` is always there.
+	return pickerOrNew(key, title, items, fields, (ctx, k, it, w) => go(ctx, k, it as T, w), more);
+}
+
 /* ===== networking: firewall rules out, attachments, reserved IPs ===== */
 
 const firewalls = async (_ctx: ProductCtx, k: string) =>
-	((await doAll('/firewalls', 'firewalls', k)) ?? []).map((f) => ({
+	(await doAll('/firewalls', 'firewalls', k)).map((f) => ({
 		value: str(f['id']),
 		label: str(f['name']),
 		raw: f,
@@ -97,7 +115,6 @@ const ruleRemove = picker(
 		]),
 	() => [],
 	async (_ctx, k, it) => {
-		if (!it?.raw) throw new VendorError('Choose a rule.', 400);
 		const [fw, dir] = it.value.split(':');
 		const r = it.raw;
 		const ends = dir === 'in' ? { sources: r['sources'] } : { destinations: r['destinations'] };
@@ -136,7 +153,6 @@ const fwAttach = picker(
 		];
 	},
 	async (_ctx, k, it, w) => {
-		if (!it?.raw) throw new VendorError('Choose a firewall.', 400);
 		const want = list(w, 'droplets').map(Number).filter(Number.isInteger);
 		const have = arr(it.raw['droplet_ids']).map((x) => Number(x));
 		const add = want.filter((d) => !have.includes(d));
@@ -154,7 +170,7 @@ const fwAttach = picker(
 );
 
 const reservedIps = async (_ctx: ProductCtx, k: string) =>
-	((await doAll('/reserved_ips', 'reserved_ips', k)) ?? []).map((ip) => ({
+	(await doAll('/reserved_ips', 'reserved_ips', k)).map((ip) => ({
 		value: str(ip['ip']),
 		label: `${str(ip['ip'])} · ${str(rec(ip['droplet'])['name']) || 'not assigned'}`,
 		raw: ip,
@@ -182,7 +198,6 @@ const ipOp = picker(
 		];
 	},
 	async (_ctx, k, it, w) => {
-		if (!it) throw new VendorError('Choose an address.', 400);
 		const what = opt(w, 'what');
 		if (what === 'assign')
 			await doSend('POST', `/reserved_ips/${it.value}/actions`, k, {
@@ -209,13 +224,13 @@ export const NET_EXTRA: ScreenExtra = {
 /* ===== DNS: domains and records ===== */
 
 const domains = async (_ctx: ProductCtx, k: string) =>
-	((await doAll('/domains', 'domains', k)) ?? []).map((d) => ({
+	(await doAll('/domains', 'domains', k)).map((d) => ({
 		value: str(d['name']),
 		label: str(d['name']),
 		raw: d,
 	}));
 
-const domainAdd = picker(
+const domainAdd = pickerOrNew(
 	'domain',
 	'Add a domain to DigitalOcean DNS',
 	async () => [],
@@ -242,7 +257,7 @@ const recordDelete = picker(
 		(
 			await Promise.all(
 				(await domains(ctx, k)).map(async (d) =>
-					((await doAll(`/domains/${d.value}/records`, 'domain_records', k)) ?? []).map((r) => ({
+					(await doAll(`/domains/${d.value}/records`, 'domain_records', k)).map((r) => ({
 						value: `${d.value}:${num(r['id'])}`,
 						label: `${str(r['name'])}.${d.value} · ${str(r['type'])} ${str(r['data'])}`,
 						raw: r,
@@ -252,7 +267,6 @@ const recordDelete = picker(
 		).flat(),
 	() => [],
 	async (_ctx, k, it) => {
-		if (!it) throw new VendorError('Choose a record.', 400);
 		const [domain, id] = it.value.split(':');
 		await doSend('DELETE', `/domains/${domain}/records/${id}`, k);
 		return `Deleted ${it.label}`;
@@ -268,7 +282,7 @@ export const DODNS_EXTRA: ScreenExtra = {
 /* ===== uptime checks ===== */
 
 const checks = async (_ctx: ProductCtx, k: string) =>
-	((await doAll('/uptime/checks', 'checks', k)) ?? []).map((c) => ({
+	(await doAll('/uptime/checks', 'checks', k)).map((c) => ({
 		value: str(c['id']),
 		label: `${str(c['name'])} · ${str(c['target'])}`,
 		raw: c,
@@ -291,7 +305,6 @@ const uptimeEdit = picker(
 		field('delete', 'Delete this check instead', 'toggle', { value: false }),
 	],
 	async (_ctx, k, it, w) => {
-		if (!it) throw new VendorError('Choose a check.', 400);
 		if (bool(w, 'delete')) {
 			await doSend('DELETE', `/uptime/checks/${it.value}`, k);
 			return `${it.label} deleted`;
@@ -317,13 +330,13 @@ export const MONITORING_EXTRA: ScreenExtra = {
 /* ===== projects ===== */
 
 const projects = async (_ctx: ProductCtx, k: string) =>
-	((await doAll('/projects', 'projects', k)) ?? []).map((p) => ({
+	(await doAll('/projects', 'projects', k)).map((p) => ({
 		value: str(p['id']),
 		label: `${str(p['name'])}${p['is_default'] ? ' (default)' : ''}`,
 		raw: p,
 	}));
 
-const projectForm = picker(
+const projectForm = pickerOrNew(
 	'project',
 	'Project',
 	projects,
@@ -357,7 +370,6 @@ const projectDelete = picker(
 	async (ctx, k) => (await projects(ctx, k)).filter((p) => p.raw?.['is_default'] !== true),
 	() => [],
 	async (_ctx, k, it) => {
-		if (!it) throw new VendorError('Choose a project.', 400);
 		await doSend('DELETE', `/projects/${it.value}`, k);
 		return `Project ${it.label} deleted`;
 	},
@@ -406,11 +418,11 @@ const tagDelete = picker(
 	tags,
 	() => [],
 	async (_ctx, k, it) => {
-		if (!it) throw new VendorError('Choose a tag.', 400);
-		const [reg, repo, tag] = it.value.split('|');
+		// Every tag's value is "registry|repository|tag".
+		const [reg, repo, tag] = it.value.split('|') as [string, string, string];
 		await doSend(
 			'DELETE',
-			`/registry/${reg}/repositories/${encodeURIComponent(repo ?? '')}/tags/${encodeURIComponent(tag ?? '')}`,
+			`/registry/${reg}/repositories/${encodeURIComponent(repo)}/tags/${encodeURIComponent(tag)}`,
 			k,
 		);
 		return `${repo}:${tag} deleted; run Clean up to free the space`;
@@ -431,7 +443,7 @@ export const REGISTRY_EXTRA: ScreenExtra = {
 /* ===== managed databases: logical databases, pools, maintenance ===== */
 
 const clusters = async (_ctx: ProductCtx, k: string) =>
-	((await doAll('/databases', 'databases', k)) ?? []).map((d) => ({
+	(await doAll('/databases', 'databases', k)).map((d) => ({
 		value: str(d['id']),
 		label: `${str(d['name'])} · ${str(d['engine'])}`,
 		raw: d,
@@ -466,7 +478,6 @@ const dbInside = picker(
 		}),
 	],
 	async (_ctx, k, it, w) => {
-		if (!it) throw new VendorError('Choose a database cluster.', 400);
 		const what = opt(w, 'what');
 		const name = opt(w, 'name');
 		if (['db', 'dbdrop', 'pool', 'pooldrop'].includes(what) && !/^[a-z0-9_]{1,63}$/.test(name))
@@ -474,7 +485,8 @@ const dbInside = picker(
 		if (what === 'db') await doSend('POST', `/databases/${it.value}/dbs`, k, { name });
 		else if (what === 'dbdrop') await doSend('DELETE', `/databases/${it.value}/dbs/${name}`, k);
 		else if (what === 'pool') {
-			const [db = '', user = ''] = opt(w, 'poolDb').split(/\s+/);
+			// A split always has a first part (empty when nothing was typed).
+			const [db, user = ''] = opt(w, 'poolDb').split(/\s+/) as [string, ...string[]];
 			await doSend('POST', `/databases/${it.value}/pools`, k, {
 				name,
 				mode: 'transaction',

@@ -41,9 +41,11 @@ export function signV4(input: SignInput): Record<string, string> {
 		.join('&');
 	const canonical = [
 		input.method,
-		input.url.pathname || '/',
+		// An https address always has a path, at least '/'.
+		input.url.pathname,
 		query,
-		names.map((n) => `${n}:${lower[n] ?? ''}\n`).join(''),
+		// `lower` holds every header named in `names`.
+		names.map((n) => `${n}:${lower[n] as string}\n`).join(''),
 		names.join(';'),
 		payloadHash,
 	].join('\n');

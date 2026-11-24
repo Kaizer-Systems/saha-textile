@@ -105,7 +105,8 @@ export const githubAdapter: SourceCodeAdapter = {
 				.slice(0, 30)
 				.map((c) => ({
 					sha: str(c['sha']).slice(0, 8),
-					message: str(rec(c['commit'])['message']).split('\n')[0] ?? '',
+					// split always gives a first line.
+					message: str(rec(c['commit'])['message']).split('\n')[0] as string,
 					author: str(rec(rec(c['commit'])['author'])['name']),
 					date: str(rec(rec(c['commit'])['author'])['date']),
 				})),

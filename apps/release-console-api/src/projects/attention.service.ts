@@ -94,7 +94,8 @@ export class AttentionService {
 					repositoryId,
 					kind: 'old-keys',
 					title: `${e.label}: remove the old keys`,
-					detail: `${state.graceNames.join(', ')} kept since ${state.graceAt?.slice(0, 10) ?? '—'}. Run › Secrets › Rotate › Remove the old keys, then a deploy.`,
+					// A countdown exists only from a grace date.
+					detail: `${state.graceNames.join(', ')} kept since ${(state.graceAt as string).slice(0, 10)}. Run › Secrets › Rotate › Remove the old keys, then a deploy.`,
 				});
 		}
 		return out;

@@ -234,7 +234,8 @@ export class DropletJobs {
 		const size = (await this.deps.catalog(keys.doKey)).sizes.find((s) => s.slug === d.size);
 		const cost = dropletCost(d, size);
 		this.projects.setSshEmails(projectId, input.sshEmails);
-		const job = this.newJob(projectId, repoId, 'create', d.environment, d.names[0] ?? d.environment, CREATE_STEPS);
+		// One name, checked above.
+		const job = this.newJob(projectId, repoId, 'create', d.environment, d.names[0] as string, CREATE_STEPS);
 		job.monthly = cost.total;
 		job.hourly = cost.hourly;
 		this.store.audit(
@@ -454,7 +455,8 @@ export class DropletJobs {
 			return said.join(' · ');
 		});
 		await this.step(job, 'first-boot', async () => {
-			const adminKey = await deps.do.publicKey(keys.doKey, d.sshKeyIds[0] ?? 0);
+			// startCreate refused a draft without an SSH key.
+			const adminKey = await deps.do.publicKey(keys.doKey, d.sshKeyIds[0] as number);
 			const out = await deps.helper<{ userData: string }>('/server/first-boot', {
 				project: o.projectId,
 				environment: d.environment,
@@ -496,7 +498,8 @@ export class DropletJobs {
 			return `POST /v2/droplets → droplet ${job.dropletId}`;
 		});
 
-		const id = job.dropletId ?? 0;
+		// The droplet step above set it, or stopped the job.
+		const id = job.dropletId as number;
 		await this.step(job, 'active', async () => {
 			const until = Date.now() + deps.waits.activeFor;
 			for (;;) {
@@ -558,7 +561,8 @@ export class DropletJobs {
 					const zone = zoneFor(host, keys.zones);
 					const onDo = c.doHosts.get(host);
 					if (!zone && onDo) {
-						const r = await deps.do.pointDoHost(keys.doKey, onDo, host, job.ipv4 ?? '');
+						// The addresses step stopped the job without a public IPv4.
+						const r = await deps.do.pointDoHost(keys.doKey, onDo, host, job.ipv4 as string);
 						done.push(`${host} ${r === 'created' ? '→' : 'already →'} ${job.ipv4} on DigitalOcean DNS`);
 						continue;
 					}
@@ -567,7 +571,7 @@ export class DropletJobs {
 						continue;
 					}
 					const z = await deps.cf.zone(keys.cfKey, zone);
-					const r = await deps.cf.pointHost(keys.cfKey, z.id, host, job.ipv4 ?? '');
+					const r = await deps.cf.pointHost(keys.cfKey, z.id, host, job.ipv4 as string);
 					done.push(`${host} ${r === 'created' ? '→' : 'already →'} ${job.ipv4} (proxied)`);
 				}
 				return done.join(' · ') || 'the environment names no domains';
@@ -793,9 +797,8 @@ export class DropletJobs {
 				throw new Stop(
 					`Not finished: ${blocking.length} ${blocking.length === 1 ? 'thing' : 'things'} left before ${o.target} can deploy. Fix ${blocking.length === 1 ? 'it' : 'them'}, then Finish setup.`,
 				);
-			return left.length
-				? `${left.length} small ${left.length === 1 ? 'thing' : 'things'} left for you`
-				: 'nothing left';
+			// A create always leaves its two owner steps; Finish setup leaves none that do not block.
+			return left.length ? `${left.length} small things left for you` : 'nothing left';
 		});
 	}
 
@@ -1077,7 +1080,8 @@ export class DropletJobs {
 				if (!target.ipv4) return 'the droplet has no address, so no records point at it';
 				let removed = 0;
 				for (const host of webHosts) {
-					const z = await deps.cf.zone(keys.cfKey, zoneFor(host, keys.zones) ?? '');
+					// webHosts are the hosts inside a zone.
+					const z = await deps.cf.zone(keys.cfKey, zoneFor(host, keys.zones) as string);
 					removed += await deps.cf.unpointHost(keys.cfKey, z.id, host, target.ipv4);
 				}
 				return `${removed} record${removed === 1 ? '' : 's'} that pointed at ${target.ipv4} removed`;

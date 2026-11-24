@@ -11,7 +11,8 @@ export interface LoadResult {
 }
 
 const at = (sorted: number[], q: number) =>
-	sorted.length ? Math.round(sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ?? 0) : 0;
+	// The index is clamped to the list, so it always names a time.
+	sorted.length ? Math.round(sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] as number) : 0;
 
 export async function runLoad(base: string, paths: string[], shoppers: number, seconds: number): Promise<LoadResult> {
 	const end = Date.now() + seconds * 1000;

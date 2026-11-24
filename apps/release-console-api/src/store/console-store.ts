@@ -54,7 +54,7 @@ export class ConsoleStore implements OnModuleDestroy {
 		const version = Number((db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version);
 		for (let v = version; v < MIGRATIONS.length; v++) {
 			db.exec('BEGIN');
-			db.exec(MIGRATIONS[v] ?? '');
+			db.exec(MIGRATIONS[v] as string);
 			db.exec(`PRAGMA user_version = ${v + 1}`);
 			db.exec('COMMIT');
 		}

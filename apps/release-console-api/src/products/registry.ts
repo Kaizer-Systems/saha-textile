@@ -221,10 +221,8 @@ addExtras(PRODUCT_SCREENS);
 PRODUCT_SCREENS['cfplan'] = cfPlanScreen;
 // Dependencies keeps its own page; its Dismiss tab is drawn by the products engine.
 PRODUCT_SCREENS['deps'] = depsAlertsScreen;
-const ghSecrets = PRODUCT_SCREENS['secrets'];
-if (ghSecrets) PRODUCT_SCREENS['secrets'] = extend(ghSecrets, SECRETS_EXTRA);
+// Both lists name only screens registered above, so each is there.
+PRODUCT_SCREENS['secrets'] = extend(PRODUCT_SCREENS['secrets'] as ProductScreen, SECRETS_EXTRA);
 // Environment labels on pages without the environment switch (owner, 23 Nov).
-for (const [name, spec] of Object.entries(ENV_LABELS)) {
-	const screen = PRODUCT_SCREENS[name];
-	if (screen) PRODUCT_SCREENS[name] = withEnvLabels(screen, spec);
-}
+for (const [name, spec] of Object.entries(ENV_LABELS))
+	PRODUCT_SCREENS[name] = withEnvLabels(PRODUCT_SCREENS[name] as ProductScreen, spec);

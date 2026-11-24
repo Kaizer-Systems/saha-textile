@@ -3,7 +3,7 @@
  * standing rule: the price is shown before the PIN). Droplet backups, database read replicas,
  * Kubernetes node pools, and the Spaces CDN (free, kept here with its neighbours).
  */
-import type { ProductWrite } from '@saha-textile/release-console-contracts';
+import type { ProductTab, ProductWrite } from '@saha-textile/release-console-contracts';
 
 import type { ProductCtx, ProductFormSpec } from './kit.js';
 import { action, bool, field, form, formTab, note, option, pick, text } from './kit.js';
@@ -56,13 +56,14 @@ const backups: ProductFormSpec = {
 		if (!d) throw new VendorError('Choose a server.', 400);
 		const on = (d['features'] as unknown[] | undefined)?.includes('backups');
 		await doSend('POST', `/droplets/${id}/actions`, k, { type: on ? 'disable_backups' : 'enable_backups' });
-		return { message: `${str(d['name'])}: backups ${on ? 'off' : 'on'}`, productId: id ?? null, follow: [] };
+		// The server was found by this id.
+		return { message: `${str(d['name'])}: backups ${on ? 'off' : 'on'}`, productId: id as string, follow: [] };
 	},
 };
 
 const replica: ProductFormSpec = {
 	async read(ctx) {
-		const dbs = (await doAll('/databases', 'databases', ctx.key)) ?? [];
+		const dbs = await doAll('/databases', 'databases', ctx.key);
 		const p = pick(
 			'Database cluster',
 			dbs.map((d) => ({
@@ -120,11 +121,11 @@ const nodePool: ProductFormSpec = {
 		]);
 		const p = pick(
 			'Cluster',
-			(clusters ?? []).map((c) => ({ value: str(c['id']), label: str(c['name']) })),
+			clusters.map((c) => ({ value: str(c['id']), label: str(c['name']) })),
 			ctx.id,
 		);
-		const c = (clusters ?? []).find((x) => str(x['id']) === p.value);
-		const avail = (sizes ?? []).filter(
+		const c = clusters.find((x) => str(x['id']) === p.value);
+		const avail = sizes.filter(
 			(s) =>
 				s['available'] === true && (!c || (s['regions'] as unknown[] | undefined)?.includes(str(c['region']))),
 		);
@@ -161,7 +162,7 @@ const nodePool: ProductFormSpec = {
 		const name = text(w, 'name');
 		if (!/^[a-z0-9-]{2,63}$/.test(name)) throw new VendorError('Name: lowercase letters, digits and -.', 400);
 		const count = Number(opt(w, 'count') || '2');
-		const sizes = (await doAll('/sizes', 'sizes', k)) ?? [];
+		const sizes = await doAll('/sizes', 'sizes', k);
 		const size = sizes.find((s) => str(s['slug']) === opt(w, 'size'));
 		if (!size) throw new VendorError('Choose a size.', 400);
 		await doSend('POST', `/kubernetes/clusters/${id}/node_pools`, k, {
@@ -186,7 +187,7 @@ const cdn: ProductFormSpec = {
 			doAll('/cdn/endpoints', 'endpoints', ctx.key),
 			doGet('/spaces/buckets', ctx.key).catch(() => null),
 		]);
-		const origins = (endpoints ?? []).map((e) => str(e['origin']));
+		const origins = endpoints.map((e) => str(e['origin']));
 		return formTab(
 			form({
 				key: 'cdn',
@@ -218,7 +219,7 @@ const cdn: ProductFormSpec = {
 		const origin = text(w, 'origin');
 		if (!/^[a-z0-9-]+\.[a-z0-9]+\.digitaloceanspaces\.com$/.test(origin))
 			throw new VendorError('A bucket address like name.sgp1.digitaloceanspaces.com.', 400);
-		const endpoints = (await doAll('/cdn/endpoints', 'endpoints', k)) ?? [];
+		const endpoints = await doAll('/cdn/endpoints', 'endpoints', k);
 		const hit = endpoints.find((e) => str(e['origin']) === origin);
 		if (opt(w, 'on') === 'on') {
 			if (hit)
@@ -248,8 +249,9 @@ export const SPACES_CDN_EXTRA: ScreenExtra = {
 		cdnonoff: {
 			...cdn,
 			read: async (ctx: ProductCtx) => {
-				const t = await cdn.read(ctx);
-				if (t.type === 'form') t.form.key = 'cdnonoff';
+				// The CDN form always reads as a form.
+				const t = (await cdn.read(ctx)) as Extract<ProductTab, { type: 'form' }>;
+				t.form.key = 'cdnonoff';
 				return t;
 			},
 		},

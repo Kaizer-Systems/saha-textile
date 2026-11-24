@@ -140,3 +140,11 @@ export const PayrollRunModel = reuse(
 		{ ...loose, collection: COLLECTION_NAMES.PayrollRun },
 	),
 );
+
+/** S1, S4, S7, S9: payroll rule versions, structure templates, returns marked filed and advances. */
+const payrollModel = (name: string, collection: string) =>
+	reuse(name, new Schema<AggregateDoc>({ _id: { type: String, required: true } }, { ...loose, collection }));
+export const PayrollRulesModel = payrollModel('PayrollRules', COLLECTION_NAMES.PayrollRules);
+export const SalaryTemplateModel = payrollModel('SalaryTemplate', COLLECTION_NAMES.SalaryTemplate);
+export const StatutoryFilingModel = payrollModel('StatutoryFiling', COLLECTION_NAMES.StatutoryFiling);
+export const PayrollAdvanceModel = payrollModel('PayrollAdvance', COLLECTION_NAMES.PayrollAdvance);

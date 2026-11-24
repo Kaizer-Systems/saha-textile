@@ -182,6 +182,11 @@ export const COLLECTION_NAMES = {
 	Employee: 'employees',
 	PayrollAttendance: 'payrollAttendance',
 	PayrollRun: 'payrollRuns',
+	/** Dated payroll rule versions (S1), salary structure templates (S4), returns marked filed (S7), advances (S9). */
+	PayrollRules: 'payrollRules',
+	SalaryTemplate: 'salaryTemplates',
+	StatutoryFiling: 'statutoryFilings',
+	PayrollAdvance: 'payrollAdvances',
 	/** Stock split by location (accounts brief F4). */
 	LocationStock: 'locationStock',
 	/** Settings › Document formats (bundle builder brief F, 2026-11-22): one active format per document. */
@@ -349,6 +354,10 @@ export const GRAPH_RECONCILIATION_OWED = [
 	'employees',
 	'payrollAttendance',
 	'payrollRuns',
+	'payrollRules',
+	'salaryTemplates',
+	'statutoryFilings',
+	'payrollAdvances',
 ] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */

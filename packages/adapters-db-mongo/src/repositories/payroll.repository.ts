@@ -1,14 +1,34 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
-import { Attendance, Employee, PayrollRun } from '@saha-textile/contracts';
+import {
+	Attendance,
+	Employee,
+	PayrollAdvance,
+	PayrollRulesVersion,
+	PayrollRun,
+	SalaryTemplate,
+} from '@saha-textile/contracts';
 import type {
 	AttendanceRepository,
 	EmployeeRepository,
+	PayrollAdvanceRepository,
+	PayrollRulesRepository,
 	PayrollRunRepository,
+	SalaryTemplateRepository,
+	StatutoryFilingRecord,
+	StatutoryFilingRepository,
 	TransactionContext,
 } from '@saha-textile/core-domain';
 
-import { EmployeeModel, PayrollAttendanceModel, PayrollRunModel } from '../models/bank.model';
+import {
+	EmployeeModel,
+	PayrollAdvanceModel,
+	PayrollAttendanceModel,
+	PayrollRulesModel,
+	PayrollRunModel,
+	SalaryTemplateModel,
+	StatutoryFilingModel,
+} from '../models/bank.model';
 import type { AggregateDoc } from '../models/purchasing.model';
 import { sessionFrom } from '../transaction-manager';
 
@@ -155,5 +175,81 @@ export class MongoPayrollRunRepository implements PayrollRunRepository {
 			.exec();
 		if (!result.matchedCount) throw new Error('payroll_run_changed');
 		return { ...run, version: expectedVersion + 1 };
+	}
+}
+
+const duplicate = (code: string) => (error: { code?: number }) => {
+	throw error.code === 11000 ? new Error(code, { cause: error }) : error;
+};
+
+/** Payroll rule versions in MongoDB (`payrollRules`, keyed by the day each starts). */
+export class MongoPayrollRulesRepository implements PayrollRulesRepository {
+	async list(): Promise<PayrollRulesVersion[]> {
+		const docs = await PayrollRulesModel.find({}).sort({ from: 1 }).lean<AggregateDoc[]>().exec();
+		return docs.map(({ _id, ...rest }) => PayrollRulesVersion.parse({ ...rest, id: _id }));
+	}
+
+	async insert(version: PayrollRulesVersion): Promise<void> {
+		const { id, ...rest } = version;
+		await PayrollRulesModel.create({ _id: id, ...rest }).catch(duplicate('payroll_rules_from_taken'));
+	}
+}
+
+/** Salary structure templates in MongoDB (`salaryTemplates`). */
+export class MongoSalaryTemplateRepository implements SalaryTemplateRepository {
+	async list(): Promise<SalaryTemplate[]> {
+		const docs = await SalaryTemplateModel.find({}).sort({ name: 1 }).lean<AggregateDoc[]>().exec();
+		return docs.map(({ _id, ...rest }) => SalaryTemplate.parse({ ...rest, id: _id }));
+	}
+
+	async get(id: string): Promise<SalaryTemplate | null> {
+		const doc = await SalaryTemplateModel.findById(id).lean<AggregateDoc>().exec();
+		if (!doc) return null;
+		const { _id, ...rest } = doc;
+		return SalaryTemplate.parse({ ...rest, id: _id });
+	}
+
+	async insert(template: SalaryTemplate): Promise<void> {
+		const { id, ...rest } = template;
+		await SalaryTemplateModel.create({ _id: id, ...rest });
+	}
+
+	async save(template: SalaryTemplate, expectedVersion: number): Promise<SalaryTemplate> {
+		const { id, ...rest } = template;
+		const result = await SalaryTemplateModel.updateOne(
+			{ _id: id, version: expectedVersion },
+			{ $set: { ...rest, version: expectedVersion + 1 } },
+		).exec();
+		if (!result.matchedCount) throw new Error('salary_template_changed');
+		return { ...template, version: expectedVersion + 1 };
+	}
+}
+
+/** Statutory returns marked filed in MongoDB (`statutoryFilings`, keyed `<kind>:<period>`). */
+export class MongoStatutoryFilingRepository implements StatutoryFilingRepository {
+	async list(): Promise<StatutoryFilingRecord[]> {
+		return StatutoryFilingModel.find({}, { _id: 0 }).sort({ period: -1 }).lean<StatutoryFilingRecord[]>().exec();
+	}
+
+	async insert(filing: StatutoryFilingRecord): Promise<void> {
+		await StatutoryFilingModel.create({ _id: `${filing.kind}:${filing.period}`, ...filing }).catch(
+			duplicate('statutory_already_filed'),
+		);
+	}
+}
+
+/** Advances given to employees in MongoDB (`payrollAdvances`). */
+export class MongoPayrollAdvanceRepository implements PayrollAdvanceRepository {
+	async list(employeeId?: string): Promise<PayrollAdvance[]> {
+		const docs = await PayrollAdvanceModel.find(employeeId ? { employeeId } : {})
+			.sort({ givenOn: 1 })
+			.lean<AggregateDoc[]>()
+			.exec();
+		return docs.map(({ _id, ...rest }) => PayrollAdvance.parse({ ...rest, id: _id }));
+	}
+
+	async insert(advance: PayrollAdvance, context?: TransactionContext): Promise<void> {
+		const { id, ...rest } = advance;
+		await PayrollAdvanceModel.create([{ _id: id, ...rest }], { session: sessionFrom(context) ?? null });
 	}
 }

@@ -52,6 +52,19 @@ async function freePort(): Promise<number> {
 	return port;
 }
 
+/** Whether the server at `url` answers before `child` stops or `ms` pass. */
+async function answers(url: string, child: ChildProcess, ms: number): Promise<boolean> {
+	const deadline = Date.now() + ms;
+	while (Date.now() < deadline && child.exitCode === null && child.signalCode === null) {
+		const status = await fetch(url)
+			.then((r) => r.status)
+			.catch(() => 0);
+		if (status > 0) return true;
+		await new Promise((done) => setTimeout(done, 250));
+	}
+	return false;
+}
+
 test.describe('A slow API', () => {
 	let STOREFRONT = 0;
 	let SLOW_API = 0;
@@ -60,8 +73,6 @@ test.describe('A slow API', () => {
 
 	test.beforeAll(async () => {
 		const root = resolve(__dirname, '..');
-		STOREFRONT = await freePort();
-		SLOW_API = await freePort();
 		proxy = createServer(
 			{
 				key: readFileSync(resolve(root, 'certs/localhost-key.pem')),
@@ -87,31 +98,32 @@ test.describe('A slow API', () => {
 					incoming.pipe(upstream);
 				}, 6_000);
 			},
-		).listen(SLOW_API, '127.0.0.1');
-		shop = spawn('node', ['dist/analog/server/index.mjs'], {
-			cwd: resolve(root, 'apps/storefront'),
-			stdio: 'ignore',
-			env: {
-				...process.env,
-				PORT: String(STOREFRONT),
-				NODE_OPTIONS: '--use-system-ca',
-				SAHA_TEXTILE_PUBLIC_CONFIG: JSON.stringify({
-					apiUrl: `https://localhost:${SLOW_API}`,
-					siteUrl: `http://localhost:${STOREFRONT}`,
-				}),
-			},
-		});
-		await expect
-			.poll(
-				() =>
-					fetch(`http://localhost:${STOREFRONT}/en/about-us`)
-						.then((r) => r.status)
-						.catch(() => 0),
-				{
-					timeout: 30_000,
+		);
+		// Port 0: the system picks the port as it listens. A port picked first and listened on later was once taken in
+		// between by an outgoing connection on a busy machine (EADDRINUSE, full local run, 24 Nov).
+		await new Promise<void>((done) => proxy.listen(0, '127.0.0.1', done));
+		SLOW_API = (proxy.address() as AddressInfo).port;
+		// The shop is another process, so its port is picked here; if that port is taken before the shop listens, the
+		// shop stops, and the next try picks another.
+		for (let attempt = 1; attempt <= 3; attempt++) {
+			STOREFRONT = await freePort();
+			shop = spawn('node', ['dist/analog/server/index.mjs'], {
+				cwd: resolve(root, 'apps/storefront'),
+				stdio: 'ignore',
+				env: {
+					...process.env,
+					PORT: String(STOREFRONT),
+					NODE_OPTIONS: '--use-system-ca',
+					SAHA_TEXTILE_PUBLIC_CONFIG: JSON.stringify({
+						apiUrl: `https://localhost:${SLOW_API}`,
+						siteUrl: `http://localhost:${STOREFRONT}`,
+					}),
 				},
-			)
-			.toBeGreaterThan(0);
+			});
+			if (await answers(`http://localhost:${STOREFRONT}/en/about-us`, shop, 30_000)) return;
+			shop.kill();
+		}
+		throw new Error('The test shop did not start in three tries.');
 	});
 
 	test.afterAll(() => {

@@ -62,8 +62,8 @@ test.describe('Real cart', () => {
 
 	test('a paid add-on with measurements is priced and can be edited', async ({ page }) => {
 		await page.goto(`/en/product/${SAREE}`);
-		await page.waitForLoadState('networkidle');
-		await page.locator('app-buy-box').getByText('Design 1', { exact: false }).first().click();
+		// A tap before Angular has taken over the buy box is lost (as in checkout-rules.admin.spec.ts).
+		await (await buyBoxReady(page)).getByText('Design 1', { exact: false }).first().click();
 		await expect(page.locator('#meas-chest')).toBeVisible();
 		for (const [name, value] of Object.entries(MEASUREMENTS)) {
 			await page.locator(`#meas-${name}`).fill(value);

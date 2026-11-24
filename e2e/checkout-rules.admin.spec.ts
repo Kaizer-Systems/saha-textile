@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import { AdminApi, ensurePounds, ensureSahaTextileShipping } from './business-setup';
-import { API_URL, expect, test } from './support';
+import { API_URL, buyBoxReady, expect, test } from './support';
 
 /**
  * The shop checkout's rules for every address and currency case (orders brief S1–S8, shipping brief
@@ -57,13 +57,13 @@ async function signInAndFillBag(page: Page): Promise<void> {
 	await page.locator('#login_btn').click();
 	await expect(page).not.toHaveURL(/auth\/login/);
 	await page.goto(`/en/product/${SAREE}`);
-	await page.waitForLoadState('networkidle');
-	const saved = page.waitForResponse((response) => response.url().includes('/cart/current/lines'));
-	await page
-		.locator('app-buy-box button', { hasText: /add to cart/i })
-		.first()
-		.click();
-	expect((await saved).status()).toBeLessThan(300);
+	// A tap before Angular has taken over the buy box is lost: the bag stayed empty under a full local run (24 Nov).
+	const add = (await buyBoxReady(page)).locator('button', { hasText: /add to cart/i }).first();
+	const [saved] = await Promise.all([
+		page.waitForResponse((response) => response.url().includes('/cart/current/lines')),
+		add.click(),
+	]);
+	expect(saved.status(), `the cart answered ${saved.status()}: ${await saved.text()}`).toBeLessThan(300);
 }
 
 async function quote(page: Page, body: Record<string, unknown>): Promise<Quote> {

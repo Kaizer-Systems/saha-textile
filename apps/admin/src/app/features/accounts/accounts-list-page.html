@@ -1,0 +1,112 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'al_title_' + kind()"
+>
+	<div
+		button
+		class="d-flex flex-wrap gap-2"
+	>
+		@if (kind() === 'selfInvoices' && canPost()) {
+		<a
+			class="btn btn-theme"
+			id="al_record_supply"
+			routerLink="/accounts/self-invoices/new"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'si_record' | transloco }}
+		</a>
+		} @if ((kind() === 'journal' || kind() === 'contra') && canPost()) {
+		<a
+			class="btn btn-theme"
+			id="al_new_voucher"
+			routerLink="/accounts/vouchers/new"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'accounts_voucher_new' | transloco }}
+		</a>
+		}
+		<button
+			type="button"
+			class="btn btn-outline"
+			id="al_export"
+			[disabled]="busy()"
+			(click)="exportCsv()"
+		>
+			<i class="ri-download-2-line"></i>
+			{{ (kind() === 'dayBook' ? 'al_export_ca' : 'al_export_csv') | transloco }}
+		</button>
+	</div>
+	<p class="small text-muted mb-3">{{ 'al_sub_' + kind() | transloco }}</p>
+	@if (kind() !== 'dayBook') {
+	<ul class="nav nav-tabs mb-3">
+		@for (tab of tabs; track tab) {
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				[class.active]="tab === kind()"
+				[routerLink]="['/accounts/vouchers', tab]"
+			>
+				{{ 'al_tab_' + tab | transloco }}
+			</a>
+		</li>
+		}
+	</ul>
+	} @if (kind() === 'creditNotes') {
+	<p
+		class="small mb-2"
+		id="al_totals"
+	>
+		{{ 'al_totals_credit_notes' | transloco: { taxable: inr(totals()['taxableINR']), tax: inr(totals()['taxINR']),
+		count: totals()['count'] ?? 0 } }}
+	</p>
+	}
+	<app-table
+		[tableConfig]="tableConfig()"
+		[hasCheckbox]="kind() !== 'dayBook'"
+		[selectionKey]="'accounts-' + kind()"
+		[searchPlaceholder]="'al_search_' + kind()"
+		(tableChanged)="onTableChange($event)"
+		(rowClicked)="open($event)"
+		(action)="onAction($event)"
+	>
+		<div
+			tableFilters
+			class="d-flex align-items-center flex-wrap gap-2"
+		>
+			@for (item of chips(); track item) {
+			<button
+				type="button"
+				class="align-items-center btn btn-sm d-flex"
+				[class.btn-theme]="chip() === item"
+				[class.btn-outline]="chip() !== item"
+				[attr.aria-pressed]="chip() === item"
+				(click)="setChip(item)"
+			>
+				{{ 'al_chip_' + item | transloco }}@if (counts()[item] !== undefined) {
+				<span class="ms-1">{{ counts()[item] }}</span>
+				}
+			</button>
+			} @if (kind() === 'stockAdjustments') {
+			<select
+				class="form-select form-select-sm w-auto"
+				id="al_reason"
+				[attr.aria-label]="'al_every_reason' | transloco"
+				[ngModel]="reason() ?? ''"
+				(ngModelChange)="setReason($event)"
+			>
+				<option value="">{{ 'al_every_reason' | transloco }}</option>
+				@for (code of reasons; track code) {
+				<option [value]="code">{{ 'reason_code_' + code | transloco }}</option>
+				}
+			</select>
+			}
+			<app-period-picker
+				[choices]="presets"
+				[start]="start()"
+				[labelPrefix]="'period_'"
+				[hint]="hint"
+				(picked)="setPeriod($event)"
+			/>
+		</div>
+	</app-table>
+</app-page-wrapper>

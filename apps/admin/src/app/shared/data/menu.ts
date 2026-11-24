@@ -249,6 +249,14 @@ export const menu: IMenu[] = [
 		children: [
 			{
 				parent_id: 25,
+				title: 'accounts_day_book',
+				path: '/accounts/day-book',
+				type: 'link',
+				level: 2,
+				permission: ['accounts.index'],
+			},
+			{
+				parent_id: 25,
 				title: 'accounts_vouchers',
 				path: '/accounts/vouchers',
 				type: 'link',

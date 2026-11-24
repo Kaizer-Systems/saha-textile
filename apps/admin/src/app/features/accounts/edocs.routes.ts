@@ -1,5 +1,18 @@
 import type { Routes } from '@angular/router';
 
+/** The tabs of Accounts › Vouchers (A1), each a route of the one list page. */
+const VOUCHER_LISTS = [
+	'receipts',
+	'paymentVouchers',
+	'contra',
+	'journal',
+	'creditNotes',
+	'debitNotes',
+	'refundVouchers',
+	'selfInvoices',
+	'stockAdjustments',
+] as const;
+
 /**
  * Accounts › E-invoices and E-way bills (addendum 2, EI12–EI13), Vouchers (Q3, Q4), Ledgers (Q1, Q2) and Periods and
  * locks (T1, T2), a tax invoice's page (D1, Q5). The Accounts menu grows with D6.
@@ -15,7 +28,18 @@ export default [
 		data: { kind: 'eWayBill' },
 		loadComponent: () => import('./edoc-list').then((m) => m.EDocListPage),
 	},
-	{ path: 'vouchers', loadComponent: () => import('./vouchers-list').then((m) => m.VouchersListPage) },
+	// Accounts › Vouchers (A1–A9): one tab per kind of voucher, ahead of a voucher's own page.
+	{ path: 'vouchers', pathMatch: 'full', redirectTo: 'vouchers/receipts' },
+	...VOUCHER_LISTS.map((list) => ({
+		path: `vouchers/${list}`,
+		data: { list },
+		loadComponent: () => import('./accounts-list-page').then((m) => m.AccountsListPage),
+	})),
+	{
+		path: 'day-book',
+		data: { list: 'dayBook' },
+		loadComponent: () => import('./accounts-list-page').then((m) => m.AccountsListPage),
+	},
 	{ path: 'vouchers/new', loadComponent: () => import('./voucher-form').then((m) => m.VoucherFormPage) },
 	{ path: 'vouchers/drafts/:draftId', loadComponent: () => import('./voucher-form').then((m) => m.VoucherFormPage) },
 	{ path: 'vouchers/:id', loadComponent: () => import('./voucher-view').then((m) => m.VoucherViewPage) },
@@ -29,11 +53,9 @@ export default [
 		path: 'refund-vouchers/:id',
 		loadComponent: () => import('./refund-voucher-page').then((m) => m.RefundVoucherPage),
 	},
-	{ path: 'self-invoices', loadComponent: () => import('./self-invoices-list').then((m) => m.SelfInvoicesListPage) },
-	{
-		path: 'payment-vouchers',
-		loadComponent: () => import('./payment-vouchers-list').then((m) => m.PaymentVouchersListPage),
-	},
+	// The lists are tabs of Accounts › Vouchers now (A6, A7).
+	{ path: 'self-invoices', pathMatch: 'full', redirectTo: 'vouchers/selfInvoices' },
+	{ path: 'payment-vouchers', pathMatch: 'full', redirectTo: 'vouchers/paymentVouchers' },
 	{
 		path: 'self-invoices/new',
 		loadComponent: () => import('./self-invoice-form').then((m) => m.SelfInvoiceFormPage),

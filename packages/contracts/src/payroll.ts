@@ -122,6 +122,12 @@ export const PayrollRow = z.object({
 	tdsPaise: z.number().int(),
 	advancePaise: z.number().int(),
 	netPaise: z.number().int(),
+	/** West Bengal's labour welfare fund in its months (S2), and the month's gratuity provision. */
+	lwfEmployeePaise: z.number().int().optional(),
+	lwfEmployerPaise: z.number().int().optional(),
+	gratuityPaise: z.number().int().optional(),
+	/** S6: each head paid for the days worked, kept so a reprint never changes. */
+	headsPaise: z.record(z.string(), z.number().int()).optional(),
 });
 export type PayrollRow = z.infer<typeof PayrollRow>;
 
@@ -132,8 +138,13 @@ export const PayrollRun = z.object({
 	rows: z.array(PayrollRow),
 	/** The payroll rule version the run used (its `from` day). */
 	rulesFrom: IsoDate,
+	/** The scheme rule version used (S1), and the employer's EPF admin charges and EDLI for the month. */
+	schemesFrom: IsoDate.optional(),
+	pfAdminPaise: z.number().int().optional(),
+	edliPaise: z.number().int().optional(),
 	voucherId: Id.nullable().default(null),
 	payVoucherId: Id.nullable().default(null),
+	paidOn: IsoDate.nullable().optional(),
 	approvedBy: Id.nullable().default(null),
 	approvedAt: IsoDateTime.nullable().default(null),
 	createdAt: IsoDateTime,
@@ -150,3 +161,202 @@ export const PayrollStep = z.object({
 	version: z.number().int().nonnegative(),
 });
 export type PayrollStep = z.infer<typeof PayrollStep>;
+
+const Pct = z.number().min(0).max(100);
+const Paise = z.number().int().nonnegative();
+const DueDay = z.number().int().min(1).max(31);
+
+/** S1: a dated version of the payroll rules; a month uses the version in force on its last day. */
+export const PayrollRulesWrite = z.object({
+	from: IsoDate,
+	note: z.string().trim().max(300).default(''),
+	pfRatePct: Pct,
+	pfWageCapPaise: Paise,
+	epsRatePct: Pct,
+	epsCapPaise: Paise,
+	esiEmployeePct: Pct,
+	esiEmployerPct: Pct,
+	esiGrossLimitPaise: Paise,
+	ptSlabs: z
+		.array(z.object({ upToPaise: Paise.nullable(), taxPaise: Paise }))
+		.min(1)
+		.max(20)
+		.refine((slabs) => slabs.at(-1)?.upToPaise === null, { message: 'pt_last_slab_open' }),
+	maxDeductionPct: Pct,
+	pfAdminPct: Pct,
+	pfAdminMinPaise: Paise,
+	edliPct: Pct,
+	pfHeadcount: z.number().int().positive(),
+	esiHeadcount: z.number().int().positive(),
+	bonusHeadcount: z.number().int().positive(),
+	bonusWarnAt: z.number().int().positive(),
+	gratuityHeadcount: z.number().int().positive(),
+	gratuityDaysPerYear: z.number().positive().max(60),
+	gratuityMonthDays: z.number().int().min(20).max(31),
+	lwfEmployeePaise: Paise,
+	lwfEmployerPaise: Paise,
+	lwfMonths: z.array(z.number().int().min(1).max(12)).max(12),
+	pfDueDay: DueDay,
+	esiDueDay: DueDay,
+	ptDueDay: DueDay,
+	lwfDueDay: DueDay,
+});
+export type PayrollRulesWrite = z.infer<typeof PayrollRulesWrite>;
+export type PayrollRulesWriteInput = z.input<typeof PayrollRulesWrite>;
+
+export const PayrollRulesVersion = PayrollRulesWrite.extend({
+	id: Id,
+	/** The built-in starting version, until a person adds one. */
+	builtIn: z.boolean().default(false),
+	createdBy: Id.nullable().default(null),
+	createdAt: IsoDateTime,
+});
+export type PayrollRulesVersion = z.infer<typeof PayrollRulesVersion>;
+
+export const SalaryHead = z.enum(['basic', 'da', 'hra', 'conveyance', 'special', 'other']);
+export type SalaryHead = z.infer<typeof SalaryHead>;
+
+/** S4: one line of a structure template: a % of pay, a fixed amount in rupees, or what is left. */
+export const StructureComponentWrite = z.object({
+	head: SalaryHead,
+	how: z.enum(['percent', 'fixed', 'rest']),
+	value: z.number().nonnegative().max(100_000_000).default(0),
+});
+export type StructureComponentWrite = z.infer<typeof StructureComponentWrite>;
+
+export const SalaryTemplateWrite = z.object({
+	name: z.string().trim().min(2).max(80),
+	examplePayINR: Rupees.default(20_000),
+	components: z
+		.array(StructureComponentWrite)
+		.min(1)
+		.max(6)
+		.refine((c) => new Set(c.map((x) => x.head)).size === c.length, { message: 'structure_head_twice' })
+		.refine((c) => c.filter((x) => x.how === 'rest').length <= 1, { message: 'structure_rest_twice' })
+		.refine((c) => c.filter((x) => x.how === 'percent').reduce((sum, x) => sum + x.value, 0) <= 100, {
+			message: 'structure_over_100',
+		}),
+});
+export type SalaryTemplateWrite = z.infer<typeof SalaryTemplateWrite>;
+export type SalaryTemplateWriteInput = z.input<typeof SalaryTemplateWrite>;
+
+export const SalaryTemplate = SalaryTemplateWrite.extend({
+	id: Id,
+	createdAt: IsoDateTime,
+	updatedAt: IsoDateTime,
+	version: z.number().int().nonnegative(),
+});
+export type SalaryTemplate = z.infer<typeof SalaryTemplate>;
+
+export const SalaryTemplateEdit = SalaryTemplateWrite.extend({ version: z.number().int().nonnegative() });
+export type SalaryTemplateEdit = z.infer<typeof SalaryTemplateEdit>;
+
+/** S2: which schemes apply this month. */
+export const SchemeLine = z.object({
+	scheme: z.enum(['pf', 'esi', 'bonus', 'gratuity', 'pt', 'lwf']),
+	startsAt: z.number().int().nullable(),
+	headcount: z.number().int(),
+	eligible: z.number().int().nullable(),
+	status: z.enum(['applies', 'voluntary', 'soon', 'not_yet']),
+});
+export type SchemeLine = z.infer<typeof SchemeLine>;
+
+/** S6: a payslip, worked out from the run it belongs to. */
+export const Payslip = z.object({
+	month: YearMonth,
+	company: z.string(),
+	employeeId: Id,
+	name: z.string(),
+	code: z.string(),
+	location: z.string(),
+	uan: z.string(),
+	daysInMonth: z.number().int(),
+	paidDays: z.number(),
+	earnings: z.array(z.object({ head: SalaryHead, paise: z.number().int() })),
+	grossPaise: z.number().int(),
+	deductions: z.array(
+		z.object({
+			key: z.enum(['pf', 'esi', 'pt', 'tds', 'lwf', 'advance']),
+			paise: z.number().int(),
+			/** PF: the wages it was worked out on; advance: which recovery of how many. */
+			wagesPaise: z.number().int().nullable().default(null),
+		}),
+	),
+	totalDeductionsPaise: z.number().int(),
+	netPaise: z.number().int(),
+	netWords: z.string(),
+	paidTo: z.object({ bank: z.string(), last4: z.string() }).nullable(),
+	paidOn: IsoDate.nullable(),
+	rulesFrom: IsoDate,
+	schemesFrom: IsoDate.nullable(),
+	status: PayrollRunStatus,
+});
+export type Payslip = z.infer<typeof Payslip>;
+
+export const StatutoryKind = z.enum(['pf', 'esi', 'pt', 'lwf', 'tds']);
+export type StatutoryKind = z.infer<typeof StatutoryKind>;
+
+/** S7: one return to file: for a month (a quarter for TDS), when it is due, how much, and whether it is filed. */
+export const StatutoryReturn = z.object({
+	kind: StatutoryKind,
+	period: YearMonth,
+	periodTo: YearMonth,
+	due: IsoDate,
+	amountPaise: z.number().int(),
+	status: z.enum(['ready', 'later', 'filed']),
+	filedOn: IsoDate.nullable(),
+	reference: z.string(),
+});
+export type StatutoryReturn = z.infer<typeof StatutoryReturn>;
+
+export const StatutoryFiling = z.object({
+	filedOn: IsoDate,
+	reference: z.string().trim().min(1).max(60),
+});
+export type StatutoryFiling = z.infer<typeof StatutoryFiling>;
+
+/** A portal file: its name and text (the ECR text, or a CSV). */
+export const StatutoryFile = z.object({ fileName: z.string(), text: z.string() });
+export type StatutoryFile = z.infer<typeof StatutoryFile>;
+
+/** S9: an advance given to an employee, paid from a cash or bank ledger. */
+export const AdvanceGive = z.object({
+	amountINR: z.number().positive().max(10_000_000),
+	givenOn: IsoDate,
+	ledgerId: Id,
+	perMonthINR: z.number().nonnegative().max(10_000_000),
+	note: z.string().trim().max(200).default(''),
+	version: z.number().int().nonnegative(),
+});
+export type AdvanceGive = z.infer<typeof AdvanceGive>;
+
+export const PayrollAdvance = z.object({
+	id: Id,
+	employeeId: Id,
+	givenOn: IsoDate,
+	amountPaise: z.number().int().positive(),
+	ledgerId: Id,
+	voucherId: Id,
+	note: z.string(),
+	createdBy: Id.nullable(),
+	createdAt: IsoDateTime,
+});
+export type PayrollAdvance = z.infer<typeof PayrollAdvance>;
+
+export const AdvanceSchedule = z.object({
+	employeeId: Id,
+	name: z.string(),
+	perMonthPaise: z.number().int(),
+	leftPaise: z.number().int(),
+	given: z.array(PayrollAdvance),
+	rows: z.array(
+		z.object({
+			month: YearMonth,
+			givenPaise: z.number().int(),
+			recoveredPaise: z.number().int(),
+			leftPaise: z.number().int(),
+			how: z.enum(['none', 'payroll', 'planned']),
+		}),
+	),
+});
+export type AdvanceSchedule = z.infer<typeof AdvanceSchedule>;

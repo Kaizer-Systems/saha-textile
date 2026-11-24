@@ -7,8 +7,11 @@ import type {
 	AgeingSide,
 	AuditReport,
 	AuditReportQuery,
+	CashFlow,
 	FinancialStatement,
 	OutstandingAgeing,
+	PeriodQuery,
+	Ratios,
 	PlByLocation,
 	PlByLocationQuery,
 	ReportCatalogue,
@@ -30,6 +33,8 @@ export const REPORT_KEYS = {
 	one: (id: string) => ['reports', 'saved', id] as const,
 	run: (run: ReportRunInput) => ['reports', 'run', run] as const,
 	ageing: (side: AgeingSide) => ['reports', 'ageing', side] as const,
+	cashFlow: (query: PeriodQuery) => ['reports', 'cash-flow', query] as const,
+	ratios: (query: PeriodQuery) => ['reports', 'ratios', query] as const,
 	audit: (query: Partial<AuditReportQuery>) => ['reports', 'audit', query] as const,
 };
 
@@ -45,6 +50,14 @@ export class ReportsGateway {
 
 	plByLocation(query: PlByLocationQuery): Observable<PlByLocation> {
 		return this.http.get<PlByLocation>(this.api('pl-by-location'), { params: { ...query } });
+	}
+
+	cashFlow(query: PeriodQuery): Observable<CashFlow> {
+		return this.http.get<CashFlow>(this.api('cash-flow'), { params: { ...query } });
+	}
+
+	ratios(query: PeriodQuery): Observable<Ratios> {
+		return this.http.get<Ratios>(this.api('ratios'), { params: { ...query } });
 	}
 
 	ageing(side: AgeingSide): Observable<OutstandingAgeing> {

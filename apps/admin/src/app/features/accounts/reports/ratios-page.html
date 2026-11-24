@@ -1,0 +1,38 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'reports_title'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<h5 class="mb-1">{{ 'report_ratios' | transloco }}</h5>
+		<app-period-picker
+			[choices]="presets"
+			[start]="'this_fy'"
+			[labelPrefix]="'period_'"
+			(picked)="setPeriod($event)"
+		/>
+	</div>
+	@if (report.error()) {
+	<div class="alert alert-warning py-2">{{ 'statement_problem' | transloco }}</div>
+	} @if (report.data(); as r) {
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'ratio_col_ratio' | transloco }}</th>
+					<th>{{ 'ratio_col_value' | transloco }}</th>
+					<th>{{ 'ratio_col_means' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (k of keys; track k) {
+				<tr>
+					<td>{{ 'ratio_' + k | transloco }}</td>
+					<td class="text-nowrap">{{ text(k, r.values[k]) }}</td>
+					<td class="text-muted small">{{ 'ratio_' + k + '_means' | transloco }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	}
+</app-page-wrapper>

@@ -25,6 +25,8 @@ export const REPORT_LIBRARY: readonly { group: string; items: readonly LibraryIt
 			{ key: 'profit_loss', link: '/accounts/reports/statement/profitLoss' },
 			{ key: 'pl_by_location', link: '/accounts/reports/pl-by-location' },
 			{ key: 'trial_balance', link: '/accounts/reports/trial-balance' },
+			{ key: 'cash_flow', link: '/accounts/reports/cash-flow' },
+			{ key: 'ratios', link: '/accounts/reports/ratios' },
 		],
 	},
 	{

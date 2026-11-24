@@ -1,12 +1,15 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type {
+	CashFlow,
 	FinancialStatement,
+	PeriodQuery,
+	Ratios,
 	PlByLocation,
 	PlByLocationQuery,
 	StatementKind,
 	StatementQuery,
 } from '@saha-textile/contracts';
-import { istDay, reportRows, type ReportColumn } from '@saha-textile/core-domain';
+import { cashFlowStatement, istDay, ratios, reportRows, type ReportColumn } from '@saha-textile/core-domain';
 
 import { AccountsTemplatesService } from '../accounts-templates/accounts-templates.service';
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
@@ -73,6 +76,30 @@ export class StatementsService {
 			name: layout.name,
 			version: layout.version,
 		};
+	}
+
+	/** The balances on the day before the period and on its last day, at the locations the person may see. */
+	private async period(query: PeriodQuery, principal: AuthenticatedPrincipal | undefined) {
+		if (query.from > query.to) throw new BadRequestException(accountsRefusal('report_period_backwards'));
+		const [chart, opening, closing] = await Promise.all([
+			this.ledger.chart(),
+			this.ledger.balancesAtLocations(dayBefore(query.from), principal, []),
+			this.ledger.balancesAtLocations(query.to, principal, []),
+		]);
+		return { chart, opening, closing };
+	}
+
+	/** Cash flow for a period, indirect method (AS 3). */
+	async cashFlow(query: PeriodQuery, principal: AuthenticatedPrincipal | undefined): Promise<CashFlow> {
+		const { chart, opening, closing } = await this.period(query, principal);
+		return { from: query.from, to: query.to, ...cashFlowStatement(chart, opening, closing) };
+	}
+
+	/** The usual ratios for a period: liquidity at its end, margins and turnover over it. */
+	async ratios(query: PeriodQuery, principal: AuthenticatedPrincipal | undefined): Promise<Ratios> {
+		const { chart, opening, closing } = await this.period(query, principal);
+		const days = Math.round((Date.parse(query.to) - Date.parse(query.from)) / 86_400_000) + 1;
+		return { from: query.from, to: query.to, values: ratios(chart, opening, closing, days) };
 	}
 
 	/** U3: each location's own profit for the period (the head office's costs fall in its own column). */

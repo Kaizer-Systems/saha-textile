@@ -3,6 +3,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	AgeingSide,
 	AuditReportQuery,
+	PeriodQuery,
 	PlByLocationQuery,
 	StatementKind,
 	StatementQuery,
@@ -39,6 +40,28 @@ export class StatementsController {
 	@ApiOperation({ operationId: 'reportAudit', summary: 'Every change across the books in a period (U8)' })
 	audit(@Query(new ZodValidationPipe(AuditReportQuery)) query: AuditReportQuery) {
 		return this.books.auditReport(query);
+	}
+
+	@Get('cash-flow')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({ operationId: 'reportCashFlow', summary: 'Cash flow for a period, indirect method' })
+	cashFlow(
+		@Query(new ZodValidationPipe(PeriodQuery)) query: PeriodQuery,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.statements.cashFlow(query, principal);
+	}
+
+	@Get('ratios')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({ operationId: 'reportRatios', summary: 'The usual ratios for a period' })
+	ratios(
+		@Query(new ZodValidationPipe(PeriodQuery)) query: PeriodQuery,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.statements.ratios(query, principal);
 	}
 
 	@Get('pl-by-location')

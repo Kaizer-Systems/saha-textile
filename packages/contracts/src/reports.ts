@@ -189,3 +189,32 @@ export const AuditReport = z.object({
 	counts: z.record(AuditChip, z.number().int().nonnegative()),
 });
 export type AuditReport = z.infer<typeof AuditReport>;
+
+/* Cash flow (indirect method) and ratios. */
+
+export const PeriodQuery = z.object({ from: IsoDate, to: IsoDate });
+export type PeriodQuery = z.infer<typeof PeriodQuery>;
+
+export const CashFlow = z.object({
+	from: IsoDate,
+	to: IsoDate,
+	lines: z.array(
+		z.object({
+			section: z.enum(['operating', 'investing', 'financing']),
+			key: z.string(),
+			paise: z.number().int(),
+		}),
+	),
+	sections: z.object({ operating: z.number().int(), investing: z.number().int(), financing: z.number().int() }),
+	netChange: z.number().int(),
+	openingCash: z.number().int(),
+	closingCash: z.number().int(),
+});
+export type CashFlow = z.infer<typeof CashFlow>;
+
+export const Ratios = z.object({
+	from: IsoDate,
+	to: IsoDate,
+	values: z.record(z.string(), z.number().nullable()),
+});
+export type Ratios = z.infer<typeof Ratios>;

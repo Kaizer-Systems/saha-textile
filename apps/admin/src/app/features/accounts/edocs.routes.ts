@@ -103,6 +103,8 @@ export default [
 	},
 	{ path: 'reports/ageing/:side', loadComponent: () => import('./reports/ageing-page').then((m) => m.AgeingPage) },
 	{ path: 'reports/audit', loadComponent: () => import('./reports/audit-page').then((m) => m.AuditPage) },
+	{ path: 'reports/cash-flow', loadComponent: () => import('./reports/cash-flow-page').then((m) => m.CashFlowPage) },
+	{ path: 'reports/ratios', loadComponent: () => import('./reports/cash-flow-page').then((m) => m.RatiosPage) },
 	{
 		path: 'reports/new',
 		loadComponent: () => import('./reports/report-builder-page').then((m) => m.ReportBuilderPage),

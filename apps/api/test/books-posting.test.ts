@@ -70,6 +70,7 @@ const entry = {
 	supplierName: 'Bose Textiles',
 	billNumber: 'B-77',
 	itcClaimable: true,
+	goodsReceivedOn: '2026-08-05',
 	postedAt: '2026-11-24T05:00:00.000Z',
 	voidedAt: '2026-11-25T05:00:00.000Z',
 	totals: { taxableINR: 1_000, cgstINR: 25, sgstINR: 25, igstINR: 0, totalINR: 1_050 },
@@ -101,11 +102,12 @@ describe('before the books are set up', () => {
 });
 
 describe('purchases in the books', () => {
-	it('posts a purchase entry as stock and input tax against the supplier, on the day it was posted', async () => {
+	it('posts a purchase entry as stock and input tax against the supplier, on the day the goods came in', async () => {
 		const { service, posted } = setup();
 		await service.purchaseEntryPosted(entry, ctx, 'adm_1');
+		// Entered on 24 Nov for goods received on 5 Aug: the books show August.
 		expect(posted()[0]).toMatchObject({
-			date: '2026-11-24',
+			date: '2026-08-05',
 			idempotencyKey: 'purchaseEntry:pe_1',
 			source: { type: 'purchaseEntry', id: 'pe_1', number: 'PE/26-27/000004' },
 			lines: [

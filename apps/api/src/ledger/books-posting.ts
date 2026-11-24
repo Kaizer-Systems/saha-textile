@@ -212,13 +212,16 @@ export class BooksPostingService {
 
 	/* ---------------------------------------------------------------- purchases */
 
-	/** Purchases › Post: stock and input tax against the supplier (input tax that can't be claimed goes into stock). */
+	/**
+	 * Purchases › Post: stock and input tax against the supplier (input tax that can't be claimed goes into stock), on
+	 * the day the goods were received: a bill entered weeks later still belongs to the month the stock came in.
+	 */
 	async purchaseEntryPosted(entry: PurchaseEntry, context: TransactionContext, by: string | null) {
 		if (!(await this.templates.booksSetUp())) return null;
 		return this.post(
 			purchaseEntryPosting(billTotals(entry.totals, entry.itcClaimable)),
 			{
-				date: istDay(entry.postedAt ?? new Date()),
+				date: entry.goodsReceivedOn,
 				narration: `Purchase entry ${entry.number} · ${entry.supplierName}, bill ${entry.billNumber}`,
 				source: { type: 'purchaseEntry', id: entry.id, number: entry.number },
 				key: `purchaseEntry:${entry.id}`,

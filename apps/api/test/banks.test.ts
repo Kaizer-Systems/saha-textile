@@ -87,6 +87,12 @@ function setup(options: { groups?: string[]; locations?: unknown[]; landing?: Re
 				async (request: (typeof posted)[number]) => (posted.push(request), { id: `jv_${posted.length}` }),
 			),
 		} as never,
+		{
+			summary: async () =>
+				Object.fromEntries(
+					[...store.keys()].slice(0, 1).map((id) => [id, { lastDate: '2026-11-28', toMatch: 6 }]),
+				),
+		} as never,
 	);
 	return { service, store, posted, ledgers };
 }
@@ -239,7 +245,7 @@ describe('bank routes', () => {
 			add: vi.fn(async () => 'add'),
 			edit: vi.fn(async () => 'edit'),
 		};
-		const c = new BanksController(svc as never);
+		const c = new BanksController(svc as never, {} as never);
 		const p = manager;
 		expect([
 			await c.list(p),

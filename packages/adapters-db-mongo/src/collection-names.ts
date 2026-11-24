@@ -159,6 +159,9 @@ export const COLLECTION_NAMES = {
 	StockTransfer: 'stockTransfers',
 	/** Bank accounts beside their ledgers (accounts brief BA). */
 	BankAccount: 'bankAccounts',
+	BankLayout: 'bankLayouts',
+	BankLine: 'bankLines',
+	BankImport: 'bankImports',
 	/** Stock split by location (accounts brief F4). */
 	LocationStock: 'locationStock',
 	/** Settings › Document formats (bundle builder brief F, 2026-11-22): one active format per document. */
@@ -312,6 +315,9 @@ export const GRAPH_RECONCILIATION_OWED = [
 	'expenseClaims',
 	'stockTransfers',
 	'bankAccounts',
+	'bankLayouts',
+	'bankLines',
+	'bankImports',
 ] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */

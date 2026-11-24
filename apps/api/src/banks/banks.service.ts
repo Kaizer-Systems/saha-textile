@@ -17,6 +17,7 @@ import {
 	maskedNumber,
 	openingPosting,
 	type BankRepository,
+	type BankStatementRepository,
 	type GeneralLedgerRepository,
 	type LocationRepository,
 	type MoneyLandingRepository,
@@ -26,6 +27,7 @@ import {
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import {
 	BANK_REPOSITORY,
+	BANK_STATEMENT_REPOSITORY,
 	GENERAL_LEDGER_REPOSITORY,
 	LOCATION_REPOSITORY,
 	MONEY_LANDING_REPOSITORY,
@@ -66,29 +68,39 @@ export class BanksService {
 		@Inject(TRANSACTION_MANAGER) private readonly tx: TransactionManagerPort,
 		@Inject(LOCATION_REPOSITORY) private readonly locations: Pick<LocationRepository, 'list'>,
 		private readonly ledger: LedgerService,
+		@Inject(BANK_STATEMENT_REPOSITORY) private readonly statements: Pick<BankStatementRepository, 'summary'>,
 	) {}
 
 	private manages(principal: AuthenticatedPrincipal | undefined): boolean {
 		return !!principal?.permissions.includes('accounts.edit');
 	}
 
-	private async row(account: BankAccount, whole: boolean, landing: MoneyLanding | null): Promise<BankAccountRow> {
+	private async row(
+		account: BankAccount,
+		whole: boolean,
+		landing: MoneyLanding | null,
+		lines: Record<string, { lastDate: string | null; toMatch: number }>,
+	): Promise<BankAccountRow> {
 		return {
 			...account,
 			number: whole ? account.number : maskedNumber(account.number),
 			numberShown: whole ? account.number : maskedNumber(account.number),
 			balancePaise: await this.books.balanceBefore(account.ledgerId, '9999-12-31', []),
-			lastStatementOn: null,
-			toMatch: 0,
+			lastStatementOn: lines[account.id]?.lastDate ?? null,
+			toMatch: lines[account.id]?.toMatch ?? 0,
 			lands: LANDS.filter((key) => landing?.[key] === account.ledgerId),
 		};
 	}
 
 	async list(principal: AuthenticatedPrincipal | undefined): Promise<BankAccountList> {
 		const whole = this.manages(principal);
-		const [accounts, landing] = await Promise.all([this.repo.list(), this.landing.get()]);
+		const [accounts, landing, lines] = await Promise.all([
+			this.repo.list(),
+			this.landing.get(),
+			this.statements.summary(),
+		]);
 		const items: BankAccountRow[] = [];
-		for (const account of accounts) items.push(await this.row(account, whole, landing));
+		for (const account of accounts) items.push(await this.row(account, whole, landing, lines));
 		const counts = { all: accounts.length, current: 0, credit: 0, deposits: 0 };
 		for (const account of accounts) counts[chipOf(account.kind)] += 1;
 		return { items, counts, manage: whole };
@@ -97,7 +109,7 @@ export class BanksService {
 	async get(id: string, principal: AuthenticatedPrincipal | undefined): Promise<BankAccountRow> {
 		const account = await this.repo.get(id);
 		if (!account) throw new NotFoundException(accountsRefusal('bank_account_not_found'));
-		return this.row(account, this.manages(principal), await this.landing.get());
+		return this.row(account, this.manages(principal), await this.landing.get(), await this.statements.summary());
 	}
 
 	/** BA2: the bank the IFSC names, from the app's own list; anything else is typed. */

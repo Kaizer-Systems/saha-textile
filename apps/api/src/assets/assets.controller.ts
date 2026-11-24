@@ -1,6 +1,13 @@
-import { Body, Controller, Get, Header, HttpCode, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, HttpCode, Param, Post, Put } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AssetDisposal, FixedAssetEdit, FixedAssetWrite, YearMonth } from '@saha-textile/contracts';
+import {
+	AssetDisposal,
+	FixedAssetEdit,
+	FixedAssetWrite,
+	RecurringEntryEdit,
+	RecurringEntryWrite,
+	YearMonth,
+} from '@saha-textile/contracts';
 import { ASSET_CATEGORIES, RESIDUAL_PERCENT } from '@saha-textile/core-domain';
 
 import { Principal } from '../auth/ownership';
@@ -8,13 +15,53 @@ import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../au
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { AssetsService } from './assets.service';
+import { RecurringService } from './recurring.service';
 
 /** Fixed assets and their monthly depreciation (accounts brief R1–R4). */
 @ApiTags(API_TAGS.orders)
 @Audience('admin')
 @Controller('admin/accounts/assets')
 export class AssetsController {
-	constructor(private readonly assets: AssetsService) {}
+	constructor(
+		private readonly assets: AssetsService,
+		private readonly recurring: RecurringService,
+	) {}
+
+	@Get('recurring')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({ operationId: 'recurringList', summary: 'Rent and recurring entries (R5)' })
+	recurringList() {
+		return this.recurring.list();
+	}
+
+	@Post('recurring')
+	@RequirePermissions('accounts.edit')
+	@ApiOperation({ operationId: 'recurringCreate', summary: 'Add a recurring entry (R5)' })
+	recurringCreate(
+		@Body(new ZodValidationPipe(RecurringEntryWrite)) body: RecurringEntryWrite,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.recurring.create(body, principal);
+	}
+
+	@Put('recurring/:id')
+	@RequirePermissions('accounts.edit')
+	@ApiOperation({ operationId: 'recurringUpdate', summary: 'Change a recurring entry (R5)' })
+	recurringUpdate(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(RecurringEntryEdit)) body: RecurringEntryEdit,
+	) {
+		return this.recurring.update(id, body);
+	}
+
+	@Delete('recurring/:id')
+	@HttpCode(204)
+	@RequirePermissions('accounts.edit')
+	@ApiOperation({ operationId: 'recurringDelete', summary: 'Remove a recurring entry (R5)' })
+	async recurringDelete(@Param('id') id: string) {
+		await this.recurring.remove(id);
+	}
 
 	@Get()
 	@Header('Cache-Control', 'no-store')

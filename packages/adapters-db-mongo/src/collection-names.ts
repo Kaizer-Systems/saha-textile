@@ -176,6 +176,8 @@ export const COLLECTION_NAMES = {
 	ReportDefinition: 'reportDefinitions',
 	/** The fixed asset register (accounts brief R1–R4). */
 	FixedAsset: 'fixedAssets',
+	/** Rent and recurring entries, made on their day as drafts (accounts brief R5). */
+	RecurringEntry: 'recurringEntries',
 	/** Stock split by location (accounts brief F4). */
 	LocationStock: 'locationStock',
 	/** Settings › Document formats (bundle builder brief F, 2026-11-22): one active format per document. */
@@ -339,6 +341,7 @@ export const GRAPH_RECONCILIATION_OWED = [
 	'gstAnnualNotes',
 	'reportDefinitions',
 	'fixedAssets',
+	'recurringEntries',
 ] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */

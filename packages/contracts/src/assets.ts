@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { Id, IsoDateTime } from './common';
-import { YearMonth } from './ledger';
+import { VoucherDraftLine, YearMonth } from './ledger';
 import { IsoDate } from './purchasing';
 
 /**
@@ -101,3 +101,39 @@ export const AssetCategories = z.object({
 	residualPercent: z.number(),
 });
 export type AssetCategories = z.infer<typeof AssetCategories>;
+
+/* R5: rent and recurring entries, made on their day as drafts for someone to check and post. */
+
+export const RecurringEntryWrite = z.object({
+	what: z.string().trim().min(2).max(120),
+	party: z.string().trim().max(120).default(''),
+	kind: z.enum(['journal', 'payment']).default('journal'),
+	every: z.enum(['monthDay', 'monthEnd']).default('monthDay'),
+	/** The day of the month (1–28) for `monthDay`. */
+	day: z.number().int().min(1).max(28).default(1),
+	/** The draft's lines; an amount of 0 is filled in by whoever checks it ("from last bill"). */
+	lines: z.array(VoucherDraftLine).min(1).max(20),
+	/** A journal undone the next day (an expense accrued at month end, reversed on the 1st). */
+	reverseNextDay: z.boolean().default(false),
+	startOn: IsoDate,
+	endOn: IsoDate.nullable().default(null),
+	active: z.boolean().default(true),
+});
+export type RecurringEntryWrite = z.infer<typeof RecurringEntryWrite>;
+export type RecurringEntryWriteInput = z.input<typeof RecurringEntryWrite>;
+
+export const RecurringEntry = RecurringEntryWrite.extend({
+	id: Id,
+	/** The next day a draft is made. */
+	nextOn: IsoDate,
+	lastMadeOn: IsoDate.nullable().default(null),
+	lastDraftId: Id.nullable().default(null),
+	createdBy: Id.nullable(),
+	createdAt: IsoDateTime,
+	updatedAt: IsoDateTime,
+	version: z.number().int().nonnegative(),
+});
+export type RecurringEntry = z.infer<typeof RecurringEntry>;
+
+export const RecurringEntryEdit = RecurringEntryWrite.extend({ version: z.number().int().nonnegative() });
+export type RecurringEntryEdit = z.infer<typeof RecurringEntryEdit>;

@@ -110,3 +110,10 @@ const FixedAssetSchema = new Schema<AggregateDoc>(
 );
 FixedAssetSchema.index({ tag: 1 }, { unique: true });
 export const FixedAssetModel = reuse('FixedAsset', FixedAssetSchema);
+
+/** R5: rent and recurring entries. */
+const RecurringEntrySchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true } },
+	{ ...loose, collection: COLLECTION_NAMES.RecurringEntry },
+);
+export const RecurringEntryModel = reuse('RecurringEntry', RecurringEntrySchema);

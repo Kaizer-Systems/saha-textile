@@ -138,6 +138,8 @@ export const REFUND_VOUCHER_REPOSITORY = Symbol('RefundVoucherRepository');
 /** Accounts templates and what the books were installed from (accounts templates T2). */
 export const ACCOUNTS_TEMPLATE_REPOSITORY = Symbol('AccountsTemplateRepository');
 export const TEMPLATE_INSTALL_REPOSITORY = Symbol('TemplateInstallRepository');
+/** Accounts › Vouchers and the Day book read over every document (accounts brief A). */
+export const ACCOUNTS_LISTS_READER = Symbol('AccountsListsReader');
 /** Self-invoices and payment vouchers (accounts brief D). */
 export const SELF_INVOICE_REPOSITORY = Symbol('SelfInvoiceRepository');
 export const PAYMENT_VOUCHER_REPOSITORY = Symbol('PaymentVoucherRepository');

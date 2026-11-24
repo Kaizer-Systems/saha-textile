@@ -84,4 +84,5 @@ export * from './tax-invoice';
 export * from './returns';
 export * from './refund-vouchers';
 export * from './self-invoices';
+export * from './accounts-lists';
 export * from './accounts-templates';

@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { AccountsTemplatesModule } from '../accounts-templates/accounts-templates.module';
 import { LocationsModule } from '../locations/locations.module';
 import { OrdersSetupModule } from '../orders-setup/orders-setup.module';
+import { AccountsListsController, AccountsListsService } from './accounts-lists';
 import { BooksCatchUpController, BooksCatchUpService } from './books-catch-up';
 import { BooksPostingService } from './books-posting';
 import { ConvertController, ConvertService } from './convert';
@@ -27,6 +28,7 @@ import { TemplateUpdatesController, TemplateUpdatesService } from './template-up
 		RolesController,
 		ReportPreviewController,
 		TemplateUpdatesController,
+		AccountsListsController,
 	],
 	providers: [
 		LedgerService,
@@ -38,6 +40,7 @@ import { TemplateUpdatesController, TemplateUpdatesService } from './template-up
 		RolesService,
 		ReportPreviewService,
 		TemplateUpdatesService,
+		AccountsListsService,
 	],
 	exports: [LedgerService, EditLogService, MoneyLandingService, BooksPostingService],
 })

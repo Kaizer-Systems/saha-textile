@@ -25,7 +25,13 @@ test.describe('the header and the page fonts', () => {
 		expect(en).not.toContain(`href="${bengali}" as="font"`);
 	});
 
-	test('nothing moves on a বাংলা page while it loads', async ({ page }) => {
+	// Measured with the বাংলা font already in the browser's cache, as for anyone who has opened a বাংলা page before.
+	// On a slow first visit the font can still arrive after the first paint, and the shop's later stylesheet then
+	// swaps it in (CI, 24 Nov); the owner accepted that, as বাংলা is kept to keep the shop multi-language rather than
+	// for heavy use ("relax this test so that it passes", 24 Nov).
+	test('nothing moves on a বাংলা page while it loads, once its font is cached', async ({ page }) => {
+		await page.goto('/bn/');
+		await page.waitForLoadState('networkidle');
 		await page.addInitScript(() => {
 			const record = window as unknown as { shift: number; moved: string[] };
 			record.shift = 0;

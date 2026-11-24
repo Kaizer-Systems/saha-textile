@@ -252,6 +252,7 @@ describe('general ledger (accounts brief Q, T, D10)', () => {
 		const library = await service.setUpBooks('adm_owner');
 		expect(templates.installs.rows.map(({ code, version }) => [code, version])).toEqual([
 			['CH-COMMON', 5],
+			['RS-DUE', 1],
 			['RS-LIMITS', 2],
 			['RS-RCM', 1],
 			['RS-TDS', 1],

@@ -39,7 +39,7 @@ export type Gstr3bBooks = Omit<Gstr3bInput, 'gstin' | 'month' | 'gstr1Portal' | 
 @Injectable()
 export class Gstr3bInputs {
 	constructor(
-		private readonly gstr2b: Pick<Gstr2bService, 'rows'>,
+		@Inject(Gstr2bService) private readonly gstr2b: Pick<Gstr2bService, 'rows'>,
 		@Inject(SELF_INVOICE_REPOSITORY) private readonly selfInvoices: Pick<SelfInvoiceRepository, 'issuedForGstin'>,
 		@Inject(GENERAL_LEDGER_REPOSITORY)
 		private readonly ledger: Pick<GeneralLedgerRepository, 'chart' | 'listVouchers'>,

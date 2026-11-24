@@ -83,8 +83,9 @@ describe('searching', () => {
 
 	it('finds a place by a common word for it', () => {
 		expect(ids('via')[0]).toBe('storefront_setting_share');
-		// Settings › GST registrations (accounts brief J2) is titled with the word itself, so it may come first.
-		expect(ids('gst').slice(0, 2)).toContain('tax');
+		// Settings › GST registrations (accounts brief J2), Accounts › GST returns (G3) and the GSTR-2B check (G5) are
+		// titled with the word itself, so they may come first.
+		expect(ids('gst').slice(0, 4)).toContain('tax');
 		expect(ids('whatsapp')).toContain('setting_notifications');
 	});
 

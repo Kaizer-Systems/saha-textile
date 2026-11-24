@@ -39,7 +39,21 @@ const GST_PROBLEMS = new Set([
 	'gst_registration_unknown',
 	'gst_already_filed',
 	'arn_shape',
+	'gst_gstr1_not_filed',
+	'gst_return_qrmp_later',
+	'gstr2b_file_unreadable',
+	'gstr2b_line_unreadable',
+	'gstr2b_other_gstin',
+	'gstr2b_month_filed',
+	'gstr2b_not_imported',
+	'gstr2b_line_unknown',
+	'gstr2b_changed',
 ]);
+
+/** A prepared return's page: GSTR-3B has its own (G6), GSTR-1 the tables page (G4). */
+export function returnLink(returnType: GstCalendarRow['returnType'], id: string): string[] {
+	return returnType === 'GSTR-3B' ? ['/accounts/gst/returns/3b', id] : ['/accounts/gst/returns', id];
+}
 
 /** A failed GST call as its words' key: `gst_problem_<refusal without "gst_">`, or the general one. */
 export function gstProblem(error: unknown): string {
@@ -111,23 +125,20 @@ export class GstReturnsPage {
 		return shortDate(date);
 	}
 
-	/** A month's return opens its draft; a GSTR-1 not started is prepared from the books first. */
+	/** A month's return opens its draft; a GSTR-1 or GSTR-3B not started is prepared from the books first. */
 	async open(row: GstCalendarRow): Promise<void> {
 		if (row.draftId) {
-			void this.router.navigate(['/accounts/gst/returns', row.draftId]);
+			void this.router.navigate(returnLink(row.returnType, row.draftId));
 			return;
 		}
-		if (row.returnType !== 'GSTR-1') return;
+		if (row.returnType === 'GSTR-9') return;
+		const returnType = row.returnType;
 		this.busy.set(true);
 		try {
 			const draft = await firstValueFrom(
-				this.gateway.prepare({
-					gstRegistrationId: this.registrationId(),
-					returnType: 'GSTR-1',
-					month: row.period,
-				}),
+				this.gateway.prepare({ gstRegistrationId: this.registrationId(), returnType, month: row.period }),
 			);
-			void this.router.navigate(['/accounts/gst/returns', draft.id]);
+			void this.router.navigate(returnLink(returnType, draft.id));
 		} catch (error) {
 			this.notifier.showError(this.transloco.translate(gstProblem(error)));
 		} finally {

@@ -243,6 +243,7 @@ describe('accounts templates library (T2)', () => {
 			['CH-PVT', 3],
 		]);
 		expect(opens.taxRules).toEqual([
+			{ code: 'RS-DUE', name: 'GST return due dates', version: 1, entries: 6 },
 			{ code: 'RS-LIMITS', name: 'Limits', version: 2, entries: 8 },
 			{ code: 'RS-RCM', name: 'Reverse-charge list', version: 1, entries: 6 },
 			{ code: 'RS-TDS', name: 'TDS sections', version: 1, entries: 9 },
@@ -251,6 +252,7 @@ describe('accounts templates library (T2)', () => {
 		await service.installUnlocked('usr_owner');
 		expect(stores.installs.rows.map((i) => [i.code, i.version, i.installedBy])).toEqual([
 			['CH-COMMON', 1, null],
+			['RS-DUE', 1, 'usr_owner'],
 			['RS-LIMITS', 2, 'usr_owner'],
 			['RS-RCM', 1, 'usr_owner'],
 			['RS-TDS', 1, 'usr_owner'],

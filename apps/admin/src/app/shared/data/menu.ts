@@ -313,6 +313,14 @@ export const menu: IMenu[] = [
 			},
 			{
 				parent_id: 25,
+				title: 'accounts_gst_2b',
+				path: '/accounts/gst/2b',
+				type: 'link',
+				level: 2,
+				permission: ['accounts.index'],
+			},
+			{
+				parent_id: 25,
 				title: 'edoc_list_einvoices',
 				path: '/accounts/e-invoices',
 				type: 'link',

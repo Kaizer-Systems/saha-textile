@@ -72,7 +72,7 @@
 						>
 							<i class="ri-eye-line"></i>
 						</button>
-						} @else if (row.returnType === 'GSTR-1') {
+						} @else if (row.returnType !== 'GSTR-9') {
 						<button
 							*hasPermission="'accounts.edit'"
 							type="button"

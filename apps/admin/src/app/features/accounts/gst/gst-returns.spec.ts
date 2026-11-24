@@ -187,7 +187,7 @@ const CALENDAR = {
 	rows: [
 		row({ period: '2026-10', status: 'filed', arn: 'AA1910260012345', draftId: 'd10', dueOn: '2026-11-11' }),
 		row(),
-		row({ returnType: 'GSTR-3B', dueOn: '2026-12-20' }),
+		row({ returnType: 'GSTR-9', period: '2025-26', dueOn: '2026-12-31' }),
 	],
 	counts: { due: 2, filed: 1, all: 3 },
 };
@@ -231,11 +231,12 @@ describe('the GST returns calendar (G3)', () => {
 		expect(calendar).toHaveBeenLastCalledWith({ gstRegistrationId: 'r2', chip: 'all' });
 	});
 
-	it('opens a return’s draft, prepares a GSTR-1 not started, and leaves other returns not started alone', async () => {
+	it('opens a return’s draft, prepares a GSTR-1 or GSTR-3B not started, and leaves GSTR-9 alone', async () => {
 		const prepare = vi
 			.fn()
 			.mockReturnValueOnce(of({ id: 'd11' }))
-			.mockReturnValueOnce(throwError(() => refusal('gst_return_filed')));
+			.mockReturnValueOnce(throwError(() => refusal('gst_return_filed')))
+			.mockReturnValueOnce(of({ id: 'd3b' }));
 		const { fixture, page, navigate, notifier } = mount(GstReturnsPage, {
 			gst: { calendar: vi.fn(() => of(CALENDAR)), prepare },
 			company,
@@ -252,6 +253,12 @@ describe('the GST returns calendar (G3)', () => {
 		await page.open(CALENDAR.rows[1] as never);
 		expect(notifier.showError).toHaveBeenCalledWith('gst_problem_return_filed');
 		expect(navigate).toHaveBeenCalledTimes(2);
+		// GSTR-3B has its own page, prepared or not.
+		await page.open({ ...CALENDAR.rows[1], returnType: 'GSTR-3B' } as never);
+		expect(prepare).toHaveBeenLastCalledWith({ gstRegistrationId: 'r1', returnType: 'GSTR-3B', month: '2026-11' });
+		expect(navigate).toHaveBeenLastCalledWith(['/accounts/gst/returns/3b', 'd3b']);
+		await page.open({ ...CALENDAR.rows[1], returnType: 'GSTR-3B', draftId: 'd9' } as never);
+		expect(navigate).toHaveBeenLastCalledWith(['/accounts/gst/returns/3b', 'd9']);
 		expect(page.busy()).toBe(false);
 	});
 

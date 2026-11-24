@@ -72,10 +72,10 @@ export class GstReturnsService {
 		@Inject(CREDIT_NOTE_REPOSITORY) private readonly creditNotes: Pick<CreditNoteRepository, 'listForGstin'>,
 		@Inject(DEBIT_NOTE_REPOSITORY) private readonly debitNotes: Pick<DebitNoteRepository, 'listForGstin'>,
 		/** Due dates come from the installed due-date rule set (RS-DUE), which the CA keeps current. */
-		private readonly templates: Pick<AccountsTemplatesService, 'ruleSetEntries'>,
+		@Inject(AccountsTemplatesService) private readonly templates: Pick<AccountsTemplatesService, 'ruleSetEntries'>,
 		@Inject(ADMIN_USER_REPOSITORY) private readonly admins: Pick<AdminUserRepository, 'findById'>,
 		/** GSTR-3B's figures from the books and 2B. */
-		private readonly inputs: Pick<Gstr3bInputs, 'collect'>,
+		@Inject(Gstr3bInputs) private readonly inputs: Pick<Gstr3bInputs, 'collect'>,
 	) {}
 
 	/** Who took a step, by name; the user id when the account has no name, '' with no one signed in. */

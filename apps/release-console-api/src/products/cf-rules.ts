@@ -22,7 +22,7 @@ import {
 	rulesTable,
 	zoneOf,
 } from './cf-kit.js';
-import { VendorError, arr, rec, str } from '../vendors/http.js';
+import { VendorError, arr, num, rec, str } from '../vendors/http.js';
 
 type Rule = Record<string, unknown>;
 
@@ -772,7 +772,8 @@ const SLOTS = 5;
 /** Turns a page rule action into the slot's text value. */
 function actionValue(a: Record<string, unknown>): string {
 	const v = a['value'];
-	if (a['id'] === 'forwarding_url') return `${str(rec(v)['status_code'])} ${str(rec(v)['url'])}`;
+	// Cloudflare sends the status code as a number.
+	if (a['id'] === 'forwarding_url') return `${num(rec(v)['status_code'])} ${str(rec(v)['url'])}`;
 	return v === undefined || v === null ? '' : String(v);
 }
 

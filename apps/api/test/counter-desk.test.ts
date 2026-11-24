@@ -276,7 +276,7 @@ describe('counter desk routes', () => {
 			scan: vi.fn(async () => 'scan'),
 			quote: vi.fn(async () => 'quote'),
 		};
-		const controller = new CounterController({} as never, desk as never);
+		const controller = new CounterController({} as never, desk as never, {} as never, {} as never);
 		const principal = { userId: 'adm_priya' } as never;
 		expect(await controller.here(principal)).toBe('here');
 		expect(await controller.scan({ code: 'TNT' })).toBe('scan');
@@ -292,7 +292,7 @@ describe('counter desk routes', () => {
 			send: (body: unknown) => void (sent = body),
 		};
 		const print = vi.fn(async () => ({ bytes: new Uint8Array([37]), fileName: 'TI-26-27-000153.pdf' }));
-		const printing = new CounterController({} as never, { print } as never);
+		const printing = new CounterController({} as never, { print } as never, {} as never, {} as never);
 		await printing.print('ord_c', 'roll80', reply as never, principal);
 		await printing.print('ord_c', 'a3', reply as never, principal);
 		expect(print.mock.calls.map((c) => (c as unknown[])[1])).toEqual(['roll80', null]);

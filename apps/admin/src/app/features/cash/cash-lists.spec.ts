@@ -309,7 +309,7 @@ describe('cash routes', () => {
 				'loadComponent' in route && route.loadComponent ? [route.loadComponent()] : [],
 			),
 		);
-		expect(pages).toHaveLength(7);
+		expect(pages).toHaveLength(10);
 		expect(cashRoutes.find((r) => r.path === 'differences')?.data).toEqual({ differences: true });
 	});
 });

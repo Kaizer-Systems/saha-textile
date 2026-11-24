@@ -364,6 +364,22 @@ export const menu: IMenu[] = [
 				level: 2,
 				permission: ['cash.index'],
 			},
+			{
+				parent_id: 26,
+				title: 'counter_exchange_title',
+				path: '/cash/exchange',
+				type: 'link',
+				level: 2,
+				permission: ['cash.count'],
+			},
+			{
+				parent_id: 26,
+				title: 'counter_summary',
+				path: '/cash/counter-summary',
+				type: 'link',
+				level: 2,
+				permission: ['cash.count'],
+			},
 		],
 	},
 	// Purchases and stock (brief revision 2, accepted 2026-11-15): two groups, as drawn.

@@ -1,0 +1,291 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'counter_exchange_title'"
+>
+	@if (!orderId()) {
+	<!-- Find the bill: its order number or the tax invoice number on the roll. -->
+	<div class="theme-form theme-form-2">
+		<label
+			class="form-label-title"
+			for="exchange_number"
+		>
+			{{ 'counter_exchange_find' | transloco }}
+		</label>
+		<div class="d-flex flex-wrap gap-2">
+			<input
+				class="form-control w-auto flex-grow-1"
+				id="exchange_number"
+				maxlength="40"
+				autocomplete="off"
+				[ngModel]="number()"
+				(ngModelChange)="number.set($event)"
+				(keydown.enter)="$event.preventDefault(); find()"
+			/>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="exchange_find"
+				(click)="find()"
+			>
+				{{ 'counter_exchange_find_button' | transloco }}
+			</button>
+		</div>
+		<p class="help-text mb-0">{{ 'counter_exchange_find_help' | transloco }}</p>
+	</div>
+	} @else { @if (bill.data(); as b) {
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<small class="text-muted">
+				{{ 'counter_exchange_bill' | transloco: { number: b.invoiceNumber ?? b.orderNumber, date:
+				date(b.deliveredOn), name: b.buyerName || ('counter_sale_buyer' | transloco) } }}
+			</small>
+		</div>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="exchange_do"
+			[disabled]="!canExchange()"
+			(click)="exchange()"
+		>
+			@if (differenceINR() < 0) { {{ 'counter_exchange_refund' | transloco: { amount: rupees(-differenceINR()) }
+			}} } @if (differenceINR() > 0) { {{ 'counter_exchange_take' | transloco: { amount: rupees(differenceINR()) }
+			}} } @if (differenceINR() === 0) { {{ 'counter_exchange_even' | transloco }} }
+		</button>
+	</div>
+	@if (!b.windowOpen) {
+	<div class="alert alert-warning">{{ 'ret_problem_return_window_closed' | transloco }}</div>
+	}
+	<div class="row">
+		<div class="col-xxl-8">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ 'counter_coming_back' | transloco }}</h5>
+						</div>
+					</div>
+					<div class="table-responsive">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'counter_item' | transloco }}</th>
+									<th>{{ 'ord_col_qty' | transloco }}</th>
+									<th class="text-end">{{ 'counter_value' | transloco }}</th>
+									<th>{{ 'counter_goes' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (row of rows(); track row.lineId) {
+								<tr>
+									<td>
+										{{ row.title }}
+										<small class="d-block text-muted">{{ row.sku }}</small>
+									</td>
+									<td>
+										<input
+											class="form-control w-auto"
+											type="number"
+											min="0"
+											[max]="row.left"
+											[attr.aria-label]="'ord_col_qty' | transloco"
+											[disabled]="!row.returnable"
+											[ngModel]="back()[row.lineId]?.quantity ?? 0"
+											(ngModelChange)="setBack(row, $event)"
+										/>
+									</td>
+									<td class="text-end">
+										{{ rupees((back()[row.lineId]?.quantity ?? 0) * row.unitPriceINR) }}
+									</td>
+									<td>
+										<select
+											class="form-select w-auto"
+											[attr.aria-label]="'counter_goes' | transloco"
+											[disabled]="!row.returnable"
+											[ngModel]="back()[row.lineId]?.goes ?? 'stock'"
+											(ngModelChange)="setGoes(row, $event)"
+										>
+											<option value="stock">{{ 'ret_outcome_restock' | transloco }}</option>
+											<option value="damaged">{{ 'ret_outcome_damaged' | transloco }}</option>
+										</select>
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					<div class="theme-form theme-form-2 mt-3">
+						<label
+							class="form-label-title"
+							for="exchange_reason"
+						>
+							{{ 'counter_exchange_reason' | transloco }}
+						</label>
+						<select
+							class="form-select w-auto"
+							id="exchange_reason"
+							[ngModel]="reason()"
+							(ngModelChange)="reason.set($event)"
+						>
+							@for (r of reasons; track r) {
+							<option [value]="r">{{ 'ret_reason_' + r | transloco }}</option>
+							}
+						</select>
+					</div>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ 'counter_going_out' | transloco }}</h5>
+						</div>
+					</div>
+					<div class="theme-form theme-form-2 mb-3">
+						<label
+							class="form-label-title"
+							for="exchange_scan"
+						>
+							{{ 'counter_exchange_scan' | transloco }}
+						</label>
+						<input
+							class="form-control"
+							id="exchange_scan"
+							autocomplete="off"
+							maxlength="80"
+							[ngModel]="code()"
+							(ngModelChange)="code.set($event)"
+							(keydown.enter)="$event.preventDefault(); scan()"
+						/>
+					</div>
+					@if (out().length) {
+					<div class="table-responsive">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'counter_item' | transloco }}</th>
+									<th>{{ 'ord_col_qty' | transloco }}</th>
+									<th class="text-end">{{ 'counter_value' | transloco }}</th>
+									<th></th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (row of out(); track row.key; let i = $index) {
+								<tr>
+									<td>
+										{{ row.title }}
+										<small class="d-block text-muted">{{ row.sku }}</small>
+									</td>
+									<td>{{ row.quantity }}</td>
+									<td class="text-end">
+										{{ outValue(i) === null ? '…' : rupees(outValue(i) ?? 0) }}
+									</td>
+									<td class="text-end">
+										<a
+											href="javascript:void(0)"
+											class="text-danger"
+											[title]="'delete' | transloco"
+											(click)="removeOut(row.key)"
+										>
+											<i class="ri-delete-bin-line"></i>
+										</a>
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					} @else {
+					<p class="help-text mb-0">{{ 'counter_going_out_none' | transloco }}</p>
+					}
+				</div>
+			</div>
+		</div>
+		<div class="col-xxl-4">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ 'counter_what_it_makes' | transloco }}</h5>
+						</div>
+					</div>
+					<ul class="list-unstyled small mb-0">
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i class="ri-file-reduce-line"></i>
+							<div>
+								<b>{{ 'counter_effect_note_title' | transloco }}</b>
+								<span class="text-muted">· creditNotes</span>
+								<span class="d-block">
+									{{ 'counter_effect_note' | transloco: { amount: rupees(backINR()), invoice:
+									b.invoiceNumber ?? b.orderNumber } }}
+								</span>
+							</div>
+						</li>
+						@if (out().length) {
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i class="ri-file-add-line"></i>
+							<div>
+								<b>{{ 'counter_effect_invoice_title' | transloco }}</b>
+								<span class="text-muted">· taxInvoices</span>
+								<span class="d-block">
+									{{ 'counter_effect_new_invoice' | transloco: { amount: rupees(outINR()) } }}
+								</span>
+							</div>
+						</li>
+						}
+						<li class="d-flex gap-2 py-2">
+							<i class="ri-wallet-line"></i>
+							<div>
+								<b>{{ 'counter_effect_cash_title' | transloco }}</b>
+								<span class="text-muted">· cashSheetLines</span>
+								<span class="d-block">
+									{{ 'counter_effect_exchange_cash' | transloco: { out: rupees(backINR()), in:
+									rupees(differenceINR() > 0 && settle() !== 'cash' ? outINR() - differenceINR() :
+									outINR()) } }}
+								</span>
+							</div>
+						</li>
+					</ul>
+					@if (differenceINR() > 0) {
+					<div class="theme-form theme-form-2 mt-3">
+						<label
+							class="form-label-title"
+							for="exchange_settle"
+						>
+							{{ 'counter_exchange_settle' | transloco: { amount: rupees(differenceINR()) } }}
+						</label>
+						<select
+							class="form-select mb-2"
+							id="exchange_settle"
+							[ngModel]="settle()"
+							(ngModelChange)="settle.set($event)"
+						>
+							<option value="cash">{{ 'ord_method_cash' | transloco }}</option>
+							<option value="upi">{{ 'ord_method_upi' | transloco }}</option>
+							<option value="card">{{ 'ord_method_card' | transloco }}</option>
+						</select>
+						@if (settle() !== 'cash') {
+						<input
+							class="form-control"
+							id="exchange_reference"
+							maxlength="120"
+							[attr.aria-label]="'counter_reference' | transloco"
+							[placeholder]="'counter_reference' | transloco"
+							[ngModel]="reference()"
+							(ngModelChange)="reference.set($event)"
+						/>
+						}
+					</div>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+	} } @if (problem(); as p) {
+	<div
+		class="alert alert-danger mt-3 mb-0"
+		role="alert"
+	>
+		{{ p.key | transloco: p.params }}
+	</div>
+	}
+</app-page-wrapper>

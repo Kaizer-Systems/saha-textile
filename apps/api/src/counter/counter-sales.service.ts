@@ -155,6 +155,8 @@ export class CounterSalesService {
 		write: CounterSaleWrite,
 		principal: AuthenticatedPrincipal | undefined,
 		now = new Date(),
+		/** The credit note of an exchange this sale is the "going out" half of (P3, P4). */
+		exchangeOf: string | null = null,
 	): Promise<CounterSale> {
 		const access = await this.cash.access(principal);
 		if (!access.all && !access.locationIds.includes(write.locationId))
@@ -257,7 +259,7 @@ export class CounterSalesService {
 			history: [
 				historyEntry({ id: actorId, name: null }, at, 'created', {
 					comment: null,
-					detail: { counter: 'sold' },
+					detail: exchangeOf ? { counter: 'exchange', creditNoteId: exchangeOf } : { counter: 'sold' },
 				}),
 			],
 			revision: 0,
@@ -315,7 +317,7 @@ export class CounterSalesService {
 	}
 
 	/** The store's day-sheet box with its sheet open: where counter cash lands. */
-	private async openTill(locationId: string): Promise<string> {
+	async openTill(locationId: string): Promise<string> {
 		const boxes = (await this.cashRepo.boxes()).filter(
 			(b) => b.active && b.locationId === locationId && b.kind === 'day_sheet',
 		);

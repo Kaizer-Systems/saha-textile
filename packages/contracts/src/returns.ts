@@ -123,8 +123,8 @@ export const CreditNoteRefund = z.object({
 	status: z.enum(['due', 'paid', 'kept']),
 	paidAt: IsoDateTime.nullable().default(null),
 	paidBy: Id.nullable().default(null),
-	/** How it was paid: the gateway's refund or a bank transfer typed by hand. */
-	method: z.enum(['gateway', 'bank_transfer', 'upi']).nullable().default(null),
+	/** How it was paid: the gateway's refund, a bank transfer or UPI typed by hand, or cash from a till (P3). */
+	method: z.enum(['gateway', 'bank_transfer', 'upi', 'cash']).nullable().default(null),
 	reference: z.string().nullable().default(null),
 	voucherId: Id.nullable().default(null),
 });
@@ -199,7 +199,7 @@ export const CreditNoteRefundWrite = z.discriminatedUnion('how', [
 	z.object({ how: z.literal('gateway') }),
 	z.object({
 		how: z.literal('by_hand'),
-		method: z.enum(['bank_transfer', 'upi']),
+		method: z.enum(['bank_transfer', 'upi', 'cash']),
 		ledgerId: Id,
 		reference: z.string().trim().min(4).max(60),
 	}),

@@ -157,6 +157,16 @@ describe('a counter sale (P2)', () => {
 		expect(posted).toHaveLength(2);
 	});
 
+	it('marks a sale that is the going-out half of an exchange', async () => {
+		const created: { history: { detail: Record<string, string> }[] }[] = [];
+		const { service } = setup();
+		const orders = (service as unknown as { orders: { create: (o: never) => Promise<unknown> } }).orders;
+		const create = orders.create;
+		orders.create = async (o: never) => (created.push(o), create(o));
+		await service.sell(sale(), principal, NOW, 'cn_1');
+		expect(created[0]?.history[0]?.detail).toEqual({ counter: 'exchange', creditNoteId: 'cn_1' });
+	});
+
 	it('sells for UPI only with no open sheet, and with no phone or name', async () => {
 		const { service } = setup({ openSheet: false });
 		const result = await service.sell(
@@ -266,7 +276,7 @@ describe('the counter bill’s address', () => {
 describe('counter routes', () => {
 	it('sells as the person acting, behind cash.count, and is wired into the API', async () => {
 		const sell = vi.fn(async () => 'sold');
-		const controller = new CounterController({ sell } as never, {} as never);
+		const controller = new CounterController({ sell } as never, {} as never, {} as never, {} as never);
 		expect(await controller.sell(sale(), principal)).toBe('sold');
 		expect(sell).toHaveBeenCalledWith(sale(), principal);
 		expect(new Reflector().get(PERMISSIONS_KEY, CounterController.prototype.sell)).toEqual(['cash.count']);

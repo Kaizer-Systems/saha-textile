@@ -418,8 +418,6 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 		'Add ledgers and groups and rename or switch off ledgers on Accounts › Chart of accounts (Q1); POST/PUT /admin/accounts/chart/*. System groups and ledgers keep their place.',
 	'accounts.lock':
 		'Close a month for staff or lock it, part by part, with a reason, and reopen it, on Accounts › Periods and locks (T1, T2); POST /admin/accounts/periods. Held by the Administrator role.',
-	'cash.count':
-		"Open the day's cash sheet by counting the float, add a petty expense or a bank deposit, and close the day by counting the till blind (accounts brief O2–O7, O14) on Cash › Today's sheet; POST /admin/cash/sheets/*. Sees no amounts while a sheet is open.",
 	'cash.manage':
 		'See a cash sheet’s amounts and expected figures, close a sheet for another person, settle a difference (O8, the ten ways), refill a fixed float (O13) and approve or reject expense claims (O12); POST /admin/cash/sheets/:id/settle, /admin/cash/boxes/:id/refill, /admin/cash/claims/:id/decide. A box reviewed by the owner also needs the Administrator role.',
 	'expense_claim.create':

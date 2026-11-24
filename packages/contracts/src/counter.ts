@@ -5,6 +5,7 @@ import { PriceINR } from './common';
 import { AdminCartLine } from './order-admin';
 import { BundleChoice } from './product-bundle';
 import { IsoDate } from './purchasing';
+import { OrderReturnsView, ReturnReason } from './returns';
 
 /**
  * Counter mode (accounts brief P1–P4): a store sells over the counter from the same Create order screen. The sale is
@@ -122,17 +123,58 @@ export type CounterSale = z.infer<typeof CounterSale>;
 export const CounterExchangeWrite = z.object({
 	/** What comes back, from the bill's lines. */
 	back: z
-		.array(z.object({ lineId: Id, quantity: z.number().int().min(1), goes: z.enum(['stock', 'damaged']) }))
+		.array(
+			z.object({
+				lineId: z.string().min(1),
+				quantity: z.number().int().min(1),
+				goes: z.enum(['stock', 'damaged']),
+			}),
+		)
 		.min(1)
 		.max(50),
 	/** What goes out instead (may be none: a plain return). */
 	out: z.array(CounterLineWrite).max(50).default([]),
-	/** How a difference is settled: money paid or given back at the counter, or kept on the buyer's account. */
-	settle: z.enum(['cash', 'upi', 'card', 'store_credit']),
+	reason: ReturnReason.default('changed_mind'),
+	/**
+	 * How the difference is settled at the counter: money the shop gives back is cash from the till; money the buyer
+	 * pays may be cash, UPI or card.
+	 */
+	settle: CounterPaymentMethod,
 	reference: z.string().trim().max(120).default(''),
-	expectedDifferenceINR: z.number(),
+	/** What the screen showed coming back and going out, so a price that changed meanwhile is refused. */
+	expectedBackINR: PriceINR.nonnegative(),
+	expectedOutINR: PriceINR.nonnegative(),
 });
 export type CounterExchangeWrite = z.infer<typeof CounterExchangeWrite>;
+
+/** P3: the credit note for what came back, the new sale for what went out, and the difference settled. */
+export const CounterExchange = z.object({
+	creditNoteId: Id,
+	creditNoteNumber: z.string(),
+	backINR: z.number(),
+	outINR: z.number(),
+	/** Positive: the buyer paid it; negative: given back in cash. */
+	differenceINR: z.number(),
+	sale: CounterSale.nullable(),
+});
+export type CounterExchange = z.infer<typeof CounterExchange>;
+
+/** A counter bill as the exchange page reads it: the lines that can still come back, at what was paid. */
+export const CounterBill = z.object({
+	orderId: Id,
+	orderNumber: z.string(),
+	locationId: Id,
+	buyerName: z.string(),
+	buyerPhone: z.string(),
+	invoiceNumber: z.string().nullable(),
+	deliveredOn: IsoDate.nullable(),
+	windowOpen: z.boolean(),
+	lines: OrderReturnsView.shape.returnable,
+});
+export type CounterBill = z.infer<typeof CounterBill>;
+
+export const CounterFindQuery = z.object({ number: z.string().trim().min(3).max(40) });
+export type CounterFindQuery = z.infer<typeof CounterFindQuery>;
 
 export const CounterSummaryQuery = z.object({ date: IsoDate, locationId: Id });
 export type CounterSummaryQuery = z.infer<typeof CounterSummaryQuery>;

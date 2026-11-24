@@ -11,9 +11,16 @@ import type {
 	BankImport,
 	BankLayout,
 	BankLayoutWrite,
+	BankLine,
 	BankLinePage,
 	BankLineQuery,
+	BookEntry,
 	IfscLookup,
+	MatchRule,
+	MatchRuleWrite,
+	ReconcilePeriod,
+	ReconcileQuery,
+	ReconcileView,
 	StatementPreview,
 	StatementPreviewWrite,
 	StatementSaveWrite,
@@ -26,6 +33,9 @@ export const BANK_KEYS = {
 	one: (id: string) => ['banks', 'one', id] as const,
 	layouts: ['banks', 'layouts'] as const,
 	lines: (id: string, query: Partial<BankLineQuery>) => ['banks', 'lines', id, query] as const,
+	reconcile: (id: string, query: ReconcileQuery) => ['banks', 'reconcile', id, query] as const,
+	entries: (id: string, q: string) => ['banks', 'entries', id, q] as const,
+	rules: ['banks', 'rules'] as const,
 };
 
 /** The admin repeats the contract's chips (a spec holds them equal). */
@@ -75,5 +85,48 @@ export class BanksGateway {
 
 	lines(id: string, query: Partial<BankLineQuery>): Observable<BankLinePage> {
 		return this.http.get<BankLinePage>(this.api(`/${encodeURIComponent(id)}/lines`), { params: { ...query } });
+	}
+
+	reconcile(id: string, query: ReconcileQuery): Observable<ReconcileView> {
+		return this.http.get<ReconcileView>(this.api(`/${encodeURIComponent(id)}/reconcile`), { params: { ...query } });
+	}
+
+	acceptSure(id: string, period: ReconcilePeriod): Observable<{ accepted: number }> {
+		return this.http.post<{ accepted: number }>(
+			this.api(`/${encodeURIComponent(id)}/reconcile/accept-sure`),
+			period,
+		);
+	}
+
+	accept(id: string, lineId: string, period: ReconcilePeriod): Observable<BankLine> {
+		return this.http.post<BankLine>(this.line(id, lineId, 'accept'), period);
+	}
+
+	reject(id: string, lineId: string, period: ReconcilePeriod): Observable<BankLine> {
+		return this.http.post<BankLine>(this.line(id, lineId, 'reject'), period);
+	}
+
+	link(id: string, lineId: string, voucherIds: readonly string[]): Observable<BankLine> {
+		return this.http.post<BankLine>(this.line(id, lineId, 'link'), { voucherIds });
+	}
+
+	unmatch(id: string, lineId: string): Observable<BankLine> {
+		return this.http.post<BankLine>(this.line(id, lineId, 'unmatch'), {});
+	}
+
+	entries(id: string, q: string): Observable<BookEntry[]> {
+		return this.http.get<BookEntry[]>(this.api(`/${encodeURIComponent(id)}/reconcile/entries`), { params: { q } });
+	}
+
+	rules(): Observable<MatchRule[]> {
+		return this.http.get<MatchRule[]>(this.api('/matching-rules'));
+	}
+
+	saveRule(write: MatchRuleWrite): Observable<MatchRule> {
+		return this.http.put<MatchRule>(this.api('/matching-rules'), write);
+	}
+
+	private line(id: string, lineId: string, action: string): string {
+		return this.api(`/${encodeURIComponent(id)}/lines/${encodeURIComponent(lineId)}/${action}`);
 	}
 }

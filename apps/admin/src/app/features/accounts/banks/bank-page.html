@@ -19,6 +19,16 @@
 				<i class="ri-file-list-3-line"></i>
 				{{ 'bank_statement' | transloco }}
 			</a>
+			<a
+				class="btn btn-outline"
+				id="bank_reconcile"
+				[routerLink]="['/accounts/banks', a.id, 'reconcile']"
+			>
+				<i class="ri-links-line"></i>
+				{{ 'bank_reconcile' | transloco }}@if (a.toMatch) {
+				<span class="ms-1">{{ a.toMatch }}</span>
+				}
+			</a>
 			<button
 				*hasPermission="'accounts.edit'"
 				type="button"

@@ -11,7 +11,7 @@ import { LedgerGateway } from '@core/accounts/ledger.gateway';
 import { LocationsGateway } from '@core/locations/locations.gateway';
 import { NotificationService } from '@data-access/services/notification.service';
 
-import { VoucherFormPage, contraOf } from './voucher-form';
+import { VoucherFormPage, bankLineStart, contraOf } from './voucher-form';
 
 /** Accounts › Vouchers › New voucher (accounts brief Q3, Q4): tabs, the contra form, drafts, checks and Post. */
 
@@ -40,6 +40,7 @@ function setup(
 		postFails?: unknown;
 		picked?: unknown;
 		locations?: unknown[];
+		query?: Record<string, string>;
 	} = {},
 ) {
 	const gateway = {
@@ -76,7 +77,10 @@ function setup(
 			provideTanStackQuery(new QueryClient()),
 			{
 				provide: ActivatedRoute,
-				useValue: { paramMap: of(convertToParamMap(options.draftId ? { draftId: options.draftId } : {})) },
+				useValue: {
+					paramMap: of(convertToParamMap(options.draftId ? { draftId: options.draftId } : {})),
+					...(options.query ? { snapshot: { queryParamMap: convertToParamMap(options.query) } } : {}),
+				},
 			},
 			{ provide: LedgerGateway, useValue: gateway },
 			{
@@ -104,6 +108,30 @@ async function ready(options: Parameters<typeof setup>[0] = {}) {
 	made.fixture.detectChanges();
 	return made;
 }
+
+describe('a voucher started from a bank statement line (BA7 "+")', () => {
+	it('fills a payment for money out, or a receipt for money in, from the line', async () => {
+		const { page } = await ready({
+			query: {
+				bankLedger: 'hdfc',
+				amount: '59',
+				way: 'out',
+				date: '2026-11-28',
+				narration: 'SMS ALERT CHG',
+				location: 'loc_gar',
+			},
+		});
+		expect([page.kind(), page.date(), page.narration()]).toEqual(['payment', '2026-11-28', 'SMS ALERT CHG']);
+		expect(page.rows()[0]).toMatchObject({ ledgerId: 'hdfc', locationId: 'loc_gar', debit: '', credit: '59' });
+		expect(bankLineStart(convertToParamMap({ bankLedger: 'hdfc', amount: '412', way: 'in' }))).toMatchObject({
+			kind: 'receipt',
+			narration: '',
+			rows: [{ ledgerId: 'hdfc', debit: '412', credit: '', locationId: '' }, { ledgerId: '' }],
+		});
+		expect(bankLineStart(convertToParamMap({ amount: '5' }))).toBeNull();
+		expect(bankLineStart(convertToParamMap({ bankLedger: 'hdfc', amount: '0' }))).toBeNull();
+	});
+});
 
 describe('a contra draft read back', () => {
 	it('finds To on the debit line, From on the credit line, and the deposit slip', () => {

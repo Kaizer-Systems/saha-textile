@@ -22,6 +22,16 @@ const BANK_CODES = new Set([
 	'books_need_a_location',
 	'bank_layout_incomplete',
 	'bank_layout_unknown',
+	'match_rule_needs_words',
+	'match_rule_then_wrong',
+	'match_rule_unknown',
+	'bank_line_already_matched',
+	'bank_line_nothing_to_accept',
+	'bank_line_nothing_to_reject',
+	'bank_line_not_matched',
+	'bank_line_not_found',
+	'bank_link_entry_taken',
+	'bank_link_entry_not_on_account',
 ]);
 
 /** A refusal in the bank screens' words; anything else is the general failure. */

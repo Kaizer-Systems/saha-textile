@@ -267,6 +267,19 @@ describe('the bank gateway', () => {
 			[() => gateway.preview('b/1', {} as never), 'POST', '/b%2F1/lines/preview'],
 			[() => gateway.saveLines('b/1', {} as never), 'POST', '/b%2F1/lines'],
 			[() => gateway.lines('b/1', { from: '2026-11-01', page: 2 }), 'GET', '/b%2F1/lines?from=2026-11-01&page=2'],
+			[
+				() => gateway.reconcile('b/1', { from: '2026-11-01', to: '2026-11-30', tab: 'suggested' }),
+				'GET',
+				'/b%2F1/reconcile?from=2026-11-01&to=2026-11-30&tab=suggested',
+			],
+			[() => gateway.acceptSure('b/1', {} as never), 'POST', '/b%2F1/reconcile/accept-sure'],
+			[() => gateway.accept('b/1', 'l/1', {} as never), 'POST', '/b%2F1/lines/l%2F1/accept'],
+			[() => gateway.reject('b/1', 'l/1', {} as never), 'POST', '/b%2F1/lines/l%2F1/reject'],
+			[() => gateway.link('b/1', 'l/1', ['v']), 'POST', '/b%2F1/lines/l%2F1/link'],
+			[() => gateway.unmatch('b/1', 'l/1'), 'POST', '/b%2F1/lines/l%2F1/unmatch'],
+			[() => gateway.entries('b/1', 'nila'), 'GET', '/b%2F1/reconcile/entries?q=nila'],
+			[() => gateway.rules(), 'GET', '/matching-rules'],
+			[() => gateway.saveRule({} as never), 'PUT', '/matching-rules'],
 		];
 		for (const [call, method, path] of calls) {
 			(call() as { subscribe: () => void }).subscribe();

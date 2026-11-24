@@ -4,12 +4,14 @@ description: Current, savings, cash credit, overdraft and fixed deposit accounts
 status: implemented
 audience: [backend, frontend, operator]
 last_verified: '2026-11-24'
-search_keywords: bank account ifsc current savings cash credit overdraft fixed deposit opening balance cheque book upi ledger masked number statement import csv layout columns bank lines
+search_keywords: bank account ifsc current savings cash credit overdraft fixed deposit opening balance cheque book upi ledger masked number statement import csv layout columns bank lines reconcile matching rules suggested match accept link bank charges interest
 source_of_truth:
     - packages/contracts/src/bank.ts
     - packages/contracts/src/bank-statement.ts
     - packages/core-domain/src/bank/bank-rules.ts
     - packages/core-domain/src/bank/statement-rules.ts
+    - packages/core-domain/src/bank/reconcile-rules.ts
+    - packages/contracts/src/bank-reconcile.ts
     - packages/adapters-db-mongo/src/repositories/bank.repository.ts
     - apps/api/src/banks
     - apps/admin/src/app/features/accounts/banks
@@ -43,18 +45,50 @@ Two tabs. **Bank lines (imported)** lists the statement lines with chips by stat
 
 The read file lives only in the browser (`StatementImportState`) until Save; a reload asks for the file again.
 
+## Reconciling
+
+Reconcile (BA7, from the account's page, `/accounts/banks/:id/reconcile`) shows the period's lines in three chips: Suggested, Not matched, Accepted. Each suggestion is a draft the app works out afresh on every look (`suggestMatch`); nothing is written until a person decides.
+
+| Rule (BA10, in order)                        | Then                                     | Shows                          |
+| -------------------------------------------- | ---------------------------------------- | ------------------------------ |
+| A gateway payout reference the books hold    | Match that entry                         | Sure                           |
+| A UPI or bank reference the books hold       | Match that entry                         | Sure (unsure if two entries)   |
+| Same amount, within 3 days, the party's name | Suggest the nearest entry                | Sure if one; unsure if several |
+| Words "SMS ALERT" or "CHG" on money out      | A bank-charge payment, 18% GST taken out | Rule                           |
+| Words "INT CR" on money in                   | Interest received                        | Rule                           |
+| Anything else                                | Left for a person                        | Not matched                    |
+
+- **Entries offered** are the account's ledger lines 7 days either side of the period, one per voucher, netted to money in or out, never one already held by an accepted line. References come from the voucher's source (an order payment's reference). Payout references arrive with the gateway settlements; until then the first rule finds nothing.
+- **Accept** makes the suggestion the line's match. For a rule, it first posts the entry (`LedgerService.post`, kind payment or receipt, key `bankLine:<id>`, source `bankLine`): bank charges as Bank charges plus input CGST and SGST halves of the GST in the amount, interest to Interest received, at the account's location or the default stock location. **Accept all sure matches** takes every sure entry suggestion of the period; rule entries wait for a person.
+- **Turn down** records the suggestion's entry or rule in the line's `rejectedKeys`, so it is never offered to that line again.
+- **Link elsewhere** (BA8) on an unsure suggestion turns it down first; then Find what it pays searches the account's entries of the last 180 days not matched yet, by words, number or amount, and one or several can be picked when they come to the line's amount (`bank_link_amount_differs:<paise>` otherwise).
+- **Make an entry** (+) on a line with no match opens New voucher filled in from the line: a receipt for money in or a payment for money out, on its day, with the amount on the bank's ledger and its words; the other side is picked there, and the entry is then suggested or linked.
+- **Break the match** frees an accepted line; an entry a rule made stays in the books until reversed in Vouchers.
+- Every decision is in the edit log (`bank.line.accept`, `bank.line.reject`, `bank.line.unmatch`, `bank.rule.save`).
+
+Matching rules (BA10, `/accounts/banks/matching-rules`) lists the rules in order with a switch each. The app's own rules can be switched off and their words and GST rate changed, not removed; Add rule adds words that make a bank-charge entry, interest, or leave the line for a person, optionally only on money coming in.
+
 ## API
 
 `GET /admin/accounts/banks`, `GET /admin/accounts/banks/:id`, `GET /admin/accounts/banks/ifsc?code=` (`accounts.index`); `POST /admin/accounts/banks`, `PUT /admin/accounts/banks/:id` (`accounts.edit`). Collection `bankAccounts` (unique ledger, unique IFSC and number).
 
-| Route                                          | Permission       | Does                                                     |
-| ---------------------------------------------- | ---------------- | -------------------------------------------------------- |
-| `GET /admin/accounts/banks/layouts`            | `accounts.index` | The saved layouts                                        |
-| `PUT /admin/accounts/banks/layouts`            | `accounts.edit`  | Save a layout (new when `id` is null)                    |
-| `POST /admin/accounts/banks/:id/lines/preview` | `accounts.edit`  | The rows read by a layout, each marked when already held |
-| `POST /admin/accounts/banks/:id/lines`         | `accounts.edit`  | Save the lines when the totals agree; held lines skipped |
-| `GET /admin/accounts/banks/:id/lines`          | `accounts.index` | Lines by period and status, with counts per status       |
+| Route                                                  | Permission       | Does                                                     |
+| ------------------------------------------------------ | ---------------- | -------------------------------------------------------- |
+| `GET /admin/accounts/banks/layouts`                    | `accounts.index` | The saved layouts                                        |
+| `PUT /admin/accounts/banks/layouts`                    | `accounts.edit`  | Save a layout (new when `id` is null)                    |
+| `POST /admin/accounts/banks/:id/lines/preview`         | `accounts.edit`  | The rows read by a layout, each marked when already held |
+| `POST /admin/accounts/banks/:id/lines`                 | `accounts.edit`  | Save the lines when the totals agree; held lines skipped |
+| `GET /admin/accounts/banks/:id/lines`                  | `accounts.index` | Lines by period and status, with counts per status       |
+| `GET /admin/accounts/banks/matching-rules`             | `accounts.index` | The rules in order                                       |
+| `PUT /admin/accounts/banks/matching-rules`             | `accounts.edit`  | Add or change a rule                                     |
+| `GET /admin/accounts/banks/:id/reconcile`              | `accounts.index` | A tab of the period's lines with suggestions and counts  |
+| `GET /admin/accounts/banks/:id/reconcile/entries?q=`   | `accounts.index` | Entries not matched yet (Find what it pays)              |
+| `POST /admin/accounts/banks/:id/reconcile/accept-sure` | `accounts.edit`  | Accept every sure match of `{ from, to }`                |
+| `POST /admin/accounts/banks/:id/lines/:lineId/accept`  | `accounts.edit`  | Accept the suggestion shown for `{ from, to }`           |
+| `POST /admin/accounts/banks/:id/lines/:lineId/reject`  | `accounts.edit`  | Turn it down                                             |
+| `POST /admin/accounts/banks/:id/lines/:lineId/link`    | `accounts.edit`  | Link to `{ voucherIds }`                                 |
+| `POST /admin/accounts/banks/:id/lines/:lineId/unmatch` | `accounts.edit`  | Break the match                                          |
 
-Collections `bankLayouts`, `bankLines` (unique account and key) and `bankImports` (one per save: file, opening, closing, saved, skipped).
+Collections `bankLayouts`, `bankLines` (unique account and key; `match`, `rejectedKeys`), `bankImports` (one per save: file, opening, closing, saved, skipped) and `bankMatchRules` (rules added, and the app's own once changed).
 
-Reconciliation, the bank reconciliation statement and settlements follow in the same chunk.
+The bank reconciliation statement and settlements follow in the same chunk.

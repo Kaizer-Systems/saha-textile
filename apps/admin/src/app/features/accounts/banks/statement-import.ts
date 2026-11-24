@@ -37,8 +37,8 @@ interface Problem {
 /** A refusal in words; the totals refusal carries what opening plus the lines came to. */
 export function statementProblem(code: string): Problem {
 	const [name, amount] = code.split(':');
-	if (name === 'statement_totals_differ')
-		return { key: 'bank_problem_statement_totals_differ', params: { amount: rupees(Number(amount) || 0) } };
+	if (name === 'statement_totals_differ' || name === 'bank_link_amount_differs')
+		return { key: `bank_problem_${name}`, params: { amount: rupees(Number(amount) || 0) } };
 	return { key: bankProblemKey(code), params: {} };
 }
 

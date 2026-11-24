@@ -56,6 +56,14 @@ export default [
 	{ path: 'banks/new', loadComponent: () => import('./banks/bank-form').then((m) => m.BankFormPage) },
 	{ path: 'banks/:id/edit', loadComponent: () => import('./banks/bank-form').then((m) => m.BankFormPage) },
 	{
+		path: 'banks/matching-rules',
+		loadComponent: () => import('./banks/matching-rules').then((m) => m.MatchingRulesPage),
+	},
+	{
+		path: 'banks/:id/reconcile',
+		loadComponent: () => import('./banks/reconcile-page').then((m) => m.ReconcilePage),
+	},
+	{
 		path: 'banks/:id/import',
 		loadComponent: () => import('./banks/statement-import').then((m) => m.StatementImportPage),
 	},

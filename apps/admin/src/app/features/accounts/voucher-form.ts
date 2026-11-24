@@ -1,7 +1,7 @@
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, type ParamMap } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -21,6 +21,34 @@ import type { BookPart, VoucherAttachment, VoucherDraftWrite, VoucherKind } from
 const today = (): string => new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10);
 const blankRow = (locationId = ''): JournalRow => ({ ledgerId: '', locationId, debit: '', credit: '', narration: '' });
 type HandKind = Exclude<VoucherKind, 'opening' | 'document'>;
+
+/**
+ * A voucher started from a bank statement line (accounts brief BA7 "+"): a receipt for money in or a payment for money
+ * out, on the line's day, with its amount on the bank's ledger and its words; the other side is for the person to pick.
+ */
+export function bankLineStart(
+	params: ParamMap,
+): { kind: HandKind; date: string; narration: string; rows: JournalRow[] } | null {
+	const ledgerId = params.get('bankLedger');
+	const amount = Number(params.get('amount'));
+	if (!ledgerId || !(amount > 0)) return null;
+	const into = params.get('way') === 'in';
+	const locationId = params.get('location') ?? '';
+	return {
+		kind: into ? 'receipt' : 'payment',
+		date: params.get('date') ?? today(),
+		narration: params.get('narration') ?? '',
+		rows: [
+			{
+				...blankRow(locationId),
+				ledgerId,
+				debit: into ? String(amount) : '',
+				credit: into ? '' : String(amount),
+			},
+			blankRow(locationId),
+		],
+	};
+}
 
 /** How a contra's deposit slip is kept on its bank line, so a saved draft opens with it. */
 const SLIP = 'Deposit slip ';
@@ -141,6 +169,13 @@ export class VoucherFormPage {
 	});
 
 	constructor() {
+		const start = bankLineStart(inject(ActivatedRoute).snapshot?.queryParamMap ?? convertToParamMap({}));
+		if (start) {
+			this.kind.set(start.kind);
+			this.date.set(start.date);
+			this.narration.set(start.narration);
+			this.rows.set(start.rows);
+		}
 		effect(() => {
 			const draft = this.draft.data();
 			if (!draft) return;

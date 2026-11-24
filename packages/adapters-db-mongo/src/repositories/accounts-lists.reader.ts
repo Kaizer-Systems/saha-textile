@@ -525,6 +525,7 @@ const SOURCES: readonly Source[] = [
 			all: {},
 			online: { 'order.channel': 'shop' },
 			staff_orders: { 'order.channel': 'admin' },
+			counter: { 'order.channel': 'counter' },
 			business: { 'buyer.gstin': { $ne: null } },
 		},
 		search: ['number', 'orderNumber', 'buyer.name', 'buyer.gstin'],

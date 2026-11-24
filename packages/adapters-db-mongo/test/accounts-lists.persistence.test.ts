@@ -689,7 +689,7 @@ describe.skipIf(!hasMongoEnv())('accounts lists and the Day book (integration, r
 
 	it('lists tax invoices by channel, business and location, credited or not, and posted purchase bills', async () => {
 		const sales = await reader.list('taxInvoices', nov(), today);
-		expect(sales.counts).toEqual({ all: 4, online: 1, staff_orders: 1, business: 1 });
+		expect(sales.counts).toEqual({ all: 4, counter: 0, online: 1, staff_orders: 1, business: 1 });
 		const byId = new Map(sales.items.map((row) => [row.id, row]));
 		expect(byId.get('ti_1')).toMatchObject({
 			status: 'credited',

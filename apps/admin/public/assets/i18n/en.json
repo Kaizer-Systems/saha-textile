@@ -9137,5 +9137,6 @@
 	"ov_waiting_cashDifferences": "{{count}} cash sheets closed with a difference",
 	"ov_waiting_expenseClaims": "{{count}} expense claims waiting for approval",
 	"ord_method_cash": "Cash",
-	"ord_method_card": "Card"
+	"ord_method_card": "Card",
+	"al_chip_counter": "Counter"
 }

@@ -36,7 +36,7 @@ export const ACCOUNTS_LIST_CHIPS: Readonly<Record<AccountsListTab, readonly stri
 	refundVouchers: ['all', 'refunded', 'waiting_for_gateway', 'failed'],
 	selfInvoices: ['all', 'drafts', 'due_soon', 'unpaid', 'paid'],
 	stockAdjustments: ['all', 'waiting', 'posted', 'reversed'],
-	taxInvoices: ['all', 'online', 'staff_orders', 'business'],
+	taxInvoices: ['all', 'counter', 'online', 'staff_orders', 'business'],
 	purchaseBills: ['all', 'posted', 'void'],
 };
 

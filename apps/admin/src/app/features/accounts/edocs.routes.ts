@@ -79,6 +79,8 @@ export default [
 	{ path: 'ledgers/:id', loadComponent: () => import('./ledger-statement').then((m) => m.LedgerStatementPage) },
 	{ path: 'periods', loadComponent: () => import('./periods').then((m) => m.PeriodsPage) },
 	{ path: 'year-close', loadComponent: () => import('./year-close-page').then((m) => m.YearClosePage) },
+	{ path: 'import', loadComponent: () => import('./books-import-page').then((m) => m.BooksImportPage) },
+	{ path: 'export', loadComponent: () => import('./books-export-page').then((m) => m.BooksExportPage) },
 	// Accounts › GST returns (G3), a return prepared from the books (G4, G6, G8).
 	{ path: 'gst/returns', loadComponent: () => import('./gst/gst-returns-page').then((m) => m.GstReturnsPage) },
 	{ path: 'gst/returns/3b/:id', loadComponent: () => import('./gst/gstr3b-page').then((m) => m.Gstr3bPage) },

@@ -375,6 +375,14 @@ export const menu: IMenu[] = [
 				level: 2,
 				permission: ['accounts.index'],
 			},
+			{
+				parent_id: 25,
+				title: 'accounts_import',
+				path: '/accounts/import',
+				type: 'link',
+				level: 2,
+				permission: ['accounts.index'],
+			},
 		],
 	},
 	// Cash (accounts brief O1–O14, owner-approved 2026-11-23): today's sheet, the sheets, petty expenses, expense

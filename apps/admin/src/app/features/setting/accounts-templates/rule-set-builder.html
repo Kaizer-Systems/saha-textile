@@ -62,14 +62,17 @@
 					<thead>
 						<tr>
 							<th>{{ nameKey() | transloco }}</th>
-							@if (list() !== 'limits') {
+							@if (list() === 'dueDates') {
+							<th>{{ 'rs_due_return' | transloco }}</th>
+							<th>{{ 'rs_due_when' | transloco }}</th>
+							} @else { @if (list() !== 'limits') {
 							<th>{{ codeKey() | transloco }}</th>
 							<th>{{ 'rs_rate' | transloco }}</th>
 							} @if (list() === 'reverseCharge') {
 							<th>{{ 'rs_expense_role' | transloco }}</th>
 							} @else {
 							<th>{{ 'rs_limit' | transloco }}</th>
-							}
+							} }
 							<th>{{ 'at_applies_to' | transloco }}</th>
 							<th>{{ 'rs_from' | transloco }}</th>
 							<th>{{ 'rs_source' | transloco }}</th>
@@ -89,14 +92,19 @@
 									{{ e.name }}
 								</a>
 							</td>
-							@if (list() !== 'limits') {
+							@if (e.due; as d) {
+							<td class="text-nowrap">
+								{{ d.returnType }}@if (d.scheme) { · {{ 'rs_due_scheme_' + d.scheme | transloco }} }
+							</td>
+							<td>{{ dueText(e) }}</td>
+							} @else { @if (list() !== 'limits') {
 							<td>{{ e.code }}</td>
 							<td>{{ e.ratePercent }}%</td>
 							} @if (list() === 'reverseCharge') {
 							<td>{{ e.expenseRole ?? '—' }}</td>
 							} @else {
 							<td class="text-nowrap">{{ limitText(e) }}</td>
-							}
+							} }
 							<td>{{ appliesTo(e) }}</td>
 							<td class="text-nowrap">{{ e.from }}@if (e.to) { – {{ e.to }} }</td>
 							<td>
@@ -211,6 +219,112 @@
 							[disabled]="!canEdit()"
 							[ngModel]="e.ratePercent"
 							(ngModelChange)="patch(e.key, { ratePercent: +$event })"
+						/>
+					</div>
+					} @if (e.due; as d) {
+					<div class="col-md-4">
+						<label
+							class="form-label-title"
+							for="rs_due_return"
+						>
+							{{ 'rs_due_return' | transloco }}
+						</label>
+						<select
+							class="form-select"
+							id="rs_due_return"
+							[disabled]="!canEdit()"
+							[ngModel]="d.returnType"
+							(ngModelChange)="patchDue(e, { returnType: $event })"
+						>
+							@for (r of ['GSTR-1', 'GSTR-3B', 'GSTR-9']; track r) {
+							<option [value]="r">{{ r }}</option>
+							}
+						</select>
+					</div>
+					<div class="col-md-4">
+						<label
+							class="form-label-title"
+							for="rs_due_scheme"
+						>
+							{{ 'rs_due_scheme' | transloco }}
+						</label>
+						<select
+							class="form-select"
+							id="rs_due_scheme"
+							[disabled]="!canEdit()"
+							[ngModel]="d.scheme ?? ''"
+							(ngModelChange)="patchDue(e, { scheme: $event || null })"
+						>
+							<option value="">{{ 'rs_due_scheme_any' | transloco }}</option>
+							<option value="monthly">{{ 'rs_due_scheme_monthly' | transloco }}</option>
+							<option value="qrmp">{{ 'rs_due_scheme_qrmp' | transloco }}</option>
+						</select>
+					</div>
+					<div class="col-md-2">
+						<label
+							class="form-label-title"
+							for="rs_due_day"
+						>
+							{{ 'rs_due_day' | transloco }}
+						</label>
+						<input
+							class="form-control"
+							id="rs_due_day"
+							type="number"
+							min="1"
+							max="31"
+							[disabled]="!canEdit()"
+							[ngModel]="d.day"
+							(ngModelChange)="patchDue(e, { day: +$event })"
+						/>
+					</div>
+					<div class="col-md-2">
+						<label
+							class="form-label-title"
+							for="rs_due_months"
+						>
+							{{ 'rs_due_months' | transloco }}
+						</label>
+						<input
+							class="form-control"
+							id="rs_due_months"
+							type="number"
+							min="1"
+							max="12"
+							[disabled]="!canEdit()"
+							[ngModel]="d.monthsAfter"
+							(ngModelChange)="patchDue(e, { monthsAfter: +$event })"
+						/>
+					</div>
+					<div class="col-md-8">
+						<label
+							class="form-label-title"
+							for="rs_due_states"
+						>
+							{{ 'rs_due_states' | transloco }}
+						</label>
+						<input
+							class="form-control"
+							id="rs_due_states"
+							[disabled]="!canEdit()"
+							[ngModel]="d.states.join(', ')"
+							(ngModelChange)="patchDue(e, { states: statesOf($event) })"
+						/>
+					</div>
+					<div class="col-md-4">
+						<label
+							class="form-label-title"
+							for="rs_due_period"
+						>
+							{{ 'rs_due_period' | transloco }}
+						</label>
+						<input
+							class="form-control"
+							id="rs_due_period"
+							type="month"
+							[disabled]="!canEdit()"
+							[ngModel]="d.period ?? ''"
+							(ngModelChange)="patchDue(e, { period: $event || null })"
 						/>
 					</div>
 					} @if (list() === 'reverseCharge') {

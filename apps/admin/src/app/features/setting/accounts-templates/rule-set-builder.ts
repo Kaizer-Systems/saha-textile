@@ -122,6 +122,17 @@ export class RuleSetBuilderPage {
 		this.dirty.set(true);
 	}
 
+	/** A due-date rule in words: "day 20, 1 month after", the States it covers, and the month an extension is for. */
+	dueText(entry: TaxRuleEntry): string {
+		const due = entry.due as NonNullable<TaxRuleEntry['due']>;
+		return this.transloco.translate(due.period ? 'rs_due_extension' : 'rs_due_rule', {
+			day: due.day,
+			months: due.monthsAfter,
+			states: due.states.join(', ') || this.transloco.translate('rs_due_all_states'),
+			period: due.period ?? '',
+		});
+	}
+
 	addEntry(): void {
 		const name = this.transloco.translate('rs_new_entry');
 		const key = newKey(name, new Set(this.content()?.entries.map((row) => row.key)));
@@ -148,6 +159,19 @@ export class RuleSetBuilderPage {
 			},
 		]);
 		this.selected.set(key);
+	}
+
+	/** One field of a due-date rule changed. */
+	patchDue(entry: TaxRuleEntry, change: Partial<NonNullable<TaxRuleEntry['due']>>): void {
+		this.patch(entry.key, { due: { ...(entry.due as NonNullable<TaxRuleEntry['due']>), ...change } });
+	}
+
+	/** "19, 27 ,x" → the two-digit State codes in it. */
+	statesOf(text: string): string[] {
+		return text
+			.split(',')
+			.map((part) => part.trim())
+			.filter((part) => /^\d{2}$/.test(part));
 	}
 
 	patch(key: string, change: Partial<TaxRuleEntry>): void {

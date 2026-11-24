@@ -1,0 +1,142 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'accounts_settlements'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">{{ 'accounts_settlements' | transloco }}</h5>
+			<small class="text-muted">{{ 'stl_sub' | transloco }}</small>
+		</div>
+		<button
+			*hasPermission="'accounts.edit'"
+			type="button"
+			class="btn btn-theme"
+			id="stl_import"
+			(click)="importFile()"
+		>
+			<i class="ri-upload-2-line"></i>
+			{{ 'stl_import' | transloco }}
+		</button>
+	</div>
+	<div class="alert alert-info py-2">
+		<i class="ri-information-line me-1"></i>
+		{{ 'stl_how_' + kind() | transloco }}
+	</div>
+	@if (query.data()?.unsettled?.length) {
+	<div
+		class="alert alert-warning py-2"
+		id="stl_unsettled"
+	>
+		<b>{{ 'stl_unsettled' | transloco: { count: query.data()?.unsettled?.length } }}</b>
+		@for (p of query.data()?.unsettled ?? []; track p.paymentId) {
+		<small class="d-block">
+			{{ day(p.receivedOn) }} · {{ p.gateway }} · {{ p.reference ?? '—' }} · {{ rupees(p.amountINR * 100) }}
+		</small>
+		}
+	</div>
+	}
+	<div class="d-flex align-items-center mb-3 flex-wrap gap-2">
+		@for (t of tabs; track t) {
+		<button
+			type="button"
+			class="align-items-center btn btn-sm d-flex"
+			[id]="'stl_tab_' + t"
+			[class.btn-theme]="kind() === t"
+			[class.btn-outline]="kind() !== t"
+			[attr.aria-pressed]="kind() === t"
+			(click)="setKind(t)"
+		>
+			{{ 'stl_tab_' + t | transloco }}
+			<span class="ms-1">{{ query.data()?.counts?.[t] ?? 0 }}</span>
+		</button>
+		}
+		<app-period-picker
+			[choices]="presets"
+			[start]="'this_month'"
+			[labelPrefix]="'period_'"
+			[hint]="hint"
+			(picked)="setPeriod($event)"
+		/>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'stl_col_payout' | transloco }}</th>
+					<th>{{ 'date' | transloco }}</th>
+					<th class="text-end">{{ 'stl_col_orders' | transloco }}</th>
+					<th class="text-end">{{ 'stl_col_gross' | transloco }}</th>
+					<th class="text-end">{{ 'stl_col_charges' | transloco }}</th>
+					<th class="text-end">{{ 'stl_col_net' | transloco }}</th>
+					<th>{{ 'stl_col_matched' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of rows(); track row.id) {
+				<tr>
+					<td>
+						{{ row.provider }}
+						<small class="text-muted d-block">{{ row.payoutReference }}</small>
+					</td>
+					<td class="text-nowrap">{{ day(row.date) }}</td>
+					<td class="text-end">{{ row.rows.length }}</td>
+					<td class="text-end text-nowrap">{{ rupees(row.grossPaise) }}</td>
+					<td class="text-end text-nowrap">{{ rupees(row.chargesPaise + row.gstPaise) }}</td>
+					<td class="text-end text-nowrap">{{ rupees(row.netPaise) }}</td>
+					<td>
+						<div [class]="allMatched(row) ? 'status-success' : 'status-pending'">
+							<span>
+								{{ 'stl_matched_n' | transloco: { matched: row.matched, total: row.rows.length } }}
+							</span>
+						</div>
+					</td>
+					<td class="text-nowrap">
+						<ul class="list-unstyled d-flex mb-0 gap-2">
+							<li>
+								<button
+									type="button"
+									class="btn btn-sm p-0"
+									[title]="'view' | transloco"
+									(click)="open(row)"
+								>
+									<i class="ri-eye-line"></i>
+								</button>
+							</li>
+							<li>
+								<button
+									type="button"
+									class="btn btn-sm p-0"
+									[title]="'stl_print' | transloco"
+									(click)="open(row, true)"
+								>
+									<i class="ri-printer-line"></i>
+								</button>
+							</li>
+						</ul>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="8"
+						class="text-muted"
+					>
+						{{ 'stl_empty' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if ((query.data()?.total ?? 0) > pageSize) {
+	<nav class="custom-pagination">
+		<app-pagination
+			[total]="query.data()?.total ?? 0"
+			[currentPage]="page()"
+			[pageSize]="pageSize"
+			(setPage)="page.set($event)"
+		/>
+	</nav>
+	}
+</app-page-wrapper>

@@ -52,6 +52,10 @@ export default [
 	{ path: 'vouchers/drafts/:draftId', loadComponent: () => import('./voucher-form').then((m) => m.VoucherFormPage) },
 	{ path: 'vouchers/:id', loadComponent: () => import('./voucher-view').then((m) => m.VoucherViewPage) },
 	{ path: 'ledgers', loadComponent: () => import('./chart-of-accounts').then((m) => m.ChartOfAccountsPage) },
+	{
+		path: 'settlements',
+		loadComponent: () => import('./settlements/settlements-page').then((m) => m.SettlementsPage),
+	},
 	{ path: 'banks', loadComponent: () => import('./banks/banks-list').then((m) => m.BanksListPage) },
 	{ path: 'banks/new', loadComponent: () => import('./banks/bank-form').then((m) => m.BankFormPage) },
 	{ path: 'banks/:id/edit', loadComponent: () => import('./banks/bank-form').then((m) => m.BankFormPage) },

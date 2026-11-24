@@ -332,9 +332,7 @@ export class BlogAdminService {
 	}
 
 	private async requirePost(id: string): Promise<BlogPost> {
-		const post = (await this.posts.findById(id)) ?? (await this.posts.findBySlug(id));
-		if (post) return post;
-		throw new NotFoundException('No such post');
+		return foundPost((await this.posts.findById(id)) ?? (await this.posts.findBySlug(id)));
 	}
 
 	private row(post: BlogPost, assets: Map<string, MediaAsset>): AdminBlogPostRow {
@@ -455,4 +453,13 @@ export class BlogAdminService {
 		};
 		await this.audit.append(entry);
 	}
+}
+
+/**
+ * The post asked for, or "No such post". Kept out of the async method: V8 counted the branches of a check right
+ * after an await as never run (or less than never).
+ */
+function foundPost(post: BlogPost | null): BlogPost {
+	if (!post) throw new NotFoundException('No such post');
+	return post;
 }

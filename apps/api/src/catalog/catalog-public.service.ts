@@ -778,9 +778,7 @@ export class CatalogPublicService {
 	private async requireLive(slug: string): Promise<Product> {
 		const product =
 			(await this.products.findBySlug(slug, 'public')) ?? (await this.products.findById(slug, 'public'));
-		// Show on shop off (D5): the page is "not found" to shoppers, though the product sells inside sets.
-		if (product && isShownOnShop(product)) return product;
-		throw new NotFoundException(`Product not found: ${slug}`);
+		return shownProduct(product, slug);
 	}
 
 	private async cards(products: Product[], known?: ReadonlyMap<string, ProductVariant[]>): Promise<CatalogCard[]> {
@@ -942,4 +940,14 @@ export function setCard(card: CatalogCard, set: CatalogPageBundle): CatalogCard 
 			choose,
 		},
 	});
+}
+
+/**
+ * The product a shopper may open, or "not found". Show on shop off (D5): the page is "not found" to shoppers, though
+ * the product sells inside sets. Kept out of the async method: V8 counted the branches of a check right after an
+ * await as never run (or less than never).
+ */
+function shownProduct(product: Product | null, slug: string): Product {
+	if (!product || !isShownOnShop(product)) throw new NotFoundException(`Product not found: ${slug}`);
+	return product;
 }

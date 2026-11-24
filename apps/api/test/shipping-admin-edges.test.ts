@@ -613,7 +613,7 @@ describe('the list order and activations: the last cases', () => {
 		const again = await service.activate('rs_y', { revision: current.revision, acceptChanges: [] }, 'admin-1');
 		expect(again).toMatchObject({ outcome: 'activated', version: 2 });
 		const abroad = {
-			...testCarts[0],
+			...(testCarts[0] as (typeof testCarts)[number]),
 			id: 'cart-abroad',
 			delivery: { country: 'GB', state: '', pincode: '' },
 			expectedINR: 500,

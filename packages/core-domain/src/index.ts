@@ -25,3 +25,4 @@ export * from './locations/index';
 export * from './ledger/index';
 export * from './invoicing/index';
 export * from './templates/index';
+export * from './cash/index';

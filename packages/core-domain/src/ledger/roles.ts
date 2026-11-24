@@ -42,6 +42,16 @@ export const ROLE_REGISTRY: readonly RoleDefinition[] = [
 	group('cash_in_hand'),
 	group('bank_accounts'),
 	group('bank_od'),
+	// Cash (accounts brief O): settling a difference, petty expenses and staff claims.
+	ledger('staff_advance', 'cashSettlement'),
+	ledger('cash_short_over', 'cashSettlement'),
+	ledger('cash_over_suspense', 'cashSettlement'),
+	ledger('other_income', 'cashSettlement'),
+	ledger('loss_by_theft', 'cashSettlement'),
+	ledger('counterfeit_loss', 'cashSettlement'),
+	ledger('insurance_claim_receivable', 'cashSettlement'),
+	ledger('employee_payable', 'expenseClaim'),
+	{ key: 'petty_expenses', target: 'group', neededBy: ['pettyExpense'] },
 ];
 
 interface RoleHolder {

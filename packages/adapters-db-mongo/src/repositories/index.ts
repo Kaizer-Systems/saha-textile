@@ -56,4 +56,5 @@ export * from './location.repository';
 export * from './ledger.repository';
 export * from './returns.repository';
 export * from './self-invoices.repository';
+export * from './cash.repository';
 export * from './accounts-lists.reader';

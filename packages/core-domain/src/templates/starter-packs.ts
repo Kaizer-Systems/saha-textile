@@ -260,6 +260,33 @@ export const LIMITS: TaxRuleSetContent = {
 	],
 };
 
+/**
+ * RS-LIMITS v2 (accounts brief O4, P): cash to a transporter in a day (s.40A(3)'s higher limit) and cash received from
+ * one person (s.269ST: two lakh or more in a day, for one transaction or one occasion, is not allowed).
+ */
+export const LIMITS_V2: TaxRuleSetContent = {
+	...LIMITS,
+	entries: [
+		...LIMITS.entries,
+		limit(
+			'cash_payment_transporter',
+			'Cash paid to a transporter of goods in a day (above it, the expense is not allowed)',
+			35_000,
+			'payment',
+			NEW_FROM,
+			'Income-tax Act 2025 (earlier 1961 s.40A(3A) and rule 6DD); to be confirmed by the CA.',
+		),
+		limit(
+			'cash_receipt_one_person',
+			'Cash received from one person in a day, for one sale or one occasion (two lakh or more is not allowed)',
+			200_000,
+			'payment',
+			NEW_FROM,
+			'Income-tax Act 2025 (earlier 1961 s.269ST); to be confirmed by the CA.',
+		),
+	],
+};
+
 /* ---------------------------------------------------------------------------------------------- */
 /* Statements (AT6)                                                                                */
 /* ---------------------------------------------------------------------------------------------- */

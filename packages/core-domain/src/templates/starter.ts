@@ -7,7 +7,8 @@ import type {
 } from '@saha-textile/contracts';
 
 import { type ChartGroupSeed, type ChartLedgerSeed, defaultChart } from '../ledger/chart';
-import { KIND_PACKS, LIMITS, STARTER_REPORTS, TDS_SECTIONS } from './starter-packs';
+import { KIND_PACKS, LIMITS, LIMITS_V2, STARTER_REPORTS, TDS_SECTIONS } from './starter-packs';
+import { CASH_LEDGERS, PETTY_GROUP } from '../cash/cash-rules';
 
 /** The five kinds in Settings › Company, with each one's own chart template code. */
 export const KIND_CHART_CODES: Record<BusinessKind, string> = {
@@ -156,6 +157,8 @@ export function starterTemplates(now: string): AccountsTemplate[] {
 	const expenses = 'Adds the expense ledgers the reverse-charge list (RS-RCM) posts to; to be confirmed by the CA.';
 	const packs =
 		"Adds the kind's own groups and ledgers from the accounts templates plan's matrix; to be confirmed by the CA.";
+	const cash =
+		'Adds the petty expense heads and the ledgers cash differences and staff claims post to (accounts brief O); to be confirmed by the CA.';
 	const withLedgers = (body: ChartTemplateContent, more: ChartTemplateContent['ledgers']): ChartTemplateContent => ({
 		...body,
 		ledgers: [...body.ledgers, ...more],
@@ -184,6 +187,15 @@ export function starterTemplates(now: string): AccountsTemplate[] {
 		template('CH-COMMON', 'chart', 'Shared chart', { all: true, kinds: [] }, [
 			version(1, common, start),
 			version(2, withLedgers(common, RCM_EXPENSE_LEDGERS), expenses),
+			version(
+				3,
+				{
+					...withLedgers(common, [...RCM_EXPENSE_LEDGERS, ...CASH_LEDGERS]),
+					groups: [...common.groups, PETTY_GROUP],
+				},
+				cash,
+				'2026-11-25',
+			),
 		]),
 		...charts.map(({ kind, chart }) => {
 			const own = content(
@@ -225,6 +237,12 @@ export function starterTemplates(now: string): AccountsTemplate[] {
 				LIMITS,
 				'Income-tax, LLP and GST rules named on each limit; to be confirmed by the CA.',
 				'2009-04-01',
+			),
+			version(
+				2,
+				LIMITS_V2,
+				'Adds the transporter cash limit and the cash receipt limit (s.269ST); to be confirmed by the CA.',
+				'2026-11-25',
 			),
 		]),
 		...STARTER_REPORTS.map((starter) =>

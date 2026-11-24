@@ -26,6 +26,8 @@ export interface CreditNoteRepository {
 	get(id: string, context?: TransactionContext): Promise<CreditNote | null>;
 	listForOrder(orderId: string): Promise<CreditNote[]>;
 	listForInvoice(invoiceId: string, context?: TransactionContext): Promise<CreditNote[]>;
+	/** A GSTIN's numbered credit notes dated between two days (GSTR-1 9B). */
+	listForGstin(gstin: string, from: string, to: string): Promise<CreditNote[]>;
 	list(query: CreditNoteListQuery): Promise<{ items: CreditNote[]; total: number }>;
 	/** Refused with `credit_note_changed` when its version moved on; the saved note carries version + 1. */
 	save(note: CreditNote, expectedVersion: number, context?: TransactionContext): Promise<CreditNote>;
@@ -38,6 +40,8 @@ export interface DebitNoteRepository {
 	insert(note: DebitNote, context?: TransactionContext): Promise<void>;
 	get(id: string): Promise<DebitNote | null>;
 	listForOrder(orderId: string): Promise<DebitNote[]>;
+	/** A GSTIN's debit notes dated between two days (GSTR-1 9B). */
+	listForGstin(gstin: string, from: string, to: string): Promise<DebitNote[]>;
 }
 
 export interface RefundVoucherListQuery {

@@ -8,6 +8,8 @@ export interface TaxInvoiceRepository {
 	insert(invoice: TaxInvoice, context?: TransactionContext): Promise<void>;
 	get(id: string): Promise<TaxInvoice | null>;
 	listForOrder(orderId: string): Promise<TaxInvoice[]>;
+	/** A GSTIN's invoices dated between two days, cancelled ones too (GSTR-1, accounts brief G4). */
+	listForGstin(gstin: string, from: string, to: string): Promise<TaxInvoice[]>;
 	findByShipment(shipmentId: string, context?: TransactionContext): Promise<TaxInvoice | null>;
 	/** Ties an invoice issued before dispatch (for its e-way bill or e-invoice) to the parcel that carried it. */
 	linkShipment(id: string, shipmentId: string, context?: TransactionContext): Promise<void>;

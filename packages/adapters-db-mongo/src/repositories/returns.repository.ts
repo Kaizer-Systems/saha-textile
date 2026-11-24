@@ -71,6 +71,14 @@ export class MongoCreditNoteRepository implements CreditNoteRepository {
 		);
 	}
 
+	async listForGstin(gstin: string, from: string, to: string): Promise<CreditNote[]> {
+		const docs = await CreditNoteModel.find({ gstin, number: { $ne: null }, date: { $gte: from, $lte: to } })
+			.sort({ date: 1, number: 1 })
+			.lean<AggregateDoc[]>()
+			.exec();
+		return docs.map(creditNoteOf);
+	}
+
 	async get(id: string, context?: TransactionContext): Promise<CreditNote | null> {
 		const doc = await CreditNoteModel.findById(id)
 			.session(sessionFrom(context) ?? null)
@@ -142,6 +150,14 @@ export class MongoDebitNoteRepository implements DebitNoteRepository {
 		await DebitNoteModel.create([{ _id: id, ...rest }], { session: sessionFrom(context) }).catch((error) =>
 			duplicate(error, 'duplicate_debit_note'),
 		);
+	}
+
+	async listForGstin(gstin: string, from: string, to: string): Promise<DebitNote[]> {
+		const docs = await DebitNoteModel.find({ gstin, date: { $gte: from, $lte: to } })
+			.sort({ date: 1, number: 1 })
+			.lean<AggregateDoc[]>()
+			.exec();
+		return docs.map(debitNoteOf);
 	}
 
 	async get(id: string): Promise<DebitNote | null> {

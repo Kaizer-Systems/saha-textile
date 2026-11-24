@@ -389,6 +389,15 @@ export class MongoTaxInvoiceRepository implements TaxInvoiceRepository {
 		return docs.map(invoiceOf);
 	}
 
+	async listForGstin(gstin: string, from: string, to: string): Promise<TaxInvoice[]> {
+		const docs = await TaxInvoiceModel.find({ gstin, date: { $gte: from, $lte: to } })
+			.setOptions({ strictQuery: false })
+			.sort({ date: 1, number: 1 })
+			.lean<AggregateDoc[]>()
+			.exec();
+		return docs.map(invoiceOf);
+	}
+
 	async findByShipment(shipmentId: string, context?: TransactionContext): Promise<TaxInvoice | null> {
 		const doc = await TaxInvoiceModel.findOne({ shipmentId })
 			.session(sessionFrom(context) ?? null)

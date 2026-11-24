@@ -95,3 +95,10 @@ const GstAnnualNoteSchema = new Schema<AggregateDoc>(
 	{ ...loose, collection: COLLECTION_NAMES.GstAnnualNote },
 );
 export const GstAnnualNoteModel = reuse('GstAnnualNote', GstAnnualNoteSchema);
+
+/** V2: reports saved from the builder. */
+const ReportDefinitionSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true } },
+	{ ...loose, collection: COLLECTION_NAMES.ReportDefinition },
+);
+export const ReportDefinitionModel = reuse('ReportDefinition', ReportDefinitionSchema);

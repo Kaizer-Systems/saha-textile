@@ -612,6 +612,21 @@ export class LedgerService {
 		return this.books.balancesAt(day, scope.all ? [] : [...scope.ids]);
 	}
 
+	/**
+	 * Balances on a day at chosen locations (reports by location, R1), never beyond the ones the person may see; an
+	 * empty choice means every location they may see, and a choice of none they may see gives no balances.
+	 */
+	async balancesAtLocations(
+		day: string,
+		principal: AuthenticatedPrincipal | undefined,
+		only: readonly string[],
+	): Promise<Record<string, number>> {
+		if (!only.length) return this.balances(day, principal);
+		const scope = await this.locations.scope(principal);
+		const ids = only.filter((id) => scope.all || scope.ids.includes(id));
+		return ids.length ? this.books.balancesAt(day, ids) : {};
+	}
+
 	/** Q2: opening, every entry with a running balance, closing; staff see only their locations. */
 	async statement(
 		ledgerId: string,

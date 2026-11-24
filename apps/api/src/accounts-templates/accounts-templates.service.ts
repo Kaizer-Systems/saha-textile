@@ -12,6 +12,7 @@ import type {
 	TemplatePublish,
 	TemplatesOpen,
 	TaxRuleEntry,
+	ReportTemplateContent,
 	TaxRuleSetContent,
 	TemplateLibraryRow,
 	TemplateVersion,
@@ -225,6 +226,21 @@ export class AccountsTemplatesService {
 	 * kind. Each choice names the rule set and version it came from, so a self-invoice keeps the rule it was made with.
 	 */
 	/** Every entry of a tax rule set's installed version on a day; the caller picks by its own dates (RS-DUE). */
+	/** The report layouts installed for the company (statements, R1), each at its installed version. */
+	async installedReports(): Promise<
+		{ code: string; name: string; version: number; content: ReportTemplateContent }[]
+	> {
+		await this.ensureLibrary();
+		const [templates, installs] = await Promise.all([this.templates.list(), this.installs.list()]);
+		return installs.flatMap((install) => {
+			const template = templates.find((t) => t.code === install.code);
+			const version = template?.versions.find((v) => v.version === install.version);
+			return template && version?.content.kind === 'report'
+				? [{ code: template.code, name: template.name, version: install.version, content: version.content }]
+				: [];
+		});
+	}
+
 	async ruleSetEntries(code: string, day: string): Promise<TaxRuleEntry[]> {
 		await this.ensureLibrary();
 		const template = await this.templates.findByCode(code);

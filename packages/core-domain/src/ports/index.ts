@@ -73,3 +73,4 @@ export * from './settlement.repository';
 export * from './gst-draft.repository';
 export * from './accounts-lists.port';
 export * from './accounts-templates.repository';
+export * from './report-definition.repository';

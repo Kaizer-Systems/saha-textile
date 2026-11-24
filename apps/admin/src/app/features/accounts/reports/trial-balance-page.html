@@ -1,0 +1,62 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'reports_title'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<h5 class="mb-1">{{ 'trial_balance_as_at' | transloco: { date: day(asAt()) } }}</h5>
+		<div class="d-flex align-items-center flex-wrap gap-2">
+			<input
+				class="form-control w-auto"
+				id="tb_as_at"
+				type="date"
+				[attr.aria-label]="'statement_as_at' | transloco"
+				[ngModel]="asAt()"
+				(ngModelChange)="asAt.set($event)"
+			/>
+			<select
+				class="form-select w-auto"
+				id="tb_level"
+				[attr.aria-label]="'trial_balance_level' | transloco"
+				[ngModel]="level()"
+				(ngModelChange)="level.set($event)"
+			>
+				<option value="group">{{ 'trial_balance_group_level' | transloco }}</option>
+				<option value="ledger">{{ 'trial_balance_ledger_level' | transloco }}</option>
+			</select>
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="tb_excel"
+				(click)="download()"
+			>
+				<i class="ri-file-excel-2-line"></i>
+				{{ 'gstr9_excel' | transloco }}
+			</button>
+		</div>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'trial_balance_account' | transloco }}</th>
+					<th>{{ 'accounts_debit' | transloco }}</th>
+					<th>{{ 'accounts_credit' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (r of rows(); track $index) {
+				<tr>
+					<td [class]="'text-start ' + indent(r.depth)">{{ r.name }}</td>
+					<td class="text-nowrap">{{ money(r.debitPaise) }}</td>
+					<td class="text-nowrap">{{ money(r.creditPaise) }}</td>
+				</tr>
+				}
+				<tr>
+					<td class="fw-bold">{{ 'total' | transloco }}</td>
+					<td class="fw-bold text-nowrap">{{ money(totals().debit) }}</td>
+					<td class="fw-bold text-nowrap">{{ money(totals().credit) }}</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</app-page-wrapper>

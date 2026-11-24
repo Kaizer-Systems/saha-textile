@@ -87,6 +87,28 @@ export default [
 	// GST reports (G7) and GSTR-9 against the books (G9).
 	{ path: 'gst/reports', loadComponent: () => import('./gst/gst-reports-page').then((m) => m.GstReportsPage) },
 	{ path: 'gst/annual', loadComponent: () => import('./gst/gstr9-page').then((m) => m.Gstr9Page) },
+	// Reports (U1–U4) and the report builder (V1, V2).
+	{ path: 'reports', loadComponent: () => import('./reports/reports-library').then((m) => m.ReportsLibraryPage) },
+	{
+		path: 'reports/statement/:kind',
+		loadComponent: () => import('./reports/statement-page').then((m) => m.StatementPage),
+	},
+	{
+		path: 'reports/pl-by-location',
+		loadComponent: () => import('./reports/pl-by-location-page').then((m) => m.PlByLocationPage),
+	},
+	{
+		path: 'reports/trial-balance',
+		loadComponent: () => import('./reports/trial-balance-page').then((m) => m.TrialBalancePage),
+	},
+	{
+		path: 'reports/new',
+		loadComponent: () => import('./reports/report-builder-page').then((m) => m.ReportBuilderPage),
+	},
+	{
+		path: 'reports/saved/:id',
+		loadComponent: () => import('./reports/report-builder-page').then((m) => m.ReportBuilderPage),
+	},
 	{ path: 'invoices/:id', loadComponent: () => import('./invoice-view').then((m) => m.InvoiceViewPage) },
 	{ path: 'returns/:id', loadComponent: () => import('./return-page').then((m) => m.ReturnPage) },
 	{ path: 'credit-notes/:id', loadComponent: () => import('./credit-note-page').then((m) => m.CreditNotePage) },

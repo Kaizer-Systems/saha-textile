@@ -10,6 +10,8 @@ import type {
 	FixedAsset,
 	FixedAssetEdit,
 	FixedAssetWriteInput,
+	RecurringEntry,
+	RecurringEntryWriteInput,
 } from '@saha-textile/contracts';
 import type { Observable } from 'rxjs';
 
@@ -19,6 +21,7 @@ export const ASSET_KEYS = {
 	categories: ['assets', 'categories'] as const,
 	one: (id: string) => ['assets', 'one', id] as const,
 	run: (month: string) => ['assets', 'depreciation', month] as const,
+	recurring: ['assets', 'recurring'] as const,
 };
 
 /** Fixed assets and depreciation (accounts brief R1–R4). */
@@ -49,6 +52,22 @@ export class AssetsGateway {
 
 	dispose(id: string, write: AssetDisposal): Observable<FixedAsset> {
 		return this.http.post<FixedAsset>(this.api(`/${encodeURIComponent(id)}/dispose`), write);
+	}
+
+	recurring(): Observable<RecurringEntry[]> {
+		return this.http.get<RecurringEntry[]>(this.api('/recurring'));
+	}
+
+	createRecurring(write: RecurringEntryWriteInput): Observable<RecurringEntry> {
+		return this.http.post<RecurringEntry>(this.api('/recurring'), write);
+	}
+
+	updateRecurring(id: string, write: RecurringEntryWriteInput & { version: number }): Observable<RecurringEntry> {
+		return this.http.put<RecurringEntry>(this.api(`/recurring/${encodeURIComponent(id)}`), write);
+	}
+
+	removeRecurring(id: string): Observable<void> {
+		return this.http.delete<void>(this.api(`/recurring/${encodeURIComponent(id)}`));
 	}
 
 	preview(month: string): Observable<DepreciationRun> {

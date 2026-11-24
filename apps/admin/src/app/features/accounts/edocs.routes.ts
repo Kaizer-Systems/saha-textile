@@ -94,6 +94,7 @@ export default [
 		path: 'assets/depreciation',
 		loadComponent: () => import('./assets/depreciation-page').then((m) => m.DepreciationPage),
 	},
+	{ path: 'recurring', loadComponent: () => import('./assets/recurring-page').then((m) => m.RecurringPage) },
 	{ path: 'assets/new', loadComponent: () => import('./assets/asset-form').then((m) => m.AssetFormPage) },
 	{ path: 'assets/:id', loadComponent: () => import('./assets/asset-form').then((m) => m.AssetFormPage) },
 	{ path: 'reports', loadComponent: () => import('./reports/reports-library').then((m) => m.ReportsLibraryPage) },

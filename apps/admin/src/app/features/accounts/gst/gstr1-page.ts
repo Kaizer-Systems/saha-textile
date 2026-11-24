@@ -37,9 +37,9 @@ export function stepIcon(status: GstReturnDraft['status'], index: number): strin
 	return 'ri-checkbox-blank-circle-line text-muted';
 }
 
-/** A summary amount with its sign: notes reduce a GSTR-1, so table 9B can read "−₹43,600.00". */
-export function signedRupees(paise: number): string {
-	return `${paise < 0 ? '−' : ''}${rupees(paise)}`;
+/** A summary amount (in rupees, as the return holds it) with its sign: notes reduce a GSTR-1, so 9B can read "−₹43,600.00". */
+export function signedRupees(inr: number): string {
+	return `${inr < 0 ? '−' : ''}${rupees(Math.round(inr * 100))}`;
 }
 
 /**

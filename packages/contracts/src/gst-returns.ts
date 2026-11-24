@@ -16,6 +16,7 @@ export type GstDraftType = z.infer<typeof GstDraftType>;
 export const GstDraftStatus = z.enum(['prepared', 'checked', 'approved', 'filed']);
 export type GstDraftStatus = z.infer<typeof GstDraftStatus>;
 
+/** One table of a return: how many records, and its taxable value and tax in rupees. */
 export const GstReturnSummaryRow = z.object({
 	table: z.string(),
 	records: z.number().int().nonnegative(),

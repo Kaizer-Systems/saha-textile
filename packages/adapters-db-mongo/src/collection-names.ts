@@ -178,6 +178,10 @@ export const COLLECTION_NAMES = {
 	FixedAsset: 'fixedAssets',
 	/** Rent and recurring entries, made on their day as drafts (accounts brief R5). */
 	RecurringEntry: 'recurringEntries',
+	/** Payroll (accounts brief S): employees with sealed personal numbers, attendance, runs. */
+	Employee: 'employees',
+	PayrollAttendance: 'payrollAttendance',
+	PayrollRun: 'payrollRuns',
 	/** Stock split by location (accounts brief F4). */
 	LocationStock: 'locationStock',
 	/** Settings › Document formats (bundle builder brief F, 2026-11-22): one active format per document. */
@@ -342,6 +346,9 @@ export const GRAPH_RECONCILIATION_OWED = [
 	'reportDefinitions',
 	'fixedAssets',
 	'recurringEntries',
+	'employees',
+	'payrollAttendance',
+	'payrollRuns',
 ] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */

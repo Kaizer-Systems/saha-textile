@@ -75,3 +75,4 @@ export * from './accounts-lists.port';
 export * from './accounts-templates.repository';
 export * from './report-definition.repository';
 export * from './fixed-asset.repository';
+export * from './payroll.repository';

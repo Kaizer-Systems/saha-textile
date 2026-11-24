@@ -65,3 +65,4 @@ export * from './gst-draft.repository';
 export * from './accounts-lists.reader';
 export * from './report-definition.repository';
 export * from './fixed-asset.repository';
+export * from './payroll.repository';

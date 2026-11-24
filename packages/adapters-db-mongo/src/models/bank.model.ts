@@ -117,3 +117,26 @@ const RecurringEntrySchema = new Schema<AggregateDoc>(
 	{ ...loose, collection: COLLECTION_NAMES.RecurringEntry },
 );
 export const RecurringEntryModel = reuse('RecurringEntry', RecurringEntrySchema);
+
+/** S3, S5, S8: payroll. */
+export const EmployeeModel = reuse(
+	'Employee',
+	new Schema<AggregateDoc>(
+		{ _id: { type: String, required: true } },
+		{ ...loose, collection: COLLECTION_NAMES.Employee },
+	),
+);
+export const PayrollAttendanceModel = reuse(
+	'PayrollAttendance',
+	new Schema<AggregateDoc>(
+		{ _id: { type: String, required: true } },
+		{ ...loose, collection: COLLECTION_NAMES.PayrollAttendance },
+	),
+);
+export const PayrollRunModel = reuse(
+	'PayrollRun',
+	new Schema<AggregateDoc>(
+		{ _id: { type: String, required: true } },
+		{ ...loose, collection: COLLECTION_NAMES.PayrollRun },
+	),
+);

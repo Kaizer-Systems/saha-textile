@@ -345,6 +345,14 @@ export const menu: IMenu[] = [
 			},
 			{
 				parent_id: 25,
+				title: 'accounts_assets',
+				path: '/accounts/assets',
+				type: 'link',
+				level: 2,
+				permission: ['accounts.index'],
+			},
+			{
+				parent_id: 25,
 				title: 'accounts_reports',
 				path: '/accounts/reports',
 				type: 'link',

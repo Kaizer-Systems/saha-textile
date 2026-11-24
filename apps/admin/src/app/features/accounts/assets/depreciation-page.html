@@ -1,0 +1,87 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'assets_title'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">{{ 'assets_depreciation_for' | transloco: { month: month() } }}</h5>
+			<small class="text-muted">{{ 'assets_depreciation_sub' | transloco }}</small>
+		</div>
+		<div class="d-flex align-items-center gap-2">
+			<input
+				class="form-control w-auto"
+				id="dep_month"
+				type="month"
+				[attr.aria-label]="'gstr2b_month' | transloco"
+				[ngModel]="month()"
+				(ngModelChange)="month.set($event)"
+			/>
+			@if (run.data(); as r) { @if (!r.voucherId && r.rows.length) {
+			<button
+				*hasPermission="'accounts.post'"
+				type="button"
+				class="btn btn-theme"
+				id="dep_post"
+				[disabled]="busy()"
+				(click)="post()"
+			>
+				{{ 'assets_post' | transloco }}
+			</button>
+			} }
+		</div>
+	</div>
+	@if (run.data(); as r) { @if (r.voucherId) {
+	<div class="alert alert-info py-2">
+		{{ 'assets_depreciation_done' | transloco }}
+		<a [routerLink]="['/accounts/vouchers', r.voucherId]">{{ 'view' | transloco }}</a>
+	</div>
+	} @else {
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'assets_col_name' | transloco }}</th>
+					<th>{{ 'assets_col_method' | transloco }}</th>
+					<th>{{ 'assets_col_cost' | transloco }}</th>
+					<th>{{ 'assets_col_this_month' | transloco }}</th>
+					<th>{{ 'assets_col_book_value_after' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of r.rows; track row.assetId) {
+				<tr>
+					<td>{{ row.tag }} · {{ row.name }}</td>
+					<td>
+						{{ 'assets_method_short' | transloco: { method: row.method.toUpperCase(), years: row.lifeMonths
+						/ 12 } }}
+					</td>
+					<td class="text-nowrap">{{ money(row.costPaise) }}</td>
+					<td class="text-nowrap">{{ money(row.thisMonthPaise) }}</td>
+					<td class="text-nowrap">{{ money(row.bookValueAfterPaise) }}</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="5"
+						class="text-muted"
+					>
+						{{ 'assets_depreciation_none' | transloco }}
+					</td>
+				</tr>
+				}
+				<tr>
+					<td
+						class="fw-bold"
+						colspan="3"
+					>
+						{{ 'total' | transloco }}
+					</td>
+					<td class="fw-bold text-nowrap">{{ money(r.totalPaise) }}</td>
+					<td></td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	<small class="text-muted d-block mt-2">{{ 'assets_posting_note' | transloco }}</small>
+	} }
+</app-page-wrapper>

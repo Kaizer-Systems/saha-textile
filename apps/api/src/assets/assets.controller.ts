@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Header, HttpCode, Param, Post, Put } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AssetDisposal, FixedAssetEdit, FixedAssetWrite, YearMonth } from '@saha-textile/contracts';
+import { ASSET_CATEGORIES, RESIDUAL_PERCENT } from '@saha-textile/core-domain';
 
 import { Principal } from '../auth/ownership';
 import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../auth/session.guard';
@@ -21,6 +22,14 @@ export class AssetsController {
 	@ApiOperation({ operationId: 'assetsList', summary: 'The fixed asset register (R1)' })
 	list() {
 		return this.assets.list();
+	}
+
+	@Get('categories')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({ operationId: 'assetsCategories', summary: 'Kinds of asset with their presets (R2)' })
+	categories() {
+		return { categories: ASSET_CATEGORIES, residualPercent: RESIDUAL_PERCENT };
 	}
 
 	@Get('depreciation/:month')

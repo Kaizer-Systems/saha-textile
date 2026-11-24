@@ -94,3 +94,10 @@ export const DepreciationRun = z.object({
 	voucherId: Id.nullable(),
 });
 export type DepreciationRun = z.infer<typeof DepreciationRun>;
+
+/** R2's presets: each kind's Schedule II life and Income Tax block rate, and the residual % suggested. */
+export const AssetCategories = z.object({
+	categories: z.array(z.object({ key: z.string(), lifeYears: z.number(), taxRatePct: z.number() })),
+	residualPercent: z.number(),
+});
+export type AssetCategories = z.infer<typeof AssetCategories>;

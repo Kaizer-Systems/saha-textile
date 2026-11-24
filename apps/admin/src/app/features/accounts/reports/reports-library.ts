@@ -79,6 +79,13 @@ export const REPORT_LIBRARY: readonly { group: string; items: readonly LibraryIt
 		items: [{ key: 'sales_builder', link: '/accounts/reports/new', query: { data: 'invoices' } }],
 	},
 	{
+		group: 'assets',
+		items: [
+			{ key: 'asset_register', link: '/accounts/assets' },
+			{ key: 'depreciation', link: '/accounts/assets/depreciation' },
+		],
+	},
+	{
 		group: 'cash',
 		items: [
 			{ key: 'cash_sheets', link: '/cash/sheets' },

@@ -88,6 +88,14 @@ export default [
 	{ path: 'gst/reports', loadComponent: () => import('./gst/gst-reports-page').then((m) => m.GstReportsPage) },
 	{ path: 'gst/annual', loadComponent: () => import('./gst/gstr9-page').then((m) => m.Gstr9Page) },
 	// Reports (U1–U4) and the report builder (V1, V2).
+	// Fixed assets (R1–R4).
+	{ path: 'assets', loadComponent: () => import('./assets/assets-register').then((m) => m.AssetsRegisterPage) },
+	{
+		path: 'assets/depreciation',
+		loadComponent: () => import('./assets/depreciation-page').then((m) => m.DepreciationPage),
+	},
+	{ path: 'assets/new', loadComponent: () => import('./assets/asset-form').then((m) => m.AssetFormPage) },
+	{ path: 'assets/:id', loadComponent: () => import('./assets/asset-form').then((m) => m.AssetFormPage) },
 	{ path: 'reports', loadComponent: () => import('./reports/reports-library').then((m) => m.ReportsLibraryPage) },
 	{
 		path: 'reports/statement/:kind',

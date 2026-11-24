@@ -1,0 +1,348 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'assets_title'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">{{ id() ? (asset.data()?.tag ?? '') + ' · ' + name() : ('assets_add' | transloco) }}</h5>
+			@if (asset.data(); as a) {
+			<small class="text-muted">
+				{{ 'assets_taken_so_far' | transloco: { amount: money(a.accumulatedPaise), month: a.depreciatedThrough
+				?? '—' } }}
+			</small>
+			}
+		</div>
+		<button
+			*hasPermission="id() ? 'accounts.edit' : 'accounts.post'"
+			type="button"
+			class="btn btn-theme"
+			id="asset_save"
+			[disabled]="busy() || name().trim().length < 2 || !locationId() || cost() <= 0 || (acquisition() === 'post' && !ledgerId())"
+			(click)="save()"
+		>
+			{{ 'assets_save' | transloco }}
+		</button>
+	</div>
+	<div class="row g-3">
+		<div class="col-xl-8">
+			<div class="card">
+				<div class="card-body theme-form theme-form-2">
+					<div class="title-header">
+						<h5>{{ 'assets_the_asset' | transloco }}</h5>
+					</div>
+					<div class="row g-3">
+						<div class="col-md-8">
+							<label
+								class="form-label-title"
+								for="asset_name"
+							>
+								{{ 'assets_col_name' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="asset_name"
+								maxlength="120"
+								[ngModel]="name()"
+								(ngModelChange)="name.set($event)"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="asset_location"
+							>
+								{{ 'statement_location' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="asset_location"
+								[ngModel]="locationId()"
+								(ngModelChange)="locationId.set($event)"
+							>
+								@for (l of locations.data() ?? []; track l.id) { @if (l.active) {
+								<option [value]="l.id">{{ l.name }}</option>
+								} }
+							</select>
+						</div>
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="asset_kind"
+							>
+								{{ 'assets_col_kind' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="asset_kind"
+								[ngModel]="categoryKey()"
+								(ngModelChange)="pickCategory($event)"
+							>
+								@for (c of categories.data()?.categories ?? []; track c.key) {
+								<option [value]="c.key">{{ 'asset_kind_' + c.key | transloco }}</option>
+								}
+							</select>
+							<small class="text-muted">{{ 'assets_kind_help' | transloco }}</small>
+						</div>
+						<div class="col-md-3">
+							<label
+								class="form-label-title"
+								for="asset_cost"
+							>
+								{{ 'assets_col_cost' | transloco }} (₹)
+							</label>
+							<input
+								class="form-control"
+								id="asset_cost"
+								type="number"
+								min="0"
+								[disabled]="!!id()"
+								[ngModel]="cost()"
+								(ngModelChange)="setCost(+$event)"
+							/>
+						</div>
+						<div class="col-md-3">
+							<label
+								class="form-label-title"
+								for="asset_in_use"
+							>
+								{{ 'assets_col_in_use' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="asset_in_use"
+								type="date"
+								[disabled]="!!id()"
+								[ngModel]="putToUseOn()"
+								(ngModelChange)="putToUseOn.set($event)"
+							/>
+						</div>
+						<div class="col-md-12">
+							<label
+								class="form-label-title"
+								for="asset_reference"
+							>
+								{{ 'assets_reference' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="asset_reference"
+								maxlength="120"
+								[ngModel]="reference()"
+								(ngModelChange)="reference.set($event)"
+							/>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-body theme-form theme-form-2">
+					<div class="title-header">
+						<h5>{{ 'assets_depreciation_title' | transloco }}</h5>
+					</div>
+					<div class="row g-3">
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="asset_method"
+							>
+								{{ 'assets_books_method' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="asset_method"
+								[ngModel]="method()"
+								(ngModelChange)="method.set($event)"
+							>
+								<option value="slm">{{ 'assets_slm' | transloco }}</option>
+								<option value="wdv">{{ 'assets_wdv' | transloco }}</option>
+							</select>
+						</div>
+						<div class="col-md-2">
+							<label
+								class="form-label-title"
+								for="asset_life"
+							>
+								{{ 'assets_life_months' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="asset_life"
+								type="number"
+								min="1"
+								[ngModel]="lifeMonths()"
+								(ngModelChange)="lifeMonths.set(+$event)"
+							/>
+						</div>
+						<div class="col-md-3">
+							<label
+								class="form-label-title"
+								for="asset_residual"
+							>
+								{{ 'assets_residual' | transloco }} (₹)
+							</label>
+							<input
+								class="form-control"
+								id="asset_residual"
+								type="number"
+								min="0"
+								[ngModel]="residual()"
+								(ngModelChange)="residual.set(+$event)"
+							/>
+						</div>
+						<div class="col-md-3">
+							<label
+								class="form-label-title"
+								for="asset_run"
+							>
+								{{ 'assets_run' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="asset_run"
+								[ngModel]="run()"
+								(ngModelChange)="run.set($event)"
+							>
+								<option value="monthly">{{ 'assets_run_monthly' | transloco }}</option>
+								<option value="yearly">{{ 'assets_run_yearly' | transloco }}</option>
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="asset_tax_rate"
+							>
+								{{ 'assets_tax_rate' | transloco }} (%)
+							</label>
+							<input
+								class="form-control"
+								id="asset_tax_rate"
+								type="number"
+								min="0"
+								max="100"
+								[ngModel]="taxRatePct()"
+								(ngModelChange)="taxRatePct.set(+$event)"
+							/>
+							<small class="text-muted">{{ 'assets_tax_help' | transloco }}</small>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="asset_gst"
+							>
+								{{ 'assets_input_gst' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="asset_gst"
+								[ngModel]="inputGst()"
+								(ngModelChange)="inputGst.set($event)"
+							>
+								<option value="claimed">{{ 'assets_gst_claimed' | transloco }}</option>
+								<option value="blocked">{{ 'assets_gst_blocked' | transloco }}</option>
+							</select>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-4">
+			<div class="card">
+				<div class="card-body theme-form theme-form-2">
+					<div class="title-header">
+						<h5>{{ 'assets_when_saved' | transloco }}</h5>
+					</div>
+					@if (!id()) {
+					<span class="form-label-title d-block">{{ 'assets_in_books' | transloco }}</span>
+					@for (k of ['books', 'post']; track k) {
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="radio"
+							name="asset_acquisition"
+							[id]="'asset_acq_' + k"
+							[checked]="acquisition() === k"
+							(change)="acquisition.set($any(k))"
+						/>
+						<label
+							class="form-check-label"
+							[for]="'asset_acq_' + k"
+						>
+							{{ 'assets_acq_' + k | transloco }}
+						</label>
+					</div>
+					} @if (acquisition() === 'post') {
+					<select
+						class="form-select mt-2"
+						id="asset_paid_from"
+						[attr.aria-label]="'assets_paid_from' | transloco"
+						[ngModel]="ledgerId()"
+						(ngModelChange)="ledgerId.set($event)"
+					>
+						<option value="">{{ 'assets_paid_from' | transloco }}</option>
+						@for (l of paying(); track l.id) {
+						<option [value]="l.id">{{ l.name }}</option>
+						}
+					</select>
+					} }
+					<p class="small text-muted mt-3 mb-0">
+						{{ 'assets_schedule_line' | transloco: { amount: money(monthly(cost(), residual(),
+						lifeMonths())) } }}
+					</p>
+				</div>
+			</div>
+			@if (asset.data(); as a) { @if (a.status === 'active') {
+			<div
+				*hasPermission="'accounts.post'"
+				class="card"
+			>
+				<div class="card-body theme-form theme-form-2">
+					<div class="title-header">
+						<h5>{{ 'assets_dispose' | transloco }}</h5>
+					</div>
+					<label
+						class="form-label-title"
+						for="asset_dispose_on"
+					>
+						{{ 'assets_dispose_on' | transloco }}
+					</label>
+					<input
+						class="form-control mb-2"
+						id="asset_dispose_on"
+						type="date"
+						[ngModel]="disposeOn()"
+						(ngModelChange)="disposeOn.set($event)"
+					/>
+					<label
+						class="form-label-title"
+						for="asset_proceeds"
+					>
+						{{ 'assets_proceeds' | transloco }} (₹)
+					</label>
+					<input
+						class="form-control mb-2"
+						id="asset_proceeds"
+						type="number"
+						min="0"
+						[ngModel]="proceeds()"
+						(ngModelChange)="proceeds.set(+$event)"
+					/>
+					<small class="text-muted d-block mb-2">{{ 'assets_dispose_help' | transloco }}</small>
+					<button
+						type="button"
+						class="btn btn-outline"
+						id="asset_dispose"
+						[disabled]="busy()"
+						(click)="dispose()"
+					>
+						{{ 'assets_dispose' | transloco }}
+					</button>
+				</div>
+			</div>
+			} @else {
+			<div class="alert alert-info py-2">
+				{{ 'assets_disposed_on' | transloco: { date: a.disposedOn ?? '' } }}
+			</div>
+			} }
+		</div>
+	</div>
+</app-page-wrapper>

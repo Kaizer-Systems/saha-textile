@@ -446,6 +446,42 @@ export const menu: IMenu[] = [
 			},
 		],
 	},
+	// Payroll (accounts brief S5: its own top menu): employees, attendance and leave, payroll runs.
+	{
+		id: 27,
+		title: 'payroll',
+		active: false,
+		icon: 'ri-team-line',
+		type: 'sub',
+		level: 1,
+		acl_permission: ['accounts.index'],
+		children: [
+			{
+				parent_id: 27,
+				title: 'payroll_employees',
+				path: '/payroll/employees',
+				type: 'link',
+				level: 2,
+				permission: ['accounts.index'],
+			},
+			{
+				parent_id: 27,
+				title: 'payroll_attendance',
+				path: '/payroll/attendance',
+				type: 'link',
+				level: 2,
+				permission: ['accounts.index'],
+			},
+			{
+				parent_id: 27,
+				title: 'payroll_runs',
+				path: '/payroll/runs',
+				type: 'link',
+				level: 2,
+				permission: ['accounts.index'],
+			},
+		],
+	},
 	// Purchases and stock (brief revision 2, accepted 2026-11-15): two groups, as drawn.
 	{
 		id: 23,

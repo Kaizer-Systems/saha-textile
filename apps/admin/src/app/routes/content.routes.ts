@@ -119,6 +119,11 @@ export const content: Routes = [
 		loadChildren: () => import('@features/transfers/transfers.routes'),
 	},
 	{
+		// Payroll: employees, attendance and leave, payroll runs (accounts brief S).
+		path: 'payroll',
+		loadChildren: () => import('@features/payroll/payroll.routes'),
+	},
+	{
 		path: 'order-status',
 		loadChildren: () => import('@features/order-status/order-status.routes'),
 	},

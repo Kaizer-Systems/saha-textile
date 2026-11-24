@@ -1,0 +1,196 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'payroll_runs'"
+>
+	@let r = run.data();
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">
+				{{ 'payroll_run_title' | transloco: { month: month() } }} @if (r) {
+				<span class="badge bg-light text-dark ms-1 border">{{ 'payroll_status_' + r.status | transloco }}</span>
+				}
+			</h5>
+			<small class="text-muted">
+				@if (r) { {{ 'payroll_run_people' | transloco: { count: r.rows.length } }} · } @if
+				(attendance.data()?.lockedAt; as locked) { {{ 'payroll_attendance_locked_on' | transloco: { date:
+				day(locked) } }} } @else {
+				<a routerLink="/payroll/attendance">{{ 'payroll_attendance_not_locked' | transloco }}</a>
+				}
+			</small>
+		</div>
+		<div class="d-flex align-items-center flex-wrap gap-2">
+			<input
+				class="form-control w-auto"
+				id="run_month"
+				type="month"
+				[attr.aria-label]="'gstr2b_month' | transloco"
+				[ngModel]="month()"
+				(ngModelChange)="month.set($event)"
+			/>
+			@if (!r || r.status === 'draft') {
+			<button
+				*hasPermission="'accounts.edit'"
+				type="button"
+				class="btn btn-outline"
+				id="run_prepare"
+				[disabled]="busy()"
+				(click)="prepare()"
+			>
+				{{ (r ? 'payroll_prepare_again' : 'payroll_prepare') | transloco }}
+			</button>
+			} @if (r) { @switch (r.status) { @case ('draft') {
+			<button
+				*hasPermission="'accounts.lock'"
+				type="button"
+				class="btn btn-theme"
+				id="run_approve"
+				[disabled]="busy() || !r.rows.length"
+				(click)="step(r, 'approved')"
+			>
+				{{ 'payroll_approve' | transloco }}
+			</button>
+			} @case ('approved') {
+			<button
+				*hasPermission="'accounts.post'"
+				type="button"
+				class="btn btn-theme"
+				id="run_post"
+				[disabled]="busy()"
+				(click)="step(r, 'posted')"
+			>
+				{{ 'payroll_post' | transloco }}
+			</button>
+			} @case ('posted') {
+			<select
+				class="form-select w-auto"
+				id="run_bank"
+				[attr.aria-label]="'payroll_paid_from' | transloco"
+				[ngModel]="bankLedgerId()"
+				(ngModelChange)="bankLedgerId.set($event)"
+			>
+				<option value="">{{ 'payroll_paid_from' | transloco }}</option>
+				@for (b of banks(); track b.id) {
+				<option [value]="b.id">{{ b.name }}</option>
+				}
+			</select>
+			<input
+				class="form-control w-auto"
+				id="run_paid_on"
+				type="date"
+				[attr.aria-label]="'payroll_paid_on' | transloco"
+				[ngModel]="paidOn()"
+				(ngModelChange)="paidOn.set($event)"
+			/>
+			<button
+				*hasPermission="'accounts.post'"
+				type="button"
+				class="btn btn-theme"
+				id="run_pay"
+				[disabled]="busy() || !bankLedgerId()"
+				(click)="step(r, 'paid')"
+			>
+				{{ 'payroll_mark_paid' | transloco }}
+			</button>
+			} @default {} } }
+		</div>
+	</div>
+	<div class="row g-3">
+		<div class="col-xl-8">
+			<div class="card">
+				<div class="card-body">
+					<div class="d-flex flex-wrap gap-2">
+						@for (s of steps; track s; let i = $index) {
+						<div class="rounded border px-3 py-2">
+							<i [class]="icon(r?.status ?? 'draft', r ? i : i + 1)"></i>
+							<b class="ms-1">{{ 'payroll_status_' + s | transloco }}</b>
+						</div>
+						}
+					</div>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-body">
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'payroll_col_employee' | transloco }}</th>
+									<th>{{ 'payroll_col_location' | transloco }}</th>
+									<th>{{ 'payroll_col_days' | transloco }}</th>
+									<th>{{ 'payroll_col_gross' | transloco }}</th>
+									<th>PF</th>
+									<th>ESI</th>
+									<th>PT</th>
+									<th>TDS</th>
+									<th>{{ 'payroll_col_advance' | transloco }}</th>
+									<th>{{ 'payroll_col_net' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (row of r?.rows ?? []; track row.employeeId) {
+								<tr>
+									<td>{{ row.name }}</td>
+									<td>{{ locationName(row.locationId) }}</td>
+									<td>{{ row.paidDays }}</td>
+									<td class="text-nowrap">{{ money(row.grossPaise) }}</td>
+									<td class="text-nowrap">{{ money(row.pfEmployeePaise) }}</td>
+									<td class="text-nowrap">{{ money(row.esiEmployeePaise) }}</td>
+									<td class="text-nowrap">{{ money(row.ptPaise) }}</td>
+									<td class="text-nowrap">{{ money(row.tdsPaise) }}</td>
+									<td class="text-nowrap">{{ money(row.advancePaise) }}</td>
+									<td class="fw-semibold text-nowrap">{{ money(row.netPaise) }}</td>
+								</tr>
+								} @empty {
+								<tr>
+									<td
+										colspan="10"
+										class="text-muted"
+									>
+										{{ 'payroll_run_none' | transloco }}
+									</td>
+								</tr>
+								} @if (r?.rows?.length) {
+								<tr class="fw-semibold">
+									<td colspan="3">{{ 'payroll_total' | transloco }}</td>
+									<td class="text-nowrap">{{ money(totals().gross) }}</td>
+									<td class="text-nowrap">{{ money(totals().pf) }}</td>
+									<td class="text-nowrap">{{ money(totals().esi) }}</td>
+									<td class="text-nowrap">{{ money(totals().pt) }}</td>
+									<td class="text-nowrap">{{ money(totals().tds) }}</td>
+									<td class="text-nowrap">{{ money(totals().advance) }}</td>
+									<td class="text-nowrap">{{ money(totals().net) }}</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					<small class="text-muted d-block mt-2">{{ 'payroll_rule_note' | transloco }}</small>
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-4">
+			<div class="card">
+				<div class="card-body">
+					<h6>{{ 'payroll_posting_title' | transloco }}</h6>
+					<p class="small mb-2">{{ 'payroll_posting_voucher' | transloco }}</p>
+					<p class="small mb-2">{{ 'payroll_posting_paid' | transloco }}</p>
+					@if (r?.voucherId) {
+					<a
+						class="d-block small"
+						[routerLink]="['/accounts/vouchers', r?.voucherId]"
+					>
+						{{ 'payroll_view_voucher' | transloco }}
+					</a>
+					} @if (r?.payVoucherId) {
+					<a
+						class="d-block small"
+						[routerLink]="['/accounts/vouchers', r?.payVoucherId]"
+					>
+						{{ 'payroll_view_payment' | transloco }}
+					</a>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+</app-page-wrapper>

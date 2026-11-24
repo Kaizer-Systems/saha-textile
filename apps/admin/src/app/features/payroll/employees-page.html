@@ -1,0 +1,386 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'payroll_employees'"
+>
+	<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+		<h5 class="mb-0">{{ 'payroll_employees' | transloco }}</h5>
+		<button
+			*hasPermission="'accounts.edit'"
+			type="button"
+			class="btn btn-theme"
+			id="emp_add"
+			(click)="open(employeeModal, null)"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'payroll_add_employee' | transloco }}
+		</button>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'payroll_col_name' | transloco }}</th>
+					<th>{{ 'statement_location' | transloco }}</th>
+					<th>{{ 'payroll_col_joined' | transloco }}</th>
+					<th>PAN</th>
+					<th>UAN</th>
+					<th>{{ 'payroll_col_monthly' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (e of employees.data() ?? []; track e.id) {
+				<tr [class.text-muted]="!!e.leftOn">
+					<td>
+						{{ e.name }} @if (e.code) {
+						<small class="text-muted">· {{ e.code }}</small>
+						}
+					</td>
+					<td>{{ locationName(e.locationId) }}</td>
+					<td class="text-nowrap">{{ day(e.joinedOn) }}</td>
+					<td>{{ e.pan || '—' }}</td>
+					<td>{{ e.uan || '—' }}</td>
+					<td class="text-nowrap">₹{{ check(e.structure).total.toLocaleString('en-IN') }}</td>
+					<td>
+						<button
+							*hasPermission="'accounts.edit'"
+							type="button"
+							class="btn btn-sm p-0"
+							[title]="'edit' | transloco"
+							(click)="open(employeeModal, e)"
+						>
+							<i class="ri-pencil-line"></i>
+						</button>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="7"
+						class="text-muted"
+					>
+						{{ 'payroll_no_employees' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<ng-template
+		#employeeModal
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="modal-title">
+				{{ (editing() ? 'payroll_change_employee' : 'payroll_add_employee') | transloco }}
+			</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		@let f = form();
+		<div class="modal-body theme-form theme-form-2">
+			<div class="row g-3">
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="emp_name"
+					>
+						{{ 'payroll_col_name' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="emp_name"
+						maxlength="120"
+						[ngModel]="f.name"
+						(ngModelChange)="patch({ name: $event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="emp_code"
+					>
+						{{ 'payroll_code' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="emp_code"
+						maxlength="20"
+						[ngModel]="f.code"
+						(ngModelChange)="patch({ code: $event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="emp_location"
+					>
+						{{ 'statement_location' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="emp_location"
+						[ngModel]="f.locationId"
+						(ngModelChange)="patch({ locationId: $event })"
+					>
+						@for (l of locations.data() ?? []; track l.id) { @if (l.active) {
+						<option [value]="l.id">{{ l.name }}</option>
+						} }
+					</select>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="emp_joined"
+					>
+						{{ 'payroll_col_joined' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="emp_joined"
+						type="date"
+						[ngModel]="f.joinedOn"
+						(ngModelChange)="patch({ joinedOn: $event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="emp_left"
+					>
+						{{ 'payroll_left' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="emp_left"
+						type="date"
+						[ngModel]="f.leftOn ?? ''"
+						(ngModelChange)="patch({ leftOn: $event || null })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="emp_pan"
+					>
+						PAN
+					</label>
+					<input
+						class="form-control"
+						id="emp_pan"
+						maxlength="10"
+						[ngModel]="f.pan"
+						(ngModelChange)="patch({ pan: $event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="emp_aadhaar"
+					>
+						{{ 'payroll_aadhaar' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="emp_aadhaar"
+						maxlength="16"
+						[ngModel]="f.aadhaar"
+						(ngModelChange)="patch({ aadhaar: $event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="emp_uan"
+					>
+						UAN
+					</label>
+					<input
+						class="form-control"
+						id="emp_uan"
+						maxlength="12"
+						[ngModel]="f.uan"
+						(ngModelChange)="patch({ uan: $event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="emp_esi"
+					>
+						{{ 'payroll_esi_number' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="emp_esi"
+						maxlength="17"
+						[ngModel]="f.esiNumber"
+						(ngModelChange)="patch({ esiNumber: $event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="emp_bank"
+					>
+						{{ 'payroll_bank_account' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="emp_bank"
+						maxlength="20"
+						[ngModel]="f.bankAccount"
+						(ngModelChange)="patch({ bankAccount: $event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="emp_ifsc"
+					>
+						IFSC
+					</label>
+					<input
+						class="form-control"
+						id="emp_ifsc"
+						maxlength="11"
+						[ngModel]="f.ifsc"
+						(ngModelChange)="patch({ ifsc: $event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="emp_regime"
+					>
+						{{ 'payroll_tax_regime' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="emp_regime"
+						[ngModel]="f.taxRegime"
+						(ngModelChange)="patch({ taxRegime: $event })"
+					>
+						<option value="new">{{ 'payroll_regime_new' | transloco }}</option>
+						<option value="old">{{ 'payroll_regime_old' | transloco }}</option>
+					</select>
+				</div>
+				<div class="col-md-3 d-flex align-items-end gap-3">
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="emp_pf"
+							[checked]="f.pfOn"
+							(change)="patch({ pfOn: !f.pfOn })"
+						/>
+						<label
+							class="form-check-label"
+							for="emp_pf"
+						>
+							PF
+						</label>
+					</div>
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="emp_esi_on"
+							[checked]="f.esiOn"
+							(change)="patch({ esiOn: !f.esiOn })"
+						/>
+						<label
+							class="form-check-label"
+							for="emp_esi_on"
+						>
+							ESI
+						</label>
+					</div>
+				</div>
+			</div>
+			<span class="form-label-title d-block mt-3">{{ 'payroll_structure' | transloco }}</span>
+			<div class="row g-2">
+				@for (h of heads; track h) {
+				<div class="col-md-2">
+					<label
+						class="form-label-title small"
+						[for]="'emp_s_' + h"
+					>
+						{{ 'payroll_head_' + h | transloco }}
+					</label>
+					<input
+						class="form-control"
+						type="number"
+						min="0"
+						[id]="'emp_s_' + h"
+						[ngModel]="f.structure[h] ?? 0"
+						(ngModelChange)="patchStructure(h, +$event)"
+					/>
+				</div>
+				}
+			</div>
+			@let c = check($any(f.structure));
+			<small [class]="c.meetsHalf ? 'text-muted d-block mt-2' : 'text-danger d-block mt-2'">
+				{{ (c.meetsHalf ? 'payroll_half_ok' : 'payroll_half_short') | transloco: { share: c.basicShare, total:
+				c.total } }}
+			</small>
+			<div class="row g-3 mt-1">
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="emp_adv"
+					>
+						{{ 'payroll_advance_due' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="emp_adv"
+						type="number"
+						min="0"
+						[ngModel]="f.advanceDueINR"
+						(ngModelChange)="patch({ advanceDueINR: +$event })"
+					/>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="emp_adv_month"
+					>
+						{{ 'payroll_advance_month' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="emp_adv_month"
+						type="number"
+						min="0"
+						[ngModel]="f.advancePerMonthINR"
+						(ngModelChange)="patch({ advancePerMonthINR: +$event })"
+					/>
+				</div>
+			</div>
+			<small class="text-muted d-block mt-2">{{ 'payroll_pii_note' | transloco }}</small>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="emp_save"
+				[disabled]="busy() || f.name.trim().length < 2 || !f.locationId"
+				(click)="save()"
+			>
+				{{ 'save' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+</app-page-wrapper>

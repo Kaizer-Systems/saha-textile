@@ -283,14 +283,16 @@ export const planAddVersions = (input: {
 			byteSize: asset.originalByteSize,
 			contentType: asset.originalFormat,
 		});
-		if (refusal || !profile) {
-			plan.skipped.push({ versionId, reason: refusal ?? 'profile_unknown' });
+		if (refusal) {
+			plan.skipped.push({ versionId, reason: refusal });
 			continue;
 		}
+		// checkVersionRequest refuses a missing profile (profile_unknown), so there is one here.
+		const known = profile as MediaProfile;
 		const made: MediaVersion = {
 			id: versionId,
 			profileKey: row.profileKey,
-			profileVersion: profile.version,
+			profileVersion: known.version,
 			fill,
 			state: 'making',
 			error: null,

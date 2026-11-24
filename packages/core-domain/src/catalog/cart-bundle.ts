@@ -98,26 +98,24 @@ const freeChildren = (
 	parentKey: string | null,
 	perUnit: number,
 ): PricedChild[] =>
-	picks.flatMap((pick) => {
-		const item = rule.items.find((row) => row.productId === pick.productId);
-		if (!item) return [];
+	picks.map((pick) => {
+		// freeItemsFor answers only the rule's own items.
+		const item = rule.items.find((row) => row.productId === pick.productId) as CatalogPageFreeWith['items'][number];
 		const variant = item.variants.find((v) => v.id === pick.variantId);
-		return [
-			{
-				role: 'free' as const,
-				key: `${parentKey ?? 'product'}>${item.productId}`,
-				parentKey,
-				level: null,
-				productId: item.productId,
-				title: item.title,
-				sku: item.productId,
-				variantId: pick.variantId,
-				variantLabel: item.variantLabel ?? variant?.label ?? null,
-				quantity: item.quantity * perUnit,
-				priceINR: 0,
-				mrpINR: item.mrpINR,
-			},
-		];
+		return {
+			role: 'free' as const,
+			key: `${parentKey ?? 'product'}>${item.productId}`,
+			parentKey,
+			level: null,
+			productId: item.productId,
+			title: item.title,
+			sku: item.productId,
+			variantId: pick.variantId,
+			variantLabel: item.variantLabel ?? variant?.label ?? null,
+			quantity: item.quantity * perUnit,
+			priceINR: 0,
+			mrpINR: item.mrpINR,
+		};
 	});
 
 /** A product's own free items as cart children (P8). */
@@ -184,7 +182,8 @@ export function priceBundleLine(
 		return null;
 	};
 	for (const piece of quote.pieces) {
-		const refused = row('piece', piece.key, shares.get(piece.key) ?? 0);
+		// splitShares gives every piece a share.
+		const refused = row('piece', piece.key, shares.get(piece.key) as number);
 		if (refused) return { ok: false, reason: refused };
 	}
 	for (const extra of quote.extras) {

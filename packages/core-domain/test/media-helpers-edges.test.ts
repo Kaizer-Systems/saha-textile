@@ -325,3 +325,21 @@ describe('the nightly storage check, roles and search words: the remaining cases
 		expect(vocabulary.wordsFor({ id: 'p', categoryIds: ['cat_unknown'] } as never)).toEqual([]);
 	});
 });
+
+describe('a family whose own box is the profile’s shape', () => {
+	it('keeps the family’s own fit for “as is”', () => {
+		const role = {
+			...(SEEDED_MEDIA_ROLES.find((row) => row.key === 'gallery') as (typeof SEEDED_MEDIA_ROLES)[number]),
+			aspect: { width: 3, height: 4 },
+			fit: 'cover' as const,
+		};
+		const spec = planVersion({
+			profile: { key: 'product_3x4', shape: { width: 3, height: 4 }, roles: ['gallery'] },
+			fill: 'as_is',
+			roles: [role],
+			source: { width: 6000, height: 8000 },
+			maxDisplayWidth: null,
+		}).files[0]?.spec;
+		expect(spec?.fit).toBe('cover');
+	});
+});

@@ -173,3 +173,27 @@ describe('processing a photo with versions: a failure', () => {
 		);
 	});
 });
+
+describe('rendering a main photo’s pictures made once per photo, with the Brand Kit strip', () => {
+	const tall = asset({ servesAsPrimary: true, width: 3000, height: 4000 });
+	// The link preview carries the strip; here the tall card does too, so the logo is asked for twice.
+	const stripRoles = SEEDED_MEDIA_ROLES.map((role) => (role.key === 'story' ? { ...role, brandStrip: true } : role));
+	const specs: Array<{ width: number; stripLogo?: Uint8Array }> = [];
+	const render = (async (_bytes: Uint8Array, spec: { width: number; height: number | null }) => {
+		specs.push(spec);
+		return { bytes: new Uint8Array(4), width: spec.width, height: spec.height ?? spec.width, sha256: 'abcdabcd' };
+	}) as ImageCodecPort['render'];
+	const draw = (d: ReturnType<typeof deps>) =>
+		renderPhoto(d as never, tall, new Uint8Array(10), probe(3000, 4000), [], new Set());
+
+	it('reads the logo once for every strip, and draws plain pictures without a logo source', async () => {
+		const brandLogo = vi.fn(async () => new Uint8Array([9]));
+		await draw(deps({ brandLogo, roles: { list: async () => stripRoles } }, render));
+		expect(brandLogo).toHaveBeenCalledOnce();
+		expect(specs.filter((spec) => spec.stripLogo).length).toBe(2);
+		specs.length = 0;
+		await draw(deps({ roles: { list: async () => stripRoles } }, render));
+		expect(specs.length).toBeGreaterThan(0);
+		expect(specs.some((spec) => spec.stripLogo)).toBe(false);
+	});
+});

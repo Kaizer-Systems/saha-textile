@@ -1,4 +1,4 @@
-import type { ImageDerivative, MediaAsset, MediaVersion, MediaWarning } from '@saha-textile/contracts';
+import type { ImageDerivative, MediaAsset, MediaProfile, MediaVersion, MediaWarning } from '@saha-textile/contracts';
 
 import { PHOTO_FORMATS } from '../catalog/media-files';
 import type { EmailPictureRepository } from '../ports/email-picture.repository';
@@ -154,8 +154,8 @@ export const processMediaAsset = async (
 		const now = deps.now().toISOString();
 		const profileVersions = new Map((await deps.profiles?.list())?.map((entry) => [entry.key, entry.version]));
 		const named = assignExistingVersions({ ...updated, warnings, derivatives, versions: [] }, now, profileVersions);
-		const kept = new Map((asset.versions ?? []).map((version) => [version.id, version]));
-		const versions = named.versions.map((version) => kept.get(version.id) ?? { ...version, createdAt: now });
+		// This path runs only for a photo without versions (`versioned` is false), so every version named is new.
+		const versions = named.versions.map((version) => ({ ...version, createdAt: now }));
 		return await settle(
 			deps,
 			{ ...updated, versions },
@@ -258,9 +258,11 @@ export const renderPhoto = async (
 			byteSize: bytes.byteLength,
 			contentType: asset.originalFormat,
 		});
-		if (refusal || !profile) return { version, profile: null, refusal: refusal ?? 'profile_unknown', plan: null };
+		if (refusal) return { version, profile: null, refusal, plan: null };
+		// checkVersionRequest refuses a missing profile (profile_unknown), so there is one here.
+		const known = profile as MediaProfile;
 		const plan = planVersion({
-			profile,
+			profile: known,
 			fill: version.fill,
 			roles,
 			source,
@@ -268,7 +270,7 @@ export const renderPhoto = async (
 			colours: { dominant: placeholder.dominantColor, brand: version.fill === 'brand' ? brand : null },
 			focal: asset.focal ?? null,
 		});
-		return { version, profile, refusal: null, plan };
+		return { version, profile: known, refusal: null, plan };
 	});
 	await options.onPlanned?.(perPhoto.length + planned.reduce((sum, row) => sum + (row.plan?.files.length ?? 0), 0));
 
@@ -300,11 +302,12 @@ export const renderPhoto = async (
 		});
 	}
 
-	for (const { version, profile, refusal, plan } of planned) {
-		if (refusal || !profile || !plan) {
-			made.push({ ...version, state: 'failed', error: refusal ?? 'profile_unknown' });
+	for (const row of planned) {
+		if (row.refusal !== null) {
+			made.push({ ...row.version, state: 'failed', error: row.refusal });
 			continue;
 		}
+		const { version, profile, plan } = row;
 		if (checkProfileMinSize(profile, source).result === 'warn') warnings.add('below_recommended_size');
 		skipped += plan.skipped.length;
 		if (plan.files.length === 0) {
@@ -364,7 +367,8 @@ const makeVersions = async (
 	probe: ImageProbe | null,
 ): Promise<ProcessOutcome> => {
 	const now = deps.now().toISOString();
-	const asked = (asset.versions ?? []).filter((version) => version.state === 'making');
+	// Called only for a photo with versions (`versioned`).
+	const asked = (asset.versions as MediaVersion[]).filter((version) => version.state === 'making');
 	if (!bytes || !probe) {
 		const versions = asked.map((version) => ({ ...version, state: 'failed' as const, error: 'original_gone' }));
 		await deps.assets.settleVersions({

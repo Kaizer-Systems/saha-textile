@@ -341,3 +341,30 @@ describe('the daily kept-files sweep: the remaining cases', () => {
 		});
 	});
 });
+
+describe('the worker’s Replace: a photo with no versions list, and a private photo that fails', () => {
+	it('moves the focal point of a photo with no versions list, keeping it without versions', async () => {
+		const run = harness(photo({ replacing: queued({ reason: 'focal' }), versions: undefined } as never));
+		expect(await replaceMediaAsset(run.deps, { assetId: 'med_r' })).toMatchObject({ status: 'ready' });
+		expect(run.row().versions).toEqual([]);
+	});
+
+	it('renames the files of a photo with no versions list', async () => {
+		const run = harness(
+			photo({ replacing: queued({ reason: 'rename', slug: 'maroon-banarasi' }), versions: undefined } as never),
+		);
+		expect(await replaceMediaAsset(run.deps, { assetId: 'med_r' })).toMatchObject({ status: 'ready' });
+		expect(run.row().versions).toEqual([]);
+	});
+
+	it('sends a private photo’s files away without addresses when its Replace fails', async () => {
+		const run = harness(photo({ replacing: queued(), visibility: 'private' }), {
+			download: async () => Promise.reject(new Error('404')),
+		});
+		expect(await replaceMediaAsset(run.deps, { assetId: 'med_r' })).toEqual({
+			status: 'rejected',
+			reason: 'upload_missing',
+		});
+		expect(run.jobs.at(-1)).toMatchObject({ type: 'delete-objects', urls: [] });
+	});
+});

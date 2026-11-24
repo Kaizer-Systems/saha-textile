@@ -228,7 +228,8 @@ export const replaceMediaAsset = async (
 		},
 	});
 	const broken = rendered.made.find((version) => version.state !== 'ready');
-	if (broken) return fail(`${broken.id}: ${broken.error ?? 'render_failed'}`, rendered.added);
+	// renderPhoto gives every version it could not make a reason.
+	if (broken) return fail(`${broken.id}: ${broken.error as string}`, rendered.added);
 
 	const derivatives = partial
 		? [...asset.derivatives.filter((row) => !row.versionId || !remade.has(row.versionId)), ...rendered.added]

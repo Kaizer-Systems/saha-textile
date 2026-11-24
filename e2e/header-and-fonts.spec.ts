@@ -13,7 +13,12 @@ test.describe('the header and the page fonts', () => {
 		await page.goto('/en/product/katan-banarasi-saree');
 		// A click before Angular has taken over the buy box was lost under a full parallel run.
 		const add = (await buyBoxReady(page)).locator('button', { hasText: /add to cart/i }).first();
-		await add.click();
+		// Wait for the cart's own answer, as checkout.spec.ts does, so a refusal says why (CI, 24 Nov).
+		const [saved] = await Promise.all([
+			page.waitForResponse((response) => response.url().includes('/cart/current/lines')),
+			add.click(),
+		]);
+		expect(saved.status(), `the cart answered ${saved.status()}: ${await saved.text()}`).toBe(201);
 		await expect(page.locator('app-header-cart .badge').first()).toContainText('1');
 	});
 

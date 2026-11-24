@@ -4,7 +4,19 @@ import { TestBed } from '@angular/core/testing';
 import { firstValueFrom, of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
-import { INBOX_REFRESH_MS, MailboxGateway, injectInboxSummaryQuery, injectMailboxesQuery } from './mailbox.gateway';
+import { QUIET_ERRORS } from '@core/interceptors/global-error-handler.interceptor';
+import { NO_PAGE_COVER } from '@core/interceptors/loader.interceptor';
+
+import {
+	DRAFT_STORE_PREFIX,
+	INBOX_KEY,
+	INBOX_REFRESH_MS,
+	MAILBOXES_KEY,
+	MailboxGateway,
+	forgetMailboxData,
+	injectInboxSummaryQuery,
+	injectMailboxesQuery,
+} from './mailbox.gateway';
 
 interface Options {
 	queryFn: () => Promise<unknown>;
@@ -169,5 +181,78 @@ describe('MailboxGateway', () => {
 		expect(summary?.refetchInterval).toBe(INBOX_REFRESH_MS);
 		expect(summary?.enabled).toBe(true);
 		expect(disabled?.enabled).toBe(false);
+	});
+
+	it('calls the label, bulk and Bin routes; Inbox reads never cover the page (redesign R5)', async () => {
+		const { gateway, http } = setup();
+		await firstValueFrom(gateway.threads('m1', 'inbox', undefined, undefined, 'Label_1'));
+		await firstValueFrom(gateway.modify('m1', 't1', 'add_label', 'Label_1'));
+		await firstValueFrom(gateway.markMessages('m1', ['a'], true));
+		await firstValueFrom(gateway.labels('m1'));
+		await firstValueFrom(gateway.createLabel('m1', 'Orders'));
+		await firstValueFrom(gateway.renameLabel('m1', 'Label_1', 'Returns'));
+		await firstValueFrom(gateway.deleteLabel('m1', 'Label_1'));
+		await firstValueFrom(gateway.bulk('m1', { action: 'archive', threadIds: ['t1'] }));
+		await firstValueFrom(gateway.binSummary('m1'));
+		await firstValueFrom(gateway.emptyBin('m1'));
+		expect(String((http.get.mock.calls[0]?.[1] as { params?: unknown } | undefined)?.params)).toBe(
+			'folder=inbox&label=Label_1',
+		);
+		expect(http.post.mock.calls[0]?.[1]).toEqual({ action: 'add_label', labelId: 'Label_1' });
+		http.get.mock.calls.shift();
+		http.post.mock.calls.shift();
+		expect(http.post.mock.calls.map((call) => call[0])).toEqual([
+			'https://api.test/admin/inbox/m1/messages/read',
+			'https://api.test/admin/inbox/m1/labels',
+			'https://api.test/admin/inbox/m1/bulk',
+			'https://api.test/admin/inbox/m1/bin/empty',
+		]);
+		expect(http.patch).toHaveBeenCalledWith('https://api.test/admin/inbox/m1/labels/Label_1', { name: 'Returns' });
+		expect(http.delete).toHaveBeenCalledWith('https://api.test/admin/inbox/m1/labels/Label_1');
+		const reads = http.get.mock.calls as unknown as [string, { context: { get: (token: unknown) => boolean } }][];
+		expect(reads.map((call) => call[0])).toEqual([
+			'https://api.test/admin/inbox/m1/labels',
+			'https://api.test/admin/inbox/m1/bin',
+		]);
+		for (const [, options] of reads) expect(options.context.get(NO_PAGE_COVER)).toBe(true);
+		expect(reads[0][1].context.get(QUIET_ERRORS)).toBe(true);
+		expect(reads[1][1].context.get(QUIET_ERRORS)).toBe(false);
+	});
+});
+
+describe('forgetMailboxData (S1)', () => {
+	const client = () => ({ cancelQueries: vi.fn(async () => undefined), removeQueries: vi.fn() });
+
+	it('forgets the mailbox lists and every unsent draft, and nothing else', () => {
+		const store = new Map<string, string>([
+			[`${DRAFT_STORE_PREFIX}a`, '1'],
+			['other', '2'],
+		]);
+		const storage = {
+			get length() {
+				return store.size + 1;
+			},
+			// One more than it holds: a store can answer no key for an index (another tab cleared it).
+			key: (index: number) => [...store.keys()][index] ?? null,
+			removeItem: (key: string) => store.delete(key),
+		} as unknown as Storage;
+		const queries = client();
+		forgetMailboxData(queries, storage);
+		expect(queries.cancelQueries).toHaveBeenCalledWith({ queryKey: INBOX_KEY });
+		expect(queries.removeQueries).toHaveBeenCalledWith({ queryKey: MAILBOXES_KEY });
+		expect([...store.keys()]).toEqual(['other']);
+	});
+
+	it('uses this tab’s store by default, and survives none or a blocked one', () => {
+		sessionStorage.setItem(`${DRAFT_STORE_PREFIX}b`, '1');
+		forgetMailboxData(client());
+		expect(sessionStorage.getItem(`${DRAFT_STORE_PREFIX}b`)).toBeNull();
+		expect(() => forgetMailboxData(client(), null)).not.toThrow();
+		const blocked = {
+			get length(): number {
+				throw new Error('blocked');
+			},
+		} as unknown as Storage;
+		expect(() => forgetMailboxData(client(), blocked)).not.toThrow();
 	});
 });

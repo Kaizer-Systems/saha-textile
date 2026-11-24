@@ -57,6 +57,8 @@ export class MailboxSettingsPanel {
 	readonly mailboxId = input.required<string>();
 	readonly address = input.required<string>();
 	readonly labels = input<readonly InboxLabel[]>([]);
+	/** A filter started from the Inbox's search options (redesign R3): the form opens filled in. */
+	readonly prefill = input<Partial<FilterForm> | null>(null);
 
 	readonly tab = signal<'filters' | 'vacation' | 'signature'>('filters');
 	readonly problem = signal<string | null>(null);
@@ -178,12 +180,22 @@ export class MailboxSettingsPanel {
 	}
 
 	constructor() {
+		// A filter started from the Inbox's search options opens the Filters tab, filled in.
+		effect(() => {
+			const prefill = this.prefill();
+			if (!prefill) return;
+			untracked(() => {
+				this.tab.set('filters');
+				this.problem.set(null);
+				this.filterEdit.set({ ...emptyFilterForm(), ...prefill });
+			});
+		});
 		// The signature editor holds what Gmail has whenever the settings are read.
 		effect(() => {
 			const signature = this.settings()?.signature;
 			untracked(() => {
 				this.stopEditor();
-				if (!signature?.editable || typeof document === 'undefined') return;
+				if (!signature?.editable) return;
 				const editor = new Editor();
 				editor.setContent(signature.html || '<p></p>');
 				this.signatureHtml.set(signature.html);

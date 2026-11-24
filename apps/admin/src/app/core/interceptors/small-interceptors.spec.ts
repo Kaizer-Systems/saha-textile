@@ -10,7 +10,7 @@ import { LoggingService } from '@data-access/services/logging.service';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { CSRF_REPLAY, GlobalErrorHandlerInterceptor, QUIET_ERRORS } from './global-error-handler.interceptor';
-import { LoaderInterceptor } from './loader.interceptor';
+import { LoaderInterceptor, NO_PAGE_COVER } from './loader.interceptor';
 
 const request = new HttpRequest('GET', '/x');
 const handler = (result: unknown) => ({ handle: () => result }) as never;
@@ -81,7 +81,7 @@ describe('GlobalErrorHandlerInterceptor', () => {
 
 describe('LoaderInterceptor', () => {
 	/** `slow` answers after the loader's tick, as a real request does; otherwise the answer comes at once. */
-	const run = async (method: 'GET' | 'POST', slow = false) => {
+	const run = async (method: 'GET' | 'POST', slow = false, context = new HttpContext()) => {
 		const store = {
 			showLoader: vi.fn(),
 			showButtonSpinner: vi.fn(),
@@ -92,7 +92,9 @@ describe('LoaderInterceptor', () => {
 		TestBed.configureTestingModule({ providers: [LoaderInterceptor, { provide: LoaderStore, useValue: store }] });
 		await firstValueFrom(
 			TestBed.inject(LoaderInterceptor).intercept(
-				new HttpRequest(method as 'GET', '/x'),
+				method === 'GET'
+					? new HttpRequest('GET', '/x', { context })
+					: new HttpRequest('POST', '/x', null, { context }),
 				handler(slow ? timer(0).pipe(map(() => ({ type: 0 }))) : of({ type: 0 })),
 			),
 		);
@@ -109,6 +111,16 @@ describe('LoaderInterceptor', () => {
 		const write = await run('POST', true);
 		expect(write.showLoader).toHaveBeenCalledWith(false);
 		expect(write.showButtonSpinner).toHaveBeenCalledWith(true);
+	});
+
+	it('never covers the page for a request marked to show its own progress (the Inbox, the minute checks)', async () => {
+		const marked = new HttpContext().set(NO_PAGE_COVER, true);
+		for (const method of ['GET', 'POST'] as const) {
+			const store = await run(method, true, marked);
+			expect(store.showLoader).not.toHaveBeenCalled();
+			expect(store.showButtonSpinner).not.toHaveBeenCalled();
+			expect(store.hideLoader).not.toHaveBeenCalled();
+		}
 	});
 
 	it('never shows the loader for a request that ended before it could appear (answered at once or cancelled)', async () => {

@@ -124,6 +124,16 @@ Replaced or unreachable once bundles moved to the bundle builder (brief UE6GxSvK
 | --- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | LO1 | Turning a Stores page entry into a location (`locationFromStore`, `placeFromAddress`, `shortCodeFor`) and their tests | `packages/core-domain/src/locations/location-rules.ts`, `packages/core-domain/test/location-rules.test.ts` | Owner, 2026-11-23: the Stores page lists shops of a separate company, so nothing turns them into this business's locations |
 
+## Inbox redesign (2026-11-24)
+
+The approved pictures replaced these on screen; the code that is still there waits for this pass.
+
+| #   | Piece                                                                                     | Files                                                                                                                                                | Replaced by                                             | The removal also touches                                   |
+| --- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------- |
+| IB1 | The rule that pinned the four folder lists as one theme `sticky-top-sec` block (6832756d) | `apps/admin/src/app/features/inbox/inbox.scss` (`.vertical-tabs .sticky-top-sec`)                                                                    | The window-height columns that scroll on their own (R6) | Nothing: no element uses it now                            |
+| IB2 | The select2 mailbox picker's choices and handler                                          | `apps/admin/src/app/features/inbox/inbox.ts` (`mailboxChoices`, `chooseMailbox`) and their cases in `inbox.spec.ts`                                  | The title row's switcher (`switchTo`, `mailboxState`)   | `Select2` stays imported for the compose box's From choice |
+| IB3 | The words of the old banners and the long search hint                                     | `inbox_page_selected`, `inbox_select_matching`, `inbox_matching_selected`, `inbox_bin_note` in `apps/admin/public/assets/i18n/en.json` and `bn.json` | The status line's shorter words (`inbox_status_*`)      | Nothing else reads them                                    |
+
 ## Decided, so not on this list (2026-11-16)
 
 The owner chose to remove these with the Legal Pages build instead of keeping them for the end:

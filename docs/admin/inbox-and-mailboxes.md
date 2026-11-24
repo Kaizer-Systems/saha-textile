@@ -3,7 +3,7 @@ title: Inbox and Mailboxes
 description: How staff read and answer the shop's Gmail mailboxes in the admin, how mailboxes are connected and shared, and how Contact Us messages reach them.
 status: implemented
 audience: [frontend, backend, operator]
-last_verified: '2026-11-19'
+last_verified: '2026-11-24'
 source_of_truth:
     - packages/contracts/src/mailbox.ts
     - packages/core-domain/src/mailbox
@@ -78,10 +78,13 @@ Each mailbox has its own access list. A person's rights in one mailbox come from
 
 ### Reading
 
-- **Layout.** The Inbox shows folders, the conversation list and the reading pane side by side on a wide screen, and one column at a time on a phone.
+- **Title row.** One line holds the page title, the mailbox switcher, the search box and **Compose**. The switcher shows even for one mailbox: each entry names its unread count, what the person may do there and its aliases, with a green, or red, dot for its health.
+- **Layout.** From 1200 px the folders, the conversation list (380 px) and the reading pane sit side by side and fill the window between the header and the footer. Each column scrolls on its own, so the title row and the conversation's own bar stay in view. From 992 to 1199 px the list and the reading pane take turns beside the folders. On a phone, one column shows at a time and **☰** opens the folders in a drawer.
+- **Folder rail.** The rail is either pinned open (208 px, names and counts) or icons only (52 px, counts as badges). In icons mode, resting the pointer on the rail for 0.15 s, or tabbing into it, opens the full rail over the list without moving the columns; it closes 0.3 s after the pointer leaves, on Escape, or when a folder is chosen. The button at the top of the rail switches between the two, and the choice is kept in this browser (`inbox.rail`). Until a person chooses, screens 1400 px and wider start open and narrower ones as icons (`inbox-layout.ts`).
 - **Folders.** Inbox, Starred, Important, Sent, All mail, Spam and Bin map to Gmail labels in `FOLDER_LABELS`.
 - **Labels and categories.** The sidebar lists the mailbox's own labels, nested by "/" in their names, and the category tabs the mailbox uses, each with its unread count. Labels hidden in Gmail stay hidden. A conversation can carry several labels; they are shown as chips, not as folders it lives in. Nothing about labels is stored here.
-- **Search.** Search runs over All mail with Gmail's own query syntax.
+- **Search.** Search runs over All mail with Gmail's own query syntax. The options button in the search box opens Gmail's fields: From, To, Subject, Has the words, Doesn't have, Size, Date within, Search in (a folder or one label), Has attachment and Unread only. They become Gmail's own search words, and opening them again reads the current search back into the fields; words no field holds stay in Has the words (`inbox-search.ts`). **Create filter**, for people with the Settings right, opens Mailbox settings › Filters with the same conditions filled in; nothing is saved until **Save** there.
+- **Changing folder.** The rail, toolbar and title row stay where they are; the last rows fade under a thin progress line until the new list arrives. Inbox calls carry the `NO_PAGE_COVER` request mark, so the admin's page-wide "Loading" cover never shows for them. The same mark keeps the minute-by-minute checks behind the menu badges (unread mail, stock alerts) from covering any admin page.
 
 The page address names the place the operator is in:
 
@@ -113,6 +116,7 @@ People with two or more mailboxes see **All mailboxes** under Inbox. It shows th
 
 ### Selection, labels and the Bin
 
+- **Toolbar and status line.** The list's toolbar is one 40 px row that never wraps: Refresh and the newer and older arrows normally, the selection's actions and a close button once rows are ticked. Under it a 22 px status line is always there and says one thing at a time: new mail waiting, a check that failed, a partly failed bulk action with Retry, the folder opening, what is ticked and "Select all about N", the search and **Clear search**, the Bin's 30-day note with **Empty Bin now**, or "1–20 of about 132 · Checked 10:42". Nothing above the list changes height, so the rows never move.
 - **Selection.** Each row has a checkbox; Select all ticks the current page and shows a mixed state for part of it. "Select all about N" acts on every conversation that matches, read on the server when the action runs (up to 5,000). With rows ticked, the toolbar offers the actions the folder and the person's rights allow. Ticks stay through a search and through pages, as in the products table (decision D7); changing mailbox, folder or label clears them, since one bulk action can't act on two lists. A new search or page drops only "Select all about N". A refresh never ticks new arrivals.
 - **Bulk results.** `POST …/bulk` reports each conversation as done or failed with a reason. Failed ones stay ticked with a **Retry** for just those.
 - **Labels.** People with `labels` create, rename and delete labels. Deleting a label keeps every conversation's mail and other labels. A link to a label Gmail has since deleted lands on the Inbox with a note.

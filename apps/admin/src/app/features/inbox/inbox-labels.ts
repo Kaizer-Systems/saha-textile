@@ -34,7 +34,8 @@ export function labelTree(labels: readonly InboxLabel[]): { categories: LabelLin
 		const parts = label.name.split('/');
 		return {
 			id: label.id,
-			leaf: parts.at(-1) ?? label.name,
+			// split() always answers at least one part.
+			leaf: parts.at(-1) as string,
 			name: label.name,
 			depth: parts.length - 1,
 			unread: label.threadsUnread,

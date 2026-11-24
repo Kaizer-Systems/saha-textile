@@ -6,6 +6,7 @@ import { firstValueFrom, Observable } from 'rxjs';
 
 import { runtimeConfig } from '@core/config/runtime-config';
 import { QUIET_ERRORS } from '@core/interceptors/global-error-handler.interceptor';
+import { NO_PAGE_COVER } from '@core/interceptors/loader.interceptor';
 
 import type {
 	AdminMailboxRow,
@@ -64,7 +65,7 @@ export function forgetMailboxData(
 	void client.cancelQueries({ queryKey: INBOX_KEY });
 	client.removeQueries({ queryKey: INBOX_KEY });
 	client.removeQueries({ queryKey: MAILBOXES_KEY });
-	const store = storage === undefined ? (typeof sessionStorage === 'undefined' ? null : sessionStorage) : storage;
+	const store = storage === undefined ? sessionStorage : storage;
 	if (!store) return;
 	try {
 		const keys = Array.from({ length: store.length }, (_, index) => store.key(index) ?? '');
@@ -76,8 +77,10 @@ export function forgetMailboxData(
 export const INBOX_KEY = ['inbox'] as const;
 /** How often the Inbox asks for unread counts: new mail shows within a minute, with no Gmail push. */
 export const INBOX_REFRESH_MS = 60_000;
+/** The Inbox shows its own progress in place; it never covers the page with "Loading" (redesign R5). */
+const inPage = () => new HttpContext().set(NO_PAGE_COVER, true);
 /** Inbox reads explain their own failures in the page, with Try again (review T3). */
-const quiet = () => new HttpContext().set(QUIET_ERRORS, true);
+const quiet = () => inPage().set(QUIET_ERRORS, true);
 
 /** Gmail mailboxes: Settings › Mailboxes (super admin) and the Inbox (everyone given access). */
 @Injectable({ providedIn: 'root' })
@@ -333,7 +336,7 @@ export class MailboxGateway {
 	}
 
 	binSummary(mailboxId: string): Observable<InboxBinSummary> {
-		return this.http.get<InboxBinSummary>(this.inbox(`/${this.id(mailboxId)}/bin`));
+		return this.http.get<InboxBinSummary>(this.inbox(`/${this.id(mailboxId)}/bin`), { context: inPage() });
 	}
 
 	emptyBin(mailboxId: string): Observable<InboxEmptyBinResult> {

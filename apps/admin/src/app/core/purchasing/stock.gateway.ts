@@ -1,10 +1,11 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 
 import { injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom, Observable } from 'rxjs';
 
 import { runtimeConfig } from '@core/config/runtime-config';
+import { NO_PAGE_COVER } from '@core/interceptors/loader.interceptor';
 
 import { QUIET, queryParams } from './purchasing.gateway';
 
@@ -198,7 +199,10 @@ export class StockGateway {
 		return this.http.post<AdjustmentRequest>(this.api(`stock/approvals/${this.id(id)}/reject`), { reason }, QUIET);
 	}
 	alerts(): Observable<StockAlerts> {
-		return this.http.get<StockAlerts>(this.api('stock/alerts'));
+		// Read every minute behind the bell: never covers the page with "Loading" (Inbox redesign R5).
+		return this.http.get<StockAlerts>(this.api('stock/alerts'), {
+			context: new HttpContext().set(NO_PAGE_COVER, true),
+		});
 	}
 	markSeen(ids: readonly string[]): Observable<void> {
 		return this.http.post<void>(this.api('stock/alerts/seen'), { ids }, QUIET);

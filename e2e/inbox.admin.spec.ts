@@ -97,7 +97,7 @@ const row = {
 /** Answers the Inbox API. Set `state.arrived` to add a colleague's reply to the conversation from then on. */
 async function gmail(page: Page) {
 	const sent: unknown[] = [];
-	const state = { arrived: false };
+	const state = { arrived: false, slowSent: false };
 	const saved = () => ({ draftId: 'd1', version: `v${Date.now()}`, savedAt: new Date().toISOString() });
 	await page.route(/\/admin\/inbox(\/|\?|$)/, async (route: Route) => {
 		const url = new URL(route.request().url());
@@ -109,6 +109,9 @@ async function gmail(page: Page) {
 			return route.fulfill({ json: { threads, skipped: [] } });
 		}
 		if (path.endsWith('/threads')) {
+			// A slow folder shows what the page does while Gmail answers (redesign R5).
+			if (state.slowSent && url.searchParams.get('folder') === 'sent')
+				await new Promise((done) => setTimeout(done, 1_500));
 			return route.fulfill({ json: { threads: [row], nextPageToken: null, estimate: 1 } });
 		}
 		if (path.endsWith('/threads/t1')) {
@@ -208,5 +211,74 @@ test.describe('the admin Inbox', () => {
 		expect(sent).toHaveLength(0);
 		await page.getByRole('button', { name: 'Send anyway' }).click();
 		await expect.poll(() => sent.length).toBe(1);
+	});
+
+	test('one title row, folders that collapse and open by pointing, and a list that never moves (redesign, 24 Nov)', async ({
+		page,
+	}) => {
+		const { state } = await gmail(page);
+		await page.setViewportSize({ width: 1280, height: 860 });
+		await page.goto(`${ADMIN}/inbox/wecare/inbox`);
+		const firstRow = page.locator('.inbox-list li').first();
+		await expect(firstRow).toBeVisible();
+
+		// R1: the mailbox switcher sits in the title row and says what this mailbox allows.
+		await page.locator('#inbox_mailbox').click();
+		await expect(page.locator('.inbox-switch-menu')).toContainText('wecare@shop.test');
+		await expect(page.locator('.inbox-switch-menu')).toContainText('Read and send');
+		await page.keyboard.press('Escape');
+
+		// R2: below 1400 px the folders start as icons; the toggle pins them open and the choice stays.
+		const rail = page.locator('.inbox-rail-slot .inbox-rail');
+		await expect(rail).toHaveClass(/is-icons/);
+		await page.mouse.move(900, 500);
+		await rail.hover();
+		await expect(rail).toHaveClass(/is-peek/);
+		await page.mouse.move(900, 500);
+		await expect(rail).not.toHaveClass(/is-peek/);
+		await page.locator('#inbox_rail_toggle').click();
+		await expect(rail).not.toHaveClass(/is-icons/);
+		await page.reload();
+		await expect(page.locator('.inbox-rail-slot .inbox-rail')).not.toHaveClass(/is-icons/);
+
+		// R4: ticking rows swaps the toolbar in place; nothing under it moves.
+		const top = async () => (await firstRow.boundingBox())?.y;
+		const before = await top();
+		await page.locator('label[for="inbox_select_all"]').click();
+		await expect(page.locator('#inbox_clear_selection')).toBeVisible();
+		await expect(page.locator('#inbox_status')).toContainText('1 selected');
+		expect(await top()).toBe(before);
+		expect((await page.locator('#inbox_toolbar').boundingBox())?.height).toBe(40);
+		await page.locator('#inbox_clear_selection').click();
+
+		// R5: changing folder never covers the page; the rows fade under a progress line meanwhile.
+		state.slowSent = true;
+		await page.locator('.inbox-rail-slot a[href$="/sent"]').click();
+		await expect(page.locator('.inbox-progress .progress')).toBeVisible();
+		await expect(page.locator('app-loader')).toHaveCount(0);
+		await expect(page.locator('.inbox-progress .progress')).toHaveCount(0);
+		await expect(page).toHaveURL(/\/inbox\/wecare\/sent$/);
+
+		// R3: the search options become Gmail's own words.
+		await page.locator('#inbox_search_options').click();
+		await page.locator('#inbox_search_from').fill('priya');
+		await page.locator('label[for="inbox_search_attachment"]').click();
+		await page.locator('#inbox_search_go').click();
+		await expect(page).toHaveURL(/q=from(:|%3A)priya(%20|\+)has(:|%3A)attachment/);
+		await expect(page.locator('#inbox_status')).toContainText('Results for');
+	});
+
+	test('on a phone the folders open in a drawer and the search sits under the title row (R8)', async ({ page }) => {
+		await gmail(page);
+		await page.setViewportSize({ width: 390, height: 844 });
+		await page.goto(`${ADMIN}/inbox/wecare/inbox`);
+		await expect(page.locator('.inbox-list li').first()).toBeVisible();
+		await page.locator('#inbox_folders_btn').click();
+		const drawer = page.locator('.inbox-drawer');
+		await expect(drawer).toBeVisible();
+		await drawer.locator('a[href$="/sent"]').click();
+		await expect(page).toHaveURL(/\/inbox\/wecare\/sent$/);
+		await expect(drawer).toHaveCount(0);
+		expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 	});
 });

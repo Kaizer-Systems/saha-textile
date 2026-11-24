@@ -293,3 +293,57 @@ describe('MailboxSettingsPanel (G1)', () => {
 		expect(gateway.saveSignature).not.toHaveBeenCalled();
 	});
 });
+
+describe('MailboxSettingsPanel: a filter from the Inbox search, and every quiet path', () => {
+	it('opens the Filters tab with a filter started from the Inbox’s search options (redesign R3)', () => {
+		const { page, fixture, flush } = setup();
+		page.tab.set('vacation');
+		page.problem.set('inbox_filter_need');
+		fixture.componentRef.setInput('prefill', { from: 'rahul', query: 'parcel', hasAttachment: true });
+		flush();
+		expect(page.tab()).toBe('filters');
+		expect(page.problem()).toBeNull();
+		expect(page.filterEdit()).toEqual({
+			...emptyFilterForm(),
+			from: 'rahul',
+			query: 'parcel',
+			hasAttachment: true,
+		});
+		fixture.componentRef.setInput('prefill', null);
+		flush();
+		expect(page.filterEdit()?.from).toBe('rahul');
+	});
+
+	it('reads nothing before the settings arrive, and keeps settings that arrived even after a failed re-read', async () => {
+		const { page, fixture, flush } = setup();
+		expect(page.vacation()).toBeNull();
+		page.editVacation('subject', 'Away');
+		expect(page.vacation()).toBeNull();
+		await page.saveVacation();
+		page.editFilter('from', 'x');
+		expect(page.filterEdit()).toBeNull();
+		await page.saveFilter();
+		expect(page.problem()).toBe('inbox_filter_need');
+		state.result?.set({ data: settings(), error: new HttpErrorResponse({ status: 502 }) });
+		flush();
+		expect(page.failure()).toBeNull();
+		fixture.componentRef.setInput('address', 'care');
+		flush();
+		expect(page.domain()).toBe('');
+	});
+
+	it('names a label it does not know as unknown, opens an empty signature, and leaves an unreadable frame alone', () => {
+		const { page, load } = setup();
+		load(settings({ signature: { address: 'care@shop.test', html: '', editable: true } }));
+		expect(page.editor()).not.toBeNull();
+		expect(page.actionsOf(filter('f9', { addLabelIds: ['Label_9'], removeLabelIds: [] }) as never)).toEqual(
+			filterActions(filter('f9', { addLabelIds: ['Label_9'], removeLabelIds: [] }) as never, () => null),
+		);
+		const frame = document.createElement('iframe');
+		page.fitFrame({ target: frame } as unknown as Event);
+		expect(frame.style.height).toBe('');
+		const sized = { contentDocument: { body: { offsetHeight: 120 } }, style: { height: '' } };
+		page.fitFrame({ target: sized } as unknown as Event);
+		expect(sized.style.height).toBe('120px');
+	});
+});

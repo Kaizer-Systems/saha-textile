@@ -2657,3 +2657,29 @@ rule set builder" (https://claude.ai/artifact/3mjx6XT5w8cpiZkYtgAUNh).
 - An entry gains a limit in rupees and what it counts (a payment, a month, a year, or a single amount). Publishing a TDS or
   limits entry needs its limit; a limit has no rate. The starter TDS and limits sets are written in T8 and go to the CA with
   the rest (AT-D6).
+
+## Owner decision round (2026-11-24) — Inbox redesign
+
+- **Why:** the owner rated the admin Inbox 3 out of 10 on 24 Nov: the mailbox address floating on its own line, the
+  search hint cut off and no Gmail search options, the list jumping and the toolbar wrapping when rows are ticked, the
+  whole page blanking under "Loading" on every folder click, and no way to collapse the folders to icons.
+- **Brief** `4U7Dbjy4fHkS3xJ2TXXhf7` (revision 1, 24 Nov). The owner: "Approve, build it". Every choice as recommended:
+    - **Q1:** the folder rail starts open on screens 1400 px and wider, as icons below; after that each person's own
+      choice is kept in their browser.
+    - **Q2:** the search options offer Gmail's full set: From, To, Subject, Has the words, Doesn't have, Size, Date
+      within, Search in, Has attachment, Unread only, and Create filter (Settings right only).
+    - **Q3:** Inbox reads and the background checks never raise the page-wide "Loading" cover; every other page keeps
+      its first-load cover. Built: only two checks repeat every minute (unread mail for the menu badge, stock alerts); the
+      third the brief counted, categories, was a one-off page request.
+    - **Q4:** the list column is fixed at 380 px, not draggable.
+- **What changes:** one title row (Inbox, mailbox switcher, search, Compose); a folder rail pinned open or icons only,
+  opened over the list by pointing or Tab; a 40 px toolbar that never wraps and a 22 px status line that is always there,
+  so ticking never moves the rows; columns that fill the window and scroll on their own; three-line rows; a folder
+  drawer on phones.
+- **Replaced on screen** (the approved pictures are the say-so; the old code goes on the end-of-project cleanup list):
+  the single-mailbox address line and the select2 mailbox picker, the search box in the list column and its "Results
+  for" row, the selection, bulk-result and Bin banners (their words move to the status line), and the rule from
+  6832756d that pinned the four folder lists as one block.
+- **Custom, as the brief listed (C1–C8):** title row, search box and options panel, window-height columns, collapsible
+  rail, toolbar and status line, compact rows, reading-pane words that fold to icons below 560 px, phone layout. No new
+  component library, font or package.

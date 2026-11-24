@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import {
 	Component,
 	DestroyRef,
+	type ElementRef,
 	type TemplateRef,
 	computed,
 	effect,
@@ -23,7 +24,9 @@ import {
 	NgbDropdownButtonItem,
 	NgbDropdownItem,
 	NgbDropdownMenu,
+	NgbDropdownToggle,
 	NgbModal,
+	NgbOffcanvas,
 } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { Select2, type Select2Data, type Select2UpdateEvent } from 'ng-select2-component';
@@ -69,6 +72,16 @@ import {
 	textAsEditorHtml,
 } from './inbox-drafts';
 import { CATEGORY_KEYS, LABEL_ID, bulkReport, labelTree, pageSelection } from './inbox-labels';
+import { PEEK_CLOSE_MS, PEEK_OPEN_MS, type RailMode, initialRail, pageRange, saveRail } from './inbox-layout';
+import {
+	SEARCH_IN,
+	type SearchFields,
+	WITHIN_OPTIONS,
+	buildQuery,
+	emptySearchFields,
+	filterFromSearch,
+	readQuery,
+} from './inbox-search';
 import { MailboxSettingsPanel } from './mailbox-settings';
 // The theme's toast with one action link, as the file manager's Undo uses it (DEC-UI-REUSE).
 import { FmUndoToast } from '../media/file-manager/fm-undo-toast';
@@ -189,6 +202,7 @@ const statusOf = (error: unknown): number => (error instanceof HttpErrorResponse
 		NgbDropdownMenu,
 		NgbDropdownItem,
 		NgbDropdownButtonItem,
+		NgbDropdownToggle,
 		NgxEditorModule,
 		MailboxSettingsPanel,
 	],
@@ -203,6 +217,7 @@ export class Inbox {
 	private readonly router = inject(Router);
 	private readonly route = inject(ActivatedRoute);
 	private readonly modals = inject(NgbModal);
+	private readonly offcanvas = inject(NgbOffcanvas);
 	private readonly authStore = inject(AuthStore);
 	private readonly toastr = inject(ToastrService);
 	private destroyed = false;
@@ -214,13 +229,17 @@ export class Inbox {
 	readonly firstWords = firstWords;
 	readonly addressProblems = addressProblems;
 
-	private readonly discardModal = viewChild<TemplateRef<unknown>>('discardModal');
-	private readonly runnableModal = viewChild<TemplateRef<unknown>>('runnableModal');
-	private readonly foreverModal = viewChild<TemplateRef<unknown>>('foreverModal');
-	private readonly emptyBinModal = viewChild<TemplateRef<unknown>>('emptyBinModal');
-	private readonly labelModal = viewChild<TemplateRef<unknown>>('labelModal');
-	private readonly labelDeleteModal = viewChild<TemplateRef<unknown>>('labelDeleteModal');
-	private readonly repliesModal = viewChild<TemplateRef<unknown>>('repliesModal');
+	private readonly discardModal = viewChild.required<TemplateRef<unknown>>('discardModal');
+	private readonly runnableModal = viewChild.required<TemplateRef<unknown>>('runnableModal');
+	private readonly foreverModal = viewChild.required<TemplateRef<unknown>>('foreverModal');
+	private readonly emptyBinModal = viewChild.required<TemplateRef<unknown>>('emptyBinModal');
+	private readonly labelModal = viewChild.required<TemplateRef<unknown>>('labelModal');
+	private readonly labelDeleteModal = viewChild.required<TemplateRef<unknown>>('labelDeleteModal');
+	private readonly repliesModal = viewChild.required<TemplateRef<unknown>>('repliesModal');
+	/** The folder rail, drawn in its column on a wide screen and in a drawer on a phone (R2, R8). */
+	private readonly railTemplate = viewChild.required<TemplateRef<unknown>>('railTpl');
+	/** The list's own scrolling box (R6): whether it sits at the top decides if new mail slides in. */
+	private readonly listBox = viewChild<ElementRef<HTMLElement>>('listBox');
 	readonly categoryKeys = CATEGORY_KEYS;
 
 	// ── The page address ──────────────────────────────────────────────────────────
@@ -274,7 +293,8 @@ export class Inbox {
 		const mailbox = this.mailbox();
 		// A summary from before rights existed meant read, or read-and-send (migration 0007).
 		const legacy: MailboxRight[] = mailbox?.canSend ? ['read', 'send', 'organise', 'bin'] : ['read'];
-		return new Set<MailboxRight>(mailbox?.rights ?? (mailbox ? legacy : []));
+		// Read only once a mailbox is connected (`can`, `canSend`, `readOnly`), so there is always one.
+		return new Set<MailboxRight>(mailbox?.rights ?? legacy);
 	});
 	readonly canSend = computed(() => this.connected() && this.rights().has('send'));
 	readonly readOnly = computed(() => this.connected() && !this.rights().has('send'));
@@ -431,6 +451,29 @@ export class Inbox {
 	readonly labelEdit = signal<{ id: string | null; name: string } | null>(null);
 	readonly labelToDelete = signal<{ id: string; name: string } | null>(null);
 	readonly loadingThreads = computed(() => this.connected() && this.threadsQuery.isPending());
+	private lastShown: { rows: InboxThreadSummary[]; sent: boolean } = { rows: [], sent: false };
+	/**
+	 * The rows on screen, and whether they are Sent's (rows there name who they went to). While
+	 * another folder, label, search or page loads, the last ones stay, faded under a thin progress
+	 * line, instead of the page going blank (Inbox redesign R5).
+	 */
+	readonly shown = computed(() => {
+		if (this.loadingThreads()) return this.lastShown;
+		this.lastShown = { rows: this.threads(), sent: this.folder() === 'sent' };
+		return this.lastShown;
+	});
+	readonly shownRows = computed(() => this.shown().rows);
+	readonly switching = computed(() => this.loadingThreads() && this.shownRows().length > 0);
+	/** A bulk action that partly failed waits in the status line with Retry (A3). */
+	readonly retryNote = computed(() => {
+		const note = this.bulkNote();
+		return note?.retry.length ? note : null;
+	});
+	/** Rows on a full page of this list, learnt from its first page, for "21–40". */
+	private readonly fullPage = signal(0);
+	readonly range = computed(() =>
+		pageRange(this.pages().length, this.fullPage(), this.threads().length, this.estimate()),
+	);
 	readonly listFailed = computed(() => this.threadsQuery.isError() && !this.threadsQuery.data());
 	/** Gmail stopped answering after the list loaded: the rows stay, with when they were read (X1). */
 	readonly listStale = computed(() => this.threadsQuery.isError() && Boolean(this.threadsQuery.data()));
@@ -613,6 +656,20 @@ export class Inbox {
 	/** Phones show one column at a time: the list, or the open conversation or draft. */
 	readonly reading = computed(() => Boolean(this.openId() || this.draftMode()));
 
+	// ── Layout (Inbox redesign, 24 Nov) ───────────────────────────────────────────
+
+	/** The folder rail: pinned open, or icons only (R2). Each person's choice, kept in this browser. */
+	readonly rail = signal<RailMode>(initialRail(window.innerWidth));
+	/** The icon rail opened over the list by pointing or Tab; nothing moves underneath. */
+	readonly railPeek = signal(false);
+	private peekTimer: ReturnType<typeof setTimeout> | undefined;
+	/** The search options under the search box (R3), and what they hold while open. */
+	readonly searchFields = signal<SearchFields>(emptySearchFields());
+	readonly withinOptions = WITHIN_OPTIONS;
+	readonly searchPlaces = Object.keys(SEARCH_IN);
+	/** A filter started from the search options, handed to Mailbox settings › Filters (R3). */
+	readonly filterPrefill = signal<ReturnType<typeof filterFromSearch> | null>(null);
+
 	/** Read out by screen readers when it changes (review T12). */
 	readonly announcement = signal('');
 	private lastOpened: string | null = null;
@@ -720,8 +777,11 @@ export class Inbox {
 			this.q();
 			untracked(() => {
 				this.pages.set([]);
+				this.fullPage.set(0);
 				this.adoptNext = true;
 				this.searchText.set(this.q());
+				// A filter started from the search options is offered once, on the way to Settings.
+				if (!this.settingsView()) this.filterPrefill.set(null);
 			});
 		});
 
@@ -745,7 +805,8 @@ export class Inbox {
 					!this.allMatching() &&
 					!this.openId() &&
 					!this.draftMode() &&
-					(typeof window === 'undefined' || window.scrollY < 120);
+					this.listScrollTop() < 120;
+				if (this.firstPage() && data.nextPageToken) this.fullPage.set(data.threads.length);
 				if (this.adoptNext || held?.key !== key || !added.length || calm) {
 					if (calm && !this.adoptNext && added.length) this.slideIn(added);
 					this.adoptNext = false;
@@ -944,7 +1005,8 @@ export class Inbox {
 			if (result.truncated)
 				this.notifier.showError(this.transloco.translate('inbox_bulk_truncated', { count: 5000 }));
 			this.announcement.set(message);
-			const openGone = this.openId() && result.done.includes(this.openId() ?? '');
+			const open = this.openId();
+			const openGone = open !== null && result.done.includes(open);
 			if (
 				openGone &&
 				!['mark_read', 'mark_unread', 'star', 'unstar', 'important', 'not_important'].includes(action)
@@ -987,8 +1049,7 @@ export class Inbox {
 			void this.bulk('trash');
 			return;
 		}
-		const template = this.foreverModal();
-		if (template) this.modals.open(template, { centered: true, windowClass: 'theme-modal text-center' });
+		this.modals.open(this.foreverModal(), { centered: true, windowClass: 'theme-modal text-center' });
 	}
 
 	/** How many the Delete forever popup names: the ticked rows, or Gmail's count of every match. */
@@ -1021,10 +1082,9 @@ export class Inbox {
 	/** Empty Bin asks with Gmail's own count of what will go. */
 	async askEmptyBin() {
 		const mailboxId = this.mailbox()?.mailboxId;
-		const template = this.emptyBinModal();
-		if (!mailboxId || !template) return;
+		if (!mailboxId) return;
 		this.binCount.set(await firstValueFrom(this.gateway.binSummary(mailboxId)));
-		this.modals.open(template, { centered: true, windowClass: 'theme-modal text-center' });
+		this.modals.open(this.emptyBinModal(), { centered: true, windowClass: 'theme-modal text-center' });
 	}
 
 	async emptyBinNow() {
@@ -1045,8 +1105,7 @@ export class Inbox {
 
 	openLabelEditor(label: { id: string; name: string } | null) {
 		this.labelEdit.set(label ? { ...label } : { id: null, name: '' });
-		const template = this.labelModal();
-		if (template) this.modals.open(template, { centered: true, windowClass: 'theme-modal' });
+		this.modals.open(this.labelModal(), { centered: true, windowClass: 'theme-modal' });
 	}
 
 	async saveLabel() {
@@ -1064,8 +1123,7 @@ export class Inbox {
 
 	askDeleteLabel(label: { id: string; name: string }) {
 		this.labelToDelete.set(label);
-		const template = this.labelDeleteModal();
-		if (template) this.modals.open(template, { centered: true, windowClass: 'theme-modal text-center' });
+		this.modals.open(this.labelDeleteModal(), { centered: true, windowClass: 'theme-modal text-center' });
 	}
 
 	async deleteLabelNow() {
@@ -1084,9 +1142,86 @@ export class Inbox {
 	}
 
 	chooseMailbox(event: Select2UpdateEvent) {
-		const chosen = this.mailboxes().find((entry) => entry.mailboxId === event.value);
+		this.switchTo(String(event.value));
+	}
+
+	/** The title row's mailbox switcher (R1): opens the chosen mailbox's Inbox. */
+	switchTo(mailboxId: string) {
+		const chosen = this.mailboxes().find((entry) => entry.mailboxId === mailboxId);
 		if (!chosen || chosen.mailboxId === this.mailbox()?.mailboxId) return;
 		void this.router.navigate(['/inbox', mailboxKey(chosen.address), 'inbox']);
+	}
+
+	/** Each mailbox's line in the switcher: health, unread and rights, as approved (U1). */
+	mailboxState(entry: InboxMailboxSummary): string {
+		if (entry.status !== 'connected') return 'inbox_state_reconnect';
+		return entry.canSend ? 'inbox_state_send' : 'inbox_state_read';
+	}
+
+	// ── Folder rail (R2) and drawer (R8) ──────────────────────────────────────────
+
+	toggleRail() {
+		const next: RailMode = this.rail() === 'open' ? 'icons' : 'open';
+		this.rail.set(next);
+		saveRail(next);
+		this.closePeek(true);
+	}
+
+	/** Pointing rests on the icons: they open over the list a moment later. */
+	peek() {
+		if (this.rail() !== 'icons') return;
+		clearTimeout(this.peekTimer);
+		this.peekTimer = setTimeout(() => this.railPeek.set(true), PEEK_OPEN_MS);
+	}
+
+	/** The pointer left, or focus moved out: they close a moment later (or at once). */
+	closePeek(now = false) {
+		clearTimeout(this.peekTimer);
+		if (now) this.railPeek.set(false);
+		else this.peekTimer = setTimeout(() => this.railPeek.set(false), PEEK_CLOSE_MS);
+	}
+
+	/** Tab into the icons opens them; Tab out of the rail closes them. */
+	railFocus(event: FocusEvent, entering: boolean) {
+		if (this.rail() !== 'icons') return;
+		const rail = event.currentTarget as HTMLElement;
+		if (entering) {
+			clearTimeout(this.peekTimer);
+			this.railPeek.set(true);
+		} else if (!rail.contains(event.relatedTarget as Node | null)) this.closePeek(true);
+	}
+
+	/** On a phone the folders open in a drawer from the ☰ button (R8). */
+	openFolders() {
+		this.offcanvas.open(this.railTemplate(), { position: 'start', panelClass: 'inbox-drawer' });
+	}
+
+	/** A folder or label was chosen: the opened icons and the phone drawer close. */
+	folderChosen() {
+		this.closePeek(true);
+		if (this.offcanvas.hasOpenOffcanvas()) this.offcanvas.dismiss();
+	}
+
+	// ── Search options (R3) ───────────────────────────────────────────────────────
+
+	/** The options read the current search back into their fields, so it can be adjusted. */
+	searchOptionsOpened(open: boolean) {
+		if (open) this.searchFields.set(readQuery(this.searchText()));
+	}
+
+	setSearchField<K extends keyof SearchFields>(field: K, value: SearchFields[K]) {
+		this.searchFields.update((fields) => ({ ...fields, [field]: value }));
+	}
+
+	searchWithOptions() {
+		this.searchText.set(buildQuery(this.searchFields()));
+		this.search();
+	}
+
+	/** Create filter (Settings right): Mailbox settings › Filters opens with these conditions filled in. */
+	createFilter() {
+		this.filterPrefill.set(filterFromSearch(this.searchFields()));
+		void this.router.navigate(this.settingsLink());
 	}
 
 	/** Search covers All mail (review U11). */
@@ -1202,8 +1337,7 @@ export class Inbox {
 	/** Delete forever for the open conversation, inside the Bin, after the same question. */
 	deleteOpenForever() {
 		this.clearSelection();
-		const template = this.foreverModal();
-		if (template) this.modals.open(template, { centered: true, windowClass: 'theme-modal text-center' });
+		this.modals.open(this.foreverModal(), { centered: true, windowClass: 'theme-modal text-center' });
 	}
 
 	isFolded(message: InboxMessage): boolean {
@@ -1286,8 +1420,7 @@ export class Inbox {
 		event.preventDefault();
 		this.runnableUrl = this.attachmentUrl(message, attachment);
 		this.runnableName.set(attachment.filename);
-		const template = this.runnableModal();
-		if (template) this.modals.open(template, { centered: true, windowClass: 'theme-modal text-center' });
+		this.modals.open(this.runnableModal(), { centered: true, windowClass: 'theme-modal text-center' });
 	}
 
 	downloadAnyway() {
@@ -1347,9 +1480,8 @@ export class Inbox {
 
 	/** Discard asks first when there is text to lose (review T6). */
 	discard() {
-		const template = this.discardModal();
-		if (this.draft()?.body.trim() && template) {
-			this.modals.open(template, { centered: true, windowClass: 'theme-modal text-center' });
+		if (this.draft()?.body.trim()) {
+			this.modals.open(this.discardModal(), { centered: true, windowClass: 'theme-modal text-center' });
 			return;
 		}
 		void this.discardNow();
@@ -1400,11 +1532,12 @@ export class Inbox {
 		this.sending.set(true);
 		this.cancelSave();
 		await this.saving;
+		const threadId = draft.threadId;
 		try {
-			if (draft.threadId && draft.mode !== 'forward' && draft.knownIds.length && !this.forceSend) {
+			if (threadId && draft.mode !== 'forward' && draft.knownIds.length && !this.forceSend) {
 				const latest = await this.queryClient.fetchQuery({
-					queryKey: [...INBOX_KEY, mailboxId, 'thread', draft.threadId],
-					queryFn: () => firstValueFrom(this.gateway.thread(mailboxId, draft.threadId ?? '')),
+					queryKey: [...INBOX_KEY, mailboxId, 'thread', threadId],
+					queryFn: () => firstValueFrom(this.gateway.thread(mailboxId, threadId)),
 					staleTime: 0,
 				});
 				const newer = latest.messages.filter((message) => !draft.knownIds.includes(message.id));
@@ -1437,11 +1570,11 @@ export class Inbox {
 			// The reply stays as typed: "Not sent. Your text is kept." with the reason.
 			const status = statusOf(error);
 			// The API saw a reply the browser had not (C5): show who, exactly as the browser check does.
-			if (status === 412 && draft.threadId) {
+			if (status === 412 && threadId) {
 				const latest = await this.queryClient
 					.fetchQuery({
-						queryKey: [...INBOX_KEY, mailboxId, 'thread', draft.threadId],
-						queryFn: () => firstValueFrom(this.gateway.thread(mailboxId, draft.threadId ?? '')),
+						queryKey: [...INBOX_KEY, mailboxId, 'thread', threadId],
+						queryFn: () => firstValueFrom(this.gateway.thread(mailboxId, threadId)),
 						staleTime: 0,
 					})
 					.catch(() => null);
@@ -1522,8 +1655,7 @@ export class Inbox {
 		this.replyEdit.set(null);
 		this.replyToDelete.set(null);
 		this.replyProblem.set(null);
-		const template = this.repliesModal();
-		if (template) this.modals.open(template, { centered: true, windowClass: 'theme-modal' });
+		this.modals.open(this.repliesModal(), { centered: true, windowClass: 'theme-modal' });
 	}
 
 	openReplyEditor(reply: SavedReply | null) {
@@ -1647,7 +1779,7 @@ export class Inbox {
 					// Sent or deleted elsewhere: the next save starts a new Gmail draft with this text.
 					this.updateDraft({ gmailDraftId: undefined, version: undefined, savedFiles: [] }, false);
 					this.saveState.set('failed');
-				} else if (status === 0 || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+				} else if (status === 0 || !navigator.onLine) {
 					this.saveState.set('offline');
 				} else this.saveState.set('failed');
 			}
@@ -1788,21 +1920,17 @@ export class Inbox {
 	}
 
 	/**
-	 * A fresh editor holding the draft's words. Its first answer is the content just set, not
-	 * typing, so opening a draft never saves it; every change after that goes through the draft.
+	 * A fresh editor holding the draft's words. The content is set before the editor is listened to,
+	 * so opening a draft never saves it; every change after that goes through the draft.
 	 */
 	private startEditor(draft: Draft) {
 		this.stopEditor();
-		if (typeof document === 'undefined') return;
 		const editor = new Editor();
 		editor.setContent(draft.html ?? textAsEditorHtml(draft.body));
-		let ready = false;
 		this.editorWatch = editor.valueChanges.subscribe((doc) => {
-			if (!ready) return;
 			const html = toHTML(doc);
 			if (html !== this.draft()?.html) this.updateDraft({ html, body: editorText(html) });
 		});
-		ready = true;
 		this.editor.set(editor);
 	}
 
@@ -1824,6 +1952,12 @@ export class Inbox {
 			return;
 		}
 		await this.reload();
+	}
+
+	/** How far the list is scrolled: its own box on a wide screen, the page on a phone (R6). */
+	private listScrollTop(): number {
+		const box = this.listBox()?.nativeElement;
+		return box && box.scrollHeight > box.clientHeight ? box.scrollTop : window.scrollY;
 	}
 
 	private remembered(): { mailbox: string; folder: string } | null {

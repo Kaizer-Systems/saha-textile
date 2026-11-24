@@ -1,12 +1,9 @@
 // The reading pane is the Inbox's one custom part (approved brief, Gmail mailboxes revision 2).
-// Everything else on this page is the theme's own classes.
+// Everything else on this page is the theme's own classes, apart from the rules marked C1–C8 below:
+// the custom pieces of the Inbox redesign brief (owner-approved 24 Nov 2026, artifact 4U7Dbjy4…).
 
-// The folder column holds four lists: folders, categories, labels and Mailbox settings. The theme
-// pins every `.vertical-tabs .nav-pills` on its own at 100 px, so the four slid over one another as
-// the page scrolled. They now sit in one theme `sticky-top-sec` block that stays in view as a whole.
-// From the theme's 992 px breakpoint up, the block scrolls on its own when the labels are taller
-// than the space between the fixed header (110 px) and the fixed footer; below it the lists are the
-// theme's swipeable strips in the page's own flow.
+// Replaced by the window-height columns (R6) and kept for the end-of-project cleanup list: the rule
+// from 6832756d that pinned the four folder lists as one theme `sticky-top-sec` block.
 .vertical-tabs .sticky-top-sec {
 	@media (min-width: 992px) {
 		max-height: calc(100vh - 180px);
@@ -19,6 +16,654 @@
 
 	@media (max-width: 991.98px) {
 		position: static;
+	}
+}
+
+// ── C1 · One title row: switcher, search, Compose ────────────────────────────────────────────
+
+.inbox-tools {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	gap: 16px;
+}
+
+.inbox-ghost {
+	flex: none;
+	width: 38px;
+	height: 38px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 18px;
+	color: inherit;
+
+	&:hover,
+	&.active {
+		background-color: rgba(0, 0, 0, 0.05);
+	}
+}
+
+.inbox-folders-btn {
+	display: none;
+}
+
+.inbox-switch {
+	flex: none;
+	min-width: 0;
+}
+
+.inbox-switch-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	max-width: 300px;
+	text-transform: none;
+	font-weight: 500;
+}
+
+.inbox-switch-menu {
+	min-width: 340px;
+	padding: 6px;
+}
+
+.inbox-switch-item {
+	white-space: normal;
+	border-radius: 6px;
+	text-transform: none;
+
+	small {
+		display: block;
+		margin-top: 2px;
+	}
+}
+
+.inbox-compose {
+	flex: none;
+	margin-left: auto;
+	gap: 6px;
+}
+
+// ── C2 · Search box with its options button, and Gmail's options panel ─────────────────────
+
+.inbox-search {
+	position: relative;
+	flex: 1 1 auto;
+	min-width: 0;
+	max-width: 600px;
+
+	.input-group {
+		flex-wrap: nowrap;
+		align-items: center;
+		background-color: #f3f5f4;
+		border-radius: 24px;
+
+		> * {
+			background-color: transparent;
+			border: 0;
+			box-shadow: none;
+		}
+	}
+
+	.input-group-text {
+		padding-left: 16px;
+	}
+
+	// ng-bootstrap marks the anchor as a dropdown toggle; the options button already says it opens.
+	.input-group.dropdown-toggle::after {
+		display: none;
+	}
+
+	.form-control {
+		padding-left: 4px;
+		text-transform: none;
+
+		&::placeholder {
+			text-transform: none;
+		}
+	}
+}
+
+.inbox-search-panel {
+	top: calc(100% + 6px);
+	left: 0;
+	right: 0;
+	padding: 16px 18px 12px;
+	border-radius: 10px;
+	box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+	z-index: 30;
+}
+
+.inbox-field {
+	display: grid;
+	grid-template-columns: 116px minmax(0, 1fr);
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 8px;
+
+	> span {
+		font-size: 13px;
+	}
+
+	.form-control,
+	.form-select {
+		padding-top: 5px;
+		padding-bottom: 5px;
+		text-transform: none;
+	}
+
+	.inbox-size,
+	.inbox-unit {
+		max-width: 96px;
+	}
+}
+
+// ── C3 · Three columns that fill the window and scroll on their own (R6) ───────────────────
+
+.inbox-shell {
+	display: grid;
+	grid-template-columns: var(--inbox-rail) 380px minmax(0, 1fr);
+	gap: 16px;
+	--inbox-rail: 208px;
+
+	&.rail-icons {
+		--inbox-rail: 52px;
+	}
+
+	// Between 992 and 1199 px the list and the reading pane take turns beside the folders.
+	@media (max-width: 1199.98px) {
+		grid-template-columns: var(--inbox-rail) minmax(0, 1fr);
+	}
+
+	// The space under the admin's header, the card's title row and above its footer: the page itself
+	// never scrolls on a wide screen, only the columns do.
+	@media (min-width: 992px) {
+		grid-template-rows: minmax(0, 1fr);
+		height: calc(100vh - 316px);
+		min-height: 420px;
+	}
+
+	@media (max-width: 991.98px) {
+		display: block;
+	}
+}
+
+.inbox-rail-slot {
+	position: relative;
+	min-width: 0;
+
+	@media (max-width: 991.98px) {
+		display: none;
+	}
+}
+
+.inbox-list-col,
+.inbox-pane,
+.inbox-wide {
+	min-width: 0;
+	min-height: 0;
+}
+
+.inbox-list-col {
+	display: flex;
+	flex-direction: column;
+
+	.inbox-list {
+		flex: 1 1 auto;
+		min-height: 0;
+		margin: 0;
+		padding-right: 2px;
+		overflow-y: auto;
+
+		@media (max-width: 991.98px) {
+			overflow: visible;
+		}
+	}
+}
+
+.inbox-pane {
+	overflow-y: auto;
+	container-type: inline-size;
+	padding-right: 4px;
+
+	@media (max-width: 991.98px) {
+		overflow: visible;
+	}
+}
+
+.inbox-wide {
+	grid-column: 2 / -1;
+	overflow-y: auto;
+}
+
+// The list and the pane take turns below 1200 px: `is-hidden` hides the one not in use.
+@media (max-width: 1199.98px) {
+	.inbox-list-col.is-hidden,
+	.inbox-pane.is-hidden {
+		display: none;
+	}
+}
+
+.inbox-back {
+	@media (min-width: 1200px) {
+		display: none;
+	}
+}
+
+.inbox-empty-pane {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+
+	i {
+		font-size: 42px;
+		opacity: 0.35;
+	}
+}
+
+// ── C4 · Folder rail: open, icons only, and opened over the list (R2) ──────────────────────
+
+.inbox-rail {
+	height: 100%;
+	overflow-x: hidden;
+	overflow-y: auto;
+	padding-right: 2px;
+
+	.nav-pills {
+		position: static;
+		margin: 0;
+	}
+
+	.nav-link {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 9px 14px;
+		white-space: nowrap;
+		text-transform: none;
+
+		i {
+			flex: none;
+			font-size: 17px;
+		}
+	}
+
+	.inbox-nested {
+		padding-left: calc(16px + var(--inbox-depth, 0) * 14px);
+	}
+
+	.inbox-name {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.inbox-count {
+		flex: none;
+	}
+
+	.inbox-label-item {
+		display: flex;
+		align-items: center;
+
+		.dropdown-toggle::after {
+			display: none;
+		}
+
+		.nav-link {
+			flex: 1;
+			min-width: 0;
+		}
+	}
+}
+
+.inbox-rail-top {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 40px;
+	margin-bottom: 4px;
+}
+
+.inbox-rail-word,
+.inbox-rail-head {
+	font-size: 12px;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.inbox-rail-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin: 14px 8px 6px 12px;
+
+	h6 {
+		font-size: inherit;
+		margin: 0;
+	}
+}
+
+.inbox-rail-foot {
+	margin-top: 12px !important;
+}
+
+.inbox-rail.is-icons {
+	.inbox-rail-top {
+		justify-content: center;
+	}
+
+	.inbox-rail-word,
+	.inbox-rail-head,
+	.inbox-name,
+	.inbox-label-menu {
+		display: none;
+	}
+
+	.nav-link,
+	.inbox-nested {
+		position: relative;
+		justify-content: center;
+		padding-left: 0;
+		padding-right: 0;
+	}
+
+	.inbox-count {
+		position: absolute;
+		top: 2px;
+		right: 2px;
+		min-width: 16px;
+		padding: 2px 4px;
+		font-size: 10px;
+		line-height: 12px;
+	}
+}
+
+// Pointing at the icons (or Tab) opens the full list over the mail list; the columns don't move.
+.inbox-rail.is-peek {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 240px;
+	z-index: 25;
+	padding: 0 6px 6px 0;
+	background-color: #fff;
+	border-radius: 0 10px 10px 0;
+	box-shadow: 4px 0 24px rgba(0, 0, 0, 0.16);
+}
+
+// ── C5 · Toolbar and status line: fixed heights, never wrap (R4) ────────────────────────────
+
+.inbox-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	height: 40px;
+	flex: none;
+	flex-wrap: nowrap;
+	overflow: hidden;
+	padding: 0 2px 0 12px;
+}
+
+.inbox-ic {
+	flex: none;
+	width: 32px;
+	height: 32px;
+	padding: 0 !important;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+
+	&:disabled {
+		opacity: 0.35;
+	}
+
+	&.dropdown-toggle::after {
+		display: none;
+	}
+}
+
+.inbox-status {
+	height: 22px;
+	flex: none;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 0 12px;
+	font-size: 12.5px;
+	white-space: nowrap;
+	overflow: hidden;
+
+	.btn-link {
+		flex: none;
+		font-size: inherit;
+		font-weight: 600;
+		text-decoration: none;
+		color: var(--theme-color);
+	}
+
+	.inbox-warn {
+		color: #a15c07;
+	}
+}
+
+.inbox-progress {
+	height: 3px;
+	margin: 3px 0 5px;
+	flex: none;
+
+	.progress {
+		height: 3px;
+	}
+
+	.progress-bar {
+		width: 100%;
+		background-color: var(--theme-color);
+	}
+}
+
+.inbox-dim {
+	opacity: 0.5;
+	pointer-events: none;
+	transition: opacity 0.15s;
+}
+
+// ── C6 · Three-line rows (R7) ───────────────────────────────────────────────────────────────
+
+.inbox-list li.inbox-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 10px 12px;
+	margin-bottom: 4px;
+}
+
+.inbox-list li.inbox-ticked {
+	background-color: color-mix(in srgb, var(--theme-color) 12%, #fff);
+}
+
+.inbox-gutter {
+	flex: none;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+}
+
+.inbox-row-link {
+	display: block;
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+}
+
+.inbox-line {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.inbox-from {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 14.5px;
+}
+
+.inbox-date {
+	flex: none;
+	font-size: 12.5px;
+	white-space: nowrap;
+}
+
+li.unread .inbox-date {
+	font-weight: 700;
+}
+
+.inbox-subject {
+	margin-top: 3px;
+	font-size: 13.5px;
+
+	.badge {
+		flex: none;
+		font-size: 10.5px;
+	}
+
+	.text-truncate {
+		min-width: 0;
+	}
+}
+
+.inbox-snippet {
+	display: block;
+	margin-top: 2px;
+	font-size: 12.5px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+// ── C7 · Reading pane: one row of actions; words fold to icons when the pane is narrow ──────
+
+.inbox-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: nowrap;
+
+	> .btn,
+	> div {
+		flex: none;
+	}
+}
+
+// The pane's buttons stay on one row: Reply all and Forward drop their words first, then Reply's,
+// and on the narrowest pane every action is a square icon (names on hover).
+@container (max-width: 720px) {
+	.inbox-actions .inbox-word {
+		display: none;
+	}
+}
+
+@container (max-width: 440px) {
+	.inbox-actions {
+		gap: 6px;
+
+		.btn {
+			width: 32px;
+			height: 32px;
+			padding: 0;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.btn span {
+			display: none;
+		}
+	}
+}
+
+// ── C8 · Phone: ☰ folders, switcher and Compose on one line, search under them ──────────────
+
+@media (max-width: 991.98px) {
+	// As the approved phone pictures draw it, the switcher line is the title line.
+	// (`!important` because the theme's `d-flex` is.)
+	:host ::ng-deep .title-header > .d-flex:first-child {
+		display: none !important;
+	}
+
+	.inbox-tools {
+		flex: 1 0 100%;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+
+	.inbox-folders-btn {
+		display: inline-flex;
+		order: 1;
+	}
+
+	.inbox-switch {
+		order: 2;
+		flex: 1 1 0;
+
+		.inbox-switch-btn {
+			width: 100%;
+			max-width: none;
+		}
+	}
+
+	.inbox-compose {
+		order: 3;
+		margin-left: 0;
+		width: 42px;
+		height: 42px;
+		padding: 0;
+		justify-content: center;
+	}
+
+	.inbox-compose-word {
+		display: none;
+	}
+
+	.inbox-search {
+		order: 4;
+		flex: 1 0 100%;
+		max-width: none;
+	}
+
+	.inbox-search-panel {
+		max-height: calc(100vh - 230px);
+		overflow-y: auto;
+		z-index: 60;
+	}
+
+	.inbox-field {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 4px;
+
+		.d-flex {
+			flex-wrap: wrap;
+		}
+	}
+
+	.inbox-switch-menu {
+		min-width: 0;
+		width: calc(100vw - 40px);
 	}
 }
 
@@ -75,7 +720,7 @@
 // admin's fixed header: 90 px on a wide screen, 64 px below the theme's 992 px breakpoint.
 .inbox-bar {
 	position: sticky;
-	top: 90px;
+	top: 0;
 	z-index: 3;
 	background-color: #fff;
 
@@ -101,7 +746,48 @@
 // The admin's dark theme paints cards #1c2128 ($dark-card-background).
 :host-context(body.dark-only) {
 	.inbox-list li.inbox-open,
-	.inbox-bar {
+	.inbox-bar,
+	.inbox-rail.is-peek {
 		background-color: #1c2128;
+	}
+
+	.inbox-search .input-group {
+		background-color: #22272e;
+	}
+
+	.inbox-list li.inbox-ticked {
+		background-color: color-mix(in srgb, var(--theme-color) 18%, #1c2128);
+	}
+
+	.inbox-ghost:hover,
+	.inbox-ghost.active {
+		background-color: rgba(255, 255, 255, 0.08);
+	}
+
+	.inbox-status .inbox-warn {
+		color: #f0b35e;
+	}
+}
+
+// The phone's folder drawer (R8) is placed by ng-bootstrap at the end of the page, outside this
+// component, so its width is set by its own class.
+::ng-deep .inbox-drawer {
+	--bs-offcanvas-width: 280px;
+
+	.inbox-rail {
+		padding: 16px 8px 16px 0;
+	}
+
+	.nav-pills {
+		flex-direction: column !important;
+		overflow: visible;
+		gap: 0;
+		margin-bottom: 0;
+
+		.nav-item {
+			display: block;
+			width: 100%;
+			margin-bottom: 6px;
+		}
 	}
 }

@@ -187,7 +187,10 @@ const setup = (url: Params = { mailbox: 'care', folder: 'inbox' }, queryParams: 
 		set: {
 			imports: [],
 			template:
-				'<ng-template #discardModal>d</ng-template><ng-template #runnableModal>r</ng-template><ng-template #repliesModal>s</ng-template>',
+				'<ng-template #discardModal>d</ng-template><ng-template #runnableModal>r</ng-template><ng-template #repliesModal>s</ng-template>' +
+				'<ng-template #foreverModal>f</ng-template><ng-template #emptyBinModal>e</ng-template>' +
+				'<ng-template #labelModal>l</ng-template><ng-template #labelDeleteModal>x</ng-template>' +
+				'<ng-template #railTpl>f</ng-template>',
 		},
 	});
 	fixture = TestBed.createComponent(Inbox);

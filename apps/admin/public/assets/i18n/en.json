@@ -7394,6 +7394,7 @@
 	"co_month_11": "1 November",
 	"co_month_12": "1 December",
 	"search_hint_setting_company": "Kind of business, PAN, TAN, CIN, Udyam, financial year, and the owners: proprietor, partners or directors.",
+	"search_hint_setting_accounts_templates": "Charts of accounts, tax rule sets (reverse charge, TDS sections, limits) and statement layouts, by kind of business.",
 	"locations": "Locations",
 	"locations_intro": "Warehouses, stores and offices, each with its own address and billing. Staff see only where they work.",
 	"location_add": "Add location",

@@ -91,6 +91,7 @@ const sidebars: SidebarsConfig = {
 			collapsed: false,
 			items: [
 				'accounts/general-ledger',
+				'accounts/accounts-lists',
 				'accounts/accounts-templates',
 				'accounts/tax-invoices',
 				'accounts/returns-and-credit-notes',

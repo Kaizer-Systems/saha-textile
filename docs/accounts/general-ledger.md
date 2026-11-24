@@ -45,7 +45,7 @@ Every voucher is numbered from the journal series (`JV/26-27/000001`) when it is
 
 The same `idempotencyKey` returns the first voucher instead of posting twice. The voucher form makes one key per form; documents use their own reference.
 
-**Save draft** keeps a half-filled voucher with no number (`voucherDrafts`); it opens again from the Drafts tab, and posting it removes the draft in the same transaction. Files from the Media Library attach to a voucher (`attachments`, by asset id and name); the voucher page links to each one.
+**Save draft** keeps a half-filled voucher with no number (`voucherDrafts`); it shows as Draft in its kind's tab of Accounts › Vouchers ([Accounts menu, lists and Overview](./accounts-lists.md)) and opens again from there, and posting it removes the draft in the same transaction. Files from the Media Library attach to a voucher (`attachments`, by asset id and name); the voucher page links to each one.
 
 ## How documents post
 
@@ -130,7 +130,7 @@ A payment on an order is posted by Record payment and Mark received on the order
 
 ## Documents saved before the books took them
 
-Accounts › Periods and locks shows the super admin a **Saved before the books took them** card: how many receipts, purchase entries, supplier payments, debit notes, refunds on debit notes and business receipts have no voucher yet. **Post them** posts each on its own date, in its own transaction, under the same key the inline posting uses, so a second press posts nothing new. A document the books can't take (a locked month, no bank account set, a missing ledger) is skipped and listed with why; no month is unlocked. Voided purchase entries and reversed payments net to nothing and are left out.
+Accounts › Periods and locks shows the super admin a **Saved before the books took them** card: how many receipts, purchase entries, supplier payments, debit notes, refunds on debit notes and business receipts have no voucher yet. **Post them** posts each on its own date, in its own transaction, under the same key the inline posting uses, so a second press posts nothing new. A document the books can't take (a locked month, no bank account set, a missing ledger) is skipped and listed with why; no month is unlocked. Voided purchase entries and reversed payments net to nothing and are left out. A payment refunded later still counts: its money came in, and its refund voucher posts the way back.
 
 Anyone else holding `accounts.lock` sees that only the super admin can do this (the API refuses with `catch_up_super_admin_only`).
 

@@ -4,7 +4,7 @@ description: Cancel and refund a paid order before its invoice; the refund vouch
 status: implemented
 audience: [backend, frontend, operator]
 last_verified: '2026-11-24'
-search_keywords: refund voucher RF rule 51 advance cancel paid order cancel and refund gateway refund retry bank transfer customer advance gateway clearing
+search_keywords: refund voucher RF rule 51 advance cancel paid order cancel and refund gateway refund retry bank transfer customer advance gateway clearing sold out before payment paid after cancel shop refund
 source_of_truth:
     - packages/contracts/src/refund-vouchers.ts
     - packages/core-domain/src/invoicing/refund-voucher-rules.ts
@@ -14,6 +14,7 @@ source_of_truth:
     - apps/api/src/documents/refund-voucher-print.ts
     - apps/admin/src/app/features/order/details/order-status-popup.ts
     - apps/admin/src/app/features/accounts/refund-voucher-page.ts
+    - apps/api/src/shop-checkout/shop-payments.service.ts
 ---
 
 # Refund vouchers
@@ -57,7 +58,17 @@ Once the money has gone back (refunded):
 
 The payment is marked Refunded in the same transaction. Nothing is posted while a voucher waits or has failed.
 
-Receipt vouchers do not post to the books; Customer advances therefore holds only the refund side of an advance.
+The receipt the refund gives back posted when the payment was recorded (Where money lands › Customer advance), so the two net to nothing on Customer advance.
+
+## The shop's own refunds
+
+The shop refunds a payment by itself in two cases (OD1): the pieces sold out before the money arrived, or the money arrived after the order was cancelled. The shop asks the gateway with its own reference (`R` and the payment attempt's id); the payment is recorded first and its receipt posts in that step. Once the refund is saved, the payment gets its refund voucher:
+
+- reason **Sold out before payment** or **Paid after the order was cancelled**, made by the system (no person named);
+- status from the gateway's answer: Refunded (and posted, as above), Waiting for the gateway, or Failed;
+- one per payment: asking again returns the voucher already made.
+
+A voucher that can't be made (no location to keep it at, or the books refuse the posting) never undoes the refund: the payment is flagged for staff (`refundVoucherNotMade`) on the order. A waiting or failed voucher offers Try again and Pay by bank transfer, as any other.
 
 ## API
 

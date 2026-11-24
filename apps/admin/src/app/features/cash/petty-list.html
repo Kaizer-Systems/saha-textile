@@ -1,0 +1,165 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'cash_petty_expenses'"
+>
+	<div
+		button
+		class="d-flex flex-wrap gap-2"
+	>
+		@if (choices.data()?.manager) { @for (box of floats(); track box.id) {
+		<button
+			type="button"
+			class="btn btn-outline"
+			[id]="'cash_refill_' + box.id"
+			(click)="openRefill(box.id, refillModal)"
+		>
+			<i class="ri-refund-2-line"></i>
+			{{ 'cash_refill_button' | transloco: { box: box.name, place: box.locationName } }}
+		</button>
+		} }
+	</div>
+	<app-table
+		[tableConfig]="tableConfig()"
+		[searchPlaceholder]="'cash_petty_search'"
+		(tableChanged)="onTableChange($event)"
+	>
+		<div
+			tableFilters
+			class="d-flex align-items-center flex-wrap gap-2"
+		>
+			<app-period-picker
+				[choices]="presets"
+				[start]="'this_month'"
+				[labelPrefix]="'period_'"
+				[hint]="hint"
+				(picked)="setPeriod($event)"
+			/>
+			<select
+				class="form-select form-select-sm w-auto"
+				id="petty_box_filter"
+				[attr.aria-label]="'cash_every_box' | transloco"
+				[ngModel]="boxId() ?? ''"
+				(ngModelChange)="setBox($event)"
+			>
+				<option value="">{{ 'cash_every_box' | transloco }}</option>
+				@for (b of choices.data()?.boxes ?? []; track b.id) {
+				<option [value]="b.id">{{ b.name }}</option>
+				}
+			</select>
+			@if (list.data(); as page) {
+			<span
+				class="small text-muted"
+				id="petty_total"
+			>
+				{{ 'cash_petty_total' | transloco: { amount: inr(page.totalPaise) } }}
+			</span>
+			}
+		</div>
+	</app-table>
+	<ng-template
+		#refillModal
+		let-modal
+	>
+		@if (preview(); as p) {
+		<div class="modal-header">
+			<h5 class="mb-0">{{ 'cash_refill_title' | transloco: { box: p.box.name } }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			<div class="alert alert-info d-flex align-items-start gap-2">
+				<i class="ri-information-line"></i>
+				<span>
+					{{ 'cash_refill_info' | transloco: { float: inr(p.box.floatPaise), spent: inr(p.spentPaise), refill:
+					inr(p.refillPaise) } }}
+				</span>
+			</div>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'cash_head' | transloco }}</th>
+							<th>{{ 'cash_entries_count' | transloco }}</th>
+							<th class="text-end">{{ 'cash_spent' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (h of p.heads; track h.headLedgerId) {
+						<tr>
+							<td>{{ h.name }}</td>
+							<td>{{ h.entries }}</td>
+							<td class="text-end">{{ inr(h.spentPaise) }}</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td colspan="3">{{ 'cash_nothing_spent' | transloco }}</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<div class="row g-3 mt-1">
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="refill_from"
+					>
+						{{ 'cash_refill_from' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="refill_from"
+						[ngModel]="from()"
+						(ngModelChange)="from.set($event)"
+					>
+						<option value="">—</option>
+						@for (b of choices.data()?.banks ?? []; track b.id) {
+						<option [value]="b.id">{{ 'cash_bank_withdrawal_of' | transloco: { bank: b.name } }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="refill_amount"
+					>
+						{{ 'amount' | transloco }}
+					</label>
+					<div class="input-group">
+						<span class="input-group-text">₹</span>
+						<input
+							class="form-control"
+							id="refill_amount"
+							inputmode="decimal"
+							[ngModel]="amount()"
+							(ngModelChange)="amount.set($event)"
+						/>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="refill_save"
+				[disabled]="busy() || !from()"
+				(click)="refill()"
+			>
+				{{ 'cash_refill' | transloco }}
+			</button>
+		</div>
+		}
+	</ng-template>
+</app-page-wrapper>

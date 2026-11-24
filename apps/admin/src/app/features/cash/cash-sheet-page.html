@@ -1,0 +1,387 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'cash_sheets'"
+>
+	@if (sheet.data(); as v) {
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">
+				{{ (waiting() ? 'cash_difference_page_title' : 'cash_sheet_title') | transloco: { box: v.box.name, date:
+				v.sheet.date } }}
+				<div
+					class="d-inline-block ms-2"
+					[class]="pill[v.sheet.status]"
+				>
+					<span>
+						{{ (waiting() ? 'cash_waiting_manager' : 'cash_status_' + v.sheet.status) | transloco }}
+					</span>
+				</div>
+			</h5>
+			<small class="text-muted">
+				@if (v.sheet.closedAt) { {{ (waiting() ? 'cash_closed_with_difference' : 'cash_closed_line') |
+				transloco: { place: v.locationName, time: time(v.sheet.closedAt), name: v.closedByName ?? '—' } }} }
+				@else { {{ 'cash_manager_view' | transloco: { place: v.locationName } }} } @if (v.sheet.closedLate) { ·
+				{{ 'cash_closed_late' | transloco }} }
+			</small>
+		</div>
+		@if (waiting()) {
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="cash_resolve"
+			[disabled]="!ready() || busy()"
+			(click)="resolve()"
+		>
+			{{ 'cash_resolve' | transloco }}
+		</button>
+		}
+	</div>
+	@if (v.sheet.status !== 'open') {
+	<div class="card">
+		<div class="card-body">
+			<div class="row g-3">
+				<div class="col-md-3 col-6">
+					<span class="text-muted d-block">{{ 'cash_expected' | transloco }}</span>
+					<b>{{ inr(v.sheet.expectedAtClosePaise ?? 0) }}</b>
+				</div>
+				@for (count of v.sheet.counts; track $index) {
+				<div class="col-md-3 col-6">
+					<span class="text-muted d-block">{{ 'cash_count_n' | transloco: { n: $index + 1 } }}</span>
+					<b>{{ inr(count.totalPaise) }}</b>
+				</div>
+				}
+				<div class="col-md-3 col-6">
+					<span class="text-muted d-block">{{ 'cash_difference' | transloco }}</span>
+					<b
+						id="cash_difference_value"
+						[class.text-danger]="difference() < 0"
+					>
+						@if (difference() === 0) { — } @else { {{ (difference() < 0 ? 'cash_short' : 'cash_over') |
+						transloco: { amount: inr(difference() < 0 ? -difference() : difference()) } }} }
+					</b>
+				</div>
+				@if (v.sheet.settlement; as s) {
+				<div class="col-12">
+					<span class="text-muted d-block">{{ 'cash_settled_as' | transloco }}</span>
+					<b>{{ 'cash_way_' + s.how | transloco: { date: v.sheet.date } }}</b>
+					@if (s.note) {
+					<span class="d-block">{{ s.note }}</span>
+					} @if (s.suspenseUntil) {
+					<span class="d-block text-muted">
+						{{ 'cash_suspense_until' | transloco: { date: s.suspenseUntil } }}
+					</span>
+					}
+				</div>
+				}
+			</div>
+		</div>
+	</div>
+	}
+	<div class="row g-3">
+		<div [class]="waiting() ? 'col-xl-8' : 'col-12'">
+			@if (waiting()) {
+			<div class="card">
+				<div class="card-body theme-form theme-form-2">
+					<div class="title-header">
+						<h5>{{ 'cash_how_settled' | transloco }}</h5>
+					</div>
+					<span class="form-label-title d-block">{{ 'cash_what_happened' | transloco }}</span>
+					@for (way of ways; track way) {
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="radio"
+							name="cash_way"
+							[id]="'cash_way_' + way"
+							[disabled]="!applies(way)"
+							[checked]="how() === way"
+							(change)="pick(way)"
+						/>
+						<label
+							class="form-check-label"
+							[for]="'cash_way_' + way"
+						>
+							{{ 'cash_way_' + way | transloco: { date: v.sheet.date } }}
+						</label>
+					</div>
+					} @switch (how()) { @case ('counting_mistake') {
+					<button
+						type="button"
+						class="btn btn-outline mt-2"
+						id="cash_recount"
+						(click)="countAgain()"
+					>
+						{{ 'cash_manager_recount' | transloco }}
+					</button>
+					@if (recount()) {
+					<span class="text-success ms-2">{{ 'cash_recount_taken' | transloco }}</span>
+					} } @case ('missed_payment_out') {
+					<ng-container *ngTemplateOutlet="ledgerPick" />
+					} @case ('missed_money_in') {
+					<ng-container *ngTemplateOutlet="ledgerPick" />
+					} @case ('banked_not_recorded') {
+					<div class="row g-2 mt-1">
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="cash_settle_bank"
+							>
+								{{ 'cash_move_bank' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="cash_settle_bank"
+								[ngModel]="bankLedgerId()"
+								(ngModelChange)="bankLedgerId.set($event)"
+							>
+								<option value="">—</option>
+								@for (b of choices.data()?.banks ?? []; track b.id) {
+								<option [value]="b.id">{{ b.name }}</option>
+								}
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="cash_settle_slip"
+							>
+								{{ 'cash_deposit_slip' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="cash_settle_slip"
+								maxlength="40"
+								[ngModel]="depositSlip()"
+								(ngModelChange)="depositSlip.set($event)"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="cash_settle_date"
+							>
+								{{ 'cash_deposit_date' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="cash_settle_date"
+								type="date"
+								[ngModel]="depositDate()"
+								(ngModelChange)="depositDate.set($event)"
+							/>
+						</div>
+					</div>
+					} @case ('recover_from_staff') {
+					<div class="row g-2 mt-1">
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="cash_settle_staff"
+							>
+								{{ 'cash_staff_member' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="cash_settle_staff"
+								[ngModel]="staffUserId()"
+								(ngModelChange)="staffUserId.set($event)"
+							>
+								<option value="">—</option>
+								@for (p of choices.data()?.staff ?? []; track p.id) {
+								<option [value]="p.id">{{ p.name }}</option>
+								}
+							</select>
+						</div>
+						<div class="col-md-6">
+							<span class="form-label-title d-block">{{ 'cash_repay_by' | transloco }}</span>
+							@for (r of ['cash', 'payroll']; track r) {
+							<div class="form-check form-check-inline">
+								<input
+									class="form-check-input"
+									type="radio"
+									name="cash_repay"
+									[id]="'cash_repay_' + r"
+									[checked]="repayBy() === r"
+									(change)="repayBy.set($any(r))"
+								/>
+								<label
+									class="form-check-label"
+									[for]="'cash_repay_' + r"
+								>
+									{{ 'cash_repay_' + r | transloco }}
+								</label>
+							</div>
+							}
+						</div>
+						@if (repayBy() === 'payroll') {
+						<div class="form-check col-12 ms-2">
+							<input
+								class="form-check-input"
+								type="checkbox"
+								id="cash_consent"
+								[checked]="consent()"
+								(change)="consent.set($any($event.target).checked)"
+							/>
+							<label
+								class="form-check-label"
+								for="cash_consent"
+							>
+								{{ 'cash_consent' | transloco }}
+							</label>
+						</div>
+						}
+					</div>
+					} @case ('theft') {
+					<div class="row g-2 mt-1">
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="cash_police"
+							>
+								{{ 'cash_police_report' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="cash_police"
+								maxlength="60"
+								[ngModel]="policeReport()"
+								(ngModelChange)="policeReport.set($event)"
+							/>
+						</div>
+						<div class="col-md-6 d-flex align-items-end gap-2">
+							<label class="switch mb-0">
+								<input
+									type="checkbox"
+									id="cash_insured"
+									[checked]="insured()"
+									(change)="insured.set($any($event.target).checked)"
+								/>
+								<span class="switch-state"></span>
+							</label>
+							<span>{{ 'cash_insured' | transloco }}</span>
+						</div>
+					</div>
+					} @case ('counterfeit') {
+					<label
+						class="form-label-title mt-2"
+						for="cash_note_details"
+					>
+						{{ 'cash_note_details' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="cash_note_details"
+						maxlength="300"
+						[ngModel]="noteDetails()"
+						(ngModelChange)="noteDetails.set($event)"
+					/>
+					} }
+					<label
+						class="form-label-title mt-3"
+						for="cash_settle_note"
+					>
+						{{ 'note' | transloco }}
+					</label>
+					<textarea
+						class="form-control"
+						id="cash_settle_note"
+						rows="2"
+						maxlength="1000"
+						[ngModel]="note()"
+						(ngModelChange)="note.set($event)"
+					></textarea>
+					<ng-template #ledgerPick>
+						<label
+							class="form-label-title mt-2"
+							for="cash_settle_ledger"
+						>
+							{{ 'cash_settle_ledger' | transloco }}
+						</label>
+						<select
+							class="form-select"
+							id="cash_settle_ledger"
+							[ngModel]="ledgerId()"
+							(ngModelChange)="ledgerId.set($event)"
+						>
+							<option value="">—</option>
+							@for (l of choices.data()?.ledgers ?? []; track l.id) {
+							<option [value]="l.id">{{ l.name }}</option>
+							}
+						</select>
+					</ng-template>
+				</div>
+			</div>
+			}
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'cash_entries' | transloco }}</h5>
+					</div>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table
+							class="all-package theme-table no-footer table"
+							id="cash_sheet_rows"
+						>
+							<thead>
+								<tr>
+									<th>{{ 'cash_time' | transloco }}</th>
+									<th>{{ 'cash_what' | transloco }}</th>
+									<th>{{ 'cash_ref' | transloco }}</th>
+									<th class="text-end">{{ 'cash_in' | transloco }}</th>
+									<th class="text-end">{{ 'cash_out' | transloco }}</th>
+									<th class="text-end">{{ 'cash_expected' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (row of v.rows; track row.id) {
+								<tr>
+									<td>{{ time(row.at) }}</td>
+									<td>
+										{{ rowWhat(row) }} @if (row.addedOnReview) {
+										<small class="d-block text-muted">
+											{{ 'cash_added_on_review' | transloco }}
+										</small>
+										}
+									</td>
+									<td>{{ row.ref ?? '—' }}</td>
+									<td class="text-end">@if (row.inPaise) { {{ inr(row.inPaise) }} }</td>
+									<td class="text-end">@if (row.outPaise) { {{ inr(row.outPaise) }} }</td>
+									<td class="text-end">
+										@if (row.expectedPaise !== null) { {{ signed(row.expectedPaise) }} }
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+		@if (waiting() && how(); as way) {
+		<div class="col-xl-4">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'cash_does_title' | transloco: { way: ('cash_way_short_' + way | transloco) } }}</h5>
+					</div>
+					<ul class="list-unstyled small mb-0">
+						@for (part of ['entry', 'books', 'result']; track part) {
+						<li class="d-flex align-items-start border-bottom gap-2 py-2">
+							<i [class]="part === 'result' ? 'ri-check-line text-success' : 'ri-file-list-3-line'"></i>
+							<div>
+								<b>{{ 'cash_does_' + part | transloco }}</b>
+								<span class="d-block">
+									{{ 'cash_does_' + way + '_' + part | transloco: { date: v.sheet.date, amount:
+									inr(difference() < 0 ? -difference() : difference()), box: v.box.name } }}
+								</span>
+							</div>
+						</li>
+						}
+					</ul>
+				</div>
+			</div>
+		</div>
+		}
+	</div>
+	}
+</app-page-wrapper>

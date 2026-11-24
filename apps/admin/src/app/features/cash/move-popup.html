@@ -1,0 +1,124 @@
+<div class="modal-header">
+	<h5 class="mb-0">{{ 'cash_move_title' | transloco: { box: box()?.name ?? '' } }}</h5>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	></button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	<div class="row g-3">
+		<div class="col-md-6">
+			<label
+				class="form-label-title"
+				for="move_kind"
+			>
+				{{ 'cash_move_what' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="move_kind"
+				[ngModel]="kind()"
+				(ngModelChange)="setKind($event)"
+			>
+				@for (k of kinds; track k) {
+				<option [value]="k">{{ 'cash_move_' + k | transloco }}</option>
+				}
+			</select>
+		</div>
+		<div class="col-md-6">
+			<label
+				class="form-label-title"
+				for="move_to"
+			>
+				{{ (kind() === 'box_move' ? 'cash_move_to_box' : 'cash_move_bank') | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="move_to"
+				[ngModel]="to()"
+				(ngModelChange)="to.set($event)"
+			>
+				<option value="">—</option>
+				@for (t of targets(); track t.id) {
+				<option [value]="t.id">{{ t.name }}</option>
+				}
+			</select>
+		</div>
+		<div class="col-md-4">
+			<label
+				class="form-label-title"
+				for="move_amount"
+			>
+				{{ 'amount' | transloco }}
+			</label>
+			<div class="input-group">
+				<span class="input-group-text">₹</span>
+				<input
+					class="form-control"
+					id="move_amount"
+					inputmode="decimal"
+					[ngModel]="amount()"
+					(ngModelChange)="amount.set($event)"
+				/>
+			</div>
+		</div>
+		<div class="col-md-4">
+			<label
+				class="form-label-title"
+				for="move_slip"
+			>
+				{{ 'cash_deposit_slip' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="move_slip"
+				maxlength="40"
+				[ngModel]="slip()"
+				(ngModelChange)="slip.set($event)"
+			/>
+		</div>
+		<div class="col-md-4">
+			<label
+				class="form-label-title"
+				for="move_note"
+			>
+				{{ 'note' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="move_note"
+				maxlength="200"
+				[ngModel]="note()"
+				(ngModelChange)="note.set($event)"
+			/>
+		</div>
+	</div>
+	@if (problem(); as p) {
+	<div
+		class="alert alert-danger mt-3 mb-0"
+		id="move_problem"
+	>
+		{{ p.key | transloco: p.params }}
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<button
+		type="button"
+		class="btn btn-outline"
+		(click)="modal.dismiss()"
+	>
+		{{ 'cancel' | transloco }}
+	</button>
+	<button
+		type="button"
+		class="btn btn-theme"
+		id="move_save"
+		[disabled]="!ready() || busy()"
+		(click)="save()"
+	>
+		{{ 'save' | transloco }}
+	</button>
+</div>

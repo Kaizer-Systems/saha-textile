@@ -849,6 +849,7 @@ describe('petty expenses and refills (O4, O13)', () => {
 			sheetOpen: false,
 			openedAt: null,
 			billNeeded: false,
+			billOverPaise: 50_000,
 		});
 		await expect(s.petty.pay(pay(till.id), cashier, DAY)).rejects.toMatchObject({
 			response: { message: 'cash_sheet_not_open' },

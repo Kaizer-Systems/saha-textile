@@ -467,6 +467,8 @@ export const PettyCheck = z.object({
 	sheetOpen: z.boolean(),
 	openedAt: IsoDateTime.nullable(),
 	billNeeded: z.boolean(),
+	/** Settings › Cash boxes "Bill photo needed for a petty expense over". */
+	billOverPaise: Paise,
 });
 export type PettyCheck = z.infer<typeof PettyCheck>;
 

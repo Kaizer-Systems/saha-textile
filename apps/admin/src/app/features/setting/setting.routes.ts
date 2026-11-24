@@ -75,6 +75,11 @@ export default [
 		loadComponent: () => import('./company/gst-registrations').then((m) => m.GstRegistrationsSettings),
 	},
 	{
+		// Cash boxes, notes and coins, and rules (accounts brief O1, owner-approved 2026-11-23).
+		path: 'cash-boxes',
+		loadComponent: () => import('./cash-boxes/cash-boxes').then((m) => m.CashBoxesSettings),
+	},
+	{
 		// Accounts templates AT2 (owner-approved 2026-11-24).
 		path: 'accounts-templates',
 		loadComponent: () =>

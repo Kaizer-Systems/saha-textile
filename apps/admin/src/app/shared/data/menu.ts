@@ -313,6 +313,59 @@ export const menu: IMenu[] = [
 			},
 		],
 	},
+	// Cash (accounts brief O1–O14, owner-approved 2026-11-23): today's sheet, the sheets, petty expenses, expense
+	// claims and differences to resolve, as drawn.
+	{
+		id: 26,
+		title: 'cash',
+		active: false,
+		icon: 'ri-wallet-3-line',
+		type: 'sub',
+		level: 1,
+		acl_permission: ['cash.index'],
+		children: [
+			{
+				parent_id: 26,
+				title: 'cash_today',
+				path: '/cash/today',
+				type: 'link',
+				level: 2,
+				permission: ['cash.index'],
+			},
+			{
+				parent_id: 26,
+				title: 'cash_sheets',
+				path: '/cash/sheets',
+				type: 'link',
+				level: 2,
+				permission: ['cash.index'],
+			},
+			{
+				parent_id: 26,
+				title: 'cash_petty_expenses',
+				path: '/cash/petty',
+				type: 'link',
+				level: 2,
+				permission: ['cash.index'],
+			},
+			{
+				parent_id: 26,
+				title: 'cash_expense_claims',
+				path: '/cash/claims',
+				type: 'link',
+				level: 2,
+				permission: ['cash.index'],
+			},
+			{
+				parent_id: 26,
+				title: 'cash_differences',
+				path: '/cash/differences',
+				type: 'link',
+				level: 2,
+				permission: ['cash.index'],
+			},
+		],
+	},
 	// Purchases and stock (brief revision 2, accepted 2026-11-15): two groups, as drawn.
 	{
 		id: 23,
@@ -821,6 +874,14 @@ export const menu: IMenu[] = [
 				type: 'link',
 				level: 2,
 				permission: ['setting.index'],
+			},
+			{
+				parent_id: 19,
+				title: 'cash_boxes',
+				path: '/setting/cash-boxes',
+				type: 'link',
+				level: 2,
+				permission: ['cash.settings'],
 			},
 			{
 				parent_id: 19,

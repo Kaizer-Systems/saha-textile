@@ -109,6 +109,11 @@ export const content: Routes = [
 		loadChildren: () => import('@features/accounts/edocs.routes'),
 	},
 	{
+		// Cash: sheets, petty expenses, expense claims (accounts brief O).
+		path: 'cash',
+		loadChildren: () => import('@features/cash/cash.routes'),
+	},
+	{
 		path: 'order-status',
 		loadChildren: () => import('@features/order-status/order-status.routes'),
 	},

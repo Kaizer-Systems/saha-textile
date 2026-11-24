@@ -1,0 +1,221 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'cash_expense_claims'"
+>
+	<div
+		button
+		class="d-flex flex-wrap gap-2"
+	>
+		@if (canClaim()) {
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="claim_new"
+			(click)="newClaim(claimModal)"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'cash_new_claim' | transloco }}
+		</button>
+		}
+	</div>
+	<app-table
+		[tableConfig]="tableConfig()"
+		[searchPlaceholder]="'cash_claims_search'"
+		(tableChanged)="onTableChange($event)"
+		(rowClicked)="open($event)"
+		(action)="onAction($event)"
+	>
+		<div
+			tableFilters
+			class="d-flex align-items-center flex-wrap gap-2"
+		>
+			@for (item of chips; track item) {
+			<button
+				type="button"
+				class="align-items-center btn btn-sm d-flex"
+				[class.btn-theme]="chip() === item"
+				[class.btn-outline]="chip() !== item"
+				[attr.aria-pressed]="chip() === item"
+				(click)="setChip(item)"
+			>
+				{{ 'cash_claim_' + item | transloco }}@if (item !== 'all' && counts()?.[item] !== undefined) {
+				<span class="ms-1">{{ counts()?.[item] }}</span>
+				}
+			</button>
+			}
+			<app-period-picker
+				[choices]="presets"
+				[start]="'this_month'"
+				[labelPrefix]="'period_'"
+				[hint]="hint"
+				(picked)="setPeriod($event)"
+			/>
+		</div>
+	</app-table>
+	<ng-template
+		#claimModal
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="mb-0">{{ 'cash_new_claim' | transloco }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			<div class="row g-3">
+				@if (choices.data()?.manager) {
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="claim_staff"
+					>
+						{{ 'cash_staff_member' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="claim_staff"
+						[ngModel]="staff()"
+						(ngModelChange)="staff.set($event)"
+					>
+						<option value="">{{ 'cash_claim_mine' | transloco }}</option>
+						@for (p of choices.data()?.staff ?? []; track p.id) {
+						<option [value]="p.id">{{ p.name }}</option>
+						}
+					</select>
+				</div>
+				}
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="claim_location"
+					>
+						{{ 'location' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="claim_location"
+						[ngModel]="location()"
+						(ngModelChange)="location.set($event)"
+					>
+						@for (l of choices.data()?.locations ?? []; track l.id) {
+						<option [value]="l.id">{{ l.name }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="claim_head"
+					>
+						{{ 'cash_expense_head' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="claim_head"
+						[ngModel]="head()"
+						(ngModelChange)="head.set($event)"
+					>
+						<option value="">—</option>
+						@for (h of choices.data()?.heads ?? []; track h.id) {
+						<option [value]="h.id">{{ h.name }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="claim_amount"
+					>
+						{{ 'amount' | transloco }}
+					</label>
+					<div class="input-group">
+						<span class="input-group-text">₹</span>
+						<input
+							class="form-control"
+							id="claim_amount"
+							inputmode="decimal"
+							[ngModel]="amount()"
+							(ngModelChange)="amount.set($event)"
+						/>
+					</div>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="claim_spent_on"
+					>
+						{{ 'cash_spent_on' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="claim_spent_on"
+						type="date"
+						[ngModel]="spentOn()"
+						(ngModelChange)="spentOn.set($event)"
+					/>
+				</div>
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="claim_what_for"
+					>
+						{{ 'cash_what_for' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="claim_what_for"
+						maxlength="300"
+						[ngModel]="whatFor()"
+						(ngModelChange)="whatFor.set($event)"
+					/>
+				</div>
+				<div class="col-md-6">
+					<span class="form-label-title d-block">{{ 'cash_bill_or_photo' | transloco }}</span>
+					@if (bill(); as b) {
+					<span>{{ b.name }}</span>
+					<button
+						type="button"
+						class="btn btn-sm btn-outline ms-2"
+						[title]="'remove' | transloco"
+						(click)="bill.set(null)"
+					>
+						<i class="ri-close-line"></i>
+					</button>
+					} @else {
+					<button
+						type="button"
+						class="btn btn-outline"
+						id="claim_pick_bill"
+						(click)="pickBill()"
+					>
+						<i class="ri-attachment-2"></i>
+						{{ 'cash_pick_bill' | transloco }}
+					</button>
+					}
+				</div>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="claim_save"
+				[disabled]="!ready() || busy()"
+				(click)="save()"
+			>
+				{{ 'cash_send_claim' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+</app-page-wrapper>

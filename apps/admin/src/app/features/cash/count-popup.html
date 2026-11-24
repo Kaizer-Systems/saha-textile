@@ -1,0 +1,87 @@
+<div class="modal-header">
+	<h5 class="mb-0">{{ options().title | transloco: options().titleParams ?? {} }}</h5>
+	@if (options().cancel !== false) {
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	></button>
+	}
+</div>
+<div class="modal-body theme-form theme-form-2">
+	<div
+		class="alert d-flex align-items-start gap-2"
+		[class.alert-info]="options().tone !== 'warning'"
+		[class.alert-warning]="options().tone === 'warning'"
+	>
+		<i [class]="options().tone === 'warning' ? 'ri-refresh-line' : 'ri-information-line'"></i>
+		<span>{{ (touch ? 'cash_count_touch' : options().info) | transloco: options().infoParams ?? {} }}</span>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th class="text-start">{{ 'cash_note_or_coin' | transloco }}</th>
+					<th class="text-end">{{ 'cash_how_many' | transloco }}</th>
+					<th class="text-end">{{ 'amount' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of rows(); track row.denomination.kind + row.denomination.valuePaise; let i = $index) {
+				<tr>
+					<td class="text-start text-nowrap">
+						<i [class]="row.denomination.kind === 'note' ? 'ri-bank-card-line' : 'ri-copper-coin-line'"></i>
+						₹{{ row.denomination.valuePaise / 100 }} {{ 'cash_' + row.denomination.kind | transloco }}
+					</td>
+					<td>
+						<input
+							class="form-control text-end"
+							inputmode="numeric"
+							[class.form-control-lg]="touch"
+							[id]="'cash_count_' + row.denomination.kind + '_' + row.denomination.valuePaise"
+							[attr.aria-label]="'cash_how_many' | transloco"
+							[ngModel]="row.count"
+							(ngModelChange)="setCount(i, $event)"
+						/>
+					</td>
+					<td class="text-end">@if (amount(row); as paise) { {{ inr(paise) }} } @else { — }</td>
+				</tr>
+				}
+				<tr>
+					<td
+						class="text-start"
+						colspan="2"
+					>
+						<b>{{ (options().total ?? 'cash_you_counted') | transloco }}</b>
+					</td>
+					<td
+						class="text-end"
+						id="cash_count_total"
+					>
+						<b>{{ inr(total()) }}</b>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</div>
+<div class="modal-footer">
+	@if (options().cancel !== false) {
+	<button
+		type="button"
+		class="btn btn-outline"
+		(click)="modal.dismiss()"
+	>
+		{{ 'cancel' | transloco }}
+	</button>
+	}
+	<button
+		type="button"
+		class="btn btn-theme"
+		id="cash_count_submit"
+		(click)="submit()"
+	>
+		{{ options().action | transloco }}
+	</button>
+</div>

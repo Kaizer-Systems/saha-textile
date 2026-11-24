@@ -77,6 +77,7 @@ export class PettyService {
 			sheetOpen: !!open,
 			openedAt: open?.openedAt ?? null,
 			billNeeded: amountPaise > settings.rules.billPhotoOverPaise,
+			billOverPaise: settings.rules.billPhotoOverPaise,
 		};
 	}
 

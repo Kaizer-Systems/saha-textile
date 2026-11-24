@@ -1,0 +1,330 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'cash_boxes'"
+>
+	<div
+		button
+		class="d-flex flex-wrap gap-2"
+	>
+		@if (canEdit()) {
+		<button
+			type="button"
+			class="btn btn-outline"
+			id="cash_box_add"
+			(click)="editBox(boxModal, null)"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'cash_box_add' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="cash_settings_save"
+			[disabled]="busy()"
+			(click)="save()"
+		>
+			{{ 'save' | transloco }}
+		</button>
+		}
+	</div>
+	<p class="small text-muted mb-3">{{ 'cash_boxes_sub' | transloco }}</p>
+	<div class="card">
+		<div class="card-body">
+			<div class="title-header">
+				<h5>{{ 'cash_boxes' | transloco }}</h5>
+			</div>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table
+					class="all-package theme-table no-footer table"
+					id="cash_boxes_table"
+				>
+					<thead>
+						<tr>
+							<th>{{ 'cash_box' | transloco }}</th>
+							<th>{{ 'location' | transloco }}</th>
+							<th>{{ 'cash_kind' | transloco }}</th>
+							<th class="text-end">{{ 'cash_opening_float' | transloco }}</th>
+							<th>{{ 'cash_counted_by' | transloco }}</th>
+							<th>{{ 'cash_reviewed_by' | transloco }}</th>
+							@if (canEdit()) {
+							<th></th>
+							}
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of boxes(); track row.key) {
+						<tr [class.text-muted]="!row.active">
+							<td>{{ row.name }}</td>
+							<td>{{ placeName(row.locationId) }}</td>
+							<td>{{ 'cash_kind_' + row.kind | transloco }}</td>
+							<td class="text-end">{{ inr(row.floatPaise) }}</td>
+							<td>{{ 'cash_who_' + row.countedBy | transloco }}</td>
+							<td>{{ 'cash_who_' + row.reviewedBy | transloco }}</td>
+							@if (canEdit()) {
+							<td>
+								<a
+									href="javascript:void(0)"
+									[title]="'edit' | transloco"
+									[attr.aria-label]="'edit' | transloco"
+									(click)="editBox(boxModal, row)"
+								>
+									<i class="ri-pencil-line"></i>
+								</a>
+							</td>
+							}
+						</tr>
+						} @empty {
+						<tr>
+							<td colspan="7">{{ 'cash_no_boxes' | transloco }}</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+	<div class="card">
+		<div class="card-body">
+			<div class="title-header">
+				<h5>{{ 'cash_notes_coins' | transloco }}</h5>
+			</div>
+			<div class="row g-3">
+				@for (d of denominations(); track d.kind + d.valuePaise; let i = $index) {
+				<div class="col-xl-3 col-md-4 d-flex align-items-center col-6 gap-2">
+					<label class="switch mb-0">
+						<input
+							type="checkbox"
+							[id]="'cash_denom_' + d.kind + '_' + d.valuePaise"
+							[checked]="d.on"
+							[disabled]="!canEdit()"
+							(change)="toggle(i, $any($event.target).checked)"
+						/>
+						<span class="switch-state"></span>
+					</label>
+					<span>₹{{ d.valuePaise / 100 }} {{ 'cash_' + d.kind | transloco }}</span>
+				</div>
+				}
+			</div>
+			<p class="small text-muted mt-3 mb-0">{{ 'cash_notes_coins_hint' | transloco }}</p>
+		</div>
+	</div>
+	<div class="card">
+		<div class="card-body theme-form theme-form-2">
+			<div class="title-header">
+				<h5>{{ 'cash_rules' | transloco }}</h5>
+			</div>
+			<div class="row g-3">
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="cash_rule_bill"
+					>
+						{{ 'cash_rule_bill' | transloco }}
+					</label>
+					<div class="input-group">
+						<span class="input-group-text">₹</span>
+						<input
+							class="form-control"
+							id="cash_rule_bill"
+							inputmode="decimal"
+							[disabled]="!canEdit()"
+							[ngModel]="bill()"
+							(ngModelChange)="bill.set($event)"
+						/>
+					</div>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="cash_rule_days"
+					>
+						{{ 'cash_rule_suspense' | transloco }}
+					</label>
+					<div class="input-group">
+						<input
+							class="form-control"
+							id="cash_rule_days"
+							type="number"
+							min="1"
+							max="365"
+							[disabled]="!canEdit()"
+							[ngModel]="days()"
+							(ngModelChange)="days.set($event)"
+						/>
+						<span class="input-group-text">{{ 'cash_days' | transloco }}</span>
+					</div>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="cash_rule_auto"
+					>
+						{{ 'cash_rule_auto' | transloco }}
+					</label>
+					<div class="input-group">
+						<span class="input-group-text">₹</span>
+						<input
+							class="form-control"
+							id="cash_rule_auto"
+							inputmode="decimal"
+							[disabled]="!canEdit()"
+							[ngModel]="autoAccept()"
+							(ngModelChange)="autoAccept.set($event)"
+						/>
+					</div>
+					<small class="text-muted">{{ 'cash_rule_auto_hint' | transloco }}</small>
+				</div>
+			</div>
+		</div>
+	</div>
+	<ng-template
+		#boxModal
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="mb-0">{{ (editing().id ? 'cash_box_edit' : 'cash_box_add') | transloco }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			<div class="row g-3">
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="box_name"
+					>
+						{{ 'cash_box' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="box_name"
+						maxlength="60"
+						[ngModel]="editing().name"
+						(ngModelChange)="setEditing({ name: $event })"
+					/>
+				</div>
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="box_location"
+					>
+						{{ 'location' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="box_location"
+						[ngModel]="editing().locationId"
+						(ngModelChange)="setEditing({ locationId: $event })"
+					>
+						@for (l of locations.data() ?? []; track l.id) {
+						<option [value]="l.id">{{ l.name }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="box_kind"
+					>
+						{{ 'cash_kind' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="box_kind"
+						[ngModel]="editing().kind"
+						(ngModelChange)="setEditing({ kind: $event })"
+					>
+						<option value="day_sheet">{{ 'cash_kind_day_sheet' | transloco }}</option>
+						<option value="fixed_float">{{ 'cash_kind_fixed_float' | transloco }}</option>
+					</select>
+				</div>
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="box_float"
+					>
+						{{ 'cash_opening_float' | transloco }}
+					</label>
+					<div class="input-group">
+						<span class="input-group-text">₹</span>
+						<input
+							class="form-control"
+							id="box_float"
+							inputmode="decimal"
+							[ngModel]="float()"
+							(ngModelChange)="float.set($event)"
+						/>
+					</div>
+				</div>
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="box_counted"
+					>
+						{{ 'cash_counted_by' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="box_counted"
+						[ngModel]="editing().countedBy"
+						(ngModelChange)="setEditing({ countedBy: $event })"
+					>
+						<option value="cashier">{{ 'cash_who_cashier' | transloco }}</option>
+						<option value="location_manager">{{ 'cash_who_location_manager' | transloco }}</option>
+					</select>
+				</div>
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="box_reviewed"
+					>
+						{{ 'cash_reviewed_by' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="box_reviewed"
+						[ngModel]="editing().reviewedBy"
+						(ngModelChange)="setEditing({ reviewedBy: $event })"
+					>
+						<option value="location_manager">{{ 'cash_who_location_manager' | transloco }}</option>
+						<option value="owner">{{ 'cash_who_owner' | transloco }}</option>
+					</select>
+				</div>
+				<div class="d-flex align-items-center col-12 gap-2">
+					<label class="switch mb-0">
+						<input
+							type="checkbox"
+							id="box_active"
+							[checked]="editing().active"
+							(change)="setEditing({ active: $any($event.target).checked })"
+						/>
+						<span class="switch-state"></span>
+					</label>
+					<span>{{ 'cash_box_in_use' | transloco }}</span>
+				</div>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="box_keep"
+				[disabled]="!editing().name.trim() || !editing().locationId"
+				(click)="keepBox()"
+			>
+				{{ 'done' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+</app-page-wrapper>

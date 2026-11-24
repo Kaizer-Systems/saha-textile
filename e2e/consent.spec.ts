@@ -118,8 +118,21 @@ test.describe('Cookie box', () => {
 	test("the Privacy Policy link opens in the shopper's language", async ({ page }) => {
 		// The link is the shop's own router link: a click before the page is interactive is lost.
 		await page.goto('/bn/', { waitUntil: 'networkidle' });
-		await box(page).locator('.cookie-contain a').click();
-		await expect(page).toHaveURL(/\/bn\/privacy-policy/);
+		const errors: string[] = [];
+		page.on('pageerror', (error) => errors.push(error.message));
+		const link = box(page).locator('.cookie-contain a');
+		// CI keeps no screenshots: say whether the box was awake when tapped, where the link points, and any error.
+		const awake = await page.locator('app-cookie').evaluate((host) => !host.hasAttribute('ngh'));
+		const href = await link.getAttribute('href');
+		await link.click();
+		try {
+			await expect(page).toHaveURL(/\/bn\/privacy-policy/);
+		} catch (error) {
+			throw new Error(
+				`The link did not open the policy; box awake when tapped: ${awake}, link: ${href}, page errors: ${errors.join(' | ') || 'none'}`,
+				{ cause: error },
+			);
+		}
 		await expect(page.locator('.ckeditor-content')).toContainText('একান্ত দরকারি');
 	});
 

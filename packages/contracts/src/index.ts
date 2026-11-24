@@ -91,5 +91,6 @@ export * from './bank';
 export * from './bank-statement';
 export * from './bank-reconcile';
 export * from './settlements';
+export * from './gst-returns';
 export * from './accounts-lists';
 export * from './accounts-templates';

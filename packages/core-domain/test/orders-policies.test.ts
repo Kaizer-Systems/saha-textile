@@ -895,6 +895,8 @@ describe('document numbering (DEC-NUMBERING)', () => {
 			stockAdjustment: series('SA', 4),
 			stockCount: series('SC', 3),
 			openingStock: series('OS', 6),
+			pettyExpense: series('PC', 6),
+			expenseClaim: series('EC', 6),
 		},
 		lockedTypes: [],
 		revision: 0,

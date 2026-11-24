@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import type { AccountsTemplate } from '@saha-textile/contracts';
 import { starterTemplates } from '@saha-textile/core-domain';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { AccountsTemplatesController } from '../src/accounts-templates/accounts-templates.controller';
 import { AccountsTemplatesModule } from '../src/accounts-templates/accounts-templates.module';
@@ -62,8 +62,8 @@ describe('accounts templates library (T2)', () => {
 			updateAvailable: false,
 		});
 		expect(rows.find((r) => r.code === 'CH-COMMON')).toMatchObject({
-			latestVersion: 2,
-			validFrom: '2026-04-01',
+			latestVersion: 3,
+			validFrom: '2026-11-25',
 			caReview: 'pending',
 		});
 		expect(rows.every((r) => !('versions' in r))).toBe(true);
@@ -81,7 +81,7 @@ describe('accounts templates library (T2)', () => {
 		] as never[]);
 		const rows = await service.library();
 		expect(rows.find((r) => r.code === 'CH-COMMON')).toMatchObject({
-			latestVersion: 2,
+			latestVersion: 3,
 			installedVersion: 1,
 			updateAvailable: true,
 		});
@@ -129,14 +129,14 @@ describe('accounts templates library (T2)', () => {
 		const { stores, service } = serviceFor(null);
 		const { chart, picks } = await service.startingChart();
 		expect(picks).toEqual([
-			{ code: 'CH-COMMON', version: 2 },
+			{ code: 'CH-COMMON', version: 3 },
 			{ code: 'CH-PROP', version: 2 },
 		]);
 		expect(chart.ledgers.find((l) => l.key === 'legal_fees')?.roles).toEqual(['legal_fees']);
 		await service.recordInstalls(picks);
 		await service.recordInstalls([{ code: 'CH-FIRM', version: 1 }]);
 		expect(stores.installs.rows.map((i) => [i.code, i.version])).toEqual([
-			['CH-COMMON', 2],
+			['CH-COMMON', 3],
 			['CH-PROP', 2],
 		]);
 		expect(await service.kind()).toBe('proprietorship');
@@ -238,11 +238,11 @@ describe('accounts templates library (T2)', () => {
 		expect(opens).toMatchObject({ locked: 10, booksSetUp: false });
 		expect(opens.reports.map((r) => r.code)).toEqual(['RP-SCH3-BS', 'RP-SCH3-PL']);
 		expect(opens.charts.map((c) => [c.code, c.version])).toEqual([
-			['CH-COMMON', 2],
+			['CH-COMMON', 3],
 			['CH-PVT', 3],
 		]);
 		expect(opens.taxRules).toEqual([
-			{ code: 'RS-LIMITS', name: 'Limits', version: 1, entries: 6 },
+			{ code: 'RS-LIMITS', name: 'Limits', version: 2, entries: 8 },
 			{ code: 'RS-RCM', name: 'Reverse-charge list', version: 1, entries: 6 },
 			{ code: 'RS-TDS', name: 'TDS sections', version: 1, entries: 9 },
 		]);
@@ -250,7 +250,7 @@ describe('accounts templates library (T2)', () => {
 		await service.installUnlocked('usr_owner');
 		expect(stores.installs.rows.map((i) => [i.code, i.version, i.installedBy])).toEqual([
 			['CH-COMMON', 1, null],
-			['RS-LIMITS', 1, 'usr_owner'],
+			['RS-LIMITS', 2, 'usr_owner'],
 			['RS-RCM', 1, 'usr_owner'],
 			['RS-TDS', 1, 'usr_owner'],
 			['CH-PVT', 3, 'usr_owner'],
@@ -271,5 +271,18 @@ describe('accounts templates library (T2)', () => {
 		expect((await routes.library()).length).toBe(CODES.length);
 		expect((await routes.get('CH-PROP')).code).toBe('CH-PROP');
 		expect(new AccountsTemplatesModule()).toBeInstanceOf(AccountsTemplatesModule);
+	});
+});
+
+describe('limits from the limits rule set (accounts brief O4)', () => {
+	it('reads a limit in force on a day for the company’s kind, from the version it installed', async () => {
+		const { stores, service } = serviceFor('proprietorship');
+		expect(await service.limitOn('cash_payment_one_person', '2026-11-24')).toBe(10_000);
+		expect(await service.limitOn('cash_receipt_one_person', '2026-11-26')).toBe(200_000);
+		expect(await service.limitOn('nothing', '2026-11-24')).toBeNull();
+		expect(await service.limitOn('llp_audit_turnover', '2026-11-24')).toBeNull();
+		expect(await service.limitOn('cash_payment_one_person', '2001-01-01')).toBeNull();
+		vi.spyOn(stores.templates, 'findByCode').mockResolvedValueOnce(null);
+		expect(await service.limitOn('cash_payment_one_person', '2026-11-24')).toBeNull();
 	});
 });

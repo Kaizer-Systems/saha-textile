@@ -35,6 +35,9 @@ export const NumberedDocumentType = z.enum([
 	'stockAdjustment',
 	'stockCount',
 	'openingStock',
+	/** Cash (accounts brief O4, O12). */
+	'pettyExpense',
+	'expenseClaim',
 ]);
 export type NumberedDocumentType = z.infer<typeof NumberedDocumentType>;
 
@@ -124,13 +127,38 @@ export const OrderNumberFormat = z.discriminatedUnion('kind', [
 ]);
 export type OrderNumberFormat = z.infer<typeof OrderNumberFormat>;
 
+/** The series as accepted on 2026-11-20; petty cash (PC) and expense claims (EC) added with cash, 2026-11-24. */
+export const DEFAULT_SERIES: Record<NumberedDocumentType, z.infer<typeof SeriesFormat>> = {
+	taxInvoice: { prefix: 'TI', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
+	creditNote: { prefix: 'CN', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
+	debitNote: { prefix: 'DN', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
+	receipt: { prefix: 'RC', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
+	refundVoucher: { prefix: 'RF', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
+	deliveryChallan: { prefix: 'DC', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
+	paymentVoucher: { prefix: 'PV', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
+	selfInvoice: { prefix: 'SI', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
+	purchaseOrder: { prefix: 'PO', separator: '/', includeFinancialYear: true, digits: 4, reset: 'fy' },
+	purchaseEntry: { prefix: 'PE', separator: '/', includeFinancialYear: true, digits: 5, reset: 'fy' },
+	purchaseReturnNote: { prefix: 'PR', separator: '/', includeFinancialYear: true, digits: 4, reset: 'fy' },
+	journal: { prefix: 'JV', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
+	stockAdjustment: { prefix: 'SA', separator: '/', includeFinancialYear: true, digits: 4, reset: 'fy' },
+	stockCount: { prefix: 'SC', separator: '/', includeFinancialYear: true, digits: 3, reset: 'fy' },
+	openingStock: { prefix: 'OS', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
+	pettyExpense: { prefix: 'PC', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
+	expenseClaim: { prefix: 'EC', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
+};
+
 export const DocumentNumberingSettings = z.object({
 	/** OD18 Final: `ST-YYMM-NNNNNN`. Still a setting, never locked (an order number is not a GST document). */
 	order: OrderNumberFormat,
 	parcel: OrderChildFormat,
 	return: OrderChildFormat,
 	paymentRequest: OrderChildFormat,
-	series: z.record(NumberedDocumentType, SeriesFormat),
+	/** A type added after the settings were saved takes its default series. */
+	series: z.preprocess(
+		(value) => ({ ...DEFAULT_SERIES, ...(value && typeof value === 'object' ? value : {}) }),
+		z.record(NumberedDocumentType, SeriesFormat),
+	),
 	/** Types whose first number has been issued; their format can no longer change. */
 	lockedTypes: z.array(NumberedDocumentType).default([]),
 	revision: z.number().int().nonnegative().default(0),
@@ -145,23 +173,7 @@ export const DEFAULT_DOCUMENT_NUMBERING: DocumentNumberingSettings = {
 	parcel: { letter: 'P', separator: '/' },
 	return: { letter: 'R', separator: '/' },
 	paymentRequest: { letter: 'Q', separator: '/' },
-	series: {
-		taxInvoice: { prefix: 'TI', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
-		creditNote: { prefix: 'CN', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
-		debitNote: { prefix: 'DN', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
-		receipt: { prefix: 'RC', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
-		refundVoucher: { prefix: 'RF', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
-		deliveryChallan: { prefix: 'DC', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
-		paymentVoucher: { prefix: 'PV', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
-		selfInvoice: { prefix: 'SI', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
-		purchaseOrder: { prefix: 'PO', separator: '/', includeFinancialYear: true, digits: 4, reset: 'fy' },
-		purchaseEntry: { prefix: 'PE', separator: '/', includeFinancialYear: true, digits: 5, reset: 'fy' },
-		purchaseReturnNote: { prefix: 'PR', separator: '/', includeFinancialYear: true, digits: 4, reset: 'fy' },
-		journal: { prefix: 'JV', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
-		stockAdjustment: { prefix: 'SA', separator: '/', includeFinancialYear: true, digits: 4, reset: 'fy' },
-		stockCount: { prefix: 'SC', separator: '/', includeFinancialYear: true, digits: 3, reset: 'fy' },
-		openingStock: { prefix: 'OS', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
-	},
+	series: DEFAULT_SERIES,
 	lockedTypes: [],
 	revision: 0,
 	updatedAt: null,

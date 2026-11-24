@@ -601,3 +601,29 @@ export const ClaimList = z.object({
 	counts: z.record(ClaimChip, z.number().int().nonnegative()),
 });
 export type ClaimList = z.infer<typeof ClaimList>;
+
+/* ------------------------------------------------------------------ what the cash screens choose from */
+
+export const CashTodayQuery = z.object({ boxId: Id.nullable().default(null) });
+export type CashTodayQuery = z.infer<typeof CashTodayQuery>;
+
+export const PettyCheckQuery = z.object({
+	boxId: Id,
+	paidTo: z.string().trim().max(120).default(''),
+	amountPaise: z.coerce.number().int().min(0).max(1_000_000_000_000),
+});
+export type PettyCheckQuery = z.infer<typeof PettyCheckQuery>;
+
+/** The boxes a person may use, the banks money moves to, the petty heads and the staff a claim can be for. */
+export const CashChoices = z.object({
+	boxes: z.array(CashBox.extend({ locationName: z.string() })),
+	banks: z.array(z.object({ id: Id, name: z.string() })),
+	heads: z.array(z.object({ id: Id, name: z.string() })),
+	ledgers: z.array(z.object({ id: Id, name: z.string() })),
+	staff: z.array(z.object({ id: Id, name: z.string() })),
+	locations: z.array(z.object({ id: Id, name: z.string() })),
+	manager: z.boolean(),
+	superAdmin: z.boolean(),
+	userId: Id.nullable(),
+});
+export type CashChoices = z.infer<typeof CashChoices>;

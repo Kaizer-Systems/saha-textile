@@ -249,6 +249,22 @@ export class AccountsTemplatesService {
 		);
 	}
 
+	/**
+	 * A limit from the limits rule set (RS-LIMITS) in force on a day for this company's kind, in rupees, from the
+	 * version the company has installed (accounts brief O4: cash paid to one person in a day). Null when there is none.
+	 */
+	async limitOn(key: string, day: string): Promise<number | null> {
+		await this.ensureLibrary();
+		const template = await this.templates.findByCode('RS-LIMITS');
+		if (!template) return null;
+		const installed = await this.installedVersion(template);
+		const version = versionOn({ versions: template.versions.filter((v) => v.version <= installed) }, day);
+		if (version?.content.kind !== 'taxRules') return null;
+		const kind = await this.kind();
+		const entry = entriesOn((version.content as TaxRuleSetContent).entries, kind, day).find((e) => e.key === key);
+		return entry?.limitINR ?? null;
+	}
+
 	/** A save refused because someone saved since: said in words. */
 	private async saveOrConflict(template: AccountsTemplate, expectedUpdatedAt: string): Promise<AccountsTemplate> {
 		try {

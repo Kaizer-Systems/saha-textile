@@ -213,10 +213,10 @@ describe('Import (AT2) and installed charts (AT4)', () => {
 	it('records a newer version installed (AT7), offering no update after', async () => {
 		const { service, stores } = await setup([{ code: 'CH-COMMON', version: 1 }]);
 		expect((await service.library()).find((r) => r.code === 'CH-COMMON')?.updateAvailable).toBe(true);
-		await service.markInstalled('CH-COMMON', 2, 'adm_owner', now);
+		await service.markInstalled('CH-COMMON', 3, 'adm_owner', now);
 		expect(stores.installs.rows.find((r) => r.code === 'CH-COMMON')).toEqual({
 			code: 'CH-COMMON',
-			version: 2,
+			version: 3,
 			installedAt: now.toISOString(),
 			installedBy: 'adm_owner',
 		});

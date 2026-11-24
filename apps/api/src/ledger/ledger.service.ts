@@ -7,6 +7,7 @@ import {
 	Inject,
 	Injectable,
 	NotFoundException,
+	Optional,
 } from '@nestjs/common';
 import {
 	AccountGroup,
@@ -39,6 +40,7 @@ import {
 	type AdminUserRepository,
 	type AdminUserRoleAssignmentRepository,
 	type AuditLogRepository,
+	type CashRepository,
 	type CompanyRepository,
 	type DocumentLockRepository,
 	fiscalYearOf,
@@ -71,6 +73,7 @@ import {
 	ADMIN_USER_REPOSITORY,
 	ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
+	CASH_REPOSITORY,
 	COMPANY_REPOSITORY,
 	DOCUMENT_LOCK_REPOSITORY,
 	GENERAL_LEDGER_REPOSITORY,
@@ -116,6 +119,8 @@ const LOCK_IDLE_MS = 2 * 60_000;
 @Injectable()
 export class LedgerService {
 	private seeding: Promise<void> | null = null;
+	/** Others told of every voucher, in its own transaction (cash sheets write their lines, accounts brief O3). */
+	private readonly listeners: ((voucher: JournalVoucher, context: TransactionContext) => Promise<void>)[] = [];
 
 	constructor(
 		@Inject(GENERAL_LEDGER_REPOSITORY) private readonly books: GeneralLedgerRepository,
@@ -138,6 +143,8 @@ export class LedgerService {
 		private readonly numbers: DocumentNumbersService,
 		private readonly locations: LocationsService,
 		private readonly templates: AccountsTemplatesService,
+		/** Cash sheets a month lock waits for (T2, accounts brief O); last so older callers keep working. */
+		@Optional() @Inject(CASH_REPOSITORY) private readonly cash: Pick<CashRepository, 'unfinishedIn'> | null = null,
 	) {}
 
 	/** The name others see on a lock: display name, else e-mail, else username. */
@@ -379,7 +386,13 @@ export class LedgerService {
 			{ number: voucher.number, kind: voucher.kind, totalPaise: voucher.totalPaise },
 			context,
 		);
+		for (const listener of this.listeners) await listener(voucher, context);
 		return voucher;
+	}
+
+	/** Hears of every voucher posted, inside its transaction: a listener that fails undoes the voucher. */
+	onPosted(listener: (voucher: JournalVoucher, context: TransactionContext) => Promise<void>): void {
+		this.listeners.push(listener);
 	}
 
 	/** The ledger playing a role; a role with no ledger, or several, refuses the posting. */
@@ -630,16 +643,18 @@ export class LedgerService {
 	}
 
 	/**
-	 * T2's checks before locking a month (as drawn). Cash sheets, transfers, depreciation and payroll answer
-	 * `not_in_use` until those features exist (C1, C3, A1, P1); the rest are checked now: drafts dated in the
-	 * month, reversals due in it, stock counts still open, and stock changes waiting for approval.
+	 * T2's checks before locking a month (as drawn). Transfers, depreciation and payroll answer `not_in_use` until
+	 * those features exist (C3, A1, P1); the rest are checked now: cash sheets of the month still open or waiting for a
+	 * manager, drafts dated in the month, reversals due in it, stock counts still open, and stock changes waiting for
+	 * approval.
 	 */
 	async periodChecks(month: string): Promise<PeriodCheck[]> {
-		const [drafts, due, counts, approvals] = await Promise.all([
+		const [drafts, due, counts, approvals, sheets] = await Promise.all([
 			this.books.listDrafts(),
 			this.books.dueReversals(`${month}-31`),
 			this.counts.list({ filter: 'all', page: 1, pageSize: 1 }),
 			this.approvals.pendingCount(),
+			this.cash?.unfinishedIn(month) ?? null,
 		]);
 		const attention = (key: PeriodCheck['key'], count: number): PeriodCheck => ({
 			key,
@@ -647,7 +662,7 @@ export class LedgerService {
 			count,
 		});
 		return [
-			{ key: 'cash_sheets', state: 'not_in_use', count: 0 },
+			sheets ? attention('cash_sheets', sheets.length) : { key: 'cash_sheets', state: 'not_in_use', count: 0 },
 			{ key: 'transfers', state: 'not_in_use', count: 0 },
 			{ key: 'depreciation', state: 'not_in_use', count: 0 },
 			{ key: 'payroll', state: 'not_in_use', count: 0 },

@@ -142,6 +142,8 @@ export const TEMPLATE_INSTALL_REPOSITORY = Symbol('TemplateInstallRepository');
 export const ACCOUNTS_LISTS_READER = Symbol('AccountsListsReader');
 /** Self-invoices and payment vouchers (accounts brief D). */
 export const SELF_INVOICE_REPOSITORY = Symbol('SelfInvoiceRepository');
+/** Cash boxes, sheets, petty expenses and claims (accounts brief O). */
+export const CASH_REPOSITORY = Symbol('CashRepository');
 export const PAYMENT_VOUCHER_REPOSITORY = Symbol('PaymentVoucherRepository');
 /** Where money lands (Postings and Convert brief AP-D1). */
 export const MONEY_LANDING_REPOSITORY = Symbol('MoneyLandingRepository');

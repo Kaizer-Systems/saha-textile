@@ -131,6 +131,7 @@ const setup = (
 		noProfile?: boolean;
 		admins?: { findById: (id: string) => Promise<unknown> };
 		counts?: Record<string, number>;
+		cash?: { unfinishedIn: (month: string) => Promise<unknown[]> };
 	} = {},
 ) => {
 	const books = new MemoryBooks();
@@ -197,6 +198,7 @@ const setup = (
 					: { all: false, ids: ['loc_bar'], current: 'loc_bar' },
 		} as never,
 		templates.service,
+		(options.cash ?? null) as never,
 	);
 	return { service, books, audit, gst, templates, getLocks: () => locks };
 };
@@ -247,8 +249,8 @@ describe('general ledger (accounts brief Q, T, D10)', () => {
 		expect(await templates.service.booksSetUp()).toBe(false);
 		const library = await service.setUpBooks('adm_owner');
 		expect(templates.installs.rows.map(({ code, version }) => [code, version])).toEqual([
-			['CH-COMMON', 2],
-			['RS-LIMITS', 1],
+			['CH-COMMON', 3],
+			['RS-LIMITS', 2],
 			['RS-RCM', 1],
 			['RS-TDS', 1],
 			['CH-PVT', 3],
@@ -434,6 +436,19 @@ describe('general ledger (accounts brief Q, T, D10)', () => {
 			stock_counts: ['attention', 1],
 			stock_approvals: ['attention', 2],
 		});
+	});
+
+	it('counts the month’s cash sheets still open or waiting for a manager, and tells listeners of every voucher', async () => {
+		const { service } = setup({
+			cash: { unfinishedIn: async (month: string) => (month === '2026-11' ? [{}, {}] : []) },
+		});
+		const check = async (month: string) => (await service.periodChecks(month)).find((c) => c.key === 'cash_sheets');
+		expect(await check('2026-11')).toEqual({ key: 'cash_sheets', state: 'attention', count: 2 });
+		expect(await check('2026-10')).toEqual({ key: 'cash_sheets', state: 'ok', count: 0 });
+		const heard: unknown[][] = [];
+		service.onPosted(async (voucher, context) => void heard.push([voucher.idempotencyKey, context]));
+		await service.postByHand(rentPaid({ idempotencyKey: 'rent-heard-0001' }), owner);
+		expect(heard).toEqual([['rent-heard-0001', {}]]);
 	});
 
 	it('marks GSTR-3B filed with its ARN, once, and then refuses cash and purchase entries of that month for that GSTIN', async () => {

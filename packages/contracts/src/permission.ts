@@ -73,6 +73,10 @@ export const PermissionCode = z.enum([
 	'business.index',
 	'business.settle',
 	'cart.index',
+	'cash.count',
+	'cash.index',
+	'cash.manage',
+	'cash.settings',
 	'category.create',
 	'category.destroy',
 	'category.edit',
@@ -106,6 +110,7 @@ export const PermissionCode = z.enum([
 	'event.edit',
 	'event.index',
 	'event.publish',
+	'expense_claim.create',
 	'faq.create',
 	'faq.destroy',
 	'faq.edit',
@@ -413,6 +418,12 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 		'Add ledgers and groups and rename or switch off ledgers on Accounts › Chart of accounts (Q1); POST/PUT /admin/accounts/chart/*. System groups and ledgers keep their place.',
 	'accounts.lock':
 		'Close a month for staff or lock it, part by part, with a reason, and reopen it, on Accounts › Periods and locks (T1, T2); POST /admin/accounts/periods. Held by the Administrator role.',
+	'cash.count':
+		"Open the day's cash sheet by counting the float, add a petty expense or a bank deposit, and close the day by counting the till blind (accounts brief O2–O7, O14) on Cash › Today's sheet; POST /admin/cash/sheets/*. Sees no amounts while a sheet is open.",
+	'cash.manage':
+		'See a cash sheet’s amounts and expected figures, close a sheet for another person, settle a difference (O8, the ten ways), refill a fixed float (O13) and approve or reject expense claims (O12); POST /admin/cash/sheets/:id/settle, /admin/cash/boxes/:id/refill, /admin/cash/claims/:id/decide. A box reviewed by the owner also needs the Administrator role.',
+	'expense_claim.create':
+		'New expense claim on Cash › Expense claims: a staff member’s own-pocket spend with its bill (accounts brief O12); POST /admin/cash/claims. Deciding it is cash.manage.',
 	'accounts_template.edit':
 		'Make, edit, publish and install accounts templates (charts of accounts, tax rule sets, report layouts) on Settings › Accounts templates (accounts templates AT-D4). Reading the library is accounts.index. Held by the Administrator role and the CA login.',
 	'location.edit':
@@ -448,6 +459,7 @@ export const PermissionResource = z.enum([
 	'blog',
 	'business',
 	'cart',
+	'cash',
 	'category',
 	'company',
 	'coupon',
@@ -456,6 +468,7 @@ export const PermissionResource = z.enum([
 	'dashboard',
 	'edocs',
 	'event',
+	'expense_claim',
 	'faq',
 	'language',
 	'location',

@@ -261,6 +261,7 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 		repos.numbers,
 		writer,
 		support,
+		repos.products,
 	);
 	const settingsService = new InventorySettingsService(repos.settings, support);
 	const shop = new ShopDetailsService(
@@ -1162,14 +1163,74 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 			];
 			const ready = await opening.check(rows);
 			expect(ready.counts).toMatchObject({ ready: 1, readyPieces: 4, readyTenths: 0 });
+			const before = await repos.products.findById(ids.tant, 'admin');
 			const load = await opening.post(rows, 'os-key-0002', OWNER);
 			expect(load.number).toMatch(/^OS\//);
 			expect(ready.nextNumber).toBe(load.number);
+			// The four pieces count as received (badge rule); the load is first stock, not "back".
+			const after = await repos.products.findById(ids.tant, 'admin');
+			expect(after?.lifetimeUnitsReceived).toBe((before?.lifetimeUnitsReceived ?? 0) + 4);
+			expect(after?.backInStockAt).toBe(before?.backInStockAt);
 			expect((await opening.post(rows, 'os-key-0002', OWNER)).id).toBe(load.id);
 			expect(await refusalCode(opening.post(rows, 'os-key-0003', OWNER))).toBe('rows_not_ready');
+			// The repeated key answered the first load and received nothing twice.
+			expect((await repos.products.findById(ids.tant, 'admin'))?.lifetimeUnitsReceived).toBe(
+				after?.lifetimeUnitsReceived,
+			);
 			const listed = await opening.list(false);
 			expect(listed[0]).toMatchObject({ number: load.number, skus: 1, totalUnits: 4, totalValueINR: null });
 			expect((await opening.list(true))[0]?.totalValueINR).toBe(4_000);
+		});
+
+		it('counts every row of a product as received, metres in tenths, and posts even if a product went', async () => {
+			await ProductVariantModel.collection.insertMany([
+				variantDoc('var_it_tant_a', ids.tant, 'ST-TNT-1108-A', 1_890, 'teal') as never,
+				variantDoc('var_it_tant_b', ids.tant, 'ST-TNT-1108-B', 1_890, 'rust') as never,
+				variantDoc('var_it_fab_new', ids.fabric, 'ST-FAB-0007-N', 260, 'ivory') as never,
+				variantDoc('var_it_tant_c', ids.tant, 'ST-TNT-1108-C', 1_890, 'moss') as never,
+			]);
+			const [tant, fabric] = await Promise.all([
+				repos.products.findById(ids.tant, 'admin'),
+				repos.products.findById(ids.fabric, 'admin'),
+			]);
+			await opening.post(
+				[
+					{ row: 1, sku: 'ST-TNT-1108-A', quantity: 3, unitCostINR: 1_000, receivedOn: null, note: '' },
+					{ row: 2, sku: 'ST-FAB-0007-N', quantity: 12.5, unitCostINR: 150, receivedOn: null, note: '' },
+					{ row: 3, sku: 'ST-TNT-1108-B', quantity: 2, unitCostINR: 1_000, receivedOn: null, note: '' },
+				],
+				'os-key-0006',
+				OWNER,
+			);
+			expect((await repos.products.findById(ids.tant, 'admin'))?.lifetimeUnitsReceived).toBe(
+				(tant?.lifetimeUnitsReceived ?? 0) + 5,
+			);
+			expect((await repos.products.findById(ids.fabric, 'admin'))?.lifetimeUnitsReceived).toBe(
+				(fabric?.lifetimeUnitsReceived ?? 0) + 125,
+			);
+
+			// A product removed between the check and the post: the stock still posts, nothing to badge.
+			const saved: unknown[] = [];
+			const gone = new OpeningStockService(
+				repos.read,
+				repos.opening,
+				repos.layers,
+				repos.movement,
+				repos.numbers,
+				writer,
+				support,
+				{
+					findById: async () => null,
+					save: async (product: unknown) => void saved.push(product),
+				} as unknown as typeof repos.products,
+			);
+			const load = await gone.post(
+				[{ row: 1, sku: 'ST-TNT-1108-C', quantity: 1, unitCostINR: 1_000, receivedOn: null, note: '' }],
+				'os-key-0007',
+				OWNER,
+			);
+			expect(load.totalUnits).toBe(1);
+			expect(saved).toEqual([]);
 		});
 
 		it('takes received dates before the books-closed day (they only age the pieces) but not after today', async () => {

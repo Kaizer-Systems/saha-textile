@@ -4,7 +4,7 @@ wide: true
 description: Suppliers, purchase orders, purchase entries, purchase returns, stock with held pieces and approvals, counts, opening stock, reports, the settings pages (purchases and shop details), the product and category form rules, and fabric sold by the metre in the admin, the API and the shop.
 status: implemented
 audience: [beginner, frontend, backend]
-last_verified: '2026-11-18'
+last_verified: '2026-11-24'
 source_of_truth:
     - packages/contracts/src/purchasing.ts
     - packages/contracts/src/shop-details.ts
@@ -98,13 +98,15 @@ Internal numbers come from `numberCounters`, one counter per series and financia
 
 The received date only places pieces in the ageing bands; the load enters the books on the posting day, so a received date may lie before the books-closed date.
 
+Each load counts as stock received for its products: posting adds its units (pieces, or tenths of a metre) to the product's `lifetimeUnitsReceived`. The shop's badges read that figure. A product that has only ever held one unit shows no "Only N left", and a purchase entry starts Back in stock only for a product that has received units before. A load never sets the back-in-stock date, because it is a product's first stock.
+
 On a local database, `pnpm --filter @saha-textile/api seed:local-opening-stock -- --i-am-local` moves the demo catalogue's typed stock into opening-stock loads with a demo cost (55% of the selling price unless `--cost-pct` says otherwise). A second run changes nothing.
 
 ## Product and category forms
 
 - **Inventory tab.** Sold by (fixed once the product has stock, stock history or orders), the stock figures (on hand, held, free to sell) with Stock history, Adjust and Receive stock for the product and for each variant, and a read-only stock status worked out from free to sell. The typed stock box is kept in the code behind `typedStockBox` until its removal is approved; the API ignores a typed quantity.
 - **Metre fields.** Shortest cut (required, 1.0 m for a new metre product), up to four quick lengths with a label in every language (labels count as language to-dos), width in inches, and weight per metre (required; an order line weighs length × this). A metre product's low-stock level is typed in metres and stored in tenths.
-- **HSN and Can be returned** sit beside Categories. The first category is the main one. Choosing a different main category refills both; when that replaces a different HSN the popup offers Put back, Enter manually (a box with a tick for Enter and a cross for Esc) and Keep. An HSN has 4, 6 or 8 digits, checked in the form and by the API. "Can be returned" is the theme's switch (moved from the Status tab, owner 2026-11-18). It shows the main category's answer, with "Follows Sarees: can be returned." beside it, until someone flips it; then it is the product's own answer ("Set for this product", with a "Follow Sarees again" link that hands it back). The product stores `returnable` as `null` (follow; nothing copied, read from the main category by id), `true` or `false`; an order line freezes the answer at purchase.
+- **HSN and Can be returned** sit beside Categories. The first category is the main one. Choosing a different main category refills both; when that replaces a different HSN the popup offers Put back, Enter manually (a box with a tick for Enter and a cross for Esc) and Keep. An HSN has 4, 6 or 8 digits, checked in the form and by the API. "Can be returned" is the theme's switch, which replaced the Status tab's Return switch. It shows the main category's answer, with "Follows Sarees: can be returned." beside it, until someone flips it; then it is the product's own answer ("Set for this product", with a "Follow Sarees again" link that hands it back). The product stores `returnable` as `null` (follow; nothing copied, read from the main category by id), `true` or `false`; an order line freezes the answer at purchase.
 - **Category form.** HSN and Can be returned. Changing a saved category's HSN asks whether the products that follow it (their HSN is the category's old code or empty) take the new one; products with their own HSN are named and left alone. `GET /admin/catalog/categories/:id/hsn-impact` returns both groups.
 
 ## Fabric sold by the metre in the shop

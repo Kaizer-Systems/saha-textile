@@ -2623,3 +2623,20 @@ Convert" (https://claude.ai/artifact/76vgVJ5Ki6F4HRFd25iPV7); owner: "Approve al
   button is see-through), and hiding closed actions from Tab.
 - **Why it was late:** the brief waited for approval from 23 Nov and dropped out of its chat's open list at a compaction;
   an unanswered approval stays on the open list and is asked again.
+
+## Owner decision round (2026-11-24) — opening stock counts as units received
+
+- **Asked** by the purchases chat while it checked two lines the coverage chat had removed. The owner's answer, typed in
+  the coverage chat on 24 Nov: "remove both, and yes fix opening stock now".
+- **Remove both:**
+    - The product form's units-received and back-in-stock lines in `catalog.service.ts`. They had been dead since stock
+      left the product form (cleanup PS3).
+    - The empty-address fallback in `toBusiness`. A supplier is always saved with its address, and the fallback could
+      never pass the contract anyway.
+- **Opening stock:** posting a load adds its units to each product's units received (`lifetimeUnitsReceived`; pieces,
+  or tenths of a metre). The badge rule depends on it:
+    - a product that has only ever held one unit shows no "Only N left";
+    - a purchase entry starts Back in stock only for a product that has received units before.
+
+    Without this, everything loaded at launch would have stayed unbadged. A load never sets the back-in-stock date,
+    because it is a product's first stock.

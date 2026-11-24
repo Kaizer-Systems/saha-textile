@@ -12,6 +12,7 @@ import {
 	MongoMediaAssetRepository,
 	MongoNumberAllocator,
 	MongoOpeningStockRepository,
+	MongoProductRepository,
 	MongoRoleRepository,
 	MongoSearchOutboxRepository,
 	MongoStockHoldRepository,
@@ -162,6 +163,7 @@ async function main() {
 			new MongoNumberAllocator(),
 			writer,
 			support,
+			new MongoProductRepository(),
 		);
 		for (let start = 0; start < rows.length; start += ROWS_PER_LOAD) {
 			const batch = rows.slice(start, start + ROWS_PER_LOAD);

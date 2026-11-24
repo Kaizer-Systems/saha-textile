@@ -7,6 +7,7 @@ import {
 	type NumberAllocatorPort,
 	type OpeningStockRecord,
 	type OpeningStockRepository,
+	type ProductRepository,
 	type StockMovementPort,
 	StockMovementRefusedError,
 	type StockReadRepository,
@@ -23,6 +24,7 @@ import {
 	INVENTORY_COST_LAYER_REPOSITORY,
 	NUMBER_ALLOCATOR,
 	OPENING_STOCK_REPOSITORY,
+	PRODUCT_REPOSITORY,
 	STOCK_MOVEMENT,
 	STOCK_READ_REPOSITORY,
 } from '../infra/tokens';
@@ -44,6 +46,7 @@ export class OpeningStockService {
 		@Inject(NUMBER_ALLOCATOR) private readonly numbers: NumberAllocatorPort,
 		private readonly writer: StockWriter,
 		private readonly support: PurchasingSupport,
+		@Inject(PRODUCT_REPOSITORY) private readonly products: ProductRepository,
 	) {}
 
 	async check(rows: readonly OpeningStockRow[]): Promise<OpeningStockCheckResult> {
@@ -51,7 +54,8 @@ export class OpeningStockService {
 		const facts = await this.stock.bySku(skus);
 		const moved = await this.stock.withMovements([...facts.values()].map((fact) => fact.variantId));
 		const seen = new Map<string, number>();
-		for (const row of rows) seen.set(row.sku.trim(), (seen.get(row.sku.trim()) ?? 0) + 1);
+		const timesSeen = (sku: string) => seen.get(sku) ?? 0;
+		for (const row of rows) seen.set(row.sku.trim(), timesSeen(row.sku.trim()) + 1);
 		const today = this.support.today();
 		const checked = rows.map((row) => {
 			const fact = facts.get(row.sku.trim()) ?? null;
@@ -61,7 +65,7 @@ export class OpeningStockService {
 				quantity: row.quantity,
 				unitCostINR: row.unitCostINR,
 				hasStockOrMovements: fact ? moved.has(fact.variantId) : false,
-				repeated: (seen.get(row.sku.trim()) ?? 0) > 1,
+				repeated: timesSeen(row.sku.trim()) > 1,
 				receivedOn: row.receivedOn,
 				today,
 			});
@@ -132,12 +136,14 @@ export class OpeningStockService {
 				);
 				const id = `os_${randomUUID()}`;
 				const posted: OpeningStockRecord['rows'] = [];
+				const kinds: Array<{ units: number; soldBy: 'piece' | 'metre' }> = [];
 				for (const row of checked.rows) {
 					const fact = facts.get(row.sku.trim());
 					if (!fact) throw refuse('unknown_sku', `${row.sku} is not in the catalogue.`, String(row.row));
 					const units = fact.soldBy === 'metre' ? Math.round(row.quantity * 10) : row.quantity;
-					// Cost is typed per piece or per metre; layers hold it per stock unit.
-					const perUnit = roundUnitCost((row.unitCostINR ?? 0) / (fact.soldBy === 'metre' ? 10 : 1));
+					// Cost is typed per piece or per metre; layers hold it per stock unit. A ready row
+					// always has its cost (the check refuses one without).
+					const perUnit = roundUnitCost(Number(row.unitCostINR) / (fact.soldBy === 'metre' ? 10 : 1));
 					const receivedOn = row.receivedOn ?? today;
 					const layerId = `lay_${randomUUID()}`;
 					await this.layers.createLayer(
@@ -183,6 +189,7 @@ export class OpeningStockService {
 						layerId,
 						note: row.note,
 					});
+					kinds.push({ units, soldBy: fact.soldBy });
 				}
 				const totalValueINR =
 					Math.round(posted.reduce((sum, row) => sum + row.quantity * row.unitCostINR * 100, 0)) / 100;
@@ -197,9 +204,7 @@ export class OpeningStockService {
 					totalValueINR,
 				};
 				await this.loads.save(load, context);
-				const units = describeUnits(
-					posted.map((row) => ({ units: row.quantity, soldBy: facts.get(row.sku)?.soldBy ?? 'piece' })),
-				);
+				const units = describeUnits(kinds);
 				await this.support.record(
 					{
 						actor,
@@ -224,8 +229,28 @@ export class OpeningStockService {
 				}
 				throw error;
 			});
+		await this.addUnitsReceived(record.rows);
 		await this.writer.refreshShop(record.rows.map((row) => row.productId));
 		return record;
+	}
+
+	/**
+	 * Opening stock counts as units received (owner, 24 Nov). The badge rule leaves a product that
+	 * has only ever held one unit without "Only N left", and that rule reads units received; without
+	 * this, everything loaded at launch would stay unbadged, and its first restock after selling out
+	 * would not show Back in stock (a purchase entry needs units received before it). A load is a
+	 * product's first stock, never a return to stock, so its back-in-stock date stays as it was.
+	 * Stock is in stock units: pieces, or tenths of a metre.
+	 */
+	private async addUnitsReceived(rows: OpeningStockRecord['rows']): Promise<void> {
+		const received = new Map<string, number>();
+		for (const row of rows) received.set(row.productId, (received.get(row.productId) ?? 0) + row.quantity);
+		for (const [productId, units] of received) {
+			const product = await this.products.findById(productId, 'admin');
+			// A product removed between the check and now has nothing left to badge.
+			if (!product) continue;
+			await this.products.save({ ...product, lifetimeUnitsReceived: product.lifetimeUnitsReceived + units });
+		}
 	}
 
 	/** Posted loads, newest first, with who posted them; cost and value only for `stock.cost` (P8). */

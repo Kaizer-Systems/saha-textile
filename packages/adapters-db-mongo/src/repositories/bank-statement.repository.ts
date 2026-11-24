@@ -1,7 +1,7 @@
-import { BankLayout, BankLine, type BankImport, type BankLineQuery } from '@saha-textile/contracts';
+import { BankLayout, BankLine, MatchRule, type BankImport, type BankLineQuery } from '@saha-textile/contracts';
 import type { BankStatementRepository, TransactionContext } from '@saha-textile/core-domain';
 
-import { BankImportModel, BankLayoutModel, BankLineModel } from '../models/bank.model';
+import { BankImportModel, BankLayoutModel, BankLineModel, BankMatchRuleModel } from '../models/bank.model';
 import type { AggregateDoc } from '../models/purchasing.model';
 import { sessionFrom } from '../transaction-manager';
 
@@ -72,5 +72,43 @@ export class MongoBankStatementRepository implements BankStatementRepository {
 			},
 		]).exec();
 		return Object.fromEntries(rows.map((r) => [r._id, { lastDate: r.lastDate, toMatch: r.toMatch }]));
+	}
+
+	async rules(): Promise<MatchRule[]> {
+		const docs = await BankMatchRuleModel.find({}).sort({ order: 1 }).lean<AggregateDoc[]>().exec();
+		return docs.map((doc) => MatchRule.parse(withId(doc)));
+	}
+
+	async saveRule(rule: MatchRule): Promise<void> {
+		await BankMatchRuleModel.replaceOne({ _id: rule.id }, docOf(rule), { upsert: true }).exec();
+	}
+
+	async line(id: string, context?: TransactionContext): Promise<BankLine | null> {
+		const doc = await BankLineModel.findById(id)
+			.session(sessionFrom(context) ?? null)
+			.lean<AggregateDoc>()
+			.exec();
+		return doc ? BankLine.parse(withId(doc)) : null;
+	}
+
+	async saveLine(line: BankLine, context?: TransactionContext): Promise<void> {
+		await BankLineModel.replaceOne({ _id: line.id }, docOf(line), { session: sessionFrom(context) }).exec();
+	}
+
+	async inPeriod(bankAccountId: string, from: string, to: string): Promise<BankLine[]> {
+		const docs = await BankLineModel.find({ bankAccountId, date: { $gte: from, $lte: to } })
+			.sort({ date: 1, _id: 1 })
+			.limit(5000)
+			.lean<AggregateDoc[]>()
+			.exec();
+		return docs.map((doc) => BankLine.parse(withId(doc)));
+	}
+
+	async heldVoucherIds(bankAccountId: string, statuses: readonly BankLine['status'][]): Promise<Set<string>> {
+		const ids = await BankLineModel.distinct('match.voucherIds', {
+			bankAccountId,
+			status: { $in: [...statuses] },
+		}).exec();
+		return new Set(ids.map(String));
 	}
 }

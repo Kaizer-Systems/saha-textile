@@ -96,6 +96,7 @@ export class StatementsService {
 				importId,
 				status: 'unmatched',
 				match: null,
+				rejectedKeys: [],
 				createdAt: at,
 			});
 		}

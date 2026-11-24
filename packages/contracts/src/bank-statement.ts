@@ -58,7 +58,10 @@ export const BankLine = z.object({
 	key: z.string(),
 	importId: Id,
 	status: BankLineStatus.default('unmatched'),
-	/** What it is matched to in the books, once matched (B1c). */
+	/**
+	 * What it is matched to in the books (B1c, BA7): the entries suggested or accepted, why, and how sure; or an entry
+	 * a rule makes on Accept (bank charges, interest), with its GST rate.
+	 */
 	match: z
 		.object({
 			voucherIds: z.array(Id),
@@ -66,9 +69,14 @@ export const BankLine = z.object({
 			sure: z.boolean(),
 			by: Id.nullable(),
 			at: IsoDateTime.nullable(),
+			entry: z.enum(['bank_charge', 'interest']).nullable().default(null),
+			gstPercent: z.number().nonnegative().max(28).nullable().default(null),
+			ruleId: Id.nullable().default(null),
 		})
 		.nullable()
 		.default(null),
+	/** Suggestions turned down (voucher ids or rule ids), never offered again for this line. */
+	rejectedKeys: z.array(z.string()).max(100).default([]),
 	createdAt: IsoDateTime,
 });
 export type BankLine = z.infer<typeof BankLine>;

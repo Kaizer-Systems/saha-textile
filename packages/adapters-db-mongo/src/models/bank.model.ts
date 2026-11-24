@@ -53,3 +53,12 @@ export const BankImportModel = reuse(
 		{ ...loose, collection: COLLECTION_NAMES.BankImport },
 	),
 );
+
+/** BA10: the matching rules a person added or switched; the app's own rules are kept here once changed. */
+export const BankMatchRuleModel = reuse(
+	'BankMatchRule',
+	new Schema<AggregateDoc>(
+		{ _id: { type: String, required: true } },
+		{ ...loose, collection: COLLECTION_NAMES.BankMatchRule },
+	),
+);

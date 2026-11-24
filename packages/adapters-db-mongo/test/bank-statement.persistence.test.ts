@@ -2,7 +2,7 @@ import type { BankLine } from '@saha-textile/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { connectMongo, disconnectMongo } from '../src/connection';
-import { BankImportModel, BankLayoutModel, BankLineModel } from '../src/models/bank.model';
+import { BankImportModel, BankLayoutModel, BankLineModel, BankMatchRuleModel } from '../src/models/bank.model';
 import { MongoBankStatementRepository } from '../src/repositories/bank-statement.repository';
 import { MongoTransactionManager } from '../src/transaction-manager';
 
@@ -37,10 +37,14 @@ describe.skipIf(!hasMongoEnv())('bank statements (integration, rs0)', () => {
 	beforeAll(async () => {
 		await connectMongo();
 		await BankLineModel.syncIndexes();
-		await Promise.all([BankLayoutModel, BankLineModel, BankImportModel].map((m) => m.deleteMany({})));
+		await Promise.all(
+			[BankLayoutModel, BankLineModel, BankImportModel, BankMatchRuleModel].map((m) => m.deleteMany({})),
+		);
 	});
 	afterAll(async () => {
-		await Promise.all([BankLayoutModel, BankLineModel, BankImportModel].map((m) => m.deleteMany({})));
+		await Promise.all(
+			[BankLayoutModel, BankLineModel, BankImportModel, BankMatchRuleModel].map((m) => m.deleteMany({})),
+		);
 		await disconnectMongo();
 	});
 
@@ -126,5 +130,59 @@ describe.skipIf(!hasMongoEnv())('bank statements (integration, rs0)', () => {
 			bank_2: { lastDate: '2026-11-20', toMatch: 1 },
 		});
 		expect(await BankImportModel.countDocuments({}).exec()).toBe(1);
+	});
+
+	it('keeps matching rules in order, and updates a line’s match inside or outside a transaction (BA7, BA10)', async () => {
+		const rule = (id: string, order: number) => ({
+			id,
+			order,
+			builtIn: false,
+			when: 'words' as const,
+			words: ['RENT'],
+			onlyIn: false,
+			then: 'leave' as const,
+			gstPercent: null,
+			on: true,
+			updatedAt: at,
+		});
+		await repo.saveRule(rule('r_b', 6));
+		await repo.saveRule(rule('r_a', 5));
+		await repo.saveRule({ ...rule('r_b', 6), on: false });
+		expect((await repo.rules()).map((r) => [r.id, r.on])).toEqual([
+			['r_a', true],
+			['r_b', false],
+		]);
+		await BankLineModel.deleteMany({}).exec();
+		await repo.insertLines([
+			line('m1', { key: 'k_m1', date: '2026-11-03' }),
+			line('m2', {
+				key: 'k_m2',
+				date: '2026-11-01',
+				status: 'accepted',
+				match: { voucherIds: ['jv_1', 'jv_2'], why: 'upi_ref', sure: true, by: null, at } as never,
+			}),
+			line('m3', {
+				key: 'k_m3',
+				date: '2026-12-05',
+				status: 'suggested',
+				match: { voucherIds: ['jv_3'], why: 'amount_party', sure: false, by: null, at: null } as never,
+			}),
+		]);
+		expect(await repo.line('nope')).toBeNull();
+		const first = await repo.line('m1');
+		expect(first?.rejectedKeys).toEqual([]);
+		await repo.saveLine({ ...first!, status: 'suggested', rejectedKeys: ['jv_9'] });
+		await tx.withTransaction(async (context) => {
+			const again = await repo.line('m1', context);
+			await repo.saveLine({ ...again!, status: 'unmatched' }, context);
+		});
+		expect(await repo.line('m1')).toMatchObject({ status: 'unmatched', rejectedKeys: ['jv_9'] });
+		expect((await repo.inPeriod('bank_1', '2026-11-01', '2026-11-30')).map((l) => l.id)).toEqual(['m2', 'm1']);
+		expect([...(await repo.heldVoucherIds('bank_1', ['accepted', 'suggested']))].sort()).toEqual([
+			'jv_1',
+			'jv_2',
+			'jv_3',
+		]);
+		expect([...(await repo.heldVoucherIds('bank_1', ['accepted']))].sort()).toEqual(['jv_1', 'jv_2']);
 	});
 });

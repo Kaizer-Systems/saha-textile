@@ -4,8 +4,13 @@ import {
 	BankAccountEdit,
 	BankAccountWrite,
 	BankLayoutWrite,
+	BankLineLink,
 	BankLineQuery,
+	BookEntryQuery,
 	IfscQuery,
+	MatchRuleWrite,
+	ReconcilePeriod,
+	ReconcileQuery,
 	StatementPreviewWrite,
 	StatementSaveWrite,
 } from '@saha-textile/contracts';
@@ -15,9 +20,10 @@ import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../au
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { BanksService } from './banks.service';
+import { ReconcileService } from './reconcile.service';
 import { StatementsService } from './statements.service';
 
-/** Bank accounts (accounts brief BA1–BA3). */
+/** Bank accounts, their statements and reconciling them (accounts brief BA1–BA10). */
 @ApiTags(API_TAGS.orders)
 @Audience('admin')
 @Controller('admin/accounts/banks')
@@ -25,7 +31,103 @@ export class BanksController {
 	constructor(
 		private readonly banks: BanksService,
 		private readonly statements: StatementsService,
+		private readonly reconcile: ReconcileService,
 	) {}
+
+	@Get('matching-rules')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({ operationId: 'bankMatchRules', summary: 'How statement lines are matched (BA10)' })
+	matchRules() {
+		return this.reconcile.rules();
+	}
+
+	@Put('matching-rules')
+	@RequirePermissions('accounts.edit')
+	@ApiOperation({ operationId: 'bankMatchRuleSave', summary: 'Add or change a matching rule (BA10)' })
+	saveMatchRule(
+		@Body(new ZodValidationPipe(MatchRuleWrite)) body: MatchRuleWrite,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.reconcile.saveRule(body, principal);
+	}
+
+	@Get(':id/reconcile')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({ operationId: 'bankReconcile', summary: 'Statement lines with their suggested matches (BA7)' })
+	reconcileView(@Param('id') id: string, @Query(new ZodValidationPipe(ReconcileQuery)) query: ReconcileQuery) {
+		return this.reconcile.view(id, query);
+	}
+
+	@Get(':id/reconcile/entries')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({
+		operationId: 'bankReconcileEntries',
+		summary: 'Entries of the books a line can be linked to (BA8)',
+	})
+	reconcileEntries(@Param('id') id: string, @Query(new ZodValidationPipe(BookEntryQuery)) query: BookEntryQuery) {
+		return this.reconcile.findEntries(id, query.q);
+	}
+
+	@Post(':id/reconcile/accept-sure')
+	@RequirePermissions('accounts.edit')
+	@ApiOperation({ operationId: 'bankAcceptSure', summary: 'Accept every sure match in the period (BA7)' })
+	acceptSure(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(ReconcilePeriod)) body: ReconcilePeriod,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.reconcile.acceptSure(id, body, principal);
+	}
+
+	@Post(':id/lines/:lineId/accept')
+	@RequirePermissions('accounts.edit')
+	@ApiOperation({ operationId: 'bankLineAccept', summary: 'Accept a line’s suggested match (BA7)' })
+	acceptLine(
+		@Param('id') id: string,
+		@Param('lineId') lineId: string,
+		@Body(new ZodValidationPipe(ReconcilePeriod)) body: ReconcilePeriod,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.reconcile.accept(id, lineId, body, principal);
+	}
+
+	@Post(':id/lines/:lineId/reject')
+	@RequirePermissions('accounts.edit')
+	@ApiOperation({ operationId: 'bankLineReject', summary: 'Turn down a line’s suggested match (BA7)' })
+	rejectLine(
+		@Param('id') id: string,
+		@Param('lineId') lineId: string,
+		@Body(new ZodValidationPipe(ReconcilePeriod)) body: ReconcilePeriod,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.reconcile.reject(id, lineId, body, principal);
+	}
+
+	@Post(':id/lines/:lineId/link')
+	@RequirePermissions('accounts.edit')
+	@ApiOperation({ operationId: 'bankLineLink', summary: 'Link a line to entries that come to its amount (BA8)' })
+	linkLine(
+		@Param('id') id: string,
+		@Param('lineId') lineId: string,
+		@Body(new ZodValidationPipe(BankLineLink)) body: BankLineLink,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.reconcile.link(id, lineId, body, principal);
+	}
+
+	@Post(':id/lines/:lineId/unmatch')
+	@RequirePermissions('accounts.edit')
+	@ApiOperation({ operationId: 'bankLineUnmatch', summary: 'Break a line’s match (BA8)' })
+	unmatchLine(
+		@Param('id') id: string,
+		@Param('lineId') lineId: string,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.reconcile.unmatch(id, lineId, principal);
+	}
 
 	@Get('layouts')
 	@Header('Cache-Control', 'no-store')

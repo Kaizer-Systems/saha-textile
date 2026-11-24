@@ -295,6 +295,26 @@
 				</label>
 				} }
 			</div>
+			@if (f.kind === 'taxRules' && !f.startFrom) {
+			<div class="col-12">
+				<label
+					class="form-label-title"
+					for="at_new_list"
+				>
+					{{ 'at_new_list' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="at_new_list"
+					[ngModel]="f.list"
+					(ngModelChange)="patchNew({ list: $event })"
+				>
+					<option value="reverseCharge">{{ 'rs_list_reverseCharge' | transloco }}</option>
+					<option value="tds">{{ 'rs_list_tds' | transloco }}</option>
+					<option value="limits">{{ 'rs_list_limits' | transloco }}</option>
+				</select>
+			</div>
+			}
 			<div class="col-12">
 				<label
 					class="form-label-title"

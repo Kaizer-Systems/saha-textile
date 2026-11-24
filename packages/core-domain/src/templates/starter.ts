@@ -95,6 +95,8 @@ const rcmEntry = (
 	to: null,
 	source: RCM_SOURCE,
 	caReview: 'pending',
+	limitINR: null,
+	limitPer: null,
 });
 
 /** RS-RCM v1: services on which the buyer pays the GST. Codes and rates are to be confirmed by the CA. */
@@ -193,7 +195,7 @@ export function starterTemplates(now: string): AccountsTemplate[] {
 		template('RS-RCM', 'taxRules', 'Reverse-charge list', { all: true, kinds: [] }, [
 			version(
 				1,
-				{ kind: 'taxRules', entries: RCM_ENTRIES },
+				{ kind: 'taxRules', list: 'reverseCharge', entries: RCM_ENTRIES },
 				`${RCM_SOURCE}; to be confirmed by the CA.`,
 				'2017-07-01',
 			),

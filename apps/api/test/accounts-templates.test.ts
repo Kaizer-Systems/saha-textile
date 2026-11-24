@@ -30,7 +30,7 @@ const rcm: AccountsTemplate = {
 			source: '13/2017-Central Tax (Rate)',
 			caReview: 'pending',
 			notes: '',
-			content: { kind: 'taxRules', entries: [] },
+			content: { kind: 'taxRules', list: 'reverseCharge', entries: [] },
 			publishedAt: at,
 			publishedBy: 'usr_ca',
 		},
@@ -172,6 +172,7 @@ describe('accounts templates library (T2)', () => {
 					version: 2,
 					content: {
 						kind: 'taxRules' as const,
+						list: 'reverseCharge' as const,
 						entries: [
 							{
 								key: 'shop_rent',
@@ -184,6 +185,8 @@ describe('accounts templates library (T2)', () => {
 								to: null,
 								source: '',
 								caReview: 'pending' as const,
+								limitINR: null,
+								limitPer: null,
 							},
 						],
 					},

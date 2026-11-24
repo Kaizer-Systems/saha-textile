@@ -32,6 +32,7 @@ export function templateWords(code: string, translate: (key: string) => string):
 }
 
 const blank = (): TemplateNew => ({
+	list: 'reverseCharge',
 	code: '',
 	kind: 'chart',
 	name: '',

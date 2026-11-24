@@ -42,7 +42,7 @@ import { accountsRefusal } from '../ledger/accounts-refusal';
 /** What a new template of each type starts as, when it doesn't start from another. */
 const EMPTY: Record<TemplateKind, TemplateContent> = {
 	chart: { kind: 'chart', groups: [], ledgers: [] },
-	taxRules: { kind: 'taxRules', entries: [] },
+	taxRules: { kind: 'taxRules', list: 'reverseCharge', entries: [] },
 	report: { kind: 'report', columns: 'thisAndLast', notes: false, level: null, lines: [] },
 };
 
@@ -265,7 +265,11 @@ export class AccountsTemplatesService {
 	/** AT2 New template: a draft only (nothing uses it until it is published), empty or from another's newest version. */
 	async create(write: TemplateNew, by: string | null, now = new Date()): Promise<AccountsTemplate> {
 		await this.ensureLibrary();
-		let content = EMPTY[write.kind];
+		// A tax rule set's list is chosen here (AT5-D1).
+		let content =
+			write.kind === 'taxRules'
+				? { kind: 'taxRules' as const, list: write.list, entries: [] }
+				: EMPTY[write.kind];
 		if (write.startFrom) {
 			const from = await this.get(write.startFrom);
 			if (from.kind !== write.kind || !from.versions.length)

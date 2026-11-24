@@ -29,6 +29,7 @@ const newChart: TemplateNew = {
 	description: '',
 	appliesTo: { all: false, kinds: ['partnership'] },
 	startFrom: null,
+	list: 'reverseCharge',
 };
 const ledger = (key: string, groupKey: string) => ({
 	key,
@@ -52,7 +53,7 @@ describe('New template (AT2)', () => {
 			{ ...newChart, code: 'RS-TDS', kind: 'taxRules', startFrom: null },
 			undefined,
 		);
-		expect(rules.draft?.content).toEqual({ kind: 'taxRules', entries: [] });
+		expect(rules.draft?.content).toEqual({ kind: 'taxRules', list: 'reverseCharge', entries: [] });
 		const report = await service.create({ ...newChart, code: 'RP-NCE-BS', kind: 'report' }, null, now);
 		expect(report.draft?.content).toEqual({
 			kind: 'report',
@@ -139,7 +140,7 @@ describe('Save draft, changes and Publish (AT3)', () => {
 		await routes.saveDraft(
 			'RS-RCM',
 			{
-				content: { kind: 'taxRules', entries: [] },
+				content: { kind: 'taxRules', list: 'reverseCharge', entries: [] },
 				validFrom: '2030-01-01',
 				source: '',
 				notes: '',
@@ -151,7 +152,8 @@ describe('Save draft, changes and Publish (AT3)', () => {
 		expect((await service.changes('RS-RCM'))?.removed).toContain("Advocate's fees");
 		const fresh = await service.create({ ...newChart, code: 'CH-FIRM-NEW' }, null, now);
 		expect(await service.changes(fresh.code)).toEqual({ added: [], removed: [], renamed: [], changed: [] });
-		const rules = await service.create({ ...newChart, kind: 'taxRules', code: 'RS-NEW' }, null, now);
+		const rules = await service.create({ ...newChart, kind: 'taxRules', code: 'RS-NEW', list: 'tds' }, null, now);
+		expect(rules.draft?.content).toEqual({ kind: 'taxRules', list: 'tds', entries: [] });
 		expect(await service.changes(rules.code)).toEqual({ added: [], removed: [], renamed: [], changed: [] });
 		// A report's changes come with its builder (T6).
 		const report = await service.create({ ...newChart, kind: 'report', code: 'RP-NEW' }, null, now);

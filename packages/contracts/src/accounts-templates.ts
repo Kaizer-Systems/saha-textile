@@ -71,10 +71,21 @@ export const TaxRuleEntry = z.object({
 	source: z.string().trim().max(300).default(''),
 	/** AT5's "CA review" tag: every rule stays pending until the CA confirms it (AT-D6). */
 	caReview: z.enum(['pending', 'reviewed']).default('pending'),
+	/** TDS sections and limits (AT5b, AT5c): the amount in rupees, and what it counts (a payment, a month, a year). */
+	limitINR: z.number().nonnegative().nullable().default(null),
+	limitPer: z.enum(['payment', 'month', 'year']).nullable().default(null),
 });
 export type TaxRuleEntry = z.infer<typeof TaxRuleEntry>;
 
-export const TaxRuleSetContent = z.object({ kind: z.literal('taxRules'), entries: z.array(TaxRuleEntry).default([]) });
+/** What a tax rule set lists (AT5-D1): its columns follow it, and it is fixed once the set is published. */
+export const TaxRuleList = z.enum(['reverseCharge', 'tds', 'limits']);
+export type TaxRuleList = z.infer<typeof TaxRuleList>;
+
+export const TaxRuleSetContent = z.object({
+	kind: z.literal('taxRules'),
+	list: TaxRuleList.default('reverseCharge'),
+	entries: z.array(TaxRuleEntry).default([]),
+});
 export type TaxRuleSetContent = z.infer<typeof TaxRuleSetContent>;
 
 /** What a report line adds up: the ledgers playing a role, every ledger under a group, or one ledger, by key. */
@@ -202,6 +213,8 @@ export const TemplateNew = z.object({
 	description: z.string().trim().max(500).default(''),
 	appliesTo: AppliesTo,
 	startFrom: TemplateCode.nullable().default(null),
+	/** A tax rule set's list (AT5-D1), chosen here and fixed after; other types leave it. */
+	list: TaxRuleList.default('reverseCharge'),
 });
 export type TemplateNew = z.infer<typeof TemplateNew>;
 

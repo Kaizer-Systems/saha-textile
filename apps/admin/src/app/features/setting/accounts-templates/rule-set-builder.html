@@ -61,10 +61,15 @@
 				<table class="all-package theme-table no-footer table">
 					<thead>
 						<tr>
-							<th>{{ 'rs_service' | transloco }}</th>
-							<th>{{ 'rs_sac' | transloco }}</th>
+							<th>{{ nameKey() | transloco }}</th>
+							@if (list() !== 'limits') {
+							<th>{{ codeKey() | transloco }}</th>
 							<th>{{ 'rs_rate' | transloco }}</th>
+							} @if (list() === 'reverseCharge') {
 							<th>{{ 'rs_expense_role' | transloco }}</th>
+							} @else {
+							<th>{{ 'rs_limit' | transloco }}</th>
+							}
 							<th>{{ 'at_applies_to' | transloco }}</th>
 							<th>{{ 'rs_from' | transloco }}</th>
 							<th>{{ 'rs_source' | transloco }}</th>
@@ -84,9 +89,14 @@
 									{{ e.name }}
 								</a>
 							</td>
+							@if (list() !== 'limits') {
 							<td>{{ e.code }}</td>
 							<td>{{ e.ratePercent }}%</td>
+							} @if (list() === 'reverseCharge') {
 							<td>{{ e.expenseRole ?? '—' }}</td>
+							} @else {
+							<td class="text-nowrap">{{ limitText(e) }}</td>
+							}
 							<td>{{ appliesTo(e) }}</td>
 							<td class="text-nowrap">{{ e.from }}@if (e.to) { – {{ e.to }} }</td>
 							<td>
@@ -98,7 +108,7 @@
 						} @empty {
 						<tr>
 							<td
-								colspan="7"
+								[attr.colspan]="list() === 'limits' ? 5 : 7"
 								class="text-muted py-4 text-center"
 							>
 								{{ 'rs_empty' | transloco }}
@@ -140,7 +150,7 @@
 							class="form-label-title"
 							for="rs_name"
 						>
-							{{ 'rs_service' | transloco }}
+							{{ nameKey() | transloco }}
 						</label>
 						<input
 							class="form-control"
@@ -167,13 +177,13 @@
 							(change)="patch(e.key, { key: $any($event.target).value })"
 						/>
 					</div>
-					}
+					} @if (list() !== 'limits') {
 					<div class="col-md-3">
 						<label
 							class="form-label-title"
 							for="rs_code"
 						>
-							{{ 'rs_sac' | transloco }}
+							{{ codeKey() | transloco }}
 						</label>
 						<input
 							class="form-control"
@@ -203,6 +213,7 @@
 							(ngModelChange)="patch(e.key, { ratePercent: +$event })"
 						/>
 					</div>
+					} @if (list() === 'reverseCharge') {
 					<div class="col-md-6">
 						<label
 							class="form-label-title"
@@ -218,6 +229,46 @@
 							(change)="role(e.key, $any($event.target).value)"
 						/>
 					</div>
+					} @else {
+					<div class="col-md-3">
+						<label
+							class="form-label-title"
+							for="rs_limit_input"
+						>
+							{{ 'rs_limit_input' | transloco }}
+						</label>
+						<input
+							type="number"
+							class="form-control"
+							id="rs_limit_input"
+							min="0"
+							step="1"
+							[disabled]="!canEdit()"
+							[ngModel]="e.limitINR"
+							(ngModelChange)="limit(e.key, $event)"
+						/>
+					</div>
+					<div class="col-md-3">
+						<label
+							class="form-label-title"
+							for="rs_per"
+						>
+							{{ 'rs_counts' | transloco }}
+						</label>
+						<select
+							class="form-select"
+							id="rs_per"
+							[disabled]="!canEdit()"
+							[ngModel]="e.limitPer ?? ''"
+							(ngModelChange)="patch(e.key, { limitPer: $event || null })"
+						>
+							<option value="">{{ 'rs_per_none' | transloco }}</option>
+							@for (per of pers; track per) {
+							<option [value]="per">{{ 'rs_per_' + per | transloco }}</option>
+							}
+						</select>
+					</div>
+					}
 					<div class="col-12">
 						<span class="form-label-title d-block">{{ 'at_applies_to' | transloco }}</span>
 						<label class="me-3">

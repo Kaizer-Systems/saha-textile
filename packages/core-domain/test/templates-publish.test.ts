@@ -74,7 +74,12 @@ describe('the publishing checks (AT3)', () => {
 		expect(
 			publishProblems(draftOf(rcm, { kind: 'chart', groups: [], ledgers: [] }, '2017-07-01'), library),
 		).toEqual(['template_wrong_kind', 'template_dates_overlap']);
-		expect(publishProblems(draftOf(rcm, { kind: 'taxRules', entries: [] }, '2027-01-01'), library)).toEqual([]);
+		expect(
+			publishProblems(
+				draftOf(rcm, { kind: 'taxRules', list: 'reverseCharge', entries: [] }, '2027-01-01'),
+				library,
+			),
+		).toEqual([]);
 	});
 
 	it('names a broken chart, a role no ledger plays, and a role played twice, for each kind', () => {
@@ -168,9 +173,11 @@ const entry = (key: string, over: Partial<TaxRuleEntry> = {}): TaxRuleEntry => (
 	to: null,
 	source: '13/2017',
 	caReview: 'pending',
+	limitINR: null,
+	limitPer: null,
 	...over,
 });
-const rules = (...entries: TaxRuleEntry[]): TaxRuleSetContent => ({ kind: 'taxRules', entries });
+const rules = (...entries: TaxRuleEntry[]): TaxRuleSetContent => ({ kind: 'taxRules', list: 'reverseCharge', entries });
 
 describe('tax rule sets (AT5)', () => {
 	it('publishes the reverse-charge list when every kind’s chart has the ledgers its entries post to', () => {
@@ -243,5 +250,49 @@ describe('tax rule sets (AT5)', () => {
 			changed: ['b', 'd'],
 		});
 		expect(ruleSetChanges(null, rules(entry('x'))).added).toEqual(['x']);
+	});
+});
+
+describe('TDS sections and limits (AT5b, AT5c)', () => {
+	const tds = (...entries: TaxRuleEntry[]): TaxRuleSetContent => ({ kind: 'taxRules', list: 'tds', entries });
+	const limits = (...entries: TaxRuleEntry[]): TaxRuleSetContent => ({ kind: 'taxRules', list: 'limits', entries });
+
+	it('wants each entry’s limit, and no rate on a limit', () => {
+		const set = { code: 'RS-TDS', appliesTo: { all: true, kinds: [] } };
+		const section = (key: string, over: Partial<TaxRuleEntry> = {}) =>
+			entry(key, {
+				code: '393',
+				ratePercent: 1,
+				expenseRole: null,
+				limitINR: 30_000,
+				limitPer: 'payment',
+				...over,
+			});
+		expect(ruleSetProblems(set, tds(section('contractor'), section('rent', { limitINR: null })), library)).toEqual([
+			'template_entry_limit:rent',
+		]);
+		expect(
+			ruleSetProblems(
+				set,
+				limits(
+					section('tax_audit', { ratePercent: 0, limitINR: 10_000_000, limitPer: 'year' }),
+					section('llp_audit', { ratePercent: 0, limitINR: null }),
+					section('odd', { ratePercent: 2, limitINR: 1 }),
+				),
+				library,
+			),
+		).toEqual(['template_entry_limit:llp_audit', 'template_entry_rate:odd']);
+	});
+
+	it('keeps a set’s list once published, and compares limits', () => {
+		const rcm = byCode('RS-RCM');
+		expect(publishProblems(draftOf(rcm, tds(), '2027-01-01'), library)).toEqual(['template_list_changed']);
+		const fresh: AccountsTemplate = { ...rcm, code: 'RS-TDS', versions: [] };
+		expect(publishProblems(draftOf(fresh, tds()), library)).toEqual([]);
+		const changes = ruleSetChanges(
+			tds(entry('rent', { limitINR: 240_000, limitPer: 'year' })),
+			tds(entry('rent', { limitINR: 50_000, limitPer: 'month' })),
+		);
+		expect(changes.changed).toEqual(['rent']);
 	});
 });

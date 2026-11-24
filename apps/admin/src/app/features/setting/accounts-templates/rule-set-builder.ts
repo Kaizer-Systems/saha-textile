@@ -8,7 +8,7 @@ import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom, map } from 'rxjs';
 
 import { ACCOUNTS_TEMPLATE_KEYS, AccountsTemplatesGateway } from '@core/accounts/accounts-templates.gateway';
-import { apiIssues } from '@core/purchasing/purchasing-format';
+import { apiIssues, rupees } from '@core/purchasing/purchasing-format';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
@@ -16,7 +16,7 @@ import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { templateWords } from './accounts-templates-page';
 import { newKey } from './template-builder';
 
-import type { BusinessKind, TaxRuleEntry, TaxRuleSetContent } from '@saha-textile/contracts';
+import type { BusinessKind, TaxRuleEntry, TaxRuleList, TaxRuleSetContent } from '@saha-textile/contracts';
 
 const ROLE = /^[a-z][a-z0-9_]{1,59}$/;
 const today = (): string => new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10);
@@ -76,6 +76,14 @@ export class RuleSetBuilderPage {
 	readonly latest = computed(() => this.template.data()?.versions.length ?? 0);
 	readonly nextVersion = computed(() => this.latest() + 1);
 	readonly entry = computed(() => this.content()?.entries.find((row) => row.key === this.selected()));
+	/** What the set lists (AT5-D1): the reverse-charge list as drawn, TDS sections (AT5b) or limits (AT5c). */
+	readonly list = computed<TaxRuleList>(() => this.content()?.list ?? 'reverseCharge');
+	/** The first column's and the code column's names for the list. */
+	readonly nameKey = computed(
+		() => ({ reverseCharge: 'rs_service', tds: 'rs_payment', limits: 'rs_what' })[this.list()],
+	);
+	readonly codeKey = computed(() => (this.list() === 'tds' ? 'rs_section' : 'rs_sac'));
+	readonly pers: readonly NonNullable<TaxRuleEntry['limitPer']>[] = ['payment', 'month', 'year'];
 	/** Keys the newest version already has: they stay as they are (self-invoices keep the rule by key). */
 	private readonly published = computed(() => {
 		const versions = this.template.data()?.versions ?? [];
@@ -130,6 +138,8 @@ export class RuleSetBuilderPage {
 				to: null,
 				source: '',
 				caReview: 'pending',
+				limitINR: null,
+				limitPer: null,
 			},
 		]);
 		this.selected.set(key);
@@ -138,6 +148,18 @@ export class RuleSetBuilderPage {
 	patch(key: string, change: Partial<TaxRuleEntry>): void {
 		this.edit((entries) => entries.map((row) => (row.key === key ? { ...row, ...change } : row)));
 		this.selected.set(change.key ?? key);
+	}
+
+	/** "₹30,000 a payment", "₹25,00,000", or a dash when the limit isn't set. */
+	limitText(entry: TaxRuleEntry): string {
+		if (entry.limitINR === null) return '—';
+		const amount = rupees(entry.limitINR);
+		return entry.limitPer ? `${amount} ${this.transloco.translate(`rs_per_${entry.limitPer}`)}` : amount;
+	}
+
+	/** A limit typed in rupees; an empty box clears it. */
+	limit(key: string, value: number | string | null): void {
+		this.patch(key, { limitINR: value === '' || value === null ? null : Math.max(0, Number(value)) });
 	}
 
 	/** An expense role typed as a key ("legal_fees"); anything else clears it. */

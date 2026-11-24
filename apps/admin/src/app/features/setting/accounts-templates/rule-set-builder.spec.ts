@@ -28,6 +28,8 @@ const entry = (key: string, over: Partial<TaxRuleEntry> = {}): TaxRuleEntry => (
 	to: null,
 	source: '13/2017',
 	caReview: 'pending',
+	limitINR: null,
+	limitPer: null,
 	...over,
 });
 const rules = { kind: 'taxRules', entries: [entry('advocate_fees'), entry('sponsorship', { kinds: ['llp'] })] };
@@ -55,7 +57,13 @@ function setup(options: { template?: unknown; code?: string | null; fail?: unkno
 			RuleSetBuilderPage,
 			TranslocoTestingModule.forRoot({
 				langs: {
-					en: { rs_new_entry: 'New entry', rs_all: 'All', co_kind_llp: 'LLP', co_kind_partnership: 'Firm' },
+					en: {
+						rs_new_entry: 'New entry',
+						rs_all: 'All',
+						co_kind_llp: 'LLP',
+						co_kind_partnership: 'Firm',
+						rs_per_payment: 'a payment',
+					},
 				},
 				translocoConfig: { availableLangs: ['en'], defaultLang: 'en' },
 				preloadLangs: true,
@@ -205,5 +213,77 @@ describe('the rule set builder (AT5)', () => {
 		expect(lost.page.busy()).toBe(false);
 		const readOnly = await loaded({ permissions: [] });
 		expect(readOnly.page.canEdit()).toBe(false);
+	});
+});
+
+describe('TDS sections and limits (AT5b, AT5c)', () => {
+	const tds = {
+		...rcm,
+		code: 'RS-TDS',
+		versions: [
+			{
+				version: 1,
+				validFrom: '2026-04-01',
+				content: {
+					kind: 'taxRules',
+					list: 'tds',
+					entries: [
+						entry('contractor', { code: '393', ratePercent: 1, limitINR: 30_000, limitPer: 'payment' }),
+					],
+				},
+			},
+		],
+	};
+	const limits = {
+		...rcm,
+		code: 'RS-LIMITS',
+		versions: [
+			{
+				version: 1,
+				validFrom: '2026-04-01',
+				content: {
+					kind: 'taxRules',
+					list: 'limits',
+					entries: [entry('llp_audit', { ratePercent: 0, limitINR: 2_500_000 })],
+				},
+			},
+		],
+	};
+
+	it('names the columns for the list, and shows each limit with what it counts', async () => {
+		const reverse = await loaded();
+		expect([reverse.page.list(), reverse.page.nameKey(), reverse.page.codeKey()]).toEqual([
+			'reverseCharge',
+			'rs_service',
+			'rs_sac',
+		]);
+		const sections = await loaded({ template: tds });
+		expect([sections.page.list(), sections.page.nameKey(), sections.page.codeKey()]).toEqual([
+			'tds',
+			'rs_payment',
+			'rs_section',
+		]);
+		sections.page.selected.set('contractor');
+		sections.fixture.detectChanges();
+		expect(sections.page.limitText(sections.page.entry() as TaxRuleEntry)).toBe('₹30,000 a payment');
+		const caps = await loaded({ template: limits });
+		expect([caps.page.list(), caps.page.nameKey()]).toEqual(['limits', 'rs_what']);
+		caps.page.selected.set('llp_audit');
+		caps.fixture.detectChanges();
+		expect(caps.page.limitText(caps.page.entry() as TaxRuleEntry)).toBe('₹25,00,000');
+		expect(caps.page.limitText(entry('none'))).toBe('—');
+		expect(setup({ code: null }).page.list()).toBe('reverseCharge');
+	});
+
+	it('takes a limit typed in rupees, clears an empty box, and never goes below nothing', async () => {
+		const { page } = await loaded({ template: tds });
+		page.limit('contractor', 50_000);
+		expect(page.entry()?.limitINR).toBe(50_000);
+		page.limit('contractor', '-5');
+		expect(page.entry()?.limitINR).toBe(0);
+		page.limit('contractor', '');
+		expect(page.entry()?.limitINR).toBeNull();
+		page.limit('contractor', null);
+		expect(page.entry()?.limitINR).toBeNull();
 	});
 });

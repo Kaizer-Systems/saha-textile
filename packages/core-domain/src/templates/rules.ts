@@ -172,7 +172,8 @@ export function chartFor(
 
 /**
  * AT5's publishing checks for a tax rule set: entry keys are unique, no entry ends before it starts, an entry names only
- * kinds the set applies to, and every expense role an entry posts to has a ledger in the chart of each kind it applies to.
+ * kinds the set applies to, every expense role an entry posts to has a ledger in the chart of each kind it applies to,
+ * TDS sections and limits have their amount, and a limit has no rate.
  */
 export function ruleSetProblems(
 	template: Pick<AccountsTemplate, 'code' | 'appliesTo'>,
@@ -187,6 +188,10 @@ export function ruleSetProblems(
 		if (entry.to !== null && entry.to < entry.from) problems.add(`template_entry_dates:${entry.key}`);
 		if (!template.appliesTo.all && entry.kinds?.some((kind) => !template.appliesTo.kinds.includes(kind)))
 			problems.add(`template_entry_kind:${entry.key}`);
+		// TDS sections and limits need their amount (AT5b, AT5c); a limit has no rate.
+		if (content.list !== 'reverseCharge' && entry.limitINR === null)
+			problems.add(`template_entry_limit:${entry.key}`);
+		if (content.list === 'limits' && entry.ratePercent !== 0) problems.add(`template_entry_rate:${entry.key}`);
 	}
 	for (const kind of kindsOf(template)) {
 		const roles = new Set(
@@ -221,7 +226,12 @@ export function publishProblems(template: AccountsTemplate, library: readonly Ac
 	if (draft.content.kind !== template.kind) problems.add('template_wrong_kind');
 	if (template.versions.length && draft.validFrom <= latestVersion(template).validFrom)
 		problems.add('template_dates_overlap');
-	if (draft.content.kind === 'taxRules') return [...problems, ...ruleSetProblems(template, draft.content, library)];
+	if (draft.content.kind === 'taxRules') {
+		// A rule set's list is fixed once it is published (AT5-D1).
+		const latest = template.versions.length ? latestVersion(template).content : null;
+		if (latest?.kind === 'taxRules' && latest.list !== draft.content.list) problems.add('template_list_changed');
+		return [...problems, ...ruleSetProblems(template, draft.content, library)];
+	}
 	if (draft.content.kind === 'report') return [...problems, ...reportProblems(template, draft.content, library)];
 	const content = draft.content;
 	for (const kind of kindsOf(template)) {
@@ -272,6 +282,8 @@ export function ruleSetChanges(before: TaxRuleSetContent | null, after: TaxRuleS
 			entry.to,
 			entry.source,
 			entry.caReview,
+			entry.limitINR,
+			entry.limitPer,
 		]);
 	const kept = after.entries.filter((entry) => old.has(entry.key));
 	const was = (entry: TaxRuleEntry) => old.get(entry.key) as TaxRuleEntry;

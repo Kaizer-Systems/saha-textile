@@ -113,10 +113,9 @@ export class OrderSend {
 
 	/** The mailbox list may arrive after the popup opens: pick its first address then. */
 	ensureFrom(): void {
-		if (!this.from() && this.senders()[0]) {
-			const first = this.senders()[0];
-			if (first) this.from.set(`${first.mailboxId}|${first.address}`);
-		}
+		// Never-run check removed: the first sender was read twice; once is enough.
+		const first = this.senders()[0];
+		if (!this.from() && first) this.from.set(`${first.mailboxId}|${first.address}`);
 	}
 
 	async send(): Promise<void> {

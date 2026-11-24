@@ -482,8 +482,11 @@ export class EntryForm {
 					notOrdered: !!this.purchaseOrderId(),
 				};
 				const at = next.findIndex((row) => row.variantId === pick.option.variantId && !row.freeOnBill);
-				if (at >= 0) next[at] = { ...line, key: next[at]?.key ?? line.key, lineId: next[at]?.lineId };
-				else next.push(line);
+				if (at >= 0) {
+					// Never-run fallback removed: `at` came from findIndex, so that row is there.
+					const old = next[at] as EntryFormLine;
+					next[at] = { ...line, key: old.key, lineId: old.lineId };
+				} else next.push(line);
 			}
 			return next;
 		});

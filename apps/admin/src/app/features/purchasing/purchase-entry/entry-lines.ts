@@ -210,7 +210,8 @@ export function dateNotes(input: {
 				})
 			: [];
 	return {
-		refusal: closed ? { key: 'books_closed_up_to', params: { date: input.booksClosedUpTo ?? '' } } : null,
+		// Never-run fallback removed: the books can only be closed when they have a closing date.
+		refusal: closed ? { key: 'books_closed_up_to', params: { date: input.booksClosedUpTo as string } } : null,
 		warnings: warnings.map((warning) =>
 			warning.code === 'bill_in_future' ? 'bill_dated_in_future' : 'goods_long_before_bill',
 		),

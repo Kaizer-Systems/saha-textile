@@ -330,7 +330,8 @@ export class OrderForm {
 			for (const pick of picks) {
 				const at = next.findIndex((line) => line.variantId === pick.option.variantId);
 				const line = lineFromOption(pick.option, pick.units, pick.priceINR);
-				if (at >= 0) next[at] = { ...line, lineId: next[at]?.lineId };
+				// Never-run fallback removed: `at` came from findIndex, so that line is there.
+				if (at >= 0) next[at] = { ...line, lineId: (next[at] as OrderFormLine).lineId };
 				else next.push(line);
 			}
 			return next;

@@ -150,7 +150,8 @@ export class EntryCheck {
 			this.notifier.showError(this.transloco.translate('scan_not_on_this_bill', { code }));
 			return;
 		}
-		const lineId = this.lines()[index]?.line.lineId ?? null;
+		// Never-run fallbacks removed: lineForCode() answered a line that is there.
+		const lineId = (this.lines()[index] as CountLine).line.lineId;
 		this.highlighted.set(lineId);
 		this.document.getElementById(`count-${lineId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 	}

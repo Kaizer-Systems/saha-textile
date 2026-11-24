@@ -13,7 +13,9 @@ import { memoryTemplateStores } from './accounts-templates-memory';
 
 const at = '2026-11-24T10:00:00.000Z';
 const companyOf = (kind: string | null) => ({ getProfile: async () => (kind ? { kind } : null) });
-const CODES = ['CH-COMMON', 'CH-FIRM', 'CH-LLP', 'CH-OPC', 'CH-PROP', 'CH-PVT', 'RS-RCM'];
+const CODES = starterTemplates(at)
+	.map((t) => t.code)
+	.sort((a, b) => a.localeCompare(b));
 const rcm: AccountsTemplate = {
 	id: 'tpl_rs_rcm',
 	code: 'RS-RCM',
@@ -55,7 +57,7 @@ describe('accounts templates library (T2)', () => {
 		expect(rows.find((r) => r.code === 'CH-PROP')).toMatchObject({
 			locked: true,
 			lockReason: 'not_this_kind',
-			latestVersion: 1,
+			latestVersion: 2,
 			installedVersion: null,
 			updateAvailable: false,
 		});
@@ -66,7 +68,7 @@ describe('accounts templates library (T2)', () => {
 		});
 		expect(rows.every((r) => !('versions' in r))).toBe(true);
 		await service.library();
-		expect(stores.templates.rows).toHaveLength(7);
+		expect(stores.templates.rows).toHaveLength(CODES.length);
 		expect((await service.get('CH-FIRM')).versions[0]?.content.kind).toBe('chart');
 		await expect(service.get('CH-NONE')).rejects.toBeInstanceOf(NotFoundException);
 	});
@@ -83,8 +85,10 @@ describe('accounts templates library (T2)', () => {
 			installedVersion: 1,
 			updateAvailable: true,
 		});
-		expect(rows.find((r) => r.code === 'CH-PROP')).toMatchObject({ installedVersion: 1, updateAvailable: false });
-		expect(stores.templates.rows.find((r) => r.code === 'CH-PVT')?.versions.map((v) => v.version)).toEqual([1, 2]);
+		expect(rows.find((r) => r.code === 'CH-PROP')).toMatchObject({ installedVersion: 1, updateAvailable: true });
+		expect(stores.templates.rows.find((r) => r.code === 'CH-PVT')?.versions.map((v) => v.version)).toEqual([
+			1, 2, 3,
+		]);
 	});
 
 	it('keeps another instance’s writes, and tries again after a failed start', async () => {
@@ -118,7 +122,7 @@ describe('accounts templates library (T2)', () => {
 			duplicate.installs,
 			companyOf(null) as never,
 		);
-		expect((await twice.library()).length).toBe(7);
+		expect((await twice.library()).length).toBe(CODES.length);
 	});
 
 	it('starts the books from the shared chart and the kind’s own, newest versions, and records it once', async () => {
@@ -126,14 +130,14 @@ describe('accounts templates library (T2)', () => {
 		const { chart, picks } = await service.startingChart();
 		expect(picks).toEqual([
 			{ code: 'CH-COMMON', version: 2 },
-			{ code: 'CH-PROP', version: 1 },
+			{ code: 'CH-PROP', version: 2 },
 		]);
 		expect(chart.ledgers.find((l) => l.key === 'legal_fees')?.roles).toEqual(['legal_fees']);
 		await service.recordInstalls(picks);
 		await service.recordInstalls([{ code: 'CH-FIRM', version: 1 }]);
 		expect(stores.installs.rows.map((i) => [i.code, i.version])).toEqual([
 			['CH-COMMON', 2],
-			['CH-PROP', 1],
+			['CH-PROP', 2],
 		]);
 		expect(await service.kind()).toBe('proprietorship');
 	});
@@ -231,18 +235,27 @@ describe('accounts templates library (T2)', () => {
 		const { stores, service } = serviceFor('private_limited');
 		expect(await service.booksSetUp()).toBe(false);
 		const opens = await service.opens('private_limited', new Date('2026-11-24T06:00:00Z'));
-		expect(opens).toMatchObject({ locked: 4, booksSetUp: false, reports: [] });
+		expect(opens).toMatchObject({ locked: 10, booksSetUp: false });
+		expect(opens.reports.map((r) => r.code)).toEqual(['RP-SCH3-BS', 'RP-SCH3-PL']);
 		expect(opens.charts.map((c) => [c.code, c.version])).toEqual([
 			['CH-COMMON', 2],
-			['CH-PVT', 2],
+			['CH-PVT', 3],
 		]);
-		expect(opens.taxRules).toEqual([{ code: 'RS-RCM', name: 'Reverse-charge list', version: 1, entries: 6 }]);
+		expect(opens.taxRules).toEqual([
+			{ code: 'RS-LIMITS', name: 'Limits', version: 1, entries: 6 },
+			{ code: 'RS-RCM', name: 'Reverse-charge list', version: 1, entries: 6 },
+			{ code: 'RS-TDS', name: 'TDS sections', version: 1, entries: 9 },
+		]);
 		stores.installs.rows.push({ code: 'CH-COMMON', version: 1, installedAt: at, installedBy: null });
 		await service.installUnlocked('usr_owner');
 		expect(stores.installs.rows.map((i) => [i.code, i.version, i.installedBy])).toEqual([
 			['CH-COMMON', 1, null],
+			['RS-LIMITS', 1, 'usr_owner'],
 			['RS-RCM', 1, 'usr_owner'],
-			['CH-PVT', 2, 'usr_owner'],
+			['RS-TDS', 1, 'usr_owner'],
+			['CH-PVT', 3, 'usr_owner'],
+			['RP-SCH3-BS', 1, 'usr_owner'],
+			['RP-SCH3-PL', 1, 'usr_owner'],
 		]);
 		expect(await service.booksSetUp()).toBe(true);
 		expect((await service.opens('llp')).booksSetUp).toBe(true);
@@ -255,7 +268,7 @@ describe('accounts templates library (T2)', () => {
 			'CH-COMMON',
 			'CH-PROP',
 		]);
-		expect((await routes.library()).length).toBe(7);
+		expect((await routes.library()).length).toBe(CODES.length);
 		expect((await routes.get('CH-PROP')).code).toBe('CH-PROP');
 		expect(new AccountsTemplatesModule()).toBeInstanceOf(AccountsTemplatesModule);
 	});

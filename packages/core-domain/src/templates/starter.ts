@@ -7,6 +7,7 @@ import type {
 } from '@saha-textile/contracts';
 
 import { type ChartGroupSeed, type ChartLedgerSeed, defaultChart } from '../ledger/chart';
+import { KIND_PACKS, LIMITS, STARTER_REPORTS, TDS_SECTIONS } from './starter-packs';
 
 /** The five kinds in Settings › Company, with each one's own chart template code. */
 export const KIND_CHART_CODES: Record<BusinessKind, string> = {
@@ -153,6 +154,8 @@ export function starterTemplates(now: string): AccountsTemplate[] {
 	});
 	const start = 'The starting chart of accounts (general ledger F3); to be confirmed by the CA.';
 	const expenses = 'Adds the expense ledgers the reverse-charge list (RS-RCM) posts to; to be confirmed by the CA.';
+	const packs =
+		"Adds the kind's own groups and ledgers from the accounts templates plan's matrix; to be confirmed by the CA.";
 	const withLedgers = (body: ChartTemplateContent, more: ChartTemplateContent['ledgers']): ChartTemplateContent => ({
 		...body,
 		ledgers: [...body.ledgers, ...more],
@@ -187,9 +190,22 @@ export function starterTemplates(now: string): AccountsTemplate[] {
 				chart.groups.filter((g) => !sharedGroup(g)),
 				chart.ledgers.filter((l) => !sharedLedger(l)),
 			);
+			const before = COMPANIES.includes(kind) ? [version(2, withLedgers(own, COMPANY_LEDGERS), expenses)] : [];
+			const latest = (before[0]?.content ?? own) as ChartTemplateContent;
+			const pack = KIND_PACKS[kind];
 			return template(KIND_CHART_CODES[kind], 'chart', KIND_NAMES[kind], { all: false, kinds: [kind] }, [
 				version(1, own, start),
-				...(COMPANIES.includes(kind) ? [version(2, withLedgers(own, COMPANY_LEDGERS), expenses)] : []),
+				...before,
+				// T8: the kind's own groups and ledgers from the plan's matrix.
+				version(
+					before.length + 2,
+					{
+						...latest,
+						groups: [...latest.groups, ...pack.groups],
+						ledgers: [...latest.ledgers, ...pack.ledgers],
+					},
+					packs,
+				),
 			]);
 		}),
 		template('RS-RCM', 'taxRules', 'Reverse-charge list', { all: true, kinds: [] }, [
@@ -200,5 +216,21 @@ export function starterTemplates(now: string): AccountsTemplate[] {
 				'2017-07-01',
 			),
 		]),
+		template('RS-TDS', 'taxRules', 'TDS sections', { all: true, kinds: [] }, [
+			version(1, TDS_SECTIONS, 'Income-tax Act 1961 and 2025; to be confirmed by the CA.', '2025-04-01'),
+		]),
+		template('RS-LIMITS', 'taxRules', 'Limits', { all: true, kinds: [] }, [
+			version(
+				1,
+				LIMITS,
+				'Income-tax, LLP and GST rules named on each limit; to be confirmed by the CA.',
+				'2009-04-01',
+			),
+		]),
+		...STARTER_REPORTS.map((starter) =>
+			template(starter.code, 'report', starter.name, { all: false, kinds: starter.kinds }, [
+				version(1, starter.content, starter.source),
+			]),
+		),
 	];
 }

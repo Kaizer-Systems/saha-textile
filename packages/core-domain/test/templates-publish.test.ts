@@ -64,7 +64,7 @@ describe('the publishing checks (AT3)', () => {
 	it('passes a whole chart that starts after the newest version', () => {
 		const firm = byCode('CH-FIRM');
 		const content = latestChart('CH-FIRM');
-		const more = { ...content, ledgers: [...content.ledgers, ledger('loans_from_partners', 'capital_account')] };
+		const more = { ...content, ledgers: [...content.ledgers, ledger('partner_b_loan', 'capital_account')] };
 		expect(publishProblems(draftOf(firm, more), library)).toEqual([]);
 	});
 
@@ -118,11 +118,11 @@ describe('changes from the newest version', () => {
 				...before.ledgers
 					.filter((l) => l.key !== 'drawings')
 					.map((l) => (l.key === 'capital' ? { ...l, name: 'Owner capital' } : l)),
-				ledger('interest_on_capital', 'capital_account'),
+				ledger('owner_bonus', 'capital_account'),
 			],
 		};
 		expect(chartChanges(before, after)).toEqual({
-			added: ['interest_on_capital'],
+			added: ['owner_bonus'],
 			removed: ['Drawings'],
 			renamed: ['Owner capital'],
 			changed: [],
@@ -133,7 +133,7 @@ describe('changes from the newest version', () => {
 
 describe('Publish', () => {
 	it('turns the draft into the next version, ending the one before the day before', () => {
-		const firm = byCode('CH-FIRM');
+		const firm = { ...byCode('CH-FIRM'), versions: [byCode('CH-FIRM').versions[0] as TemplateVersion] };
 		const published1 = publishDraft(draftOf(firm, latestChart('CH-FIRM'), '2027-04-01'), 'adm_owner', now);
 		expect(published1.draft).toBeNull();
 		expect(published1.versions.map((v) => [v.version, v.validFrom, v.validTo, v.publishedBy])).toEqual([

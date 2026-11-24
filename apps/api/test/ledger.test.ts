@@ -244,7 +244,7 @@ describe('general ledger (accounts brief Q, T, D10)', () => {
 		});
 		expect(templates.installs.rows.map(({ code, version }) => [code, version])).toEqual([
 			['CH-COMMON', 2],
-			['CH-PVT', 2],
+			['CH-PVT', 3],
 		]);
 		await service.chart();
 		expect(templates.installs.rows).toHaveLength(2); // Books already set up: setting them up again is refused (the kind changes only through Convert).
@@ -253,8 +253,12 @@ describe('general ledger (accounts brief Q, T, D10)', () => {
 		const library = await fresh.service.setUpBooks('adm_owner');
 		expect(fresh.templates.installs.rows.map(({ code, version }) => [code, version])).toEqual([
 			['CH-COMMON', 2],
-			['CH-PVT', 2],
+			['CH-PVT', 3],
+			['RS-LIMITS', 1],
 			['RS-RCM', 1],
+			['RS-TDS', 1],
+			['RP-SCH3-BS', 1],
+			['RP-SCH3-PL', 1],
 		]);
 		expect(library.find((row) => row.code === 'RS-RCM')).toMatchObject({ installedVersion: 1, locked: false });
 		expect((await fresh.service.chart()).ledgers.some((l) => l.systemKey === 'directors_remuneration')).toBe(true);

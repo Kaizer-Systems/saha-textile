@@ -50,7 +50,7 @@ describe('New template (AT2)', () => {
 		const copy = await service.create({ ...newChart, code: 'CH-FIRM-COPY', startFrom: 'CH-FIRM' }, null, now);
 		expect((copy.draft?.content as ChartTemplateContent).groups.length).toBeGreaterThan(0);
 		const rules = await routes.create(
-			{ ...newChart, code: 'RS-TDS', kind: 'taxRules', startFrom: null },
+			{ ...newChart, code: 'RS-TDS-OWN', kind: 'taxRules', startFrom: null },
 			undefined,
 		);
 		expect(rules.draft?.content).toEqual({ kind: 'taxRules', list: 'reverseCharge', entries: [] });
@@ -93,7 +93,7 @@ describe('Save draft, changes and Publish (AT3)', () => {
 		const latest = firm.versions[firm.versions.length - 1]?.content as ChartTemplateContent;
 		expect(await routes.changes('CH-FIRM')).toBeNull();
 		const draft = {
-			content: { ...latest, ledgers: [...latest.ledgers, ledger('loans_from_partners', 'capital_account')] },
+			content: { ...latest, ledgers: [...latest.ledgers, ledger('partner_b_loan', 'capital_account')] },
 			validFrom: '2027-04-01',
 			source: 'Deed clause 7',
 			notes: '',
@@ -102,13 +102,13 @@ describe('Save draft, changes and Publish (AT3)', () => {
 		const saved = await routes.saveDraft('CH-FIRM', draft, { userId: 'adm_owner' } as never);
 		expect(saved.draft).toMatchObject({ validFrom: '2027-04-01', savedBy: 'adm_owner' });
 		expect(await routes.changes('CH-FIRM')).toEqual({
-			added: ['loans_from_partners'],
+			added: ['partner_b_loan'],
 			removed: [],
 			renamed: [],
 			changed: [],
 		});
 		const published = await routes.publish('CH-FIRM', { expectedUpdatedAt: saved.updatedAt }, undefined);
-		expect(published.versions.at(-1)).toMatchObject({ version: 2, validFrom: '2027-04-01', caReview: 'pending' });
+		expect(published.versions.at(-1)).toMatchObject({ version: 3, validFrom: '2027-04-01', caReview: 'pending' });
 		expect(stores.templates.rows.find((t) => t.code === 'CH-FIRM')?.draft).toBeNull();
 		const stale = { ...draft, expectedUpdatedAt: '2000-01-01T00:00:00.000Z' };
 		await expect(service.saveDraft('CH-FIRM', stale, null, now)).rejects.toMatchObject({

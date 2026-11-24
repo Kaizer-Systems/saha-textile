@@ -77,7 +77,7 @@ A super admin cancels a voucher while its month is open for its cash or bank par
 
 ## On the supplier's statement
 
-A supplier's page (Purchases › Suppliers) lists their self-invoices and the payment vouchers that paid them with their bills and payments, in date order with the running balance: a self-invoice adds what is owed (its taxable value; the tax is ours to pay), a voucher settles it, and a cancelled one puts it back. What the supplier is owed includes issued self-invoices not yet paid in full.
+A supplier's page (Purchases › Suppliers) lists their self-invoices and the payment vouchers that paid them with their bills and payments, in date order with the running balance: a self-invoice adds what is owed (its taxable value; the tax is ours to pay), a voucher settles it, and a cancelled one puts it back. What the supplier is owed includes issued self-invoices that are unpaid or part paid.
 
 ## Screens
 

@@ -126,7 +126,7 @@ A tax invoice uses the advance its order still holds (receipts credited to Custo
 
 When the books can't take a posting, the step is refused with a code the admin puts in words (`money_lands_not_set:*`, `books_need_a_location`, `voucher_problem:*`), in the error notice and in Record payment on an order.
 
-A payment on an order is posted by Record payment and Mark received on the order page, by a payment typed at Create order, by a paid payment link and by shop checkout. A payment through the gateway (shop checkout or a payment link) is the customer's money, already paid, so it is never refused: when the books can't take it, the payment is kept, the reason is logged and **Post them** posts it once the cause is fixed. A payment still on its way (a transfer not yet in the bank) posts nothing until it is marked received. A business receipt's share of an order on account is recorded on the order as a payment on account, which posts nothing more: the receipt itself was posted.
+A payment on an order is posted by Record payment and Mark received on the order page, by a payment typed at Create order, by a paid payment link and by shop checkout. A payment through the gateway (shop checkout or a payment link) is the customer's money, already paid, so it is never refused: when the books can't take it, the payment is kept, the reason is logged and **Post them** posts it once the cause is fixed. A payment still on its way (a transfer the bank hasn't received) posts nothing until it is marked received. A business receipt's share of an order on account is recorded on the order as a payment on account, which posts nothing more: the receipt itself was posted.
 
 ## Documents saved before the books took them
 

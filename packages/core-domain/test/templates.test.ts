@@ -74,6 +74,16 @@ describe('accounts templates (T2)', () => {
 			'CH-OPC',
 			'CH-PVT',
 			'RS-RCM',
+			'RS-TDS',
+			'RS-LIMITS',
+			'RP-NCE-PL',
+			'RP-NCE-BS-PROP',
+			'RP-NCE-BS-FIRM',
+			'RP-APPROP',
+			'RP-LLP-BS',
+			'RP-LLP-PL',
+			'RP-SCH3-BS',
+			'RP-SCH3-PL',
 		]);
 		expect(templates.every((t) => t.versions.every((v) => v.caReview === 'pending'))).toBe(true);
 		const byCode = new Map(templates.map((t) => [t.code, t] as [string, AccountsTemplate]));
@@ -97,8 +107,8 @@ describe('accounts templates (T2)', () => {
 		const rcm = templates.find((t) => t.code === 'RS-RCM')!;
 		const entries = (rcm.versions[0]!.content as { entries: { expenseRole: string; kinds: string[] | null }[] })
 			.entries;
-		expect(byKey(templates, 'CH-PROP').versions.map((v) => v.version)).toEqual([1]);
-		expect(byKey(templates, 'CH-PVT').versions.map((v) => v.version)).toEqual([1, 2]);
+		expect(byKey(templates, 'CH-PROP').versions.map((v) => v.version)).toEqual([1, 2]);
+		expect(byKey(templates, 'CH-PVT').versions.map((v) => v.version)).toEqual([1, 2, 3]);
 		for (const kind of Object.keys(KIND_CHART_CODES)) {
 			const chart = mergeCharts(
 				unlockedFor(
@@ -128,7 +138,22 @@ describe('accounts templates (T2)', () => {
 			versions: [{ ...byKey(starters, 'CH-PVT').versions[0]!, publishedBy: 'usr_ca' }],
 		};
 		const { inserts, updates } = starterChanges([v1Only('CH-COMMON'), own, byKey(starters, 'CH-PROP')], starters);
-		expect(inserts.map((t) => t.code)).toEqual(['CH-FIRM', 'CH-LLP', 'CH-OPC', 'RS-RCM']);
+		expect(inserts.map((t) => t.code)).toEqual([
+			'CH-FIRM',
+			'CH-LLP',
+			'CH-OPC',
+			'RS-RCM',
+			'RS-TDS',
+			'RS-LIMITS',
+			'RP-NCE-PL',
+			'RP-NCE-BS-PROP',
+			'RP-NCE-BS-FIRM',
+			'RP-APPROP',
+			'RP-LLP-BS',
+			'RP-LLP-PL',
+			'RP-SCH3-BS',
+			'RP-SCH3-PL',
+		]);
 		expect(
 			updates.map((u) => [u.template.code, u.template.versions.map((v) => v.version), u.expectedUpdatedAt]),
 		).toEqual([['CH-COMMON', [1, 2], 'old']]);
@@ -176,11 +201,15 @@ describe('what a kind opens (AT1)', () => {
 		const opens = whatOpens([...templates, report], 'proprietorship', '2026-11-24');
 		expect(opens.charts).toEqual([
 			{ code: 'CH-COMMON', name: 'Shared chart', version: 2 },
-			{ code: 'CH-PROP', name: "Proprietor's capital and drawings", version: 1 },
+			{ code: 'CH-PROP', name: "Proprietor's capital and drawings", version: 2 },
 		]);
-		expect(opens.taxRules).toEqual([{ code: 'RS-RCM', name: 'Reverse-charge list', version: 1, entries: 4 }]);
-		expect(opens.reports).toEqual([{ code: 'RP-NCE-BS', name: 'Balance sheet', version: 1 }]);
-		expect(opens.locked).toBe(4);
+		expect(opens.taxRules).toEqual([
+			{ code: 'RS-RCM', name: 'Reverse-charge list', version: 1, entries: 4 },
+			{ code: 'RS-TDS', name: 'TDS sections', version: 1, entries: 9 },
+			{ code: 'RS-LIMITS', name: 'Limits', version: 1, entries: 6 },
+		]);
+		expect(opens.reports.map((r) => r.code)).toEqual(['RP-NCE-PL', 'RP-NCE-BS-PROP', 'RP-NCE-BS']);
+		expect(opens.locked).toBe(10);
 		expect(whatOpens(templates, 'private_limited', '2026-11-24').taxRules[0]?.entries).toBe(6);
 	});
 });

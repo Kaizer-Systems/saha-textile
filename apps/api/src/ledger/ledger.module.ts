@@ -12,6 +12,7 @@ import { LedgerService } from './ledger.service';
 import { MoneyLandingController, MoneyLandingService } from './money-landing';
 import { ReportPreviewController, ReportPreviewService } from './report-preview';
 import { RolesController, RolesService } from './roles';
+import { TemplateUpdatesController, TemplateUpdatesService } from './template-updates';
 
 /** The general ledger (accounts brief Q, T, D10): later documents post through LedgerService.post. */
 @Module({
@@ -25,6 +26,7 @@ import { RolesController, RolesService } from './roles';
 		ConvertController,
 		RolesController,
 		ReportPreviewController,
+		TemplateUpdatesController,
 	],
 	providers: [
 		LedgerService,
@@ -35,6 +37,7 @@ import { RolesController, RolesService } from './roles';
 		ConvertService,
 		RolesService,
 		ReportPreviewService,
+		TemplateUpdatesService,
 	],
 	exports: [LedgerService, EditLogService, MoneyLandingService, BooksPostingService],
 })

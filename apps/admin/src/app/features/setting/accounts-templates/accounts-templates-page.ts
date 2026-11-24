@@ -15,7 +15,14 @@ import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 
-import type { BusinessKind, TemplateKind, TemplateLibraryRow, TemplateNew } from '@saha-textile/contracts';
+import type {
+	BusinessKind,
+	KeptChange,
+	TemplateKind,
+	TemplateLibraryRow,
+	TemplateNew,
+	TemplateUpdate,
+} from '@saha-textile/contracts';
 
 /** A template's words: a code the builder refuses with, else the failure. */
 export function templateWords(code: string, translate: (key: string) => string): string {
@@ -157,6 +164,49 @@ export class AccountsTemplatesPage {
 			);
 		} finally {
 			input.value = '';
+		}
+	}
+
+	/* ------------------------------------------------------------ AT7 Update available */
+
+	/** The template whose newer version is open in the AT7 box. */
+	readonly updating = signal<string | null>(null);
+	readonly installing = signal(false);
+	readonly update = injectQuery(() => ({
+		queryKey: ACCOUNTS_TEMPLATE_KEYS.update(this.updating() ?? ''),
+		queryFn: () => firstValueFrom(this.gateway.update(this.updating() as string)),
+		enabled: !!this.updating(),
+		// A refusal (nothing newer, or a template locked meanwhile) is an answer, not a failure to retry.
+		retry: false,
+	}));
+	/** Why the update couldn't be read, in words. */
+	readonly updateProblem = computed(() => {
+		const error = this.update.error();
+		return error ? this.words(error) : null;
+	});
+
+	/** AT7 "Your own change kept: …". */
+	keptWords(kept: KeptChange): string {
+		return this.transloco.translate(`au_kept_${kept.kind}`, {
+			label: kept.label,
+			ours: kept.ours,
+			theirs: kept.theirs,
+		});
+	}
+
+	async install(update: TemplateUpdate): Promise<void> {
+		this.installing.set(true);
+		try {
+			await firstValueFrom(this.gateway.install(update.code, update.version));
+			await this.queryClient.invalidateQueries({ queryKey: ['accounts-templates'] });
+			this.updating.set(null);
+			this.notifier.showSuccess(
+				this.transloco.translate('au_installed', { code: update.code, version: String(update.version) }),
+			);
+		} catch (error) {
+			this.notifier.showError(this.words(error));
+		} finally {
+			this.installing.set(false);
 		}
 	}
 

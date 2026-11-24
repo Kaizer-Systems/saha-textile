@@ -271,3 +271,33 @@ export const ReportPreview = z.object({
 	problems: z.array(z.string()),
 });
 export type ReportPreview = z.infer<typeof ReportPreview>;
+
+/** AT7 "Your own change kept": a name the company changed, or a role it gave to a ledger of its own. */
+export const KeptChange = z.object({
+	kind: z.enum(['name', 'role']),
+	/** The template's item, or the rule set entry whose expense goes elsewhere. */
+	label: z.string(),
+	/** What the company's books have. */
+	ours: z.string(),
+	/** What the template has. */
+	theirs: z.string(),
+});
+export type KeptChange = z.infer<typeof KeptChange>;
+
+/** AT7 "Update available": a newer version than the one installed, what it changes and what of the company's is kept. */
+export const TemplateUpdate = z.object({
+	code: TemplateCode,
+	name: z.string(),
+	kind: TemplateKind,
+	installedVersion: z.number().int().positive(),
+	version: z.number().int().positive(),
+	/** The day the newer version applies from ("Install from 1 Dec 2026"); documents dated before keep theirs. */
+	validFrom: IsoDate,
+	changes: TemplateChanges,
+	kept: z.array(KeptChange),
+});
+export type TemplateUpdate = z.infer<typeof TemplateUpdate>;
+
+/** AT7 Install: the version the person saw, so a newer one published meanwhile is never installed unseen. */
+export const TemplateInstallWrite = z.object({ version: z.number().int().positive() });
+export type TemplateInstallWrite = z.infer<typeof TemplateInstallWrite>;

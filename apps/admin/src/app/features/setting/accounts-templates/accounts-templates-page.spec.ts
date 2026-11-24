@@ -58,7 +58,21 @@ const rows = [
 	}),
 ];
 
-function setup(options: { permissions?: string[]; fail?: unknown } = {}) {
+const update = {
+	code: 'CH-COMMON',
+	name: 'Shared chart',
+	kind: 'chart',
+	installedVersion: 1,
+	version: 2,
+	validFrom: '2026-12-01',
+	changes: { added: ['Legal fees'], removed: ['Old'], renamed: ['Renamed'], changed: ['Moved'] },
+	kept: [
+		{ kind: 'name', label: 'Indirect expenses', ours: 'Overheads', theirs: 'Indirect expenses' },
+		{ kind: 'role', label: 'Shop rent', ours: 'Shop rent (Barasat)', theirs: 'Rent' },
+	],
+};
+
+function setup(options: { permissions?: string[]; fail?: unknown; updateFails?: unknown } = {}) {
 	const close = vi.fn();
 	const notifier = { showError: vi.fn(), showSuccess: vi.fn() };
 	const result = (made: unknown) => (options.fail ? throwError(() => options.fail) : of(made));
@@ -66,13 +80,23 @@ function setup(options: { permissions?: string[]; fail?: unknown } = {}) {
 		library: () => of(rows),
 		create: vi.fn((write: { code: string }) => result({ code: write.code })),
 		importTemplate: vi.fn((t: { code: string }) => result({ code: t.code })),
+		update: vi.fn(() => (options.updateFails ? throwError(() => options.updateFails) : of(update))),
+		install: vi.fn(() => result(rows)),
 	};
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		imports: [
 			AccountsTemplatesPage,
 			TranslocoTestingModule.forRoot({
-				langs: { en: { at_imported: 'Imported {{code}}', at_import_not_json: 'Not a template' } },
+				langs: {
+					en: {
+						at_imported: 'Imported {{code}}',
+						at_import_not_json: 'Not a template',
+						au_kept_name: 'Kept: {{ours}} instead of {{theirs}}',
+						au_kept_role: 'Kept: {{label}} to {{ours}} instead of {{theirs}}',
+						au_installed: '{{code}} v{{version}} installed',
+					},
+				},
 				translocoConfig: { availableLangs: ['en'], defaultLang: 'en' },
 				preloadLangs: true,
 			}),
@@ -185,5 +209,41 @@ describe('New template and Import (AT2)', () => {
 		expect(page.state(row({ latestVersion: null }) as never)).toEqual({ key: 'at_state_draft', version: 0 });
 		expect(templateWords('template_role_missing:cash:llp', (k) => k)).toBe('at_problem_template_role_missing');
 		expect(templateWords('Network down', (k) => k)).toBe('at_action_failed');
+	});
+});
+
+describe('Update available (AT7)', () => {
+	it('opens the newer version with what it changes and what is kept, and installs it', async () => {
+		const { fixture, page, gateway, notifier } = setup();
+		fixture.detectChanges();
+		await vi.waitFor(() => expect(page.rows()).toHaveLength(5));
+		expect(page.update.data()).toBeUndefined();
+		page.updating.set('CH-COMMON');
+		fixture.detectChanges();
+		await vi.waitFor(() => expect(page.update.data()).toEqual(update));
+		fixture.detectChanges();
+		expect(gateway.update).toHaveBeenCalledWith('CH-COMMON');
+		expect(page.keptWords(update.kept[0] as never)).toBe('Kept: Overheads instead of Indirect expenses');
+		expect(page.keptWords(update.kept[1] as never)).toBe('Kept: Shop rent to Shop rent (Barasat) instead of Rent');
+		expect(fixture.nativeElement.textContent).toContain('Legal fees');
+		await page.install(update as never);
+		expect(gateway.install).toHaveBeenCalledWith('CH-COMMON', 2);
+		expect(notifier.showSuccess).toHaveBeenCalledWith('CH-COMMON v2 installed');
+		expect([page.updating(), page.installing()]).toEqual([null, false]);
+		expect(page.updateProblem()).toBeNull();
+	});
+
+	it('says why an update could not be read or installed', async () => {
+		const refused = (message: string) => ({ error: { error: { issues: [{ code: message, message }] } } });
+		const unread = setup({ updateFails: refused('template_no_update') });
+		unread.fixture.detectChanges();
+		unread.page.updating.set('CH-COMMON');
+		unread.fixture.detectChanges();
+		await vi.waitFor(() => expect(unread.page.updateProblem()).toBe('at_problem_template_no_update'));
+		unread.fixture.detectChanges();
+		const failing = setup({ fail: refused('template_update_changed') });
+		await failing.page.install(update as never);
+		expect(failing.notifier.showError).toHaveBeenCalledWith('at_problem_template_update_changed');
+		expect(failing.page.installing()).toBe(false);
 	});
 });

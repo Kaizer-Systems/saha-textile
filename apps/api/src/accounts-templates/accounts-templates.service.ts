@@ -156,6 +156,11 @@ export class AccountsTemplatesService {
 			});
 	}
 
+	/** AT7 Install: the company now uses this version of the template (what it adds to the books is done before). */
+	async markInstalled(code: string, version: number, by: string | null, now = new Date()): Promise<void> {
+		await this.installs.save({ code, version, installedAt: now.toISOString(), installedBy: by });
+	}
+
 	/** One template with every version, by its reference code. */
 	async get(code: string): Promise<AccountsTemplate> {
 		await this.ensureLibrary();

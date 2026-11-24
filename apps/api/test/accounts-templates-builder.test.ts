@@ -207,4 +207,19 @@ describe('Import (AT2) and installed charts (AT4)', () => {
 		expect(charts.map((c) => c.label)).toEqual(['CH-COMMON v1']);
 		expect(charts[0]?.keys.has('cash')).toBe(true);
 	});
+
+	it('records a newer version installed (AT7), offering no update after', async () => {
+		const { service, stores } = await setup([{ code: 'CH-COMMON', version: 1 }]);
+		expect((await service.library()).find((r) => r.code === 'CH-COMMON')?.updateAvailable).toBe(true);
+		await service.markInstalled('CH-COMMON', 2, 'adm_owner', now);
+		expect(stores.installs.rows.find((r) => r.code === 'CH-COMMON')).toEqual({
+			code: 'CH-COMMON',
+			version: 2,
+			installedAt: now.toISOString(),
+			installedBy: 'adm_owner',
+		});
+		expect((await service.library()).find((r) => r.code === 'CH-COMMON')?.updateAvailable).toBe(false);
+		await service.markInstalled('RS-RCM', 1, null);
+		expect(stores.installs.rows.find((r) => r.code === 'RS-RCM')?.installedBy).toBeNull();
+	});
 });

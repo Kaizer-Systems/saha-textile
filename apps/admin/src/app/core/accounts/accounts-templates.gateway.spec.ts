@@ -25,6 +25,8 @@ describe('accounts templates gateway (T2, T3)', () => {
 			[gateway.publish('CH-PROP', '2026-11-24T00:00:00.000Z'), 'POST', `${base}/CH-PROP/publish`],
 			[gateway.preview('RP-NCE-BS', '2026-11-24'), 'GET', `${base}/RP-NCE-BS/preview`],
 			[gateway.preview('RP-CASH', null), 'GET', `${base}/RP-CASH/preview`],
+			[gateway.update('RS-RCM'), 'GET', `${base}/RS-RCM/update`],
+			[gateway.install('RS-RCM', 2), 'POST', `${base}/RS-RCM/install`],
 			[gateway.roles(), 'GET', '/admin/accounts/roles'],
 			[gateway.pointRole('cash', 'led_till'), 'PUT', '/admin/accounts/roles/cash'],
 		];
@@ -43,5 +45,6 @@ describe('accounts templates gateway (T2, T3)', () => {
 		expect(ACCOUNTS_TEMPLATE_KEYS.opens('llp')).toEqual(['accounts-templates', 'opens', 'llp']);
 		expect(ACCOUNTS_TEMPLATE_KEYS.changes('CH-PROP')).toEqual(['accounts-templates', 'CH-PROP', 'changes']);
 		expect(ACCOUNTS_TEMPLATE_KEYS.roles).toEqual(['accounts-templates', 'roles']);
+		expect(ACCOUNTS_TEMPLATE_KEYS.update('RS-RCM')).toEqual(['accounts-templates', 'RS-RCM', 'update']);
 	});
 });

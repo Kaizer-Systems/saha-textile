@@ -90,6 +90,10 @@ A template keeps every version. Each has a `validFrom` and optional `validTo` da
 - `latestVersion(template)`: the newest version.
 - `versionOn(template, day)`: the newest version in force on a day, or none.
 
+### Updates
+
+A newer version than the one installed shows as **Installed · update vN** in the library and is never installed by itself (AT-D5). Opening it shows what it changes (`versionChanges`: added, removed, renamed and changed items, entries or lines) and the company's own changes it keeps (`keptChanges`: a group or ledger the company renamed, and a role, or a rule set entry's expense, that goes to a ledger of the company's own). **Install from <day>** records the version; for a chart it first adds the groups and ledgers the books lack, by key (`chartInstallPlan`): nothing the company has is renamed, moved or removed, and a new ledger gives up any role someone in the books already plays. Documents dated before the version's first day keep the rule they were made with. Each install is in the edit log (`accounts.template.install`, with the versions before and after and what was added). The rules are in `packages/core-domain/src/templates/update-rules.ts`; the service is `apps/api/src/ledger/template-updates.ts`.
+
 ## Installing the books
 
 The first read of the chart installs the books from the templates the company's kind unlocks: the newest version of each chart template, merged by `mergeCharts`. Two templates defining the same group or ledger key refuse with `template_duplicate_key:<key>`; a group or ledger pointing at a group none of them has refuses with `template_unknown_parent:<key>` or `template_unknown_group:<key>`.
@@ -112,6 +116,8 @@ The library row for each template says which version is installed and whether a 
 | `GET /admin/accounts/templates/:code/changes`       | what the draft changes from the newest version                             | `accounts.index`         |
 | `POST /admin/accounts/templates/:code/publish`      | Publish the draft as the next version                                      | `accounts_template.edit` |
 | `GET /admin/accounts/templates/:code/preview?asAt=` | a report template on this company's books (AT6)                            | `accounts.index`         |
+| `GET /admin/accounts/templates/:code/update`        | a newer version, what it changes and what is kept (AT7)                    | `accounts.index`         |
+| `POST /admin/accounts/templates/:code/install`      | install that version (`{ version }`, the one shown)                        | `accounts_template.edit` |
 | `GET /admin/accounts/roles`                         | roles in this company's books                                              | `accounts.index`         |
 | `PUT /admin/accounts/roles/:key`                    | point a ledger role at another ledger (super admin)                        | `accounts_template.edit` |
 | `GET /admin/company/convert/preview?kind=&lastDay=` | what converting would do (super admin)                                     | `accounts_template.edit` |

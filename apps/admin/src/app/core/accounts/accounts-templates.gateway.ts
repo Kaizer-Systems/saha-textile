@@ -15,6 +15,7 @@ import type {
 	TemplateLibraryRow,
 	TemplateNew,
 	TemplatesOpen,
+	TemplateUpdate,
 } from '@saha-textile/contracts';
 import type { Observable } from 'rxjs';
 
@@ -24,6 +25,7 @@ export const ACCOUNTS_TEMPLATE_KEYS = {
 	opens: (kind: BusinessKind) => ['accounts-templates', 'opens', kind] as const,
 	changes: (code: string) => ['accounts-templates', code, 'changes'] as const,
 	roles: ['accounts-templates', 'roles'] as const,
+	update: (code: string) => ['accounts-templates', code, 'update'] as const,
 };
 
 /** Accounts templates (owner-approved 2026-11-24, T2–T3): the library, what a kind opens, setting up the books. */
@@ -71,6 +73,17 @@ export class AccountsTemplatesGateway {
 			...QUIET,
 			params: asAt ? { asAt } : {},
 		});
+	}
+	/** AT7 Update available: the newer version, what it changes and what is kept; Install records it. */
+	update(code: string): Observable<TemplateUpdate> {
+		return this.http.get<TemplateUpdate>(`${this.base()}/${encodeURIComponent(code)}/update`, QUIET);
+	}
+	install(code: string, version: number): Observable<TemplateLibraryRow[]> {
+		return this.http.post<TemplateLibraryRow[]>(
+			`${this.base()}/${encodeURIComponent(code)}/install`,
+			{ version },
+			QUIET,
+		);
 	}
 	/** AT4 roles in this company's books, and pointing one at another ledger (super admin). */
 	roles(): Observable<RoleRow[]> {

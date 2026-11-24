@@ -157,14 +157,11 @@ export function ratios(
 	const debtors = sum(inGroup('sundry_debtors'), closing);
 	const creditors = -sum(inGroup('sundry_creditors'), closing);
 	const purchases = moved((l) => l.systemKey === 'purchases') || directCosts;
-	const loans = -['secured_loans', 'unsecured_loans', 'loans_liability', 'bank_od'].reduce(
-		(total, key) => total + sum(inGroup(key), closing),
-		0,
-	);
-	const equity = -['capital_account', 'reserves_and_surplus', 'partners_current'].reduce(
-		(total, key) => total + sum(inGroup(key), closing),
-		0,
-	);
+	// Groups nest (secured loans sit inside loans), so a ledger counts once if it is under any of them.
+	const underAny = (keys: readonly string[]) => (l: ChartLike['ledgers'][number]) =>
+		keys.some((key) => under(l.groupId, key));
+	const loans = -sum(underAny(['secured_loans', 'unsecured_loans', 'loans_liability', 'bank_od']), closing);
+	const equity = -sum(underAny(['capital_account', 'reserves_and_surplus', 'partners_current']), closing);
 	const per = (a: number, b: number, scale = 1) => (b ? Math.round((a / b) * scale * 100) / 100 : null);
 	return {
 		currentRatio: per(currentAssets, currentLiabilities),

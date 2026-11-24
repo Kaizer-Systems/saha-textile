@@ -64,6 +64,11 @@
       "import": "./dist/esm/company/index.js",
       "default": "./dist/company/index.js"
     },
+    "./bank-statement": {
+      "types": "./dist/bank/statement-rules.d.ts",
+      "import": "./dist/esm/bank/statement-rules.js",
+      "default": "./dist/bank/statement-rules.js"
+    },
     "./self-invoice": {
       "types": "./dist/invoicing/self-invoice-rules.d.ts",
       "import": "./dist/esm/self-invoice/invoicing/self-invoice-rules.js",
@@ -79,7 +84,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.legacy-esm.json && tsc -p tsconfig.purchasing-esm.json && tsc -p tsconfig.shipping-esm.json && tsc -p tsconfig.bundle-esm.json && tsc -p tsconfig.company-esm.json && tsc -p tsconfig.self-invoice-esm.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.legacy-esm.json && tsc -p tsconfig.purchasing-esm.json && tsc -p tsconfig.shipping-esm.json && tsc -p tsconfig.bundle-esm.json && tsc -p tsconfig.company-esm.json && tsc -p tsconfig.self-invoice-esm.json && tsc -p tsconfig.bank-statement-esm.json",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "lint": "eslint .",
     "test": "vitest run"

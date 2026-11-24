@@ -47,6 +47,14 @@ export const BankAccountWrite = z.object({
 });
 export type BankAccountWrite = z.infer<typeof BankAccountWrite>;
 
+/** BA2 Save on an existing account: its details over the version the screen read. */
+export const BankAccountEdit = BankAccountWrite.extend({ version: z.number().int().nonnegative() });
+export type BankAccountEdit = z.infer<typeof BankAccountEdit>;
+
+/** BA2's IFSC box: the code typed so far. */
+export const IfscQuery = z.object({ code: z.string().trim().min(4).max(11) });
+export type IfscQuery = z.infer<typeof IfscQuery>;
+
 export const BankAccount = BankAccountWrite.extend({
 	id: Id,
 	ledgerId: Id,

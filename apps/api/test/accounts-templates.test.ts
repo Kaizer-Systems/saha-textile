@@ -183,6 +183,7 @@ describe('accounts templates library (T2)', () => {
 								from: '2024-10-10',
 								to: null,
 								source: '',
+								caReview: 'pending' as const,
 							},
 						],
 					},

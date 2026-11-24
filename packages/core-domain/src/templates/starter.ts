@@ -84,7 +84,18 @@ const rcmEntry = (
 	expenseRole: string,
 	from: string,
 	kinds: BusinessKind[] | null = null,
-): TaxRuleEntry => ({ key, name, code, ratePercent, expenseRole, kinds, from, to: null, source: RCM_SOURCE });
+): TaxRuleEntry => ({
+	key,
+	name,
+	code,
+	ratePercent,
+	expenseRole,
+	kinds,
+	from,
+	to: null,
+	source: RCM_SOURCE,
+	caReview: 'pending',
+});
 
 /** RS-RCM v1: services on which the buyer pays the GST. Codes and rates are to be confirmed by the CA. */
 const RCM_ENTRIES: TaxRuleEntry[] = [

@@ -1,0 +1,359 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'at_title'"
+>
+	@if (template.data(); as t) {
+	<div class="card">
+		<div class="card-body theme-form theme-form-2">
+			<div class="title-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+				<h5>{{ t.name }} · {{ t.code }}</h5>
+				<span class="d-flex gap-2">
+					@if (latest()) {
+					<button
+						type="button"
+						class="btn btn-outline"
+						id="rs_compare"
+						(click)="comparing.set(!comparing())"
+					>
+						{{ 'rs_compare' | transloco: { version: latest() } }}
+					</button>
+					} @if (canEdit() && content()) {
+					<button
+						type="button"
+						class="btn btn-outline"
+						id="rs_save"
+						[disabled]="busy()"
+						(click)="saveDraft()"
+					>
+						{{ 'tb_save_draft' | transloco }}
+					</button>
+					<button
+						type="button"
+						class="btn btn-theme"
+						id="rs_publish"
+						[disabled]="busy() || dirty() || !t.draft"
+						(click)="publish()"
+					>
+						{{ 'tb_publish' | transloco: { version: nextVersion() } }}
+					</button>
+					}
+				</span>
+			</div>
+			@for (p of problems(); track $index) {
+			<div class="alert alert-danger py-2">{{ p }}</div>
+			} @if (comparing() && changes.data(); as ch) {
+			<div class="box small mb-3 rounded border p-3">
+				<b class="d-block">{{ 'tb_changes' | transloco: { version: latest() } }}</b>
+				@for (a of ch.added; track $index) {
+				<span class="text-success d-block">+ {{ a }}</span>
+				} @for (r of ch.removed; track $index) {
+				<span class="text-danger d-block">− {{ r }}</span>
+				} @for (n of ch.renamed; track $index) {
+				<span class="d-block">~ {{ n }}</span>
+				} @for (c of ch.changed; track $index) {
+				<span class="d-block">~ {{ c }}</span>
+				} @if (!ch.added.length && !ch.removed.length && !ch.renamed.length && !ch.changed.length) {
+				<span class="text-muted d-block">{{ 'rs_no_changes' | transloco }}</span>
+				}
+			</div>
+			} @if (content(); as c) {
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'rs_service' | transloco }}</th>
+							<th>{{ 'rs_sac' | transloco }}</th>
+							<th>{{ 'rs_rate' | transloco }}</th>
+							<th>{{ 'rs_expense_role' | transloco }}</th>
+							<th>{{ 'at_applies_to' | transloco }}</th>
+							<th>{{ 'rs_from' | transloco }}</th>
+							<th>{{ 'rs_source' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (e of c.entries; track e.key) {
+						<tr
+							[class.table-active]="selected() === e.key"
+							(click)="selected.set(e.key)"
+						>
+							<td>
+								<a
+									href="javascript:void(0)"
+									class="text-reset"
+								>
+									{{ e.name }}
+								</a>
+							</td>
+							<td>{{ e.code }}</td>
+							<td>{{ e.ratePercent }}%</td>
+							<td>{{ e.expenseRole ?? '—' }}</td>
+							<td>{{ appliesTo(e) }}</td>
+							<td class="text-nowrap">{{ e.from }}@if (e.to) { – {{ e.to }} }</td>
+							<td>
+								{{ e.source }} @if (e.caReview === 'pending') {
+								<span class="badge bg-light text-dark ms-1">{{ 'at_ca_review' | transloco }}</span>
+								}
+							</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td
+								colspan="7"
+								class="text-muted py-4 text-center"
+							>
+								{{ 'rs_empty' | transloco }}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			@if (canEdit()) {
+			<button
+				type="button"
+				class="btn btn-outline btn-sm mt-2"
+				id="rs_add"
+				(click)="addEntry()"
+			>
+				{{ 'rs_add_entry' | transloco }}
+			</button>
+			}
+			<div class="box mt-3 rounded border p-3">
+				@if (entry(); as e) {
+				<div class="d-flex justify-content-between align-items-center mb-2">
+					<b>{{ 'tb_selected' | transloco: { name: e.name } }}</b>
+					@if (canEdit() && isNew(e.key)) {
+					<a
+						href="javascript:void(0)"
+						class="text-danger"
+						id="rs_remove"
+						[title]="'delete' | transloco"
+						(click)="remove(e.key)"
+					>
+						<i class="ri-delete-bin-line"></i>
+					</a>
+					}
+				</div>
+				<div class="row g-2">
+					<div class="col-md-6">
+						<label
+							class="form-label-title"
+							for="rs_name"
+						>
+							{{ 'rs_service' | transloco }}
+						</label>
+						<input
+							class="form-control"
+							id="rs_name"
+							maxlength="200"
+							[disabled]="!canEdit()"
+							[ngModel]="e.name"
+							(ngModelChange)="patch(e.key, { name: $event })"
+						/>
+					</div>
+					@if (isNew(e.key)) {
+					<div class="col-md-6">
+						<label
+							class="form-label-title"
+							for="rs_key"
+						>
+							{{ 'tb_key' | transloco }}
+						</label>
+						<input
+							class="form-control"
+							id="rs_key"
+							[disabled]="!canEdit()"
+							[ngModel]="e.key"
+							(change)="patch(e.key, { key: $any($event.target).value })"
+						/>
+					</div>
+					}
+					<div class="col-md-3">
+						<label
+							class="form-label-title"
+							for="rs_code"
+						>
+							{{ 'rs_sac' | transloco }}
+						</label>
+						<input
+							class="form-control"
+							id="rs_code"
+							maxlength="20"
+							[disabled]="!canEdit()"
+							[ngModel]="e.code"
+							(ngModelChange)="patch(e.key, { code: $event })"
+						/>
+					</div>
+					<div class="col-md-3">
+						<label
+							class="form-label-title"
+							for="rs_rate_input"
+						>
+							{{ 'rs_rate' | transloco }}
+						</label>
+						<input
+							type="number"
+							class="form-control"
+							id="rs_rate_input"
+							min="0"
+							max="100"
+							step="0.01"
+							[disabled]="!canEdit()"
+							[ngModel]="e.ratePercent"
+							(ngModelChange)="patch(e.key, { ratePercent: +$event })"
+						/>
+					</div>
+					<div class="col-md-6">
+						<label
+							class="form-label-title"
+							for="rs_role"
+						>
+							{{ 'rs_expense_role' | transloco }}
+						</label>
+						<input
+							class="form-control"
+							id="rs_role"
+							[disabled]="!canEdit()"
+							[ngModel]="e.expenseRole ?? ''"
+							(change)="role(e.key, $any($event.target).value)"
+						/>
+					</div>
+					<div class="col-12">
+						<span class="form-label-title d-block">{{ 'at_applies_to' | transloco }}</span>
+						<label class="me-3">
+							<input
+								type="checkbox"
+								id="rs_all"
+								[disabled]="!canEdit()"
+								[checked]="e.kinds === null"
+								(change)="allKinds(e.key, $any($event.target).checked)"
+							/>
+							{{ 'at_all_kinds' | transloco }}
+						</label>
+						@if (e.kinds !== null) { @for (k of kinds; track k) {
+						<label class="me-3">
+							<input
+								type="checkbox"
+								[id]="'rs_kind_' + k"
+								[disabled]="!canEdit()"
+								[checked]="e.kinds.includes(k)"
+								(change)="toggleKind(e, k, $any($event.target).checked)"
+							/>
+							{{ 'co_kind_' + k | transloco }}
+						</label>
+						} }
+					</div>
+					<div class="col-md-3">
+						<label
+							class="form-label-title"
+							for="rs_from_input"
+						>
+							{{ 'rs_from' | transloco }}
+						</label>
+						<input
+							type="date"
+							class="form-control"
+							id="rs_from_input"
+							[disabled]="!canEdit()"
+							[ngModel]="e.from"
+							(ngModelChange)="patch(e.key, { from: $event })"
+						/>
+					</div>
+					<div class="col-md-3">
+						<label
+							class="form-label-title"
+							for="rs_to"
+						>
+							{{ 'rs_to' | transloco }}
+						</label>
+						<input
+							type="date"
+							class="form-control"
+							id="rs_to"
+							[disabled]="!canEdit()"
+							[ngModel]="e.to ?? ''"
+							(ngModelChange)="patch(e.key, { to: $event || null })"
+						/>
+					</div>
+					<div class="col-md-6">
+						<label
+							class="form-label-title"
+							for="rs_source_input"
+						>
+							{{ 'rs_source' | transloco }}
+						</label>
+						<input
+							class="form-control"
+							id="rs_source_input"
+							maxlength="300"
+							[disabled]="!canEdit()"
+							[ngModel]="e.source"
+							(ngModelChange)="patch(e.key, { source: $event })"
+						/>
+					</div>
+					<div class="col-12">
+						<label>
+							<input
+								type="checkbox"
+								id="rs_reviewed"
+								[disabled]="!canEdit()"
+								[checked]="e.caReview === 'reviewed'"
+								(change)="patch(e.key, { caReview: $any($event.target).checked ? 'reviewed' : 'pending' })"
+							/>
+							{{ 'rs_reviewed' | transloco }}
+						</label>
+					</div>
+				</div>
+				} @else {
+				<p class="text-muted mb-0">{{ 'rs_pick' | transloco }}</p>
+				}
+			</div>
+			<div class="row g-3 mt-1">
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="rs_valid_from"
+					>
+						{{ 'tb_valid_from' | transloco }}
+					</label>
+					<input
+						type="date"
+						class="form-control"
+						id="rs_valid_from"
+						[disabled]="!canEdit()"
+						[ngModel]="validFrom()"
+						(ngModelChange)="validFrom.set($event); dirty.set(true)"
+					/>
+				</div>
+				<div class="col-md-8">
+					<label
+						class="form-label-title"
+						for="rs_version_source"
+					>
+						{{ 'tb_version_source' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="rs_version_source"
+						maxlength="500"
+						[disabled]="!canEdit()"
+						[ngModel]="source()"
+						(ngModelChange)="source.set($event); dirty.set(true)"
+					/>
+				</div>
+			</div>
+			<p class="help-text mt-2 mb-0">{{ 'rs_checks' | transloco }}</p>
+			<p class="help-text mb-0">{{ 'rs_ca_note' | transloco }}</p>
+			} @else {
+			<p class="text-muted mb-0">{{ 'rs_not_a_rule_set' | transloco }}</p>
+			}
+			<a
+				class="d-inline-block mt-3"
+				routerLink="/setting/accounts-templates"
+			>
+				{{ 'tb_back' | transloco }}
+			</a>
+		</div>
+	</div>
+	}
+</app-page-wrapper>

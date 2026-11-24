@@ -1,9 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
-import { chartChanges, publishDraft, publishProblems, published, whatOpens } from '../src/templates/rules';
+import {
+	chartChanges,
+	publishDraft,
+	publishProblems,
+	published,
+	ruleSetChanges,
+	ruleSetProblems,
+	whatOpens,
+} from '../src/templates/rules';
 import { starterTemplates } from '../src/templates/starter';
 
-import type { AccountsTemplate, ChartTemplateContent, TemplateVersion } from '@saha-textile/contracts';
+import type {
+	AccountsTemplate,
+	ChartTemplateContent,
+	TaxRuleEntry,
+	TaxRuleSetContent,
+	TemplateVersion,
+} from '@saha-textile/contracts';
 
 /** The template builder (accounts templates plan AT2, AT3): drafts, the publishing checks and Publish. */
 
@@ -106,6 +120,7 @@ describe('changes from the newest version', () => {
 			added: ['interest_on_capital'],
 			removed: ['Drawings'],
 			renamed: ['Owner capital'],
+			changed: [],
 		});
 		expect(chartChanges(null, { kind: 'chart', groups: [], ledgers: [ledger('x', 'g')] }).added).toEqual(['x']);
 	});
@@ -139,5 +154,89 @@ describe('Publish', () => {
 			now,
 		);
 		expect(ended.versions.map((v) => v.validTo)).toEqual(['2026-01-31', null, null]);
+	});
+});
+
+const entry = (key: string, over: Partial<TaxRuleEntry> = {}): TaxRuleEntry => ({
+	key,
+	name: key,
+	code: '998212',
+	ratePercent: 18,
+	expenseRole: 'legal_fees',
+	kinds: null,
+	from: '2017-07-01',
+	to: null,
+	source: '13/2017',
+	caReview: 'pending',
+	...over,
+});
+const rules = (...entries: TaxRuleEntry[]): TaxRuleSetContent => ({ kind: 'taxRules', entries });
+
+describe('tax rule sets (AT5)', () => {
+	it('publishes the reverse-charge list when every kind’s chart has the ledgers its entries post to', () => {
+		const rcm = byCode('RS-RCM');
+		const latest = rcm.versions[rcm.versions.length - 1]?.content;
+		expect(publishProblems(draftOf(rcm, latest, '2027-01-01'), library)).toEqual([]);
+		// An entry with nothing to post (a TDS section, a limit) needs no ledger.
+		expect(ruleSetProblems(rcm, rules(entry('tds_rent', { expenseRole: null })), library)).toEqual([]);
+	});
+
+	it('refuses a key used twice, an entry ending before it starts, and kinds the set is not for', () => {
+		const firmOnly = { code: 'RS-FIRM', appliesTo: { all: false, kinds: ['partnership' as const] } };
+		expect(
+			ruleSetProblems(
+				firmOnly,
+				rules(
+					entry('a'),
+					entry('a'),
+					entry('b', { to: '2017-06-30' }),
+					entry('c', { kinds: ['llp'] }),
+					entry('d', { kinds: ['partnership'] }),
+				),
+				library,
+			),
+		).toEqual(['template_duplicate_key:a', 'template_entry_dates:b', 'template_entry_kind:c']);
+		expect(ruleSetProblems(firmOnly, rules(entry('e', { to: '2030-01-01' })), library)).toEqual([]);
+	});
+
+	it('names an expense role no ledger plays, only for the kinds the entry applies to', () => {
+		const rcm = byCode('RS-RCM');
+		expect(
+			ruleSetProblems(rcm, rules(entry('yacht', { expenseRole: 'yacht_hire', kinds: ['llp'] })), library),
+		).toEqual(['template_role_missing:yacht_hire:llp']);
+		expect(ruleSetProblems(rcm, rules(entry('yacht', { expenseRole: 'yacht_hire' })), library)).toHaveLength(5);
+	});
+
+	it('says when the charts a kind opens don’t fit together', () => {
+		const clash: AccountsTemplate = {
+			...byCode('CH-PROP'),
+			code: 'CH-CLASH',
+			appliesTo: { all: false, kinds: ['proprietorship'] },
+		};
+		expect(ruleSetProblems(byCode('RS-RCM'), rules(entry('a')), [...library, clash])).toContain(
+			'template_duplicate_key:capital_account',
+		);
+	});
+
+	it('leaves report layouts to the report builder', () => {
+		const report: AccountsTemplate = { ...byCode('RS-RCM'), code: 'RP-TEST', kind: 'report', versions: [] };
+		expect(publishProblems(draftOf(report, { kind: 'report', lines: [] }), library)).toEqual([]);
+	});
+
+	it('compares a draft with the newest version: added, removed, renamed and changed entries', () => {
+		const before = rules(entry('a'), entry('b'), entry('c'), entry('d'));
+		const after = rules(
+			entry('a', { name: 'Advocate' }),
+			entry('b', { ratePercent: 5 }),
+			entry('d', { caReview: 'reviewed' }),
+			entry('e'),
+		);
+		expect(ruleSetChanges(before, after)).toEqual({
+			added: ['e'],
+			removed: ['c'],
+			renamed: ['Advocate'],
+			changed: ['b', 'd'],
+		});
+		expect(ruleSetChanges(null, rules(entry('x'))).added).toEqual(['x']);
 	});
 });

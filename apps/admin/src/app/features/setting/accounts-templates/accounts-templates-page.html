@@ -101,7 +101,15 @@
 				@for (row of rows(); track row.code) { @let s = state(row);
 				<tr [class.opacity-50]="row.locked">
 					<td class="text-nowrap">
-						<a [routerLink]="['/setting/accounts-templates', row.code]">{{ row.code }}</a>
+						<a
+							[routerLink]="
+								row.kind === 'taxRules'
+									? ['/setting/accounts-templates/rules', row.code]
+									: ['/setting/accounts-templates', row.code]
+							"
+						>
+							{{ row.code }}
+						</a>
 					</td>
 					<td>{{ row.name }}</td>
 					<td>{{ 'at_type_' + row.kind | transloco }}</td>

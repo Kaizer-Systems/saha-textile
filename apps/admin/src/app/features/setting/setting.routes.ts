@@ -86,6 +86,11 @@ export default [
 		loadComponent: () => import('./accounts-templates/roles-page').then((m) => m.RolesPage),
 	},
 	{
+		// Accounts templates AT5: a tax rule set, the rule set builder (owner-approved 2026-11-24).
+		path: 'accounts-templates/rules/:code',
+		loadComponent: () => import('./accounts-templates/rule-set-builder').then((m) => m.RuleSetBuilderPage),
+	},
+	{
 		// Accounts templates AT3: one template, the chart builder (owner-approved 2026-11-24).
 		path: 'accounts-templates/:code',
 		loadComponent: () => import('./accounts-templates/template-builder').then((m) => m.TemplateBuilderPage),

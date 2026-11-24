@@ -69,6 +69,8 @@ export const TaxRuleEntry = z.object({
 	from: IsoDate,
 	to: IsoDate.nullable().default(null),
 	source: z.string().trim().max(300).default(''),
+	/** AT5's "CA review" tag: every rule stays pending until the CA confirms it (AT-D6). */
+	caReview: z.enum(['pending', 'reviewed']).default('pending'),
 });
 export type TaxRuleEntry = z.infer<typeof TaxRuleEntry>;
 
@@ -201,6 +203,8 @@ export const TemplateChanges = z.object({
 	added: z.array(z.string()),
 	removed: z.array(z.string()),
 	renamed: z.array(z.string()),
+	/** AT5 "Compare with vN": rule set entries whose code, rate, role, kinds, dates, source or review state changed. */
+	changed: z.array(z.string()).default([]),
 });
 export type TemplateChanges = z.infer<typeof TemplateChanges>;
 

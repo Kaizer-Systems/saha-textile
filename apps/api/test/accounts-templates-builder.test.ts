@@ -94,7 +94,12 @@ describe('Save draft, changes and Publish (AT3)', () => {
 		};
 		const saved = await routes.saveDraft('CH-FIRM', draft, { userId: 'adm_owner' } as never);
 		expect(saved.draft).toMatchObject({ validFrom: '2027-04-01', savedBy: 'adm_owner' });
-		expect(await routes.changes('CH-FIRM')).toEqual({ added: ['loans_from_partners'], removed: [], renamed: [] });
+		expect(await routes.changes('CH-FIRM')).toEqual({
+			added: ['loans_from_partners'],
+			removed: [],
+			renamed: [],
+			changed: [],
+		});
 		const published = await routes.publish('CH-FIRM', { expectedUpdatedAt: saved.updatedAt }, undefined);
 		expect(published.versions.at(-1)).toMatchObject({ version: 2, validFrom: '2027-04-01', caReview: 'pending' });
 		expect(stores.templates.rows.find((t) => t.code === 'CH-FIRM')?.draft).toBeNull();
@@ -136,9 +141,15 @@ describe('Save draft, changes and Publish (AT3)', () => {
 			},
 			undefined,
 		);
-		expect(await service.changes('RS-RCM')).toBeNull();
+		// AT5 Compare with vN: emptying the reverse-charge list removes every entry.
+		expect((await service.changes('RS-RCM'))?.removed).toContain("Advocate's fees");
 		const fresh = await service.create({ ...newChart, code: 'CH-FIRM-NEW' }, null, now);
-		expect(await service.changes(fresh.code)).toEqual({ added: [], removed: [], renamed: [] });
+		expect(await service.changes(fresh.code)).toEqual({ added: [], removed: [], renamed: [], changed: [] });
+		const rules = await service.create({ ...newChart, kind: 'taxRules', code: 'RS-NEW' }, null, now);
+		expect(await service.changes(rules.code)).toEqual({ added: [], removed: [], renamed: [], changed: [] });
+		// A report's changes come with its builder (T6).
+		const report = await service.create({ ...newChart, kind: 'report', code: 'RP-NEW' }, null, now);
+		expect(await service.changes(report.code)).toBeNull();
 	});
 
 	it('passes on a save that failed for any other reason', async () => {

@@ -5,6 +5,7 @@ import type {
 	ChartTemplateGroup,
 	ChartTemplateLedger,
 	TaxRuleEntry,
+	TaxRuleSetContent,
 	TemplateChanges,
 	TemplateVersion,
 } from '@saha-textile/contracts';
@@ -146,10 +147,71 @@ const DOCUMENT_TYPES = [...new Set(ROLE_REGISTRY.flatMap((role) => role.neededBy
 const holders = (items: readonly { key: string; roles: readonly string[] }[]) =>
 	items.map((item) => ({ id: item.key, systemKey: item.key, roles: item.roles }));
 
+/** The kinds of company a template is for. */
+const kindsOf = (template: Pick<AccountsTemplate, 'appliesTo'>): readonly BusinessKind[] =>
+	template.appliesTo.all ? KINDS : template.appliesTo.kinds;
+
+/**
+ * The chart a kind of company opens: every published chart template it unlocks except `code`, with `extra` added, as
+ * role holders. Refused like `mergeCharts` when the charts don't fit together.
+ */
+function chartFor(
+	kind: BusinessKind,
+	library: readonly AccountsTemplate[],
+	code: string,
+	extra: readonly ChartTemplateContent[],
+) {
+	const others = published(unlockedFor(library, kind))
+		.filter((t) => t.code !== code)
+		.map((t) => latestVersion(t).content)
+		.filter((c): c is ChartTemplateContent => c.kind === 'chart');
+	const merged = mergeCharts([...others, ...extra]);
+	return { groups: holders(merged.groups), ledgers: holders(merged.ledgers) };
+}
+
+/**
+ * AT5's publishing checks for a tax rule set: entry keys are unique, no entry ends before it starts, an entry names only
+ * kinds the set applies to, and every expense role an entry posts to has a ledger in the chart of each kind it applies to.
+ */
+export function ruleSetProblems(
+	template: Pick<AccountsTemplate, 'code' | 'appliesTo'>,
+	content: TaxRuleSetContent,
+	library: readonly AccountsTemplate[],
+): string[] {
+	const problems = new Set<string>();
+	const seen = new Set<string>();
+	for (const entry of content.entries) {
+		if (seen.has(entry.key)) problems.add(`template_duplicate_key:${entry.key}`);
+		seen.add(entry.key);
+		if (entry.to !== null && entry.to < entry.from) problems.add(`template_entry_dates:${entry.key}`);
+		if (!template.appliesTo.all && entry.kinds?.some((kind) => !template.appliesTo.kinds.includes(kind)))
+			problems.add(`template_entry_kind:${entry.key}`);
+	}
+	for (const kind of kindsOf(template)) {
+		const roles = new Set(
+			content.entries.flatMap((entry) =>
+				entry.expenseRole && (entry.kinds === null || entry.kinds.includes(kind)) ? [entry.expenseRole] : [],
+			),
+		);
+		if (!roles.size) continue;
+		let chart: ReturnType<typeof chartFor>;
+		try {
+			chart = chartFor(kind, library, template.code, []);
+		} catch (error) {
+			problems.add((error as Error).message);
+			continue;
+		}
+		const played = new Set(chart.ledgers.flatMap((ledger) => rolesOf(ledger)));
+		for (const role of roles) if (!played.has(role)) problems.add(`template_role_missing:${role}:${kind}`);
+	}
+	return [...problems];
+}
+
 /**
  * AT3's publishing checks: the draft is of the template's type and starts after the newest version; for a chart, with
  * every other chart template each kind it applies to opens, the merged chart is whole, every role a document needs has a
- * ledger (or group), and no role is played twice. Codes the admin puts in words.
+ * ledger (or group), and no role is played twice; a tax rule set passes AT5's checks (`ruleSetProblems`). Codes the
+ * admin puts in words.
  */
 export function publishProblems(template: AccountsTemplate, library: readonly AccountsTemplate[]): string[] {
 	const draft = template.draft;
@@ -158,21 +220,17 @@ export function publishProblems(template: AccountsTemplate, library: readonly Ac
 	if (draft.content.kind !== template.kind) problems.add('template_wrong_kind');
 	if (template.versions.length && draft.validFrom <= latestVersion(template).validFrom)
 		problems.add('template_dates_overlap');
+	if (draft.content.kind === 'taxRules') return [...problems, ...ruleSetProblems(template, draft.content, library)];
 	if (draft.content.kind !== 'chart') return [...problems];
 	const content = draft.content;
-	for (const kind of template.appliesTo.all ? KINDS : template.appliesTo.kinds) {
-		const others = published(unlockedFor(library, kind))
-			.filter((t) => t.code !== template.code)
-			.map((t) => latestVersion(t).content)
-			.filter((c): c is ChartTemplateContent => c.kind === 'chart');
-		let merged: ReturnType<typeof mergeCharts>;
+	for (const kind of kindsOf(template)) {
+		let chart: ReturnType<typeof chartFor>;
 		try {
-			merged = mergeCharts([...others, content]);
+			chart = chartFor(kind, library, template.code, [content]);
 		} catch (error) {
 			problems.add((error as Error).message);
 			continue;
 		}
-		const chart = { groups: holders(merged.groups), ledgers: holders(merged.ledgers) };
 		for (const type of DOCUMENT_TYPES)
 			for (const role of missingRoles(chart, type)) problems.add(`template_role_missing:${role}:${kind}`);
 		const played = new Map<string, number>();
@@ -193,6 +251,36 @@ export function chartChanges(before: ChartTemplateContent | null, after: ChartTe
 		added: [...now].filter(([key]) => !old.has(key)).map(([, name]) => name),
 		removed: [...old].filter(([key]) => !now.has(key)).map(([, name]) => name),
 		renamed: [...now].filter(([key, name]) => old.has(key) && old.get(key) !== name).map(([, name]) => name),
+		changed: [],
+	};
+}
+
+/**
+ * AT5 "Compare with vN": the rule set entries the draft adds, removes and renames against the newest version, by key,
+ * and those whose code, rate, expense role, kinds, dates, source or CA review state changed.
+ */
+export function ruleSetChanges(before: TaxRuleSetContent | null, after: TaxRuleSetContent): TemplateChanges {
+	const old = new Map((before?.entries ?? []).map((entry) => [entry.key, entry]));
+	const facts = (entry: TaxRuleEntry) =>
+		JSON.stringify([
+			entry.code,
+			entry.ratePercent,
+			entry.expenseRole,
+			entry.kinds,
+			entry.from,
+			entry.to,
+			entry.source,
+			entry.caReview,
+		]);
+	const kept = after.entries.filter((entry) => old.has(entry.key));
+	const was = (entry: TaxRuleEntry) => old.get(entry.key) as TaxRuleEntry;
+	return {
+		added: after.entries.filter((entry) => !old.has(entry.key)).map((entry) => entry.name),
+		removed: [...old.values()]
+			.filter((entry) => !after.entries.some((now) => now.key === entry.key))
+			.map((entry) => entry.name),
+		renamed: kept.filter((entry) => was(entry).name !== entry.name).map((entry) => entry.name),
+		changed: kept.filter((entry) => facts(was(entry)) !== facts(entry)).map((entry) => entry.name),
 	};
 }
 

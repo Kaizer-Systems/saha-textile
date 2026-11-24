@@ -30,6 +30,7 @@ import {
 	versionOn,
 	whatOpens,
 	chartChanges,
+	ruleSetChanges,
 	publishDraft,
 	publishProblems,
 	published,
@@ -302,13 +303,17 @@ export class AccountsTemplatesService {
 		);
 	}
 
-	/** AT3 "Changes from vN": what the draft changes against the newest version (charts only). */
+	/**
+	 * AT3 "Changes from vN" and AT5 "Compare with vN": what the draft changes against the newest version, for a chart or a
+	 * tax rule set (a report's comes with its builder).
+	 */
 	async changes(code: string): Promise<TemplateChanges | null> {
 		const template = await this.get(code);
 		const draft = template.draft?.content;
-		if (draft?.kind !== 'chart') return null;
 		const latest = template.versions.length ? latestVersion(template).content : null;
-		return chartChanges(latest?.kind === 'chart' ? latest : null, draft);
+		if (draft?.kind === 'chart') return chartChanges(latest?.kind === 'chart' ? latest : null, draft);
+		if (draft?.kind === 'taxRules') return ruleSetChanges(latest?.kind === 'taxRules' ? latest : null, draft);
+		return null;
 	}
 
 	/** AT3 Publish vN: every publishing check passes, then the draft becomes the next version (CA review pending). */

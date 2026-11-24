@@ -6,6 +6,7 @@ import { LocationsModule } from '../locations/locations.module';
 
 import { ReportBuilderController } from './report-builder.controller';
 import { ReportBuilderService } from './report-builder.service';
+import { BooksReportsService } from './books-reports.service';
 import { StatementsController } from './statements.controller';
 import { StatementsService } from './statements.service';
 
@@ -13,6 +14,6 @@ import { StatementsService } from './statements.service';
 @Module({
 	imports: [LedgerModule, AccountsTemplatesModule, LocationsModule],
 	controllers: [StatementsController, ReportBuilderController],
-	providers: [StatementsService, ReportBuilderService],
+	providers: [StatementsService, ReportBuilderService, BooksReportsService],
 })
 export class ReportsModule {}

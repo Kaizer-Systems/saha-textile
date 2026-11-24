@@ -134,3 +134,58 @@ export type ReportDefinition = z.infer<typeof ReportDefinition>;
 
 export const ReportDefinitionEdit = ReportDefinitionWrite.extend({ version: z.number().int().nonnegative() });
 export type ReportDefinitionEdit = z.infer<typeof ReportDefinitionEdit>;
+
+/* U5: outstanding with ageing; U8: the audit report. */
+
+export const AgeingSide = z.enum(['customers', 'suppliers']);
+export type AgeingSide = z.infer<typeof AgeingSide>;
+
+const Buckets = z.object({
+	notDue: z.number().int(),
+	days1to30: z.number().int(),
+	days31to60: z.number().int(),
+	days61to90: z.number().int(),
+	over90: z.number().int(),
+	total: z.number().int(),
+});
+
+export const OutstandingAgeing = z.object({
+	side: AgeingSide,
+	asAt: IsoDate,
+	rows: z.array(Buckets.extend({ partyId: Id, name: z.string() })),
+	totals: Buckets,
+});
+export type OutstandingAgeing = z.infer<typeof OutstandingAgeing>;
+
+export const AuditChip = z.enum(['all', 'edits', 'backdated', 'cancelled', 'unlocks', 'takeovers', 'superAdmin']);
+export type AuditChip = z.infer<typeof AuditChip>;
+
+export const AuditReportQuery = z.object({
+	from: IsoDate,
+	to: IsoDate,
+	chip: AuditChip.default('all'),
+	q: z.string().trim().max(80).optional(),
+	page: z.coerce.number().int().min(1).default(1),
+	pageSize: z.coerce.number().int().min(1).max(500).default(50),
+});
+export type AuditReportQuery = z.infer<typeof AuditReportQuery>;
+
+export const AuditReportRow = z.object({
+	id: Id,
+	at: IsoDateTime,
+	who: z.string(),
+	action: z.string(),
+	entityType: z.string().nullable(),
+	entityId: z.string().nullable(),
+	/** The fields changed, before and after, as one line. */
+	detail: z.string(),
+	categories: z.array(AuditChip.exclude(['all'])),
+});
+export type AuditReportRow = z.infer<typeof AuditReportRow>;
+
+export const AuditReport = z.object({
+	rows: z.array(AuditReportRow),
+	total: z.number().int().nonnegative(),
+	counts: z.record(AuditChip, z.number().int().nonnegative()),
+});
+export type AuditReport = z.infer<typeof AuditReport>;

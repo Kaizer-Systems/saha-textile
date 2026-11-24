@@ -143,6 +143,8 @@ function build(
 		saveFails?: unknown;
 		/** The installed due-date rule set's entries (RS-DUE); the starter rules unless given. */
 		rules?: readonly TaxRuleEntry[];
+		/** GSTR-3B's figures from the books and 2B; nothing happened unless given. */
+		books?: typeof NO_BOOKS;
 	} = {},
 ) {
 	const store = new Map((options.drafts ?? []).map((d) => [d.id, d]));
@@ -172,6 +174,7 @@ function build(
 	const templates = {
 		ruleSetEntries: vi.fn(async (_code: string, _day: string) => [...(options.rules ?? DUE_DATES.entries)]),
 	};
+	const inputs = { collect: vi.fn(async (_registration: string, _month: string) => options.books ?? NO_BOOKS) };
 	const service = new GstReturnsService(
 		drafts as never,
 		{ list: async () => options.filings ?? [] } as never,
@@ -186,9 +189,9 @@ function build(
 				return ADMINS[id] ?? null;
 			},
 		} as never,
-		{ collect: vi.fn(async () => NO_BOOKS) },
+		inputs,
 	);
-	return { service, drafts, store, invoices, credit, debit, templates };
+	return { service, drafts, store, invoices, credit, debit, templates, inputs };
 }
 
 /** GSTR-3B's figures from the books when nothing happened in the month. */
@@ -327,6 +330,84 @@ describe('preparing GSTR-1 from the books (G4)', () => {
 		expect(again.preparedByName).toBe('');
 		const prepared = build({ drafts: [draft('gsr_2')] });
 		expect((await prepared.service.prepare(prepare(), accountant, now)).id).toBe('gsr_2');
+	});
+});
+
+describe('preparing GSTR-3B from the filed GSTR-1, the books and 2B (G6)', () => {
+	const filedGstr1 = (gstRegistrationId: string, month: string) => ({
+		gstRegistrationId,
+		returnType: 'GSTR-1',
+		month,
+		arn: 'AA1912261234567',
+		filedOn: `${month}-11`,
+	});
+	const sample = { table: '4B' as const, igst: 0, cgst: 100, sgst: 100, reason: 'Saree given away as a sample' };
+
+	it('refuses a quarterly filer for now', async () => {
+		const { service } = build({ filings: [filedGstr1('reg_qrmp', '2026-09')] });
+		await expect(
+			service.prepare(
+				prepare({ gstRegistrationId: 'reg_qrmp', returnType: 'GSTR-3B', month: '2026-09', adjustments: [] }),
+				accountant,
+				now,
+			),
+		).rejects.toMatchObject(refusal('gst_return_qrmp_later'));
+	});
+
+	it('takes outward supplies from the GSTR-1 draft, figures from the books, and keeps the set-off and changes', async () => {
+		const filings: unknown[] = [];
+		const { service, invoices, inputs } = build({
+			filings,
+			invoices: [invoice('ti_1', 'TI/26-27/000001')],
+			books: { ...NO_BOOKS, twoBImported: true, itc2b: { igst: 0, cgst: 1_000, sgst: 1_000 } },
+		});
+		const gstr1 = await service.prepare(prepare(), accountant, now);
+		// A GSTR-1 draft has no set-off and no changes.
+		expect(gstr1).toMatchObject({ setOff: null, adjustments: [] });
+		filings.push(filedGstr1('reg_wb', '2026-11'));
+		const gstr3b = await service.prepare(
+			prepare({ returnType: 'GSTR-3B', adjustments: [sample] }),
+			accountant,
+			now,
+		);
+		expect(invoices.listForGstin).toHaveBeenCalledTimes(1);
+		expect(inputs.collect).toHaveBeenCalledWith('reg_wb', '2026-11');
+		expect(gstr3b).toMatchObject({
+			returnType: 'GSTR-3B',
+			status: 'prepared',
+			problems: [],
+			adjustments: [sample],
+			portal: { gstin: GSTIN, ret_period: '112026' },
+		});
+		expect(gstr3b.summary.find((row) => row.table === '3.1a')).toMatchObject({
+			records: 1,
+			taxable: 1000,
+			tax: 50,
+		});
+		// Output CGST and SGST of ₹25 each, less credit of ₹10 each and ₹1 each taken back: ₹16 each in cash.
+		expect(gstr3b.setOff).toMatchObject({
+			cash: { igst: 0, cgst: 1_600, sgst: 1_600 },
+			reverseChargeCash: { igst: 0, cgst: 0, sgst: 0 },
+		});
+	});
+
+	it('works GSTR-1 out again from the books when it was filed without a draft here', async () => {
+		const { service, invoices } = build({
+			filings: [filedGstr1('reg_wb', '2026-11'), filedGstr1('reg_late', '2026-11')],
+			invoices: [invoice('ti_1', 'TI/26-27/000001')],
+		});
+		const gstr3b = await service.prepare(prepare({ returnType: 'GSTR-3B', adjustments: [] }), accountant, now);
+		expect(invoices.listForGstin).toHaveBeenCalledWith(GSTIN, '2026-11-01', '2026-11-30');
+		expect(gstr3b.summary.find((row) => row.table === '3.1a')).toMatchObject({ records: 1, tax: 50 });
+		// No 2B imported for the month yet.
+		expect(gstr3b.problems).toEqual([{ table: '4A', problem: 'gstr2b_missing', document: '2026-11' }]);
+		// A registration with no terms for the month is not a quarterly filer.
+		const late = await service.prepare(
+			prepare({ gstRegistrationId: 'reg_late', returnType: 'GSTR-3B', adjustments: [] }),
+			accountant,
+			now,
+		);
+		expect(late.returnType).toBe('GSTR-3B');
 	});
 });
 

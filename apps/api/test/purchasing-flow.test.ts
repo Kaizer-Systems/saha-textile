@@ -412,7 +412,8 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 				{ code: 'gold', label: { en: 'Gold' } },
 			],
 		});
-	});
+		// Rebuilding every model's real indexes outgrew the 10 s default once the whole suite runs with coverage.
+	}, 60_000);
 
 	afterAll(async () => {
 		await getMongoose().connection.db?.dropDatabase();

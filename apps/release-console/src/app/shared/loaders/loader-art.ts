@@ -202,7 +202,7 @@ export const LOADERS: readonly LoaderArt[] = [
 			`${range(6)
 				.map(
 					(i) =>
-						`<rect class="wf-bar" style="animation-delay:${i * 0.3}s;--w:${[150, 70, 52, 90, 34, 58][i]}px" x="${24 + ([0, 8, 26, 40, 96, 120][i] ?? 0)}" y="${46 + i * 19}" height="11" width="${[150, 70, 52, 90, 34, 58][i]}" fill="${[C, C, A, C, R, C][i]}"/>`,
+						`<rect class="wf-bar" style="animation-delay:${i * 0.3}s;--w:${[150, 70, 52, 90, 34, 58][i]}px" x="${24 + ([0, 8, 26, 40, 96, 120][i] as number)}" y="${46 + i * 19}" height="11" width="${[150, 70, 52, 90, 34, 58][i]}" fill="${[C, C, A, C, R, C][i]}"/>`,
 				)
 				.join('')}<line x1="24" y1="40" x2="24" y2="164" stroke="${D}"/>`,
 	},

@@ -150,8 +150,9 @@ export class DbMonitorScreen {
 	protected readonly view = injectQuery(() => ({
 		queryKey: ['db-report', this.ctx.projectId(), this.ctx.repoId(), this.envName()],
 		queryFn: () =>
+			// Runs only when the project and repository are set (enabled below).
 			this.onServer()
-				? this.api.dbReport(this.ctx.projectId() ?? '', this.ctx.repoId() ?? '', this.envName())
+				? this.api.dbReport(this.ctx.projectId() as string, this.ctx.repoId() as string, this.envName())
 				: this.api.localDbReport(),
 		enabled: !!this.ctx.projectId() && !!this.ctx.repoId() && !!this.envName(),
 		staleTime: 60_000,

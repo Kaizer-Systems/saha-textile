@@ -30,7 +30,8 @@ export function injectPlanFeatures(project: () => string | null, repo: () => str
 	const api = inject(ConsoleApi);
 	const q = injectQuery(() => ({
 		queryKey: ['plan-status', project(), repo()],
-		queryFn: () => api.productTab(project() ?? '', repo() ?? '', 'cfplan', 'status', null, '24h'),
+		// Runs only when both are set (enabled below).
+		queryFn: () => api.productTab(project() as string, repo() as string, 'cfplan', 'status', null, '24h'),
 		enabled: !!project() && !!repo(),
 		staleTime: 5 * 60_000,
 	}));

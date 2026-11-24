@@ -30,8 +30,9 @@ export class ConsoleContext {
 		),
 		{ initialValue: this.router.url },
 	);
+	// split always gives a first part, the path, even for an empty address.
 	private readonly parts = computed(() =>
-		(this.url().split(/[?#]/)[0] ?? '').split('/').filter(Boolean).map(decodeURIComponent),
+		(this.url().split(/[?#]/)[0] as string).split('/').filter(Boolean).map(decodeURIComponent),
 	);
 
 	readonly level = computed<Level>(() => {

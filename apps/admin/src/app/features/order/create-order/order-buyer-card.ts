@@ -132,10 +132,18 @@ export class OrderBuyerCard {
 				kind === 'person'
 					? await firstValueFrom(this.gateway.searchCustomers(q))
 					: await firstValueFrom(this.gateway.searchBusinesses(q));
-			if (asked === this.asked) this.found.set(rows);
+			this.showIfNewest(asked, rows);
 		} catch {
-			if (asked === this.asked) this.found.set([]);
+			this.showIfNewest(asked, []);
 		}
+	}
+
+	/**
+	 * Only the newest search's answer is shown; an older one arriving late is dropped. Kept out of the async lookUp()
+	 * so V8 counts both outcomes (it miscounts a branch right after an await).
+	 */
+	private showIfNewest(asked: number, rows: Array<CustomerBuyerOption | BusinessBuyerOption>): void {
+		if (asked === this.asked) this.found.set(rows);
 	}
 
 	private idOf(buyer: DraftBuyer): string {

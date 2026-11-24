@@ -110,3 +110,42 @@ export type AccountsListPage = z.infer<typeof AccountsListPage>;
 /** Print the picked documents of one tab as one file (A1 picks bar). */
 export const AccountsPrintWrite = z.object({ ids: z.array(Id).min(1).max(50) });
 export type AccountsPrintWrite = z.infer<typeof AccountsPrintWrite>;
+
+/** Accounts › Overview (accounts brief Q0): the month the GST and period cards show. */
+export const AccountsOverviewQuery = z.object({
+	month: z
+		.string()
+		.regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+		.optional(),
+});
+export type AccountsOverviewQuery = z.infer<typeof AccountsOverviewQuery>;
+
+/** Something waiting for someone, with how many and where it opens (a Vouchers tab and chip). */
+export const OverviewWaiting = z.object({
+	kind: z.enum(['voucherDrafts', 'creditNoteDrafts', 'selfInvoicesDue', 'adjustmentsWaiting', 'refundsFailed']),
+	count: z.number().int().positive(),
+});
+export type OverviewWaiting = z.infer<typeof OverviewWaiting>;
+
+/** Q0's cards, money in paise; owed to us and held are positive, owed by us is positive in `suppliersPaise`. */
+export const AccountsOverview = z.object({
+	month: z.string(),
+	cashPaise: z.number(),
+	cashLedgers: z.number().int(),
+	bankPaise: z.number(),
+	bankNames: z.array(z.string()),
+	customersPaise: z.number(),
+	suppliersPaise: z.number(),
+	gstPaise: z.number(),
+	/** GST for a month is paid by the 20th of the next. */
+	gstDueOn: IsoDate,
+	monthLocked: z.boolean(),
+	/** The last month the books are locked to, if any. */
+	lastLocked: z.string().nullable(),
+	profitPaise: z.number(),
+	profitTo: IsoDate,
+	stockPaise: z.number(),
+	inTransitPaise: z.number(),
+	waiting: z.array(OverviewWaiting),
+});
+export type AccountsOverview = z.infer<typeof AccountsOverview>;

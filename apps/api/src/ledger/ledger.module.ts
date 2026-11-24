@@ -5,6 +5,7 @@ import { DocumentsModule } from '../documents/documents.module';
 import { LocationsModule } from '../locations/locations.module';
 import { OrdersSetupModule } from '../orders-setup/orders-setup.module';
 import { AccountsListsController, AccountsListsService } from './accounts-lists';
+import { AccountsOverviewController, AccountsOverviewService } from './accounts-overview';
 import { AccountsPrints } from './accounts-prints';
 import { BooksCatchUpController, BooksCatchUpService } from './books-catch-up';
 import { BooksPostingService } from './books-posting';
@@ -31,6 +32,7 @@ import { TemplateUpdatesController, TemplateUpdatesService } from './template-up
 		ReportPreviewController,
 		TemplateUpdatesController,
 		AccountsListsController,
+		AccountsOverviewController,
 	],
 	providers: [
 		LedgerService,
@@ -44,6 +46,7 @@ import { TemplateUpdatesController, TemplateUpdatesService } from './template-up
 		TemplateUpdatesService,
 		AccountsListsService,
 		AccountsPrints,
+		AccountsOverviewService,
 	],
 	exports: [LedgerService, EditLogService, MoneyLandingService, BooksPostingService],
 })

@@ -11,7 +11,7 @@ import type { AccountsListsReader } from '@saha-textile/core-domain';
 
 import { COLLECTION_NAMES } from '../collection-names';
 import { LedgerEntryModel, PaymentModel } from '../models/orders-build.model';
-import { JournalVoucherModel, TaxInvoiceModel } from '../models/ledger.model';
+import { JournalVoucherModel, TaxInvoiceModel, VoucherDraftModel } from '../models/ledger.model';
 import { OrderModel } from '../models/order.model';
 import { PurchaseInvoiceModel, StockAdjustmentModel, SupplierModel } from '../models/purchasing.model';
 import { LocationModel } from '../models/locations.model';
@@ -144,6 +144,31 @@ const vouchersOfKind = (kind: string, tab: AccountsListTab, day: Source['day']):
 	row: voucherRow,
 });
 
+/** A voucher saved by hand and not yet posted: no number, in its own kind's tab, opening its form (A1). */
+const draftsOfKind = (kind: string, tab: AccountsListTab): Source => ({
+	key: `draft_${kind}`,
+	tab,
+	model: VoucherDraftModel as unknown as ReadModel,
+	collection: COLLECTION_NAMES.VoucherDraft,
+	match: (from, to) => ({ kind, ...between('date', from, to) }),
+	chips: { all: {} },
+	search: ['narration'],
+	date: '$date',
+	row: (doc) => {
+		const lines = (doc['lines'] as Array<{ debitPaise?: number }> | undefined) ?? [];
+		return {
+			...blank,
+			date: String(doc['date']),
+			detail: kind,
+			reference: text(doc['narration']),
+			amountINR: lines.reduce((sum, line) => sum + (line.debitPaise ?? 0), 0) / 100,
+			by: text(doc['createdBy']),
+			status: 'draft',
+			extra: { draft: 'voucher' },
+		};
+	},
+});
+
 const SOURCES: readonly Source[] = [
 	{
 		key: 'payment',
@@ -208,6 +233,7 @@ const SOURCES: readonly Source[] = [
 		},
 	},
 	vouchersOfKind('receipt', 'receipts', 'receipts'),
+	draftsOfKind('receipt', 'receipts'),
 	{
 		key: 'paymentVoucher',
 		tab: 'paymentVouchers',
@@ -244,7 +270,10 @@ const SOURCES: readonly Source[] = [
 		}),
 	},
 	vouchersOfKind('payment', 'paymentVouchers', 'payments'),
+	draftsOfKind('payment', 'paymentVouchers'),
 	vouchersOfKind('contra', 'contra', 'journals'),
+	draftsOfKind('contra', 'contra'),
+	draftsOfKind('journal', 'journal'),
 	{
 		key: 'journal',
 		tab: 'journal',

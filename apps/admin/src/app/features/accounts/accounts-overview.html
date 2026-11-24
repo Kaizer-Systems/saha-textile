@@ -1,0 +1,138 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'accounts'"
+>
+	<div
+		button
+		class="d-flex align-items-center flex-wrap gap-2"
+	>
+		<app-period-picker
+			[choices]="months"
+			[start]="'this_month'"
+			[labelPrefix]="'period_'"
+			[hint]="hint"
+			(picked)="setMonth($event)"
+		/>
+		@if (canPost()) {
+		<a
+			class="btn btn-theme"
+			id="ov_new_voucher"
+			routerLink="/accounts/vouchers/new"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'accounts_voucher_new' | transloco }}
+		</a>
+		}
+	</div>
+	@if (overview.data(); as o) {
+	<section class="dashboard-tiles">
+		<div class="row g-3 mb-3">
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'ov_cash' | transloco }}</h6>
+						<h3 id="ov_cash">{{ inr(o.cashPaise) }}</h3>
+						<p class="small text-muted mb-0">
+							{{ 'ov_cash_ledgers' | transloco: { count: o.cashLedgers } }}
+						</p>
+					</div>
+					<div class="icon-box"><i class="ri-money-rupee-circle-line"></i></div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'ov_bank' | transloco }}</h6>
+						<h3 id="ov_bank">{{ inr(o.bankPaise) }}</h3>
+						<p class="small text-muted mb-0">{{ o.bankNames.join(', ') || '—' }}</p>
+					</div>
+					<div class="icon-box"><i class="ri-bank-line"></i></div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'ov_customers' | transloco }}</h6>
+						<h3 id="ov_customers">{{ inr(o.customersPaise) }}</h3>
+					</div>
+					<div class="icon-box"><i class="ri-user-received-line"></i></div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'ov_suppliers' | transloco }}</h6>
+						<h3 id="ov_suppliers">{{ inr(o.suppliersPaise) }}</h3>
+					</div>
+					<div class="icon-box"><i class="ri-user-shared-line"></i></div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'ov_gst' | transloco: { month: monthLabel() } }}</h6>
+						<h3 id="ov_gst">{{ inr(o.gstPaise < 0 ? -o.gstPaise : o.gstPaise) }}</h3>
+						<p class="small text-muted mb-0">
+							{{ o.gstPaise < 0 ? ('ov_gst_credit' | transloco) : ('ov_gst_due' | transloco: { date:
+							day(o.gstDueOn) }) }}
+						</p>
+					</div>
+					<div class="icon-box"><i class="ri-percent-line"></i></div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ monthLabel() }}</h6>
+						<h3 id="ov_period">{{ (o.monthLocked ? 'ov_locked_state' : 'ov_open_state') | transloco }}</h3>
+						<p class="small text-muted mb-0">
+							@if (o.lastLocked; as last) { {{ 'ov_last_locked' | transloco: { month: nameOf(last) } }} }
+							@else { {{ 'ov_none_locked' | transloco }} }
+						</p>
+					</div>
+					<div class="icon-box"><i class="ri-lock-line"></i></div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'ov_profit' | transloco }}</h6>
+						<h3 id="ov_profit">{{ inr(o.profitPaise) }}</h3>
+						<p class="small text-muted mb-0">{{ 'ov_profit_to' | transloco: { date: day(o.profitTo) } }}</p>
+					</div>
+					<div class="icon-box"><i class="ri-line-chart-line"></i></div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'ov_stock' | transloco }}</h6>
+						<h3 id="ov_stock">{{ inr(o.stockPaise) }}</h3>
+						@if (o.inTransitPaise) {
+						<p class="small text-muted mb-0">
+							{{ 'ov_in_transit' | transloco: { amount: inr(o.inTransitPaise) } }}
+						</p>
+						}
+					</div>
+					<div class="icon-box"><i class="ri-stack-line"></i></div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<h6 class="mb-2">{{ 'ov_waiting' | transloco }}</h6>
+	<ul
+		class="list-unstyled small mb-0"
+		id="ov_waiting"
+	>
+		@for (item of o.waiting; track item.kind) {
+		<li class="d-flex align-items-center border-bottom gap-2 py-2">
+			<i [class]="links[item.kind].icon"></i>
+			<span class="flex-grow-1">{{ 'ov_waiting_' + item.kind | transloco: { count: item.count } }}</span>
+			<a [routerLink]="links[item.kind].path">{{ 'ov_open' | transloco }}</a>
+		</li>
+		} @empty {
+		<li class="text-muted py-2">{{ 'ov_nothing_waiting' | transloco }}</li>
+		}
+	</ul>
+	}
+</app-page-wrapper>

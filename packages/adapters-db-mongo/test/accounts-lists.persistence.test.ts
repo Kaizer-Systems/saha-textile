@@ -2,7 +2,7 @@ import { AccountsListQuery } from '@saha-textile/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { connectMongo, disconnectMongo } from '../src/connection';
-import { JournalVoucherModel, TaxInvoiceModel } from '../src/models/ledger.model';
+import { JournalVoucherModel, TaxInvoiceModel, VoucherDraftModel } from '../src/models/ledger.model';
 import { LocationModel } from '../src/models/locations.model';
 import { OrderModel } from '../src/models/order.model';
 import { LedgerEntryModel, PaymentModel } from '../src/models/orders-build.model';
@@ -33,6 +33,7 @@ describe.skipIf(!hasMongoEnv())('accounts lists and the Day book (integration, r
 		TaxInvoiceModel,
 		PurchaseInvoiceModel,
 		LocationModel,
+		VoucherDraftModel,
 	];
 	const wipe = () => Promise.all(models.map((m) => (m as typeof PaymentModel).deleteMany({})));
 	const reader = new MongoAccountsListsReader();
@@ -415,6 +416,21 @@ describe.skipIf(!hasMongoEnv())('accounts lists and the Day book (integration, r
 			adjustment('sa_4', { number: 'SA/26-27/0001', decidedAt: '2026-11-18T05:00:00.000Z', reversedBy: 'sa_2' }),
 			adjustment('sa_5', { kind: 'count' }),
 			raw(LocationModel, { _id: 'loc_gar', name: 'Gariahat' }),
+			raw(VoucherDraftModel, {
+				_id: 'vd_1',
+				kind: 'journal',
+				date: '2026-11-16',
+				narration: 'Accrual draft',
+				lines: [{ debitPaise: 25_000 }, { creditPaise: 25_000 }],
+				createdBy: 'adm_1',
+			}),
+			raw(VoucherDraftModel, {
+				_id: 'vd_2',
+				kind: 'contra',
+				date: '2026-11-25',
+				narration: 'Deposit',
+				createdBy: 'adm_1',
+			}),
 			raw(TaxInvoiceModel, {
 				_id: 'ti_1',
 				number: 'TI/26-27/000145',
@@ -565,22 +581,27 @@ describe.skipIf(!hasMongoEnv())('accounts lists and the Day book (integration, r
 		});
 		expect(pay.items.find((row) => row.id === 'jv_p')).toMatchObject({ moneyOutINR: 100, detail: 'payment' });
 		const contra = await reader.list('contra', nov(), today);
-		expect(contra.items).toEqual([
-			expect.objectContaining({
-				number: 'JV/26-27/000022',
-				amountINR: 4412,
-				moneyInINR: null,
-				moneyOutINR: null,
-			}),
+		expect(contra.items.map((row) => [row.id, row.number, row.status, row.amountINR])).toEqual([
+			['vd_2', null, 'draft', 0],
+			['jv_c', 'JV/26-27/000022', 'posted', 4412],
 		]);
+		expect(contra.items[1]).toMatchObject({ moneyInINR: null, moneyOutINR: null });
 		const journal = await reader.list('journal', nov(), today);
-		expect(journal.counts).toEqual({ all: 5, set_offs: 1, reversals: 2, itc_reversed: 1 });
+		expect(journal.counts).toEqual({ all: 6, set_offs: 1, reversals: 2, itc_reversed: 1 });
+		expect(journal.items.find((row) => row.id === 'vd_1')).toMatchObject({
+			number: null,
+			status: 'draft',
+			amountINR: 250,
+			reference: 'Accrual draft',
+			extra: { draft: 'voucher' },
+		});
 		expect(journal.items.map((row) => [row.number, row.detail])).toEqual([
 			['JV/26-27/000013', 'itc_reversed'],
 			['JV/26-27/000024', 'reversal'],
 			['JV/26-27/000012', 'set_off'],
 			['JV/26-27/000011', 'set_off_reversed'],
 			['JV/26-27/000023', 'journal'],
+			[null, 'journal'],
 		]);
 		expect(journal.items[0]).toMatchObject({ against: 'SA/26-27/0004', extra: { sourceType: 'stockAdjustment' } });
 		expect(journal.items[2]).toMatchObject({ party: 'Boutique Nila', amountINR: 12_000 });

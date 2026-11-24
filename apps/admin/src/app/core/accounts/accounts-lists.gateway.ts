@@ -3,7 +3,13 @@ import { inject, Injectable } from '@angular/core';
 
 import { runtimeConfig } from '@core/config/runtime-config';
 
-import type { AccountsListPage, AccountsListQuery, AccountsListRow, AccountsListTab } from '@saha-textile/contracts';
+import type {
+	AccountsListPage,
+	AccountsListQuery,
+	AccountsListRow,
+	AccountsListTab,
+	AccountsOverview,
+} from '@saha-textile/contracts';
 import type { Observable } from 'rxjs';
 
 export const ACCOUNTS_LIST_KEYS = {
@@ -21,6 +27,11 @@ export class AccountsListsGateway {
 
 	list(tab: AccountsListTab, query: Partial<AccountsListQuery>): Observable<AccountsListPage> {
 		return this.http.get<AccountsListPage>(this.api(`accounts/lists/${tab}`), { params: { ...query } });
+	}
+
+	/** Accounts › Overview (Q0) for a month (this month when left out). */
+	overview(month: string | null): Observable<AccountsOverview> {
+		return this.http.get<AccountsOverview>(this.api('accounts/overview'), { params: month ? { month } : {} });
 	}
 
 	dayBook(query: Partial<AccountsListQuery>): Observable<AccountsListPage> {

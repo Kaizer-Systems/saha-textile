@@ -254,6 +254,8 @@ export function listCell(row: AccountsListRow, field: string, t: Words): string 
 
 /** Where a row opens: its own page, its order, or none (a debit note prints only). */
 export function viewLink(row: AccountsListRow): string[] | null {
+	// A voucher saved by hand and not posted opens its form (A1: drafts edit instead).
+	if (row.extra['draft'] === 'voucher') return ['/accounts/vouchers/drafts', row.id];
 	const orderId = extraText(row, 'orderId');
 	const businessId = extraText(row, 'businessId');
 	switch (row.tab) {

@@ -32,6 +32,9 @@ const FIELD_WORDS: Readonly<Record<keyof Omit<ShopDetails, 'updatedAt' | 'update
 
 const PAGE = 200;
 
+/** A State's name, or its code when the GST list doesn't know it. */
+const stateName = (code: string): string => gstStateName(code) ?? code;
+
 const charge = (count: number) => `${count} ${count === 1 ? 'supplier now charges' : 'suppliers now charge'}`;
 
 /**
@@ -60,7 +63,7 @@ export class ShopDetailsService {
 			stateName: stateCode ? gstStateName(stateCode) : null,
 			pan: shopPan(details),
 			homeStateCode: home,
-			homeStateName: gstStateName(home) ?? home,
+			homeStateName: stateName(home),
 			missing: shopDetailsMissing(details),
 			canEdit,
 			updatedByName: details.updatedBy ? await this.support.nameOf(details.updatedBy) : null,
@@ -76,7 +79,7 @@ export class ShopDetailsService {
 	async impact(gstin: string): Promise<ShopDetailsImpact> {
 		const value = gstin.replace(/\s+/g, '').toUpperCase();
 		const from = await this.support.homeState();
-		const stateFrom = { code: from, name: gstStateName(from) ?? from };
+		const stateFrom = { code: from, name: stateName(from) };
 		const problem = gstinProblem(value);
 		if (problem) {
 			return {
@@ -97,7 +100,7 @@ export class ShopDetailsService {
 			expectedLastCharacter: null,
 			pan: panFromGstin(value),
 			stateFrom,
-			stateTo: { code: to, name: gstStateName(to) ?? to },
+			stateTo: { code: to, name: stateName(to) },
 			stateChanges: from !== to,
 			toIntraState: moves.toIntraState.map((supplier) => ({ id: supplier.id, name: supplier.legalName })),
 			toInterState: moves.toInterState.map((supplier) => ({ id: supplier.id, name: supplier.legalName })),
@@ -150,7 +153,8 @@ export class ShopDetailsService {
 		const changes: Array<{ field: string; from: string; to: string }> = [];
 		for (const [field, words] of Object.entries(FIELD_WORDS) as Array<[keyof typeof FIELD_WORDS, string]>) {
 			const from = before[field] ?? '';
-			const to = next[field] ?? '';
+			// `next` was parsed with a GSTIN, and every other field defaults to ''.
+			const to = next[field] as string;
 			if (from === to) continue;
 			changes.push({ field, from, to });
 			sentences.push(`the shop's ${words} from ${from ? `"${from}"` : 'empty'} to ${to ? `"${to}"` : 'empty'}`);
@@ -158,8 +162,8 @@ export class ShopDetailsService {
 		if (sentences.length) {
 			const state =
 				fromState === toState
-					? `State unchanged (${gstStateName(toState) ?? toState}).`
-					: `State ${gstStateName(fromState) ?? fromState} → ${gstStateName(toState) ?? toState}.`;
+					? `State unchanged (${stateName(toState)}).`
+					: `State ${stateName(fromState)} → ${stateName(toState)}.`;
 			await this.support.record({
 				actor,
 				action: 'shop_details.update',
@@ -191,7 +195,7 @@ export class ShopDetailsService {
 				action: 'shop_details.suppliers_retaxed',
 				entityType: 'shop_details',
 				entityId: 'shop',
-				text: `${name}'s new GSTIN moved the home State from ${gstStateName(from) ?? from} to ${gstStateName(to) ?? to}: ${charge(moves.toIntraState.length)} CGST + SGST, ${charge(moves.toInterState.length)} IGST. Draft entries take this on their next save; posted entries keep their tax.`,
+				text: `${name}'s new GSTIN moved the home State from ${stateName(from)} to ${stateName(to)}: ${charge(moves.toIntraState.length)} CGST + SGST, ${charge(moves.toInterState.length)} IGST. Draft entries take this on their next save; posted entries keep their tax.`,
 				facts: {
 					toIntraState: moves.toIntraState.map((supplier) => supplier.id),
 					toInterState: moves.toInterState.map((supplier) => supplier.id),
@@ -221,7 +225,8 @@ export class ShopDetailsService {
 		return refuse(
 			problem.problem === 'check_digit' ? 'gstin_check_digit' : 'gstin_invalid',
 			problem.problem === 'check_digit'
-				? `The check digit is wrong: the last character should be ${problem.expected ?? ''}.`
+				? // A check-digit problem always names the expected character.
+					`The check digit is wrong: the last character should be ${problem.expected as string}.`
 				: 'That is not a GSTIN.',
 			'gstin',
 		);

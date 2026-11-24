@@ -64,17 +64,19 @@ export function nextSkuFor(skus: readonly string[]): { prefix: string; next: str
 	if (parsed.length === 0) return null;
 	const byPrefix = new Map<string, { count: number; max: number; width: number }>();
 	for (const match of parsed) {
-		const prefix = match[1] ?? '';
-		const digits = match[2] ?? '';
+		// The filter kept only matches with a prefix, and the digits group always takes part in a match.
+		const prefix = match[1] as string;
+		const digits = match[2] as string;
 		const entry = byPrefix.get(prefix) ?? { count: 0, max: 0, width: 0 };
 		entry.count += 1;
 		entry.max = Math.max(entry.max, Number(digits));
 		entry.width = Math.max(entry.width, digits.length);
 		byPrefix.set(prefix, entry);
 	}
-	const [prefix, best] =
-		[...byPrefix.entries()].sort((a, b) => b[1].count - a[1].count || b[1].max - a[1].max)[0] ?? [];
-	if (prefix === undefined || !best) return null;
+	// At least one SKU parsed, so at least one prefix was counted.
+	const [prefix, best] = [...byPrefix.entries()].sort(
+		(a, b) => b[1].count - a[1].count || b[1].max - a[1].max,
+	)[0] as [string, { count: number; max: number; width: number }];
 	return { prefix, next: String(best.max + 1).padStart(best.width, '0') };
 }
 
@@ -198,14 +200,17 @@ export class PurchaseItemsService {
 
 		const rows = body.rows.map((row) => {
 			const fact = factFor(row.code.trim());
-			const match = fact ? (options.get(fact.variantId) ?? null) : null;
+			// Every fact found for a row's code was turned into an option above.
+			const match = fact ? (options.get(fact.variantId) as PurchaseItemOption) : null;
 			const units = fact?.soldBy === 'metre' ? row.quantity * 10 : row.quantity;
 			let problem: PurchaseImportResult['rows'][number]['problem'] = null;
 			if (!(row.quantity >= (fact?.soldBy === 'metre' ? 0.1 : 1)) || Math.abs(units - Math.round(units)) > 1e-9)
 				problem = 'quantity_below_one';
 			else if (!Number.isFinite(row.unitPriceINR) || row.unitPriceINR < 0) problem = 'price_invalid';
 			else if (fact && blockedReason(fact)) problem = 'blocked_product';
-			else if (fact && (pricesSeen.get(fact.variantId)?.size ?? 0) > 1) problem = 'repeated_at_other_price';
+			// Every row with a fact put its price in pricesSeen above.
+			else if (fact && (pricesSeen.get(fact.variantId) as Set<number>).size > 1)
+				problem = 'repeated_at_other_price';
 			const result: 'ready' | 'needs_product' | 'problem' = problem
 				? 'problem'
 				: match

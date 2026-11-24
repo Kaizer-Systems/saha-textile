@@ -167,13 +167,15 @@ export function eInvoiceBand(format: { blocks: readonly DocumentBlock[] }, data:
 <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:1.4mm">
 <div style="font-weight:700;color:#0e7c66;letter-spacing:.04em">E-INVOICE · SIGNED BY THE IRP</div>
 <div><span style="color:#7b8794">IRN</span><br><b style="font-family:monospace;font-size:7.2pt;word-break:break-all">${e(irn)}</b></div>
-<div style="display:flex;gap:8mm">${fact(FIELD_LABELS['ackNo'] ?? 'Ack no.', data.values['ackNo'])}${fact(FIELD_LABELS['ackDate'] ?? 'Ack date', data.values['ackDate'])}${fact(FIELD_LABELS['ewayBill'] ?? 'E-way bill', data.values['ewayBill'])}</div>
+<div style="display:flex;gap:8mm">${fact(fieldLabel('ackNo'), data.values['ackNo'])}${fact(fieldLabel('ackDate'), data.values['ackDate'])}${fact(fieldLabel('ewayBill'), data.values['ewayBill'])}</div>
 ${qr ? '' : '<div style="color:#b54708">QR pending: upload the portal’s signed file</div>'}
 </div></div>${pageNumber ? '<div style="text-align:right;color:#777;font-size:7pt;margin-top:1.5mm">Page <span class="pageNumber"></span> of <span class="totalPages"></span></div>' : ''}</div>`;
 }
 
 const e = escapeHtml;
 const has = (block: DocumentBlock, field: string) => block.fields.includes(field);
+/** A field's printed name; a field the labels don't know prints as its own key. */
+const fieldLabel = (field: string): string => FIELD_LABELS[field] ?? field;
 
 function brandBlock(block: DocumentBlock, data: DocumentData, brand: RenderBrand, title: DocumentBlock | null): string {
 	const logo =
@@ -199,8 +201,7 @@ function factsGrid(fields: readonly string[], data: DocumentData, cls = 'dz-fact
 	const cells = fields
 		.filter((field) => data.values[field])
 		.map(
-			(field) =>
-				`<div class="dz-fact"><span>${e(FIELD_LABELS[field] ?? field)}</span><b>${e(data.values[field])}</b></div>`,
+			(field) => `<div class="dz-fact"><span>${e(fieldLabel(field))}</span><b>${e(data.values[field])}</b></div>`,
 		)
 		.join('');
 	return cells ? `<section class="${cls}">${cells}</section>` : '';
@@ -348,7 +349,7 @@ function blockHtml(
 		case 'note': {
 			const items = block.fields.filter((field) => data.values[field]);
 			if (!items.length) return '';
-			if (items.length === 1) return labelledBox(FIELD_LABELS[items[0]!] ?? items[0]!, e(data.values[items[0]!]));
+			if (items.length === 1) return labelledBox(fieldLabel(items[0]!), e(data.values[items[0]!]));
 			return factsGrid(items, data, 'dz-facts dz-facts-tight');
 		}
 		case 'text':

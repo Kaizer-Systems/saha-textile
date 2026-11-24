@@ -387,13 +387,15 @@ export class StockCountsService {
 				`Count ${fresh.number} is ${fresh.status === 'posted' ? 'already posted' : 'still being counted'}.`,
 			);
 		}
-		const differing = fresh.lines.filter((line) => line.difference !== null && line.difference !== 0);
+		const differing = fresh.lines.filter(
+			(line): line is DifferingLine => line.difference !== null && line.difference !== 0,
+		);
 		const notCounted = fresh.lines.filter((line) => line.counted === null).length;
 		const now = new Date().toISOString();
 		const posted = await this.support
 			.inTransaction(async (context) => {
 				for (const line of differing) {
-					const difference = line.difference ?? 0;
+					const difference = line.difference;
 					await this.writer.apply(
 						{
 							variantId: line.variantId,
@@ -423,7 +425,7 @@ export class StockCountsService {
 				const version = await this.counts.save(next, fresh.version, context);
 				if (alongside) await alongside(context);
 				const units = describeUnits(
-					differing.map((line) => ({ units: Math.abs(line.difference ?? 0), soldBy: line.soldBy })),
+					differing.map((line) => ({ units: Math.abs(line.difference), soldBy: line.soldBy })),
 				);
 				await this.support.record(
 					{
@@ -465,21 +467,25 @@ function emptyTotals(skus: number): StockCount['totals'] {
 	};
 }
 
+/** A line whose count differs from what was expected. */
+type DifferingLine = StockCountLine & { difference: number };
+
 function totalsOf(lines: readonly StockCountLine[], seeCost: boolean): StockCount['totals'] {
-	const differing = lines.filter((line) => (line.difference ?? 0) !== 0);
-	const missing = differing.filter((line) => (line.difference ?? 0) < 0);
-	const found = differing.filter((line) => (line.difference ?? 0) > 0);
+	const differing = lines.filter((line): line is DifferingLine => (line.difference ?? 0) !== 0);
+	const missing = differing.filter((line) => line.difference < 0);
+	const found = differing.filter((line) => line.difference > 0);
+	// With cost seen, refreshed() priced every line (0 where nothing differs), so each value is a number.
 	const value = (rows: readonly StockCountLine[]) =>
-		seeCost ? Math.round(rows.reduce((sum, line) => sum + (line.valueINR ?? 0) * 100, 0)) / 100 : null;
+		seeCost ? Math.round(rows.reduce((sum, line) => sum + (line.valueINR as number) * 100, 0)) / 100 : null;
 	return {
 		skus: lines.length,
 		counted: lines.filter((line) => line.counted !== null).length,
 		differences: differing.length,
-		missingUnits: missing.reduce((sum, line) => sum - (line.difference ?? 0), 0),
+		missingUnits: missing.reduce((sum, line) => sum - line.difference, 0),
 		missingValueINR: value(missing),
-		foundUnits: found.reduce((sum, line) => sum + (line.difference ?? 0), 0),
+		foundUnits: found.reduce((sum, line) => sum + line.difference, 0),
 		foundValueINR: value(found),
-		netUnits: differing.reduce((sum, line) => sum + (line.difference ?? 0), 0),
+		netUnits: differing.reduce((sum, line) => sum + line.difference, 0),
 		netValueINR: value(differing),
 	};
 }

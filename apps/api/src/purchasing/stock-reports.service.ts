@@ -181,12 +181,11 @@ export class StockReportsService {
 			let oldest = 0;
 			for (const { layer, units } of parts) {
 				const days = Math.max(0, daysBetween(layer.receivedAt.slice(0, 10), today));
-				const band = bands[ageingBandOf(days)];
+				// A day count of 0 or more always falls in a band (the last one has no end).
+				const band = bands[ageingBandOf(days)] as (typeof bands)[number];
 				const paise = Math.round(units * layer.unitCostINR * 100);
-				if (band) {
-					band.units += units;
-					band.valuePaise += paise;
-				}
+				band.units += units;
+				band.valuePaise += paise;
 				valuePaise += paise;
 				oldest = Math.max(oldest, days);
 			}

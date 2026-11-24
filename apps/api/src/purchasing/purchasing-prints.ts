@@ -17,6 +17,7 @@ import {
 	type StockReadRepository,
 	type SupplierRepository,
 	LABEL_SHEETS,
+	type LabelSlot,
 	code128Bars,
 	code128Encodable,
 	formatQuantity,
@@ -241,7 +242,8 @@ export class PurchasingPrints {
 			this.entries.findById(doc.purchaseEntryId),
 			this.suppliers.findById(doc.supplierId),
 		]);
-		const number = (kind === 'challan' ? doc.challanNumber : doc.number) ?? doc.id;
+		// Both numbers were checked above: a sent return has its number, and a challan its own.
+		const number = (kind === 'challan' ? doc.challanNumber : doc.number) as string;
 		// On the debit note's or challan's document format (bundle builder brief F); the theme template without formats.
 		const data = this.formats
 			? await this.formats.renderActive(
@@ -274,8 +276,8 @@ export class PurchasingPrints {
 		const sized = (mm: number) => `${mm}mm`;
 		const bySheet: string[][] = Array.from({ length: pages }, () => []);
 		labels.forEach((label, index) => {
-			const slot = slots[index];
-			if (!slot) return;
+			// labelSlots gives one slot for each label.
+			const slot = slots[index] as LabelSlot;
 			const bars =
 				show.has('barcode') && code128Encodable(label.sku)
 					? (() => {

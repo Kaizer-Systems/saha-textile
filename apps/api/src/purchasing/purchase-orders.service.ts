@@ -133,14 +133,15 @@ export class PurchaseOrdersService {
 
 	/** The estimate: lines before GST, and GST at each line's example rate (none for composition). */
 	private estimate(lines: PurchaseOrder['lines'], taxed: boolean) {
-		const values = lines.map((line) =>
-			roundPaise(billedUnits(line.quantity, line.soldBy) * toPaise(line.agreedPriceINR)),
-		);
+		const values = lines.map((line) => ({
+			paise: roundPaise(billedUnits(line.quantity, line.soldBy) * toPaise(line.agreedPriceINR)),
+			gstRatePct: line.gstRatePct,
+		}));
 		const gst = taxed
-			? lines.reduce((sum, line, index) => sum + roundPaise(((values[index] ?? 0) * line.gstRatePct) / 100), 0)
+			? values.reduce((sum, value) => sum + roundPaise((value.paise * value.gstRatePct) / 100), 0)
 			: 0;
 		return {
-			orderedValueINR: fromPaise(values.reduce((sum, value) => sum + value, 0)),
+			orderedValueINR: fromPaise(values.reduce((sum, value) => sum + value.paise, 0)),
 			estimatedGstINR: fromPaise(gst),
 		};
 	}

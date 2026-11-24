@@ -233,7 +233,8 @@ export class PurchasingSupport {
 
 	async nameOf(id: string | null): Promise<string> {
 		if (!id) return 'Someone';
-		return (await this.names([id])).get(id) ?? 'Someone';
+		// names() answers every id it is given ("Someone" for an unknown person).
+		return (await this.names([id])).get(id) as string;
 	}
 
 	/** Card-size thumbnails by photo id, for item columns. */
@@ -310,7 +311,8 @@ export class PurchasingSupport {
 		return rows.map((row) => ({
 			id: row.id,
 			at: row.createdAt,
-			actorName: row.actorUserId ? (names.get(row.actorUserId) ?? 'Someone') : 'System',
+			// names() answered every actor id above.
+			actorName: row.actorUserId ? (names.get(row.actorUserId) as string) : 'System',
 			action: row.action,
 			text: typeof row.metadata['text'] === 'string' ? row.metadata['text'] : row.action,
 		}));

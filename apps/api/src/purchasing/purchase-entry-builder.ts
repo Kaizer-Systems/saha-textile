@@ -11,6 +11,7 @@ import type {
 	Supplier,
 } from '@saha-textile/contracts';
 import {
+	type EntryMathLine,
 	type EntryMathResult,
 	type PurchaseEntryRepository,
 	type PurchaseOrderRepository,
@@ -211,7 +212,8 @@ export class PurchaseEntryBuilder {
 		const images = await this.support.thumbnails([...facts.values()].map((fact) => fact.galleryAssetId));
 		const lines: PurchaseEntryLine[] = prepared.map(({ write: line, lineId, orderLine }, index) => {
 			const fact = facts.get(line.variantId) as StockItemFacts;
-			const lineMath = math.lines[index];
+			// The math answers one line for each line it was given, in order.
+			const lineMath = math.lines[index] as EntryMathLine;
 			const before = previousLines.get(lineId);
 			// The goods check stands only while the line still says the same item and quantity.
 			const checkStands = before && before.variantId === line.variantId && before.quantity === line.quantity;
@@ -239,13 +241,13 @@ export class PurchaseEntryBuilder {
 				damageReason: checkStands ? before.damageReason : null,
 				damageNote: checkStands ? before.damageNote : null,
 				damagePhotoAssetIds: checkStands ? before.damagePhotoAssetIds : [],
-				taxableINR: lineMath?.taxableINR ?? 0,
-				taxINR: lineMath?.taxINR ?? 0,
-				lineTotalINR: lineMath?.lineTotalINR ?? 0,
-				freightShareINR: lineMath?.freightShareINR ?? 0,
-				unitCostINR: lineMath?.unitCostINR ?? 0,
+				taxableINR: lineMath.taxableINR,
+				taxINR: lineMath.taxINR,
+				lineTotalINR: lineMath.lineTotalINR,
+				freightShareINR: lineMath.freightShareINR,
+				unitCostINR: lineMath.unitCostINR,
 				sellingPriceINR: fact.sellingPriceINR,
-				marginPct: lineMath?.marginPct ?? null,
+				marginPct: lineMath.marginPct,
 				lastCostINR: last.get(line.variantId)?.unitPriceExGstINR ?? null,
 				costLayerId: null,
 			};

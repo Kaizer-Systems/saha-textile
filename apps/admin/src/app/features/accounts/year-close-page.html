@@ -1,0 +1,156 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'year_close_title_short'"
+>
+	@let v = view.data();
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="d-flex align-items-center mb-1 flex-wrap gap-2">
+				{{ 'year_close_title' | transloco: { year: year() } }} @if (v) {
+				<span class="badge bg-light text-dark border">
+					{{ 'year_close_done' | transloco: { done: v.done, of: v.checks.length } }}
+				</span>
+				} @if (v?.closedAt) {
+				<span class="badge bg-light text-dark border">{{ 'year_close_closed_badge' | transloco }}</span>
+				}
+			</h5>
+			<small class="text-muted">{{ 'year_close_sub' | transloco }}</small>
+		</div>
+		<div class="d-flex align-items-center flex-wrap gap-2">
+			<select
+				class="form-select w-auto"
+				id="yc_year"
+				[attr.aria-label]="'accounts_year' | transloco"
+				[ngModel]="year()"
+				(ngModelChange)="pick($event)"
+			>
+				@for (y of years; track y) {
+				<option [value]="y">{{ y }}</option>
+				}
+			</select>
+			<button
+				*hasPermission="'accounts.post'"
+				type="button"
+				class="btn btn-outline"
+				id="yc_post"
+				[disabled]="busy() || !v?.canPostClosing"
+				(click)="postClosing()"
+			>
+				{{ 'year_close_post' | transloco }}
+			</button>
+			<button
+				*hasPermission="'accounts.lock'"
+				type="button"
+				class="btn btn-theme"
+				id="yc_close"
+				[disabled]="busy() || !v?.canClose"
+				(click)="close()"
+			>
+				{{ 'year_close_close' | transloco }}
+			</button>
+		</div>
+	</div>
+	<div class="row g-3">
+		<div class="col-xl-8">
+			<div class="card">
+				<div class="card-body">
+					@for (c of checks(); track c.key) {
+					<div class="d-flex justify-content-between border-bottom gap-3 py-2">
+						<div>
+							<i [class]="icon(c.state)"></i>
+							<b class="ms-1">{{ 'year_close_check_' + c.key | transloco }}</b>
+							@switch (c.key) { @case ('stock_count') { @if (c.count) {
+							<small class="d-block text-muted ms-4">
+								{{ 'year_close_counts_open' | transloco: { n: c.count } }}
+							</small>
+							} } @case ('suspense') { @if (c.state === 'warning') {
+							<small class="d-block text-muted ms-4">{{ 'year_close_suspense_hint' | transloco }}</small>
+							<div
+								*hasPermission="'accounts.post'"
+								class="d-flex ms-4 mt-1 gap-2"
+							>
+								<input
+									class="form-control form-control-sm"
+									maxlength="300"
+									[attr.aria-label]="'year_close_carry_note' | transloco"
+									[placeholder]="'year_close_carry_note' | transloco"
+									[ngModel]="note()"
+									(ngModelChange)="note.set($event)"
+								/>
+								<button
+									type="button"
+									class="btn btn-sm btn-outline text-nowrap"
+									[disabled]="busy() || note().trim().length < 5"
+									(click)="carrySuspense()"
+								>
+									{{ 'year_close_carry' | transloco }}
+								</button>
+							</div>
+							} @else if (v?.suspenseNote) {
+							<small class="d-block text-muted ms-4">{{ v?.suspenseNote }}</small>
+							} } @case ('accruals') { @if (c.state === 'attention') {
+							<div
+								*hasPermission="'accounts.post'"
+								class="ms-4 mt-1"
+							>
+								<button
+									type="button"
+									class="btn btn-sm btn-outline"
+									[disabled]="busy()"
+									(click)="confirmAccruals()"
+								>
+									{{ 'year_close_confirm_accruals' | transloco }}
+								</button>
+							</div>
+							} } @case ('closing') { @if (c.count) {
+							<small class="d-block text-muted ms-4">{{ 'year_close_closing_stale' | transloco }}</small>
+							} } @default {} }
+						</div>
+						<small class="text-end text-nowrap">
+							@switch (c.state) { @case ('not_in_use') { {{ 'year_close_not_in_use' | transloco }} }
+							@default { @switch (c.key) { @case ('banks') { {{ 'year_close_n_of' | transloco: { n:
+							c.count, of: c.of } }} } @case ('gst') { {{ 'year_close_n_of' | transloco: { n: c.count, of:
+							c.of } }} } @case ('stock_count') { {{ 'year_close_counts_posted' | transloco: { n: c.of }
+							}} } @case ('suspense') { @if (c.amountPaise) { {{ money(c.amountPaise) }} } @else { ✓ } }
+							@case ('closing') { @if (v?.profitPaise !== null && v?.profitPaise !== undefined && c.state
+							=== 'ok') { {{ 'year_close_profit_to' | transloco: { amount: money(v?.profitPaise ?? 0) } }}
+							} @else { — } } @default { @if (c.state === 'ok') { ✓ } @else { {{ 'year_close_n_open' |
+							transloco: { n: c.count } }} } } } } }
+						</small>
+					</div>
+					}
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-4">
+			<div class="card">
+				<div class="card-body">
+					<h5>{{ 'year_close_does' | transloco }}</h5>
+					<p class="small mb-2">
+						<i class="ri-file-list-3-line"></i>
+						<b>{{ 'year_close_does_voucher' | transloco }}</b>
+						· {{ 'year_close_does_voucher_body' | transloco }}
+					</p>
+					<p class="small mb-2">
+						<i class="ri-lock-line"></i>
+						<b>{{ 'year_close_does_lock' | transloco }}</b>
+						· {{ 'year_close_does_lock_body' | transloco: { year: year() } }}
+					</p>
+					<p class="small mb-0">
+						<i class="ri-calendar-line"></i>
+						<b>{{ 'year_close_does_next' | transloco }}</b>
+						· {{ 'year_close_does_next_body' | transloco }}
+					</p>
+					@if (v?.closingVoucherId) {
+					<a
+						class="d-block small mt-2"
+						[routerLink]="['/accounts/vouchers', v?.closingVoucherId]"
+					>
+						{{ 'year_close_view_voucher' | transloco }}
+					</a>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+</app-page-wrapper>

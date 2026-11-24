@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal, type TemplateRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal, type NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
@@ -42,7 +43,7 @@ export function columnState(locks: readonly PeriodLock[], month: string, parts: 
  */
 @Component({
 	selector: 'app-periods',
-	imports: [PageWrapper, TranslocoModule, FormsModule, CatchUpCard],
+	imports: [PageWrapper, TranslocoModule, FormsModule, CatchUpCard, RouterLink],
 	templateUrl: './periods.html',
 })
 export class PeriodsPage {

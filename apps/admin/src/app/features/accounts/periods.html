@@ -16,6 +16,13 @@
 			</select>
 			<small class="text-muted">{{ yearLabel() }} · {{ 'accounts_periods_sub' | transloco }}</small>
 		</div>
+		<a
+			class="btn btn-outline"
+			id="periods_year_close"
+			routerLink="/accounts/year-close"
+		>
+			{{ 'year_close_title_short' | transloco }}
+		</a>
 		@if (canLock()) {
 		<button
 			type="button"

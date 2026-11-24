@@ -121,7 +121,8 @@ const PurchaseInvoiceSchema = new Schema<AggregateDoc>(
 		createdAt: { type: String, required: true },
 		postedAt: { type: String, default: null },
 	},
-	{ ...loose, collection: COLLECTION_NAMES.PurchaseInvoice },
+	// Filters name fields this loose schema doesn't declare (totals, lines, decisions, search): keep them.
+	{ ...loose, strictQuery: false, collection: COLLECTION_NAMES.PurchaseInvoice },
 );
 PurchaseInvoiceSchema.index({ number: 1 }, { unique: true, partialFilterExpression: { number: { $type: 'string' } } });
 /** The duplicate-bill guard holds even under two simultaneous saves. */
@@ -215,7 +216,8 @@ const StockAdjustmentSchema = new Schema<AggregateDoc>(
 		requestedAt: { type: String, required: true },
 		requestKey: { type: String, default: null },
 	},
-	{ ...loose, collection: COLLECTION_NAMES.StockAdjustment },
+	// Filters name fields this loose schema doesn't declare (totals, lines, decisions, search): keep them.
+	{ ...loose, strictQuery: false, collection: COLLECTION_NAMES.StockAdjustment },
 );
 StockAdjustmentSchema.index({ status: 1, requestedAt: -1 });
 StockAdjustmentSchema.index(

@@ -784,7 +784,8 @@ export class MongoStockCountRepository implements StockCountRepository {
 		return {
 			items: docs.map((doc) => fromDoc<StockCount>({ ...doc, lines: [] }) as StockCount),
 			total,
-			counts: Object.fromEntries(keys.map((key, index) => [key, counts[index] ?? 0])),
+			// One count per filter, in the filters' own order.
+			counts: Object.fromEntries(keys.map((key, index) => [key, counts[index] as number])),
 		};
 	}
 
@@ -814,7 +815,8 @@ export class MongoNumberAllocator implements NumberAllocatorPort {
 		)
 			.lean()
 			.exec();
-		return doc?.seq ?? 1;
+		// An upsert that answers the document after the change always has one.
+		return (doc as { seq: number }).seq;
 	}
 
 	async peek(series: string, fiscalYear: string): Promise<number> {
@@ -932,7 +934,8 @@ export class MongoStockMovement implements StockMovementPort {
 					quantityDelta: input.quantityDelta,
 					balanceAfter: updated.stock.quantity,
 					heldDelta: input.heldDelta,
-					heldAfter: updated.stock.held ?? 0,
+					// The $inc above always writes held, so the variant has it now.
+					heldAfter: updated.stock.held as number,
 					reservedDelta,
 					reservedAfter: updated.stock.reserved ?? 0,
 					source: input.source,
@@ -965,7 +968,7 @@ export class MongoStockMovement implements StockMovementPort {
 				{ upsert: true, session },
 			).exec();
 		}
-		return { ledgerId, onHandAfter: updated.stock.quantity, heldAfter: updated.stock.held ?? 0 };
+		return { ledgerId, onHandAfter: updated.stock.quantity, heldAfter: updated.stock.held as number };
 	}
 
 	async locationStock(variantIds: readonly string[]): Promise<LocationStock[]> {
@@ -1156,7 +1159,8 @@ export class MongoStockReadRepository implements StockReadRepository {
 				sku: row.sku,
 				barcode: row.barcode ?? null,
 				title: row.p.title ?? {},
-				optionsLabel: options.get(row._id) ?? '',
+				// labels() names every row it is given.
+				optionsLabel: options.get(row._id) as string,
 				galleryAssetId: row.media?.primaryAssetId ?? row.p.media?.gallery?.[0] ?? null,
 				productType: row.p.type,
 				productStatus: row.p.status,
@@ -1300,7 +1304,7 @@ export class MongoStockReadRepository implements StockReadRepository {
 			stockFields,
 			{ $addFields: { free: { $subtract: ['$onHand', '$heldUnits'] } } },
 		];
-		const conditions: Record<string, FilterQuery<AggregateDoc>> = {
+		const conditions: Record<typeof filter.filter, FilterQuery<AggregateDoc>> = {
 			all: {},
 			low: {
 				'stock.tracked': { $ne: false },
@@ -1323,20 +1327,21 @@ export class MongoStockReadRepository implements StockReadRepository {
 			{
 				$facet: {
 					items: [
-						{ $match: conditions[filter.filter] ?? {} },
+						{ $match: conditions[filter.filter] },
 						{ $sort: { sku: 1 } },
 						{ $skip: skip },
 						{ $limit: limit },
 					],
-					total: [{ $match: conditions[filter.filter] ?? {} }, { $count: 'n' }],
-					low: [{ $match: conditions.low ?? {} }, { $count: 'n' }],
-					out: [{ $match: conditions.out ?? {} }, { $count: 'n' }],
-					held: [{ $match: conditions.held ?? {} }, { $count: 'n' }],
-					older: [{ $match: conditions.older_180 ?? {} }, { $count: 'n' }],
+					total: [{ $match: conditions[filter.filter] }, { $count: 'n' }],
+					low: [{ $match: conditions.low }, { $count: 'n' }],
+					out: [{ $match: conditions.out }, { $count: 'n' }],
+					held: [{ $match: conditions.held }, { $count: 'n' }],
+					older: [{ $match: conditions.older_180 }, { $count: 'n' }],
 				},
 			},
 		]).exec();
-		const items = await this.facts(result?.items ?? []);
+		// A $facet stage always answers exactly one document.
+		const items = await this.facts((result as { items: ItemRow[] }).items);
 		const n = (rows: Array<{ n: number }> | undefined) => rows?.[0]?.n ?? 0;
 		return {
 			items,

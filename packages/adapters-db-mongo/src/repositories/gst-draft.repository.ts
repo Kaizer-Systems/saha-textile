@@ -1,7 +1,7 @@
-import { GstReturnDraft, type GstDraftType } from '@saha-textile/contracts';
-import type { GstReturnDraftRepository } from '@saha-textile/core-domain';
+import { GstReturnDraft, Gstr2bImport, type GstDraftType } from '@saha-textile/contracts';
+import type { GstReturnDraftRepository, Gstr2bRepository } from '@saha-textile/core-domain';
 
-import { GstReturnDraftModel } from '../models/bank.model';
+import { GstReturnDraftModel, Gstr2bImportModel } from '../models/bank.model';
 import type { AggregateDoc } from '../models/purchasing.model';
 
 const draftOf = (doc: AggregateDoc): GstReturnDraft => {
@@ -47,5 +47,42 @@ export class MongoGstReturnDraftRepository implements GstReturnDraftRepository {
 		).exec();
 		if (!result.matchedCount) throw new Error('gst_draft_changed');
 		return { ...draft, version: expectedVersion + 1 };
+	}
+}
+
+const importOf = (doc: AggregateDoc): Gstr2bImport => {
+	const { _id, ...rest } = doc;
+	return Gstr2bImport.parse({ ...rest, id: _id });
+};
+
+/** Imported GSTR-2B files in MongoDB (`gstr2bImports`). */
+export class MongoGstr2bRepository implements Gstr2bRepository {
+	async find(gstRegistrationId: string, month: string): Promise<Gstr2bImport | null> {
+		const doc = await Gstr2bImportModel.findOne({ gstRegistrationId, month }).lean<AggregateDoc>().exec();
+		return doc ? importOf(doc) : null;
+	}
+
+	async listForRegistration(gstRegistrationId: string): Promise<Gstr2bImport[]> {
+		const docs = await Gstr2bImportModel.find({ gstRegistrationId })
+			.sort({ month: 1 })
+			.lean<AggregateDoc[]>()
+			.exec();
+		return docs.map(importOf);
+	}
+
+	async save(doc: Gstr2bImport, expectedVersion: number | null): Promise<Gstr2bImport> {
+		const { id, ...rest } = doc;
+		if (expectedVersion === null) {
+			await Gstr2bImportModel.create({ _id: id, ...rest, version: 0 }).catch((error: { code?: number }) => {
+				throw error.code === 11000 ? new Error('gstr2b_exists', { cause: error }) : error;
+			});
+			return { ...doc, version: 0 };
+		}
+		const result = await Gstr2bImportModel.updateOne(
+			{ _id: id, version: expectedVersion },
+			{ $set: { ...rest, version: expectedVersion + 1 } },
+		).exec();
+		if (!result.matchedCount) throw new Error('gstr2b_changed');
+		return { ...doc, version: expectedVersion + 1 };
 	}
 }

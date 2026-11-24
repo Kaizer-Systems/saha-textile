@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type {
+	GstRegistration,
 	GstCalendar,
 	GstCalendarQuery,
 	GstCalendarRow,
@@ -14,6 +15,7 @@ import {
 	dueFromRules,
 	financialYear,
 	gstr1,
+	gstr3b,
 	istDay,
 	termsOn,
 	type AdminUserRepository,
@@ -37,6 +39,7 @@ import {
 } from '../infra/tokens';
 import { AccountsTemplatesService } from '../accounts-templates/accounts-templates.service';
 import { accountsRefusal } from '../ledger/accounts-refusal';
+import { Gstr3bInputs } from './gstr3b-inputs';
 
 const refuse = (code: string) => new BadRequestException(accountsRefusal(code));
 
@@ -71,6 +74,8 @@ export class GstReturnsService {
 		/** Due dates come from the installed due-date rule set (RS-DUE), which the CA keeps current. */
 		private readonly templates: Pick<AccountsTemplatesService, 'ruleSetEntries'>,
 		@Inject(ADMIN_USER_REPOSITORY) private readonly admins: Pick<AdminUserRepository, 'findById'>,
+		/** GSTR-3B's figures from the books and 2B. */
+		private readonly inputs: Pick<Gstr3bInputs, 'collect'>,
 	) {}
 
 	/** Who took a step, by name; the user id when the account has no name, '' with no one signed in. */
@@ -92,16 +97,10 @@ export class GstReturnsService {
 		);
 	}
 
-	/** G4 Prepare: the return worked out from the books now; a draft not yet approved is replaced. */
-	async prepare(write: GstReturnPrepare, principal: AuthenticatedPrincipal | undefined, now = new Date()) {
-		if (write.returnType !== 'GSTR-1') throw refuse('gst_return_not_ready');
-		const registration = await this.registration(write.gstRegistrationId);
-		if (await this.filed(registration.id, write.returnType, write.month)) throw refuse('gst_return_filed');
-		const existing = await this.drafts.find(registration.id, write.returnType, write.month);
-		if (existing && existing.status !== 'prepared' && existing.status !== 'checked')
-			throw refuse('gst_return_approved');
-		const from = `${write.month}-01`;
-		const to = monthEnd(write.month);
+	/** GSTR-1 worked out from the GSTIN's invoices and notes of the month (core `gstr1`). */
+	private async gstr1For(registration: GstRegistration, month: string) {
+		const from = `${month}-01`;
+		const to = monthEnd(month);
 		const [invoices, creditNotes, debitNotes] = await Promise.all([
 			this.invoices.listForGstin(registration.gstin, from, to),
 			this.creditNotes.listForGstin(registration.gstin, from, to),
@@ -112,15 +111,48 @@ export class GstReturnsService {
 			const invoice = await this.invoices.get(id);
 			if (invoice) originals.set(id, invoice);
 		}
-		const result = gstr1({
+		return gstr1({
 			gstin: registration.gstin,
-			month: write.month,
+			month,
 			invoices,
 			creditNotes,
 			debitNotes,
 			originals,
 			hsnDigits: termsOn(registration, from)?.hsnDigits ?? 4,
 		});
+	}
+
+	/**
+	 * G6: GSTR-3B from the filed GSTR-1 (as prepared here, else worked out again from the books), the month's
+	 * self-invoices, 2B's accepted credit, the books' reversals and rule 37, with the accountant's changes. Monthly
+	 * filers only for now; GSTR-1 must be filed first, since its values feed 3B.
+	 */
+	private async gstr3bFor(registration: GstRegistration, write: GstReturnPrepare) {
+		if (!(await this.filed(registration.id, 'GSTR-1', write.month))) throw refuse('gst_gstr1_not_filed');
+		if (termsOn(registration, `${write.month}-01`)?.scheme === 'qrmp') throw refuse('gst_return_qrmp_later');
+		const gstr1Draft = await this.drafts.find(registration.id, 'GSTR-1', write.month);
+		const gstr1Portal = gstr1Draft?.portal ?? (await this.gstr1For(registration, write.month)).portal;
+		const books = await this.inputs.collect(registration.id, write.month);
+		return gstr3b({
+			gstin: registration.gstin,
+			month: write.month,
+			gstr1Portal: gstr1Portal as Record<string, unknown>,
+			...books,
+			adjustments: write.adjustments,
+		});
+	}
+
+	/** G4, G6 Prepare: the return worked out from the books now; a draft not yet approved is replaced. */
+	async prepare(write: GstReturnPrepare, principal: AuthenticatedPrincipal | undefined, now = new Date()) {
+		const registration = await this.registration(write.gstRegistrationId);
+		if (await this.filed(registration.id, write.returnType, write.month)) throw refuse('gst_return_filed');
+		const existing = await this.drafts.find(registration.id, write.returnType, write.month);
+		if (existing && existing.status !== 'prepared' && existing.status !== 'checked')
+			throw refuse('gst_return_approved');
+		const result =
+			write.returnType === 'GSTR-3B'
+				? await this.gstr3bFor(registration, write)
+				: { ...(await this.gstr1For(registration, write.month)), setOff: null, reverseChargeCash: null };
 		const draft: GstReturnDraft = {
 			id: existing?.id ?? `gsr_${randomUUID()}`,
 			gstRegistrationId: registration.id,
@@ -142,6 +174,13 @@ export class GstReturnsService {
 			approvedByName: '',
 			arn: null,
 			filedOn: null,
+			setOff:
+				result.setOff && result.reverseChargeCash
+					? { ...result.setOff, reverseChargeCash: result.reverseChargeCash }
+					: null,
+			adjustments: write.returnType === 'GSTR-3B' ? write.adjustments : [],
+			setOffVoucherId: null,
+			challanVoucherId: null,
 			version: existing?.version ?? 0,
 		};
 		return this.save(draft, existing ? existing.version : null);

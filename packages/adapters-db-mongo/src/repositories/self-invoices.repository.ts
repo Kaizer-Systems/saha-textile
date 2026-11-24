@@ -93,6 +93,19 @@ export class MongoSelfInvoiceRepository implements SelfInvoiceRepository {
 		return docs.map(selfInvoiceOf);
 	}
 
+	async issuedForGstin(gstRegistrationId: string, from: string, to: string): Promise<SelfInvoice[]> {
+		const docs = await SelfInvoiceModel.find({
+			gstRegistrationId,
+			status: 'issued',
+			date: { $gte: from, $lte: to },
+		})
+			.setOptions({ strictQuery: false })
+			.sort({ date: 1, number: 1 })
+			.lean<AggregateDoc[]>()
+			.exec();
+		return docs.map(selfInvoiceOf);
+	}
+
 	async list(query: SelfInvoiceListQuery & { dueSoonFrom: string }): Promise<SelfInvoiceList> {
 		const base: Record<string, unknown> = { receivedOn: { $gte: query.from, $lte: query.to } };
 		if (query.search) {

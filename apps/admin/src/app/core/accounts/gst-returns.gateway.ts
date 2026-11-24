@@ -7,7 +7,7 @@ import type {
 	GstCalendar,
 	GstCalendarQuery,
 	GstReturnDraft,
-	GstReturnPrepare,
+	GstReturnPrepareInput,
 	GstReturnStep,
 } from '@saha-textile/contracts';
 import type { Observable } from 'rxjs';
@@ -28,7 +28,7 @@ export class GstReturnsGateway {
 		return this.http.get<GstCalendar>(this.api('/calendar'), { params: { ...query } });
 	}
 
-	prepare(write: GstReturnPrepare): Observable<GstReturnDraft> {
+	prepare(write: GstReturnPrepareInput): Observable<GstReturnDraft> {
 		return this.http.post<GstReturnDraft>(this.api(), write);
 	}
 

@@ -28,6 +28,31 @@ export type GstReturnSummaryRow = z.infer<typeof GstReturnSummaryRow>;
 export const GstReturnProblem = z.object({ table: z.string(), problem: z.string(), document: z.string() });
 export type GstReturnProblem = z.infer<typeof GstReturnProblem>;
 
+/** Tax by head, in paise. */
+export const GstTaxHeads = z.object({ igst: z.number().int(), cgst: z.number().int(), sgst: z.number().int() });
+export type GstTaxHeads = z.infer<typeof GstTaxHeads>;
+
+/** Q7: each credit's use against output tax (s.49, rule 88A), what is paid in cash and what is carried forward. */
+export const GstSetOff = z.object({
+	liability: GstTaxHeads,
+	credit: GstTaxHeads,
+	igstUsed: GstTaxHeads,
+	cgstUsed: z.object({ cgst: z.number().int(), igst: z.number().int() }),
+	sgstUsed: z.object({ sgst: z.number().int(), igst: z.number().int() }),
+	cash: GstTaxHeads,
+	carried: GstTaxHeads,
+	/** Reverse-charge tax, always paid in cash. */
+	reverseChargeCash: GstTaxHeads,
+});
+export type GstSetOff = z.infer<typeof GstSetOff>;
+
+/** A change the accountant makes to a GSTR-3B table (G6 "Can change here"), kept with its reason. */
+export const Gstr3bAdjustment = GstTaxHeads.extend({
+	table: z.enum(['3.1d', '4A', '4B']),
+	reason: z.string().trim().min(1).max(200),
+});
+export type Gstr3bAdjustment = z.infer<typeof Gstr3bAdjustment>;
+
 export const GstReturnDraft = z.object({
 	id: Id,
 	gstRegistrationId: Id,
@@ -52,13 +77,25 @@ export const GstReturnDraft = z.object({
 	/** Once filed on the portal: its ARN and day, from the filing (G8). */
 	arn: z.string().nullable().default(null),
 	filedOn: IsoDate.nullable().default(null),
+	/** GSTR-3B only: the set-off and cash to pay (Q7), and the accountant's changes with their reasons. */
+	setOff: GstSetOff.nullable().default(null),
+	adjustments: z.array(Gstr3bAdjustment).default([]),
+	/** GSTR-3B only: the set-off journal and the challan's payment, once posted (Q7 Post the set-off). */
+	setOffVoucherId: Id.nullable().default(null),
+	challanVoucherId: Id.nullable().default(null),
 	version: z.number().int().nonnegative().default(0),
 });
 export type GstReturnDraft = z.infer<typeof GstReturnDraft>;
 
-/** Prepare (or prepare again, before approval) a return from the books. */
-export const GstReturnPrepare = z.object({ gstRegistrationId: Id, returnType: GstDraftType, month: YearMonth });
+/** Prepare (or prepare again, before approval) a return from the books; a GSTR-3B carries the accountant's changes. */
+export const GstReturnPrepare = z.object({
+	gstRegistrationId: Id,
+	returnType: GstDraftType,
+	month: YearMonth,
+	adjustments: z.array(Gstr3bAdjustment).max(30).default([]),
+});
 export type GstReturnPrepare = z.infer<typeof GstReturnPrepare>;
+export type GstReturnPrepareInput = z.input<typeof GstReturnPrepare>;
 
 /** The next step: the accountant has checked it, or the CA approves it. */
 export const GstReturnStep = z.object({
@@ -90,3 +127,104 @@ export const GstCalendar = z.object({
 	counts: z.record(GstCalendarChip, z.number().int().nonnegative()),
 });
 export type GstCalendar = z.infer<typeof GstCalendar>;
+
+/* GSTR-2B against our purchases (G5). */
+
+export const ImsAction = z.enum(['accept', 'reject', 'pending', 'held']);
+export type ImsAction = z.infer<typeof ImsAction>;
+
+export const Gstr2bResult = z.enum(['matched', 'different', 'only_2b', 'only_books', 'note']);
+export type Gstr2bResult = z.infer<typeof Gstr2bResult>;
+
+export const Gstr2bChip = z.enum(['all', 'matched', 'different', 'only_2b', 'only_books', 'note']);
+export type Gstr2bChip = z.infer<typeof Gstr2bChip>;
+
+/** Taxable value and tax by head, in paise. */
+const Gstr2bMoney = GstTaxHeads.extend({ taxable: z.number().int() });
+
+/** A supplier's document as GSTR-2B shows it (paise). */
+export const Gstr2bLine = Gstr2bMoney.extend({
+	key: z.string(),
+	kind: z.enum(['invoice', 'credit', 'debit']),
+	supplierGstin: z.string(),
+	supplierName: z.string(),
+	number: z.string(),
+	date: IsoDate,
+	supplierPeriod: YearMonth.nullable(),
+	filedOn: IsoDate.nullable(),
+	reverseCharge: z.boolean(),
+	itcAvailable: z.boolean(),
+	reason: z.string().nullable(),
+});
+export type Gstr2bLine = z.infer<typeof Gstr2bLine>;
+
+/** An imported 2B for a GSTIN and month, with what was done on the portal for each line (IMS). */
+export const Gstr2bImport = z.object({
+	id: Id,
+	gstRegistrationId: Id,
+	gstin: z.string(),
+	month: YearMonth,
+	generatedOn: IsoDate.nullable(),
+	lines: z.array(Gstr2bLine),
+	notRead: z.array(z.object({ section: z.string(), count: z.number().int().nonnegative() })),
+	decisions: z.record(z.string(), z.enum(['accept', 'reject', 'pending'])),
+	importedBy: Id.nullable(),
+	importedByName: z.string(),
+	importedAt: IsoDateTime,
+	version: z.number().int().nonnegative(),
+});
+export type Gstr2bImport = z.infer<typeof Gstr2bImport>;
+
+/** Import: the 2B file as downloaded from the portal (JSON), for a GSTIN; its month is read from the file. */
+export const Gstr2bImportWrite = z.object({ gstRegistrationId: Id, file: z.record(z.string(), z.unknown()) });
+export type Gstr2bImportWrite = z.infer<typeof Gstr2bImportWrite>;
+
+export const Gstr2bQuery = z.object({ gstRegistrationId: Id, month: YearMonth, chip: Gstr2bChip.default('all') });
+export type Gstr2bQuery = z.infer<typeof Gstr2bQuery>;
+
+export const Gstr2bRow = z.object({
+	key: z.string(),
+	result: Gstr2bResult,
+	kind: z.enum(['invoice', 'credit', 'debit']),
+	supplierGstin: z.string(),
+	supplierName: z.string(),
+	number: z.string(),
+	date: IsoDate,
+	reverseCharge: z.boolean(),
+	itcAvailable: z.boolean(),
+	books: Gstr2bMoney.nullable(),
+	twoB: Gstr2bMoney.nullable(),
+	entryId: Id.nullable(),
+	entryNumber: z.string().nullable(),
+	action: ImsAction,
+});
+export type Gstr2bRow = z.infer<typeof Gstr2bRow>;
+
+export const Gstr2bView = z.object({
+	gstin: z.string(),
+	month: YearMonth,
+	/** Null until a 2B is imported for the month. */
+	importId: Id.nullable(),
+	importedAt: IsoDateTime.nullable(),
+	importedByName: z.string(),
+	generatedOn: IsoDate.nullable(),
+	notRead: z.array(z.object({ section: z.string(), count: z.number().int().nonnegative() })),
+	counts: z.record(Gstr2bChip, z.number().int().nonnegative()),
+	rows: z.array(Gstr2bRow),
+	/** Credit GSTR-3B may claim from the accepted lines (4A(5)). */
+	claim: GstTaxHeads,
+	/** True once the month's GSTR-3B is filed: nothing more can change. */
+	locked: z.boolean(),
+	version: z.number().int().nonnegative(),
+});
+export type Gstr2bView = z.infer<typeof Gstr2bView>;
+
+/** What was done on the portal (IMS) for one line. */
+export const Gstr2bDecision = z.object({
+	gstRegistrationId: Id,
+	month: YearMonth,
+	key: z.string().min(1).max(120),
+	action: z.enum(['accept', 'reject', 'pending']),
+	version: z.number().int().nonnegative(),
+});
+export type Gstr2bDecision = z.infer<typeof Gstr2bDecision>;

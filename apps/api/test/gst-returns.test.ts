@@ -9,6 +9,9 @@ import { PERMISSIONS_KEY } from '../src/auth/session.guard';
 import { GstReturnsController } from '../src/gst/gst-returns.controller';
 import { GstReturnsService } from '../src/gst/gst-returns.service';
 import { GstModule } from '../src/gst/gst.module';
+import { Gstr2bController } from '../src/gst/gstr2b.controller';
+import { Gstr2bService } from '../src/gst/gstr2b.service';
+import { Gstr3bInputs } from '../src/gst/gstr3b-inputs';
 
 /** GST returns from the books (accounts brief G3, G4): prepare GSTR-1, check, approve, and the returns calendar. */
 
@@ -121,6 +124,10 @@ const draft = (id: string, over: Partial<GstReturnDraft> = {}): GstReturnDraft =
 	approvedByName: '',
 	arn: null,
 	filedOn: null,
+	setOff: null,
+	adjustments: [],
+	setOffVoucherId: null,
+	challanVoucherId: null,
 	version: 0,
 	...over,
 });
@@ -179,9 +186,21 @@ function build(
 				return ADMINS[id] ?? null;
 			},
 		} as never,
+		{ collect: vi.fn(async () => NO_BOOKS) },
 	);
 	return { service, drafts, store, invoices, credit, debit, templates };
 }
+
+/** GSTR-3B's figures from the books when nothing happened in the month. */
+const NO_BOOKS = {
+	selfInvoices: [],
+	twoBImported: false,
+	itc2b: { igst: 0, cgst: 0, sgst: 0 },
+	acceptedNotInBooks: 0,
+	reversedInBooks: { igst: 0, cgst: 0, sgst: 0 },
+	rule37: { igst: 0, cgst: 0, sgst: 0 },
+	reclaimed: { igst: 0, cgst: 0, sgst: 0 },
+};
 
 /** The people who take the steps: by display name, else email, else username. */
 const ADMINS: Record<string, unknown> = {
@@ -214,13 +233,13 @@ const prepare = (over: Record<string, unknown> = {}) =>
 	({ gstRegistrationId: 'reg_wb', returnType: 'GSTR-1', month: '2026-11', ...over }) as never;
 
 describe('preparing GSTR-1 from the books (G4)', () => {
-	it('refuses GSTR-3B for now, a registration it doesn’t know, and a month already filed', async () => {
+	it('refuses GSTR-3B before its GSTR-1 is filed, a registration it doesn’t know, and a month already filed', async () => {
 		const { service } = build({
 			filings: [{ gstRegistrationId: 'reg_wb', returnType: 'GSTR-1', month: '2026-11', arn: 'AA1911261234567' }],
 		});
-		const notReady = service.prepare(prepare({ returnType: 'GSTR-3B' }), accountant, now);
+		const notReady = service.prepare(prepare({ returnType: 'GSTR-3B', month: '2026-10' }), accountant, now);
 		await expect(notReady).rejects.toBeInstanceOf(BadRequestException);
-		await expect(notReady).rejects.toMatchObject(refusal('gst_return_not_ready'));
+		await expect(notReady).rejects.toMatchObject(refusal('gst_gstr1_not_filed'));
 		const unknown = service.prepare(prepare({ gstRegistrationId: 'reg_gone' }), accountant, now);
 		await expect(unknown).rejects.toBeInstanceOf(NotFoundException);
 		await expect(unknown).rejects.toMatchObject(refusal('gst_registration_unknown'));
@@ -570,8 +589,8 @@ describe('the GST return routes', () => {
 			['accounts.index'],
 			['accounts.post'],
 		]);
-		expect(Reflect.getMetadata('providers', GstModule)).toEqual([GstReturnsService]);
-		expect(Reflect.getMetadata('controllers', GstModule)).toEqual([GstReturnsController]);
+		expect(Reflect.getMetadata('providers', GstModule)).toEqual([GstReturnsService, Gstr2bService, Gstr3bInputs]);
+		expect(Reflect.getMetadata('controllers', GstModule)).toEqual([GstReturnsController, Gstr2bController]);
 		// Due dates come from the rule sets the templates library keeps.
 		expect(Reflect.getMetadata('imports', GstModule)).toEqual([AccountsTemplatesModule]);
 	});

@@ -168,6 +168,8 @@ export const COLLECTION_NAMES = {
 	Settlement: 'settlements',
 	/** GST returns prepared from the books, before and after approval (accounts brief G4). */
 	GstReturnDraft: 'gstReturnDrafts',
+	/** GSTR-2B files imported from the portal, with what was done on IMS for each line (accounts brief G5). */
+	Gstr2bImport: 'gstr2bImports',
 	/** Stock split by location (accounts brief F4). */
 	LocationStock: 'locationStock',
 	/** Settings › Document formats (bundle builder brief F, 2026-11-22): one active format per document. */
@@ -327,6 +329,7 @@ export const GRAPH_RECONCILIATION_OWED = [
 	'bankMatchRules',
 	'settlements',
 	'gstReturnDrafts',
+	'gstr2bImports',
 ] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */

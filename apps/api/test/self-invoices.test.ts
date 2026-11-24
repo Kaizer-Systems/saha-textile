@@ -121,6 +121,7 @@ function setup(
 			},
 			removeDraft: async (id: string) => id !== 'si_gone' && invoices.delete(id),
 			forSupplier: async () => [],
+			issuedForGstin: async () => [],
 			list: vi.fn(async (query: unknown) => ({ items: [], total: 0, counts: {}, query }) as never),
 		},
 		{

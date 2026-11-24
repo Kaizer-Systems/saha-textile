@@ -80,3 +80,11 @@ const GstReturnDraftSchema = new Schema<AggregateDoc>(
 );
 GstReturnDraftSchema.index({ gstRegistrationId: 1, returnType: 1, month: 1 }, { unique: true });
 export const GstReturnDraftModel = reuse('GstReturnDraft', GstReturnDraftSchema);
+
+/** G5: imported GSTR-2B files, one per registration and month. */
+const Gstr2bImportSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true }, gstRegistrationId: String, month: String },
+	{ ...loose, collection: COLLECTION_NAMES.Gstr2bImport },
+);
+Gstr2bImportSchema.index({ gstRegistrationId: 1, month: 1 }, { unique: true });
+export const Gstr2bImportModel = reuse('Gstr2bImport', Gstr2bImportSchema);

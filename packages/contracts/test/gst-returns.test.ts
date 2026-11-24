@@ -61,6 +61,10 @@ describe('return drafts', () => {
 			approvedByName: '',
 			arn: null,
 			filedOn: null,
+			setOff: null,
+			adjustments: [],
+			setOffVoucherId: null,
+			challanVoucherId: null,
 			version: 0,
 		});
 	});
@@ -78,6 +82,10 @@ describe('return drafts', () => {
 			approvedByName: 'R. Ghosh & Co.',
 			arn: 'AA191126123456Z',
 			filedOn: '2026-12-10',
+			setOff: null,
+			adjustments: [],
+			setOffVoucherId: null,
+			challanVoucherId: null,
 			version: 2,
 		};
 		expect(GstReturnDraft.parse(signed)).toEqual(signed);
@@ -106,7 +114,7 @@ describe('return drafts', () => {
 describe('preparing and stepping a return', () => {
 	it('prepares a return for a registration and a month, refusing a month that is not YYYY-MM', () => {
 		const ask = { gstRegistrationId: 'gst_wb', returnType: 'GSTR-3B', month: '2026-11' };
-		expect(GstReturnPrepare.parse(ask)).toEqual(ask);
+		expect(GstReturnPrepare.parse(ask)).toEqual({ ...ask, adjustments: [] });
 		for (const month of ['2026-1', '2026-00', '11-2026', '2026-11-01'])
 			expect(firstMessage(GstReturnPrepare.safeParse({ ...ask, month }))).toBe('month_shape');
 		refused(GstReturnPrepare.safeParse({ ...ask, gstRegistrationId: '' }).success);

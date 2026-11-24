@@ -18,6 +18,8 @@ export interface SelfInvoiceRepository {
 	/** Drafts only. */
 	removeDraft(id: string): Promise<boolean>;
 	forSupplier(supplierId: string): Promise<SelfInvoice[]>;
+	/** Issued (not cancelled) self-invoices of a GST registration dated within the days given (GSTR-3B 3.1(d)). */
+	issuedForGstin(gstRegistrationId: string, from: string, to: string): Promise<SelfInvoice[]>;
 	/** A7: one page and every chip's count; `dueSoonFrom` is the earliest day received still inside the 30 days. */
 	list(query: SelfInvoiceListQuery & { dueSoonFrom: string }): Promise<SelfInvoiceList>;
 }

@@ -8,6 +8,7 @@ import { AppModule } from '../src/app.module';
 import { AssetsController } from '../src/assets/assets.controller';
 import { AssetsModule } from '../src/assets/assets.module';
 import { ACCUMULATED_LEDGER_NAME, AssetsService } from '../src/assets/assets.service';
+import { RecurringService } from '../src/assets/recurring.service';
 import { PERMISSIONS_KEY } from '../src/auth/session.guard';
 import { LedgerModule } from '../src/ledger/ledger.module';
 
@@ -393,7 +394,7 @@ describe('the asset routes and module', () => {
 					(...args: unknown[]) => [name, ...args],
 			},
 		);
-		const c = new AssetsController(assets as never);
+		const c = new AssetsController(assets as never, {} as never);
 		const body = write();
 		const disposal = { on: '2026-11-20', proceedsINR: 0, version: 3 };
 		const change = { name: 'x', version: 3 } as never;
@@ -431,11 +432,45 @@ describe('the asset routes and module', () => {
 		const code = (m: keyof AssetsController) => Reflect.getMetadata('__httpCode__', AssetsController.prototype[m]);
 		expect([code('post'), code('dispose')]).toEqual([200, 200]);
 		expect(Reflect.getMetadata('imports', AssetsModule)).toEqual([LedgerModule]);
+		expect(Reflect.getMetadata('providers', AssetsModule)).toEqual([AssetsService, RecurringService]);
 		expect(AppModule.forRoot({} as never).imports).toContain(AssetsModule);
 	});
 
+	it('hand the recurring entries to their service, reading with accounts.index and changing with accounts.edit', async () => {
+		const recurring = {
+			list: vi.fn(() => ['list']),
+			create: vi.fn((...args: unknown[]) => ['create', ...args]),
+			update: vi.fn((...args: unknown[]) => ['update', ...args]),
+			remove: vi.fn(async () => undefined),
+		};
+		const c = new AssetsController({} as never, recurring as never);
+		const entry = { what: 'Shop rent' } as never;
+		const change = { what: 'Shop rent', version: 1 } as never;
+		expect([
+			c.recurringList(),
+			c.recurringCreate(entry, accountant),
+			c.recurringCreate(entry),
+			c.recurringUpdate('rec_1', change),
+		]).toEqual([
+			['list'],
+			['create', entry, accountant],
+			['create', entry, undefined],
+			['update', 'rec_1', change],
+		]);
+		expect(await c.recurringDelete('rec_1')).toBeUndefined();
+		expect(recurring.remove).toHaveBeenCalledWith('rec_1');
+		const routes = ['recurringList', 'recurringCreate', 'recurringUpdate', 'recurringDelete'] as const;
+		const perm = (m: (typeof routes)[number]) =>
+			new Reflector().get(PERMISSIONS_KEY, AssetsController.prototype[m]);
+		expect(routes.map(perm)).toEqual([['accounts.index'], ['accounts.edit'], ['accounts.edit'], ['accounts.edit']]);
+		expect(Reflect.getMetadata('__httpCode__', AssetsController.prototype.recurringDelete)).toBe(204);
+		// Declared before ":id", so "recurring" is never read as an asset's id.
+		const order = Object.getOwnPropertyNames(AssetsController.prototype);
+		for (const route of routes) expect(order.indexOf(route)).toBeLessThan(order.indexOf('get'));
+	});
+
 	it('offers the kinds of asset with their presets and the residual percent, before an asset by id', () => {
-		const c = new AssetsController({} as never);
+		const c = new AssetsController({} as never, {} as never);
 		expect(c.categories()).toEqual({ categories: ASSET_CATEGORIES, residualPercent: RESIDUAL_PERCENT });
 		expect(new Reflector().get(PERMISSIONS_KEY, AssetsController.prototype.categories)).toEqual(['accounts.index']);
 		expect(Reflect.getMetadata('path', AssetsController.prototype.categories)).toBe('categories');

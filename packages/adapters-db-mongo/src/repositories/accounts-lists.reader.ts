@@ -11,9 +11,10 @@ import type { AccountsListsReader } from '@saha-textile/core-domain';
 
 import { COLLECTION_NAMES } from '../collection-names';
 import { LedgerEntryModel, PaymentModel } from '../models/orders-build.model';
-import { JournalVoucherModel } from '../models/ledger.model';
+import { JournalVoucherModel, TaxInvoiceModel } from '../models/ledger.model';
 import { OrderModel } from '../models/order.model';
-import { StockAdjustmentModel, SupplierModel } from '../models/purchasing.model';
+import { PurchaseInvoiceModel, StockAdjustmentModel, SupplierModel } from '../models/purchasing.model';
+import { LocationModel } from '../models/locations.model';
 import { CreditNoteModel, DebitNoteModel, RefundVoucherModel } from '../models/returns.model';
 import { PaymentVoucherModel, SelfInvoiceModel } from '../models/self-invoices.model';
 
@@ -34,13 +35,17 @@ interface ReadModel {
 	collection: {
 		aggregate<T>(pipeline: unknown[]): { toArray(): Promise<T[]> };
 		countDocuments(filter: Filter): Promise<number>;
-		find(filter: Filter, options: { projection: Record<string, 1> }): { toArray(): Promise<unknown[]> };
+		find(
+			filter: Filter,
+			options: { projection: Record<string, 1>; sort?: Record<string, 1> },
+		): { toArray(): Promise<unknown[]> };
 	};
 }
 
 interface Lookups {
 	orders: Map<string, { number: string; buyer: string | null }>;
 	businesses: Map<string, string>;
+	locations: Map<string, string>;
 	/** Orders a business receipt settled, by receipt number. */
 	settled: Map<string, string[]>;
 }
@@ -48,7 +53,10 @@ interface Lookups {
 interface Source {
 	key: string;
 	tab: AccountsListTab;
-	day: Exclude<DayBookChip, 'all'>;
+	/** The Day book chip it falls under; sales and purchase bills are not vouchers and stay out of the Day book. */
+	day?: Exclude<DayBookChip, 'all'>;
+	/** Stages before the match, for what the document itself doesn't keep (its order's channel, credit notes). */
+	pre?: unknown[];
 	model: ReadModel;
 	collection: string;
 	/** The period, and which documents of the collection this source is. */
@@ -456,6 +464,111 @@ const SOURCES: readonly Source[] = [
 			};
 		},
 	},
+	{
+		key: 'taxInvoice',
+		tab: 'taxInvoices',
+		model: TaxInvoiceModel as unknown as ReadModel,
+		collection: COLLECTION_NAMES.TaxInvoice,
+		pre: [
+			{
+				$lookup: {
+					from: COLLECTION_NAMES.Order,
+					localField: 'orderId',
+					foreignField: '_id',
+					as: 'order',
+					pipeline: [{ $project: { channel: 1, eInvoice: 1, eWayBill: 1 } }],
+				},
+			},
+			{ $set: { order: { $first: '$order' } } },
+			{
+				$lookup: {
+					from: COLLECTION_NAMES.CreditNote,
+					localField: '_id',
+					foreignField: 'invoiceId',
+					as: 'credited',
+					pipeline: [{ $match: { status: 'issued' } }, { $project: { totalINR: 1 } }],
+				},
+			},
+			{ $set: { creditedINR: { $sum: '$credited.totalINR' } } },
+		],
+		match: (from, to) => between('date', from, to),
+		chips: {
+			all: {},
+			online: { 'order.channel': 'shop' },
+			staff_orders: { 'order.channel': 'admin' },
+			business: { 'buyer.gstin': { $ne: null } },
+		},
+		search: ['number', 'orderNumber', 'buyer.name', 'buyer.gstin'],
+		date: '$date',
+		row: (doc, { locations }) => {
+			const total = Number(doc['totalINR']);
+			// The lookup above always sets it (0 when no credit note is issued against the invoice).
+			const credited = Number(doc['creditedINR']);
+			const tax = Number(doc['cgstINR']) + Number(doc['sgstINR']) + Number(doc['igstINR']);
+			const status =
+				doc['status'] === 'cancelled'
+					? 'cancelled'
+					: credited >= total && credited > 0
+						? 'credited'
+						: credited > 0
+							? 'part_credited'
+							: 'issued';
+			return {
+				...blank,
+				number: text(doc['number']),
+				date: String(doc['date']),
+				party: text(field(doc, 'buyer.name')),
+				against: text(doc['orderNumber']),
+				detail: text(field(doc, 'order.channel')),
+				reference: text(field(doc, 'buyer.gstin')),
+				amountINR: total,
+				by: text(doc['createdBy']),
+				status,
+				extra: {
+					orderId: text(doc['orderId']),
+					location: locations.get(String(doc['locationId'])) ?? null,
+					taxableINR: num(doc['taxableINR']),
+					taxINR: Math.round(tax * 100) / 100,
+					irn: text(field(doc, 'order.eInvoice.irn')),
+					eWayBill: text(field(doc, 'order.eWayBill.number')),
+				},
+			};
+		},
+	},
+	{
+		key: 'purchaseBill',
+		tab: 'purchaseBills',
+		model: PurchaseInvoiceModel as unknown as ReadModel,
+		collection: COLLECTION_NAMES.PurchaseInvoice,
+		match: (from, to) => ({ status: { $in: ['posted', 'void'] }, ...between('billDate', from, to) }),
+		chips: { all: {}, posted: { status: 'posted' }, void: { status: 'void' } },
+		search: ['number', 'billNumber', 'supplierName', 'supplierGstin'],
+		date: '$billDate',
+		row: (doc) => {
+			const tax =
+				Number(field(doc, 'totals.cgstINR') ?? 0) +
+				Number(field(doc, 'totals.sgstINR') ?? 0) +
+				Number(field(doc, 'totals.igstINR') ?? 0);
+			return {
+				...blank,
+				number: text(doc['number']),
+				date: String(doc['billDate']),
+				party: text(doc['supplierName']),
+				against: text(doc['billNumber']),
+				reference: text(doc['supplierGstin']),
+				amountINR: num(field(doc, 'totals.totalINR')),
+				by: text(doc['postedBy']),
+				status: doc['status'] === 'void' ? 'cancelled' : 'posted',
+				extra: {
+					location: null,
+					taxableINR: num(field(doc, 'totals.taxableINR')),
+					taxINR: Math.round(tax * 100) / 100,
+					irn: null,
+					eWayBill: null,
+				},
+			};
+		},
+	},
 ];
 
 export class MongoAccountsListsReader implements AccountsListsReader {
@@ -467,6 +580,7 @@ export class MongoAccountsListsReader implements AccountsListsReader {
 			if (!chosen) return null;
 			const parts = [source.match(query.from, query.to), chosen, this.searchOf(source, query.search)];
 			if (tab === 'stockAdjustments' && query.reason) parts.push({ reasonCode: query.reason });
+			if (tab === 'taxInvoices' && query.location) parts.push({ locationId: query.location });
 			return { $and: parts.filter((part) => Object.keys(part).length) };
 		};
 		const [page, counts, totals] = await Promise.all([
@@ -495,7 +609,7 @@ export class MongoAccountsListsReader implements AccountsListsReader {
 			),
 		});
 		const within = (chip: string) =>
-			SOURCES.filter((source) => chip === 'all' || source.day === chip).map((source) => ({
+			SOURCES.filter((source) => source.day && (chip === 'all' || source.day === chip)).map((source) => ({
 				source,
 				filter: filterFor(source),
 			}));
@@ -528,6 +642,7 @@ export class MongoAccountsListsReader implements AccountsListsReader {
 		const [first, ...rest] = parts as [{ source: Source; filter: Filter }, ...{ source: Source; filter: Filter }[]];
 		// Each document comes back whole with its date and source, so nothing is read twice.
 		const stage = (part: { source: Source; filter: Filter }, index: number) => [
+			...(part.source.pre ?? []),
 			{ $match: part.filter },
 			{ $project: { d: part.source.date, s: { $literal: index }, doc: '$$ROOT' } },
 		];
@@ -558,7 +673,18 @@ export class MongoAccountsListsReader implements AccountsListsReader {
 		const entries = await Promise.all(
 			chips.map(async (chip) => {
 				const each = await Promise.all(
-					partsOf(chip).map((part) => part.source.model.collection.countDocuments(part.filter)),
+					partsOf(chip).map((part) =>
+						part.source.pre
+							? part.source.model.collection
+									.aggregate<{ n: number }>([
+										...part.source.pre,
+										{ $match: part.filter },
+										{ $count: 'n' },
+									])
+									.toArray()
+									.then(([counted]) => counted?.n ?? 0)
+							: part.source.model.collection.countDocuments(part.filter),
+					),
 				);
 				return [chip, each.reduce((sum, count) => sum + count, 0)] as const;
 			}),
@@ -588,16 +714,21 @@ export class MongoAccountsListsReader implements AccountsListsReader {
 		};
 	}
 
-	/** Order numbers and buyers, business names, and the orders each business receipt settled. */
+	/** Order numbers and buyers, business and location names, and the orders each business receipt settled. */
 	private async lookups(docs: readonly Doc[]): Promise<Lookups> {
 		const orderIds = [
 			...new Set(docs.flatMap((doc) => (doc['receiptNumber'] && doc['orderId'] ? [String(doc['orderId'])] : []))),
 		];
 		const businessIds = [...new Set(docs.flatMap((doc) => (doc['businessId'] ? [String(doc['businessId'])] : [])))];
+		const locationIds = [
+			...new Set(
+				docs.flatMap((doc) => (doc['orderNumber'] && doc['locationId'] ? [String(doc['locationId'])] : [])),
+			),
+		];
 		const receiptNumbers = docs.flatMap((doc) =>
 			doc['kind'] === 'receipt' && doc['documentNumber'] ? [String(doc['documentNumber'])] : [],
 		);
-		const [orders, businesses, settledPayments] = await Promise.all([
+		const [orders, businesses, settledPayments, locations] = await Promise.all([
 			orderIds.length
 				? ((OrderModel as unknown as ReadModel).collection
 						.find({ _id: { $in: orderIds } }, { projection: { orderNumber: 1, 'buyer.name': 1 } })
@@ -612,8 +743,14 @@ export class MongoAccountsListsReader implements AccountsListsReader {
 				? ((PaymentModel as unknown as ReadModel).collection
 						.find(
 							{ method: 'onAccount', receiptNumber: { $in: receiptNumbers } },
-							{ projection: { receiptNumber: 1, orderId: 1 } },
+							// In the order they were saved, so a receipt names its orders the same way every time.
+							{ projection: { receiptNumber: 1, orderId: 1 }, sort: { _id: 1 } },
 						)
+						.toArray() as Promise<Doc[]>)
+				: [],
+			locationIds.length
+				? ((LocationModel as unknown as ReadModel).collection
+						.find({ _id: { $in: locationIds } }, { projection: { name: 1 } })
 						.toArray() as Promise<Doc[]>)
 				: [],
 		]);
@@ -638,6 +775,7 @@ export class MongoAccountsListsReader implements AccountsListsReader {
 				]),
 			),
 			businesses: new Map(businesses.map((business) => [String(business._id), String(business['legalName'])])),
+			locations: new Map(locations.map((location) => [String(location._id), String(location['name'])])),
 			settled,
 		};
 	}

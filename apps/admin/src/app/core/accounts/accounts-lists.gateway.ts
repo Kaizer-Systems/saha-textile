@@ -47,6 +47,12 @@ export class AccountsListsGateway {
 				return row.number ? `accounts/self-invoices/${this.id(row.id)}/pdf` : null;
 			case 'stockAdjustments':
 				return row.number ? `stock/adjustments/${this.id(row.id)}/pdf` : null;
+			case 'taxInvoices':
+				return typeof orderId === 'string'
+					? `orders/${this.id(orderId)}/invoices/${this.id(row.id)}/pdf?copy=original`
+					: null;
+			case 'purchaseBills':
+				return `purchases/entries/${this.id(row.id)}/receipt-pdf`;
 			default:
 				return null;
 		}

@@ -37,7 +37,23 @@
 		</button>
 	</div>
 	<p class="small text-muted mb-3">{{ 'al_sub_' + kind() | transloco }}</p>
-	@if (kind() !== 'dayBook') {
+	@if (group() === 'sales') {
+	<ul class="nav nav-tabs mb-3">
+		@for (tab of salesTabs; track tab) {
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				[class.active]="tab === kind()"
+				[routerLink]="['/accounts/sales-and-purchases', tab]"
+			>
+				{{ 'al_tab_' + tab | transloco }}@if (tabCount(tab) !== null) {
+				<span class="badge bg-light text-dark ms-1">{{ tabCount(tab) }}</span>
+				}
+			</a>
+		</li>
+		}
+	</ul>
+	} @else if (group() === 'vouchers') {
 	<ul class="nav nav-tabs mb-3">
 		@for (tab of tabs; track tab) {
 		<li class="nav-item">
@@ -86,6 +102,19 @@
 				<span class="ms-1">{{ counts()[item] }}</span>
 				}
 			</button>
+			} @if (kind() === 'taxInvoices') {
+			<select
+				class="form-select form-select-sm w-auto"
+				id="al_location"
+				[attr.aria-label]="'al_every_location' | transloco"
+				[ngModel]="location() ?? ''"
+				(ngModelChange)="setLocation($event)"
+			>
+				<option value="">{{ 'al_every_location' | transloco }}</option>
+				@for (place of locations.data() ?? []; track place.id) {
+				<option [value]="place.id">{{ place.name }}</option>
+				}
+			</select>
 			} @if (kind() === 'stockAdjustments') {
 			<select
 				class="form-select form-select-sm w-auto"

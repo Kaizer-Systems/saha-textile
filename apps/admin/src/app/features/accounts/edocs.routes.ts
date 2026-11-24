@@ -35,6 +35,13 @@ export default [
 		data: { list },
 		loadComponent: () => import('./accounts-list-page').then((m) => m.AccountsListPage),
 	})),
+	// Accounts › Sales and purchases (Q8): tax invoices and purchase bills.
+	{ path: 'sales-and-purchases', pathMatch: 'full', redirectTo: 'sales-and-purchases/taxInvoices' },
+	...(['taxInvoices', 'purchaseBills'] as const).map((list) => ({
+		path: `sales-and-purchases/${list}`,
+		data: { list },
+		loadComponent: () => import('./accounts-list-page').then((m) => m.AccountsListPage),
+	})),
 	{
 		path: 'day-book',
 		data: { list: 'dayBook' },

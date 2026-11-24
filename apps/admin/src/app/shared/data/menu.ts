@@ -257,6 +257,14 @@ export const menu: IMenu[] = [
 			},
 			{
 				parent_id: 25,
+				title: 'accounts_sales_purchases',
+				path: '/accounts/sales-and-purchases',
+				type: 'link',
+				level: 2,
+				permission: ['accounts.index'],
+			},
+			{
+				parent_id: 25,
 				title: 'accounts_vouchers',
 				path: '/accounts/vouchers',
 				type: 'link',

@@ -11,6 +11,7 @@ import { of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AccountsListsGateway } from '@core/accounts/accounts-lists.gateway';
+import { LocationsGateway } from '@core/locations/locations.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 
@@ -110,6 +111,14 @@ describe('the list columns', () => {
 		expect(listCell(row({ moneyInINR: null, moneyOutINR: 31 }), 'moneyIn', t)).toBe('');
 		expect(listCell(row({ moneyOutINR: 31 }), 'moneyOut', t)).toBe('₹31');
 		expect(listCell(row(), 'status', t)).toContain('status-completed');
+		expect(listCell(row({ extra: { location: 'Gariahat' } }), 'location', t)).toBe('Gariahat');
+		expect(listCell(row({ extra: { taxableINR: 4457.14 } }), 'taxable', t)).toBe('₹4,457.14');
+		expect(listCell(row({ extra: { taxINR: 222.86 } }), 'tax', t)).toBe('₹222.86');
+		expect(listCell(row({ extra: { irn: 'abc', eWayBill: '123456789012' } }), 'edocs', t)).toBe(
+			'al_irn_done · al_ewb:{&quot;number&quot;:&quot;123456789012&quot;}',
+		);
+		expect(listCell(row({ extra: { eWayBill: '1' } }), 'edocs', t)).toContain('al_ewb');
+		expect(listCell(row({ extra: {} }), 'edocs', t)).toContain('—');
 		expect(listCell(row(), 'nothing', t)).toContain('—');
 	});
 
@@ -119,6 +128,8 @@ describe('the list columns', () => {
 		expect(statusKind({ tab: 'creditNotes', status: 'draft' })).toBe('pending');
 		expect(statusKind({ tab: 'refundVouchers', status: 'failed' })).toBe('cancelled');
 		expect(statusKind({ tab: 'paymentVouchers', status: 'paid' })).toBe('completed');
+		expect(statusKind({ tab: 'taxInvoices', status: 'part_credited' })).toBe('pending');
+		expect(statusKind({ tab: 'taxInvoices', status: 'credited' })).toBe('cancelled');
 	});
 
 	it('opens each row where it lives', () => {
@@ -143,6 +154,8 @@ describe('the list columns', () => {
 		expect(viewLink(row({ tab: 'refundVouchers', id: 'rf_1' }))).toEqual(['/accounts/refund-vouchers', 'rf_1']);
 		expect(viewLink(row({ tab: 'selfInvoices', id: 'si_1' }))).toEqual(['/accounts/self-invoices', 'si_1']);
 		expect(viewLink(row({ tab: 'stockAdjustments', id: 'sa_1' }))).toEqual(['/stock/adjustments', 'sa_1']);
+		expect(viewLink(row({ tab: 'taxInvoices', id: 'ti_1' }))).toEqual(['/accounts/invoices', 'ti_1']);
+		expect(viewLink(row({ tab: 'purchaseBills', id: 'pe_1' }))).toEqual(['/purchase-entries', 'pe_1']);
 		expect(viewLink(row({ tab: 'debitNotes' }))).toBeNull();
 	});
 
@@ -230,6 +243,9 @@ describe('the accounts lists gateway', () => {
 		expect(path({ tab: 'selfInvoices', number: null })).toBeNull();
 		expect(path({ tab: 'stockAdjustments' })).toBe('stock/adjustments/r1/pdf');
 		expect(path({ tab: 'stockAdjustments', number: null })).toBeNull();
+		expect(path({ tab: 'taxInvoices' })).toBe('orders/ord_1/invoices/r1/pdf?copy=original');
+		expect(path({ tab: 'taxInvoices', extra: {} })).toBeNull();
+		expect(path({ tab: 'purchaseBills' })).toBe('purchases/entries/r1/receipt-pdf');
 		expect(path({ tab: 'journal' })).toBeNull();
 	});
 });
@@ -280,6 +296,7 @@ function setup(list: string, options: { fails?: boolean; permissions?: string[] 
 			{ provide: ActivatedRoute, useValue: { data: of({ list }) } },
 			{ provide: AccountsListsGateway, useValue: gateway },
 			{ provide: NotificationService, useValue: notifier },
+			{ provide: LocationsGateway, useValue: { list: vi.fn(() => of([{ id: 'loc_gar', name: 'Gariahat' }])) } },
 			{
 				provide: AuthStore,
 				useValue: {
@@ -384,11 +401,36 @@ describe('the accounts list page', () => {
 		expect(failing.page.busy()).toBe(false);
 	});
 
+	it('shows Sales and purchases: both tabs with their counts, and the location filter on tax invoices', async () => {
+		const { fixture, page, gateway } = setup('taxInvoices');
+		fixture.detectChanges();
+		await vi.waitFor(() => expect(page.list.data()).toBeTruthy());
+		await vi.waitFor(() => expect(page.sibling.data()).toBeTruthy());
+		await vi.waitFor(() => expect(page.locations.data()).toBeTruthy());
+		fixture.detectChanges();
+		expect(page.group()).toBe('sales');
+		expect([page.tabCount('taxInvoices'), page.tabCount('purchaseBills')]).toEqual([2, 2]);
+		expect(gateway.list).toHaveBeenCalledWith('purchaseBills', expect.objectContaining({ pageSize: 1 }));
+		expect((fixture.nativeElement as HTMLElement).querySelector('#al_location')?.textContent).toContain('Gariahat');
+		page.setLocation('loc_gar');
+		expect(page.query()).toMatchObject({ location: 'loc_gar', page: 1 });
+		page.setLocation('');
+		expect(page.query()).not.toHaveProperty('location');
+		const bills = setup('purchaseBills');
+		expect([bills.page.group(), bills.page.tabCount('taxInvoices'), bills.page.tabCount('purchaseBills')]).toEqual([
+			'sales',
+			null,
+			null,
+		]);
+		expect(setup('receipts').page.group()).toBe('vouchers');
+	});
+
 	it('writes the Day book from its own read, with no ticks and its own chips', async () => {
 		const { fixture, page, gateway } = setup('dayBook');
 		fixture.detectChanges();
 		await vi.waitFor(() => expect(page.list.data()).toBeTruthy());
 		expect(page.chips()).toContain('journals');
+		expect(page.group()).toBe('day');
 		expect(page.tableConfig().bulkActions?.map((action) => action.actionToPerform)).toEqual(['export']);
 		expect(gateway.dayBook).toHaveBeenCalled();
 		const empty = setup('contra');

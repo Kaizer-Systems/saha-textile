@@ -2,10 +2,11 @@ import { AccountsListQuery } from '@saha-textile/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { connectMongo, disconnectMongo } from '../src/connection';
-import { JournalVoucherModel } from '../src/models/ledger.model';
+import { JournalVoucherModel, TaxInvoiceModel } from '../src/models/ledger.model';
+import { LocationModel } from '../src/models/locations.model';
 import { OrderModel } from '../src/models/order.model';
 import { LedgerEntryModel, PaymentModel } from '../src/models/orders-build.model';
-import { StockAdjustmentModel, SupplierModel } from '../src/models/purchasing.model';
+import { PurchaseInvoiceModel, StockAdjustmentModel, SupplierModel } from '../src/models/purchasing.model';
 import { CreditNoteModel, DebitNoteModel, RefundVoucherModel } from '../src/models/returns.model';
 import { PaymentVoucherModel, SelfInvoiceModel } from '../src/models/self-invoices.model';
 import { MongoAccountsListsReader } from '../src/repositories/accounts-lists.reader';
@@ -29,6 +30,9 @@ describe.skipIf(!hasMongoEnv())('accounts lists and the Day book (integration, r
 		PaymentVoucherModel,
 		SelfInvoiceModel,
 		StockAdjustmentModel,
+		TaxInvoiceModel,
+		PurchaseInvoiceModel,
+		LocationModel,
 	];
 	const wipe = () => Promise.all(models.map((m) => (m as typeof PaymentModel).deleteMany({})));
 	const reader = new MongoAccountsListsReader();
@@ -80,8 +84,20 @@ describe.skipIf(!hasMongoEnv())('accounts lists and the Day book (integration, r
 		await connectMongo();
 		await wipe();
 		await Promise.all([
-			raw(OrderModel, { _id: 'ord_1', orderNumber: 'ST-2611-514203', buyer: { name: 'Meera Sharma' } }),
-			raw(OrderModel, { _id: 'ord_2', orderNumber: 'ST-2611-688796', buyer: { name: 'Priya Sharma' } }),
+			raw(OrderModel, {
+				_id: 'ord_1',
+				orderNumber: 'ST-2611-514203',
+				channel: 'shop',
+				buyer: { name: 'Meera Sharma' },
+			}),
+			raw(OrderModel, {
+				_id: 'ord_2',
+				orderNumber: 'ST-2611-688796',
+				channel: 'admin',
+				buyer: { name: 'Priya Sharma' },
+				eInvoice: { irn: 'a'.repeat(64) },
+				eWayBill: { number: '123456789012' },
+			}),
 			raw(OrderModel, { _id: 'ord_3', orderNumber: 'ST-2611-300718' }),
 			raw(SupplierModel, { _id: 'biz_1', legalName: 'Boutique Nila' }),
 			payment('pay_1', {
@@ -205,6 +221,7 @@ describe.skipIf(!hasMongoEnv())('accounts lists and the Day book (integration, r
 			}),
 			raw(CreditNoteModel, {
 				_id: 'cn_1',
+				invoiceId: 'ti_1',
 				number: 'CN/26-27/000012',
 				status: 'issued',
 				kind: 'return',
@@ -225,6 +242,7 @@ describe.skipIf(!hasMongoEnv())('accounts lists and the Day book (integration, r
 			}),
 			raw(CreditNoteModel, {
 				_id: 'cn_2',
+				invoiceId: 'ti_2',
 				number: 'CN/26-27/000011',
 				status: 'issued',
 				kind: 'priceAdjustment',
@@ -396,6 +414,103 @@ describe.skipIf(!hasMongoEnv())('accounts lists and the Day book (integration, r
 			}),
 			adjustment('sa_4', { number: 'SA/26-27/0001', decidedAt: '2026-11-18T05:00:00.000Z', reversedBy: 'sa_2' }),
 			adjustment('sa_5', { kind: 'count' }),
+			raw(LocationModel, { _id: 'loc_gar', name: 'Gariahat' }),
+			raw(TaxInvoiceModel, {
+				_id: 'ti_1',
+				number: 'TI/26-27/000145',
+				date: '2026-11-18',
+				orderId: 'ord_1',
+				orderNumber: 'ST-2611-514203',
+				locationId: 'loc_gar',
+				buyer: { name: 'Ananya Das', gstin: null },
+				taxableINR: 4457.14,
+				cgstINR: 111.43,
+				sgstINR: 111.43,
+				igstINR: 0,
+				totalINR: 4680,
+				status: 'issued',
+				createdBy: 'adm_1',
+			}),
+			raw(TaxInvoiceModel, {
+				_id: 'ti_2',
+				number: 'TI/26-27/000149',
+				date: '2026-11-22',
+				orderId: 'ord_2',
+				orderNumber: 'ST-2611-688796',
+				locationId: 'loc_gone',
+				buyer: { name: 'Boutique Nila', gstin: '19AABCB1234A1Z5' },
+				taxableINR: 9523.81,
+				cgstINR: 0,
+				sgstINR: 0,
+				igstINR: 476.19,
+				totalINR: 10_000,
+				status: 'issued',
+			}),
+			raw(TaxInvoiceModel, {
+				_id: 'ti_3',
+				number: 'TI/26-27/000150',
+				date: '2026-11-23',
+				orderId: 'ord_gone',
+				orderNumber: 'ST-X',
+				locationId: 'loc_gar',
+				buyer: { name: 'Shreya Ghosh', gstin: null },
+				taxableINR: 590.52,
+				cgstINR: 14.76,
+				sgstINR: 14.76,
+				igstINR: 0,
+				totalINR: 620,
+				status: 'cancelled',
+			}),
+			raw(TaxInvoiceModel, {
+				_id: 'ti_4',
+				number: 'TI/26-27/000151',
+				date: '2026-11-24',
+				orderId: 'ord_3',
+				orderNumber: 'ST-2611-300718',
+				locationId: 'loc_gar',
+				buyer: { name: 'Shreya Ghosh', gstin: null },
+				taxableINR: 100,
+				cgstINR: 2.5,
+				sgstINR: 2.5,
+				igstINR: 0,
+				totalINR: 105,
+				status: 'issued',
+			}),
+			raw(PurchaseInvoiceModel, {
+				_id: 'pe_1',
+				supplierId: 'sup_pe_1',
+				billNumberKey: 'key_pe_1',
+				number: 'PE/26-27/000014',
+				status: 'posted',
+				supplierName: 'Weavers Co-op',
+				supplierGstin: '19AAACW1111A1Z1',
+				billNumber: 'WC/881',
+				billDate: '2026-11-10',
+				totals: { taxableINR: 46_095.24, cgstINR: 1152.38, sgstINR: 1152.38, igstINR: 0, totalINR: 48_400 },
+				postedBy: 'adm_1',
+			}),
+			raw(PurchaseInvoiceModel, {
+				_id: 'pe_2',
+				supplierId: 'sup_pe_2',
+				billNumberKey: 'key_pe_2',
+				number: 'PE/26-27/000013',
+				status: 'void',
+				supplierName: 'Loom House',
+				supplierGstin: null,
+				billNumber: 'LH/12',
+				billDate: '2026-11-08',
+				totals: { totalINR: 500 },
+			}),
+			raw(PurchaseInvoiceModel, {
+				_id: 'pe_3',
+				supplierId: 'sup_pe_3',
+				billNumberKey: 'key_pe_3',
+				number: null,
+				status: 'draft',
+				supplierName: 'Draft Co',
+				billNumber: 'D/1',
+				billDate: '2026-11-09',
+			}),
 		]);
 	});
 	afterAll(async () => {
@@ -549,6 +664,44 @@ describe.skipIf(!hasMongoEnv())('accounts lists and the Day book (integration, r
 		expect(byId.get('sa_3')).toMatchObject({ date: '2026-11-20', number: null, status: 'pending' });
 		expect(byId.get('sa_4')).toMatchObject({ status: 'reversed' });
 		expect((await reader.list('stockAdjustments', nov({ reason: 'damage' }), today)).total).toBe(2);
+	});
+
+	it('lists tax invoices by channel, business and location, credited or not, and posted purchase bills', async () => {
+		const sales = await reader.list('taxInvoices', nov(), today);
+		expect(sales.counts).toEqual({ all: 4, online: 1, staff_orders: 1, business: 1 });
+		const byId = new Map(sales.items.map((row) => [row.id, row]));
+		expect(byId.get('ti_1')).toMatchObject({
+			status: 'credited',
+			detail: 'shop',
+			extra: { location: 'Gariahat', taxINR: 222.86, irn: null },
+		});
+		expect(byId.get('ti_2')).toMatchObject({
+			status: 'part_credited',
+			reference: '19AABCB1234A1Z5',
+			extra: { location: null, irn: 'a'.repeat(64), eWayBill: '123456789012' },
+		});
+		expect(byId.get('ti_3')).toMatchObject({ status: 'cancelled', detail: null });
+		expect(byId.get('ti_4')).toMatchObject({ status: 'issued', by: null });
+		expect((await reader.list('taxInvoices', nov({ location: 'loc_gar' }), today)).total).toBe(3);
+		expect((await reader.list('taxInvoices', nov({ chip: 'business' }), today)).items.map((row) => row.id)).toEqual(
+			['ti_2'],
+		);
+		const bills = await reader.list('purchaseBills', nov(), today);
+		expect(bills.counts).toEqual({ all: 2, posted: 1, void: 1 });
+		expect(bills.items).toEqual([
+			expect.objectContaining({
+				id: 'pe_1',
+				against: 'WC/881',
+				amountINR: 48_400,
+				status: 'posted',
+				extra: expect.objectContaining({ taxableINR: 46_095.24, taxINR: 2304.76 }),
+			}),
+			expect.objectContaining({
+				id: 'pe_2',
+				status: 'cancelled',
+				extra: expect.objectContaining({ taxableINR: null, taxINR: 0 }),
+			}),
+		]);
 	});
 
 	it('writes the Day book: every voucher made, by date, with its chips and search', async () => {

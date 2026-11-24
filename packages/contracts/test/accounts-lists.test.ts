@@ -17,6 +17,7 @@ describe('accounts lists contracts', () => {
 			to: '2026-11-30',
 			chip: 'all',
 			reason: null,
+			location: null,
 			search: '',
 			page: 2,
 			pageSize: 25,

@@ -104,6 +104,26 @@ export const LIST_COLUMNS: Readonly<Record<ListKind, readonly ListColumn[]>> = {
 		{ title: 'al_col_by_approved', field: 'byApproved' },
 		{ title: 'al_col_status', field: 'status' },
 	],
+	taxInvoices: [
+		{ title: 'al_col_number', field: 'number' },
+		{ title: 'date', field: 'date' },
+		{ title: 'al_col_party', field: 'party' },
+		{ title: 'al_col_location', field: 'location' },
+		{ title: 'al_col_taxable', field: 'taxable', align: 'end' },
+		{ title: 'al_col_tax', field: 'tax', align: 'end' },
+		{ title: 'al_col_edocs', field: 'edocs' },
+		{ title: 'al_col_status', field: 'status' },
+	],
+	purchaseBills: [
+		{ title: 'al_col_number', field: 'number' },
+		{ title: 'date', field: 'date' },
+		{ title: 'al_col_supplier', field: 'party' },
+		{ title: 'al_col_their_bill', field: 'against' },
+		{ title: 'al_col_taxable', field: 'taxable', align: 'end' },
+		{ title: 'al_col_tax', field: 'tax', align: 'end' },
+		{ title: 'al_col_total', field: 'amount', align: 'end' },
+		{ title: 'al_col_status', field: 'status' },
+	],
 	dayBook: [
 		{ title: 'date', field: 'date' },
 		{ title: 'al_col_voucher', field: 'voucher' },
@@ -121,9 +141,13 @@ export const LIST_COLUMNS: Readonly<Record<ListKind, readonly ListColumn[]>> = {
 /** The pill each state wears: done green, waiting amber, undone red (a refunded receipt is money gone back). */
 export function statusKind(row: Pick<AccountsListRow, 'tab' | 'status'>): string {
 	if (row.status === 'refunded') return row.tab === 'refundVouchers' ? 'completed' : 'cancelled';
-	if (['draft', 'pending', 'waiting_for_buyer', 'waiting_for_gateway', 'part_refunded'].includes(row.status))
+	if (
+		['draft', 'pending', 'waiting_for_buyer', 'waiting_for_gateway', 'part_refunded', 'part_credited'].includes(
+			row.status,
+		)
+	)
 		return 'pending';
-	if (['cancelled', 'failed', 'reversed'].includes(row.status)) return 'cancelled';
+	if (['cancelled', 'failed', 'reversed', 'credited'].includes(row.status)) return 'cancelled';
 	return 'completed';
 }
 
@@ -205,6 +229,18 @@ export function listCell(row: AccountsListRow, field: string, t: Words): string 
 		}
 		case 'voucher':
 			return escapeHtml(t(`al_voucher_${row.tab}`));
+		case 'location':
+			return textCell(extraText(row, 'location'));
+		case 'taxable':
+			return money(extraMoney(row, 'taxableINR'));
+		case 'tax':
+			return money(extraMoney(row, 'taxINR'));
+		case 'edocs': {
+			const irn = extraText(row, 'irn');
+			const ewb = extraText(row, 'eWayBill');
+			const parts = [irn ? t('al_irn_done') : null, ewb ? t('al_ewb', { number: ewb }) : null].filter(Boolean);
+			return parts.length ? escapeHtml(parts.join(' · ')) : dash;
+		}
 		case 'moneyIn':
 			return row.moneyInINR === null ? '' : escapeHtml(rupees(row.moneyInINR));
 		case 'moneyOut':
@@ -238,6 +274,10 @@ export function viewLink(row: AccountsListRow): string[] | null {
 			return ['/accounts/self-invoices', row.id];
 		case 'stockAdjustments':
 			return ['/stock/adjustments', row.id];
+		case 'taxInvoices':
+			return ['/accounts/invoices', row.id];
+		case 'purchaseBills':
+			return ['/purchase-entries', row.id];
 		default:
 			return null;
 	}

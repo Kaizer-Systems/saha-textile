@@ -8,6 +8,7 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom, map } from 'rxjs';
 
 import { ACCOUNTS_LIST_KEYS, AccountsListsGateway } from '@core/accounts/accounts-lists.gateway';
+import { LOCATION_KEYS, LocationsGateway } from '@core/locations/locations.gateway';
 import { apiProblem, downloadCsv, openPdf, rupees } from '@core/purchasing/purchasing-format';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -49,8 +50,13 @@ export const LIST_CHIPS: Readonly<Record<ListKind, readonly string[]>> = {
 	refundVouchers: ['all', 'refunded', 'waiting_for_gateway', 'failed'],
 	selfInvoices: ['all', 'drafts', 'due_soon', 'unpaid', 'paid'],
 	stockAdjustments: ['all', 'waiting', 'posted', 'reversed'],
+	taxInvoices: ['all', 'online', 'staff_orders', 'business'],
+	purchaseBills: ['all', 'posted', 'void'],
 	dayBook: ['all', 'receipts', 'refunds', 'creditNotes', 'payments', 'selfInvoices', 'journals', 'stockAdjustments'],
 };
+
+/** The two tabs of Accounts › Sales and purchases (Q8). */
+export const SALES_TABS: readonly AccountsListTab[] = ['taxInvoices', 'purchaseBills'];
 
 /** The period each list opens on, as the pictures draw them. */
 const START: Readonly<Record<ListKind, PeriodChoice['period']>> = {
@@ -63,6 +69,8 @@ const START: Readonly<Record<ListKind, PeriodChoice['period']>> = {
 	refundVouchers: 'this_fy',
 	selfInvoices: 'this_fy',
 	stockAdjustments: 'last_30_days',
+	taxInvoices: 'this_month',
+	purchaseBills: 'this_month',
 	dayBook: 'this_month',
 };
 
@@ -134,11 +142,17 @@ export class AccountsListPage {
 	private readonly transloco = inject(TranslocoService);
 	private readonly notifier = inject(NotificationService);
 	private readonly auth = inject(AuthStore);
+	private readonly places = inject(LocationsGateway);
 
 	readonly kind = toSignal(inject(ActivatedRoute).data.pipe(map((data) => data['list'] as ListKind)), {
 		initialValue: 'dayBook' as ListKind,
 	});
 	readonly tabs = VOUCHER_TABS;
+	readonly salesTabs = SALES_TABS;
+	/** Which page this list sits on: Vouchers, Sales and purchases, or the Day book. */
+	readonly group = computed(() =>
+		this.kind() === 'dayBook' ? 'day' : SALES_TABS.includes(this.kind() as AccountsListTab) ? 'sales' : 'vouchers',
+	);
 	readonly presets = ACCOUNTS_PRESETS;
 	readonly hint = accountsHint;
 	readonly reasons = ADJUSTMENT_REASONS;
@@ -148,6 +162,7 @@ export class AccountsListPage {
 
 	readonly chip = signal('all');
 	readonly reason = signal<string | null>(null);
+	readonly location = signal<string | null>(null);
 	readonly range = signal<{ from: string; to: string } | null>(null);
 	private readonly params = signal<Params>({});
 	readonly busy = signal(false);
@@ -161,6 +176,7 @@ export class AccountsListPage {
 			...range,
 			chip: this.chip(),
 			...(this.reason() ? { reason: this.reason() } : {}),
+			...(this.location() ? { location: this.location() } : {}),
 			...(search ? { search } : {}),
 			page: Number(this.params()['page']) || 1,
 			pageSize: Math.min(Number(this.params()['paginate']) || 30, 100),
@@ -171,6 +187,21 @@ export class AccountsListPage {
 		queryFn: () => firstValueFrom(this.fetch(this.query())),
 	}));
 	readonly counts = computed(() => this.list.data()?.counts ?? {});
+	/** Sales and purchases: the other tab's count over the same period, for its tab (Q8). */
+	readonly sibling = injectQuery(() => {
+		const other = SALES_TABS.find((tab) => tab !== this.kind()) as AccountsListTab;
+		const { from, to } = this.query();
+		return {
+			queryKey: ACCOUNTS_LIST_KEYS.list(other, { from, to, pageSize: 1 }),
+			queryFn: () => firstValueFrom(this.gateway.list(other, { from, to, pageSize: 1 })),
+			enabled: this.group() === 'sales',
+		};
+	});
+	readonly locations = injectQuery(() => ({
+		queryKey: LOCATION_KEYS.list,
+		queryFn: () => firstValueFrom(this.places.list()),
+		enabled: this.kind() === 'taxInvoices',
+	}));
 	readonly totals = computed(() => this.list.data()?.totals ?? {});
 
 	readonly tableConfig = computed((): ITableConfig<ListTableRow> => {
@@ -221,6 +252,16 @@ export class AccountsListPage {
 
 	setChip(chip: string): void {
 		this.chip.set(chip);
+		this.params.update((params) => ({ ...params, page: 1 }));
+	}
+
+	/** How many rows a Sales and purchases tab holds: this one's from its own list, the other's from its count. */
+	tabCount(tab: AccountsListTab): number | null {
+		return tab === this.kind() ? (this.list.data()?.total ?? null) : (this.sibling.data()?.total ?? null);
+	}
+
+	setLocation(location: string): void {
+		this.location.set(location || null);
 		this.params.update((params) => ({ ...params, page: 1 }));
 	}
 

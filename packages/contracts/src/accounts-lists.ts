@@ -8,7 +8,7 @@ import { IsoDate } from './purchasing';
  * the Day book are the same table. Cells a tab shows beyond the shared ones travel in `extra`.
  */
 
-/** The tabs of Accounts › Vouchers, in the order A1 draws them. */
+/** The tabs of Accounts › Vouchers, in the order A1 draws them, and the two of Sales and purchases (Q8). */
 export const AccountsListTab = z.enum([
 	'receipts',
 	'paymentVouchers',
@@ -19,6 +19,9 @@ export const AccountsListTab = z.enum([
 	'refundVouchers',
 	'selfInvoices',
 	'stockAdjustments',
+	/** Accounts › Sales and purchases (Q8). */
+	'taxInvoices',
+	'purchaseBills',
 ]);
 export type AccountsListTab = z.infer<typeof AccountsListTab>;
 
@@ -33,6 +36,8 @@ export const ACCOUNTS_LIST_CHIPS: Readonly<Record<AccountsListTab, readonly stri
 	refundVouchers: ['all', 'refunded', 'waiting_for_gateway', 'failed'],
 	selfInvoices: ['all', 'drafts', 'due_soon', 'unpaid', 'paid'],
 	stockAdjustments: ['all', 'waiting', 'posted', 'reversed'],
+	taxInvoices: ['all', 'online', 'staff_orders', 'business'],
+	purchaseBills: ['all', 'posted', 'void'],
 };
 
 /** The Day book's chips (A3): every voucher, or one kind of them. */
@@ -56,6 +61,8 @@ export const AccountsListQuery = z
 		chip: z.string().trim().max(40).default('all'),
 		/** Stock adjustments: one reason (A9 "Every reason"). */
 		reason: z.string().trim().max(40).nullable().default(null),
+		/** Sales and purchases: one location (Q8 "Every location"). */
+		location: z.string().trim().max(80).nullable().default(null),
 		search: z.string().trim().max(80).default(''),
 		page: z.coerce.number().int().min(1).default(1),
 		pageSize: z.coerce.number().int().min(1).max(100).default(25),

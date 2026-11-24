@@ -106,8 +106,8 @@ export class VariantGrid {
 	}
 
 	private async load(): Promise<void> {
-		const product = this.product();
-		if (!product) return;
+		// Runs from start(), which sets the product first, and on focus only once a start() has loaded.
+		const product = this.product() as PurchaseItemOption;
 		try {
 			const options = await firstValueFrom(this.gateway.variantGrid(product.productId, this.supplierId));
 			const kept = new Map(this.rows().map((row) => [row.option.variantId, row]));

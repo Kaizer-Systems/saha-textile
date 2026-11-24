@@ -4,7 +4,7 @@
  * GST and reports are checked too.
  */
 
-import { variantOf } from './stack.mjs';
+import { setProductHsn, variantOf } from './stack.mjs';
 
 const ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 /** A valid GSTIN: state, the PAN, entity 1, Z, then the check character. */
@@ -23,6 +23,67 @@ export const GSTIN = gstin('19', PAN);
 const run = Date.now().toString(36);
 export const key = (label) => `acc-e2e-${label}-${run}-${Math.random().toString(36).slice(2, 8)}`;
 const rupees = (paise) => Math.round(paise) / 100;
+
+/** A shop customer with one saved address; their id and the address's id. */
+async function customerWith(admin, name, address) {
+	const customer = await admin.ok('POST', '/admin/customers', {
+		displayName: name,
+		email: `${name.toLowerCase().replace(/\W+/g, '-')}-${key('c')}@example.test`,
+		phone: `+91 ${address.mobile.number}`,
+		activationChannels: ['email'],
+	});
+	await admin.ok('POST', `/admin/customers/${customer.id}/address-book`, {
+		...address,
+		label: 'Home',
+		isDefault: true,
+	});
+	const rows = await admin.ok('GET', '/admin/orders/buyer-addresses', undefined, { kind: 'person', id: customer.id });
+	return { id: customer.id, addressId: rows[0].id };
+}
+
+/** An admin order taken to Delivered on the days given; the order id and its tax invoice. */
+async function sell(admin, { customer, quantity, payment, shippedOn, deliveredOn }) {
+	const created = await admin.ok('POST', '/admin/orders', {
+		cart: {
+			buyer: { kind: 'person', customerId: customer.id },
+			currency: 'INR',
+			lines: [{ productId: 'prd_1001', variationId: null, quantity, addons: [] }],
+		},
+		delivery: { kind: 'saved', savedAddressId: customer.addressId },
+		billing: null,
+		indianInvoiceAddress: null,
+		couponCodes: [],
+		comment: null,
+		payment: {
+			method: 'manual',
+			payment: { note: null, proofMediaId: null, collector: null, collectedBy: null, received: true, ...payment },
+		},
+		idempotencyKey: key('o'),
+	});
+	const orderId = created.order?.id ?? created.id;
+	const move = async (to, extra = {}) => {
+		let now = await admin.ok('GET', `/admin/orders/${orderId}`);
+		if (to === 'packed')
+			for (const line of now.order.lines) {
+				if (!line.lineId || line.role === 'bundle' || (now.order.packTicks ?? []).includes(line.lineId))
+					continue;
+				now = await admin.ok('PUT', `/admin/orders/${orderId}/pack-ticks`, {
+					lineId: line.lineId,
+					ticked: true,
+					revision: now.order.revision,
+				});
+			}
+		return admin.ok('POST', `/admin/orders/${orderId}/status`, { to, revision: now.order.revision, ...extra });
+	};
+	await move('processing');
+	await move('packed');
+	await move('shipped', { shipped: { courierName: 'DTDC', trackingNumber: key('t').slice(0, 20), shippedOn } });
+	await move('delivered', { delivered: { deliveredOn, receivedBy: 'Buyer' } });
+	const [invoice] = await admin.ok('GET', `/admin/orders/${orderId}/invoices`);
+	return { orderId, invoice };
+}
+
+const sumBalances = (balances) => Object.values(balances).reduce((a, b) => a + b, 0);
 
 /** Shared between scenarios. */
 export const ctx = {};
@@ -267,6 +328,7 @@ export const scenarios = [
 		name: 'Purchases: a West Bengal supplier’s bill in August (20 sarees at ₹3,000 + 5% GST), paid from HDFC in September',
 		async run({ admin, check }) {
 			ctx.variant = await variantOf('prd_1001');
+			await setProductHsn('prd_1001', '5007');
 			const supplier = await admin.ok('POST', '/admin/suppliers', {
 				legalName: 'Tantuja Weavers Test Pvt Ltd',
 				shortName: 'Tantuja Test',
@@ -371,6 +433,455 @@ export const scenarios = [
 			);
 			check((sep[ctx.bankLedgerId] ?? 0) === 41_700_000, 'HDFC down to ₹4,17,000', String(sep[ctx.bankLedgerId]));
 			return `entry ${entry.id}`;
+		},
+	},
+	{
+		name: 'Sale 1: a shop customer buys 2 sarees by UPI; shipped 15 Sep, delivered 18 Sep',
+		async run({ admin, check }) {
+			const customer = await admin.ok('POST', '/admin/customers', {
+				displayName: 'Ananya Test',
+				email: `ananya-${key('c')}@example.test`,
+				phone: '+91 9830012345',
+				activationChannels: ['email'],
+			});
+			await admin.ok('POST', `/admin/customers/${customer.id}/address-book`, {
+				fullName: 'Ananya Test',
+				line1: '3 Southern Avenue',
+				city: 'Kolkata',
+				state: 'West Bengal',
+				subdivisionCode: 'WB',
+				postalCode: '700029',
+				countryCode: 'IN',
+				mobile: { countryCallingCode: '91', number: '9830012345' },
+				label: 'Home',
+				isDefault: true,
+			});
+			const addresses = await admin.ok('GET', '/admin/orders/buyer-addresses', undefined, {
+				kind: 'person',
+				id: customer.id,
+			});
+			const buyer = { kind: 'person', customerId: customer.id };
+			const base = {
+				cart: {
+					buyer,
+					currency: 'INR',
+					lines: [{ productId: 'prd_1001', variationId: null, quantity: 2, addons: [] }],
+				},
+				delivery: { kind: 'saved', savedAddressId: addresses[0].id },
+				billing: null,
+				indianInvoiceAddress: null,
+				couponCodes: [],
+				comment: null,
+			};
+			const quote = await admin.ok('POST', '/admin/orders/checkout/quote', {
+				...base,
+				payment: {
+					method: 'manual',
+					payment: {
+						method: 'upi',
+						amountINR: 1,
+						reference: 'X',
+						receivedOn: '2026-09-12',
+						received: true,
+						note: null,
+						proofMediaId: null,
+						collector: null,
+						collectedBy: null,
+					},
+				},
+				idempotencyKey: key('q'),
+			});
+			ctx.sale1Quote = quote.totals;
+			const created = await admin.ok('POST', '/admin/orders', {
+				...base,
+				payment: {
+					method: 'manual',
+					payment: {
+						method: 'upi',
+						amountINR: quote.totals.totalINR,
+						reference: '402112345678',
+						receivedOn: '2026-09-12',
+						received: true,
+						note: null,
+						proofMediaId: null,
+						collector: null,
+						collectedBy: null,
+					},
+				},
+				idempotencyKey: key('o1'),
+			});
+			const orderId = created.order?.id ?? created.id;
+			ctx.order1 = orderId;
+			const move = async (to, extra = {}) => {
+				let now = await admin.ok('GET', `/admin/orders/${orderId}`);
+				if (to === 'packed')
+					for (const line of now.order.lines) {
+						if (!line.lineId || line.role === 'bundle' || (now.order.packTicks ?? []).includes(line.lineId))
+							continue;
+						now = await admin.ok('PUT', `/admin/orders/${orderId}/pack-ticks`, {
+							lineId: line.lineId,
+							ticked: true,
+							revision: now.order.revision,
+						});
+					}
+				return admin.ok('POST', `/admin/orders/${orderId}/status`, {
+					to,
+					revision: now.order.revision,
+					...extra,
+				});
+			};
+			await move('processing');
+			await move('packed');
+			await move('shipped', { shipped: { courierName: 'DTDC', trackingNumber: 'D1', shippedOn: '2026-09-15' } });
+			const done = await move('delivered', { delivered: { deliveredOn: '2026-09-18', receivedBy: 'Ananya' } });
+			const [invoice] = await admin.ok('GET', `/admin/orders/${orderId}/invoices`);
+			ctx.invoice1 = invoice;
+			check(done.order.status === 'delivered', 'The order is delivered');
+			check(
+				quote.totals.totalINR === 9360,
+				'Two sarees at ₹4,680 come to ₹9,360 with no delivery charge',
+				String(quote.totals.totalINR),
+			);
+			check(
+				invoice.date === '2026-09-15',
+				'The tax invoice is dated the day the goods left (15 Sep)',
+				invoice.date,
+			);
+			check(invoice.number === 'TI/26-27/000001', 'It is the first tax invoice of 2026-27', invoice.number);
+			check(
+				invoice.seller.name === 'Saha Textile Test',
+				'The seller is named, not shown as a GSTIN',
+				invoice.seller.name,
+			);
+			check(
+				!invoice.interState && invoice.placeOfSupply === '19',
+				'Intra-state, place of supply West Bengal (19)',
+			);
+			// Tax included at 5%: taxable 9,360 ÷ 1.05 = ₹8,914.29, tax ₹445.71 split into CGST and SGST.
+			check(invoice.taxableINR === 8914.29, 'Taxable ₹8,914.29', String(invoice.taxableINR));
+			check(
+				Math.round((invoice.cgstINR + invoice.sgstINR) * 100) === 44_571,
+				'CGST + SGST ₹445.71',
+				`${invoice.cgstINR} + ${invoice.sgstINR}`,
+			);
+			check(
+				Math.abs(Math.round(invoice.cgstINR * 100) - Math.round(invoice.sgstINR * 100)) <= 1,
+				'CGST and SGST split in half (a paisa apart at most)',
+			);
+			check(invoice.igstINR === 0, 'No IGST');
+			const chart = ctx.chart;
+			const sep = await admin.ok('GET', '/admin/accounts/balances', undefined, { on: '2026-09-30' });
+			ctx.sep = sep;
+			check(
+				balanceOf(chart, sep, 'sales') === -891_429,
+				'Sales ₹8,914.29 Cr in September',
+				String(balanceOf(chart, sep, 'sales')),
+			);
+			check(
+				balanceOf(chart, sep, 'output_cgst') + balanceOf(chart, sep, 'output_sgst') === -44_571,
+				'Output GST ₹445.71 Cr',
+			);
+			check(
+				balanceOf(chart, sep, 'cost_of_goods_sold') === 600_000,
+				'Cost of goods sold ₹6,000 (2 × ₹3,000)',
+				String(balanceOf(chart, sep, 'cost_of_goods_sold')),
+			);
+			check(
+				balanceOf(chart, sep, 'stock_in_hand') === 5_400_000,
+				'Stock in hand ₹54,000 (18 left at ₹3,000)',
+				String(balanceOf(chart, sep, 'stock_in_hand')),
+			);
+			check(
+				balanceOf(chart, sep, 'upi_card_clearing') === 936_000,
+				'UPI clearing holds the ₹9,360 received',
+				String(balanceOf(chart, sep, 'upi_card_clearing')),
+			);
+			check(
+				balanceOf(chart, sep, 'customer_advances') === 0 && balanceOf(chart, sep, 'debtors_control') === 0,
+				'No advance or amount due left on the customer',
+			);
+			check(Object.values(sep).reduce((a, b) => a + b, 0) === 0, 'The trial balance at 30 September balances');
+			return `invoice ${invoice.number}`;
+		},
+	},
+	{
+		name: 'Sale 2: a Mumbai customer buys 1 saree by bank transfer (2 Oct); shipped 5 Oct: IGST',
+		async run({ admin, check }) {
+			const customer = await customerWith(admin, 'Rohan Test', {
+				fullName: 'Rohan Test',
+				line1: '14 Marine Drive',
+				city: 'Mumbai',
+				state: 'Maharashtra',
+				subdivisionCode: 'MH',
+				postalCode: '400020',
+				countryCode: 'IN',
+				mobile: { countryCallingCode: '91', number: '9820012345' },
+			});
+			const { invoice } = await sell(admin, {
+				customer,
+				quantity: 1,
+				payment: {
+					method: 'bankTransfer',
+					amountINR: 4680,
+					reference: 'UTR20261002',
+					receivedOn: '2026-10-02',
+				},
+				shippedOn: '2026-10-05',
+				deliveredOn: '2026-10-08',
+			});
+			ctx.invoice2 = invoice;
+			check(
+				invoice.date === '2026-10-05' && invoice.number === 'TI/26-27/000002',
+				'Invoice TI/26-27/000002 dated 5 Oct',
+				`${invoice.number} ${invoice.date}`,
+			);
+			check(
+				invoice.interState && invoice.placeOfSupply === '27',
+				'Inter-state, place of supply Maharashtra (27)',
+				invoice.placeOfSupply,
+			);
+			// ₹4,680 ÷ 1.05 = ₹4,457.14 taxable, IGST ₹222.86.
+			check(
+				invoice.taxableINR === 4457.14 && invoice.igstINR === 222.86 && invoice.cgstINR === 0,
+				'Taxable ₹4,457.14, IGST ₹222.86',
+				`${invoice.taxableINR} / ${invoice.igstINR}`,
+			);
+			const chart = ctx.chart;
+			const oct = await admin.ok('GET', '/admin/accounts/balances', undefined, { on: '2026-10-31' });
+			check(
+				balanceOf(chart, oct, 'sales') === -1_337_143,
+				'Sales ₹13,371.43 Cr by 31 Oct (₹8,914.29 + ₹4,457.14)',
+				String(balanceOf(chart, oct, 'sales')),
+			);
+			check(
+				balanceOf(chart, oct, 'output_igst') === -22_286,
+				'Output IGST ₹222.86 Cr',
+				String(balanceOf(chart, oct, 'output_igst')),
+			);
+			check(
+				(oct[ctx.bankLedgerId] ?? 0) === 42_168_000,
+				'HDFC ₹4,21,680 after the transfer',
+				String(oct[ctx.bankLedgerId]),
+			);
+			check(
+				balanceOf(chart, oct, 'cost_of_goods_sold') === 900_000,
+				'Cost of goods sold ₹9,000 (3 sarees)',
+				String(balanceOf(chart, oct, 'cost_of_goods_sold')),
+			);
+			check(sumBalances(oct) === 0, 'The trial balance at 31 October balances');
+			return invoice.number;
+		},
+	},
+	{
+		name: 'A return: Ananya sends 1 saree back; checked into stock; credit note issued; refunded from HDFC',
+		async run({ admin, check }) {
+			const today = new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10);
+			const old = await admin.ok('GET', `/admin/orders/${ctx.order1}`);
+			const oldLine = old.order.lines.find((l) => l.lineId && l.role !== 'bundle').lineId;
+			const late = await admin.try('POST', `/admin/orders/${ctx.order1}/returns`, {
+				lines: [{ lineId: oldLine, quantity: 1 }],
+				reason: 'size_or_fit',
+				how: 'customer_sends',
+				refundTo: 'bank_transfer',
+				note: '',
+			});
+			check(
+				late.code === 'return_window_closed',
+				'A September sale can no longer come back (return window closed)',
+				late.code,
+			);
+			// Sale 3 today, by UPI, then returned.
+			const customer = await customerWith(admin, 'Mitali Test', {
+				fullName: 'Mitali Test',
+				line1: '9 Lake Road',
+				city: 'Kolkata',
+				state: 'West Bengal',
+				subdivisionCode: 'WB',
+				postalCode: '700029',
+				countryCode: 'IN',
+				mobile: { countryCallingCode: '91', number: '9830054321' },
+			});
+			const sale3 = await sell(admin, {
+				customer,
+				quantity: 1,
+				payment: { method: 'upi', amountINR: 4680, reference: '402199998888', receivedOn: today },
+				shippedOn: today,
+				deliveredOn: today,
+			});
+			check(
+				sale3.invoice.number === 'TI/26-27/000003',
+				'Sale 3 invoiced as TI/26-27/000003',
+				sale3.invoice.number,
+			);
+			const order = await admin.ok('GET', `/admin/orders/${sale3.orderId}`);
+			const lineId = order.order.lines.find((l) => l.lineId && l.role !== 'bundle').lineId;
+			const back = await admin.ok('POST', `/admin/orders/${sale3.orderId}/returns`, {
+				lines: [{ lineId, quantity: 1 }],
+				reason: 'size_or_fit',
+				how: 'customer_sends',
+				refundTo: 'bank_transfer',
+				note: '',
+			});
+			const returnId = back.id ?? back.return?.id;
+			await admin.ok('POST', `/admin/returns/${returnId}/step`, { to: 'received' });
+			await admin.ok('POST', `/admin/returns/${returnId}/check`, {
+				lines: [{ lineId, outcome: 'restock', note: '' }],
+			});
+			const draft = await admin.ok('POST', `/admin/returns/${returnId}/credit-note`);
+			const noteId = draft.id ?? draft.creditNote?.id;
+			const issued = await admin.ok('POST', `/admin/accounts/credit-notes/${noteId}/issue`, {
+				version: draft.version ?? 0,
+			});
+			const note = issued.creditNote ?? issued;
+			ctx.creditNote = note;
+			// One saree back: taxable ₹4,457.14, CGST + SGST ₹222.86.
+			check(note.taxableINR === 4457.14, 'Credit note taxable ₹4,457.14', String(note.taxableINR));
+			check(
+				Math.round((note.cgstINR + note.sgstINR) * 100) === 22_286,
+				'Credit note CGST + SGST ₹222.86',
+				`${note.cgstINR} + ${note.sgstINR}`,
+			);
+			await admin.ok('POST', `/admin/accounts/credit-notes/${noteId}/refund`, {
+				how: 'by_hand',
+				method: 'bank_transfer',
+				ledgerId: ctx.bankLedgerId,
+				reference: 'NEFT-REFUND-1',
+			});
+			const chart = ctx.chart;
+			const now = await admin.ok('GET', '/admin/accounts/balances', undefined, { on: today });
+			ctx.afterReturn = now;
+			// Three sales (₹8,914.29 + ₹4,457.14 + ₹4,457.14 taxable), one returned.
+			check(
+				balanceOf(chart, now, 'sales') === -1_782_857,
+				'Sales ₹17,828.57 Cr',
+				String(balanceOf(chart, now, 'sales')),
+			);
+			check(
+				balanceOf(chart, now, 'sales_returns') === 445_714,
+				'Sales returns ₹4,457.14 Dr',
+				String(balanceOf(chart, now, 'sales_returns')),
+			);
+			check(
+				balanceOf(chart, now, 'output_cgst') + balanceOf(chart, now, 'output_sgst') === -44_571,
+				'Output CGST + SGST back to ₹445.71 Cr (sale 3 and its return cancel)',
+				String(balanceOf(chart, now, 'output_cgst') + balanceOf(chart, now, 'output_sgst')),
+			);
+			check(
+				balanceOf(chart, now, 'cost_of_goods_sold') === 900_000,
+				'Cost of goods sold ₹9,000 (4 sold, 1 back)',
+				String(balanceOf(chart, now, 'cost_of_goods_sold')),
+			);
+			check(
+				balanceOf(chart, now, 'stock_in_hand') === 5_100_000,
+				'Stock in hand ₹51,000 (17 sarees)',
+				String(balanceOf(chart, now, 'stock_in_hand')),
+			);
+			check(
+				balanceOf(chart, now, 'upi_card_clearing') === 1_404_000,
+				'UPI clearing ₹14,040 (sales 1 and 3)',
+				String(balanceOf(chart, now, 'upi_card_clearing')),
+			);
+			check(
+				(now[ctx.bankLedgerId] ?? 0) === 41_700_000,
+				'HDFC ₹4,17,000 after the ₹4,680 refund',
+				String(now[ctx.bankLedgerId]),
+			);
+			check(
+				balanceOf(chart, now, 'debtors_control') === 0 && balanceOf(chart, now, 'customer_advances') === 0,
+				'Nothing left owed by or to the customer',
+			);
+			check(sumBalances(now) === 0, 'The trial balance balances after the return');
+			return note.number;
+		},
+	},
+	{
+		name: 'GST returns: GSTR-1 September and October against the invoices, filed; September then locked; GSTR-3B',
+		async run({ admin, check }) {
+			const prepare = (returnType, month) =>
+				admin.ok('POST', '/admin/accounts/gst/returns', {
+					gstRegistrationId: ctx.registrationId,
+					returnType,
+					month,
+					adjustments: [],
+				});
+			const table = (draft, name) => draft.summary.find((r) => r.table === name);
+			const sep1 = await prepare('GSTR-1', '2026-09');
+			// Table 7 (B2C, intra-state) and table 12 (HSN summary) each carry the one September invoice.
+			check(
+				table(sep1, '7')?.taxable === 8914.29 && table(sep1, '7')?.tax === 445.71,
+				'GSTR-1 September table 7: ₹8,914.29 taxable, ₹445.71 tax',
+				JSON.stringify(table(sep1, '7')),
+			);
+			check(
+				table(sep1, '12')?.taxable === 8914.29,
+				'GSTR-1 September table 12 (HSN 5007) agrees',
+				JSON.stringify(table(sep1, '12')),
+			);
+			check(sep1.problems.length === 0, 'No problems in September', JSON.stringify(sep1.problems));
+			const oct1 = await prepare('GSTR-1', '2026-10');
+			check(
+				table(oct1, '7')?.taxable === 4457.14 && table(oct1, '7')?.tax === 222.86,
+				'GSTR-1 October table 7: ₹4,457.14 inter-state, IGST ₹222.86',
+				JSON.stringify(table(oct1, '7')),
+			);
+			const early3b = await admin.try('POST', '/admin/accounts/gst/returns', {
+				gstRegistrationId: ctx.registrationId,
+				returnType: 'GSTR-3B',
+				month: '2026-09',
+				adjustments: [],
+			});
+			check(early3b.code === 'gst_gstr1_not_filed', 'GSTR-3B waits for GSTR-1 to be filed', early3b.code);
+			let draft = sep1;
+			for (const to of ['checked', 'approved'])
+				draft = await admin.ok('POST', `/admin/accounts/gst/returns/${draft.id}/step`, {
+					to,
+					version: draft.version ?? 0,
+				});
+			await admin.ok('POST', '/admin/accounts/gst-filings', {
+				gstRegistrationId: ctx.registrationId,
+				returnType: 'GSTR-1',
+				month: '2026-09',
+				arn: 'AA1910260012345',
+				filedOn: '2026-10-11',
+				acknowledgement: null,
+			});
+			// Filed: September's sales lock for this GSTIN. A sale shipped on a September day is refused.
+			const customer = await customerWith(admin, 'Late Test', {
+				fullName: 'Late Test',
+				line1: '1 Park Street',
+				city: 'Kolkata',
+				state: 'West Bengal',
+				subdivisionCode: 'WB',
+				postalCode: '700016',
+				countryCode: 'IN',
+				mobile: { countryCallingCode: '91', number: '9830011111' },
+			});
+			let refused = null;
+			try {
+				await sell(admin, {
+					customer,
+					quantity: 1,
+					payment: { method: 'upi', amountINR: 4680, reference: '402100000001', receivedOn: '2026-09-20' },
+					shippedOn: '2026-09-20',
+					deliveredOn: '2026-09-22',
+				});
+			} catch (error) {
+				refused = String(error.message);
+			}
+			check(
+				!!refused && /lock|filed|closed/.test(refused),
+				'A sale dated into filed September is refused',
+				(refused ?? 'accepted').slice(0, 200),
+			);
+			const sep3 = await prepare('GSTR-3B', '2026-09');
+			ctx.gstr3bSep = sep3;
+			const outward = sep3.summary.find((r) => /3\.?1.?a/i.test(r.table));
+			check(
+				outward?.taxable === 8914.29 && outward?.tax === 445.71,
+				'GSTR-3B September 3.1(a): ₹8,914.29 taxable, ₹445.71 tax',
+				JSON.stringify(sep3.summary.slice(0, 3)),
+			);
+			return `3B rows ${sep3.summary.map((r) => r.table).join(',')}`;
 		},
 	},
 ];

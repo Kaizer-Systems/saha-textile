@@ -152,3 +152,14 @@ export async function variantOf(productId) {
 		await db.close();
 	}
 }
+
+/** Test data the demo catalogue lacks: a product's HSN code (silk sarees, 5007, 5%), set straight in the sandbox. */
+export async function setProductHsn(productId, hsnCode) {
+	const db = await connection();
+	try {
+		if (db.name !== DATABASE) throw new Error(`Refusing to change ${db.name}.`);
+		await db.collection('products').updateOne({ _id: productId }, { $set: { hsnCode } });
+	} finally {
+		await db.close();
+	}
+}

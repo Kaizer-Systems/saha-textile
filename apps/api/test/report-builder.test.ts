@@ -9,6 +9,7 @@ import { AccountsTemplatesModule } from '../src/accounts-templates/accounts-temp
 import { PERMISSIONS_KEY } from '../src/auth/session.guard';
 import { LedgerModule } from '../src/ledger/ledger.module';
 import { LocationsModule } from '../src/locations/locations.module';
+import { BooksReportsService } from '../src/reports/books-reports.service';
 import { ReportBuilderController } from '../src/reports/report-builder.controller';
 import { PREVIEW_LIMIT, RUN_LIMIT, ReportBuilderService } from '../src/reports/report-builder.service';
 import { ReportsModule } from '../src/reports/reports.module';
@@ -608,7 +609,11 @@ describe('the report routes and module', () => {
 			StatementsController,
 			ReportBuilderController,
 		]);
-		expect(Reflect.getMetadata('providers', ReportsModule)).toEqual([StatementsService, ReportBuilderService]);
+		expect(Reflect.getMetadata('providers', ReportsModule)).toEqual([
+			StatementsService,
+			ReportBuilderService,
+			BooksReportsService,
+		]);
 		expect(AppModule.forRoot({} as never).imports).toContain(ReportsModule);
 	});
 });

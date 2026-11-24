@@ -158,26 +158,40 @@ describe('profit and loss by location (U3)', () => {
 });
 
 describe('the statement routes', () => {
-	it('hand each call to the service, both needing accounts.index', () => {
+	it('hand each call to its service; the audit report needs accounts.lock, the rest accounts.index', () => {
 		const statements = {
 			statement: vi.fn((...args: unknown[]) => ['statement', ...args]),
 			plByLocation: vi.fn((...args: unknown[]) => ['plByLocation', ...args]),
 		};
-		const c = new StatementsController(statements as never);
+		const books = {
+			ageing: vi.fn((...args: unknown[]) => ['ageing', ...args]),
+			auditReport: vi.fn((...args: unknown[]) => ['auditReport', ...args]),
+		};
+		const c = new StatementsController(statements as never, books as never);
 		const period = { from: '2026-04-01', to: '2026-11-30' };
+		const audit = { ...period, chip: 'all', page: 1, pageSize: 50 } as const;
 		expect([
 			c.statement('profitLoss', { asAt: '2026-11-30' }, owner),
 			c.statement('balanceSheet', {}),
 			c.plByLocation(period, owner),
 			c.plByLocation(period),
+			c.ageing('suppliers'),
+			c.audit(audit),
 		]).toEqual([
 			['statement', 'profitLoss', { asAt: '2026-11-30' }, owner],
 			['statement', 'balanceSheet', {}, undefined],
 			['plByLocation', period, owner],
 			['plByLocation', period, undefined],
+			['ageing', 'suppliers'],
+			['auditReport', audit],
 		]);
 		const perm = (m: keyof StatementsController) =>
 			new Reflector().get(PERMISSIONS_KEY, StatementsController.prototype[m]);
-		expect([perm('statement'), perm('plByLocation')]).toEqual([['accounts.index'], ['accounts.index']]);
+		expect([perm('statement'), perm('plByLocation'), perm('ageing'), perm('audit')]).toEqual([
+			['accounts.index'],
+			['accounts.index'],
+			['accounts.index'],
+			['accounts.lock'],
+		]);
 	});
 });

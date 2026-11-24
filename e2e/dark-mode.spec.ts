@@ -44,6 +44,14 @@ async function open(
 	// so the two modes are compared on their real layout.
 	await page.evaluate(() => document.documentElement.classList.add('st-render-all'));
 	await page.waitForTimeout(500);
+	// A carousel lays its slides out again when it starts (ngx-owl-carousel-o marks it owl-loaded); compare the two
+	// modes only once every carousel on the page has, or one page is caught before and the other after (CI, 24 Nov).
+	// An empty carousel takes no room and never starts.
+	await page.waitForFunction(() =>
+		[...document.querySelectorAll('owl-carousel-o')]
+			.filter((host) => host.getBoundingClientRect().width > 0)
+			.every((host) => host.querySelector('.owl-carousel')?.classList.contains('owl-loaded')),
+	);
 	return page;
 }
 

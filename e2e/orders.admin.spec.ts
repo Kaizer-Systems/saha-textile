@@ -138,6 +138,9 @@ test.describe('Orders: create, take payment and move along (oc01, ck01–ck05, o
 		const slip = page.waitForRequest((request) => /\/packing-slip$/.test(request.url()));
 		await page.locator('#ord_print_pack').click();
 		await slip;
+		// Packed is offered once the order the page holds has every tick; on a slow run the last tick's answer
+		// arrived after Update status opened with the order before it.
+		await expect(page.getByRole('button', { name: /^Mark packed$/ })).toBeEnabled();
 		await moveTo(page, 'Packed');
 		// st03: Shipped takes the courier and tracking number, and pieces leave stock at their recorded
 		// cost. A piece bought through purchases ships and tells the customer by email and SMS; demo stock

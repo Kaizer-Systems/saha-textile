@@ -116,7 +116,8 @@ test.describe('Cookie box', () => {
 	});
 
 	test("the Privacy Policy link opens in the shopper's language", async ({ page }) => {
-		await page.goto('/bn/');
+		// The link is the shop's own router link: a click before the page is interactive is lost.
+		await page.goto('/bn/', { waitUntil: 'networkidle' });
 		await box(page).locator('.cookie-contain a').click();
 		await expect(page).toHaveURL(/\/bn\/privacy-policy/);
 		await expect(page.locator('.ckeditor-content')).toContainText('একান্ত দরকারি');

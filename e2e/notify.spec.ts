@@ -37,7 +37,9 @@ test.describe.serial('Notify Me', { tag: '@desktop-only' }, () => {
 
 	test('a signed-in click saves one row, and a repeat changes nothing', async ({ page }) => {
 		await page.goto('/en/auth/login');
-		await signIn(page, 'anjali.sharma.002@example.com');
+		// Its own shopper: checkout-rules.admin.spec.ts signs Anjali in on a parallel worker, and one account
+		// takes one one-time code at a time, so a shared one left this sign-in on the login page in CI.
+		await signIn(page, 'kabir.sharma.008@example.com');
 		await expect(page).not.toHaveURL(/auth\/login/);
 
 		await page.goto(PRODUCT);

@@ -83,7 +83,8 @@ export async function showFilters(page: Page): Promise<void> {
 	const open = page.locator('.filter-button a').first();
 	if (!(await open.isVisible())) return;
 	const drawer = page.locator('.left-box.show');
-	// A tap before the page is interactive is lost, so tap until the drawer really opens.
+	// A tap before the page is interactive is lost, so wait for it to settle, then tap until the drawer really opens.
+	await page.waitForLoadState('networkidle');
 	await expect(async () => {
 		if (!(await drawer.count())) await open.click();
 		await expect(drawer).toHaveCount(1, { timeout: 1000 });

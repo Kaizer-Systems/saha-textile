@@ -65,6 +65,31 @@ const pages = (process.env.SPEED_GATE_PAGES ?? 'en=/en/;bn=/bn/').split(';').map
 const median = (values) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
 const out = mkdtempSync(join(tmpdir(), 'speed-gate-'));
 
+/** Lighthouse attempts per measurement: it sometimes stops before measuring (Chrome or the protocol), 24 Nov. */
+const ATTEMPTS = 3;
+
+/**
+ * Runs Lighthouse, trying again when it stops without a report. A crash is not a score, so it never decides the
+ * gate by itself; three in a row fail the gate with Lighthouse's own last words.
+ */
+function lighthouseRun(args, what) {
+	for (let attempt = 1; ; attempt += 1) {
+		try {
+			execFileSync('pnpm', args, { cwd: out, stdio: ['ignore', 'ignore', 'pipe'], timeout: 240_000 });
+			return;
+		} catch (error) {
+			const said = String(error.stderr ?? error.message ?? '')
+				.trim()
+				.split('\n')
+				.slice(-6)
+				.join('\n');
+			if (attempt === ATTEMPTS)
+				throw new Error(`Lighthouse stopped ${ATTEMPTS} times on ${what}:\n${said}`, { cause: error });
+			process.stderr.write(`Lighthouse stopped on ${what} (attempt ${attempt}); trying again.\n${said}\n`);
+		}
+	}
+}
+
 /** One Lighthouse run: the four scores and the layout shift. */
 function measure(url, size, run, theme) {
 	const file = join(out, `${size.width}x${size.height}-${theme}-${run}.json`);
@@ -85,7 +110,7 @@ function measure(url, size, run, theme) {
 		// Dark mode is the shopper's switch, kept in the st_theme cookie.
 		...(theme === 'dark' ? [`--extra-headers=${JSON.stringify({ Cookie: 'st_theme=dark' })}`] : []),
 	];
-	execFileSync('pnpm', lighthouse, { cwd: out, stdio: 'ignore', timeout: 240_000 });
+	lighthouseRun(lighthouse, `${url} at ${size.width}×${size.height}, ${theme}, run ${run}`);
 	const report = JSON.parse(readFileSync(file, 'utf8'));
 	const score = (id) => Math.round((report.categories[id]?.score ?? 0) * 100);
 	return {

@@ -1054,6 +1054,123 @@ export const scenarios = [
 			return 'store manager refused';
 		},
 	},
+	{
+		name: 'Counter: the store opens its day sheet and sells 1 saree for cash',
+		async run({ admin, check }) {
+			// Settings › Cash boxes: the store's counter box, a day sheet with no float.
+			const settings = await admin.ok('GET', '/admin/cash/settings');
+			await admin.ok('PUT', '/admin/cash/settings', {
+				boxes: [
+					{
+						name: 'Gariahat counter',
+						locationId: ctx.storeId,
+						kind: 'day_sheet',
+						floatPaise: 0,
+						countedBy: 'cashier',
+						reviewedBy: 'owner',
+						active: true,
+					},
+				],
+				denominations: settings.settings.denominations,
+				rules: settings.settings.rules,
+			});
+			const today = await admin.ok('GET', '/admin/cash/today');
+			const rows = today.denominations
+				.filter((d) => d.on)
+				.map((d) => ({ valuePaise: d.valuePaise, kind: d.kind, count: 0 }));
+			await admin.ok('POST', '/admin/cash/sheets', {
+				boxId: today.box.id,
+				count: { rows },
+				carryDifference: false,
+			});
+			const lines = [{ productId: 'prd_1001', variationId: null, quantity: 1, scanned: true }];
+			const quote = await admin.ok('POST', '/admin/counter/quote', { locationId: ctx.storeId, lines });
+			const total = quote.totalINR ?? quote.totals?.totalINR;
+			check(total === 4680, 'The counter quotes ₹4,680', String(total));
+			const before = await admin.ok('GET', '/admin/accounts/balances', undefined, {
+				on: new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10),
+			});
+			const sale = await admin.ok('POST', '/admin/counter/sales', {
+				locationId: ctx.storeId,
+				lines,
+				buyer: { phone: '', name: 'Walk-in', address: '', gstin: '' },
+				payments: [{ method: 'cash', amountINR: total, reference: '' }],
+				cashHandedINR: 5000,
+				print: 'roll80',
+				expectedTotalINR: total,
+			});
+			const invoice = sale.invoice ?? sale;
+			check(
+				/TI\/26-27\/00000[4-9]/.test(invoice.number ?? invoice.invoiceNumber ?? ''),
+				'The counter sale is invoiced in the same series',
+				invoice.number ?? invoice.invoiceNumber,
+			);
+			const after = await admin.ok('GET', '/admin/accounts/balances', undefined, {
+				on: new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10),
+			});
+			const moved = (k) => balanceOf(ctx.chart, after, k) - balanceOf(ctx.chart, before, k);
+			check(moved('sales') === -445_714, 'Counter sale: sales ₹4,457.14 Cr', String(moved('sales')));
+			check(
+				moved('cost_of_goods_sold') === 300_000,
+				'Counter sale: cost ₹3,000',
+				String(moved('cost_of_goods_sold')),
+			);
+			check(sumBalances(after) === 0, 'The trial balance balances after the counter sale');
+			return `${invoice.number ?? invoice.invoiceNumber} ₹${total}, change ₹${5000 - total}`;
+		},
+	},
+	{
+		name: 'Fixed asset: a billing computer bought from HDFC on 1 Nov (₹60,000, 6 years SLM); November depreciation posted',
+		async run({ admin, check }) {
+			const asset = await admin.ok('POST', '/admin/accounts/assets', {
+				name: 'Billing computer',
+				categoryKey: 'computers',
+				locationId: ctx.storeId,
+				putToUseOn: '2026-11-01',
+				costINR: 60_000,
+				residualINR: 3_000,
+				method: 'slm',
+				lifeMonths: 72,
+				taxRatePct: 40,
+				run: 'monthly',
+				inputGst: 'claimed',
+				reference: 'INV-PC-1',
+				acquisition: { kind: 'post', ledgerId: ctx.bankLedgerId },
+			});
+			check(asset.tag === 'FA-0001', 'Tagged FA-0001', asset.tag);
+			const run = await admin.ok('POST', '/admin/accounts/assets/depreciation/2026-11');
+			// SLM: (60,000 − 3,000) ÷ 72 = ₹791.67 a month.
+			check(run.totalPaise === 79_167, 'November depreciation ₹791.67', String(run.totalPaise));
+			const again = await admin.try('POST', '/admin/accounts/assets/depreciation/2026-11');
+			check(again.code === 'depreciation_posted', 'A month is depreciated once', again.code);
+			return asset.tag;
+		},
+	},
+	{
+		name: 'Year close 2026-27: the checks, the closing entries, and the year read as it was',
+		async run({ admin, check }) {
+			const view = await admin.ok('GET', '/admin/accounts/year-close/2026-27');
+			check(view.checks.length === 10, 'Ten checks', String(view.checks.length));
+			const by = Object.fromEntries(view.checks.map((c) => [c.key, c]));
+			check(
+				by.gst.state === 'attention' && by.gst.count === 1,
+				'GST: 1 of 24 returns filed so far (GSTR-1 September)',
+				`${by.gst.count} of ${by.gst.of}`,
+			);
+			check(by.depreciation.state === 'attention', 'Depreciation to March still due on the computer');
+			check(by.closing.state === 'attention', 'No closing entries yet');
+			check(!view.canClose, 'The year cannot be closed yet');
+			await admin.ok('POST', '/admin/accounts/year-close/2026-27/confirm', { accruals: true });
+			const plBefore = await admin.ok('GET', '/admin/accounts/reports/statements/profitLoss', undefined, {
+				asAt: '2027-03-31',
+			});
+			check(
+				!(await admin.ok('GET', '/admin/accounts/year-close/2026-27')).canPostClosing,
+				'Closing entries wait while checks are open',
+			);
+			return `${view.done} of ${view.checks.length} done; profit row ${plBefore.rows.at(-1)?.thisYearPaise}`;
+		},
+	},
 ];
 
 export const helpers = { balanceOf, rupees };

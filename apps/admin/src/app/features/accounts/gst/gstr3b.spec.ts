@@ -80,6 +80,11 @@ const draft = (over: Record<string, unknown> = {}) => ({
 	...over,
 });
 
+/** The bank accounts a set-off is paid from. */
+const BANKS = {
+	list: vi.fn(() => of({ items: [{ id: 'b1', shortName: 'HDFC current', numberShown: 'XXXX1234' }] })),
+};
+
 interface Opened {
 	content: unknown;
 	close: ReturnType<typeof vi.fn>;
@@ -91,6 +96,7 @@ interface Opened {
 function mount(gst: Record<string, unknown>, options: { permissions?: string[]; id?: string | null } = {}) {
 	TestBed.resetTestingModule();
 	document.body.querySelectorAll('.gst-test-modal').forEach((node) => node.remove());
+	BANKS.list.mockClear();
 	const notifier = { showSuccess: vi.fn(), showError: vi.fn() };
 	const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 	const invalidate = vi.spyOn(queries, 'invalidateQueries');
@@ -109,7 +115,7 @@ function mount(gst: Record<string, unknown>, options: { permissions?: string[]; 
 			provideRouter([]),
 			{ provide: GstReturnsGateway, useValue: gst },
 			// The bank accounts a set-off is paid from.
-			{ provide: BanksGateway, useValue: { list: vi.fn(() => of({ items: [] })) } },
+			{ provide: BanksGateway, useValue: BANKS },
 			{ provide: NotificationService, useValue: notifier },
 			{ provide: AuthStore, useValue: { permissions: signal(options.permissions ?? ALL) } },
 			{
@@ -450,5 +456,145 @@ describe('changing a GSTR-3B table (G6 “Can change here”)', () => {
 		(all(fixture, 'button[title="gstr3b_remove_change"]')[0] as HTMLButtonElement).click();
 		await settle(fixture);
 		expect(calls.prepare).toHaveBeenCalledWith(expect.objectContaining({ adjustments: [CHANGES[1]] }));
+	});
+});
+
+describe('posting the set-off (Q7)', () => {
+	const posted = {
+		number: 'CPIN26110012345',
+		paidOn: '2026-11-20',
+		bankAccountId: 'b1',
+		amountPaise: 33_600,
+		setOffNumber: 'JV/26-27/000090',
+		challanNumber: 'PV/26-27/000031',
+	};
+
+	it('is offered once approved or filed, with a set-off, and only until it is posted', async () => {
+		const cases: [Record<string, unknown>, boolean][] = [
+			[{ status: 'approved' }, true],
+			[{ status: 'filed', arn: 'AA191126054321Z' }, true],
+			[{ status: 'prepared' }, false],
+			[{ status: 'checked' }, false],
+			[{ status: 'approved', setOff: null }, false],
+			[{ status: 'filed', setOffVoucherId: 'jv1' }, false],
+			[{ status: 'approved', challanVoucherId: 'pv1' }, false],
+		];
+		for (const [over, offered] of cases) {
+			const { fixture, page } = await gstr3b(over);
+			expect(page.canPost()).toBe(offered);
+			expect(!!el(fixture, '#gst_post_setoff')).toBe(offered);
+		}
+		const accountant = await gstr3b({ status: 'approved' }, {}, ['accounts.index', 'accounts.edit']);
+		expect(accountant.page.canPost()).toBe(true);
+		expect(el(accountant.fixture, '#gst_post_setoff')).toBeNull();
+	});
+
+	it('pays in cash what is left after the set-off, with the reverse charge', async () => {
+		const withSetOff = await gstr3b({ status: 'approved' });
+		expect(withSetOff.page.cashPaise()).toBe(30_000 + 3_600);
+		const without = await gstr3b({ status: 'approved', setOff: null });
+		expect(without.page.cashPaise()).toBe(0);
+		const unread = mount({ one: vi.fn(() => of(draft())) }, { id: null });
+		expect(unread.page.cashPaise()).toBe(0);
+		expect(unread.page.canPost()).toBe(false);
+	});
+
+	it('reads the bank accounts only when opened, needs a bank and a challan of six or more, and posts', async () => {
+		const postSetOff = vi.fn(() => of(draft({ status: 'approved' })));
+		const { fixture, page, opened, calls, notifier, invalidate } = await gstr3b(
+			{ status: 'approved' },
+			{ postSetOff },
+		);
+		expect(BANKS.list).not.toHaveBeenCalled();
+		page.challan.set('OLD');
+		(el(fixture, '#gst_post_setoff') as HTMLButtonElement).click();
+		expect(page.postOpen()).toBe(true);
+		expect(page.challan()).toBe('');
+		const popup = opened[0] as Opened;
+		expect(popup.content).toBeInstanceOf(TemplateRef);
+		await settle(fixture);
+		expect(BANKS.list).toHaveBeenCalled();
+		const redraw = () => popup.view?.detectChanges();
+		redraw();
+		expect(modal('.modal-title')?.textContent).toContain('gstr3b_post_title');
+		const options = [...(modal('#gst_pay_from') as HTMLSelectElement).options].map((o) => o.textContent?.trim());
+		expect(options).toEqual(['—', 'HDFC current · XXXX1234']);
+		const confirm = modal('#gst_post_confirm') as HTMLButtonElement;
+		expect(confirm.disabled).toBe(true);
+
+		const bank = modal('#gst_pay_from') as HTMLSelectElement;
+		bank.value = 'b1';
+		bank.dispatchEvent(new Event('change'));
+		type(modal('#gst_challan'), 'CPIN1');
+		redraw();
+		expect(page.payFrom()).toBe('b1');
+		expect(confirm.disabled).toBe(true);
+		type(modal('#gst_challan'), 'CPIN26110012345');
+		type(modal('#gst_paid_on'), '2026-11-20');
+		redraw();
+		expect(confirm.disabled).toBe(false);
+		confirm.click();
+		await settle(fixture);
+		expect(postSetOff).toHaveBeenCalledWith('d3', {
+			bankAccountId: 'b1',
+			paidOn: '2026-11-20',
+			challan: 'CPIN26110012345',
+			version: 4,
+		});
+		expect(notifier.showSuccess).toHaveBeenLastCalledWith('gstr3b_set_off_posted');
+		expect(invalidate).toHaveBeenCalledWith({ queryKey: ['gst-returns'] });
+		expect(popup.close).toHaveBeenCalled();
+		expect(calls.one).toHaveBeenCalled();
+		(modal('.btn-close') as HTMLButtonElement).click();
+		expect(popup.dismiss).toHaveBeenCalled();
+	});
+
+	it('keeps the pop-up open with the reason when posting is refused, and posts with none open', async () => {
+		const postSetOff = vi
+			.fn()
+			.mockReturnValueOnce(throwError(() => refusal('challan_shape')))
+			.mockReturnValueOnce(of(draft()));
+		const { fixture, page, opened, notifier } = await gstr3b({ status: 'approved' }, { postSetOff });
+		(el(fixture, '#gst_post_setoff') as HTMLButtonElement).click();
+		const data = page.draft.data() as never;
+		await page.postSetOff(data);
+		expect(notifier.showError).toHaveBeenLastCalledWith('gst_problem_challan_shape');
+		expect(opened[0]?.close).not.toHaveBeenCalled();
+
+		const fresh = await gstr3b({ status: 'approved' }, { postSetOff: vi.fn(() => of(draft())) });
+		await fresh.page.postSetOff(fresh.page.draft.data() as never);
+		expect(fresh.notifier.showSuccess).toHaveBeenLastCalledWith('gstr3b_set_off_posted');
+	});
+
+	it('shows what posting made: the set-off journal and the challan’s payment, each linked to its voucher', async () => {
+		const both = await gstr3b({
+			status: 'filed',
+			arn: 'AA191126054321Z',
+			challan: posted,
+			setOffVoucherId: 'jv1',
+			challanVoucherId: 'pv1',
+		});
+		const links = all(both.fixture, 'a[href^="/accounts/vouchers/"]').map((a) => [
+			a.getAttribute('href'),
+			a.textContent?.trim(),
+		]);
+		expect(links).toEqual([
+			['/accounts/vouchers/jv1', 'JV/26-27/000090'],
+			['/accounts/vouchers/pv1', 'PV/26-27/000031'],
+		]);
+		expect(both.fixture.nativeElement.textContent).toContain('gstr3b_after_posting');
+		expect(el(both.fixture, '#gst_post_setoff')).toBeNull();
+
+		const journalOnly = await gstr3b({ status: 'filed', challan: posted, setOffVoucherId: 'jv1' });
+		expect(all(journalOnly.fixture, 'a[href^="/accounts/vouchers/"]')).toHaveLength(1);
+		expect(journalOnly.fixture.nativeElement.textContent).not.toContain('gstr3b_posted_challan');
+
+		const challanOnly = await gstr3b({ status: 'filed', challan: posted, challanVoucherId: 'pv1' });
+		expect(all(challanOnly.fixture, 'a[href^="/accounts/vouchers/"]').map((a) => a.getAttribute('href'))).toEqual([
+			'/accounts/vouchers/pv1',
+		]);
+
+		const none = await gstr3b({ status: 'approved' });
+		expect(none.fixture.nativeElement.textContent).not.toContain('gstr3b_after_posting');
 	});
 });

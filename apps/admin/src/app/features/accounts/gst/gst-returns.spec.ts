@@ -147,6 +147,7 @@ describe('the GST returns gateway', () => {
 			[() => gateway.prepare({} as never), 'POST', ''],
 			[() => gateway.one('d/1'), 'GET', '/d%2F1'],
 			[() => gateway.step('d/1', {} as never), 'POST', '/d%2F1/step'],
+			[() => gateway.postSetOff('d/1', {} as never), 'POST', '/d%2F1/set-off'],
 		];
 		for (const [call, method, path] of calls) {
 			(call() as { subscribe: () => void }).subscribe();
@@ -200,6 +201,19 @@ describe('a GST refusal in words', () => {
 			'gstr2b_changed',
 		];
 		expect(twoB.map((code) => gstProblem(refusal(code)))).toEqual(twoB.map((code) => `gst_problem_${code}`));
+	});
+
+	it('knows the set-off refusals', () => {
+		const setOff = [
+			['gst_set_off_not_3b', 'gst_problem_set_off_not_3b'],
+			['gst_set_off_not_approved', 'gst_problem_set_off_not_approved'],
+			['gst_set_off_posted', 'gst_problem_set_off_posted'],
+			['gst_set_off_nothing', 'gst_problem_set_off_nothing'],
+			['bank_account_unknown', 'gst_problem_bank_account_unknown'],
+			['books_need_a_location', 'gst_problem_books_need_a_location'],
+			['challan_shape', 'gst_problem_challan_shape'],
+		];
+		expect(setOff.map(([code]) => gstProblem(refusal(code as string)))).toEqual(setOff.map(([, key]) => key));
 	});
 
 	it('opens a GSTR-3B on its own page and every other return on the tables page', () => {

@@ -44,7 +44,7 @@ import {
 import { API_TAGS } from '../openapi-tags';
 import { AccountsTemplatesService } from '../accounts-templates/accounts-templates.service';
 import { accountsRefusal } from './accounts-refusal';
-import { BooksPostingService } from './books-posting';
+import { BooksPostingService, CAME_IN } from './books-posting';
 import { LedgerService } from './ledger.service';
 
 /** One document saved before the books took it: its voucher key, and how to post it on its own date. */
@@ -112,7 +112,7 @@ export class BooksCatchUpService {
 		const waiting: Waiting[] = [];
 		for (const order of orders)
 			for (const payment of await this.payments.listByOrder(order.id))
-				if (payment.state === 'received' && MOVES_MONEY.has(payment.method))
+				if (CAME_IN.has(payment.state) && MOVES_MONEY.has(payment.method))
 					waiting.push({
 						kind: 'receipts',
 						key: `receipt:${payment.id}`,

@@ -58,6 +58,9 @@ interface Posting {
 
 type ReceiptOrder = Pick<Order, 'id' | 'orderNumber' | 'shipsFromLocationId'>;
 
+/** Payments whose money came in: a refunded one still did, and its refund voucher posts the way back. */
+export const CAME_IN: ReadonlySet<OrderPayment['state']> = new Set(['received', 'refunded', 'partRefunded']);
+
 /**
  * Receipts and purchases in the books, inline (Postings and Convert brief P1–P3, approved 24 Nov). Each step that saves
  * a payment, a purchase entry or a purchase return calls one of these inside its own transaction, so the document and
@@ -362,7 +365,7 @@ export class BooksPostingService {
 		options: { keepCustomerPayment: boolean } = { keepCustomerPayment: true },
 	) {
 		if (!(await this.templates.booksSetUp())) return null;
-		if (payment.state !== 'received') return null;
+		if (!CAME_IN.has(payment.state)) return null;
 		const work = async () => {
 			const landed = await this.lands((landing) => receiptLanding(payment.method, landing));
 			if (!landed) return null;

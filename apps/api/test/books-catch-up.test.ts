@@ -58,7 +58,18 @@ function setup(
 				recordedAt: at,
 			},
 		],
-		ord_3: [{ id: 'pay_5', method: 'cashOnDelivery', state: 'received', receivedOn: '2026-11-01', recordedAt: at }],
+		ord_3: [
+			{ id: 'pay_5', method: 'cashOnDelivery', state: 'received', receivedOn: '2026-11-01', recordedAt: at },
+			// Refunded later: the money still came in, so its receipt is owed to the books too.
+			{
+				id: 'pay_6',
+				method: 'gateway',
+				state: 'refunded',
+				receivedOn: '2026-11-29',
+				receiptNumber: 'RC/6',
+				recordedAt: at,
+			},
+		],
 	};
 	const entries = [
 		{
@@ -172,7 +183,7 @@ describe('documents saved before the books took them', () => {
 		const { service } = setup({ posted: ['receipt:pay_5', 'purchaseEntry:pe_2'] });
 		expect(await service.summary(owner)).toEqual({
 			waiting: {
-				receipts: 2,
+				receipts: 3,
 				purchaseEntries: 1,
 				supplierPayments: 1,
 				purchaseReturns: 2,
@@ -186,7 +197,7 @@ describe('documents saved before the books took them', () => {
 		const { service, books, calls } = setup({ failing: { pay_1: 'voucher_problem:period_locked' } });
 		const result = await service.run(owner);
 		expect(result.posted).toEqual({
-			receipts: 2,
+			receipts: 3,
 			purchaseEntries: 2,
 			supplierPayments: 1,
 			purchaseReturns: 2,
@@ -198,6 +209,7 @@ describe('documents saved before the books took them', () => {
 			{ kind: 'businessReceipts', number: null, date: '2026-11-10', reason: 'receipt_method_unknown' },
 		]);
 		expect(calls.slice(0, 3)).toEqual(['receipt:pay_5', 'entry:pe_1', 'payment:sp_1']);
+		expect(calls).toContain('receipt:pay_6');
 		expect(books.paymentReceived).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'pay_4' }),
 			expect.objectContaining({ orderNumber: 'ST-2' }),
@@ -228,7 +240,7 @@ describe('documents saved before the books took them', () => {
 	it('answers through its routes', async () => {
 		const { service } = setup({ posted: [] });
 		const routes = new BooksCatchUpController(service);
-		expect((await routes.summary(owner)).waiting.receipts).toBe(3);
+		expect((await routes.summary(owner)).waiting.receipts).toBe(4);
 		expect((await routes.run(owner)).skipped).toHaveLength(1);
 	});
 });

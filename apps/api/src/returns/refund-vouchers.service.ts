@@ -154,53 +154,110 @@ export class RefundVouchersService {
 		actor: Actor,
 		now: Date,
 	): Promise<RefundVoucher> {
-		const id = `rf_${randomUUID()}`;
-		const at = now.toISOString();
 		const locationId = await this.locationOf(order);
 		const reference = how.how === 'gateway' ? gatewayRefundReference('RF', payment.id) : how.reference;
 		const answer =
 			how.how === 'gateway'
 				? await this.askGateway(payment, reference)
 				: { outcome: 'accepted' as const, refusal: null };
-		return this.tx.withTransaction(async (context) => {
-			const voucher = RefundVoucher.parse({
-				id,
-				number: await this.numbers.issue('refundVoucher', context, now),
-				date: istDay(now),
-				orderId: order.id,
-				orderNumber: order.orderNumber,
-				paymentId: payment.id,
-				receiptNumber: payment.receiptNumber,
-				receiptDate: payment.receivedOn,
-				payee: order.buyer?.name ?? order.orderNumber,
-				amountINR: payment.amountINR,
-				currency: payment.currency,
-				amount: payment.amount,
-				how: how.how,
-				reference,
-				reason,
-				status: refundStatusOf(answer.outcome),
-				refusal: answer.refusal,
-				ledgerId: how.how === 'bank_transfer' ? how.ledgerId : null,
-				locationId,
-				createdAt: at,
-				createdBy: actor.id,
-				updatedAt: at,
-			});
-			const done = await this.settle(voucher, payment, actor.id, context);
-			await this.vouchers.insert(done, context);
-			await this.log.append(actor.id, 'refundVoucher.issue', 'refundVoucher', id, [], {
-				number: done.number,
-				order: order.orderNumber,
-				reason,
-			});
-			await this.log.append(null, 'refundVoucher.outcome', 'refundVoucher', id, [], {
-				status: done.status,
-				how: done.how,
-				number: done.number,
-			});
-			return done;
+		return this.tx.withTransaction((context) =>
+			this.issue({ order, payment, how, reason, reference, answer, locationId }, actor, now, context),
+		);
+	}
+
+	/**
+	 * The shop's own refunds (OD1): money paid for pieces that sold out first, or paid after the order was cancelled.
+	 * The shop has asked the gateway already; this gives that refund its RF voucher, numbered and posted once the money
+	 * has gone. A payment that has its voucher keeps it; with no location to keep one at, none is made.
+	 */
+	async automatic(
+		order: Order,
+		payment: OrderPayment,
+		refund: {
+			reference: string;
+			outcome: 'accepted' | 'duplicate' | 'refused' | 'unknown';
+			reason: 'sold_out_before_payment' | 'paid_after_cancel';
+		},
+		now = new Date(),
+	): Promise<RefundVoucher | null> {
+		const made = (await this.vouchers.listForOrder(order.id)).find((voucher) => voucher.paymentId === payment.id);
+		if (made) return made;
+		const locationId = order.shipsFromLocationId ?? defaultStockLocation(await this.locations.list());
+		if (!locationId) return null;
+		const answer = { outcome: refund.outcome === 'unknown' ? null : refund.outcome, refusal: null };
+		return this.tx.withTransaction((context) =>
+			this.issue(
+				{
+					order,
+					payment,
+					how: { how: 'gateway' },
+					reason: refund.reason,
+					reference: refund.reference,
+					answer,
+					locationId,
+				},
+				{ id: null, name: 'System' },
+				now,
+				context,
+			),
+		);
+	}
+
+	/** The voucher itself: numbered, settled (posted) when refunded, saved and logged, in the caller's transaction. */
+	private async issue(
+		input: {
+			order: Order;
+			payment: OrderPayment;
+			how: Refunding;
+			reason: RefundVoucherReason;
+			reference: string;
+			answer: { outcome: 'accepted' | 'duplicate' | 'refused' | null; refusal: string | null };
+			locationId: string;
+		},
+		actor: Actor,
+		now: Date,
+		context: TransactionContext,
+	): Promise<RefundVoucher> {
+		const { order, payment, how, reason, reference, answer, locationId } = input;
+		const id = `rf_${randomUUID()}`;
+		const at = now.toISOString();
+		const voucher = RefundVoucher.parse({
+			id,
+			number: await this.numbers.issue('refundVoucher', context, now),
+			date: istDay(now),
+			orderId: order.id,
+			orderNumber: order.orderNumber,
+			paymentId: payment.id,
+			receiptNumber: payment.receiptNumber,
+			receiptDate: payment.receivedOn,
+			payee: order.buyer?.name ?? order.orderNumber,
+			amountINR: payment.amountINR,
+			currency: payment.currency,
+			amount: payment.amount,
+			how: how.how,
+			reference,
+			reason,
+			status: refundStatusOf(answer.outcome),
+			refusal: answer.refusal,
+			ledgerId: how.how === 'bank_transfer' ? how.ledgerId : null,
+			locationId,
+			createdAt: at,
+			createdBy: actor.id,
+			updatedAt: at,
 		});
+		const done = await this.settle(voucher, payment, actor.id, context);
+		await this.vouchers.insert(done, context);
+		await this.log.append(actor.id, 'refundVoucher.issue', 'refundVoucher', id, [], {
+			number: done.number,
+			order: order.orderNumber,
+			reason,
+		});
+		await this.log.append(null, 'refundVoucher.outcome', 'refundVoucher', id, [], {
+			status: done.status,
+			how: done.how,
+			number: done.number,
+		});
+		return done;
 	}
 
 	/** Once refunded: the payment reads Refunded and the voucher posts (Customer advance against where it went). */

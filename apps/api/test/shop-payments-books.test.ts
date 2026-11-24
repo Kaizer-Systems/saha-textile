@@ -498,3 +498,57 @@ describe('the remaining paths', () => {
 		expect((await h.service.outcomeFor(attempt.id, h.shopper)).result).toBe('failed');
 	});
 });
+
+describe('the RF voucher for the shop’s own refunds (accounts brief C, D6)', () => {
+	const start = async (h: ReturnType<typeof harness>) => h.service.start(h.orders.get('ord_1') as Order, 'en', NOW);
+	const cancelled = async (h: ReturnType<typeof harness>) => {
+		const attempt = await start(h);
+		h.orders.set('ord_1', { ...(h.orders.get('ord_1') as Order), status: 'cancelled' });
+		return h.service.settle(attempt, undefined, NOW);
+	};
+
+	it('posts the receipt as the payment is recorded, then asks for its voucher with the shop’s reference and why', async () => {
+		const posted: unknown[][] = [];
+		const asked: unknown[][] = [];
+		const refundVouchers = { automatic: async (...args: unknown[]) => (asked.push(args), { id: 'rf_1' }) };
+		const h = harness({
+			books: { paymentReceived: async (...args: unknown[]) => void posted.push(args) },
+			refundVouchers,
+		});
+		await cancelled(h);
+		expect(posted[0]?.[0]).toMatchObject({ method: 'gateway', state: 'received' });
+		expect(asked[0]?.[0]).toMatchObject({ id: 'ord_1' });
+		expect(asked[0]?.[1]).toMatchObject({ state: 'received', receiptNumber: expect.any(String) });
+		expect(asked[0]?.[2]).toEqual({
+			reference: 'RST26114821901',
+			outcome: 'accepted',
+			reason: 'paid_after_cancel',
+		});
+		expect(h.calls.flags).toEqual([]);
+		const soldOut: unknown[][] = [];
+		const late = harness({
+			order: makeOrder({ held: false, holdUntil: null }),
+			soldOut: ['l1'],
+			refundVouchers: { automatic: async (...args: unknown[]) => (soldOut.push(args), { id: 'rf_2' }) },
+		});
+		await late.service.settle(await start(late), undefined, NOW);
+		expect(soldOut[0]?.[2]).toMatchObject({ reason: 'sold_out_before_payment' });
+	});
+
+	it('flags the payment for staff when no voucher can be made, and never undoes the refund', async () => {
+		const none = harness({ refundVouchers: { automatic: async () => null } });
+		await cancelled(none);
+		expect(none.calls.flags).toEqual(['refundVoucherNotMade']);
+		expect(none.payments[0]?.state).toBe('refunded');
+		const broken = harness({
+			refundVouchers: {
+				automatic: async () => {
+					throw new Error('books locked');
+				},
+			},
+		});
+		await cancelled(broken);
+		expect(broken.calls.flags).toEqual(['refundVoucherNotMade']);
+		expect(broken.payments[0]?.state).toBe('refunded');
+	});
+});

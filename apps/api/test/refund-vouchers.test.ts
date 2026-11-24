@@ -382,3 +382,68 @@ describe('refund voucher routes and print', () => {
 		expect(rendered).toEqual(['refundVoucher', 'refundVoucher']);
 	});
 });
+
+describe('the shop’s own refunds (OD1)', () => {
+	const shopOrder = (shipsFrom: string | null = 'loc_bar') =>
+		({
+			id: 'ord_1',
+			orderNumber: 'ST-2611-688796',
+			shipsFromLocationId: shipsFrom,
+			buyer: { name: 'Priya Sharma' },
+		}) as never;
+	const refund = (outcome: 'accepted' | 'duplicate' | 'refused' | 'unknown') =>
+		({ reference: 'Ratt1', outcome, reason: 'sold_out_before_payment' }) as const;
+
+	it('gives a refund the shop already asked for its voucher, posted by the system, once per payment', async () => {
+		const made = setup();
+		const voucher = await made.service.automatic(shopOrder(), payment() as never, refund('accepted'), NOW);
+		expect(voucher).toMatchObject({
+			number: 'RF/26-27/000001',
+			reference: 'Ratt1',
+			reason: 'sold_out_before_payment',
+			how: 'gateway',
+			status: 'refunded',
+			createdBy: null,
+			locationId: 'loc_bar',
+			voucherId: 'jv_1',
+		});
+		expect(made.asked).toEqual([]);
+		expect(made.saved).toEqual([expect.objectContaining({ id: 'pay_1', state: 'refunded' })]);
+		expect(made.logged.map((row) => row.actor)).toEqual([null, null]);
+		const again = await made.service.automatic(shopOrder(), payment() as never, refund('duplicate'), NOW);
+		expect(again?.id).toBe(voucher?.id);
+		expect(made.vouchers).toHaveLength(1);
+		expect(made.posted).toHaveLength(1);
+		// Every voucher made: the default is "now".
+		expect((await setup().service.automatic(shopOrder(), payment() as never, refund('accepted')))?.status).toBe(
+			'refunded',
+		);
+	});
+
+	it('keeps an unanswered refund Waiting and a refused one Failed, posting nothing', async () => {
+		const waiting = setup();
+		expect((await waiting.service.automatic(shopOrder(), payment() as never, refund('unknown'), NOW))?.status).toBe(
+			'waiting_for_gateway',
+		);
+		const refused = setup();
+		expect((await refused.service.automatic(shopOrder(), payment() as never, refund('refused'), NOW))?.status).toBe(
+			'failed',
+		);
+		expect([...waiting.posted, ...refused.posted]).toEqual([]);
+	});
+
+	it('keeps it at the warehouse when the order names no location, and makes none with no location at all', async () => {
+		const warehouse = setup({
+			locations: [{ id: 'loc_wh', active: true, warehouse: true, shipsOnline: true, createdAt: '2026-01-01' }],
+		});
+		expect(
+			(await warehouse.service.automatic(shopOrder(null), payment() as never, refund('accepted'), NOW))
+				?.locationId,
+		).toBe('loc_wh');
+		const nowhere = setup();
+		expect(
+			await nowhere.service.automatic(shopOrder(null), payment() as never, refund('accepted'), NOW),
+		).toBeNull();
+		expect(nowhere.vouchers).toEqual([]);
+	});
+});

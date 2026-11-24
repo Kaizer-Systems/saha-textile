@@ -76,6 +76,8 @@ export interface Options {
 	verified?: boolean;
 	/** The books posting service, passed last (Postings and Convert brief P1). */
 	books?: unknown;
+	/** The refund voucher service, passed after the books (accounts brief C, D6). */
+	refundVouchers?: unknown;
 	/** Replaces the gateways ({ inr, paypal }) built here; a function receives the built ones. */
 	gateways?: (built: { inr: unknown; paypal: unknown }) => unknown;
 	config?: unknown;
@@ -298,6 +300,7 @@ export function harness(options: Options = {}) {
 		{ withTransaction: async <T>(work: (context: object) => Promise<T>) => work({}) } as never,
 		{ send: async (_order: Order, templates: string[]) => void calls.told.push(...templates) } as never,
 		(options.books ?? null) as never,
+		(options.refundVouchers ?? null) as never,
 	);
 	const shopper = { userId: 'cus_1', sessionId: 's', audience: 'storefront', role: null, permissions: [] } as never;
 	return {

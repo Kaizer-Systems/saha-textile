@@ -38,6 +38,7 @@ import {
 
 import { historyEntry, metaOf, type Actor, AdminOrdersService } from '../admin-orders/admin-orders.service';
 import { BooksPostingService } from '../ledger/books-posting';
+import { RefundVouchersService } from '../returns/refund-vouchers.service';
 import { OrderNoticesService } from '../admin-orders/order-notices.service';
 import { OrderStock } from '../admin-orders/order-stock';
 import { PaymentRequestsService } from '../admin-orders/payment-requests.service';
@@ -118,6 +119,8 @@ export class ShopPaymentsService {
 		@Optional() @Inject(OrderNoticesService) private readonly notices: OrderNoticesService | null = null,
 		/** Received payments in the books, inline (Postings and Convert brief P1); last so older callers keep working. */
 		@Optional() @Inject(BooksPostingService) private readonly books: BooksPostingService | null = null,
+		/** The shop's own refunds get their RF voucher (accounts brief C, D6); last for the same reason. */
+		@Optional() @Inject(RefundVouchersService) private readonly refundVouchers: RefundVouchersService | null = null,
 	) {}
 
 	/* ------------------------------------------------------------------ starting a payment */
@@ -520,6 +523,8 @@ export class ShopPaymentsService {
 			payment = await this.transactions.withTransaction(async (context) => {
 				const row = await this.paymentOf(attempt, status, reference, now, context);
 				await this.payments.save(row, context);
+				// The money came in before it goes back: its receipt posts here, the refund voucher reverses it.
+				await this.books?.paymentReceived(row, order, context, null);
 				return row;
 			});
 		}
@@ -574,6 +579,7 @@ export class ShopPaymentsService {
 			});
 			return next;
 		});
+		await this.refundVoucher(order, savedPayment, refundReference, outcome, reason, now, attempt.id);
 		if (!refunded) await this.flag(order.id, attempt.id, 'refundNotConfirmed', now);
 		else {
 			// OD1: sold before the money arrived → "Sorry, it sold out" with the full refund; a payment
@@ -587,6 +593,38 @@ export class ShopPaymentsService {
 			);
 		}
 		return saved;
+	}
+
+	/**
+	 * The refund's RF voucher, in its own step after the refund is saved, so a voucher that can't be made never undoes
+	 * money already given back: the payment is flagged for staff instead.
+	 */
+	private async refundVoucher(
+		order: Order,
+		payment: OrderPayment,
+		reference: string,
+		outcome: NonNullable<PaymentAttempt['refund']>['outcome'],
+		reason: 'soldOutBeforePayment' | 'orderCancelled',
+		now: Date,
+		attemptId: string,
+	): Promise<void> {
+		if (!this.refundVouchers) return;
+		const made = await this.refundVouchers
+			.automatic(
+				order,
+				payment,
+				{
+					reference,
+					outcome,
+					reason: reason === 'soldOutBeforePayment' ? 'sold_out_before_payment' : 'paid_after_cancel',
+				},
+				now,
+			)
+			.catch((error: unknown) => {
+				this.logger.warn(`Refund voucher for ${attemptId} not made: ${reasonOf(error)}`);
+				return null;
+			});
+		if (!made) await this.flag(order.id, attemptId, 'refundVoucherNotMade', now);
 	}
 
 	/* ------------------------------------------------------------------ not paid */

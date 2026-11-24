@@ -48,8 +48,9 @@ describe('permission registry', () => {
 		// 160 → 161 on 2026-11-23 with `location.edit` (accounts brief K, L).
 		// 161 → 165 on 2026-11-23 with `accounts.index/post/edit/lock` (accounts brief Q, T).
 		// 165 → 166 on 2026-11-24 with `accounts_template.edit` (accounts templates AT-D4).
-		// 166 → 171 on 2026-11-24 with `cash.{count,index,manage,settings}` and `expense_claim.create` (accounts brief O).
-		expect(PERMISSION_CODES).toHaveLength(171);
+		// 166 → 171 on 2026-11-24 with `cash.{count,index,manage,settings}` and `expense_claim.create` (accounts brief O);
+		// 171 → 174 with `transfer.{create,index,manage}` (accounts brief N).
+		expect(PERMISSION_CODES).toHaveLength(174);
 		expect([...PERMISSION_CODES]).toEqual([...PERMISSION_CODES].sort((a, b) => a.localeCompare(b)));
 	});
 

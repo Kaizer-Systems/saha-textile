@@ -62,7 +62,7 @@ describe('accounts templates library (T2)', () => {
 			updateAvailable: false,
 		});
 		expect(rows.find((r) => r.code === 'CH-COMMON')).toMatchObject({
-			latestVersion: 3,
+			latestVersion: 4,
 			validFrom: '2026-11-25',
 			caReview: 'pending',
 		});
@@ -81,7 +81,7 @@ describe('accounts templates library (T2)', () => {
 		] as never[]);
 		const rows = await service.library();
 		expect(rows.find((r) => r.code === 'CH-COMMON')).toMatchObject({
-			latestVersion: 3,
+			latestVersion: 4,
 			installedVersion: 1,
 			updateAvailable: true,
 		});
@@ -129,14 +129,14 @@ describe('accounts templates library (T2)', () => {
 		const { stores, service } = serviceFor(null);
 		const { chart, picks } = await service.startingChart();
 		expect(picks).toEqual([
-			{ code: 'CH-COMMON', version: 3 },
+			{ code: 'CH-COMMON', version: 4 },
 			{ code: 'CH-PROP', version: 2 },
 		]);
 		expect(chart.ledgers.find((l) => l.key === 'legal_fees')?.roles).toEqual(['legal_fees']);
 		await service.recordInstalls(picks);
 		await service.recordInstalls([{ code: 'CH-FIRM', version: 1 }]);
 		expect(stores.installs.rows.map((i) => [i.code, i.version])).toEqual([
-			['CH-COMMON', 3],
+			['CH-COMMON', 4],
 			['CH-PROP', 2],
 		]);
 		expect(await service.kind()).toBe('proprietorship');
@@ -238,7 +238,7 @@ describe('accounts templates library (T2)', () => {
 		expect(opens).toMatchObject({ locked: 10, booksSetUp: false });
 		expect(opens.reports.map((r) => r.code)).toEqual(['RP-SCH3-BS', 'RP-SCH3-PL']);
 		expect(opens.charts.map((c) => [c.code, c.version])).toEqual([
-			['CH-COMMON', 3],
+			['CH-COMMON', 4],
 			['CH-PVT', 3],
 		]);
 		expect(opens.taxRules).toEqual([

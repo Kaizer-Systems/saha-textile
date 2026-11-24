@@ -211,6 +211,9 @@ export const PermissionCode = z.enum([
 	'tax.index',
 	'theme_option.edit',
 	'theme_option.index',
+	'transfer.create',
+	'transfer.index',
+	'transfer.manage',
 	'withdraw_request.action',
 ]);
 export type PermissionCode = z.infer<typeof PermissionCode>;
@@ -420,6 +423,10 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 		'Close a month for staff or lock it, part by part, with a reason, and reopen it, on Accounts › Periods and locks (T1, T2); POST /admin/accounts/periods. Held by the Administrator role.',
 	'cash.manage':
 		'See a cash sheet’s amounts and expected figures, close a sheet for another person, settle a difference (O8, the ten ways), refill a fixed float (O13) and approve or reject expense claims (O12); POST /admin/cash/sheets/:id/settle, /admin/cash/boxes/:id/refill, /admin/cash/claims/:id/decide. A box reviewed by the owner also needs the Administrator role.',
+	'transfer.create':
+		'Request stock from another location (accounts brief N1, N2) on Stock › Stock by location; POST /admin/transfers. For the location the person works at.',
+	'transfer.manage':
+		'Approve or reject a request at the sending location, pack and dispatch it (N5), receive it at the receiving location (N6), or cancel it before dispatch; POST /admin/transfers/:id/*. Within the locations the person works at.',
 	'expense_claim.create':
 		'New expense claim on Cash › Expense claims: a staff member’s own-pocket spend with its bill (accounts brief O12); POST /admin/cash/claims. Deciding it is cash.manage.',
 	'accounts_template.edit':
@@ -496,6 +503,7 @@ export const PermissionResource = z.enum([
 	'tag',
 	'tax',
 	'theme_option',
+	'transfer',
 	'withdraw_request',
 ]);
 export type PermissionResource = z.infer<typeof PermissionResource>;

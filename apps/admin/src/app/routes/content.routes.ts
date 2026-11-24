@@ -114,6 +114,11 @@ export const content: Routes = [
 		loadChildren: () => import('@features/cash/cash.routes'),
 	},
 	{
+		// Stock transfers between locations and stock by location (accounts brief N).
+		path: 'transfers',
+		loadChildren: () => import('@features/transfers/transfers.routes'),
+	},
+	{
 		path: 'order-status',
 		loadChildren: () => import('@features/order-status/order-status.routes'),
 	},

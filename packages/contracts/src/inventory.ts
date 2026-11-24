@@ -136,7 +136,7 @@ export const InventoryCostLayer = z
 		purchaseInvoiceId: Id.nullable().default(null),
 		/** What created the layer; a purchase return draws from its own entry's layer. */
 		sourceType: z
-			.enum(['purchase_invoice', 'opening_stock', 'return_restock', 'manual_adjustment'])
+			.enum(['purchase_invoice', 'opening_stock', 'return_restock', 'manual_adjustment', 'transfer'])
 			.default('purchase_invoice'),
 		sourceLineId: Id.nullable().default(null),
 		/** The document number shown in Cost layers (PE/…, OS/…). */

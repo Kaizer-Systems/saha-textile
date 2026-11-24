@@ -1,0 +1,102 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'tr_stock_by_location'"
+>
+	@if (view.data(); as v) {
+	<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+		<div class="d-flex align-items-center flex-wrap gap-2">
+			@for (item of chips; track item) {
+			<button
+				type="button"
+				class="align-items-center btn btn-sm d-flex"
+				[class.btn-theme]="chip() === item"
+				[class.btn-outline]="chip() !== item"
+				[attr.aria-pressed]="chip() === item"
+				(click)="setChip(item)"
+			>
+				{{ 'tr_stock_chip_' + item | transloco }}
+			</button>
+			}
+			<input
+				class="form-control form-control-sm w-auto"
+				id="tr_stock_search"
+				type="search"
+				maxlength="80"
+				[placeholder]="'tr_stock_search' | transloco"
+				[attr.aria-label]="'tr_stock_search' | transloco"
+				[ngModel]="search()"
+				(ngModelChange)="find($event)"
+			/>
+		</div>
+		<button
+			*hasPermission="'transfer.create'"
+			type="button"
+			class="btn btn-theme"
+			id="tr_request_any"
+			(click)="request(null)"
+		>
+			<i class="ri-truck-line"></i>
+			{{ 'tr_request_stock' | transloco }}
+		</button>
+	</div>
+	<p class="small text-muted mb-3">{{ 'tr_stock_sub' | transloco }}</p>
+	<div class="table-responsive">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'counter_item' | transloco }}</th>
+					@for (place of v.locations; track place.id) {
+					<th class="text-end">{{ place.name }}@if (place.id === v.here) { {{ 'tr_you' | transloco }} }</th>
+					}
+					<th class="text-end">{{ 'tr_in_transit' | transloco }}</th>
+					<th class="text-end">{{ 'tr_all' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (item of v.items; track item.variantId) {
+				<tr>
+					<td>
+						{{ item.title }}
+						<small class="d-block text-muted">{{ item.sku }}</small>
+					</td>
+					@for (place of v.locations; track place.id) {
+					<td class="text-end">{{ text(item.byLocation[place.id]?.onHand ?? 0, item.soldBy) }}</td>
+					}
+					<td class="text-end">{{ text(item.inTransit, item.soldBy) }}</td>
+					<td class="text-end">{{ text(item.total, item.soldBy) }}</td>
+					<td class="text-end">
+						<a
+							*hasPermission="'transfer.create'"
+							href="javascript:void(0)"
+							[title]="'tr_request_stock' | transloco"
+							(click)="request(item)"
+						>
+							<i class="ri-truck-line"></i>
+						</a>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						class="text-muted"
+						[attr.colspan]="v.locations.length + 4"
+					>
+						{{ 'tr_stock_none' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if (v.total > pageSize) {
+	<nav class="custom-pagination">
+		<app-pagination
+			[total]="v.total"
+			[currentPage]="page()"
+			[pageSize]="pageSize"
+			(setPage)="page.set($event)"
+		/>
+	</nav>
+	} }
+</app-page-wrapper>

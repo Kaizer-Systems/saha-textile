@@ -86,5 +86,6 @@ export * from './refund-vouchers';
 export * from './self-invoices';
 export * from './cash';
 export * from './counter';
+export * from './transfers';
 export * from './accounts-lists';
 export * from './accounts-templates';

@@ -9,6 +9,7 @@ import type {
 import { type ChartGroupSeed, type ChartLedgerSeed, defaultChart } from '../ledger/chart';
 import { KIND_PACKS, LIMITS, LIMITS_V2, STARTER_REPORTS, TDS_SECTIONS } from './starter-packs';
 import { CASH_LEDGERS, PETTY_GROUP } from '../cash/cash-rules';
+import { TRANSFER_LEDGERS } from '../locations/transfer-rules';
 
 /** The five kinds in Settings › Company, with each one's own chart template code. */
 export const KIND_CHART_CODES: Record<BusinessKind, string> = {
@@ -159,6 +160,8 @@ export function starterTemplates(now: string): AccountsTemplate[] {
 		"Adds the kind's own groups and ledgers from the accounts templates plan's matrix; to be confirmed by the CA.";
 	const cash =
 		'Adds the petty expense heads and the ledgers cash differences and staff claims post to (accounts brief O); to be confirmed by the CA.';
+	const transfers =
+		'Adds where a piece lost between locations goes: transit loss, or a claim on the carrier (accounts brief N6); to be confirmed by the CA.';
 	const withLedgers = (body: ChartTemplateContent, more: ChartTemplateContent['ledgers']): ChartTemplateContent => ({
 		...body,
 		ledgers: [...body.ledgers, ...more],
@@ -194,6 +197,15 @@ export function starterTemplates(now: string): AccountsTemplate[] {
 					groups: [...common.groups, PETTY_GROUP],
 				},
 				cash,
+				'2026-11-25',
+			),
+			version(
+				4,
+				{
+					...withLedgers(common, [...RCM_EXPENSE_LEDGERS, ...CASH_LEDGERS, ...TRANSFER_LEDGERS]),
+					groups: [...common.groups, PETTY_GROUP],
+				},
+				transfers,
 				'2026-11-25',
 			),
 		]),

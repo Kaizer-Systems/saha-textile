@@ -1,0 +1,162 @@
+@if (view(); as v) {
+<div class="modal-header">
+	<h5
+		class="mb-0"
+		id="tr_request_title"
+	>
+		{{ 'tr_request_title' | transloco }}
+	</h5>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	></button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	<div class="row g-3">
+		<div class="col-md-6">
+			<label
+				class="form-label-title"
+				for="tr_item"
+			>
+				{{ 'counter_item' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="tr_item"
+				[ngModel]="variantId()"
+				(ngModelChange)="variantId.set($event)"
+			>
+				@for (i of v.items; track i.variantId) {
+				<option [value]="i.variantId">{{ i.title }} ({{ i.sku }})</option>
+				}
+			</select>
+		</div>
+		<div class="col-md-6">
+			<label
+				class="form-label-title"
+				for="tr_to"
+			>
+				{{ 'tr_to' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="tr_to"
+				[ngModel]="to()"
+				(ngModelChange)="to.set($event)"
+			>
+				<option value="">—</option>
+				@for (place of v.locations; track place.id) {
+				<option [value]="place.id">{{ place.name }}</option>
+				}
+			</select>
+		</div>
+		<div class="col-12">
+			<span class="form-label-title d-block">{{ 'tr_from' | transloco }}</span>
+			@for (s of sources(); track s.id) {
+			<div class="form-check">
+				<input
+					class="form-check-input"
+					type="radio"
+					name="tr_from"
+					[id]="'tr_from_' + s.id"
+					[checked]="from() === s.id"
+					(change)="from.set(s.id)"
+				/>
+				<label
+					class="form-check-label"
+					[for]="'tr_from_' + s.id"
+				>
+					{{ 'tr_from_free' | transloco: { place: s.name, free: text(s.free) } }}
+				</label>
+			</div>
+			}
+		</div>
+		<div class="col-md-4">
+			<label
+				class="form-label-title"
+				for="tr_quantity"
+			>
+				{{ (item()?.soldBy === 'metre' ? 'tr_how_many_tenths' : 'tr_how_many') | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="tr_quantity"
+				type="number"
+				min="1"
+				[ngModel]="quantity()"
+				(ngModelChange)="quantity.set(+$event)"
+			/>
+		</div>
+		<div class="col-md-4">
+			<label
+				class="form-label-title"
+				for="tr_needed_by"
+			>
+				{{ 'tr_needed_by' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="tr_needed_by"
+				type="date"
+				[ngModel]="neededBy()"
+				(ngModelChange)="neededBy.set($event)"
+			/>
+		</div>
+		<div class="col-12">
+			<label
+				class="form-label-title"
+				for="tr_note"
+			>
+				{{ 'tr_note_to_sender' | transloco }}
+			</label>
+			<textarea
+				class="form-control"
+				id="tr_note"
+				rows="2"
+				maxlength="500"
+				[ngModel]="note()"
+				(ngModelChange)="note.set($event)"
+			></textarea>
+		</div>
+	</div>
+	<p class="text-muted small mt-3 mb-1">{{ 'accounts_what_changes' | transloco }}</p>
+	<ul class="list-unstyled small mb-0">
+		<li class="d-flex gap-2 py-2">
+			<i class="ri-notification-3-line"></i>
+			<div>
+				<b>{{ 'tr_effect_sender_title' | transloco }}</b>
+				<span class="text-muted">· stockTransfers</span>
+				<span class="d-block">{{ 'tr_effect_request' | transloco }}</span>
+			</div>
+		</li>
+	</ul>
+	@if (problem(); as p) {
+	<div
+		class="alert alert-danger mt-3 mb-0"
+		role="alert"
+	>
+		{{ p.key | transloco: p.params }}
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<button
+		type="button"
+		class="btn btn-outline"
+		(click)="modal.dismiss()"
+	>
+		{{ 'cancel' | transloco }}
+	</button>
+	<button
+		type="button"
+		class="btn btn-theme"
+		id="tr_send"
+		[disabled]="!ready()"
+		(click)="send()"
+	>
+		{{ 'tr_send_request' | transloco }}
+	</button>
+</div>
+}

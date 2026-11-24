@@ -41,6 +41,7 @@ import {
 	type AdminUserRoleAssignmentRepository,
 	type AuditLogRepository,
 	type CashRepository,
+	type TransferRepository,
 	type CompanyRepository,
 	type DocumentLockRepository,
 	fiscalYearOf,
@@ -74,6 +75,7 @@ import {
 	ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
 	CASH_REPOSITORY,
+	TRANSFER_REPOSITORY,
 	COMPANY_REPOSITORY,
 	DOCUMENT_LOCK_REPOSITORY,
 	GENERAL_LEDGER_REPOSITORY,
@@ -145,6 +147,10 @@ export class LedgerService {
 		private readonly templates: AccountsTemplatesService,
 		/** Cash sheets a month lock waits for (T2, accounts brief O); last so older callers keep working. */
 		@Optional() @Inject(CASH_REPOSITORY) private readonly cash: Pick<CashRepository, 'unfinishedIn'> | null = null,
+		/** Transfers still on the way a month lock waits for (T2, accounts brief N). */
+		@Optional()
+		@Inject(TRANSFER_REPOSITORY)
+		private readonly transfers: Pick<TransferRepository, 'inTransitFrom'> | null = null,
 	) {}
 
 	/** The name others see on a lock: display name, else e-mail, else username. */
@@ -643,18 +649,19 @@ export class LedgerService {
 	}
 
 	/**
-	 * T2's checks before locking a month (as drawn). Transfers, depreciation and payroll answer `not_in_use` until
-	 * those features exist (C3, A1, P1); the rest are checked now: cash sheets of the month still open or waiting for a
-	 * manager, drafts dated in the month, reversals due in it, stock counts still open, and stock changes waiting for
-	 * approval.
+	 * T2's checks before locking a month (as drawn). Depreciation and payroll answer `not_in_use` until those features
+	 * exist (A1, P1); the rest are checked now: cash sheets of the month still open or waiting for a manager, transfers
+	 * that left in the month and are still on the way, drafts dated in the month, reversals due in it, stock counts
+	 * still open, and stock changes waiting for approval.
 	 */
 	async periodChecks(month: string): Promise<PeriodCheck[]> {
-		const [drafts, due, counts, approvals, sheets] = await Promise.all([
+		const [drafts, due, counts, approvals, sheets, moving] = await Promise.all([
 			this.books.listDrafts(),
 			this.books.dueReversals(`${month}-31`),
 			this.counts.list({ filter: 'all', page: 1, pageSize: 1 }),
 			this.approvals.pendingCount(),
 			this.cash?.unfinishedIn(month) ?? null,
+			this.transfers?.inTransitFrom(month) ?? null,
 		]);
 		const attention = (key: PeriodCheck['key'], count: number): PeriodCheck => ({
 			key,
@@ -663,7 +670,7 @@ export class LedgerService {
 		});
 		return [
 			sheets ? attention('cash_sheets', sheets.length) : { key: 'cash_sheets', state: 'not_in_use', count: 0 },
-			{ key: 'transfers', state: 'not_in_use', count: 0 },
+			moving ? attention('transfers', moving.length) : { key: 'transfers', state: 'not_in_use', count: 0 },
 			{ key: 'depreciation', state: 'not_in_use', count: 0 },
 			{ key: 'payroll', state: 'not_in_use', count: 0 },
 			attention('drafts', drafts.filter((d) => d.date.startsWith(month)).length),

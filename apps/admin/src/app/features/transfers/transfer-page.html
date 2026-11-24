@@ -1,0 +1,471 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'tr_transfer'"
+>
+	@if (transfer.data(); as t) {
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">
+				{{ t.number }}
+				<div
+					class="d-inline-block ms-2"
+					[class]="pill[t.status]"
+				>
+					<span>{{ 'tr_status_' + t.status | transloco }}</span>
+				</div>
+			</h5>
+			<small class="text-muted">
+				{{ 'tr_page_sub' | transloco: { from: t.fromName, to: t.toName, date: date(t.createdAt) } }}
+			</small>
+		</div>
+		<div class="d-flex align-items-center flex-wrap gap-2">
+			@if (t.challanNumber || t.branchInvoice) {
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="tr_print"
+				(click)="print(t)"
+			>
+				<i class="ri-printer-line"></i>
+				{{ (t.branchInvoice ? 'tr_print_invoice' : 'tr_print_challan') | transloco }}
+			</button>
+			} @if (t.may.decide) {
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="tr_reject"
+				(click)="asking.set('reject')"
+			>
+				{{ 'tr_reject' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="tr_approve"
+				[disabled]="busy()"
+				(click)="approve(t)"
+			>
+				{{ 'tr_approve' | transloco }}
+			</button>
+			} @if (t.may.cancel) {
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="tr_cancel"
+				(click)="asking.set('cancel')"
+			>
+				{{ 'tr_cancel' | transloco }}
+			</button>
+			} @if (t.may.pack) {
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="tr_save"
+				[disabled]="busy()"
+				(click)="pack(t, false)"
+			>
+				{{ 'save' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="tr_dispatch"
+				[disabled]="!canDispatch()"
+				(click)="pack(t, true)"
+			>
+				<i class="ri-truck-line"></i>
+				{{ 'tr_dispatch' | transloco }}
+			</button>
+			} @if (t.may.receive) {
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="tr_receive"
+				[disabled]="busy()"
+				(click)="receive(t)"
+			>
+				<i class="ri-inbox-archive-line"></i>
+				{{ 'tr_receive' | transloco }}
+			</button>
+			}
+		</div>
+	</div>
+	@if (asking(); as kind) {
+	<div class="card">
+		<div class="card-body theme-form theme-form-2">
+			<label
+				class="form-label-title"
+				for="tr_reason"
+			>
+				{{ (kind === 'reject' ? 'tr_reject_reason' : 'tr_cancel_reason') | transloco }}
+			</label>
+			<div class="d-flex flex-wrap gap-2">
+				<input
+					class="form-control w-auto flex-grow-1"
+					id="tr_reason"
+					maxlength="300"
+					[ngModel]="reason()"
+					(ngModelChange)="reason.set($event)"
+				/>
+				<button
+					type="button"
+					class="btn btn-outline"
+					(click)="asking.set(null)"
+				>
+					{{ 'back' | transloco }}
+				</button>
+				<button
+					type="button"
+					class="btn btn-theme"
+					id="tr_confirm_reason"
+					[disabled]="reason().trim().length < 3 || busy()"
+					(click)="kind === 'reject' ? reject(t) : cancel(t)"
+				>
+					{{ (kind === 'reject' ? 'tr_reject' : 'tr_cancel') | transloco }}
+				</button>
+			</div>
+		</div>
+	</div>
+	} @if (problem(); as p) {
+	<div
+		class="alert alert-danger"
+		role="alert"
+	>
+		{{ p.key | transloco: p.params }}
+	</div>
+	}
+	<div class="row">
+		<div class="col-xxl-8">
+			<div class="card">
+				<div class="card-body">
+					<ul class="list-unstyled d-flex mb-0 flex-wrap gap-4">
+						@for (s of steps; track s) {
+						<li>
+							<b [class.text-muted]="!stepAt(t, s)">{{ 'tr_step_' + s | transloco }}</b>
+							<small class="d-block text-muted">{{ stepAt(t, s) ?? '—' }}</small>
+						</li>
+						} @if (t.status === 'rejected' || t.status === 'cancelled') {
+						<li>
+							<b class="text-danger">{{ 'tr_status_' + t.status | transloco }}</b>
+							<small class="d-block text-muted">{{ t.rejectReason }}</small>
+						</li>
+						}
+					</ul>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>
+								{{ (t.may.pack ? 'tr_pack_title' : t.may.receive ? 'tr_receive_title' :
+								'tr_pieces_title') | transloco }}
+							</h5>
+						</div>
+					</div>
+					@if (t.may.pack) {
+					<div class="theme-form theme-form-2 mb-3">
+						<input
+							class="form-control"
+							id="tr_scan"
+							autocomplete="off"
+							maxlength="80"
+							[placeholder]="'tr_scan' | transloco"
+							[attr.aria-label]="'tr_scan' | transloco"
+							[ngModel]="scanCode()"
+							(ngModelChange)="scanCode.set($event)"
+							(keydown.enter)="$event.preventDefault(); scan(t)"
+						/>
+					</div>
+					}
+					<div class="table-responsive">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'counter_item' | transloco }}</th>
+									<th>{{ 'tr_needed' | transloco }}</th>
+									@if (t.may.pack) {
+									<th>{{ 'tr_packed' | transloco }}</th>
+									} @if (!t.may.pack && t.may.receive) {
+									<th>{{ 'tr_arrived' | transloco }}</th>
+									<th>{{ 'tr_damaged' | transloco }}</th>
+									<th>{{ 'tr_line_note' | transloco }}</th>
+									} @if (!t.may.pack && !t.may.receive) {
+									<th>{{ 'tr_received' | transloco }}</th>
+									<th class="text-end">{{ 'tr_cost' | transloco }}</th>
+									}
+								</tr>
+							</thead>
+							<tbody>
+								@for (line of t.lines; track line.lineId) {
+								<tr>
+									<td>
+										{{ line.title }}
+										<small class="d-block text-muted">{{ line.sku }}</small>
+									</td>
+									<td>{{ text(line.quantity, line.soldBy) }}</td>
+									@if (t.may.pack) {
+									<td>
+										<input
+											class="form-control w-auto"
+											type="number"
+											min="0"
+											[max]="line.quantity"
+											[attr.aria-label]="'tr_packed' | transloco"
+											[ngModel]="packedOf(line)"
+											(ngModelChange)="setPacked(line.lineId, $event, line.quantity)"
+										/>
+									</td>
+									} @if (!t.may.pack && t.may.receive) {
+									<td>
+										<input
+											class="form-control w-auto"
+											type="number"
+											min="0"
+											[attr.aria-label]="'tr_arrived' | transloco"
+											[ngModel]="countOf(line).arrived"
+											(ngModelChange)="setCount(line, 'arrived', $event)"
+										/>
+									</td>
+									<td>
+										<input
+											class="form-control w-auto"
+											type="number"
+											min="0"
+											[attr.aria-label]="'tr_damaged' | transloco"
+											[ngModel]="countOf(line).damaged"
+											(ngModelChange)="setCount(line, 'damaged', $event)"
+										/>
+									</td>
+									<td>
+										<input
+											class="form-control"
+											maxlength="200"
+											[attr.aria-label]="'tr_line_note' | transloco"
+											[ngModel]="countOf(line).note"
+											(ngModelChange)="setNote(line, $event)"
+										/>
+									</td>
+									} @if (!t.may.pack && !t.may.receive) {
+									<td>{{ text(line.arrived, line.soldBy) }}</td>
+									<td class="text-end">{{ line.valueINR === null ? '—' : rupees(line.valueINR) }}</td>
+									}
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					@if (t.may.receive && (shortPieces() || damagedPieces())) {
+					<div class="alert alert-warning mt-3 mb-2">
+						{{ 'tr_receive_warning' | transloco: { short: shortPieces(), damaged: damagedPieces() } }}
+					</div>
+					@if (shortPieces()) {
+					<div class="theme-form theme-form-2">
+						<label
+							class="form-label-title"
+							for="tr_short"
+						>
+							{{ 'tr_short_piece' | transloco }}
+						</label>
+						<select
+							class="form-select w-auto"
+							id="tr_short"
+							[ngModel]="short()"
+							(ngModelChange)="short.set($event)"
+						>
+							<option value="carrier_claim">{{ 'tr_short_carrier_claim' | transloco }}</option>
+							<option value="transit_loss">{{ 'tr_short_transit_loss' | transloco }}</option>
+						</select>
+						<p class="help-text mb-0">{{ 'tr_damaged_held' | transloco }}</p>
+					</div>
+					} }
+				</div>
+			</div>
+			@if (t.may.pack) {
+			<div class="card">
+				<div class="card-body theme-form theme-form-2">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ 'tr_before_it_leaves' | transloco }}</h5>
+						</div>
+					</div>
+					<div class="row g-3">
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="tr_seal"
+							>
+								{{ 'tr_seal' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="tr_seal"
+								maxlength="40"
+								[ngModel]="sealOf(t)"
+								(ngModelChange)="sealEdit.set($event)"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="tr_boxes"
+							>
+								{{ 'tr_boxes' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="tr_boxes"
+								type="number"
+								min="0"
+								[ngModel]="boxesOf(t)"
+								(ngModelChange)="boxesEdit.set($event === null || $event === '' ? null : +$event)"
+							/>
+						</div>
+						<div class="col-md-4">
+							<span class="form-label-title d-block">{{ 'tr_photo' | transloco }}</span>
+							<button
+								type="button"
+								class="btn btn-outline btn-sm"
+								id="tr_add_photo"
+								(click)="addPhoto()"
+							>
+								<i class="ri-image-add-line"></i>
+								{{ 'tr_add_photo' | transloco }}
+							</button>
+							<small class="d-block text-muted">
+								{{ 'tr_photos_count' | transloco: { count: t.photoAssetIds.length + photos().length } }}
+							</small>
+						</div>
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="tr_vehicle"
+							>
+								{{ 'tr_vehicle' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="tr_vehicle"
+								maxlength="80"
+								[ngModel]="vehicleOf(t)"
+								(ngModelChange)="vehicleEdit.set($event)"
+							/>
+						</div>
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="tr_eway"
+							>
+								{{ 'tr_eway_bill' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="tr_eway"
+								inputmode="numeric"
+								maxlength="14"
+								[ngModel]="ewayOf(t)"
+								(ngModelChange)="ewayEdit.set($event)"
+							/>
+						</div>
+					</div>
+				</div>
+			</div>
+			}
+		</div>
+		<div class="col-xxl-4">
+			@if (t.may.pack) {
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ 'tr_why_dispatch_off' | transloco }}</h5>
+						</div>
+					</div>
+					<ul class="list-unstyled small mb-0">
+						@for (c of checks(); track c.key) {
+						<li class="d-flex gap-2 py-1">
+							<i
+								[class]="c.ok ? 'ri-checkbox-circle-line text-success' : 'ri-close-circle-line text-danger'"
+							></i>
+							<span>{{ c.key | transloco: c.params }}</span>
+						</li>
+						}
+					</ul>
+				</div>
+			</div>
+			}
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ 'tr_documents' | transloco }}</h5>
+						</div>
+					</div>
+					<ul class="list-unstyled small mb-0">
+						<li class="py-1">
+							<b>{{ (t.crossGstin ? 'tr_branch_invoice' : 'tr_challan') | transloco }}</b>
+							<span class="d-block">
+								{{ t.branchInvoice?.number ?? t.challanNumber ?? ('tr_made_on_dispatch' | transloco) }}
+							</span>
+						</li>
+						<li class="py-1">
+							<b>{{ 'tr_eway_bill' | transloco }}</b>
+							<span class="d-block">
+								{{ t.ewayBillNumber ?? ('tr_eway_from' | transloco: { from: rupees(t.ewayBillFromINR) })
+								}}
+							</span>
+						</li>
+						<li class="py-1">
+							<b>{{ 'tr_value_at_cost' | transloco }}</b>
+							<span class="d-block">{{ rupees(t.valueINR || t.estimatedValueINR) }}</span>
+						</li>
+						@if (t.sealNumber) {
+						<li class="py-1">
+							<b>{{ 'tr_seal' | transloco }}</b>
+							<span class="d-block">{{ t.sealNumber }}</span>
+						</li>
+						} @if (t.note) {
+						<li class="py-1">
+							<b>{{ 'tr_note_to_sender' | transloco }}</b>
+							<span class="d-block">{{ t.note }}</span>
+						</li>
+						}
+					</ul>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ 'tr_what_moved' | transloco }}</h5>
+						</div>
+					</div>
+					<ul class="list-unstyled small mb-0">
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i class="ri-stack-line"></i>
+							<div>
+								<b>{{ 'tr_effect_stock_title' | transloco }}</b>
+								<span class="text-muted">· inventoryLedger</span>
+								<span class="d-block">
+									{{ 'tr_effect_stock_' + t.status | transloco: { from: t.fromName, to: t.toName } }}
+								</span>
+							</div>
+						</li>
+						<li class="d-flex gap-2 py-2">
+							<i class="ri-book-2-line"></i>
+							<div>
+								<b>{{ 'counter_effect_books_title' | transloco }}</b>
+								<span class="text-muted">· journalLines</span>
+								<span class="d-block">
+									{{ (t.crossGstin ? 'tr_effect_books_branch' : 'tr_effect_books_same') | transloco: {
+									value: rupees(t.valueINR || t.estimatedValueINR) } }}
+								</span>
+							</div>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+	}
+</app-page-wrapper>

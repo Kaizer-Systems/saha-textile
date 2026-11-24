@@ -76,4 +76,5 @@ export * from './ledger.model';
 export * from './returns.model';
 export * from './self-invoices.model';
 export * from './cash.model';
+export * from './transfer.model';
 export * from './location-stock.model';

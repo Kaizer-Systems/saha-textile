@@ -66,5 +66,6 @@ export * from './tax-invoice.repository';
 export * from './returns.repository';
 export * from './self-invoices.repository';
 export * from './cash.repository';
+export * from './transfer.repository';
 export * from './accounts-lists.port';
 export * from './accounts-templates.repository';

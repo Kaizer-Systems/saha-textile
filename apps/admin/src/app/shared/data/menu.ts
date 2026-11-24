@@ -449,7 +449,7 @@ export const menu: IMenu[] = [
 		badgeType: 'badge badge-theme ml-3',
 		badgeValue: 0,
 		level: 1,
-		acl_permission: ['stock.index', 'stock.approve', 'stock_count.count', 'stock_report.index'],
+		acl_permission: ['stock.index', 'stock.approve', 'stock_count.count', 'stock_report.index', 'transfer.index'],
 		children: [
 			{
 				parent_id: 24,
@@ -508,6 +508,22 @@ export const menu: IMenu[] = [
 				type: 'link',
 				level: 2,
 				permission: ['stock_report.index'],
+			},
+			{
+				parent_id: 24,
+				title: 'tr_stock_by_location',
+				path: '/transfers/stock',
+				type: 'link',
+				level: 2,
+				permission: ['transfer.index'],
+			},
+			{
+				parent_id: 24,
+				title: 'tr_transfers',
+				path: '/transfers',
+				type: 'link',
+				level: 2,
+				permission: ['transfer.index'],
 			},
 		],
 	},

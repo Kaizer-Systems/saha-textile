@@ -42,6 +42,8 @@ import {
 	type AuditLogRepository,
 	type CashRepository,
 	type TransferRepository,
+	type FixedAssetRepository,
+	type PayrollRunRepository,
 	type CompanyRepository,
 	type DocumentLockRepository,
 	fiscalYearOf,
@@ -76,6 +78,8 @@ import {
 	AUDIT_LOG_REPOSITORY,
 	CASH_REPOSITORY,
 	TRANSFER_REPOSITORY,
+	FIXED_ASSET_REPOSITORY,
+	PAYROLL_RUN_REPOSITORY,
 	COMPANY_REPOSITORY,
 	DOCUMENT_LOCK_REPOSITORY,
 	GENERAL_LEDGER_REPOSITORY,
@@ -151,6 +155,13 @@ export class LedgerService {
 		@Optional()
 		@Inject(TRANSFER_REPOSITORY)
 		private readonly transfers: Pick<TransferRepository, 'inTransitFrom'> | null = null,
+		/** Assets still to depreciate and the month's payroll, which a month lock waits for (T2, A1, P1). */
+		@Optional()
+		@Inject(FIXED_ASSET_REPOSITORY)
+		private readonly assets: Pick<FixedAssetRepository, 'list'> | null = null,
+		@Optional()
+		@Inject(PAYROLL_RUN_REPOSITORY)
+		private readonly payroll: Pick<PayrollRunRepository, 'list'> | null = null,
 	) {}
 
 	/** The name others see on a lock: display name, else e-mail, else username. */
@@ -664,10 +675,10 @@ export class LedgerService {
 	}
 
 	/**
-	 * T2's checks before locking a month (as drawn). Depreciation and payroll answer `not_in_use` until those features
-	 * exist (A1, P1); the rest are checked now: cash sheets of the month still open or waiting for a manager, transfers
-	 * that left in the month and are still on the way, drafts dated in the month, reversals due in it, stock counts
-	 * still open, and stock changes waiting for approval.
+	 * T2's checks before locking a month (as drawn): cash sheets of the month still open or waiting for a manager,
+	 * transfers that left in the month and are still on the way, assets in use whose depreciation for the month isn't
+	 * posted, the month's payroll not yet posted (once payroll is in use), drafts dated in the month, reversals due in
+	 * it, stock counts still open, and stock changes waiting for approval.
 	 */
 	async periodChecks(month: string): Promise<PeriodCheck[]> {
 		const [drafts, due, counts, approvals, sheets, moving] = await Promise.all([
@@ -678,6 +689,20 @@ export class LedgerService {
 			this.cash?.unfinishedIn(month) ?? null,
 			this.transfers?.inTransitFrom(month) ?? null,
 		]);
+		const [assets, runs] = await Promise.all([this.assets?.list() ?? null, this.payroll?.list() ?? null]);
+		const end = `${month}-31`;
+		const undepreciated = assets?.filter(
+			(a) =>
+				a.putToUseOn <= end &&
+				(!a.disposedOn || a.disposedOn >= `${month}-01`) &&
+				(a.depreciatedThrough ?? '') < month &&
+				a.accumulatedPaise < Math.round((a.costINR - a.residualINR) * 100),
+		);
+		// Payroll counts from its first month: a month with no run, or one not yet posted, needs doing.
+		const run = runs?.find((r) => r.month === month);
+		const firstRun = runs?.map((r) => r.month).sort()[0];
+		const runDone = run?.status === 'posted' || run?.status === 'paid';
+		const payrollOpen = firstRun && month >= firstRun && !runDone ? 1 : 0;
 		const attention = (key: PeriodCheck['key'], count: number): PeriodCheck => ({
 			key,
 			state: count ? 'attention' : 'ok',
@@ -686,8 +711,10 @@ export class LedgerService {
 		return [
 			sheets ? attention('cash_sheets', sheets.length) : { key: 'cash_sheets', state: 'not_in_use', count: 0 },
 			moving ? attention('transfers', moving.length) : { key: 'transfers', state: 'not_in_use', count: 0 },
-			{ key: 'depreciation', state: 'not_in_use', count: 0 },
-			{ key: 'payroll', state: 'not_in_use', count: 0 },
+			undepreciated
+				? attention('depreciation', undepreciated.length)
+				: { key: 'depreciation', state: 'not_in_use', count: 0 },
+			runs ? attention('payroll', payrollOpen) : { key: 'payroll', state: 'not_in_use', count: 0 },
 			attention('drafts', drafts.filter((d) => d.date.startsWith(month)).length),
 			attention('reversals', due.filter((v) => v.reverseOn?.startsWith(month)).length),
 			attention('stock_counts', (counts.counts['counting'] ?? 0) + (counts.counts['review'] ?? 0)),

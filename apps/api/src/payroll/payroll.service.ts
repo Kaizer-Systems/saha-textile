@@ -13,10 +13,13 @@ import type {
 	PayrollStep,
 } from '@saha-textile/contracts';
 import {
-	PAYROLL_RULES_2026,
+	gratuityProvision,
+	labourWelfare,
 	monthPay,
 	monthlyTds,
 	newRegimeTax,
+	payslipHeads,
+	pfEstablishmentCharges,
 	resolveRole,
 	type AttendanceRepository,
 	type AuditLogRepository,
@@ -35,6 +38,7 @@ import {
 } from '../infra/tokens';
 import { accountsRefusal } from '../ledger/accounts-refusal';
 import { LedgerService } from '../ledger/ledger.service';
+import { PayrollRulesService } from './payroll-rules.service';
 
 const refuse = (code: string) => new BadRequestException(accountsRefusal(code));
 const paise = (inr: number) => Math.round(inr * 100);
@@ -54,7 +58,21 @@ export const PAYROLL_LEDGERS = {
 	pfPayable: { name: 'PF payable', group: 'current_liabilities' },
 	esiPayable: { name: 'ESI payable', group: 'current_liabilities' },
 	ptPayable: { name: 'Professional tax payable', group: 'current_liabilities' },
+	employerLwf: { name: 'Employer labour welfare fund', group: 'indirect_expenses' },
+	lwfPayable: { name: 'Labour welfare fund payable', group: 'current_liabilities' },
+	gratuity: { name: 'Gratuity', group: 'indirect_expenses' },
+	gratuityProvision: { name: 'Provision for gratuity', group: 'provisions' },
 } as const;
+
+/** A total split across weights, whole rupees each, the remainder on the last share that has weight. */
+export function allocate(totalPaise: number, weights: readonly number[]): number[] {
+	const all = weights.reduce((s, w) => s + w, 0);
+	if (!all) return weights.map(() => 0);
+	const out = weights.map((w) => Math.floor((totalPaise * w) / all / 100) * 100);
+	const last = weights.findLastIndex((w) => w > 0);
+	out[last] = (out[last] as number) + totalPaise - out.reduce((s, v) => s + v, 0);
+	return out;
+}
 
 /**
  * Payroll (accounts brief S). Employees with their statutory details (Aadhaar and bank numbers sealed, shown masked
@@ -70,6 +88,7 @@ export class PayrollService {
 		@Inject(LedgerService) private readonly ledger: Pick<LedgerService, 'chart' | 'addLedger' | 'post'>,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: Pick<AuditLogRepository, 'append'>,
+		@Inject(PayrollRulesService) private readonly rules: Pick<PayrollRulesService, 'forMonth'>,
 	) {}
 
 	private mayseeWhole(principal: AuthenticatedPrincipal | undefined) {
@@ -221,7 +240,9 @@ export class PayrollService {
 		const attendance = await this.attendance.get(month);
 		if (!attendance?.lockedAt) throw refuse('payroll_attendance_not_locked');
 		const people = new Map((await this.employees.list()).map((e) => [e.id, e]));
-		const rules = PAYROLL_RULES_2026;
+		const { pay: rules, schemes } = await this.rules.forMonth(month);
+		const headcount = attendance.rows.filter((a) => people.has(a.employeeId)).length;
+		const gratuityApplies = headcount >= schemes.gratuityHeadcount;
 		const rows: PayrollRow[] = attendance.rows.flatMap((a) => {
 			const e = people.get(a.employeeId);
 			if (!e) return [];
@@ -245,14 +266,35 @@ export class PayrollService {
 				tdsPaise: tds,
 				rules,
 			});
-			return [{ employeeId: e.id, name: e.name, locationId: e.locationId, paidDays: a.paidDays, ...pay }];
+			const lwf = labourWelfare(month, pay.grossPaise, schemes);
+			return [
+				{
+					employeeId: e.id,
+					name: e.name,
+					locationId: e.locationId,
+					paidDays: a.paidDays,
+					...pay,
+					netPaise: pay.netPaise - lwf.employeePaise,
+					lwfEmployeePaise: lwf.employeePaise,
+					lwfEmployerPaise: lwf.employerPaise,
+					gratuityPaise: gratuityProvision(structure, gratuityApplies, schemes),
+					headsPaise: payslipHeads(structure, attendance.daysInMonth, a.paidDays, pay.grossPaise),
+				},
+			];
 		});
+		const charges = pfEstablishmentCharges(
+			rows.filter((r) => r.pfEmployeePaise > 0).map((r) => Math.min(r.pfWagesPaise, rules.pfWageCapPaise)),
+			schemes,
+		);
 		const run: PayrollRun = {
 			id: existing?.id ?? `pay_${randomUUID()}`,
 			month,
 			status: 'draft',
 			rows,
 			rulesFrom: rules.from,
+			schemesFrom: schemes.from,
+			pfAdminPaise: charges.adminPaise,
+			edliPaise: charges.edliPaise,
 			voucherId: null,
 			payVoucherId: null,
 			approvedBy: null,
@@ -327,20 +369,46 @@ export class PayrollService {
 			};
 			const tds = role('tds_payable');
 			const advance = role('staff_advance');
+			const sum = (rows: PayrollRow[], pick: (r: PayrollRow) => number) => rows.reduce((s, r) => s + pick(r), 0);
+			const lwfOf = (r: PayrollRow) => (r.lwfEmployeePaise ?? 0) + (r.lwfEmployerPaise ?? 0);
+			const hasLwf = sum(run.rows, lwfOf) > 0;
+			const hasGratuity = sum(run.rows, (r) => r.gratuityPaise ?? 0) > 0;
+			const more = {
+				employerLwf: hasLwf ? await this.ledgerFor('employerLwf', by) : '',
+				lwfPayable: hasLwf ? await this.ledgerFor('lwfPayable', by) : '',
+				gratuity: hasGratuity ? await this.ledgerFor('gratuity', by) : '',
+				gratuityProvision: hasGratuity ? await this.ledgerFor('gratuityProvision', by) : '',
+			};
 			const byLocation = new Map<string, PayrollRow[]>();
 			for (const row of run.rows)
 				byLocation.set(row.locationId, [...(byLocation.get(row.locationId) ?? []), row]);
-			const sum = (rows: PayrollRow[], pick: (r: PayrollRow) => number) => rows.reduce((s, r) => s + pick(r), 0);
-			const lines = [...byLocation.entries()].flatMap(([locationId, rows]) =>
+			// The employer's EPF admin charges and EDLI, shared by each location's PF wages.
+			const groups = [...byLocation.entries()];
+			const { pay } = await this.rules.forMonth(month);
+			const capped = (r: PayrollRow) =>
+				r.pfEmployeePaise > 0 ? Math.min(r.pfWagesPaise, pay.pfWageCapPaise) : 0;
+			const pfShare = allocate(
+				(run.pfAdminPaise ?? 0) + (run.edliPaise ?? 0),
+				groups.map(([, rows]) => sum(rows, capped)),
+			);
+			const lines = groups.flatMap(([locationId, rows], index) =>
 				[
 					{ ledger: { id: ids.salaries }, debitPaise: sum(rows, (r) => r.grossPaise) },
-					{ ledger: { id: ids.employerPf }, debitPaise: sum(rows, (r) => r.pfEmployerPaise) },
+					{
+						ledger: { id: ids.employerPf },
+						debitPaise: sum(rows, (r) => r.pfEmployerPaise) + (pfShare[index] as number),
+					},
 					{ ledger: { id: ids.employerEsi }, debitPaise: sum(rows, (r) => r.esiEmployerPaise) },
+					{ ledger: { id: more.employerLwf }, debitPaise: sum(rows, (r) => r.lwfEmployerPaise ?? 0) },
+					{ ledger: { id: more.gratuity }, debitPaise: sum(rows, (r) => r.gratuityPaise ?? 0) },
 					{ ledger: { id: ids.salaryPayable }, creditPaise: sum(rows, (r) => r.netPaise) },
 					{
 						ledger: { id: ids.pfPayable },
-						creditPaise: sum(rows, (r) => r.pfEmployeePaise + r.pfEmployerPaise),
+						creditPaise:
+							sum(rows, (r) => r.pfEmployeePaise + r.pfEmployerPaise) + (pfShare[index] as number),
 					},
+					{ ledger: { id: more.lwfPayable }, creditPaise: sum(rows, lwfOf) },
+					{ ledger: { id: more.gratuityProvision }, creditPaise: sum(rows, (r) => r.gratuityPaise ?? 0) },
 					{
 						ledger: { id: ids.esiPayable },
 						creditPaise: sum(rows, (r) => r.esiEmployeePaise + r.esiEmployerPaise),
@@ -414,7 +482,13 @@ export class PayrollService {
 				by,
 			);
 			return this.save(
-				{ ...run, status: 'paid', payVoucherId: voucher.id, updatedAt: now.toISOString() },
+				{
+					...run,
+					status: 'paid',
+					payVoucherId: voucher.id,
+					paidOn: write.paidOn,
+					updatedAt: now.toISOString(),
+				},
 				run.version,
 				context,
 			);

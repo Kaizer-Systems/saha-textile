@@ -3,6 +3,7 @@ import type { Attendance, Employee, PayrollRun } from '@saha-textile/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
 import { PayrollService } from '../src/payroll/payroll.service';
+import { BUILT_IN_PAYROLL_RULES, rulesOf } from '../src/payroll/payroll-rules.service';
 
 /** Payroll (accounts brief S): employees, attendance, and the monthly run approved, posted and paid. */
 
@@ -145,6 +146,7 @@ function build(options: Options = {}) {
 		ledger as never,
 		{ withTransaction: async <T>(work: (context: unknown) => Promise<T>) => work({ session: 'tx' }) } as never,
 		audit as never,
+		{ forMonth: async () => rulesOf(BUILT_IN_PAYROLL_RULES) } as never,
 	);
 	return { service, employees, attendance, runs, ledger, audit, people, runStore, chart };
 }
@@ -487,19 +489,23 @@ describe('approving, posting and paying the run (S5)', () => {
 		const at = (place: string) => request.lines.filter((l) => l.locationId === place);
 		const sum = (place: string, pick: (r: PayrollRun['rows'][number]) => number) =>
 			run.rows.filter((r) => r.locationId === place).reduce((s, r) => s + pick(r), 0);
+		// The employer's EPF charges: ₹500 admin (the minimum; 0.5% of ₹46,700 capped wages is less) and ₹234 EDLI, ₹734
+		// in all, shared by capped PF wages: the bar ₹608 (₹38,700), the shop, last, the remaining ₹126 (₹8,000).
+		expect(run).toMatchObject({ pfAdminPaise: 50_000, edliPaise: 23_400 });
+		const shopPfCharges = 12_600;
 		// Rahul at the shop: no TDS and no advance, so those lines are left out.
 		expect(at('loc_shop')).toEqual([
 			{ ledger: { id: 'led_salaries' }, debitPaise: 1_600_000, locationId: 'loc_shop' },
 			{
 				ledger: { id: 'led_employer_pf_contribution' },
-				debitPaise: sum('loc_shop', (r) => r.pfEmployerPaise),
+				debitPaise: sum('loc_shop', (r) => r.pfEmployerPaise) + shopPfCharges,
 				locationId: 'loc_shop',
 			},
 			{ ledger: { id: 'led_employer_esi_contribution' }, debitPaise: 52_000, locationId: 'loc_shop' },
 			{ ledger: { id: 'led_salary_payable' }, creditPaise: 1_479_000, locationId: 'loc_shop' },
 			{
 				ledger: { id: 'led_pf_payable' },
-				creditPaise: sum('loc_shop', (r) => r.pfEmployeePaise + r.pfEmployerPaise),
+				creditPaise: sum('loc_shop', (r) => r.pfEmployeePaise + r.pfEmployerPaise) + shopPfCharges,
 				locationId: 'loc_shop',
 			},
 			{ ledger: { id: 'led_esi_payable' }, creditPaise: 12_000 + 52_000, locationId: 'loc_shop' },

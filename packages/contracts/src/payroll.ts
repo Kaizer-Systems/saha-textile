@@ -240,6 +240,27 @@ export const SalaryTemplateWrite = z.object({
 export type SalaryTemplateWrite = z.infer<typeof SalaryTemplateWrite>;
 export type SalaryTemplateWriteInput = z.input<typeof SalaryTemplateWrite>;
 
+/** S4: what a template gives on a monthly pay. */
+export const StructurePreviewInput = z.object({
+	components: z.array(StructureComponentWrite).min(1).max(6),
+	payINR: Rupees,
+});
+export type StructurePreviewInput = z.infer<typeof StructurePreviewInput>;
+export type StructurePreviewInputValue = z.input<typeof StructurePreviewInput>;
+
+export const StructurePreview = z.object({
+	/** Each head in rupees, ready for the employee form. */
+	structure: z.record(SalaryHead, z.number()),
+	lines: z.array(
+		z.object({ head: SalaryHead, inr: z.number(), treatment: z.enum(['yes', 'excluded', 'over_half']) }),
+	),
+	totalINR: z.number(),
+	basicSharePct: z.number(),
+	/** Allowances counted as wages because basic and DA are under half (S4's warning). */
+	shortfallINR: z.number(),
+});
+export type StructurePreview = z.infer<typeof StructurePreview>;
+
 export const SalaryTemplate = SalaryTemplateWrite.extend({
 	id: Id,
 	createdAt: IsoDateTime,
@@ -278,8 +299,9 @@ export const Payslip = z.object({
 		z.object({
 			key: z.enum(['pf', 'esi', 'pt', 'tds', 'lwf', 'advance']),
 			paise: z.number().int(),
-			/** PF: the wages it was worked out on; advance: which recovery of how many. */
+			/** PF: the wages it was worked out on. Advance: which recovery of how many. */
 			wagesPaise: z.number().int().nullable().default(null),
+			recovery: z.object({ n: z.number().int(), of: z.number().int() }).nullable().default(null),
 		}),
 	),
 	totalDeductionsPaise: z.number().int(),

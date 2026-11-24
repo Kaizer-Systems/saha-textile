@@ -157,6 +157,10 @@ export const RECURRING_ENTRY_REPOSITORY = Symbol('RecurringEntryRepository');
 export const EMPLOYEE_REPOSITORY = Symbol('EmployeeRepository');
 export const ATTENDANCE_REPOSITORY = Symbol('AttendanceRepository');
 export const PAYROLL_RUN_REPOSITORY = Symbol('PayrollRunRepository');
+export const PAYROLL_RULES_REPOSITORY = Symbol('PayrollRulesRepository');
+export const SALARY_TEMPLATE_REPOSITORY = Symbol('SalaryTemplateRepository');
+export const STATUTORY_FILING_REPOSITORY = Symbol('StatutoryFilingRepository');
+export const PAYROLL_ADVANCE_REPOSITORY = Symbol('PayrollAdvanceRepository');
 export const PAYMENT_VOUCHER_REPOSITORY = Symbol('PaymentVoucherRepository');
 /** Where money lands (Postings and Convert brief AP-D1). */
 export const MONEY_LANDING_REPOSITORY = Symbol('MoneyLandingRepository');

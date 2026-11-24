@@ -173,10 +173,25 @@ function build(
 		credit as never,
 		debit as never,
 		templates,
-		{ findById: async (id: string) => (id === 'adm_acc' ? { displayName: 'Sudip Ghosh' } : null) } as never,
+		{
+			findById: async (id: string) => {
+				if (id === 'adm_down') throw new Error('people lookup down');
+				return ADMINS[id] ?? null;
+			},
+		} as never,
 	);
 	return { service, drafts, store, invoices, credit, debit, templates };
 }
+
+/** The people who take the steps: by display name, else email, else username. */
+const ADMINS: Record<string, unknown> = {
+	adm_acc: { displayName: 'Sudip Ghosh', email: 'sudip@saha-textile.test', username: 'sudip' },
+	adm_ca: { displayName: '', email: 'ca@saha-textile.test', username: 'ca' },
+	adm_rina: { displayName: null, email: null, username: 'rina' },
+	adm_blank: { displayName: '', email: '', username: '' },
+};
+const person = (userId: string, permissions: string[] = ['accounts.post', 'accounts.lock']) =>
+	({ userId, permissions }) as never;
 
 /** An entry of the due-date rule set, as the CA adds one. */
 const dueEntry = (key: string, due: NonNullable<TaxRuleEntry['due']>): TaxRuleEntry => ({
@@ -290,8 +305,63 @@ describe('preparing GSTR-1 from the books (G4)', () => {
 			checkedAt: null,
 			version: 4,
 		});
+		expect(again.preparedByName).toBe('');
 		const prepared = build({ drafts: [draft('gsr_2')] });
 		expect((await prepared.service.prepare(prepare(), accountant, now)).id).toBe('gsr_2');
+	});
+});
+
+describe('who took each step, by name (G4)', () => {
+	it('keeps the name of who prepared, checked and approved, and starts a new draft unfiled', async () => {
+		const { service } = build();
+		const prepared = await service.prepare(prepare(), accountant, now);
+		expect(prepared).toMatchObject({
+			preparedByName: 'Sudip Ghosh',
+			checkedByName: '',
+			approvedByName: '',
+			arn: null,
+			filedOn: null,
+		});
+		const checked = await service.step(prepared.id, { to: 'checked', version: 0 }, person('adm_rina'), now);
+		expect(checked).toMatchObject({ checkedBy: 'adm_rina', checkedByName: 'rina', preparedByName: 'Sudip Ghosh' });
+		const approved = await service.step(prepared.id, { to: 'approved', version: 1 }, ca, now);
+		expect(approved).toMatchObject({ approvedBy: 'adm_ca', approvedByName: 'ca@saha-textile.test' });
+	});
+
+	it('names someone by their user id when the account has no name, is gone, or can’t be read', async () => {
+		for (const userId of ['adm_blank', 'adm_gone', 'adm_down']) {
+			const { service } = build();
+			expect((await service.prepare(prepare(), person(userId), now)).preparedByName).toBe(userId);
+		}
+	});
+});
+
+describe('a filed return (G4)', () => {
+	const filing = {
+		gstRegistrationId: 'reg_wb',
+		gstin: GSTIN,
+		returnType: 'GSTR-1',
+		month: '2026-11',
+		arn: 'AA1912261234567',
+		filedOn: '2026-12-10',
+	};
+
+	it('reads filed with the ARN and the day once its filing is entered, and takes no more steps', async () => {
+		const { service } = build({
+			drafts: [draft('gsr_1', { status: 'approved' }), draft('gsr_oct', { month: '2026-10' })],
+			filings: [filing],
+		});
+		expect(await service.get('gsr_1')).toMatchObject({
+			status: 'filed',
+			arn: 'AA1912261234567',
+			filedOn: '2026-12-10',
+		});
+		// October has no filing of its own.
+		expect(await service.get('gsr_oct')).toMatchObject({ status: 'prepared', arn: null, filedOn: null });
+		for (const to of ['checked', 'approved'] as const)
+			await expect(service.step('gsr_1', { to, version: 0 }, ca, now)).rejects.toMatchObject(
+				refusal('gst_return_wrong_step'),
+			);
 	});
 });
 

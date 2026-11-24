@@ -105,4 +105,16 @@ The result is checked against the statements' own balance (the first import's op
 
 Collections `bankLayouts`, `bankLines` (unique account and key; `match`, `rejectedKeys`), `bankImports` (one per save: file, opening, closing, saved, skipped) and `bankMatchRules` (rules added, and the app's own once changed).
 
-Settlements (gateway payouts and cash on delivery) and settling receipts against bills follow in the same chunk.
+## Settlements
+
+Accounts › Settlements (Q10, D27, `/accounts/settlements`) lists gateway payouts and courier COD remittances by period: orders, gross, charges and GST, what reached the bank, and how many rows matched an order payment.
+
+- **Import payout file** reads the gateway's or courier's CSV in the browser (Excel is saved as CSV first). Columns are guessed from the headings (UTR or settlement id, settlement date, tracking id or order number, amount, fees or TDR, GST) and can be changed; days and amounts are read with the same reader as bank statements (`@saha-textile/core-domain/bank-statement`). Next shows each payout with its rows matched; payouts imported before are skipped.
+- **Matching a row:** a gateway payout's row by the gateway's own payment id (`findByGatewayReference`), else by the order number; a COD row by the order number, to the order's cash-on-delivery payment.
+- **Posting each payout** (`settlementRows`), in its own transaction, kind receipt, key `settlement:<kind>:<provider>:<UTR>`, source `settlement` with the UTR as its number: Bank Dr (net) · Gateway or Courier charges Dr · Input IGST Dr · Gateway clearing or COD receivable Cr (gross), each where "Where money lands" puts it. Refused: `settlement_empty:<UTR>`, `settlement_net_negative:<UTR>`, `books_need_a_location`. Before the books are set up the payout is kept without a voucher.
+- **Flag:** gateway payments that came in 7 to 90 days ago and are in no payout are listed above the table.
+- **Reconciling:** the payout's voucher carries its UTR, so the gateway-reference rule matches the bank's payout line.
+
+Routes under `/admin/accounts/settlements`: `GET` (list with `unsettled`, `accounts.index`), `GET /:id`, `POST /preview` and `POST` (import, `accounts.edit`). Collection `settlements` (unique kind, provider and UTR).
+
+Settling receipts against bills follows in the same chunk.

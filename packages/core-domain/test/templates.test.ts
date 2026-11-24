@@ -156,7 +156,7 @@ describe('accounts templates (T2)', () => {
 		]);
 		expect(
 			updates.map((u) => [u.template.code, u.template.versions.map((v) => v.version), u.expectedUpdatedAt]),
-		).toEqual([['CH-COMMON', [1, 2, 3, 4], 'old']]);
+		).toEqual([['CH-COMMON', [1, 2, 3, 4, 5], 'old']]);
 		expect(updates[0]?.template.updatedAt).toBe(at);
 	});
 
@@ -200,7 +200,7 @@ describe('what a kind opens (AT1)', () => {
 		};
 		const opens = whatOpens([...templates, report], 'proprietorship', '2026-11-24');
 		expect(opens.charts).toEqual([
-			{ code: 'CH-COMMON', name: 'Shared chart', version: 4 },
+			{ code: 'CH-COMMON', name: 'Shared chart', version: 5 },
 			{ code: 'CH-PROP', name: "Proprietor's capital and drawings", version: 2 },
 		]);
 		expect(opens.taxRules).toEqual([

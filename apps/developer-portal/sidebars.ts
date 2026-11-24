@@ -95,6 +95,7 @@ const sidebars: SidebarsConfig = {
 				'accounts/cash',
 				'accounts/counter',
 				'accounts/transfers',
+				'accounts/banks',
 				'accounts/accounts-templates',
 				'accounts/tax-invoices',
 				'accounts/returns-and-credit-notes',

@@ -145,6 +145,7 @@ export const SELF_INVOICE_REPOSITORY = Symbol('SelfInvoiceRepository');
 /** Cash boxes, sheets, petty expenses and claims (accounts brief O). */
 export const CASH_REPOSITORY = Symbol('CashRepository');
 export const TRANSFER_REPOSITORY = Symbol('TransferRepository');
+export const BANK_REPOSITORY = Symbol('BankRepository');
 export const PAYMENT_VOUCHER_REPOSITORY = Symbol('PaymentVoucherRepository');
 /** Where money lands (Postings and Convert brief AP-D1). */
 export const MONEY_LANDING_REPOSITORY = Symbol('MoneyLandingRepository');

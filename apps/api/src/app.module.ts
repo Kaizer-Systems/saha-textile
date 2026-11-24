@@ -16,6 +16,7 @@ import { SelfInvoicesModule } from './self-invoices/self-invoices.module';
 import { CashModule } from './cash/cash.module';
 import { CounterModule } from './counter/counter.module';
 import { TransfersModule } from './transfers/transfers.module';
+import { BanksModule } from './banks/banks.module';
 import { OrderRoutingModule } from './routing/order-routing.module';
 import { OrderShipsFromModule } from './routing/order-ships-from.module';
 import { LocationsModule } from './locations/locations.module';
@@ -100,6 +101,7 @@ export class AppModule {
 				CashModule,
 				CounterModule,
 				TransfersModule,
+				BanksModule,
 				OrderRoutingModule,
 				OrderShipsFromModule,
 				DocumentsModule,

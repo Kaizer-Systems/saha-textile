@@ -1,0 +1,42 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'accounts_banks'"
+>
+	<div class="d-flex justify-content-end mb-3">
+		<button
+			*hasPermission="'accounts.edit'"
+			type="button"
+			class="btn btn-theme"
+			id="bank_add"
+			(click)="add()"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'bank_add' | transloco }}
+		</button>
+	</div>
+	<app-table
+		[tableConfig]="tableConfig()"
+		(rowClicked)="open($event)"
+		(action)="onAction($event)"
+	>
+		<div
+			tableFilters
+			class="d-flex align-items-center flex-wrap gap-2"
+		>
+			@for (item of chips; track item) {
+			<button
+				type="button"
+				class="align-items-center btn btn-sm d-flex"
+				[class.btn-theme]="chip() === item"
+				[class.btn-outline]="chip() !== item"
+				[attr.aria-pressed]="chip() === item"
+				(click)="chip.set(item)"
+			>
+				{{ 'bank_chip_' + item | transloco }}@if (counts()?.[item] !== undefined) {
+				<span class="ms-1">{{ counts()?.[item] }}</span>
+				}
+			</button>
+			}
+		</div>
+	</app-table>
+</app-page-wrapper>

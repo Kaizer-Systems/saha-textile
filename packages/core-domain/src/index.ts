@@ -26,3 +26,4 @@ export * from './ledger/index';
 export * from './invoicing/index';
 export * from './templates/index';
 export * from './cash/index';
+export * from './bank/index';

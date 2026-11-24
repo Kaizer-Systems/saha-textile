@@ -1,0 +1,81 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'accounts_banks'"
+>
+	@if (account.data(); as a) {
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">{{ a.shortName }}</h5>
+			<small class="text-muted">
+				{{ 'bank_kind_' + a.kind | transloco }} · {{ a.numberShown }} · {{ balance(a.balancePaise) }}
+			</small>
+		</div>
+		<div class="d-flex flex-wrap gap-2">
+			<a
+				class="btn btn-outline"
+				id="bank_statement"
+				[routerLink]="['/accounts/ledgers', a.ledgerId]"
+			>
+				<i class="ri-file-list-3-line"></i>
+				{{ 'bank_statement' | transloco }}
+			</a>
+			<a
+				*hasPermission="'accounts.edit'"
+				class="btn btn-theme"
+				id="bank_edit"
+				[routerLink]="['/accounts/banks', a.id, 'edit']"
+			>
+				{{ 'bank_edit' | transloco }}
+			</a>
+		</div>
+	</div>
+	<div class="card">
+		<div class="card-body">
+			<ul class="list-unstyled small row g-2 mb-0">
+				<li class="col-md-4">
+					<b>{{ 'bank_bank' | transloco }}</b>
+					<span class="d-block">{{ a.bankName }} · {{ a.branch || '—' }} · {{ a.ifsc }}</span>
+				</li>
+				<li class="col-md-4">
+					<b>{{ 'bank_holder' | transloco }}</b>
+					<span class="d-block">{{ a.holder }}</span>
+				</li>
+				<li class="col-md-4">
+					<b>{{ 'bank_in_books' | transloco }}</b>
+					<span class="d-block">{{ balance(a.balancePaise) }}</span>
+				</li>
+				<li class="col-md-4">
+					<b>{{ 'bank_opening' | transloco }}</b>
+					<span class="d-block">{{ money(a.openingINR) }} · {{ a.openingOn ?? '—' }}</span>
+				</li>
+				@if (a.limitINR !== null) {
+				<li class="col-md-4">
+					<b>{{ 'bank_limit' | transloco }}</b>
+					<span class="d-block">{{ money(a.limitINR) }}</span>
+				</li>
+				} @if (a.ratePercent !== null) {
+				<li class="col-md-4">
+					<b>{{ 'bank_rate' | transloco }}</b>
+					<span class="d-block">{{ a.ratePercent }}% · {{ a.maturesOn ?? '—' }}</span>
+				</li>
+				}
+				<li class="col-md-4">
+					<b>{{ 'bank_cheque_book' | transloco }}</b>
+					<span class="d-block">{{ a.chequeFrom || '—' }} – {{ a.chequeTo || '—' }}</span>
+				</li>
+				<li class="col-md-4">
+					<b>{{ 'bank_upi_ids' | transloco }}</b>
+					<span class="d-block">{{ a.upiIds.join(', ') || '—' }}</span>
+				</li>
+				<li class="col-md-4">
+					<b>{{ 'bank_what_lands' | transloco }}</b>
+					<span class="d-block">
+						@for (key of a.lands; track key) { {{ 'bank_lands_' + key | transloco }}@if (!$last) {, } }
+						@empty { — }
+					</span>
+				</li>
+			</ul>
+		</div>
+	</div>
+	}
+</app-page-wrapper>

@@ -106,3 +106,24 @@ describe('Admin › Currencies: the remaining cases', () => {
 		expect(audit.append).not.toHaveBeenCalled();
 	});
 });
+
+describe('Admin › Currencies: a stale save and a first rate', () => {
+	it('refuses a stale save that nobody known made, at no recorded time', async () => {
+		const { service } = harness([currency('USD', 88.42)]);
+		await expect(service.saveSettings({ revision: 99 } as never, 'admin-1')).rejects.toThrow('Validation failed');
+	});
+
+	it('records a typed rate for a currency the shop never had, with nothing before it', async () => {
+		const { service, audit } = harness([]);
+		await service.setRate('EUR', { inrPerUnit: 92.5 } as never, 'admin-1');
+		expect(JSON.stringify(audit.append.mock.calls)).toContain('"from":null');
+	});
+});
+
+describe('Admin › Currencies: a typed rate over an existing one', () => {
+	it('records the rate it replaced', async () => {
+		const { service, audit } = harness([currency('USD', 88.42)]);
+		await service.setRate('USD', { inrPerUnit: 90 } as never, 'admin-1');
+		expect(JSON.stringify(audit.append.mock.calls)).toContain('"to":90');
+	});
+});

@@ -1358,3 +1358,95 @@ describe('CatalogEtagInterceptor', () => {
 		expect(reply.status).toHaveBeenCalledWith(304);
 	});
 });
+
+describe('variant photos, a set card that cannot be read, and a share picture of any version', () => {
+	const axis = {
+		attributeCode: 'size',
+		label: { en: 'Size' },
+		semanticRole: 'variation_axis',
+		displayStyle: 'rectangle',
+		terms: [
+			{ code: 's', label: { en: 'S' }, isBase: true },
+			{ code: 'm', label: { en: 'M' } },
+			{ code: 'l', label: { en: 'L' } },
+		],
+	};
+	const withPhoto = (id: string, hash: string, media: Record<string, unknown>) =>
+		variant({ id, sku: id.toUpperCase(), optionSelectionHash: hash, isBaseVariant: id === 'var_1', media });
+
+	it('leads a compound variant with its own photo only when its group has photos', async () => {
+		const row = product({
+			optionGroups: [axis],
+			imageMode: 'compound',
+			media: {
+				gallery: ['m1'],
+				compound: [
+					{ selectionHash: 'size:s', gallery: ['m1'] },
+					{ selectionHash: 'size:m', gallery: [] },
+				],
+			},
+		});
+		const page = await build({
+			rows: [row],
+			variants: [
+				withPhoto('var_1', 'size:s', { primaryAssetId: 'm1' }),
+				withPhoto('var_2', 'size:m', { primaryAssetId: 'm1' }),
+				withPhoto('var_3', 'size:l', { primaryAssetId: 'm1' }),
+			],
+			assets: [asset('m1', 'gallery')],
+		}).service.page('red-saree');
+		expect(page.variants.map((entry) => entry.id)).toEqual(['var_1', 'var_2', 'var_3']);
+		expect(page.variants.every((entry) => entry.galleryIndex !== null)).toBe(true);
+	});
+
+	it('shows a variant’s photo at the gallery frame when the versions match, else as a frame of its own', async () => {
+		const row = product({
+			optionGroups: [axis],
+			media: { gallery: ['m1', 'm2'], versions: { m1: 'ver_1' } },
+		});
+		const page = await build({
+			rows: [row],
+			variants: [
+				withPhoto('var_1', 'size:s', { primaryAssetId: 'm1', primaryVersionId: 'ver_1' }),
+				withPhoto('var_2', 'size:m', { primaryAssetId: 'm2', primaryVersionId: 'ver_2' }),
+				withPhoto('var_3', 'size:l', { primaryAssetId: 'm1', primaryVersionId: 'ver_9' }),
+			],
+			assets: [asset('m1', 'gallery'), asset('m2', 'gallery')],
+		}).service.page('red-saree');
+		expect(page.gallery.length).toBe(4);
+		expect(page.variants.map((entry) => entry.galleryIndex)).toEqual([0, 2, 3]);
+	});
+
+	it('draws a set whose pieces cannot be read as a plain card', async () => {
+		const set = product({ id: 'prd_set', type: 'bundle', slug: 'wedding-set', sku: 'BND-0001', basePriceINR: 0 });
+		const built = build({
+			rows: [set],
+			bundle: {
+				id: 'bnd_1',
+				productId: 'prd_set',
+				levels: [
+					{
+						code: 'piece-1',
+						label: { en: 'Piece' },
+						take: 1,
+						source: { kind: 'category', categoryId: 'cat_silk', limit: 3 },
+						items: [],
+						priceMode: 'difference',
+					},
+				],
+				extras: [],
+				pricing: { methodId: 'bpm_pieces_added_up', params: {}, rules: [], combine: 'all' },
+				status: 'live',
+			},
+		});
+		built.products.list.mockRejectedValue(new Error('catalogue down'));
+		const cards = await built.service.cardsForSlugs(['wedding-set']);
+		expect(cards.map((card) => card.id)).toEqual(['prd_set']);
+	});
+
+	it('shares the widest picture of any version when the product names none', async () => {
+		const row = product({ media: { gallery: [], shareImage: { assetId: 'm1', versionId: null } } });
+		const page = await build({ rows: [row], assets: [asset('m1', 'gallery')] }).service.page('red-saree');
+		expect(page.shareImageUrl).toBe('https://cdn.test/k/m1');
+	});
+});

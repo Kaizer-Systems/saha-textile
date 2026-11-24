@@ -200,3 +200,15 @@ describe('Replace a photo: the remaining cases', () => {
 		expect(broken.storageCheck.release).toHaveBeenCalled();
 	});
 });
+
+describe('Replace: a photo already being replaced', () => {
+	it('refuses a second Replace and gives its storage hold back', async () => {
+		const busy = setup({
+			// Another Replace claimed the photo between the check and the claim.
+			files: [photo('med_busy')],
+			started: false,
+		});
+		expect(await refusalCode(busy.service.start('adm_1', 'med_busy', request))).toBe('replacing');
+		expect(busy.storageCheck.release).toHaveBeenCalled();
+	});
+});

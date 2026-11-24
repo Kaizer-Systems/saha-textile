@@ -39,6 +39,8 @@ const METHOD_WORDS: Readonly<Record<OrderPayment['method'], string>> = {
 	cashOnDelivery: 'Cash on delivery',
 	onAccount: 'On account',
 	setOff: 'Set-off',
+	cash: 'Cash',
+	card: 'Card',
 };
 
 /** ₹23,050 · £280.97: whole rupees, two decimals for other currencies. */
@@ -76,14 +78,16 @@ export function shippingNote(trace: readonly string[]): string {
 	const charged = entries.filter((entry) => entry.result === 'productCharge' && (entry.amountINR ?? 0) > 0);
 	if (!charged.length) return entries.length ? 'Every piece ships free' : '';
 	const units = charged.reduce((sum, entry) => sum + (entry.units ?? 1), 0);
-	const unit = charged[0]?.unitAmountINR ?? charged[0]?.amountINR ?? 0;
+	// Every charged entry has an amount above nothing (the filter above).
+	const first = charged[0] as (typeof charged)[number];
+	const unit = first.unitAmountINR ?? (first.amountINR as number);
 	const words = `${units} discounted ${units === 1 ? 'piece' : 'pieces'} × ${noticeMoney(unit, 'INR')}`;
 	return entries.some((entry) => entry.result === 'free') ? `${words}; full-price pieces ship free` : words;
 }
 
 const oneLine = (address: OrderAddress | undefined): string =>
 	address
-		? [address.fullName, address.line1, address.line2, `${address.city} ${address.postalCode ?? ''}`.trim()]
+		? [address.fullName, address.line1, address.line2, `${address.city} ${address.postalCode}`.trim()]
 				.filter((part) => !!part && part.trim())
 				.join(', ')
 		: '';
@@ -135,8 +139,8 @@ export class OrderNoticesService {
 	): Promise<void> {
 		const contact = this.contactOf(order);
 		for (const notice of this.plan(order, templates)) {
-			const destination = notice.channel === 'email' ? contact.email : contact.mobile;
-			if (!destination) continue;
+			// The plan keeps only messages with somewhere to go.
+			const destination = (notice.channel === 'email' ? contact.email : contact.mobile) as string;
 			try {
 				const result = await this.notifications.send({
 					channel: notice.channel,
@@ -302,7 +306,8 @@ export class OrderNoticesService {
 		const childrenOf = (line: Order['lines'][number]) =>
 			order.lines.filter((row) => row.parentLineId && row.parentLineId === line.lineId);
 		return order.lines.filter(keep).map((line) => {
-			const options = Object.values(line.attributes ?? {}).join(' · ');
+			// The order schema gives every line its attributes ({} when none).
+			const options = Object.values(line.attributes).join(' · ');
 			if (line.role === 'bundle') {
 				const total = childrenOf(line).reduce((sum, row) => sum + row.lineTotalPaid, 0);
 				return {

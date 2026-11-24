@@ -57,14 +57,15 @@ export function newShareCode(): string {
 /** Codes are kept only as this hash, so a copy of the database opens nothing. */
 export const shareCodeHash = (code: string): string => createHash('sha256').update(code).digest('hex');
 
-const REFUSALS: Readonly<Record<string, string>> = {
+const REFUSALS = {
 	public_file: 'This file is public: share its permanent address instead.',
 	password_for_admins: 'A link for admins only takes no password; admins open it signed in.',
 	file_in_trash: 'Files in Trash cannot be shared.',
 	date_in_past: 'Choose a date in the future.',
 	link_stopped: 'A stopped link stays stopped. Make a new link instead.',
-};
-const refuse = (code: string) => mediaRefusal(HttpStatus.UNPROCESSABLE_ENTITY, code, REFUSALS[code] ?? 'Not allowed');
+} as const;
+/** Every refusal here has its own words. */
+const refuse = (code: keyof typeof REFUSALS) => mediaRefusal(HttpStatus.UNPROCESSABLE_ENTITY, code, REFUSALS[code]);
 
 /**
  * Share links on the Media page (R4-5, decision 13): our own links on the shop's domain. Opening
@@ -97,7 +98,11 @@ export class MediaSharingService {
 			visibility: asset.visibility,
 			publicUrl: picture ? this.storage.getUrl(picture.storageKey) : this.publicUrl(asset),
 			publicPicture: picture ? { role: picture.role, width: picture.width } : null,
-			links: links.map((link) => ({ ...this.view(link, now), createdByName: names.get(link.createdBy) ?? null })),
+			// Every creator was looked up above, as a name or null.
+			links: links.map((link) => ({
+				...this.view(link, now),
+				createdByName: names.get(link.createdBy) as string | null,
+			})),
 		};
 	}
 

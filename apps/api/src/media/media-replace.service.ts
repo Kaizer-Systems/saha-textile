@@ -39,7 +39,7 @@ import { fileName } from './media-library.service';
 import { MediaStorageService } from './media-storage.service';
 
 /** English fallbacks; the Media page names each refusal in its own words. */
-const REFUSALS: Readonly<Record<string, string>> = {
+const REFUSALS = {
 	not_a_photo: 'Only photos can be replaced here',
 	no_versions: 'This photo has no versions to remake',
 	replacing: 'This photo is already being replaced',
@@ -53,9 +53,11 @@ const REFUSALS: Readonly<Record<string, string>> = {
 	not_cancellable: 'This Replace is already under way',
 	focal_waits: 'Wait until this photo’s versions are made or its Replace is done',
 	rename_waits: 'Wait until this photo’s versions are made or its Replace is done, then change its web file name',
-};
-const refuse = (code: string, detail?: string) =>
-	domainRefusal(code, detail ? `${REFUSALS[code] ?? 'Not allowed'}: ${detail}` : (REFUSALS[code] ?? 'Not allowed'));
+} as const;
+type RefusalCode = keyof typeof REFUSALS;
+/** Every refusal has its own words: checkReplace answers only codes listed here. */
+const refuse = (code: RefusalCode, detail?: string) =>
+	domainRefusal(code, detail ? `${REFUSALS[code]}: ${detail}` : REFUSALS[code]);
 
 /**
  * Replace a photo (media step 3b; brief S7, C05, C08; S6's “Replace the existing file”, B12, B13). The new photo
@@ -92,9 +94,13 @@ export class MediaReplaceService {
 		}
 		const check = checkReplace({ asset, profiles, photo: request });
 		if (check.refusal) {
-			throw refuse(check.refusal, check.versions.map((row) => `${row.versionId} (${row.refusal})`).join(', '));
+			throw refuse(
+				check.refusal as RefusalCode,
+				check.versions.map((row) => `${row.versionId} (${row.refusal})`).join(', '),
+			);
 		}
-		const versions = asset.versions?.length ?? 0;
+		// checkReplace refuses a photo without versions, so it has its list here.
+		const versions = (asset.versions as MediaVersion[]).length;
 		const bytes = request.byteSize + estimateVersionBytes(request.byteSize, versions);
 		await this.storageCheck.admit(actor, bytes, request.reservationId, holdId(id), now);
 		const key = replacementOriginalKey(id, request.contentType, now);
@@ -191,7 +197,8 @@ export class MediaReplaceService {
 		if (asset.kind !== 'image' || !asset.originalStorageKey || !(asset.versions ?? []).length) return false;
 		if (
 			(asset.replacing && asset.replacing.phase !== 'failed') ||
-			(asset.versions ?? []).some((version) => version.state === 'making')
+			// The line above returned for a photo without versions.
+			(asset.versions as MediaVersion[]).some((version) => version.state === 'making')
 		) {
 			throw refuse('rename_waits');
 		}
@@ -207,7 +214,7 @@ export class MediaReplaceService {
 		if (!this.renames(asset) || !asset.originalStorageKey || !asset.width || !asset.height) {
 			throw refuse('not_a_photo');
 		}
-		const bytes = asset.derivatives.reduce((sum, row) => sum + (row.byteSize ?? 0), 0);
+		const bytes = asset.derivatives.reduce((sum, row) => sum + row.byteSize, 0);
 		await this.storageCheck.admit(actor, bytes, undefined, holdId(id), now);
 		const started = await this.assets.startReplace(id, {
 			key: asset.originalStorageKey,
@@ -320,7 +327,8 @@ export class MediaReplaceService {
 				if (older.length) await visit(asset, older);
 			}
 			if (page.length < REFRESH_PAGE) return;
-			after = page[page.length - 1]?.id ?? null;
+			// A full page has a last row.
+			after = (page[page.length - 1] as MediaAsset).id;
 		}
 	}
 

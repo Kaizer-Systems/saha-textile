@@ -157,7 +157,8 @@ export class BlogPublicService {
 			slug: post.slug,
 			title: text(post.title),
 			excerpt: blogExcerpt(text(post.excerpt), content),
-			author: text(post.author) || DEFAULT_BLOG_AUTHOR[locale] || DEFAULT_BLOG_AUTHOR[FALLBACK] || BRAND,
+			// The default byline is written in English at least.
+			author: text(post.author) || DEFAULT_BLOG_AUTHOR[locale] || (DEFAULT_BLOG_AUTHOR[FALLBACK] as string),
 			publishedAt: post.publishedAt as string,
 			featured: post.featured,
 			sticky: post.sticky,

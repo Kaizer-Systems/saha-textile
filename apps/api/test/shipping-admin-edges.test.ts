@@ -567,3 +567,68 @@ describe('the cart tester: the remaining cases', () => {
 		expect(result.lines[0]).toMatchObject({ route: 'free', via: 'freeShippingSwitch', ruleSetId: null });
 	});
 });
+
+/** The cannot-ship rule set with its message in both languages, as activation needs. */
+const CANT_SHIP_BOTH: ShippingRuleSetBody = {
+	steps: [
+		{
+			id: 'step-1',
+			scope: 'eachLine',
+			combine: 'sum',
+			node: {
+				kind: 'result',
+				id: 'r-1',
+				result: { kind: 'cantShip', message: { en: 'Not by post', bn: 'ডাকে পাঠানো যায় না' } },
+			},
+		},
+	],
+	adjust: [],
+};
+
+describe('the list order and activations: the last cases', () => {
+	it('sorts a pre-made set with no key after a known one, whichever side it is on', () => {
+		const premade = (premadeKey: string | null) => ruleSet({ kind: 'premade', premadeKey });
+		const [first] = PREMADE_RULE_SETS;
+		expect(byListOrder(premade('not-designed'), premade(null))).toBe(0);
+		expect(byListOrder(premade(first?.key ?? ''), premade(null))).toBeLessThan(0);
+	});
+
+	it('numbers a second activation after the first, and reports a test cart the rules cannot price', async () => {
+		const { service, repo } = harness();
+		const testCarts = [
+			{
+				id: 'cart-1',
+				name: 'Two discounted',
+				lines: [{ productId: 'disc-1', variationId: null, quantity: 2 }],
+				delivery: IN,
+				shopper: SHOPPER,
+				expectedINR: 200,
+			},
+		];
+		await repo.createRuleSet(
+			ruleSet({ id: 'rs_y', use: 'domestic', activeVersion: null, draft: DOMESTIC, testCarts, revision: 1 }),
+		);
+		await service.activate('rs_y', { revision: 1, acceptChanges: [] }, 'admin-1');
+		const current = (await repo.findRuleSet('rs_y')) as { revision: number };
+		const again = await service.activate('rs_y', { revision: current.revision, acceptChanges: [] }, 'admin-1');
+		expect(again).toMatchObject({ outcome: 'activated', version: 2 });
+		const abroad = {
+			...testCarts[0],
+			id: 'cart-abroad',
+			delivery: { country: 'GB', state: '', pincode: '' },
+			expectedINR: 500,
+		};
+		await repo.createRuleSet(
+			ruleSet({
+				id: 'rs_z',
+				use: 'domestic',
+				activeVersion: null,
+				draft: CANT_SHIP_BOTH,
+				testCarts: [abroad],
+				revision: 1,
+			}),
+		);
+		const changed = await service.activate('rs_z', { revision: 1, acceptChanges: [] }, 'admin-1');
+		expect(JSON.stringify(changed)).toContain('"toINR":null');
+	});
+});

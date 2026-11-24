@@ -208,7 +208,8 @@ export class AdminCartService {
 					group: option.group,
 					value: option.value,
 					priceINR: option.priceDeltaINR,
-					listedPriceINR: row.options[index]?.priceDeltaINR ?? option.priceDeltaINR,
+					// `options` is mapped one for one from the row's own options.
+					listedPriceINR: (row.options[index] as PricedCartLine['options'][number]).priceDeltaINR,
 				})),
 				addOnsZonePriced,
 			};

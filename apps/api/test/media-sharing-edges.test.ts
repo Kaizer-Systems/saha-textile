@@ -148,3 +148,25 @@ describe('share links: the remaining cases', () => {
 		expect(h.links.get('shl_live')).toBe(before);
 	});
 });
+
+describe('share links: makers known only by a user name or an email', () => {
+	it('names each maker by the first name they have', async () => {
+		const h = harness();
+		Object.defineProperty(h.service, 'admins', {
+			value: {
+				findById: async (id: string) =>
+					({
+						adm_user: { id, displayName: null, username: 'ravi', email: 'ravi@example.test' },
+						adm_mail: { id, displayName: null, username: null, email: 'mail@example.test' },
+						adm_none: { id, displayName: null, username: null, email: null },
+					})[id] ?? null,
+			},
+		});
+		h.file('med_pdf');
+		link(h, 'shl_1', { createdBy: 'adm_user' });
+		link(h, 'shl_2', { createdBy: 'adm_mail' });
+		link(h, 'shl_3', { createdBy: 'adm_none' });
+		const listed = await h.service.list('med_pdf', NOW);
+		expect(listed.links.map((row) => row.createdByName)).toEqual(['ravi', 'mail@example.test', null]);
+	});
+});

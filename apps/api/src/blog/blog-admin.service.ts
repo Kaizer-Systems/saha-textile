@@ -284,8 +284,8 @@ export class BlogAdminService {
 	/** The cover's alt, title and caption live on the picture, so every place it shows reads them. */
 	private async writeCoverText(body: BlogPostWrite): Promise<void> {
 		if (!body.coverAssetId || !body.coverText) return;
-		const asset = await this.assets.findById(body.coverAssetId);
-		if (!asset) return;
+		// fields() has already refused a cover that is not in the media library.
+		const asset = (await this.assets.findById(body.coverAssetId)) as MediaAsset;
 		const merge = (stored: Record<string, string>, typed: Record<string, string>) => ({
 			...stored,
 			...Object.fromEntries(Object.entries(typed).map(([locale, value]) => [locale, value.trim()])),
@@ -333,8 +333,8 @@ export class BlogAdminService {
 
 	private async requirePost(id: string): Promise<BlogPost> {
 		const post = (await this.posts.findById(id)) ?? (await this.posts.findBySlug(id));
-		if (!post) throw new NotFoundException('No such post');
-		return post;
+		if (post) return post;
+		throw new NotFoundException('No such post');
 	}
 
 	private row(post: BlogPost, assets: Map<string, MediaAsset>): AdminBlogPostRow {

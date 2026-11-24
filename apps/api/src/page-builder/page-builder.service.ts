@@ -258,7 +258,8 @@ export class PageBuilderService {
 			}),
 		);
 		const moment = (row: ComingUpResponse['rows'][number]) =>
-			Date.parse(row.state === 'showing' ? (row.until ?? row.from) : row.from);
+			// comingUp lists a switch showing now only while it has an end, as core's own sort reads it.
+			Date.parse(row.state === 'showing' ? (row.until as string) : row.from);
 		return { rows: rows.flat().sort((a, b) => moment(a) - moment(b)) };
 	}
 
@@ -276,9 +277,11 @@ export class PageBuilderService {
 			versionId: share.versionId,
 		});
 		if (!image) return null;
+		// resolveImage answers null for a photo with no files and puts every file it keeps in a role, so one is here.
+		const files = Object.values(image.roles).flat();
 		const best =
-			image.roles['share']?.at(-1) ?? [...Object.values(image.roles).flat()].sort((a, b) => b.width - a.width)[0];
-		return best?.url ?? null;
+			image.roles['share']?.at(-1) ?? (files.sort((a, b) => b.width - a.width)[0] as (typeof files)[number]);
+		return best.url;
 	}
 
 	/** Home's templates with their outlines (A1, Q9 A), drawn from today's banners where a template uses them. */
@@ -698,7 +701,8 @@ export class PageBuilderService {
 		);
 		const facts = new Map<string, PictureFacts | null>();
 		for (const [key, versionId] of wanted) {
-			facts.set(key, pictureFacts(assets.get(key.split('|')[0] as string) ?? null, versionId));
+			// Every photo asked for was read above, as itself or as null.
+			facts.set(key, pictureFacts(assets.get(key.split('|')[0] as string) as MediaAsset | null, versionId));
 		}
 		return facts;
 	}

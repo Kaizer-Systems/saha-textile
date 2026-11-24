@@ -369,3 +369,20 @@ describe('admin variant choices: the remaining cases', () => {
 		expect(choices.items[0]).toMatchObject({ price: null, zonePrice: { kind: 'noPrice' } });
 	});
 });
+
+describe('admin product cards: a set with no card of its own', () => {
+	it('names the set by its product title', async () => {
+		const { service } = setup({
+			products: [product('p_set', { type: 'bundle' })],
+			reads: {
+				p_set: {
+					title: 'Set',
+					page: page('p_set', { bundle: { priceINR: 5000, stock: { setsPossible: 2 } } }),
+				},
+			},
+			cards: [],
+		});
+		const { items } = await service.cards({ q: '', page: 1, pageSize: 20, currency: 'INR' } as never);
+		expect(items[0]).toMatchObject({ title: 'p_set title', isBundle: true });
+	});
+});

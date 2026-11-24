@@ -326,7 +326,8 @@ export class CatalogPublicService {
 									['swatch_image'],
 									swatch.version ??
 										term.swatchVersionId ??
-										product.media.versions?.[term.swatchAssetId ?? ''],
+										// Inside this branch the term has a swatch photo.
+										product.media.versions?.[term.swatchAssetId as string],
 								))(swatchOf(term.swatchAssetId))
 						: null,
 					// An option that measures costs the template's amount unless this product overrides it.
@@ -461,9 +462,9 @@ export class CatalogPublicService {
 		if (!product.categoryIds.length || !placements) return [];
 		const found = await Promise.all(product.categoryIds.map((id) => placements.findCanonical(id)));
 		const placement = found
-			.filter((row) => row !== null && row.status === 'live')
+			.filter((row): row is NonNullable<typeof row> => row !== null && row.status === 'live')
 			.reduce<(typeof found)[number]>(
-				(deepest, row) => (!deepest || (row?.pathSlugs.length ?? 0) > deepest.pathSlugs.length ? row : deepest),
+				(deepest, row) => (!deepest || row.pathSlugs.length > deepest.pathSlugs.length ? row : deepest),
 				null,
 			);
 		if (!placement) return [];
@@ -517,7 +518,8 @@ export class CatalogPublicService {
 			path: placement?.pathSlugs.join('/') ?? '',
 			title: names.at(-1) ?? placement?.pathLabel ?? 'All products',
 			breadcrumb: (placement?.pathSlugs ?? []).map((slug, index, pathSlugs) => ({
-				name: names[index] ?? slug,
+				// `names` has one entry per path slug (built from the same list above).
+				name: names[index] as string,
 				path: `/collections/${pathSlugs.slice(0, index + 1).join('/')}`,
 			})),
 			products: await this.cardsForIds(result.productIds),
@@ -667,7 +669,8 @@ export class CatalogPublicService {
 			live
 				.filter((row) => row.relationType === type)
 				.slice(0, 12)
-				.flatMap((row) => targets.get(row.targetId) ?? []);
+				// liveRelations keeps only rows whose target was found above.
+				.map((row) => targets.get(row.targetId) as Product);
 		const picked = products('related');
 		const related =
 			picked.length < RELATED_MINIMUM
@@ -776,8 +779,8 @@ export class CatalogPublicService {
 		const product =
 			(await this.products.findBySlug(slug, 'public')) ?? (await this.products.findById(slug, 'public'));
 		// Show on shop off (D5): the page is "not found" to shoppers, though the product sells inside sets.
-		if (!product || !isShownOnShop(product)) throw new NotFoundException(`Product not found: ${slug}`);
-		return product;
+		if (product && isShownOnShop(product)) return product;
+		throw new NotFoundException(`Product not found: ${slug}`);
 	}
 
 	private async cards(products: Product[], known?: ReadonlyMap<string, ProductVariant[]>): Promise<CatalogCard[]> {

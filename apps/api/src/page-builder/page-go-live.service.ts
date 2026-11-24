@@ -229,13 +229,18 @@ export class PageGoLiveService {
 				ids: linkedBlockIds((await this.layouts.revision(sibling.draftRevisionId ?? ''))?.sections ?? []),
 			})),
 		);
-		return ids
-			.filter((blockId) => blocks.has(blockId))
-			.map((blockId) => ({
-				blockId,
-				name: blocks.get(blockId)?.name ?? '',
-				layouts: drafts.filter((draft) => draft.ids.includes(blockId)).map((draft) => draft.name),
-			}));
+		return ids.flatMap((blockId) => {
+			const block = blocks.get(blockId);
+			return block
+				? [
+						{
+							blockId,
+							name: block.name,
+							layouts: drafts.filter((draft) => draft.ids.includes(blockId)).map((draft) => draft.name),
+						},
+					]
+				: [];
+		});
 	}
 
 	private async builderOn(

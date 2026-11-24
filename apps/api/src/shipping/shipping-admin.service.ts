@@ -41,6 +41,7 @@ import {
 	type AuditLogRepository,
 	type CategoryRepository,
 	type ProductRepository,
+	type ShippingLineRoute,
 	type ShippingRuleRepository,
 	PREMADE_RULE_SETS,
 	evaluateShippingRuleSet,
@@ -343,17 +344,14 @@ export class ShippingAdminService {
 		const nameOf = (id: string | null): string | null =>
 			id ? (ruleSets.find((r) => r.id === id)?.name ?? null) : null;
 		const lines = views.slice(0, TRY_LINES_SHOWN).map((view) => {
-			const route = outcome.routes[view.lineId];
+			// Every snapshot line is routed, and each view is one of those lines.
+			const route = outcome.routes[view.lineId] as ShippingLineRoute;
 			const ruleSetId =
-				route?.kind === 'ruleSet'
-					? route.ruleSetId
-					: route?.kind === 'courier'
-						? route.fallbackRuleSetId
-						: null;
+				route.kind === 'ruleSet' ? route.ruleSetId : route.kind === 'courier' ? route.fallbackRuleSetId : null;
 			return {
 				...view,
-				route: route?.kind ?? 'noMethod',
-				via: route?.via.kind ?? 'siteWide',
+				route: route.kind,
+				via: route.via.kind,
 				ruleSetId,
 				ruleSetName: nameOf(ruleSetId),
 			};
@@ -369,7 +367,8 @@ export class ShippingAdminService {
 					ruleSetId: g.ruleSetId,
 					ruleSetName: nameOf(g.ruleSetId),
 					version: g.version,
-					body: g.ruleSetId ? (active.get(g.ruleSetId)?.body ?? null) : null,
+					// A rule set's group is priced only from one of the active versions.
+					body: g.ruleSetId ? (active.get(g.ruleSetId) as ActiveRuleSet).body : null,
 					lineIds: g.lineIds,
 					amountINR: g.amountINR,
 					trace: g.trace,

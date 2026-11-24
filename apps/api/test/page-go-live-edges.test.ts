@@ -1,5 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { type MediaAsset, PageSection, type SavedBlock } from '@saha-textile/contracts';
+import { registerPageType } from '@saha-textile/core-domain';
 import { describe, expect, it, vi } from 'vitest';
 
 import { LanguageStore } from '../src/languages/language-store';
@@ -652,3 +653,88 @@ const NO_SETTINGS_FILLED = {
 	headingShown: false,
 	shareImage: null,
 };
+
+describe('a page with no row yet, layouts with no draft, and photos read in other ways', () => {
+	it('waits, plans and checks nightly on an item page that has no page row yet', async () => {
+		const unregister = registerPageType({
+			key: 'pb_wait',
+			kind: 'item',
+			slots: { main: ['banner_arrangement'] },
+			// An item page: its H1 is the item's own name, so Go Live asks for no Page settings and no page row exists.
+			mainHeading: 'item_name',
+			indexable: false,
+			budget: { earlyPicturesPerBand: 1, firstLoadCodeKb: 10, surroundHtmlKb: 16, pageHtmlKb: 60 },
+		});
+		try {
+			const h = harness();
+			h.photos.set('med_making', photo('med_making', 'making'));
+			const created = await h.builder.createLayout('adm_2', 'pb_wait' as never, {
+				name: 'Item hero',
+				start: 'blank',
+				copyOf: null,
+				template: null,
+				bringPictures: true,
+			});
+			const saved = await h.builder.saveDraft(
+				'adm_2',
+				created.layout.id,
+				{ sections: [banner(null, 'med_making')], expectedDraftId: null },
+				T0,
+			);
+			expect((await h.builder.comingUp(T0)).rows).toEqual([]);
+			expect(await h.goLive.nightlyCheck(T0)).toBe(0);
+			const waiting = await h.goLive.goLive(
+				'adm_1',
+				created.layout.id,
+				{
+					expectedDraftId: saved.draft?.id ?? '',
+					from: null,
+					until: null,
+					handBackTo: null,
+					whenReady: true,
+				},
+				OWNER,
+				T0,
+			);
+			expect(waiting.state).toBe('waiting');
+			expect((await h.store.repo.page('pb_wait' as never, 'page'))?.pending).toHaveLength(1);
+		} finally {
+			unregister();
+		}
+	});
+
+	it('lists a layout by its last live revision when it has no draft, and with no outline when it has neither', async () => {
+		const h = harness();
+		const { draft } = await h.layout('Everyday', [letter]);
+		rawLayout(h, 'lay_live_only', { lastLiveRevisionId: draft });
+		rawLayout(h, 'lay_empty');
+		const rows = (await h.builder.page('home', T0)).layouts;
+		const outline = (id: string) => rows.find((row) => row.layout.id === id)?.outline;
+		expect(outline('lay_live_only')).toEqual([{ type: 'newsletter', arrangement: null }]);
+		expect(outline('lay_empty')).toEqual([]);
+	});
+
+	it('shares the widest file when the photo has no share size, and checks a photo that cannot be read as missing', async () => {
+		const h = harness();
+		h.photos.set('med_wide', {
+			...photo('med_wide', 'ready'),
+			visibility: 'public',
+			text: { alt: {} },
+			derivatives: [
+				{ role: 'banner', width: 845, height: 250, versionId: 'ver_1', storageKey: 'narrow' },
+				{ role: 'banner', width: 1690, height: 500, versionId: 'ver_1', storageKey: 'wide' },
+			],
+		} as unknown as MediaAsset);
+		await h.store.repo.saveSettings(
+			'home',
+			'page',
+			{ ...NO_SETTINGS_FILLED, shareImage: { assetId: 'med_wide', versionId: null } },
+			T0.toISOString(),
+		);
+		expect((await h.builder.page('home', T0)).shareImageUrl).toBe('https://cdn/wide');
+		Object.defineProperty(h.builder, 'assets', {
+			value: { findById: async () => Promise.reject(new Error('down')), findManyByIds: async () => [] },
+		});
+		expect(await h.builder.problemsFor('home', [banner(null)])).toEqual(expect.any(Array));
+	});
+});

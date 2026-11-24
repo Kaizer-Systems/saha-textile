@@ -116,12 +116,13 @@ const CLEAN_UP_LARGEST = 50;
 const CLEAN_UP_GROUPS = 500;
 
 /** English fallbacks; the Media page names each refusal in its own words. */
-const REFUSALS: Readonly<Record<string, string>> = {
+const REFUSALS = {
 	empty: 'A name is needed',
 	too_long: 'The name is longer than 120 characters',
 	bad_character: 'A name cannot hold a slash',
 	reserved: 'That name is not allowed',
 	into_itself: 'A folder cannot go inside itself',
+	unknown_target: 'That folder does not exist',
 	target_in_trash: 'That folder is in Trash',
 	not_in_trash: 'Only items in Trash can be deleted for good',
 	nothing_to_undo: 'This can no longer be undone',
@@ -143,15 +144,17 @@ const REFUSALS: Readonly<Record<string, string>> = {
 	version_in_use: 'The website shows this version; choose another on its pages first',
 	last_version: 'A photo keeps at least one version',
 	replacing: 'This photo is being replaced; add versions when that is done',
-};
+} as const;
+type RefusalCode = keyof typeof REFUSALS;
 
-const refuse = (code: string) => domainRefusal(code, REFUSALS[code] ?? 'Not allowed');
+/** Every refusal the page can meet has its own words, so the code is one of the list's keys. */
+const refuse = (code: RefusalCode) => domainRefusal(code, REFUSALS[code]);
 /** How long a Preview or Download address from the Media page works. */
 export const FILE_ADDRESS_SECONDS = 300;
 
 /** What a file takes in storage: the original and every version made from it. */
 const storedBytes = (asset: MediaAsset): number =>
-	asset.originalByteSize + asset.derivatives.reduce((sum, row) => sum + (row.byteSize ?? 0), 0);
+	asset.originalByteSize + asset.derivatives.reduce((sum, row) => sum + row.byteSize, 0);
 
 /** The name a file shows: its Media name, else its web file name. */
 export const fileName = (asset: MediaAsset): string => asset.displayName ?? asset.slug;
@@ -695,14 +698,16 @@ export class MediaLibraryService {
 				byteSize: request.byteSize,
 				contentType: request.contentType,
 			});
-			if (refusal || !profile) throw refuse(refusal ?? 'profile_unknown');
-			if (checkProfileMinSize(profile, { width, height }).result === 'warn' && !warnings.length) {
+			if (refusal) throw refuse(refusal);
+			// checkVersionRequest refuses a missing profile (profile_unknown), so there is one here.
+			const known = profile as NonNullable<typeof profile>;
+			if (checkProfileMinSize(known, { width, height }).result === 'warn' && !warnings.length) {
 				warnings.push('below_recommended_size');
 			}
 			versions.push({
 				id: versionIdOf(row.profileKey, row.fill),
 				profileKey: row.profileKey,
-				profileVersion: profile.version,
+				profileVersion: known.version,
 				fill: row.fill,
 				state: 'making',
 				error: null,
@@ -722,7 +727,8 @@ export class MediaLibraryService {
 		await this.assets.create({
 			id,
 			kind: 'image',
-			purpose: purposeForProfile(versions[0]?.profileKey ?? ''),
+			// A version is made for every row asked, and at least one was asked.
+			purpose: purposeForProfile((versions[0] as MediaVersion).profileKey),
 			originalStorageKey: key,
 			originalFormat: request.contentType as MediaAsset['originalFormat'],
 			originalByteSize: request.byteSize,
@@ -773,11 +779,13 @@ export class MediaLibraryService {
 	 */
 	async cancelUpload(actor: string, id: string, uploadId?: string): Promise<void> {
 		const asset = await this.requireUnfinished(actor, id);
-		if (uploadId && asset.originalStorageKey) {
+		// An unfinished upload always has its storage key (requireUnfinished refuses one without).
+		const key = asset.originalStorageKey as string;
+		if (uploadId) {
 			// Parts already stored would otherwise stay billed until Spaces drops them.
-			await this.storage.abortMultipartUpload({ key: asset.originalStorageKey, uploadId }).catch(() => undefined);
+			await this.storage.abortMultipartUpload({ key, uploadId }).catch(() => undefined);
 		}
-		if (asset.originalStorageKey) await this.storage.delete(asset.originalStorageKey);
+		await this.storage.delete(key);
 		await this.assets.hardDelete(id);
 		await this.storageCheck.release(`res_${id}`);
 	}
@@ -1244,15 +1252,20 @@ export class MediaLibraryService {
 			(asset, index, all) => !asset.trashedAt && all.findIndex((other) => other.id === asset.id) === index,
 		);
 		const used = await this.files.whereUsed(candidates.map((asset) => asset.id));
-		const inUse = candidates
-			.filter((asset) => (used.get(asset.id) ?? []).length > 0)
-			.map((asset) => ({
-				id: asset.id,
-				name: fileName(asset),
-				usedOn: used.get(asset.id) ?? [],
-				bytes: storedBytes(asset),
-				thumbnailUrl: this.thumbnailOf(asset),
-			}));
+		const inUse = candidates.flatMap((asset) => {
+			const usedOn = used.get(asset.id) ?? [];
+			return usedOn.length
+				? [
+						{
+							id: asset.id,
+							name: fileName(asset),
+							usedOn,
+							bytes: storedBytes(asset),
+							thumbnailUrl: this.thumbnailOf(asset),
+						},
+					]
+				: [];
+		});
 		// A folder holding an image the website uses stays put, with everything in it.
 		const blockedFolders = new Set<string>();
 		for (const asset of inUse) {
@@ -1264,8 +1277,9 @@ export class MediaLibraryService {
 		const trashFolders = folders.filter((folder) => !blockedFolders.has(folder.id) && !folder.trashedAt);
 		const blockedIds = new Set(inUse.map((row) => row.id));
 		const trashFiles = chosen.filter((asset) => !blockedIds.has(asset.id) && !asset.trashedAt);
+		// Files found by their folders always sit in one.
 		const insideTrashed = inFolders.filter(
-			(asset) => !blockedIds.has(asset.id) && !asset.trashedAt && !blockedFolders.has(asset.folderId ?? ''),
+			(asset) => !blockedIds.has(asset.id) && !asset.trashedAt && !blockedFolders.has(asset.folderId as string),
 		);
 		return { folders, candidates, inUse, trashFolders, trashFiles, insideTrashed };
 	}
@@ -1346,7 +1360,7 @@ export class MediaLibraryService {
 				id: asset.id,
 				kind: asset.kind,
 				name: fileName(asset),
-				contentType: asset.originalFormat ?? 'application/octet-stream',
+				contentType: asset.originalFormat,
 				category: mediaCategory(asset.originalFormat, fileName(asset)),
 				bytes: storedBytes(asset),
 				width: asset.width,
@@ -1358,9 +1372,7 @@ export class MediaLibraryService {
 				...(asset.kind === 'image'
 					? { versionsMaking: (asset.versions ?? []).filter((version) => version.state === 'making').length }
 					: {}),
-				...(asset.replacing
-					? { replacing: asset.replacing.phase, replacingWhy: asset.replacing.reason ?? 'replace' }
-					: {}),
+				...(asset.replacing ? { replacing: asset.replacing.phase, replacingWhy: asset.replacing.reason } : {}),
 				...(profile
 					? {
 							fitting: (asset.versions ?? [])
@@ -1480,7 +1492,8 @@ export class MediaLibraryService {
 		const version = asset.versions?.find((row) => row.id === versionId);
 		if (!version) throw refuse('version_unknown');
 		if (version.state === 'making') throw refuse('version_making');
-		if ((asset.versions?.length ?? 0) <= 1) throw refuse('last_version');
+		// The version was found above, so the photo has a list of versions.
+		if ((asset.versions as MediaVersion[]).length <= 1) throw refuse('last_version');
 		const used = ((await this.files.whereUsed([id])).get(id) ?? []).length > 0;
 		if (used && shownVersionIds(asset).has(versionId)) throw refuse('version_in_use');
 		const before = await this.assets.removeVersion(id, versionId);
@@ -1500,7 +1513,7 @@ export class MediaLibraryService {
 			{
 				name: fileName(asset),
 				version: versionId,
-				bytes: files.reduce((sum, row) => sum + (row.byteSize ?? 0), 0),
+				bytes: files.reduce((sum, row) => sum + row.byteSize, 0),
 			},
 			id,
 		);

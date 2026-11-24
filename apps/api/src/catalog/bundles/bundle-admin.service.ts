@@ -179,7 +179,7 @@ export class BundleAdminService {
 			isBundle: row.isBundle,
 			inStock: row.capacity >= 1,
 			// Ready-made garments (HSN chapters 61 and 62) change GST rate at ₹2,500 a piece (B2.9).
-			garment: /^6[12]/.test(row.product?.hsnCode ?? ''),
+			garment: /^6[12]/.test(row.product.hsnCode ?? ''),
 		});
 		return bundleChecks({
 			bundle: this.reader.toQuote(resolved),

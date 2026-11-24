@@ -97,7 +97,8 @@ export class FxAdminService {
 			if (!currency)
 				return {
 					code,
-					symbol: launchSymbol ?? code,
+					// Only a launch currency is listed before it is stored, and each has its symbol.
+					symbol: launchSymbol as string,
 					stored: false,
 					enabled: false,
 					inrPerUnit: null,

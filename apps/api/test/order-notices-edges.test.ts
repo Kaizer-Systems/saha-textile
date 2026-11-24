@@ -223,3 +223,23 @@ describe('a business account’s receipt: the remaining cases', () => {
 		).resolves.toBeUndefined();
 	});
 });
+
+describe('order notices: a set made to order', () => {
+	it('notes a set piece that is made to order', async () => {
+		const { svc } = harness();
+		const set = order({
+			lines: [
+				line({ lineId: 'set', role: 'bundle', title: { en: 'Wedding set' } }),
+				line({
+					lineId: 'piece',
+					parentLineId: 'set',
+					role: 'piece',
+					madeToOrder: true,
+					title: { en: 'Blouse' },
+				}),
+			],
+		});
+		const items = svc.variables(set, { channel: 'email', template: 'order_confirmed' } as never, {})['items'];
+		expect(items).toEqual(expect.arrayContaining([expect.objectContaining({ note: 'Made to order' })]));
+	});
+});

@@ -404,3 +404,15 @@ describe('the shop’s blog: the remaining cases', () => {
 		expect(findManyByIds).not.toHaveBeenCalled();
 	});
 });
+
+describe('the shop’s blog cards: a term with no name in any language', () => {
+	it('names the term by its slug', async () => {
+		const h = harness();
+		const { post } = await ready(h);
+		await h.admin.goLive(post.id, 'adm_1');
+		const categoryId = [...h.categories.values()][0]?.id as string;
+		h.categories.set(categoryId, { ...(h.categories.get(categoryId) as BlogCategory), name: { bn: '' } as never });
+		const list = await h.shop.list({ page: 1, pageSize: 10, locale: 'bn' } as never);
+		expect(JSON.stringify(list.items[0])).toContain('"name":"saree-guides"');
+	});
+});

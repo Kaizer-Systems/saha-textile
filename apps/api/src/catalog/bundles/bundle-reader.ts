@@ -36,7 +36,8 @@ export const DEFAULT_LOW_STOCK = 2;
 export interface ResolvedItem {
 	key: string;
 	productId: string;
-	product: Product | null;
+	/** Always the product read for it: an item whose product is gone drops out instead. */
+	product: Product;
 	isBundle: boolean;
 	live: boolean;
 	shown: boolean;
@@ -202,7 +203,7 @@ export class BundleReader {
 			overridden: item.priceInSetINR !== null,
 			todayINR: sale?.saleINR ?? sellingINR,
 			quantity: item.quantity,
-			soldBy: product.soldBy ?? 'piece',
+			soldBy: product.soldBy,
 			madeToOrder,
 			available,
 			capacity: available === null ? Number.POSITIVE_INFINITY : Math.floor(available / perSet),
@@ -257,7 +258,8 @@ export class BundleReader {
 			resolved.levels.map((level) => ({
 				code: level.code,
 				take: level.take,
-				items: level.items.map((item) => ({ key: item.key, capacity: capacity.get(item.key) ?? 0 })),
+				// Every level item's capacity was set just above.
+				items: level.items.map((item) => ({ key: item.key, capacity: capacity.get(item.key) as number })),
 			})),
 			{
 				lowStockThreshold: lowStockThreshold ?? DEFAULT_LOW_STOCK,
@@ -298,7 +300,7 @@ export class BundleReader {
 						quantity: row.quantity,
 						priceInSetINR: null,
 					});
-					if (!resolved || !resolved.live || !resolved.product) return null;
+					if (!resolved || !resolved.live) return null;
 					return {
 						productId: resolved.productId,
 						title: resolved.title,
@@ -347,7 +349,7 @@ export class BundleReader {
 			slug: item.slug,
 			title: item.title,
 			sku: item.sku,
-			image: item.product ? await image(item.product) : null,
+			image: await image(item.product),
 			mrpINR: item.mrpINR,
 			sellingINR: item.sellingINR,
 			saleINR: item.saleINR,
@@ -393,7 +395,8 @@ export class BundleReader {
 				combine: quote.combine,
 				capAtSeparately: quote.capAtSeparately,
 				roundTo: quote.roundTo,
-				eventSale: [...(quote.eventSale ?? [])],
+				// toQuote always lists the running sale rules, empty when there are none.
+				eventSale: [...(quote.eventSale as NonNullable<QuoteBundle['eventSale']>)],
 			},
 			stock: {
 				setsPossible: stock.setsPossible,

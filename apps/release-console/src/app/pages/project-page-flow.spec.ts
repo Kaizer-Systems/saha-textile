@@ -121,7 +121,7 @@ describe('the project page', () => {
 
 	it('removes the project only when its name is typed, and says why it could not', async () => {
 		const { c, api, router } = make({ page: 'settings', tab: 'remove' });
-		await c.remove(submit(), 'Saha');
+		await c.remove(submit(), 'Wrong name');
 		expect(c.removeMessage()).toBe('Type the project name exactly: Saha Textile');
 		expect(api.removeProject).not.toHaveBeenCalled();
 		await c.remove(submit(), ' Saha Textile ');

@@ -96,6 +96,18 @@ function faces(css) {
 	});
 }
 
+/**
+ * How a face is shown while its file loads. Most faces swap in when they arrive. The storefront's বাংলা pages
+ * preload the বাংলা letters of Noto Sans Bengali (`LOCALE_FONT_PRELOADS`), and such a page is nearly all those
+ * letters, so a late swap moved the whole header (a layout shift of 0.0081 in CI, 24 Nov). `optional` with the
+ * preload draws the first paint in the font when it is ready in time, and otherwise keeps the device's font on that
+ * page, so the text never moves; the next page finds the file in the cache. The shop's language switcher is a plain
+ * link, so every বাংলা page is a fresh page with the preload. The admin changes language without reloading and
+ * preloads nothing, so there the font keeps swapping in.
+ */
+const display = (app, face) =>
+	app === 'storefront' && face.family === 'Noto Sans Bengali' && face.subset === 'bengali' ? 'optional' : 'swap';
+
 async function selfHost(name, app) {
 	const query = app.families.map((family) => `family=${family}`).join('&');
 	const list = faces(
@@ -130,7 +142,7 @@ async function selfHost(name, app) {
 	font-family: '${face.family}';
 	font-style: ${face.style};
 	font-weight: ${face.weight};
-	font-display: swap;
+	font-display: ${display(name, face)};
 	src: url('/${app.folder}/${files.get(face.url)}') format('woff2');${face.range ? `\n\tunicode-range: ${face.range};` : ''}
 }`,
 	);

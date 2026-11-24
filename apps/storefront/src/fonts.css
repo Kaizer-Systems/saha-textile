@@ -8,7 +8,7 @@
 	font-family: 'Noto Sans Bengali';
 	font-style: normal;
 	font-weight: 400;
-	font-display: swap;
+	font-display: optional;
 	src: url('/assets/fonts/text/noto-sans-bengali-normal-400-600-bengali.woff2') format('woff2');
 	unicode-range:
 		U+0951-0952, U+0964-0965, U+0980-09FE, U+1CD0, U+1CD2, U+1CD5-1CD6, U+1CD8, U+1CE1, U+1CEA, U+1CED, U+1CF2,
@@ -44,7 +44,7 @@
 	font-family: 'Noto Sans Bengali';
 	font-style: normal;
 	font-weight: 600;
-	font-display: swap;
+	font-display: optional;
 	src: url('/assets/fonts/text/noto-sans-bengali-normal-400-600-bengali.woff2') format('woff2');
 	unicode-range:
 		U+0951-0952, U+0964-0965, U+0980-09FE, U+1CD0, U+1CD2, U+1CD5-1CD6, U+1CD8, U+1CE1, U+1CEA, U+1CED, U+1CF2,

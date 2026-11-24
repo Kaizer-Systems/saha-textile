@@ -240,7 +240,8 @@ export class WhereRulesApply {
 							categoryId: draft.categoryId,
 							includeSubcategories: draft.includeSubcategories,
 						}
-					: { kind: 'product', productId: draft.product?.id ?? '' },
+					: // draftValid() holds: a product exception has its product.
+						{ kind: 'product', productId: (draft.product as { id: string }).id },
 			domestic: choiceOf(draft.domestic),
 			international: choiceOf(draft.international),
 			note: draft.note.trim(),

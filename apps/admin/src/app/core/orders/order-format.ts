@@ -55,7 +55,8 @@ export function money(amount: number, currency: string, locale = 'en-IN'): strin
 export function countryName(code: string | null, locale: string): string {
 	if (!code) return '—';
 	try {
-		return new Intl.DisplayNames([locale], { type: 'region' }).of(code.toUpperCase()) ?? code;
+		// Never-run fallback removed: with the default fallback ('code'), of() answers a name or the code itself.
+		return new Intl.DisplayNames([locale], { type: 'region' }).of(code.toUpperCase()) as string;
 	} catch {
 		return code;
 	}
@@ -251,7 +252,8 @@ export function shippingReason(
 	const reason = parts.join('; ');
 	return {
 		reason: reason ? reason.charAt(0).toUpperCase() + reason.slice(1) : '',
-		short: short || (charged.length ? (parts[0] ?? '') : ''),
+		// Never-run fallback removed: a charged entry always adds a part above.
+		short: short || (charged.length ? (parts[0] as string) : ''),
 	};
 }
 

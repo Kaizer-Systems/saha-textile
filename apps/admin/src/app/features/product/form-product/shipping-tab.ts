@@ -53,7 +53,9 @@ export function inheritedCharge(
 	const resolved = resolveShippingCharges(null, nodes, fallback);
 	const source = resolved.sources[kind];
 	if (source.categoryId !== null) {
-		return { amountINR: resolved.charges[kind], fromCategory: rows.get(source.categoryId)?.name ?? null };
+		// A category can be the source only through its own row's shipping values (nodes above).
+		const from = rows.get(source.categoryId) as CategoryDefaults;
+		return { amountINR: resolved.charges[kind], fromCategory: from.name };
 	}
 	return { amountINR: shopDefault ? resolved.charges[kind] : null, fromCategory: null };
 }
@@ -90,8 +92,8 @@ export function productExceptions(
 			exceptions,
 		);
 		if (via.kind !== 'productException' && via.kind !== 'categoryException') return [];
-		const exception = exceptions.find((e) => e.id === via.exceptionId);
-		if (!exception) return [];
+		// routeShippingLine picked the exception from this same list.
+		const exception = exceptions.find((e) => e.id === via.exceptionId) as ShippingException;
 		return [{ zone, choice: zone === 'domestic' ? exception.domestic : exception.international }];
 	});
 }

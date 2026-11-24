@@ -53,8 +53,9 @@ export function isoDay(value: unknown): string | undefined {
 	if (typeof value !== 'string') return undefined;
 	const match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(value.trim());
 	if (!match) return undefined;
-	const [, year, month, day] = match;
-	return `${year}-${(month ?? '').padStart(2, '0')}-${(day ?? '').padStart(2, '0')}`;
+	// Never-run lines removed: the pattern always captures a month and a day.
+	const [, year, month, day] = match as unknown as [string, string, string, string];
+	return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
 
 /** The table's paging, search and date range, as the orders list takes them. */

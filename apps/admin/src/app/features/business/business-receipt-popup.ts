@@ -229,8 +229,9 @@ export class BusinessReceiptPopup {
 	readonly splitProblem = computed(() => {
 		const total = this.amountValue() ?? 0;
 		const rows = this.allocations();
-		if (rows.some((row) => row.value === null || (row.value ?? 0) > row.due + 0.005)) return true;
-		return rows.reduce((sum, row) => sum + (row.value ?? 0), 0) > total + 0.005;
+		if (rows.some((row) => row.value === null || row.value > row.due + 0.005)) return true;
+		// Every share is a number here: a share that isn't returned above.
+		return rows.reduce((sum, row) => sum + (row.value as number), 0) > total + 0.005;
 	});
 
 	async start(business: Business): Promise<void> {
@@ -286,7 +287,8 @@ export class BusinessReceiptPopup {
 					receivedOn: this.receivedOn(),
 					note: null,
 					allocations: this.allocations()
-						.filter((row) => (row.value ?? 0) > 0)
+						// canSave() holds, so every share is a number.
+						.filter((row) => (row.value as number) > 0)
 						.map((row) => ({ orderId: row.orderId, amountINR: row.value as number })),
 				}),
 			);

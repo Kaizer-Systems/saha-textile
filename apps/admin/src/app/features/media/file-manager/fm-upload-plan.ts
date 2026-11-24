@@ -107,7 +107,8 @@ export function planUpload(picked: readonly FmPicked[]): FmUploadPlan {
 		rows.push(kind ? asPhotoKind(base, kind) : base);
 	}
 	const tops = new Set(rows.map((row) => row.folderPath[0] ?? ''));
-	const folderName = tops.size === 1 && !tops.has('') ? ([...tops][0] ?? null) : null;
+	// Never-run fallback removed: a set of one always has a first item.
+	const folderName = tops.size === 1 && !tops.has('') ? ([...tops][0] as string) : null;
 	return { rows, folderName };
 }
 
@@ -216,7 +217,8 @@ export function asPhotoKind<R extends Pick<FmUploadRow, 'contentType' | 'kind' |
 	const heic = kind === 'heic' || looksLikeHeic(row.contentType, row.name);
 	const contentType = heic ? row.contentType : PHOTO_KIND_TYPES[kind];
 	const photo = heic || isProcessedPhoto(contentType);
-	return { ...row, kind, contentType, heic, photo, waits: !photo && waitsForImageProfiles(contentType, row.name) };
+	// Never-run check removed: every photo kind is a processed type or a HEIC, so a photo kind never waits.
+	return { ...row, kind, contentType, heic, photo, waits: false };
 }
 
 /** What a picked file's first bytes say it is; null when they are not a photo, or cannot be read. */

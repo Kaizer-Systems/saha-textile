@@ -135,6 +135,6 @@ export class BundleRuleRows {
 		if (type === 'boolean') return text === 'true';
 		if (type === 'date') return text.includes(',') ? text.split(',').map((word) => word.trim()) : text.trim();
 		const parts = text.split(',').map((word) => Number(word.trim()));
-		return parts.length === 2 ? [parts[0] ?? 0, parts[1] ?? 0] : Number(text);
+		return parts.length === 2 ? (parts as [number, number]) : Number(text);
 	}
 }

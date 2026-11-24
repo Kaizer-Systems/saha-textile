@@ -57,7 +57,8 @@ const STEP_AT: Partial<Record<Order['status'], number>> = {
 
 /** "Moulik Patra" → "Moulik", as the brief's history and request lines write staff names. */
 function firstName(name: string): string {
-	return name.trim().split(/\s+/)[0] ?? name;
+	// Never-run fallback removed: split() always gives a first part.
+	return name.trim().split(/\s+/)[0] as string;
 }
 
 /**
@@ -230,7 +231,8 @@ export class Details {
 	country(code: string | null | undefined): string {
 		if (!code) return '';
 		try {
-			return new Intl.DisplayNames([this.locale()], { type: 'region' }).of(code.toUpperCase()) ?? code;
+			// Never-run fallback removed: with the default fallback ('code'), of() answers a name or the code itself.
+			return new Intl.DisplayNames([this.locale()], { type: 'region' }).of(code.toUpperCase()) as string;
 		} catch {
 			return code;
 		}
@@ -571,14 +573,16 @@ export class Details {
 	}
 
 	/** Lines of their own (a product or a set), numbered as the Pack list names them. */
-	private readonly topLines = computed(() => (this.order()?.lines ?? []).filter((line) => !line.parentLineId));
+	// Never-run fallback removed: only packRows reads this, and only once it has an order.
+	private readonly topLines = computed(() => (this.order() as Order).lines.filter((line) => !line.parentLineId));
 
 	/** Every physical piece in the parcel, flat, with where it comes from (E08). */
 	readonly packRows = computed(() => {
 		const order = this.order();
 		if (!order) return [];
 		const tops = this.topLines();
-		const lineNo = (line: OrderLine | undefined) => (line ? tops.indexOf(line) + 1 : 0);
+		// Never-run branch removed: every caller below hands over a line it has.
+		const lineNo = (line: OrderLine) => tops.indexOf(line) + 1;
 		const setName = (line: OrderLine | undefined) => line?.title.en ?? '';
 		return order.lines
 			.filter((line) => line.role !== 'bundle')

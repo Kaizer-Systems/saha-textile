@@ -153,8 +153,9 @@ export class PbPicture {
 				if (ink === picture.ink && backing === picture.backing) continue;
 				const bands = this.ready();
 				if (!bands.every((band) => this.reads(band, ink, backing, here))) continue;
+				// reads() just found this choice's spot on every band, so each ratio is there.
 				const ratios = bands.flatMap((band) =>
-					this.fields().map((field) => band.choices[`${ink}|${backing}`]?.[here]?.[field].ratio ?? 0),
+					this.fields().map((field) => band.choices[`${ink}|${backing}`]?.[here]?.[field].ratio as number),
 				);
 				found.push({ ink, backing, ratio: Math.min(...ratios) });
 			}

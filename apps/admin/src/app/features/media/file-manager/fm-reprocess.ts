@@ -186,7 +186,8 @@ export class FmReprocess {
 		if (!line.ticked.size && !line.made.size) return this.transloco.translate('fm_rp_tick_for_fills');
 		return this.transloco.translate('fm_rp_other_shape', {
 			photo: this.photoShape(),
-			box: shapeLabel(line.profile.shape) ?? '',
+			// Never-run fallback removed: the line has a shape here (checked above), and a shape always has a label.
+			box: shapeLabel(line.profile.shape) as string,
 		});
 	}
 

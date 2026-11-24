@@ -68,8 +68,9 @@ export function pickItem(
 export function stepItem(ordered: readonly FmItemRef[], at: FmItemRef | null, step: 1 | -1): FmItemRef | null {
 	if (!ordered.length) return null;
 	const index = at ? ordered.findIndex((row) => row.type === at.type && row.id === at.id) : -1;
-	if (index < 0) return ordered[step === 1 ? 0 : ordered.length - 1] ?? null;
-	return ordered[Math.min(ordered.length - 1, Math.max(0, index + step))] ?? null;
+	// Never-run fallbacks removed: the list is not empty, so both reads land on an item.
+	if (index < 0) return ordered[step === 1 ? 0 : ordered.length - 1] as FmItemRef;
+	return ordered[Math.min(ordered.length - 1, Math.max(0, index + step))] as FmItemRef;
 }
 
 type TreeRow = MediaFolderTree['folders'][number];

@@ -105,18 +105,14 @@ export class PostalAddressForm {
 	readonly postalLabel = computed(() => this.country.data()?.postalCodeLabel ?? 'postal');
 	readonly countryRows = computed(() => {
 		const lang = this.transloco.getActiveLang() === 'bn' ? 'bn' : 'en';
-		let names: Intl.DisplayNames | null = null;
-		try {
-			names = new Intl.DisplayNames([lang], { type: 'region' });
-		} catch {
-			names = null;
-		}
+		// Both languages are built into every browser, and the default fallback ('code') never answers undefined.
+		const names = new Intl.DisplayNames([lang], { type: 'region' });
 		return this.countries()
 			.map((row) => ({
 				code: row.code,
 				callingCode: row.callingCode,
 				flag: flagOf(row.code),
-				name: names?.of(row.code) ?? row.name,
+				name: names.of(row.code) as string,
 			}))
 			.sort((a, b) => (a.code === 'IN' ? -1 : b.code === 'IN' ? 1 : a.name.localeCompare(b.name)));
 	});

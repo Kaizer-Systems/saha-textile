@@ -140,8 +140,9 @@ export class PbPageSettings {
 
 	/** The form is filled without events when a language shows, so the preview reads it then too. */
 	private syncPreview(): void {
+		// show() has just put a string (or '') in every language field.
 		const value = this.form.getRawValue();
-		this.typed.set({ title: value.title ?? '', description: value.description ?? '' });
+		this.typed.set({ title: value.title as string, description: value.description as string });
 	}
 
 	openLanguageGap({ key, locale }: { key: string; locale: string }): void {

@@ -54,7 +54,8 @@ export function addressCardLine(row: CustomerAddressRow, lang: string): string {
 	let country = row.country;
 	if (code) {
 		try {
-			country = new Intl.DisplayNames([lang === 'bn' ? 'bn' : 'en'], { type: 'region' }).of(code) ?? row.country;
+			// With the default fallback ('code'), of() answers a name or the code itself, never undefined.
+			country = new Intl.DisplayNames([lang === 'bn' ? 'bn' : 'en'], { type: 'region' }).of(code) as string;
 		} catch {
 			country = row.country;
 		}

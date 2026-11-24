@@ -75,6 +75,7 @@ export function fileKind(file: Pick<MediaFileRow, 'name' | 'category' | 'kind'>)
 export function fileTypeLabel(file: Pick<MediaFileRow, 'name' | 'contentType'>): string {
 	const fromName = fileExtension(file.name);
 	if (fromName) return fromName;
-	const subtype = (file.contentType.split('/')[1] ?? '').split(/[+;.-]/)[0] ?? '';
+	// Never-run fallback removed: split() always gives a first part.
+	const subtype = (file.contentType.split('/')[1] ?? '').split(/[+;.-]/)[0] as string;
 	return subtype === 'jpeg' ? 'JPG' : subtype.toUpperCase();
 }

@@ -1,8 +1,9 @@
-import { DecimalPipe } from '@angular/common';
+import { DecimalPipe, isPlatformBrowser } from '@angular/common';
 import {
 	Component,
 	DestroyRef,
 	ElementRef,
+	PLATFORM_ID,
 	computed,
 	effect,
 	inject,
@@ -80,7 +81,7 @@ export class PbPreview {
 			const chosen = this.chosen();
 			untracked(() => this.outline(chosen));
 		});
-		if (typeof window !== 'undefined') {
+		if (isPlatformBrowser(inject(PLATFORM_ID))) {
 			const onMessage = (event: MessageEvent) => this.heard(event);
 			window.addEventListener('message', onMessage);
 			inject(DestroyRef).onDestroy(() => window.removeEventListener('message', onMessage));

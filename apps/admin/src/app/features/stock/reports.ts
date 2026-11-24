@@ -38,8 +38,9 @@ export function reportTabFrom(fromRoute: unknown, fromQuery: string | null): Rep
 
 /** The first and last day of a month as `YYYY-MM-DD`, from `YYYY-MM`. */
 export function monthRange(month: string): { from: string; to: string } {
-	const [year, mon] = month.split('-').map(Number);
-	const last = new Date(Date.UTC(year ?? 1970, mon ?? 1, 0)).getUTCDate();
+	// Never-run fallback removed: split() always gives a first part, so the year is always there.
+	const [year, mon] = month.split('-').map(Number) as [number, number | undefined];
+	const last = new Date(Date.UTC(year, mon ?? 1, 0)).getUTCDate();
 	return { from: `${month}-01`, to: `${month}-${String(last).padStart(2, '0')}` };
 }
 

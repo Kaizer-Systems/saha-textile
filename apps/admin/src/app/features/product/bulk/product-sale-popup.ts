@@ -273,7 +273,8 @@ export class ProductSalePopup {
 			? row.skus.map((sku) => ({ price: whole(this.skuPrice()[sku.sku] ?? ''), normal: sku.normalINR }))
 			: [{ price: whole(this.productPrice()[row.pick.id] ?? ''), normal: this.nowINR(row) ?? 0 }];
 		if (boxes.some((box) => box.price === null || box.price <= 0)) return 'empty';
-		if (boxes.some((box) => (box.price ?? 0) > box.normal)) return 'above';
+		// Every box has a price above ₹0 here: an empty one returned just above.
+		if (boxes.some((box) => (box.price as number) > box.normal)) return 'above';
 		return null;
 	}
 
@@ -302,17 +303,22 @@ export class ProductSalePopup {
 			if (!this.value().trim() || !Number.isFinite(value) || value <= 0) return [];
 			return usable.map((row) => ({ productId: row.pick.id, rule: { kind, value, skuPrices: {} } }));
 		}
+		// problem() is null only when every box this row uses holds a whole price above ₹0.
 		return usable
 			.filter((row) => this.problem(row) === null)
 			.map((row) => {
 				if (!this.perColour().has(row.pick.id)) {
 					return {
 						productId: row.pick.id,
-						rule: { kind, value: whole(this.productPrice()[row.pick.id] ?? '') ?? 0, skuPrices: {} },
+						rule: {
+							kind,
+							value: whole(this.productPrice()[row.pick.id] as string) as number,
+							skuPrices: {},
+						},
 					};
 				}
 				const skuPrices = Object.fromEntries(
-					row.skus.map((sku) => [sku.sku, whole(this.skuPrice()[sku.sku] ?? '') ?? 0]),
+					row.skus.map((sku) => [sku.sku, whole(this.skuPrice()[sku.sku] as string) as number]),
 				);
 				return {
 					productId: row.pick.id,

@@ -168,8 +168,9 @@ export class RuleBuilder {
 				return shop[kind];
 			};
 			const values = [...new Set(rows.map((row) => resolve(row.id)))].sort((a, b) => a - b);
-			const low = values[0] ?? 0;
-			const high = values[values.length - 1] ?? 0;
+			// One value per category row, and there is at least one row here.
+			const low = values[0] as number;
+			const high = values[values.length - 1] as number;
 			amounts[kind] =
 				low === high
 					? { amount: this.rupees(low), every: true }
@@ -389,10 +390,10 @@ export class RuleBuilder {
 		if (typeof params['field'] === 'string')
 			params['field'] = this.transloco.translate(`ship_f_${String(params['field']).replace(/\./g, '_')}`);
 		if (typeof params['language'] === 'string')
-			params['language'] =
-				new Intl.DisplayNames([String(params['language'])], { type: 'language' }).of(
-					String(params['language']),
-				) ?? String(params['language']);
+			// With the default fallback ('code'), of() answers a name or the code itself, never undefined.
+			params['language'] = new Intl.DisplayNames([String(params['language'])], { type: 'language' }).of(
+				String(params['language']),
+			) as string;
 		const where = issue.stepId
 			? this.transloco.translate('ship_issue_in_step', {
 					number: this.stepNumber(this.body().steps.findIndex((s) => s.id === issue.stepId)),

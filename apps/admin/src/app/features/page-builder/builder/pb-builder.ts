@@ -256,8 +256,8 @@ export class PbBuilder {
 	undo(): void {
 		const previous = this.history.undo(this.sections());
 		if (!previous) return;
-		const step = this.steps.pop();
-		if (step) this.undoneSteps.push(step);
+		// Every history entry was recorded with its step, so there is one to move.
+		this.undoneSteps.push(this.steps.pop() as Omit<SessionLine, 'steps'>);
 		this.sections.set(previous);
 		this.afterHistory();
 	}
@@ -265,8 +265,8 @@ export class PbBuilder {
 	redo(): void {
 		const next = this.history.redo(this.sections());
 		if (!next) return;
-		const step = this.undoneSteps.pop();
-		if (step) this.steps.push(step);
+		// Undone entries keep their steps the same way.
+		this.steps.push(this.undoneSteps.pop() as Omit<SessionLine, 'steps'>);
 		this.sections.set(next);
 		this.afterHistory();
 	}
@@ -323,7 +323,8 @@ export class PbBuilder {
 			this.focusRow(section.id);
 		} else if (event.key === 'Escape') {
 			event.preventDefault();
-			if (this.liftedFrom) this.sections.set(this.liftedFrom);
+			// A row is only ever lifted together with the order from before.
+			this.sections.set(this.liftedFrom as PageSection[]);
 			this.liftedFrom = null;
 			this.lifted.set(null);
 			this.announce('pb_kb_cancelled', { name, position: lifted.from + 1, count });
@@ -341,10 +342,10 @@ export class PbBuilder {
 
 	private dropLifted(): void {
 		const liftedId = this.lifted()?.id;
-		const before = this.liftedFrom;
+		// Called only while a row is lifted, which always keeps the order from before.
+		const before = this.liftedFrom as PageSection[];
 		this.liftedFrom = null;
 		this.lifted.set(null);
-		if (!before) return;
 		const moved =
 			before.map((row) => row.id).join() !==
 			this.sections()
@@ -421,7 +422,7 @@ export class PbBuilder {
 				return;
 			}
 			this.saveState.set('retrying');
-			const wait = RETRY_MS[Math.min(this.retryAt, RETRY_MS.length - 1)] ?? 30_000;
+			const wait = RETRY_MS[Math.min(this.retryAt, RETRY_MS.length - 1)] as number;
 			this.retryAt += 1;
 			this.saveTimer = setTimeout(() => void this.save(), wait);
 		}

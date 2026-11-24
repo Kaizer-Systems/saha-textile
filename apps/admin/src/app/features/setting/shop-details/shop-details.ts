@@ -227,7 +227,8 @@ export class ShopDetailsSettings {
 	 * cannot be right shows at once (X04C), with the right last character.
 	 */
 	problemOf(field: ShopField): string | null {
-		if (field === 'gstin' && this.verdict().kind === 'problem') return this.problems().gstin ?? null;
+		// A problem verdict always names its key in problems().gstin (shopFormProblems).
+		if (field === 'gstin' && this.verdict().kind === 'problem') return this.problems().gstin as string;
 		return this.touched().has(field) ? (this.problems()[field] ?? null) : null;
 	}
 
@@ -363,11 +364,6 @@ const FIELD_LABELS: Readonly<Record<string, string>> = {
 
 /** "GSTIN, city and PIN code": the reader's list words (English digits and names stay as typed). */
 function listFormat(items: readonly string[], lang: string): string {
-	try {
-		return new Intl.ListFormat(lang === 'bn' ? 'bn-IN' : 'en-IN', { style: 'long', type: 'conjunction' }).format(
-			items,
-		);
-	} catch {
-		return items.join(', ');
-	}
+	// Both locales are built into every browser; a list of strings never makes format() throw.
+	return new Intl.ListFormat(lang === 'bn' ? 'bn-IN' : 'en-IN', { style: 'long', type: 'conjunction' }).format(items);
 }

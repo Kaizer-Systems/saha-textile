@@ -174,10 +174,9 @@ export class MediaUploads {
 			// Older browsers show their own box only when this is set; its words cannot be changed.
 			event.returnValue = '';
 		};
-		if (typeof window !== 'undefined') {
-			window.addEventListener('beforeunload', warn);
-			inject(DestroyRef).onDestroy(() => window.removeEventListener('beforeunload', warn));
-		}
+		// Never-run guard removed: the admin runs only in a browser (it has no server build).
+		window.addEventListener('beforeunload', warn);
+		inject(DestroyRef).onDestroy(() => window.removeEventListener('beforeunload', warn));
 	}
 
 	/** Queues files; `reservationId` is the storage approval the whole batch runs under (B18). */
@@ -915,7 +914,8 @@ export class MediaUploads {
 
 	private readSaved(): CutOffUpload[] {
 		try {
-			const raw = typeof localStorage === 'undefined' ? null : localStorage.getItem(RESUME_KEY);
+			// Never-run guard removed: the admin runs only in a browser, where localStorage exists (it may still throw).
+			const raw = localStorage.getItem(RESUME_KEY);
 			const list = raw ? (JSON.parse(raw) as unknown) : [];
 			return Array.isArray(list)
 				? (list as CutOffUpload[]).filter((entry) => !!entry?.assetId && !!entry.uploadId)

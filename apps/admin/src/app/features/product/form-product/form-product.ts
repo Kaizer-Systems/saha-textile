@@ -1484,12 +1484,13 @@ export class FormProduct implements DraftMarks {
 			hsnCode: textOrNull(raw['hsn_code']),
 			...(product.soldByLocked ? {} : { soldBy: this.soldBy() }),
 			returnable: this.returnableChoice() === '' ? null : this.returnableChoice() === 'yes',
+			// submit() saves a metre product only once metreProblem() found the cut and every quick length whole.
 			...(this.soldBy() === 'metre'
 				? {
 						metre: {
-							shortestCutTenths: metresToTenths(this.metreCut()) ?? 10,
+							shortestCutTenths: metresToTenths(this.metreCut()) as number,
 							quickLengths: this.quickLengths().map((row) => ({
-								tenths: metresToTenths(row.length) ?? 10,
+								tenths: metresToTenths(row.length) as number,
 								label: Object.fromEntries(
 									Object.entries(row.label).filter(([, text]) => text.trim()),
 								) as QuickLength['label'],
@@ -1670,7 +1671,8 @@ export class FormProduct implements DraftMarks {
 		this.draft.set(null);
 		this.waitingDraft.set(null);
 		this.markClean();
-		void this.loadFreeItems(this.form.controls['free_with_products'].value ?? []);
+		// applyCatalogProduct() has just filled the free items with a list (none is []).
+		void this.loadFreeItems(this.form.controls['free_with_products'].value as string[]);
 		const draftId = this.route.snapshot?.queryParamMap?.get('draft') ?? null;
 		if (draftId) void this.openEditDraft(draftId);
 		else void this.lookForDrafts();
@@ -1994,7 +1996,8 @@ function freeWithOf(raw: Record<string, unknown>): CatalogProductWrite['freeWith
 	if (ids.length === 0) return null;
 	const take = ids.length > 1 ? ((raw['free_take'] as 'all' | 'exactly' | 'upto' | 'between') ?? 'all') : 'all';
 	const count = take === 'all' ? null : Math.min(ids.length, Math.max(1, Number(raw['free_count']) || 1));
-	const from = take === 'between' ? Math.min(count ?? 0, Math.max(0, Number(raw['free_from']) || 0)) : null;
+	// "between" is not "all", so it always has a count.
+	const from = take === 'between' ? Math.min(count as number, Math.max(0, Number(raw['free_from']) || 0)) : null;
 	const settings = (raw['free_with_items'] as Record<string, FreeItemSetting> | null) ?? {};
 	return {
 		items: ids.map((productId) => ({

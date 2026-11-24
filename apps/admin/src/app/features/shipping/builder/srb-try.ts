@@ -189,7 +189,8 @@ export class SrbTry {
 
 	countryName(code: string): string {
 		try {
-			return new Intl.DisplayNames([this.transloco.getActiveLang()], { type: 'region' }).of(code) ?? code;
+			// With the default fallback ('code'), of() answers a name or the code itself, never undefined.
+			return new Intl.DisplayNames([this.transloco.getActiveLang()], { type: 'region' }).of(code) as string;
 		} catch {
 			return code;
 		}

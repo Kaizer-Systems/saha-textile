@@ -262,7 +262,8 @@ export class FmDetails {
 	}
 
 	fileLabel(url: string): string {
-		return url.split('/').pop() ?? url;
+		// Never-run fallback removed: split() always gives at least one part, so pop() finds it.
+		return url.split('/').pop() as string;
 	}
 
 	async copy(url: string): Promise<void> {

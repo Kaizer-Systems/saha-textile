@@ -56,15 +56,15 @@ export async function ensurePounds(): Promise<void> {
 	await withDatabase(async (db) => {
 		const currencies = db.collection('currencies');
 		const usd = await currencies.findOne({ _id: 'USD' as never });
-		if (usd && !(await currencies.findOne({ _id: 'GBP' as never }))) {
-			await currencies.insertOne({
-				...usd,
-				_id: 'GBP' as never,
-				symbol: '£',
-				paypalFixed: 0.2,
-				rateFromINR: 1 / 107.5,
-			});
-		}
+		if (!usd) return;
+		// One atomic "add it if it is missing": business-flows and checkout-rules call this at the same
+		// time on parallel workers, and a look-then-insert let both insert (E11000 on GBP).
+		const { _id: _usd, ...fields } = usd;
+		await currencies.updateOne(
+			{ _id: 'GBP' as never },
+			{ $setOnInsert: { ...fields, symbol: '£', paypalFixed: 0.2, rateFromINR: 1 / 107.5 } },
+			{ upsert: true },
+		);
 	});
 }
 

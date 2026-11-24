@@ -145,7 +145,11 @@ test.describe('Product and category forms (F01–F03)', () => {
 	test('refuses an HSN that is not 4, 6 or 8 digits before saving', async ({ page }) => {
 		const item = await copyProduct('hsn', 0);
 		await page.goto(`${ADMIN}/product/edit/${item.id}?tab=setup`);
+		// Type only once the saved product has filled the form; on a slow run its answer otherwise
+		// lands after the typing and puts the saved HSN back.
+		await page.waitForLoadState('networkidle');
 		const hsn = page.locator('#hsn_code');
+		await expect(hsn).toBeEditable();
 		await hsn.fill('54');
 		await expect(page.getByText('An HSN has 4, 6 or 8 digits.').first()).toBeVisible();
 		await hsn.fill('520811');

@@ -141,6 +141,13 @@ The approved pictures replaced these on screen; the code that is still there wai
 | IB2 | The select2 mailbox picker's choices and handler                                          | `apps/admin/src/app/features/inbox/inbox.ts` (`mailboxChoices`, `chooseMailbox`) and their cases in `inbox.spec.ts`                                  | The title row's switcher (`switchTo`, `mailboxState`)   | `Select2` stays imported for the compose box's From choice |
 | IB3 | The words of the old banners and the long search hint                                     | `inbox_page_selected`, `inbox_select_matching`, `inbox_matching_selected`, `inbox_bin_note` in `apps/admin/public/assets/i18n/en.json` and `bn.json` | The status line's shorter words (`inbox_status_*`)      | Nothing else reads them                                    |
 
+## GST returns (2026-11-24)
+
+| #   | Piece                                                     | Files                                                                                                                     | Replaced by                                                              |
+| --- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| GR1 | The GSTR-1 page's own copy of the Mark filed pop-up (G8)  | `apps/admin/src/app/features/accounts/gst/gstr1-page.ts`, `.html` (`openFile`, `attachAck`, `markFiled`, `#fileTemplate`) | The shared `MarkFiledPopup` (`features/accounts/gst/mark-filed-popup.*`) |
+| GR2 | Periods and locks' own copy of the Mark filed pop-up (G8) | `apps/admin/src/app/features/accounts/periods.ts`, `.html` (`openFile`, `attachAck`, `markFiled`)                         | The shared `MarkFiledPopup`                                              |
+
 ## Decided, so not on this list (2026-11-16)
 
 The owner chose to remove these with the Legal Pages build instead of keeping them for the end:

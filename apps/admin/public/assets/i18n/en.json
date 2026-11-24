@@ -9132,5 +9132,8 @@
 	"cash_problem_settlement_wrong_direction": "That way doesn't fit this difference (short or over).",
 	"cash_problem_staff_required": "Choose the staff member.",
 	"cash_problem_staff_unknown": "That staff member isn't known.",
-	"cash_problem_role": "The books have no ledger for \"{{role}}\" yet. Install the shared chart's update in Settings › Accounts templates."
+	"cash_problem_role": "The books have no ledger for \"{{role}}\" yet. Install the shared chart's update in Settings › Accounts templates.",
+	"ov_cash_boxes": "{{count}} cash boxes",
+	"ov_waiting_cashDifferences": "{{count}} cash sheets closed with a difference",
+	"ov_waiting_expenseClaims": "{{count}} expense claims waiting for approval"
 }

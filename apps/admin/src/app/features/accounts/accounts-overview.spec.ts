@@ -23,6 +23,7 @@ const overview = (over: Partial<AccountsOverview> = {}): AccountsOverview => ({
 	month: '2026-11',
 	cashPaise: 882_400,
 	cashLedgers: 3,
+	cashBoxes: 0,
 	bankPaise: 43_438_800,
 	bankNames: ['HDFC'],
 	customersPaise: 9_950_000,
@@ -112,6 +113,8 @@ describe('the accounts overview', () => {
 			'selfInvoicesDue',
 			'adjustmentsWaiting',
 			'refundsFailed',
+			'cashDifferences',
+			'expenseClaims',
 		]);
 		const label = setup(overview()).page.monthLabel();
 		expect(label).toBe('');

@@ -33,7 +33,8 @@
 						<h6>{{ 'ov_cash' | transloco }}</h6>
 						<h3 id="ov_cash">{{ inr(o.cashPaise) }}</h3>
 						<p class="small text-muted mb-0">
-							{{ 'ov_cash_ledgers' | transloco: { count: o.cashLedgers } }}
+							{{ (o.cashBoxes ? 'ov_cash_boxes' : 'ov_cash_ledgers') | transloco: { count: o.cashBoxes ||
+							o.cashLedgers } }}
 						</p>
 					</div>
 					<div class="icon-box"><i class="ri-money-rupee-circle-line"></i></div>

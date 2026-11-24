@@ -23,6 +23,8 @@ export const WAITING_LINKS: Readonly<Record<OverviewWaiting['kind'], { path: str
 	selfInvoicesDue: { path: '/accounts/vouchers/selfInvoices', icon: 'ri-time-line' },
 	adjustmentsWaiting: { path: '/stock/approvals', icon: 'ri-shield-user-line' },
 	refundsFailed: { path: '/accounts/vouchers/refundVouchers', icon: 'ri-error-warning-line' },
+	cashDifferences: { path: '/cash/differences', icon: 'ri-scales-3-line' },
+	expenseClaims: { path: '/cash/claims', icon: 'ri-receipt-line' },
 };
 
 /** "November" for 2026-11, in the reader's language (Bengali month names keep English digits elsewhere). */

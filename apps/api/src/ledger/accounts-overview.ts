@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Inject, Injectable, Query } from '@nestjs/common';
+import { Controller, Get, Header, Inject, Injectable, Optional, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	AccountsListQuery,
@@ -12,6 +12,7 @@ import {
 	istDay,
 	overviewFigures,
 	type AccountsListsReader,
+	type CashRepository,
 	type GeneralLedgerRepository,
 	type PeriodLockRepository,
 } from '@saha-textile/core-domain';
@@ -19,7 +20,12 @@ import {
 import { Principal } from '../auth/ownership';
 import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../auth/session.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
-import { ACCOUNTS_LISTS_READER, GENERAL_LEDGER_REPOSITORY, PERIOD_LOCK_REPOSITORY } from '../infra/tokens';
+import {
+	ACCOUNTS_LISTS_READER,
+	CASH_REPOSITORY,
+	GENERAL_LEDGER_REPOSITORY,
+	PERIOD_LOCK_REPOSITORY,
+} from '../infra/tokens';
 import { API_TAGS } from '../openapi-tags';
 import { LedgerService } from './ledger.service';
 
@@ -62,6 +68,10 @@ export class AccountsOverviewService {
 		@Inject(PERIOD_LOCK_REPOSITORY) private readonly periods: Pick<PeriodLockRepository, 'list'>,
 		@Inject(GENERAL_LEDGER_REPOSITORY) private readonly books: Pick<GeneralLedgerRepository, 'listDrafts'>,
 		@Inject(ACCOUNTS_LISTS_READER) private readonly reader: AccountsListsReader,
+		/** Cash boxes, differences and claims (accounts brief O); last so older callers keep working. */
+		@Optional()
+		@Inject(CASH_REPOSITORY)
+		private readonly cash: Pick<CashRepository, 'boxes' | 'listSheets' | 'listClaims'> | null = null,
 	) {}
 
 	async overview(
@@ -75,7 +85,7 @@ export class AccountsOverviewService {
 		const [y, m] = today.split('-').map(Number) as [number, number];
 		const yearStart = `${m >= 4 ? y : y - 1}-04-01`;
 		const balances = (day: string) => this.ledger.balances(day, principal);
-		const [chart, atToday, atMonthEnd, monthBefore, yearBefore, locks, drafts, waiting] = await Promise.all([
+		const [chart, atToday, atMonthEnd, monthBefore, yearBefore, locks, drafts, waiting, cash] = await Promise.all([
 			this.ledger.chart(),
 			balances(today),
 			balances(monthEnd < today ? monthEnd : today),
@@ -84,15 +94,18 @@ export class AccountsOverviewService {
 			this.periods.list(),
 			this.books.listDrafts(),
 			this.waiting(today),
+			this.cashFigures(today),
 		]);
 		const figures = overviewFigures(chart, atToday, monthBefore, yearBefore);
 		const locked = lockedMonths(locks);
 		const items: OverviewWaiting[] = [
 			...(drafts.length ? [{ kind: 'voucherDrafts' as const, count: drafts.length }] : []),
 			...waiting,
+			...cash.waiting,
 		];
 		return {
 			...figures,
+			cashBoxes: cash.boxes,
 			month,
 			gstPaise: overviewFigures(chart, atMonthEnd, monthBefore, monthBefore).gstPaise,
 			gstDueOn: `${nextMonthStart(month).slice(0, 7)}-20`,
@@ -101,6 +114,37 @@ export class AccountsOverviewService {
 			profitTo: today,
 			waiting: items,
 		};
+	}
+
+	/** Cash (accounts brief O): boxes in use, sheets waiting with a difference, claims waiting for approval. */
+	private async cashFigures(today: string): Promise<{ boxes: number; waiting: OverviewWaiting[] }> {
+		if (!this.cash) return { boxes: 0, waiting: [] };
+		const [boxes, sheets, claims] = await Promise.all([
+			this.cash.boxes(),
+			this.cash.listSheets({
+				from: '2017-07-01',
+				to: today,
+				chip: 'difference',
+				locationIds: null,
+				match: null,
+				page: 1,
+				pageSize: 1,
+			}),
+			this.cash.listClaims({
+				from: '2017-07-01',
+				to: today,
+				chip: 'waiting',
+				search: '',
+				locationIds: null,
+				page: 1,
+				pageSize: 1,
+			}),
+		]);
+		const waiting: OverviewWaiting[] = [
+			{ kind: 'cashDifferences', count: sheets.counts.difference },
+			{ kind: 'expenseClaims', count: claims.counts.waiting },
+		];
+		return { boxes: boxes.filter((b) => b.active).length, waiting: waiting.filter((w) => w.count > 0) };
 	}
 
 	/** Each waiting kind's count over every day the books have had, left out when nothing waits. */

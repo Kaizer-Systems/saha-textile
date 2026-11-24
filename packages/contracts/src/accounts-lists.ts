@@ -122,7 +122,16 @@ export type AccountsOverviewQuery = z.infer<typeof AccountsOverviewQuery>;
 
 /** Something waiting for someone, with how many and where it opens (a Vouchers tab and chip). */
 export const OverviewWaiting = z.object({
-	kind: z.enum(['voucherDrafts', 'creditNoteDrafts', 'selfInvoicesDue', 'adjustmentsWaiting', 'refundsFailed']),
+	kind: z.enum([
+		'voucherDrafts',
+		'creditNoteDrafts',
+		'selfInvoicesDue',
+		'adjustmentsWaiting',
+		'refundsFailed',
+		/** Cash (accounts brief O): sheets closed with a difference, and claims waiting for approval. */
+		'cashDifferences',
+		'expenseClaims',
+	]),
 	count: z.number().int().positive(),
 });
 export type OverviewWaiting = z.infer<typeof OverviewWaiting>;
@@ -132,6 +141,8 @@ export const AccountsOverview = z.object({
 	month: z.string(),
 	cashPaise: z.number(),
 	cashLedgers: z.number().int(),
+	/** The cash boxes in use (Settings › Cash boxes), shown under Cash in hand when there are any. */
+	cashBoxes: z.number().int().nonnegative(),
 	bankPaise: z.number(),
 	bankNames: z.array(z.string()),
 	customersPaise: z.number(),

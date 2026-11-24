@@ -24,7 +24,7 @@ const byDay: Record<string, Record<string, number>> = {
 	'2026-03-31': { cash: 10_000, out: 0, sales: -100_000 },
 };
 
-function setup(options: { drafts?: number; waiting?: Record<string, number>; locks?: unknown[] } = {}) {
+function setup(options: { drafts?: number; waiting?: Record<string, number>; locks?: unknown[]; cash?: unknown } = {}) {
 	const ledger = {
 		chart: vi.fn(async () => chart),
 		balances: vi.fn(async (day: string) => byDay[day] ?? {}),
@@ -50,12 +50,36 @@ function setup(options: { drafts?: number; waiting?: Record<string, number>; loc
 		} as never,
 		{ listDrafts: async () => Array.from({ length: options.drafts ?? 0 }, (_, i) => ({ id: `d${i}` })) } as never,
 		reader as never,
+		(options.cash ?? null) as never,
 	);
 	return { service, ledger, reader };
 }
 
 const now = new Date('2026-11-24T06:00:00Z');
 const owner = { userId: 'adm_1', permissions: ['accounts.index'] } as never;
+
+describe('cash on the overview (accounts brief O)', () => {
+	it('counts the boxes in use, and the differences and claims waiting for someone', async () => {
+		const cash = (differences: number, claims: number) => ({
+			boxes: async () => [{ active: true }, { active: false }, { active: true }],
+			listSheets: async () => ({
+				items: [],
+				total: differences,
+				counts: { all: 0, difference: differences, open: 0 },
+			}),
+			listClaims: async () => ({ items: [], total: claims, counts: { all: 0, waiting: claims } }),
+		});
+		const busy = await setup({ cash: cash(2, 1) }).service.overview({}, owner, now);
+		expect(busy.cashBoxes).toBe(2);
+		expect(busy.waiting).toEqual([
+			{ kind: 'cashDifferences', count: 2 },
+			{ kind: 'expenseClaims', count: 1 },
+		]);
+		const quiet = await setup({ cash: cash(0, 0) }).service.overview({}, owner, now);
+		expect(quiet.waiting).toEqual([]);
+		expect((await setup().service.overview({}, owner, now)).cashBoxes).toBe(0);
+	});
+});
 
 describe('the accounts overview', () => {
 	it('shows this month: balances today, GST so far, the year’s profit, and what waits', async () => {

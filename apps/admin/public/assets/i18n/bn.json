@@ -9132,5 +9132,8 @@
 	"cash_problem_settlement_wrong_direction": "এই উপায় এই গরমিলের সাথে খাপ খায় না (কম না বেশি)।",
 	"cash_problem_staff_required": "কর্মী বেছে নিন।",
 	"cash_problem_staff_unknown": "ওই কর্মী অচেনা।",
-	"cash_problem_role": "খাতায় এখনও \"{{role}}\"-এর লেজার নেই। সেটিংস › অ্যাকাউন্টস টেমপ্লেট-এ শেয়ার করা চার্টের আপডেট ইনস্টল করুন।"
+	"cash_problem_role": "খাতায় এখনও \"{{role}}\"-এর লেজার নেই। সেটিংস › অ্যাকাউন্টস টেমপ্লেট-এ শেয়ার করা চার্টের আপডেট ইনস্টল করুন।",
+	"ov_cash_boxes": "{{count}}টি ক্যাশ বাক্স",
+	"ov_waiting_cashDifferences": "গরমিল নিয়ে বন্ধ {{count}}টি ক্যাশ শিট",
+	"ov_waiting_expenseClaims": "অনুমোদনের অপেক্ষায় {{count}}টি খরচের দাবি"
 }

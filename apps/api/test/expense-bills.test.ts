@@ -26,9 +26,22 @@ const SUPPLIERS: Record<string, unknown> = {
 		shortName: 'Kolkata Rentals',
 		legalName: 'Kolkata Rentals Pvt Ltd',
 		gstin: '19AAACK1234A1Z5',
+		address: { line: '12 Park Street', city: 'Kolkata', pin: '700016' },
 	},
-	sup_mh: { id: 'sup_mh', shortName: '', legalName: 'Pune Software LLP', gstin: '27AAACP1234A1Z5' },
-	sup_none: { id: 'sup_none', shortName: 'Carpenter', legalName: 'Ramesh Mistri', gstin: null },
+	sup_mh: {
+		id: 'sup_mh',
+		shortName: '',
+		legalName: 'Pune Software LLP',
+		gstin: '27AAACP1234A1Z5',
+		address: { line: '', city: 'Pune', pin: '' },
+	},
+	sup_none: {
+		id: 'sup_none',
+		shortName: 'Carpenter',
+		legalName: 'Ramesh Mistri',
+		gstin: null,
+		address: { line: '', city: '', pin: '' },
+	},
 };
 /** Each location bills under its GSTIN: the fair stall has none, Siliguri is on composition, the old shop is closed. */
 const LOCATIONS = [
@@ -97,6 +110,8 @@ const bill = (over: Partial<ExpenseBill> = {}): ExpenseBill =>
 	});
 
 interface Options {
+	/** The books' chart (the expense ledgers' by default). */
+	chart?: unknown;
 	stored?: ExpenseBill | null;
 	saveFails?: unknown;
 	original?: unknown;
@@ -114,15 +129,19 @@ function build(options: Options = {}) {
 	const ledger = {
 		post: vi.fn(async (_request: unknown, _context: unknown, _by: string | null) => ({ id: 'jv_9' })),
 		voucherByKey: vi.fn(async (_key: string, _context: unknown) => options.original ?? null),
-		chart: async () => CHART,
+		chart: async () => options.chart ?? CHART,
 	};
 	const company = { listRegistrations: vi.fn(async () => REGISTRATIONS) };
 	const vouchers = {
 		insert: vi.fn(async (_voucher: unknown, _context: unknown) => undefined),
 		forDocument: vi.fn(async () => ['pv']),
 	};
-	const log = { append: vi.fn(async () => undefined) };
-	const numbers = { issue: vi.fn(async () => 'EB/26-27/000003') };
+	const log = { append: vi.fn(async (..._args: unknown[]) => undefined) };
+	const numbers = {
+		issue: vi.fn(async (kind: string, _context?: unknown, _at?: Date) =>
+			kind === 'paymentVoucher' ? 'PV/26-27/000011' : 'EB/26-27/000003',
+		),
+	};
 	const transactions = {
 		withTransaction: vi.fn(async <T>(work: (context: unknown) => Promise<T>) => work({ session: 'tx' })),
 	};
@@ -403,6 +422,191 @@ describe('cancelling a bill', () => {
 	});
 });
 
+/** The books with two banks (one closed, one under a sub-group), and the cash and rent ledgers that aren't banks. */
+const BANKS = {
+	groups: [
+		{ id: 'g_bank', parentId: null, systemKey: 'bank_accounts' },
+		{ id: 'g_bank_sub', parentId: 'g_bank', systemKey: null },
+		{ id: 'g_cash', parentId: null, systemKey: 'cash_in_hand' },
+	],
+	ledgers: [
+		{ id: 'led_hdfc', name: 'HDFC', groupId: 'g_bank', active: true },
+		{ id: 'led_sbi', name: 'SBI', groupId: 'g_bank_sub', active: true },
+		{ id: 'led_old_bank', name: 'Old bank', groupId: 'g_bank', active: false },
+		{ id: 'led_cash', name: 'Cash', groupId: 'g_cash', active: true },
+	],
+};
+const ONE_BANK = { ...BANKS, ledgers: BANKS.ledgers.filter((l) => l.id !== 'led_sbi') };
+/** Posted for ₹23,600 on 20 November; ₹10,000 of it paid already. */
+const POSTED = (over: Partial<ExpenseBill> = {}) =>
+	bill({
+		status: 'posted',
+		number: 'EB/26-27/000003',
+		supplierName: 'Kolkata Rentals',
+		supplierGstin: '19AAACK1234A1Z5',
+		voucherId: 'jv_1',
+		paidINR: 10_000,
+		paymentVouchers: [{ id: 'pv_0', number: 'PV/26-27/000010' }],
+		...over,
+	});
+const pay = (over: Record<string, unknown> = {}) =>
+	({
+		amountINR: 13_600,
+		paidOn: '2026-11-24',
+		mode: 'bank_transfer',
+		reference: 'UTR 123',
+		paidFromLedgerId: null,
+		version: 2,
+		...over,
+	}) as never;
+
+describe('paying a bill (EB2)', () => {
+	it('issues a payment voucher and posts it from the one bank at the bill’s location, all in one transaction', async () => {
+		const { service, ledger, numbers, vouchers, bills, log } = build({ stored: POSTED(), chart: ONE_BANK });
+		const { bill: paid, voucher } = await service.pay('eb_1', pay(), ca, now);
+		expect(numbers.issue).toHaveBeenCalledWith('paymentVoucher', { session: 'tx' }, now);
+		expect(voucher.id).toMatch(/^pv_[0-9a-f-]{36}$/);
+		expect(ledger.post).toHaveBeenCalledWith(
+			{
+				date: '2026-11-24',
+				narration: 'Payment voucher PV/26-27/000011 · Kolkata Rentals · EB/26-27/000003',
+				lines: [
+					{ ledger: { role: 'creditors_control' }, debitPaise: 13_600_00, locationId: 'loc_bar' },
+					{ ledger: { id: 'led_hdfc' }, creditPaise: 13_600_00, locationId: 'loc_bar' },
+				],
+				source: { type: 'paymentVoucher', id: voucher.id, number: 'PV/26-27/000011' },
+				idempotencyKey: `paymentVoucher:${voucher.id}`,
+			},
+			{ session: 'tx' },
+			'adm_ca',
+		);
+		expect(voucher).toMatchObject({
+			number: 'PV/26-27/000011',
+			date: '2026-11-24',
+			supplierId: 'sup_wb',
+			payeeName: 'Kolkata Rentals',
+			payeeAddress: '12 Park Street, Kolkata 700016',
+			against: { kind: 'expenseBill', id: 'eb_1', number: 'EB/26-27/000003', detail: 'Shop rent, November' },
+			amountINR: 13_600,
+			mode: 'bank_transfer',
+			reference: 'UTR 123',
+			paidFromLedgerId: 'led_hdfc',
+			reverseChargeTaxINR: null,
+			supplierPaymentId: null,
+			journalVoucherId: 'jv_9',
+			locationId: 'loc_bar',
+			createdAt: at,
+			createdBy: 'adm_ca',
+			status: 'paid',
+		});
+		expect(vouchers.insert).toHaveBeenCalledWith(voucher, { session: 'tx' });
+		// Paid in full: ₹10,000 before and the ₹13,600 left.
+		expect(paid).toMatchObject({
+			paidINR: 23_600,
+			paymentVouchers: [
+				{ id: 'pv_0', number: 'PV/26-27/000010' },
+				{ id: voucher.id, number: 'PV/26-27/000011' },
+			],
+			updatedAt: at,
+		});
+		expect(bills.save.mock.calls[0]?.slice(1)).toEqual([2, { session: 'tx' }]);
+		expect(log.append).toHaveBeenCalledWith('adm_ca', 'paymentVoucher.issue', 'paymentVoucher', voucher.id, [], {
+			number: 'PV/26-27/000011',
+			against: 'EB/26-27/000003',
+		});
+	});
+
+	it('pays in cash from the cash role without reading the banks, as no one when no one is signed in', async () => {
+		const { service, ledger } = build({ stored: POSTED(), chart: BANKS });
+		const { voucher } = await service.pay('eb_1', pay({ mode: 'cash', amountINR: 500 }), undefined, now);
+		expect(ledger.post.mock.calls[0]?.[0]).toMatchObject({
+			lines: [{ ledger: { role: 'creditors_control' } }, { ledger: { role: 'cash' }, creditPaise: 500_00 }],
+		});
+		expect(ledger.post.mock.calls[0]?.[2]).toBeNull();
+		expect(voucher).toMatchObject({ paidFromLedgerId: null, createdBy: null });
+	});
+
+	it('pays from the bank picked among several, and names a bill without its number by the supplier’s', async () => {
+		const { service, log } = build({
+			stored: POSTED({ number: null, supplierId: 'sup_mh', supplierName: 'Pune Software LLP' }),
+			chart: BANKS,
+		});
+		const { voucher } = await service.pay('eb_1', pay({ paidFromLedgerId: 'led_sbi', amountINR: 1 }), ca, now);
+		expect(voucher).toMatchObject({
+			paidFromLedgerId: 'led_sbi',
+			against: { number: 'KR/1123' },
+			// Its address has only the city.
+			payeeAddress: 'Pune',
+		});
+		expect(log.append.mock.calls[0]?.[5]).toEqual({ number: 'PV/26-27/000011', against: 'KR/1123' });
+	});
+
+	it('leaves the address blank for a supplier no longer on the books, and pays today when no day is given', async () => {
+		const { service } = build({ stored: POSTED({ supplierId: 'sup_gone' }), chart: ONE_BANK });
+		const { voucher } = await service.pay('eb_1', pay({ amountINR: 100 }), ca);
+		expect(voucher.payeeAddress).toBe('');
+	});
+
+	it('needs a bank ledger to pay from, and a pick when there are several', async () => {
+		const banks = async (chart: unknown, picked: string | null) =>
+			build({ stored: POSTED(), chart }).service.pay('eb_1', pay({ paidFromLedgerId: picked }), ca, now);
+		await expect(banks(BANKS, null)).rejects.toMatchObject(refusal('payment_choose_bank_ledger'));
+		await expect(banks(BANKS, 'led_old_bank')).rejects.toMatchObject(refusal('payment_needs_a_bank_ledger'));
+		await expect(banks(BANKS, 'led_cash')).rejects.toMatchObject(refusal('payment_needs_a_bank_ledger'));
+		await expect(
+			banks(
+				{ ...BANKS, ledgers: BANKS.ledgers.filter((l) => !l.groupId.startsWith('g_bank') || !l.active) },
+				null,
+			),
+		).rejects.toMatchObject(refusal('payment_needs_a_bank_ledger'));
+	});
+
+	it('refuses a bill not posted, one changed since, more than is owed, a day ahead, or a day before the bill', async () => {
+		const refused = async (stored: ExpenseBill, write: unknown) =>
+			build({ stored, chart: ONE_BANK }).service.pay('eb_1', write as never, ca, now);
+		await expect(refused(bill(), pay())).rejects.toBeInstanceOf(ConflictException);
+		await expect(refused(bill(), pay())).rejects.toMatchObject(refusal('expense_bill_not_posted'));
+		await expect(refused(POSTED(), pay({ version: 1 }))).rejects.toBeInstanceOf(ConflictException);
+		await expect(refused(POSTED(), pay({ version: 1 }))).rejects.toMatchObject(refusal('expense_bill_changed'));
+		await expect(refused(POSTED(), pay({ amountINR: 13_600.01 }))).rejects.toMatchObject(refusal('overpayment'));
+		await expect(refused(POSTED(), pay({ paidOn: '2026-11-26' }))).rejects.toMatchObject(refusal('paid_in_future'));
+		await expect(refused(POSTED(), pay({ paidOn: '2026-11-19' }))).rejects.toMatchObject(
+			refusal('expense_bill_paid_before_bill'),
+		);
+		// Paid on the bill's own day: allowed.
+		expect((await refused(POSTED(), pay({ paidOn: '2026-11-20' }))).voucher.date).toBe('2026-11-20');
+	});
+
+	it('lists the payment vouchers that paid a bill', async () => {
+		const { service, vouchers } = build();
+		expect(await service.paymentVouchers('eb_1')).toEqual(['pv']);
+		expect(vouchers.forDocument).toHaveBeenCalledWith('expenseBill', 'eb_1');
+	});
+});
+
+describe('a paid bill', () => {
+	it('can’t be cancelled while anything is paid on it, and a cancelled one keeps when and why', async () => {
+		await expect(build({ stored: POSTED() }).service.cancel('eb_1', 'Billed twice', ca, now)).rejects.toMatchObject(
+			refusal('expense_bill_paid'),
+		);
+		// Under half a paisa paid counts as nothing.
+		const unpaid = await build({ stored: POSTED({ paidINR: 0.004, paymentVouchers: [] }) }).service.cancel(
+			'eb_1',
+			'Billed twice',
+			ca,
+			now,
+		);
+		expect(unpaid).toMatchObject({ status: 'cancelled', cancelledAt: at, cancelReason: 'Billed twice' });
+	});
+
+	it('keeps the supplier’s GSTIN on the bill, or none for an unregistered supplier', async () => {
+		const { service } = build();
+		expect((await service.create(write(), now)).supplierGstin).toBe('19AAACK1234A1Z5');
+		const zero = write({ supplierId: 'sup_none', lines: [{ ...write().lines[0], gstRatePct: 0 } as never] });
+		expect((await service.create(zero, now)).supplierGstin).toBeNull();
+	});
+});
+
 describe('the expense bill routes', () => {
 	it('hand each call to the service; reading needs accounts.index, drafts accounts.edit, posting accounts.post', () => {
 		const service = new Proxy(
@@ -423,6 +627,9 @@ describe('the expense bill routes', () => {
 			c.update('eb_1', { ...body, version: 1 }),
 			c.post('eb_1', ca),
 			c.post('eb_1'),
+			c.paymentVouchers('eb_1'),
+			c.pay('eb_1', pay(), ca),
+			c.pay('eb_1', pay()),
 			c.cancel('eb_1', { reason: 'Billed twice' }, ca),
 			c.cancel('eb_1', { reason: 'Billed twice' }),
 		]).toEqual([
@@ -433,26 +640,35 @@ describe('the expense bill routes', () => {
 			['update', 'eb_1', { ...body, version: 1 }],
 			['post', 'eb_1', ca],
 			['post', 'eb_1', undefined],
+			['paymentVouchers', 'eb_1'],
+			['pay', 'eb_1', pay(), ca],
+			['pay', 'eb_1', pay(), undefined],
 			['cancel', 'eb_1', 'Billed twice', ca],
 			['cancel', 'eb_1', 'Billed twice', undefined],
 		]);
 		const perm = (m: keyof ExpenseBillsController) =>
 			new Reflector().get(PERMISSIONS_KEY, ExpenseBillsController.prototype[m]);
-		expect(['list', 'form', 'get', 'create', 'update', 'post', 'cancel'].map((m) => perm(m as never))).toEqual([
+		expect(
+			['list', 'form', 'get', 'create', 'update', 'post', 'paymentVouchers', 'pay', 'cancel'].map((m) =>
+				perm(m as never),
+			),
+		).toEqual([
 			['accounts.index'],
 			['accounts.index'],
 			['accounts.index'],
 			['accounts.edit'],
 			['accounts.edit'],
 			['accounts.post'],
+			['accounts.index'],
+			['purchase.payment'],
 			['accounts.post'],
 		]);
 		expect(Reflect.getMetadata('path', ExpenseBillsController)).toBe('admin/expense-bills');
 		expect(
-			['form', 'get', 'update', 'post', 'cancel'].map((m) =>
+			['form', 'get', 'update', 'post', 'paymentVouchers', 'pay', 'cancel'].map((m) =>
 				Reflect.getMetadata('path', ExpenseBillsController.prototype[m as keyof ExpenseBillsController]),
 			),
-		).toEqual(['form', ':id', ':id', ':id/post', ':id/cancel']);
+		).toEqual(['form', ':id', ':id', ':id/post', ':id/payment-vouchers', ':id/pay', ':id/cancel']);
 		// The form's route is declared before ':id', so "form" is never read as a bill's id.
 		const order = Object.getOwnPropertyNames(ExpenseBillsController.prototype);
 		expect(order.indexOf('form')).toBeLessThan(order.indexOf('get'));

@@ -1,3 +1,5 @@
+import { normalizeBillNumber } from '../purchasing/purchase-rules';
+
 import type { TaxHeads } from './gstr2b-rules';
 import type { Gstr3bInput } from './gstr3b-rules';
 
@@ -493,6 +495,35 @@ export function isdDistribution(input: {
 		};
 	});
 	return { credit, shares, problems };
+}
+
+/** An expense bill billed to the ISD, as GSTR-6 compares it with GSTR-6A (paise). */
+export interface IsdBookedBill extends TaxHeads {
+	supplierGstin: string;
+	billNumber: string;
+}
+
+/**
+ * Brief 25 EB2: every invoice in GSTR-6A should be an expense bill booked to the ISD's locations, with the same tax
+ * (within ₹1 a head), so the credit the ISD distributes is credit its books hold. Found by supplier GSTIN and bill
+ * number; credit notes in 6A are not looked for.
+ */
+export function isdBooksProblems(
+	lines: readonly Gstr6aLine[],
+	bills: readonly IsdBookedBill[],
+): { table: string; problem: string; document: string }[] {
+	const key = (gstin: string, number: string) => `${gstin.toUpperCase()}|${normalizeBillNumber(number)}`;
+	const booked = new Map(bills.map((bill) => [key(bill.supplierGstin, bill.billNumber), bill]));
+	const problems: { table: string; problem: string; document: string }[] = [];
+	for (const line of lines) {
+		if (line.kind !== 'invoice') continue;
+		const bill = booked.get(key(line.supplierGstin, line.number));
+		const document = `${line.supplierGstin} ${line.number}`;
+		if (!bill) problems.push({ table: 'isd', problem: 'isd_bill_not_in_books', document });
+		else if ((['igst', 'cgst', 'sgst'] as const).some((head) => Math.abs(bill[head] - line[head]) > 100))
+			problems.push({ table: 'isd', problem: 'isd_bill_tax_differs', document });
+	}
+	return problems;
 }
 
 /** GSTR-6 for the month: the credit received (table 3), its distribution (5) and the ISD invoices (8). */

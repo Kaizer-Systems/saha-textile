@@ -11044,5 +11044,7 @@
 	"eb_problem_overpayment": "That's more than is left to pay on this bill.",
 	"eb_problem_paid_in_future": "A payment can't be dated after today.",
 	"eb_problem_payment_needs_a_bank_ledger": "The books have no bank account to pay from yet. Add one in Accounts › Ledgers.",
-	"eb_problem_payment_choose_bank_ledger": "Choose which bank account it was paid from."
+	"eb_problem_payment_choose_bank_ledger": "Choose which bank account it was paid from.",
+	"gstr1_check_isd_bill_not_in_books": "An invoice in GSTR-6A isn't booked as an expense bill to the ISD yet. Book it in Purchases › Expense bills, billed to the ISD's location.",
+	"gstr1_check_isd_bill_tax_differs": "An invoice's tax in GSTR-6A differs from its expense bill by more than ₹1."
 }

@@ -7,6 +7,7 @@ import {
 	gstr4,
 	gstr6,
 	iffReturn,
+	isdBooksProblems,
 	isdDistribution,
 	isQuarterEnd,
 	parseGstr6a,
@@ -17,9 +18,11 @@ import {
 	reportedInIff,
 	termsOn,
 	type CompanyRepository,
+	type ExpenseBillRepository,
 	type CompositionPurchase,
 	type GstReturnDraftRepository,
 	type GstReturnRepository,
+	type LocationRepository,
 	type PurchaseEntryRepository,
 	type SelfInvoiceRepository,
 	type TaxHeads,
@@ -28,8 +31,10 @@ import {
 
 import {
 	COMPANY_REPOSITORY,
+	EXPENSE_BILL_REPOSITORY,
 	GST_RETURN_DRAFT_REPOSITORY,
 	GST_RETURN_REPOSITORY,
+	LOCATION_REPOSITORY,
 	PURCHASE_ENTRY_REPOSITORY,
 	SELF_INVOICE_REPOSITORY,
 	TAX_INVOICE_REPOSITORY,
@@ -97,6 +102,8 @@ export class GstSchemesService {
 		@Inject(SELF_INVOICE_REPOSITORY) private readonly selfInvoices: Pick<SelfInvoiceRepository, 'issuedForGstin'>,
 		@Inject(PURCHASE_ENTRY_REPOSITORY) private readonly entries: Pick<PurchaseEntryRepository, 'postedBetween'>,
 		@Inject(Gstr3bInputs) private readonly inputs: Pick<Gstr3bInputs, 'collect'>,
+		@Inject(EXPENSE_BILL_REPOSITORY) private readonly expenseBills: Pick<ExpenseBillRepository, 'list'>,
+		@Inject(LOCATION_REPOSITORY) private readonly locations: Pick<LocationRepository, 'list'>,
 	) {}
 
 	private async filed(registrationId: string, returnType: string, month: string) {
@@ -373,6 +380,31 @@ export class GstSchemesService {
 			lines: parsed.lines,
 			distribution,
 		});
-		return { ...result, setOff: null, inward6a: { ...file }, isdShares: distribution.shares };
+		// The books hold what the ISD distributes: 6A's invoices are expense bills booked to the ISD (brief 25 EB2).
+		const here = new Set(
+			(await this.locations.list()).filter((l) => l.gstRegistrationId === registration.id).map((l) => l.id),
+		);
+		const booked = (
+			await this.expenseBills.list({
+				status: 'posted',
+				from: `${yearStart - 2}-04-01`,
+				to: monthEnd(write.month),
+			})
+		)
+			.filter((bill) => here.has(bill.locationId) && !!bill.supplierGstin)
+			.map((bill) => ({
+				supplierGstin: bill.supplierGstin as string,
+				billNumber: bill.billNumber,
+				igst: paise(bill.igstINR),
+				cgst: paise(bill.cgstINR),
+				sgst: paise(bill.sgstINR),
+			}));
+		return {
+			...result,
+			problems: [...result.problems, ...isdBooksProblems(parsed.lines, booked)],
+			setOff: null,
+			inward6a: { ...file },
+			isdShares: distribution.shares,
+		};
 	}
 }

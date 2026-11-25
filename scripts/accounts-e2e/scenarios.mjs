@@ -366,7 +366,7 @@ async function compositionGst(admin, check) {
 
 /** ISD (G7, AD8): a Maharashtra ISD shares a rent bill's credit with the GSTINs that had turnover, IGST to West Bengal. */
 const ISD_SCENARIO = {
-	name: 'ISD: a Maharashtra branch and an ISD from November; the ISD’s rent credit goes to West Bengal as IGST',
+	name: 'ISD: a Maharashtra branch and an ISD from November; the ISD’s rent, booked as an expense bill, goes to West Bengal as IGST',
 	async run({ admin, check }) {
 		const terms = (kind) => ({ from: '2026-11-01', kind, scheme: 'monthly', lastYearTurnoverINR: 0 });
 		const branch = await admin.ok('POST', '/admin/company/registrations', {
@@ -411,8 +411,8 @@ const ISD_SCENARIO = {
 				counterCashBox: false,
 			});
 		await place('Mumbai branch', 'MUM', branch.id);
-		await place('Mumbai office (ISD)', 'ISD', isd.id);
-		// GSTR-6A for November: the office rent, ₹10,000 + CGST ₹900 + SGST ₹900 from a Mumbai landlord.
+		const office = await place('Mumbai office (ISD)', 'ISD', isd.id);
+		// GSTR-6A for November: the office rent, ₹1,000 + CGST ₹90 + SGST ₹90 from a Mumbai landlord.
 		const sixA = {
 			gstin: isdGstin,
 			fp: '112026',
@@ -423,10 +423,8 @@ const ISD_SCENARIO = {
 						{
 							inum: 'RENT-1126',
 							idt: '05-11-2026',
-							val: 11800,
-							itms: [
-								{ num: 1, itm_det: { txval: 10000, rt: 18, iamt: 0, camt: 900, samt: 900, csamt: 0 } },
-							],
+							val: 1180,
+							itms: [{ num: 1, itm_det: { txval: 1000, rt: 18, iamt: 0, camt: 90, samt: 90, csamt: 0 } }],
 						},
 					],
 				},
@@ -442,8 +440,76 @@ const ISD_SCENARIO = {
 		check(none.code === 'gstr6a_needed', 'GSTR-6 asks for its GSTR-6A first', none.code);
 		let six = await prepareReturn(admin, 'GSTR-6', '2026-11', { gstRegistrationId: isd.id, inward6a: sixA });
 		check(
-			tableOf(six, 'gstr6_3')?.taxable === 10000 && tableOf(six, 'gstr6_3')?.tax === 1800,
-			'GSTR-6 table 3: ₹10,000 of rent, ₹1,800 credit received',
+			six.problems?.some((p) => p.problem === 'isd_bill_not_in_books'),
+			'GSTR-6 asks for 6A’s rent bill to be in the books first (brief 25 EB2)',
+			JSON.stringify(six.problems),
+		);
+		// EB1: the landlord's bill, booked as an expense bill billed to the ISD's office, its credit claimed there.
+		const landlord = await admin.ok('POST', '/admin/suppliers', {
+			legalName: 'Marine Drive Estates Test LLP',
+			shortName: 'Marine Drive Test',
+			kind: 'regular',
+			gstin: gstin('27', 'AAACM1234B'),
+			pan: null,
+			stateCode: '27',
+			address: { line: '3 Marine Drive', city: 'Mumbai', pin: '400020' },
+			contactName: 'Mehta',
+			phone: '+91 9820000000',
+			email: null,
+			paymentTermsDays: 30,
+			usesItemCodes: false,
+			notes: '',
+			active: true,
+		});
+		const form = await admin.ok('GET', '/admin/expense-bills/form');
+		const rent = form.ledgers.find((l) => l.name === 'Rent');
+		check(
+			!!rent && form.locations.some((l) => l.id === office.id && l.gstin === isdGstin),
+			'The expense bill form offers the Rent ledger and the ISD’s office under its GSTIN',
+			JSON.stringify(form.locations.map((l) => l.gstin)),
+		);
+		const draftBill = await admin.ok('POST', '/admin/expense-bills', {
+			supplierId: landlord.id,
+			billNumber: 'RENT/1126',
+			billDate: '2026-11-05',
+			locationId: office.id,
+			lines: [
+				{
+					expenseLedgerId: rent?.id,
+					what: 'Office rent, November',
+					sac: '997212',
+					taxableINR: 1000,
+					gstRatePct: 18,
+					credit: 'claim',
+				},
+			],
+			note: '',
+		});
+		check(
+			!draftBill.interState && draftBill.cgstINR === 90 && draftBill.sgstINR === 90 && draftBill.totalINR === 1180,
+			'Within Maharashtra: CGST ₹90 and SGST ₹90, ₹1,180 owed',
+			JSON.stringify([draftBill.cgstINR, draftBill.sgstINR, draftBill.igstINR, draftBill.totalINR]),
+		);
+		const bill = await admin.ok('POST', `/admin/expense-bills/${draftBill.id}/post`, {});
+		const billVoucher = await admin.ok('GET', `/admin/accounts/vouchers/${bill.voucherId}`);
+		check(
+			/^EB\//.test(bill.number ?? '') &&
+				billVoucher.date === '2026-11-05' &&
+				(billVoucher.lines ?? []).reduce((sum, l) => sum + l.debitPaise, 0) === 118_000,
+			'Posted as an EB-numbered bill on its own day: rent ₹1,000 and input tax ₹180 against the landlord',
+			`${bill.number} ${billVoucher.date}`,
+		);
+		const owed = await admin.ok('GET', `/admin/suppliers/${landlord.id}/summary`);
+		check(
+			owed.owedINR === 1180 && owed.statement.some((r) => r.kind === 'expense_bill'),
+			'The landlord is owed ₹1,180, on their statement',
+			JSON.stringify([owed.owedINR, owed.statement.map((r) => r.kind)]),
+		);
+		six = await prepareReturn(admin, 'GSTR-6', '2026-11', { gstRegistrationId: isd.id, inward6a: sixA });
+		check(six.problems?.length === 0, 'With the bill booked, GSTR-6 has no problems', JSON.stringify(six.problems));
+		check(
+			tableOf(six, 'gstr6_3')?.taxable === 1000 && tableOf(six, 'gstr6_3')?.tax === 180,
+			'GSTR-6 table 3: ₹1,000 of rent, ₹180 credit received',
 			JSON.stringify(six.summary),
 		);
 		// Only West Bengal had turnover in July–September (the Mumbai branch starts in November): all of it there,
@@ -452,9 +518,9 @@ const ISD_SCENARIO = {
 		check(
 			six.isdShares?.length === 1 &&
 				share?.gstin === GSTIN &&
-				share.credit.igst === 180_000 &&
-				share.from.cgst === 90_000,
-			'The credit goes to West Bengal: IGST ₹1,800 from the ISD’s CGST ₹900 and SGST ₹900',
+				share.credit.igst === 18_000 &&
+				share.from.cgst === 9_000,
+			'The credit goes to West Bengal: IGST ₹180 from the ISD’s CGST ₹90 and SGST ₹90',
 			JSON.stringify(six.isdShares),
 		);
 		six = await approveReturn(admin, six);
@@ -468,8 +534,8 @@ const ISD_SCENARIO = {
 		const debit = (voucher.lines ?? []).reduce((sum, l) => sum + l.debitPaise, 0);
 		const credit = (voucher.lines ?? []).reduce((sum, l) => sum + l.creditPaise, 0);
 		check(
-			debit === 180_000 && credit === 180_000,
-			'The distribution journal balances at ₹1,800',
+			debit === 18_000 && credit === 18_000,
+			'The distribution journal balances at ₹180',
 			`${debit}/${credit}`,
 		);
 		return `ISD ${isdGstin}`;
@@ -1433,8 +1499,9 @@ export const scenarios = [
 			});
 			const plText = JSON.stringify(pl);
 			check(pl.problems?.length === 0, 'The profit and loss layout has no problems', JSON.stringify(pl.problems));
-			// Composition: sales ₹9,360 net of the return, cost ₹6,300, CMP-08 tax ₹93.60: profit ₹2,966.40.
-			const profit = COMPOSITION ? 296_640 : 437_143;
+			// Composition: sales ₹9,360 net of the return, cost ₹6,300, CMP-08 tax ₹93.60: profit ₹2,966.40. The
+			// partnership's ISD also books ₹1,000 of office rent (brief 25 EB): profit ₹3,371.43.
+			const profit = COMPOSITION ? 296_640 : QRMP ? 337_143 : 437_143;
 			check(
 				plText.includes(String(profit)) || plText.includes((profit / 100).toFixed(2)),
 				`Profit for the year ₹${(profit / 100).toFixed(2)}`,

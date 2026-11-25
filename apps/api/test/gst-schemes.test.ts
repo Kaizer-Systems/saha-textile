@@ -86,6 +86,16 @@ const draft = (registrationId: string, returnType: string, month: string, over: 
 const setOff = (cash: typeof ZERO, reverseChargeCash = ZERO) =>
 	({ cash, reverseChargeCash }) as unknown as GstReturnDraft['setOff'];
 
+/** The ISD's rent bill S1 as booked: ₹1,000 with CGST ₹90 and SGST ₹90 (brief 25 EB2). */
+const BOOKED_S1 = {
+	locationId: 'loc_isd',
+	supplierGstin: '27AAKFR1234M1Z2',
+	billNumber: 'S1',
+	igstINR: 0,
+	cgstINR: 90,
+	sgstINR: 90,
+};
+
 function build(
 	options: {
 		drafts?: GstReturnDraft[];
@@ -95,6 +105,8 @@ function build(
 		selfInvoices?: unknown[];
 		entries?: unknown[];
 		rcmIgst?: number;
+		/** Expense bills booked; by default the ISD's rent bill S1 that GSTR-6A lists. */
+		expenseBills?: unknown[];
 	} = {},
 ) {
 	const drafts = {
@@ -121,6 +133,8 @@ function build(
 		selfInvoices as never,
 		entries as never,
 		inputs as never,
+		{ list: async () => options.expenseBills ?? [BOOKED_S1] } as never,
+		{ list: async () => [{ id: 'loc_isd', gstRegistrationId: 'reg_isd' }] } as never,
 	);
 	return { service, drafts, invoices, selfInvoices, entries, inputs };
 }
@@ -390,6 +404,22 @@ describe('GSTR-6 for an input service distributor', () => {
 		expect(work.inward6a).toEqual(FILE);
 		expect(work.inward6a).not.toBe(FILE);
 		expect(work.setOff).toBeNull();
+	});
+
+	it('asks for 6A’s invoices to be booked to the ISD as expense bills, with the same tax (brief 25 EB2)', async () => {
+		const run = async (expenseBills: unknown[]) => {
+			const { service } = build({ invoices: LAST_YEAR, expenseBills });
+			const existing = draft('reg_isd', 'GSTR-6', '2026-11', { inward6a: FILE });
+			return (await service.work(ISD, prepare('GSTR-6', '2026-11'), existing, between())).problems;
+		};
+		const problem = (name: string) => [{ table: 'isd', problem: name, document: '27AAKFR1234M1Z2 S1' }];
+		expect(await run([BOOKED_S1])).toEqual([]);
+		// Not booked, booked elsewhere, or booked without the supplier's GSTIN: not in the books.
+		expect(await run([])).toEqual(problem('isd_bill_not_in_books'));
+		expect(await run([{ ...BOOKED_S1, locationId: 'loc_kol' }])).toEqual(problem('isd_bill_not_in_books'));
+		expect(await run([{ ...BOOKED_S1, supplierGstin: null }])).toEqual(problem('isd_bill_not_in_books'));
+		// Booked with ₹10 less CGST: the tax differs.
+		expect(await run([{ ...BOOKED_S1, cgstINR: 80 }])).toEqual(problem('isd_bill_tax_differs'));
 	});
 
 	it('shares by the last quarter’s turnover when a recipient sold nothing last year', async () => {

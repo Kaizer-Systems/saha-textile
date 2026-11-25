@@ -213,7 +213,7 @@ describe('the GSTR-9 page (G9)', () => {
 		await settle(empty.fixture);
 		expect(empty.page.registrationId()).toBe('');
 		expect(none).not.toHaveBeenCalled();
-		expect(el(empty.fixture, '#gstr9_download')).toBeNull();
+		expect(el(empty.fixture, '#gstr9_export')).toBeNull();
 	});
 
 	it('shows each table beside the books, its difference and whether it is explained', async () => {
@@ -351,7 +351,11 @@ describe('the year as a spreadsheet', () => {
 	it('downloads the tables in rupees, counts as they are, and each month with returns not filed left empty', async () => {
 		const { fixture } = mount({ annual: vi.fn(() => of(ANNUAL)) }, { year: '2024-25' });
 		await settle(fixture);
-		(el(fixture, '#gstr9_download') as HTMLButtonElement).click();
+		// EX1: the Export menu takes what the CSV would have saved.
+		expect(el(fixture, '#gstr9_export')).not.toBeNull();
+		const page = fixture.componentInstance;
+		expect(page.exportSource(ANNUAL as never)()?.fileName).toBe('GSTR9_19ABCDE1234F1Z5_2024-25.csv');
+		page.download(ANNUAL as never);
 		const [name, header, rows] = vi.mocked(downloadCsv).mock.lastCall as [string, string[], unknown[][]];
 		expect(name).toBe('GSTR9_19ABCDE1234F1Z5_2024-25.csv');
 		expect(header).toEqual([

@@ -31,15 +31,10 @@
 				}
 			</select>
 			@if (view.data(); as v) {
-			<button
-				type="button"
-				class="btn btn-outline"
-				id="gstr9_download"
-				(click)="download(v)"
-			>
-				<i class="ri-file-excel-2-line"></i>
-				{{ 'gstr9_excel' | transloco }}
-			</button>
+			<app-export-menu
+				id="gstr9_export"
+				[source]="exportSource(v)"
+			/>
 			}
 		</div>
 	</div>

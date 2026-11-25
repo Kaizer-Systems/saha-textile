@@ -15,6 +15,7 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { rupees } from '@features/accounts/ledger-helpers';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { ExportMenu, captured, type CsvWriter, type ExportSource } from '@shared/ui/export-menu/export-menu';
 
 import { gstProblem } from './gst-returns-page';
 
@@ -52,7 +53,7 @@ const istToday = (): string => new Date(Date.now() + 5.5 * 3_600_000).toISOStrin
  */
 @Component({
 	selector: 'app-gstr9-page',
-	imports: [PageWrapper, TranslocoModule, FormsModule, HasPermissionDirective],
+	imports: [PageWrapper, TranslocoModule, FormsModule, HasPermissionDirective, ExportMenu],
 	templateUrl: './gstr9-page.html',
 })
 export class Gstr9Page {
@@ -130,9 +131,15 @@ export class Gstr9Page {
 	}
 
 	/** The tables and the months as a spreadsheet file (opens in Excel). */
-	download(view: GstAnnual): void {
+	/** EX1: this screen for the Export menu, written by the same code as its CSV. */
+	exportSource(view: GstAnnual): () => ExportSource | null {
+		return () =>
+			captured(this.transloco.translate('gst_returns_title'), 'accounts', (save) => this.download(view, save));
+	}
+
+	download(view: GstAnnual, save: CsvWriter = downloadCsv): void {
 		const t = (key: string) => this.transloco.translate(key);
-		downloadCsv(
+		save(
 			`GSTR9_${view.gstin}_${view.year}.csv`,
 			[
 				t('gst_col_table'),

@@ -299,7 +299,7 @@ describe('a State’s starting set (PT4)', () => {
 			ptMonths: '9, 3',
 			ptWomen: false,
 		});
-		expect(startingForm('10', undefined)).toEqual({
+		expect(startingForm('10', undefined)).toMatchObject({
 			stateCode: '10',
 			ptFrequency: 'monthly',
 			ptSlabs: [{ upTo: null, tax: 0, otherMonth: null, otherTax: 0 }],

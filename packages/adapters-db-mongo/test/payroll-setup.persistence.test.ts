@@ -26,7 +26,7 @@ import { hasMongoEnv } from './mongo-test-env';
 describe.skipIf(!hasMongoEnv())('payroll setup stores (integration, rs0)', () => {
 	const at = '2026-12-01T06:00:00.000Z';
 	/** Ids and periods no other suite uses, so only this file's rows are cleared and listed. */
-	const PERIODS = ['pf:2099-01', 'pf:2099-02', 'tds:2099-01'];
+	const PERIODS = ['pf:2099-01', 'pf:2099-02', 'tds:2099-01', 'pt:2098-12:19', 'pt:2098-12:27', 'lwf:2098-12'];
 	const wipe = () =>
 		Promise.all([
 			PayrollRulesModel.deleteMany({ _id: { $regex: /^prs_dbtest_/ } }),
@@ -125,6 +125,25 @@ describe.skipIf(!hasMongoEnv())('payroll setup stores (integration, rs0)', () =>
 			expect(mine[0]).toEqual(filing('pf', '2099-02'));
 			expect(mine[0]).not.toHaveProperty('_id');
 			await expect(repo.insert(filing('pf', '2099-01'))).rejects.toThrow('statutory_already_filed');
+		});
+
+		it('marks professional tax filed once per State, and a return with no State by its period alone (brief 25 ST2)', async () => {
+			const state = (stateCode: string | null) => ({
+				...filing('pf', '2098-12'),
+				kind: 'pt' as const,
+				stateCode,
+			});
+			await repo.insert(state('19'));
+			await repo.insert(state('27'));
+			await repo.insert({ ...state(null), kind: 'lwf' });
+			const ids = await StatutoryFilingModel.find({ period: '2098-12' }, { _id: 1 })
+				.sort({ _id: 1 })
+				.lean()
+				.exec();
+			expect(ids.map((row) => row._id)).toEqual(['lwf:2098-12', 'pt:2098-12:19', 'pt:2098-12:27']);
+			expect((await repo.list()).find((f) => f.stateCode === '27')).toEqual(state('27'));
+			await expect(repo.insert(state('19'))).rejects.toThrow('statutory_already_filed');
+			await expect(repo.insert({ ...state(null), kind: 'lwf' })).rejects.toThrow('statutory_already_filed');
 		});
 	});
 

@@ -9,15 +9,18 @@ import {
 	PayrollRulesWrite,
 	PayrollRun,
 	Payslip,
+	PtFrequency,
 	SalaryHead,
 	SalaryTemplate,
 	SalaryTemplateEdit,
 	SalaryTemplateWrite,
 	SchemeLine,
+	StatePayrollRules,
 	StatutoryFile,
 	StatutoryFiling,
 	StatutoryKind,
 	StatutoryReturn,
+	StatutoryStateQuery,
 	StructureComponentWrite,
 	StructurePreview,
 	StructurePreviewInput,
@@ -135,7 +138,7 @@ const rules = {
 
 describe('a version of the payroll rules', () => {
 	it('takes every rule, with no note unless written', () => {
-		expect(PayrollRulesWrite.parse(rules)).toEqual({ ...rules, note: '' });
+		expect(PayrollRulesWrite.parse(rules)).toEqual({ ...rules, note: '', states: [] });
 		expect(PayrollRulesWrite.parse({ ...rules, note: ' Notification 12/2026 ' }).note).toBe('Notification 12/2026');
 		refused(PayrollRulesWrite.safeParse({ ...rules, note: 'x'.repeat(301) }).success);
 	});
@@ -209,7 +212,13 @@ describe('a version of the payroll rules', () => {
 
 	it('keeps a version added by a person, or the built-in one', () => {
 		const version = { ...rules, id: 'prv_1', createdAt: '2026-04-01T00:00:00.000Z' };
-		expect(PayrollRulesVersion.parse(version)).toEqual({ ...version, note: '', builtIn: false, createdBy: null });
+		expect(PayrollRulesVersion.parse(version)).toEqual({
+			...version,
+			note: '',
+			states: [],
+			builtIn: false,
+			createdBy: null,
+		});
 		expect(PayrollRulesVersion.parse({ ...version, builtIn: true, createdBy: 'adm_1' })).toMatchObject({
 			builtIn: true,
 			createdBy: 'adm_1',
@@ -410,7 +419,7 @@ describe('statutory returns and files', () => {
 			filedOn: null,
 			reference: '',
 		};
-		expect(StatutoryReturn.parse(tds)).toEqual(tds);
+		expect(StatutoryReturn.parse(tds)).toEqual({ ...tds, stateCode: null });
 		accepted(
 			StatutoryReturn.safeParse({ ...tds, status: 'filed', filedOn: '2027-01-20', reference: 'TOKEN123' })
 				.success,
@@ -423,6 +432,7 @@ describe('statutory returns and files', () => {
 		expect(StatutoryFiling.parse({ filedOn: '2026-12-14', reference: ' TRRN 1234567890 ' })).toEqual({
 			filedOn: '2026-12-14',
 			reference: 'TRRN 1234567890',
+			stateCode: null,
 		});
 		refused(StatutoryFiling.safeParse({ filedOn: '2026-12-14', reference: '   ' }).success);
 		refused(StatutoryFiling.safeParse({ filedOn: '2026-12-14', reference: 'x'.repeat(61) }).success);
@@ -478,5 +488,110 @@ describe('advances', () => {
 		};
 		expect(AdvanceSchedule.parse(schedule)).toEqual(schedule);
 		refused(AdvanceSchedule.safeParse({ ...schedule, rows: [{ ...schedule.rows[0], how: 'cash' }] }).success);
+	});
+});
+
+describe('professional tax and the welfare fund per State (brief 25 ST1, ST2)', () => {
+	/** A monthly State with the fund twice a year; the figures are the admin's, never the code's. */
+	const monthly = {
+		stateCode: '19',
+		ptSlabs: [
+			{ upToPaise: 1_000_000, taxPaise: 0 },
+			{ upToPaise: null, taxPaise: 20_000 },
+		],
+	};
+
+	it('deducts monthly by default, due on the 21st, the fund nothing until set and due on the 15th', () => {
+		expect(PtFrequency.options).toEqual(['monthly', 'half_yearly', 'yearly', 'none']);
+		expect(StatePayrollRules.parse(monthly)).toEqual({
+			...monthly,
+			ptFrequency: 'monthly',
+			ptMonths: [],
+			ptDueDay: 21,
+			lwfEmployeePaise: 0,
+			lwfEmployerPaise: 0,
+			lwfMonths: [],
+			lwfDueDay: 15,
+		});
+	});
+
+	it('needs the slabs to end open above unless the State has no tax', () => {
+		expect(message(StatePayrollRules.safeParse({ stateCode: '27' }))).toBe('pt_last_slab_open');
+		expect(message(StatePayrollRules.safeParse({ ...monthly, ptSlabs: monthly.ptSlabs.slice(0, 1) }))).toBe(
+			'pt_last_slab_open',
+		);
+		expect(StatePayrollRules.parse({ stateCode: '07', ptFrequency: 'none' }).ptSlabs).toEqual([]);
+		accepted(
+			StatePayrollRules.safeParse({ ...monthly, ptFrequency: 'none', ptSlabs: [{ upToPaise: 1, taxPaise: 0 }] })
+				.success,
+		);
+	});
+
+	it('needs the months a half-yearly or yearly tax is taken in', () => {
+		for (const ptFrequency of ['half_yearly', 'yearly'])
+			expect(message(StatePayrollRules.safeParse({ ...monthly, ptFrequency }))).toBe('pt_months_needed');
+		expect(StatePayrollRules.parse({ ...monthly, ptFrequency: 'half_yearly', ptMonths: [9, 3] }).ptMonths).toEqual([
+			9, 3,
+		]);
+		accepted(StatePayrollRules.safeParse({ ...monthly, ptFrequency: 'yearly', ptMonths: [3] }).success);
+	});
+
+	it('refuses a State code not two digits, months outside 1 to 12, a due day past 31, and too many slabs', () => {
+		refused(StatePayrollRules.safeParse({ ...monthly, stateCode: '9' }).success);
+		refused(StatePayrollRules.safeParse({ ...monthly, stateCode: 'WB' }).success);
+		refused(StatePayrollRules.safeParse({ ...monthly, ptMonths: [0] }).success);
+		refused(StatePayrollRules.safeParse({ ...monthly, lwfMonths: [13] }).success);
+		refused(StatePayrollRules.safeParse({ ...monthly, lwfMonths: Array.from({ length: 13 }, () => 6) }).success);
+		refused(StatePayrollRules.safeParse({ ...monthly, ptDueDay: 32 }).success);
+		refused(StatePayrollRules.safeParse({ ...monthly, lwfDueDay: 0 }).success);
+		refused(StatePayrollRules.safeParse({ ...monthly, lwfEmployerPaise: -1 }).success);
+		const open = { upToPaise: null, taxPaise: 0 };
+		accepted(StatePayrollRules.safeParse({ ...monthly, ptSlabs: Array.from({ length: 20 }, () => open) }).success);
+		refused(StatePayrollRules.safeParse({ ...monthly, ptSlabs: Array.from({ length: 21 }, () => open) }).success);
+	});
+
+	it('keeps a version’s States, each once, up to 40', () => {
+		const tamilNadu = { ...monthly, stateCode: '33', ptFrequency: 'half_yearly', ptMonths: [9, 3] };
+		expect(
+			PayrollRulesWrite.parse({ ...rules, states: [monthly, tamilNadu] }).states.map((st) => st.stateCode),
+		).toEqual(['19', '33']);
+		expect(message(PayrollRulesWrite.safeParse({ ...rules, states: [monthly, monthly] }))).toBe('state_twice');
+		const many = (n: number) =>
+			Array.from({ length: n }, (_, at) => ({ stateCode: String(at + 1).padStart(2, '0'), ptFrequency: 'none' }));
+		accepted(PayrollRulesWrite.safeParse({ ...rules, states: many(40) }).success);
+		refused(PayrollRulesWrite.safeParse({ ...rules, states: many(41) }).success);
+		refused(PayrollRulesWrite.safeParse({ ...rules, states: [{ stateCode: '27' }] }).success);
+	});
+
+	it('saves the State on each row of a run, and the States with no rules on the run', () => {
+		expect(PayrollRow.parse({ ...row, stateCode: '19' }).stateCode).toBe('19');
+		expect(PayrollRow.parse(row)).not.toHaveProperty('stateCode');
+		refused(PayrollRow.safeParse({ ...row, stateCode: '9' }).success);
+		expect(PayrollRun.parse({ ...run, statesMissing: ['27'] }).statesMissing).toEqual(['27']);
+		expect(PayrollRun.parse(run)).not.toHaveProperty('statesMissing');
+	});
+
+	it('gives professional tax and the fund a return and a filing per State, and a file asked for by State', () => {
+		const pt = {
+			kind: 'pt',
+			stateCode: '19',
+			period: '2026-11',
+			periodTo: '2026-11',
+			due: '2026-12-21',
+			amountPaise: 39_000,
+			status: 'ready',
+			filedOn: null,
+			reference: '',
+		};
+		expect(StatutoryReturn.parse(pt)).toEqual(pt);
+		expect(StatutoryFiling.parse({ filedOn: '2026-12-20', reference: 'GRN 1', stateCode: '19' }).stateCode).toBe(
+			'19',
+		);
+		refused(StatutoryFiling.safeParse({ filedOn: '2026-12-20', reference: 'GRN 1', stateCode: 'WB' }).success);
+		expect(StatutoryStateQuery.parse(undefined)).toBeNull();
+		expect(StatutoryStateQuery.parse(null)).toBeNull();
+		expect(StatutoryStateQuery.parse('33')).toBe('33');
+		refused(StatutoryStateQuery.safeParse('3').success);
+		refused(StatutoryStateQuery.safeParse('WB').success);
 	});
 });

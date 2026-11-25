@@ -82,6 +82,8 @@ function build(creditNotes: unknown[], debitNotes: unknown[]) {
 		{} as never,
 		{} as never,
 		{} as never,
+		// The schemes service (QRMP, composition, ISD): a monthly GSTIN's GSTR-1 never reaches it.
+		{} as never,
 	);
 	return { service, invoices };
 }

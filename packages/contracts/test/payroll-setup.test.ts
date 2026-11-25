@@ -966,3 +966,23 @@ describe('professional tax that fits every State (brief 26 PT1–PT3)', () => {
 		refused(StatePayrollRules.safeParse({ ...maharashtra, ptExemptDisability: 'yes' }).success);
 	});
 });
+
+describe('each store’s shift in the rules (brief 26 AT1)', () => {
+	const shift = { locationId: 'loc_kolkata', start: '10:00', end: '19:00', fullDayHours: 8 };
+
+	it('keeps up to 200 stores’ shifts, each store once, none on a version saved before', () => {
+		expect(PayrollRulesWrite.parse(rules)).not.toHaveProperty('shifts');
+		const siliguri = { ...shift, locationId: 'loc_siliguri', weeklyOff: [2] };
+		expect(PayrollRulesWrite.parse({ ...rules, shifts: [shift, siliguri] }).shifts).toEqual([
+			{ ...shift, graceMinutes: 0, weeklyOff: [0] },
+			{ ...siliguri, graceMinutes: 0 },
+		]);
+		expect(message(PayrollRulesWrite.safeParse({ ...rules, shifts: [shift, { ...shift, start: '09:00' }] }))).toBe(
+			'shift_store_twice',
+		);
+		const many = (n: number) => Array.from({ length: n }, (_, at) => ({ ...shift, locationId: `loc_${at}` }));
+		accepted(PayrollRulesWrite.safeParse({ ...rules, shifts: many(200) }).success);
+		refused(PayrollRulesWrite.safeParse({ ...rules, shifts: many(201) }).success);
+		refused(PayrollRulesWrite.safeParse({ ...rules, shifts: [{ ...shift, end: '09:00' }] }).success);
+	});
+});

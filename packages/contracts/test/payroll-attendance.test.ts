@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { AttendanceDay, AttendanceMonthGrid, DayChange, DayStatus, LeaveAsk } from '../src/payroll';
+import {
+	AttendanceDay,
+	AttendanceMonthGrid,
+	DayChange,
+	DayStatus,
+	Holiday,
+	LeaveAsk,
+	StatePayrollRules,
+	StoreShift,
+} from '../src/payroll';
 
 /** Attendance day by day (brief 26 AT1–AT3): a day's status and changes, asking for leave, and a store's month. */
 
@@ -144,7 +153,12 @@ describe('a store’s month', () => {
 	const grid = { month: '2026-11', locationId: 'loc_kolkata', people: [person], lockedAt: null };
 
 	it('shows each person’s days, paid days, leave by type, days without pay and late marks, locked or not', () => {
-		expect(AttendanceMonthGrid.parse(grid)).toEqual(grid);
+		expect(AttendanceMonthGrid.parse(grid)).toEqual({
+			...grid,
+			people: [{ ...person, unmarked: 0 }],
+			offDays: [],
+			holidays: [],
+		});
 		expect(AttendanceMonthGrid.parse({ ...grid, lockedAt: '2026-12-01T05:00:00.000Z' }).lockedAt).toBe(
 			'2026-12-01T05:00:00.000Z',
 		);
@@ -158,5 +172,78 @@ describe('a store’s month', () => {
 			AttendanceMonthGrid.safeParse({ ...grid, people: [{ ...person, leaveByType: { CL: 'one' } }] }).success,
 		);
 		refused(AttendanceMonthGrid.safeParse({ ...grid, lockedAt: undefined }).success);
+	});
+
+	it('counts the days nobody marked, and shows the store’s weekly offs and holidays they fall back to (brief 26 AT2)', () => {
+		const locked = {
+			...grid,
+			people: [{ ...person, unmarked: 3 }],
+			offDays: ['2026-11-01', '2026-11-08'],
+			holidays: [{ day: '2026-11-08', name: 'Kali Puja' }],
+		};
+		expect(AttendanceMonthGrid.parse(locked)).toEqual(locked);
+		refused(AttendanceMonthGrid.safeParse({ ...locked, people: [{ ...person, unmarked: 1.5 }] }).success);
+		refused(AttendanceMonthGrid.safeParse({ ...locked, offDays: ['1 Nov'] }).success);
+		refused(AttendanceMonthGrid.safeParse({ ...locked, holidays: [{ day: '2026-11-08' }] }).success);
+	});
+});
+
+describe('holidays and each store’s shift (brief 26 LV1, AT1, AT2)', () => {
+	it('keeps a holiday for every store in the State unless one is named, its name trimmed to 1–80 letters', () => {
+		expect(Holiday.parse({ day: '2026-10-20', name: ' Durga Puja (Dashami) ' })).toEqual({
+			day: '2026-10-20',
+			name: 'Durga Puja (Dashami)',
+			locationId: null,
+		});
+		expect(Holiday.parse({ day: '2026-11-08', name: 'Kali Puja', locationId: 'loc_kolkata' }).locationId).toBe(
+			'loc_kolkata',
+		);
+		refused(Holiday.safeParse({ day: '2026-11-08', name: '  ' }).success);
+		accepted(Holiday.safeParse({ day: '2026-11-08', name: 'x'.repeat(80) }).success);
+		refused(Holiday.safeParse({ day: '2026-11-08', name: 'x'.repeat(81) }).success);
+		refused(Holiday.safeParse({ day: '08-11-2026', name: 'Kali Puja' }).success);
+		refused(Holiday.safeParse({ day: '2026-11-08', name: 'Kali Puja', locationId: '' }).success);
+	});
+
+	it('keeps up to 60 holidays on a State, none on one saved before', () => {
+		const state = { stateCode: '19', ptSlabs: [{ upToPaise: null, taxPaise: 200_00 }] };
+		expect(StatePayrollRules.parse(state)).not.toHaveProperty('holidays');
+		const holiday = { day: '2026-10-20', name: 'Durga Puja' };
+		expect(StatePayrollRules.parse({ ...state, holidays: [holiday] }).holidays).toEqual([
+			{ ...holiday, locationId: null },
+		]);
+		accepted(
+			StatePayrollRules.safeParse({ ...state, holidays: Array.from({ length: 60 }, () => holiday) }).success,
+		);
+		refused(StatePayrollRules.safeParse({ ...state, holidays: Array.from({ length: 61 }, () => holiday) }).success);
+	});
+
+	const shift = { locationId: 'loc_kolkata', start: '10:00', end: '19:00', fullDayHours: 8 };
+
+	it('starts a store’s shift with no grace and Sundays off', () => {
+		expect(StoreShift.parse(shift)).toEqual({ ...shift, graceMinutes: 0, weeklyOff: [0] });
+		const set = { ...shift, graceMinutes: 15, weeklyOff: [2] };
+		expect(StoreShift.parse(set)).toEqual(set);
+		accepted(StoreShift.safeParse({ ...shift, weeklyOff: [] }).success);
+	});
+
+	it('takes times from 00:00 to 23:59, a full day of up to 24 hours, grace up to 4 hours and offs from Sunday (0) to Saturday (6)', () => {
+		accepted(StoreShift.safeParse({ ...shift, start: '00:00', end: '23:59', fullDayHours: 24 }).success);
+		for (const time of ['24:00', '9:00', '10:60', '10.00', ''])
+			refused(StoreShift.safeParse({ ...shift, start: time }).success);
+		for (const fullDayHours of [0, -1, 24.5]) refused(StoreShift.safeParse({ ...shift, fullDayHours }).success);
+		accepted(StoreShift.safeParse({ ...shift, fullDayHours: 7.5, graceMinutes: 240 }).success);
+		for (const graceMinutes of [-1, 241, 10.5]) refused(StoreShift.safeParse({ ...shift, graceMinutes }).success);
+		for (const weeklyOff of [[7], [-1], [1.5], Array.from({ length: 8 }, () => 0)])
+			refused(StoreShift.safeParse({ ...shift, weeklyOff }).success);
+		refused(StoreShift.safeParse({ ...shift, locationId: '' }).success);
+	});
+
+	it('refuses a shift that ends at or before it starts', () => {
+		expect(message(StoreShift.safeParse({ ...shift, end: '10:00' }))).toBe('shift_ends_before_start');
+		expect(message(StoreShift.safeParse({ ...shift, start: '22:00', end: '06:00' }))).toBe(
+			'shift_ends_before_start',
+		);
+		accepted(StoreShift.safeParse({ ...shift, end: '10:01' }).success);
 	});
 });

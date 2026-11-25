@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import type { PaymentVoucher, RcmChoice, SelfInvoice } from '@saha-textile/contracts';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { paymentVoucherData, selfInvoiceData } from '../src/documents/self-invoice-print';
 import {
@@ -565,6 +565,12 @@ describe('prints and routes', () => {
 	});
 
 	it('passes each route to the service, prints and logs the print', async () => {
+		// The routes take no clock: today is 24 Nov 2026 in India, so the second self-invoice is dated that day.
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date('2026-11-24T06:30:00.000Z'));
+		onTestFinished(() => {
+			vi.useRealTimers();
+		});
 		const s = setup();
 		const issued = await issueOne(s);
 		const draft = await s.service.create(write() as never, owner, NOW);

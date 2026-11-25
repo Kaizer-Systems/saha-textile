@@ -61,6 +61,16 @@ function build() {
 		]),
 		decide: vi.fn(async () => ({})),
 	};
+	const saved: unknown[] = [];
+	const employees = {
+		list: async () => PEOPLE,
+		get: async (id: string) => PEOPLE.find((p) => p.id === id) ?? null,
+		save: vi.fn(async (e: unknown) => {
+			saved.push(e);
+			return e;
+		}),
+	};
+	const audit = { append: vi.fn(async () => undefined) };
 	const service = new WorklistService(
 		attendance as never,
 		{
@@ -75,7 +85,7 @@ function build() {
 				]),
 			],
 		} as never,
-		{ list: async () => PEOPLE } as never,
+		employees as never,
 		{ list: async () => [{ id: 'loc_gariahat', stateCode: '19' }] } as never,
 		{
 			forMonth: async () => ({
@@ -103,8 +113,9 @@ function build() {
 				],
 			}),
 		} as never,
+		audit as never,
 	);
-	return { service, attendance };
+	return { service, attendance, saved, audit };
 }
 const everyone = {
 	userId: 'adm_owner',
@@ -184,5 +195,50 @@ describe('the worklist (WL1, WL2)', () => {
 			[everyone, 'attendance_change:amit_2026-11-07', false],
 		]);
 		expect([svc.rows, svc.count].map((f) => f.mock.calls.length)).toEqual([1, 1]);
+	});
+});
+
+describe('opening leave above a cap (WL2)', () => {
+	const status = (e: unknown) => (e as { status?: number }).status;
+
+	it('accepts it in the row, kept on the person and in the audit log; a cross is put right on the form', async () => {
+		const { service, saved, audit } = build();
+		await service.answer(everyone, 'opening_leave_over_cap:suresh_EL', true);
+		expect(saved[0]).toMatchObject({ id: 'suresh', openingLeaveAccepted: ['EL'] });
+		expect(audit.append).toHaveBeenCalledWith(expect.objectContaining({ action: 'payroll.opening_leave.accept' }));
+		await expect(service.answer(everyone, 'opening_leave_over_cap:suresh_EL', false)).rejects.toSatisfy(
+			(e) => code(e) === 'worklist_correct_on_page',
+		);
+		const manager = { userId: 'adm_mgr', permissions: ['attendance.approve'] } as never;
+		await expect(service.answer(manager, 'opening_leave_over_cap:suresh_EL', true)).rejects.toSatisfy(
+			(e) => status(e) === 403,
+		);
+		await expect(service.answer(undefined, 'opening_leave_over_cap:suresh_EL', true)).rejects.toSatisfy(
+			(e) => status(e) === 403,
+		);
+		await expect(service.answer(everyone, 'opening_leave_over_cap:nobody_EL', true)).rejects.toSatisfy(
+			(e) => status(e) === 404,
+		);
+	});
+
+	it('leaves out a type already accepted, and adds to what was accepted before', async () => {
+		const { service, saved } = build();
+		PEOPLE.push(
+			person('accepted', { openingLeave: [{ typeKey: 'EL', carried: 40 }], openingLeaveAccepted: ['CL'] }),
+		);
+		try {
+			await service.answer(everyone, 'opening_leave_over_cap:accepted_EL', true);
+			expect(saved[0]).toMatchObject({ openingLeaveAccepted: ['CL', 'EL'] });
+			PEOPLE[PEOPLE.length - 1] = person('accepted', {
+				openingLeave: [{ typeKey: 'EL', carried: 40 }],
+				openingLeaveAccepted: ['EL'],
+			});
+			const rows = await service.rows(everyone, new Date('2026-11-26T06:00:00Z'));
+			expect(rows.filter((r) => r.kind === 'opening_leave_over_cap').map((r) => r.params['name'])).toEqual([
+				'suresh',
+			]);
+		} finally {
+			PEOPLE.pop();
+		}
 	});
 });

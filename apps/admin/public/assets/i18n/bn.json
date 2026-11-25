@@ -10431,6 +10431,7 @@
 	"wl_what_opening_leave_over_cap": "{{name}}: {{leave}} জমা {{carried}}, সর্বোচ্চ {{cap}}-এর বেশি",
 	"wl_what_stock_approval": "{{title}}: {{quantity}} অনুমোদনের অপেক্ষায়",
 	"payroll_problem_worklist_not_answerable": "এই বিষয়ের উত্তর তার নিজের পাতায় দিতে হবে।",
+	"payroll_problem_worklist_correct_on_page": "কর্মীর ফর্মে এটি ঠিক করুন।",
 	"pe_publish": "প্রকাশ করুন",
 	"pe_ok": "ঠিক আছে",
 	"pe_publish_title": "হিসাব বদলেছে",

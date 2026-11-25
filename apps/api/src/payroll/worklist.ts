@@ -1,4 +1,18 @@
-import { BadRequestException, Body, Controller, Get, Header, Inject, Injectable, Param, Post } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+
+import {
+	BadRequestException,
+	Body,
+	Controller,
+	ForbiddenException,
+	Get,
+	Header,
+	Inject,
+	Injectable,
+	NotFoundException,
+	Param,
+	Post,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { WorklistAnswer, type Employee, type WorklistRow } from '@saha-textile/contracts';
 import {
@@ -6,6 +20,7 @@ import {
 	ruleFor,
 	stateRulesFor,
 	type AdjustmentRequestRepository,
+	type AuditLogRepository,
 	type EmployeeRepository,
 	type LocationRepository,
 	type PayrollRunRepository,
@@ -16,6 +31,7 @@ import { Audience, type AuthenticatedPrincipal } from '../auth/session.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import {
 	ADJUSTMENT_REQUEST_REPOSITORY,
+	AUDIT_LOG_REPOSITORY,
 	EMPLOYEE_REPOSITORY,
 	LOCATION_REPOSITORY,
 	PAYROLL_RUN_REPOSITORY,
@@ -40,10 +56,11 @@ export class WorklistService {
 	constructor(
 		@Inject(AttendanceDaysService) private readonly attendance: Pick<AttendanceDaysService, 'pending' | 'decide'>,
 		@Inject(PAYROLL_RUN_REPOSITORY) private readonly runs: Pick<PayrollRunRepository, 'list'>,
-		@Inject(EMPLOYEE_REPOSITORY) private readonly employees: Pick<EmployeeRepository, 'list'>,
+		@Inject(EMPLOYEE_REPOSITORY) private readonly employees: Pick<EmployeeRepository, 'list' | 'get' | 'save'>,
 		@Inject(LOCATION_REPOSITORY) private readonly locations: Pick<LocationRepository, 'list'>,
 		@Inject(PayrollRulesService) private readonly rules: Pick<PayrollRulesService, 'forMonth'>,
 		@Inject(ADJUSTMENT_REQUEST_REPOSITORY) private readonly stock: Pick<AdjustmentRequestRepository, 'list'>,
+		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: Pick<AuditLogRepository, 'append'>,
 	) {}
 
 	async rows(principal: AuthenticatedPrincipal | undefined, now = new Date()): Promise<WorklistRow[]> {
@@ -162,7 +179,7 @@ export class WorklistService {
 				// Leave that never lapses (maternity) has no cap to pass.
 				const cap = rule && rule.validity.kind !== 'never' ? rule.carryMax : null;
 				const carried = o.carried ?? 0;
-				if (cap === null || carried <= cap) continue;
+				if (cap === null || carried <= cap || (e.openingLeaveAccepted ?? []).includes(o.typeKey)) continue;
 				rows.push({
 					id: `opening_leave_over_cap:${e.id}_${o.typeKey}`,
 					kind: 'opening_leave_over_cap',
@@ -172,11 +189,45 @@ export class WorklistService {
 					askedBy: null,
 					since: e.createdAt,
 					open: { path: ['/payroll/employees'], query: { employeeId: e.id } },
-					answerable: false,
+					// ✓ accepts it; ✕ is put right on the employee's form (the worklist opens it).
+					answerable: true,
 				});
 			}
 			return rows;
 		});
+	}
+
+	/** WL2: opening leave carried above a type's cap, accepted as it is; kept on the person and in the audit log. */
+	private async acceptOpening(
+		principal: AuthenticatedPrincipal | undefined,
+		employeeId: string,
+		typeKey: string,
+		now = new Date(),
+	): Promise<{ done: true }> {
+		if (!principal?.permissions.includes('accounts.edit'))
+			throw new ForbiddenException(accountsRefusal('forbidden'));
+		const e = await this.employees.get(employeeId);
+		if (!e) throw new NotFoundException(accountsRefusal('employee_not_found'));
+		const accepted = [...new Set([...(e.openingLeaveAccepted ?? []), typeKey])];
+		await this.employees.save({ ...e, openingLeaveAccepted: accepted, updatedAt: now.toISOString() }, e.version);
+		await this.audit.append({
+			id: `aud_${randomUUID()}`,
+			actorUserId: principal.userId,
+			targetUserId: null,
+			audience: 'admin',
+			action: 'payroll.opening_leave.accept',
+			entityType: 'employee',
+			entityId: e.id,
+			severity: 'info',
+			retentionTier: 'financial_security',
+			diffs: [],
+			metadata: { typeKey },
+			requestId: null,
+			ipHash: null,
+			userAgentHash: null,
+			createdAt: now.toISOString(),
+		});
+		return { done: true };
 	}
 
 	/** The bell's count. */
@@ -188,6 +239,10 @@ export class WorklistService {
 	async answer(principal: AuthenticatedPrincipal | undefined, id: string, approve: boolean): Promise<{ done: true }> {
 		const [kind, ref] = id.split(':') as [string, string | undefined];
 		const at = ref?.lastIndexOf('_') ?? -1;
+		if (kind === 'opening_leave_over_cap' && ref && at > 0) {
+			if (!approve) throw new BadRequestException(accountsRefusal('worklist_correct_on_page'));
+			return this.acceptOpening(principal, ref.slice(0, at), ref.slice(at + 1));
+		}
 		if ((kind !== 'attendance_change' && kind !== 'leave_asked') || !ref || at < 1)
 			throw new BadRequestException(accountsRefusal('worklist_not_answerable'));
 		await this.attendance.decide(principal, ref.slice(0, at), ref.slice(at + 1), approve);

@@ -10431,6 +10431,7 @@
 	"wl_what_opening_leave_over_cap": "{{name}}: {{leave}} carried forward {{carried}}, above the cap of {{cap}}",
 	"wl_what_stock_approval": "{{title}}: {{quantity}} waiting for approval",
 	"payroll_problem_worklist_not_answerable": "This item is answered on its own page.",
+	"payroll_problem_worklist_correct_on_page": "Put this right on the employee's form.",
 	"pe_publish": "Publish",
 	"pe_ok": "OK",
 	"pe_publish_title": "The figures have changed",

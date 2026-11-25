@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -34,6 +34,7 @@ export class WorklistPage {
 	private readonly notifier = inject(NotificationService);
 	private readonly queries = inject(QueryClient);
 	private readonly modals = inject(NgbModal);
+	private readonly router = inject(Router);
 
 	readonly needs = WORKLIST_NEEDS;
 	readonly areas = WORKLIST_AREAS;
@@ -76,6 +77,11 @@ export class WorklistPage {
 
 	/** ✕ asks for a reason, which reaches the asker; a refusal keeps the pop-up open with its sentence. */
 	async reject(r: WorklistRow): Promise<void> {
+		// WL2: opening leave above a cap is put right on the employee's form, not refused here.
+		if (r.kind === 'opening_leave_over_cap') {
+			await this.router.navigate(r.open.path, { queryParams: r.open.query });
+			return;
+		}
 		const done = await askReason(this.modals, {
 			title: 'wl_reject_title',
 			label: 'wl_reject_reason',

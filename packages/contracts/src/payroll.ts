@@ -168,6 +168,8 @@ export type EmployeeWrite = z.infer<typeof EmployeeWrite>;
 export type EmployeeWriteInput = z.input<typeof EmployeeWrite>;
 
 export const Employee = EmployeeWrite.extend({
+	/** Brief 26 WL2: leave types whose opening carried forward above the cap was accepted on the worklist. */
+	openingLeaveAccepted: z.array(z.string()).max(20).optional(),
 	/** SR2: the dated salaries before the one in `structure` (oldest first); none before revisions began. */
 	salaryHistory: z.array(SalaryVersion).max(200).optional(),
 	id: Id,

@@ -81,6 +81,8 @@ export interface PayInput {
 	advanceDuePaise: number;
 	tdsPaise: number;
 	rules: PayrollRules;
+	/** Professional tax on the month's gross by the person's State (brief 25 ST2); the rules' slabs when absent. */
+	ptFor?: (grossPaise: number) => number;
 }
 
 export interface PayResult {
@@ -110,7 +112,8 @@ export function monthPay(input: PayInput): PayResult {
 	const esiDue = input.esiOn && grossPaise > 0 && grossPaise <= r.esiGrossLimitPaise;
 	const esiEmployeePaise = esiDue ? rupeeUp((grossPaise * r.esiEmployeePct) / 100) : 0;
 	const esiEmployerPaise = esiDue ? rupeeUp((grossPaise * r.esiEmployerPct) / 100) : 0;
-	const ptPaise = grossPaise > 0 ? professionalTax(grossPaise, r.ptSlabs) : 0;
+	const ptPaise =
+		grossPaise <= 0 ? 0 : input.ptFor ? input.ptFor(grossPaise) : professionalTax(grossPaise, r.ptSlabs);
 	const tdsPaise = Math.min(input.tdsPaise, grossPaise);
 	const statutory = pfEmployeePaise + esiEmployeePaise + ptPaise + tdsPaise;
 	const room = Math.max(0, Math.floor((grossPaise * r.maxDeductionPct) / 100) - statutory);

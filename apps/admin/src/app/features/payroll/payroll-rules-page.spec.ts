@@ -12,7 +12,7 @@ import { PayrollGateway } from '@core/accounts/payroll.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 
-import { PayrollRulesPage, inForce, ruleRows, toForm, toWrite } from './payroll-rules-page';
+import { PayrollRulesPage, inForce, ruleRows, statesOf, toForm, toWrite } from './payroll-rules-page';
 
 /** Settings › Payroll rules (accounts brief S1): each rule as a dated version. */
 
@@ -152,7 +152,12 @@ describe('a rules version as a form, and back', () => {
 		]);
 		const { id, builtIn, createdBy, createdAt, ...write } = NEW;
 		expect([id, builtIn, createdBy, createdAt]).toBeTruthy();
-		expect(toWrite({ ...form, from: NEW.from, note: NEW.note })).toEqual(write);
+		// ST1: a version saved before States reads its company-wide figures as West Bengal's set.
+		expect(toWrite({ ...form, from: NEW.from, note: NEW.note })).toEqual({
+			...write,
+			states: statesOf(NEW as never),
+		});
+		expect(form.states.map((s) => s.stateCode)).toEqual(['19']);
 	});
 
 	it('keeps only months 1 to 12 from what is typed', () => {
@@ -184,7 +189,13 @@ describe('the version in force, and its rules in words', () => {
 			'min_wages',
 		]);
 		expect(rows[1]?.values).toMatchObject({ rate: '12', cap: '15,000', adminMin: '500', n: '20', day: '15' });
-		expect(rows[3]?.values).toEqual({ taxes: '₹110 / ₹200', over: '10,000', day: '21' });
+		expect(rows[3]?.values).toEqual({
+			state: 'West Bengal',
+			taxes: '₹110 / ₹200',
+			over: '10,000',
+			months: '',
+			day: '21',
+		});
 		expect(rows[4]?.values).toMatchObject({ ee: '3', er: '15', months: '6, 12' });
 		expect(rows[0]?.from).toBeNull();
 		expect(rows[1]?.from).toBe('2025-04-01');
@@ -237,8 +248,9 @@ describe('the payroll rules page (S1)', () => {
 			pfRatePct: 10,
 			pfWageCapPaise: 1_800_000,
 		});
-		expect((sent['ptSlabs'] as unknown[])[0]).toEqual({ upToPaise: 1_200_000, taxPaise: 0 });
-		expect((sent['ptSlabs'] as unknown[])[1]).toEqual({ upToPaise: 1_500_000, taxPaise: 15_000 });
+		const westBengal = (sent['states'] as { ptSlabs: unknown[] }[])[0] as { ptSlabs: unknown[] };
+		expect(westBengal.ptSlabs[0]).toEqual({ upToPaise: 1_200_000, taxPaise: 0 });
+		expect(westBengal.ptSlabs[1]).toEqual({ upToPaise: 1_500_000, taxPaise: 15_000 });
 		expect(notifier.showSuccess).toHaveBeenCalledWith('payroll_rules_added');
 		expect(invalidate).toHaveBeenCalledWith({ queryKey: ['payroll', 'rules'] });
 		expect(popup.close).toHaveBeenCalled();

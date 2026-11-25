@@ -57,6 +57,8 @@ export interface SalaryTemplateRepository {
 export interface StatutoryFilingRecord {
 	kind: StatutoryKind;
 	period: string;
+	/** Professional tax and the welfare fund: the State filed for (brief 25 ST2); absent on older filings. */
+	stateCode?: string | null;
 	filedOn: string;
 	reference: string;
 	filedBy: string | null;

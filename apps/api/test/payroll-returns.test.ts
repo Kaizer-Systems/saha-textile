@@ -348,12 +348,12 @@ describe('the portal files (S7)', () => {
 	it('writes professional tax and the welfare fund as CSV', async () => {
 		const pt = await build().service.file('pt', '2026-11');
 		expect(pt).toEqual({
-			fileName: 'PT-2026-11.csv',
+			fileName: 'PT-19-2026-11.csv',
 			text: 'Employee,PAN,Gross salary,Professional tax\nMeera,ABCDE1234F,32000,150\nPriya,,17400,130',
 		});
 		const lwf = await build().service.file('lwf', '2026-12');
 		expect(lwf).toEqual({
-			fileName: 'LWF-2026-12.csv',
+			fileName: 'LWF-19-2026-12.csv',
 			text: 'Employee,Employee share,Employer share\nMeera,3,15\nPriya,3,0',
 		});
 		const none = await build().service.file('lwf', '2026-11');
@@ -368,7 +368,7 @@ describe('the portal files (S7)', () => {
 });
 
 describe('marking a return filed (S7)', () => {
-	const filing = { filedOn: '2026-12-14', reference: 'TRRN-12' };
+	const filing = { filedOn: '2026-12-14', reference: 'TRRN-12', stateCode: null };
 	const after = new Date('2027-01-15T06:00:00.000Z');
 
 	it('marks a ready return filed once, with who and when', async () => {
@@ -383,6 +383,7 @@ describe('marking a return filed (S7)', () => {
 		expect(filings.insert).toHaveBeenCalledWith({
 			kind: 'pf',
 			period: '2026-11',
+			stateCode: null,
 			filedOn: '2026-12-14',
 			reference: 'TRRN-12',
 			filedBy: 'adm_ca',

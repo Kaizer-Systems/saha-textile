@@ -30,9 +30,9 @@
 				</tr>
 			</thead>
 			<tbody>
-				@for (r of rows(); track r.key) {
+				@for (r of rows(); track $index) {
 				<tr>
-					<td>{{ 'payroll_rule_' + r.key | transloco }}</td>
+					<td>{{ 'payroll_rule_' + r.key | transloco: r.values }}</td>
 					<td>
 						@if (r.from) { {{ day(r.from) }} } @else { {{ 'payroll_rule_' + r.key + '_from' | transloco }} }
 					</td>
@@ -343,17 +343,128 @@
 					/>
 				</div>
 			</div>
-			<h6 class="mt-4">{{ 'payroll_rule_pt' | transloco }}</h6>
-			<div class="table-responsive datatable-wrapper border-table">
+			<div class="row g-3 mt-1">
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_max"
+					>
+						{{ 'payroll_f_max_deduction' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_max"
+						type="number"
+						[ngModel]="f.maxDeductionPct"
+						(ngModelChange)="patch({ maxDeductionPct: +$event })"
+					/>
+				</div>
+			</div>
+			<h6 class="mt-4">{{ 'payroll_states_title' | transloco }}</h6>
+			<div class="d-flex align-items-center mb-2 flex-wrap gap-2">
+				@for (st of f.states; track st.stateCode; let i = $index) {
+				<button
+					type="button"
+					class="btn btn-sm"
+					[class.btn-theme]="i === stateAt()"
+					[class.btn-outline]="i !== stateAt()"
+					(click)="stateAt.set(i)"
+				>
+					{{ stateName(st.stateCode) }}
+				</button>
+				}
+				<select
+					class="form-select form-select-sm w-auto"
+					id="pr_state_pick"
+					[attr.aria-label]="'payroll_state_add_pick' | transloco"
+					[ngModel]="stateToAdd()"
+					(ngModelChange)="stateToAdd.set($event)"
+				>
+					<option value="">{{ 'payroll_state_add_pick' | transloco }}</option>
+					@for (c of stateChoices; track c.code) { @if (!hasState(c.code)) {
+					<option [value]="c.code">{{ c.name }}</option>
+					} }
+				</select>
+				<button
+					type="button"
+					class="btn btn-sm btn-outline"
+					id="pr_state_add"
+					[disabled]="!stateToAdd()"
+					(click)="addState()"
+				>
+					<i class="ri-add-line"></i>
+					{{ 'payroll_state_add' | transloco }}
+				</button>
+			</div>
+			@if (!f.states.length) {
+			<small class="text-danger d-block">{{ 'payroll_states_none' | transloco }}</small>
+			} @if (picked(); as st) {
+			<div class="row g-3">
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="pr_pt_freq"
+					>
+						{{ 'payroll_f_pt_frequency' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="pr_pt_freq"
+						[ngModel]="st.ptFrequency"
+						(ngModelChange)="patchState({ ptFrequency: $event })"
+					>
+						@for (q of frequencies; track q) {
+						<option [value]="q">{{ 'payroll_pt_freq_' + q | transloco }}</option>
+						}
+					</select>
+				</div>
+				@if (st.ptFrequency === 'half_yearly' || st.ptFrequency === 'yearly') {
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="pr_pt_months"
+					>
+						{{ 'payroll_f_pt_months' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_pt_months"
+						[ngModel]="st.ptMonths"
+						(ngModelChange)="patchState({ ptMonths: $event })"
+					/>
+				</div>
+				}
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="pr_pt_day"
+					>
+						{{ 'payroll_f_due_day' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_pt_day"
+						type="number"
+						min="1"
+						max="31"
+						[ngModel]="st.ptDueDay"
+						(ngModelChange)="patchState({ ptDueDay: +$event })"
+					/>
+				</div>
+			</div>
+			<small class="text-muted d-block mt-1">{{ 'payroll_pt_slabs_' + st.ptFrequency | transloco }}</small>
+			@if (st.ptFrequency !== 'none') {
+			<div class="table-responsive datatable-wrapper border-table mt-2">
 				<table class="all-package theme-table no-footer table">
 					<thead>
 						<tr>
 							<th>{{ 'payroll_f_pt_up_to' | transloco }}</th>
 							<th>{{ 'payroll_f_pt_tax' | transloco }}</th>
+							<th></th>
 						</tr>
 					</thead>
 					<tbody>
-						@for (s of f.ptSlabs; track $index; let i = $index) {
+						@for (s of st.ptSlabs; track $index; let i = $index) {
 						<tr>
 							<td>
 								@if (s.upTo === null) { {{ 'payroll_f_pt_above' | transloco }} } @else {
@@ -375,46 +486,35 @@
 									(ngModelChange)="setSlab(i, { tax: +$event })"
 								/>
 							</td>
+							<td>
+								@if (s.upTo !== null) {
+								<button
+									type="button"
+									class="btn btn-outline text-danger btn-sm"
+									[title]="'remove' | transloco"
+									[attr.aria-label]="'remove' | transloco"
+									(click)="removeSlab(i)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</button>
+								}
+							</td>
 						</tr>
 						}
 					</tbody>
 				</table>
 			</div>
-			<div class="row g-3 mt-1">
-				<div class="col-md-3">
-					<label
-						class="form-label-title"
-						for="pr_pt_day"
-					>
-						{{ 'payroll_f_due_day' | transloco }}
-					</label>
-					<input
-						class="form-control"
-						id="pr_pt_day"
-						type="number"
-						min="1"
-						max="31"
-						[ngModel]="f.ptDueDay"
-						(ngModelChange)="patch({ ptDueDay: +$event })"
-					/>
-				</div>
-				<div class="col-md-3">
-					<label
-						class="form-label-title"
-						for="pr_max"
-					>
-						{{ 'payroll_f_max_deduction' | transloco }}
-					</label>
-					<input
-						class="form-control"
-						id="pr_max"
-						type="number"
-						[ngModel]="f.maxDeductionPct"
-						(ngModelChange)="patch({ maxDeductionPct: +$event })"
-					/>
-				</div>
-			</div>
-			<h6 class="mt-4">{{ 'payroll_rule_lwf' | transloco }}</h6>
+			<button
+				type="button"
+				class="btn btn-sm btn-outline mt-2"
+				id="pr_slab_add"
+				(click)="addSlab()"
+			>
+				<i class="ri-add-line"></i>
+				{{ 'payroll_pt_add_slab' | transloco }}
+			</button>
+			}
+			<h6 class="mt-3">{{ 'payroll_rule_lwf' | transloco: { state: stateName(st.stateCode) } }}</h6>
 			<div class="row g-3">
 				<div class="col-md-3">
 					<label
@@ -427,8 +527,8 @@
 						class="form-control"
 						id="pr_lwf_ee"
 						type="number"
-						[ngModel]="f.lwfEmployee"
-						(ngModelChange)="patch({ lwfEmployee: +$event })"
+						[ngModel]="st.lwfEmployee"
+						(ngModelChange)="patchState({ lwfEmployee: +$event })"
 					/>
 				</div>
 				<div class="col-md-3">
@@ -442,8 +542,8 @@
 						class="form-control"
 						id="pr_lwf_er"
 						type="number"
-						[ngModel]="f.lwfEmployer"
-						(ngModelChange)="patch({ lwfEmployer: +$event })"
+						[ngModel]="st.lwfEmployer"
+						(ngModelChange)="patchState({ lwfEmployer: +$event })"
 					/>
 				</div>
 				<div class="col-md-3">
@@ -456,8 +556,8 @@
 					<input
 						class="form-control"
 						id="pr_lwf_m"
-						[ngModel]="f.lwfMonths"
-						(ngModelChange)="patch({ lwfMonths: $event })"
+						[ngModel]="st.lwfMonths"
+						(ngModelChange)="patchState({ lwfMonths: $event })"
 					/>
 				</div>
 				<div class="col-md-3">
@@ -473,11 +573,21 @@
 						type="number"
 						min="1"
 						max="31"
-						[ngModel]="f.lwfDueDay"
-						(ngModelChange)="patch({ lwfDueDay: +$event })"
+						[ngModel]="st.lwfDueDay"
+						(ngModelChange)="patchState({ lwfDueDay: +$event })"
 					/>
 				</div>
 			</div>
+			@if (f.states.length > 1) {
+			<button
+				type="button"
+				class="btn btn-sm btn-outline text-danger mt-3"
+				id="pr_state_remove"
+				(click)="removeState(stateAt())"
+			>
+				{{ 'payroll_state_remove' | transloco: { state: stateName(st.stateCode) } }}
+			</button>
+			} }
 			<h6 class="mt-4">{{ 'payroll_rule_bonus' | transloco }} · {{ 'payroll_rule_gratuity' | transloco }}</h6>
 			<div class="row g-3">
 				<div class="col-md-3">

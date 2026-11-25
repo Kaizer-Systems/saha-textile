@@ -14,6 +14,7 @@ import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
 import { periodLabel, splitReturns } from './payroll-format';
+import { stateName } from './payroll-rules-page';
 
 import type { StatutoryReturn } from '@saha-textile/contracts';
 
@@ -53,9 +54,13 @@ export class StatutoryReturnsPage {
 		return periodLabel(r, this.transloco.getActiveLang());
 	}
 
+	readonly stateName = stateName;
+
 	filingName(): string {
 		const r = this.filing();
-		return r ? this.transloco.translate(`payroll_return_${r.kind}`) : '';
+		if (!r) return '';
+		const name = this.transloco.translate(`payroll_return_${r.kind}`);
+		return r.stateCode ? `${name} · ${stateName(r.stateCode)}` : name;
 	}
 
 	day(date: string | null): string {
@@ -64,7 +69,7 @@ export class StatutoryReturnsPage {
 
 	async download(r: StatutoryReturn): Promise<void> {
 		try {
-			const file = await firstValueFrom(this.gateway.statutoryFile(r.kind, r.period));
+			const file = await firstValueFrom(this.gateway.statutoryFile(r.kind, r.period, r.stateCode));
 			saveBlob(file.fileName, new Blob([file.text], { type: 'text/plain;charset=utf-8' }));
 		} catch (error) {
 			this.notifier.showError(this.transloco.translate(`payroll_problem_${apiProblem(error, 'failed')}`));
@@ -84,7 +89,11 @@ export class StatutoryReturnsPage {
 		this.busy.set(true);
 		try {
 			await firstValueFrom(
-				this.gateway.markFiled(r.kind, r.period, { reference: this.reference(), filedOn: this.filedOn() }),
+				this.gateway.markFiled(r.kind, r.period, {
+					reference: this.reference(),
+					filedOn: this.filedOn(),
+					stateCode: r.stateCode,
+				}),
 			);
 			this.notifier.showSuccess(this.transloco.translate('payroll_statutory_marked'));
 			await this.queries.invalidateQueries({ queryKey: PAYROLL_KEYS.statutory });

@@ -156,7 +156,7 @@ describe('the statutory returns page (S7)', () => {
 		const { fixture, page, notifier } = await returns({ statutoryFile });
 		(rows(fixture)[0]?.querySelectorAll('button')[0] as HTMLButtonElement).click();
 		await settle(fixture);
-		expect(statutoryFile).toHaveBeenCalledWith('pf', '2026-11');
+		expect(statutoryFile).toHaveBeenCalledWith('pf', '2026-11', undefined);
 		const [name, blob] = vi.mocked(saveBlob).mock.lastCall as [string, Blob];
 		expect(name).toBe('ECR_2026-11.txt');
 		expect(await blob.text()).toBe('UAN#~#NAME');

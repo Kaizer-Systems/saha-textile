@@ -212,7 +212,7 @@ describe('the payroll setup routes', () => {
 		const preview = { components: [], payINR: 20_000 };
 		const structure = { name: 'Shop staff' } as never;
 		const change = { name: 'Shop staff', version: 1 } as never;
-		const filing = { filedOn: '2026-12-14', reference: 'TRRN-1' };
+		const filing = { filedOn: '2026-12-14', reference: 'TRRN-1', stateCode: null };
 		const give = { amountINR: 5_000 } as never;
 		expect([
 			c.listRules(),
@@ -225,7 +225,7 @@ describe('the payroll setup routes', () => {
 			c.updateStructure('sst_1', change),
 			c.payslip('2026-11', 'emp_1'),
 			c.statutory(),
-			c.statutoryFile('pf', '2026-11'),
+			c.statutoryFile('pf', '2026-11', null),
 			c.markFiled('pf', '2026-11', filing, ca),
 			c.markFiled('pf', '2026-11', filing),
 			c.listAdvances(),
@@ -243,7 +243,7 @@ describe('the payroll setup routes', () => {
 			['templates', 'update', 'sst_1', change],
 			['returns', 'payslip', '2026-11', 'emp_1'],
 			['returns', 'returns'],
-			['returns', 'file', 'pf', '2026-11'],
+			['returns', 'file', 'pf', '2026-11', null],
 			['returns', 'markFiled', 'pf', '2026-11', filing, ca],
 			['returns', 'markFiled', 'pf', '2026-11', filing, undefined],
 			['advances', 'list'],

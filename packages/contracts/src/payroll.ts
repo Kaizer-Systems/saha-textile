@@ -122,7 +122,12 @@ export const PayrollRow = z.object({
 	tdsPaise: z.number().int(),
 	advancePaise: z.number().int(),
 	netPaise: z.number().int(),
-	/** West Bengal's labour welfare fund in its months (S2), and the month's gratuity provision. */
+	/** The State whose professional tax and labour welfare fund applied: the work location's (brief 25 ST2). */
+	stateCode: z
+		.string()
+		.regex(/^\d{2}$/)
+		.optional(),
+	/** The labour welfare fund of the person's State in its months (S2), and the month's gratuity provision. */
 	lwfEmployeePaise: z.number().int().optional(),
 	lwfEmployerPaise: z.number().int().optional(),
 	gratuityPaise: z.number().int().optional(),
@@ -142,6 +147,8 @@ export const PayrollRun = z.object({
 	schemesFrom: IsoDate.optional(),
 	pfAdminPaise: z.number().int().optional(),
 	edliPaise: z.number().int().optional(),
+	/** States of people on the run with no rules in the version used (ST1): the run can't be approved. */
+	statesMissing: z.array(z.string()).optional(),
 	voucherId: Id.nullable().default(null),
 	payVoucherId: Id.nullable().default(null),
 	paidOn: IsoDate.nullable().optional(),
@@ -166,6 +173,36 @@ const Pct = z.number().min(0).max(100);
 const Paise = z.number().int().nonnegative();
 const DueDay = z.number().int().min(1).max(31);
 
+const PtSlab = z.object({ upToPaise: Paise.nullable(), taxPaise: Paise });
+
+/** How often a State's professional tax is deducted; `none` for a State without it. */
+export const PtFrequency = z.enum(['monthly', 'half_yearly', 'yearly', 'none']);
+export type PtFrequency = z.infer<typeof PtFrequency>;
+
+/**
+ * One State's professional tax and labour welfare fund (brief 25 ST1). Slabs are on the gross for the period: a
+ * month's gross for `monthly`, six times it for `half_yearly` and twelve for `yearly`, deducted in `ptMonths`.
+ */
+export const StatePayrollRules = z
+	.object({
+		stateCode: z.string().regex(/^\d{2}$/),
+		ptFrequency: PtFrequency.default('monthly'),
+		ptSlabs: z.array(PtSlab).max(20).default([]),
+		ptMonths: z.array(z.number().int().min(1).max(12)).max(12).default([]),
+		ptDueDay: DueDay.default(21),
+		lwfEmployeePaise: Paise.default(0),
+		lwfEmployerPaise: Paise.default(0),
+		lwfMonths: z.array(z.number().int().min(1).max(12)).max(12).default([]),
+		lwfDueDay: DueDay.default(15),
+	})
+	.refine((s) => s.ptFrequency === 'none' || s.ptSlabs.at(-1)?.upToPaise === null, {
+		message: 'pt_last_slab_open',
+	})
+	.refine((s) => s.ptFrequency === 'none' || s.ptFrequency === 'monthly' || s.ptMonths.length > 0, {
+		message: 'pt_months_needed',
+	});
+export type StatePayrollRules = z.infer<typeof StatePayrollRules>;
+
 /** S1: a dated version of the payroll rules; a month uses the version in force on its last day. */
 export const PayrollRulesWrite = z.object({
 	from: IsoDate,
@@ -178,7 +215,7 @@ export const PayrollRulesWrite = z.object({
 	esiEmployerPct: Pct,
 	esiGrossLimitPaise: Paise,
 	ptSlabs: z
-		.array(z.object({ upToPaise: Paise.nullable(), taxPaise: Paise }))
+		.array(PtSlab)
 		.min(1)
 		.max(20)
 		.refine((slabs) => slabs.at(-1)?.upToPaise === null, { message: 'pt_last_slab_open' }),
@@ -200,6 +237,17 @@ export const PayrollRulesWrite = z.object({
 	esiDueDay: DueDay,
 	ptDueDay: DueDay,
 	lwfDueDay: DueDay,
+	/**
+	 * Brief 25 ST1: professional tax and the labour welfare fund per State. Empty in versions saved before: the
+	 * company-wide figures above are then West Bengal's set.
+	 */
+	states: z
+		.array(StatePayrollRules)
+		.max(40)
+		.default([])
+		.refine((states) => new Set(states.map((s) => s.stateCode)).size === states.length, {
+			message: 'state_twice',
+		}),
 });
 export type PayrollRulesWrite = z.infer<typeof PayrollRulesWrite>;
 export type PayrollRulesWriteInput = z.input<typeof PayrollRulesWrite>;
@@ -321,6 +369,8 @@ export type StatutoryKind = z.infer<typeof StatutoryKind>;
 /** S7: one return to file: for a month (a quarter for TDS), when it is due, how much, and whether it is filed. */
 export const StatutoryReturn = z.object({
 	kind: StatutoryKind,
+	/** Professional tax and the welfare fund: the State it is paid to (ST2); null for PF, ESI and TDS. */
+	stateCode: z.string().nullable().default(null),
 	period: YearMonth,
 	periodTo: YearMonth,
 	due: IsoDate,
@@ -334,8 +384,21 @@ export type StatutoryReturn = z.infer<typeof StatutoryReturn>;
 export const StatutoryFiling = z.object({
 	filedOn: IsoDate,
 	reference: z.string().trim().min(1).max(60),
+	/** Professional tax and the welfare fund: the State filed for. */
+	stateCode: z
+		.string()
+		.regex(/^\d{2}$/)
+		.nullable()
+		.default(null),
 });
 export type StatutoryFiling = z.infer<typeof StatutoryFiling>;
+
+/** Which State's professional tax or welfare fund file (`?state=19`); none for other returns. */
+export const StatutoryStateQuery = z
+	.string()
+	.regex(/^\d{2}$/)
+	.nullable()
+	.default(null);
 
 /** A portal file: its name and text (the ECR text, or a CSV). */
 export const StatutoryFile = z.object({ fileName: z.string(), text: z.string() });

@@ -147,6 +147,7 @@ function build(options: Options = {}) {
 		{ withTransaction: async <T>(work: (context: unknown) => Promise<T>) => work({ session: 'tx' }) } as never,
 		audit as never,
 		{ forMonth: async () => rulesOf(BUILT_IN_PAYROLL_RULES) } as never,
+		{ list: async () => [] } as never,
 	);
 	return { service, employees, attendance, runs, ledger, audit, people, runStore, chart };
 }

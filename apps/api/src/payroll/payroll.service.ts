@@ -14,16 +14,19 @@ import type {
 } from '@saha-textile/contracts';
 import {
 	gratuityProvision,
-	labourWelfare,
 	monthPay,
 	monthlyTds,
 	newRegimeTax,
 	payslipHeads,
 	pfEstablishmentCharges,
 	resolveRole,
+	stateLwf,
+	statePt,
+	stateRulesFor,
 	type AttendanceRepository,
 	type AuditLogRepository,
 	type EmployeeRepository,
+	type LocationRepository,
 	type PayrollRunRepository,
 	type TransactionManagerPort,
 } from '@saha-textile/core-domain';
@@ -33,6 +36,7 @@ import {
 	ATTENDANCE_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
 	EMPLOYEE_REPOSITORY,
+	LOCATION_REPOSITORY,
 	PAYROLL_RUN_REPOSITORY,
 	TRANSACTION_MANAGER,
 } from '../infra/tokens';
@@ -89,6 +93,7 @@ export class PayrollService {
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: Pick<AuditLogRepository, 'append'>,
 		@Inject(PayrollRulesService) private readonly rules: Pick<PayrollRulesService, 'forMonth'>,
+		@Inject(LOCATION_REPOSITORY) private readonly locations: Pick<LocationRepository, 'list'>,
 	) {}
 
 	private mayseeWhole(principal: AuthenticatedPrincipal | undefined) {
@@ -241,7 +246,10 @@ export class PayrollService {
 		const attendance = await this.attendance.get(month);
 		if (!attendance?.lockedAt) throw refuse('payroll_attendance_not_locked');
 		const people = new Map((await this.employees.list()).map((e) => [e.id, e]));
-		const { pay: rules, schemes } = await this.rules.forMonth(month);
+		const { pay: rules, schemes, states } = await this.rules.forMonth(month);
+		// ST2: a person's State is their work location's; one not found keeps the State saved on the person.
+		const stateOf = new Map((await this.locations.list()).map((l) => [l.id, l.stateCode]));
+		const missing = new Set<string>();
 		const headcount = attendance.rows.filter((a) => people.has(a.employeeId)).length;
 		const gratuityApplies = headcount >= schemes.gratuityHeadcount;
 		const rows: PayrollRow[] = attendance.rows.flatMap((a) => {
@@ -257,6 +265,9 @@ export class PayrollService {
 			};
 			const yearly = Object.values(structure).reduce((s, v) => s + v, 0) * 12;
 			const tds = e.taxRegime === 'new' ? monthlyTds(newRegimeTax(yearly), 0, 12) : 0;
+			const stateCode = stateOf.get(e.locationId) ?? e.ptState;
+			const stateRules = stateRulesFor(states, stateCode);
+			if (!stateRules) missing.add(stateCode);
 			const pay = monthPay({
 				structure,
 				daysInMonth: attendance.daysInMonth,
@@ -266,13 +277,17 @@ export class PayrollService {
 				advanceDuePaise: Math.min(paise(e.advancePerMonthINR), paise(e.advanceDueINR)),
 				tdsPaise: tds,
 				rules,
+				ptFor: (gross) => (stateRules ? statePt(month, gross, stateRules) : 0),
 			});
-			const lwf = labourWelfare(month, pay.grossPaise, schemes);
+			const lwf = stateRules
+				? stateLwf(month, pay.grossPaise, stateRules)
+				: { employeePaise: 0, employerPaise: 0 };
 			return [
 				{
 					employeeId: e.id,
 					name: e.name,
 					locationId: e.locationId,
+					stateCode,
 					paidDays: a.paidDays,
 					...pay,
 					netPaise: pay.netPaise - lwf.employeePaise,
@@ -296,6 +311,7 @@ export class PayrollService {
 			schemesFrom: schemes.from,
 			pfAdminPaise: charges.adminPaise,
 			edliPaise: charges.edliPaise,
+			statesMissing: [...missing].sort(),
 			voucherId: null,
 			payVoucherId: null,
 			approvedBy: null,
@@ -338,6 +354,8 @@ export class PayrollService {
 		if (write.to === 'approved') {
 			if (run.status !== 'draft') throw refuse('payroll_wrong_step');
 			if (!principal?.permissions.includes('accounts.lock')) throw refuse('payroll_approver_only');
+			// ST1: someone works in a State the rules don't cover yet; add its set, then prepare the run again.
+			if (run.statesMissing?.length) throw refuse('payroll_state_rules_missing');
 			return this.save(
 				{
 					...run,

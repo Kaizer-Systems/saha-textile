@@ -19,6 +19,8 @@ import {
 	payslipHeads,
 	rupeesInWords,
 	schemeLines,
+	stateDue,
+	stateRulesFor,
 	statutoryDue,
 	structureTotal,
 	tdsQuarter,
@@ -60,13 +62,19 @@ const structurePaise = (e: Employee) => ({
 });
 
 /** What each monthly return collects from a run's rows (paise). */
-const MONTHLY: Record<Exclude<StatutoryKind, 'tds'>, (run: PayrollRun) => number> = {
-	pf: (run) =>
-		sum(run.rows, (r) => r.pfEmployeePaise + r.pfEmployerPaise) + (run.pfAdminPaise ?? 0) + (run.edliPaise ?? 0),
-	esi: (run) => sum(run.rows, (r) => r.esiEmployeePaise + r.esiEmployerPaise),
-	pt: (run) => sum(run.rows, (r) => r.ptPaise),
-	lwf: (run) => sum(run.rows, (r) => (r.lwfEmployeePaise ?? 0) + (r.lwfEmployerPaise ?? 0)),
+const MONTHLY: Record<Exclude<StatutoryKind, 'tds'>, (rows: readonly PayrollRow[], run: PayrollRun) => number> = {
+	pf: (rows, run) =>
+		sum(rows, (r) => r.pfEmployeePaise + r.pfEmployerPaise) + (run.pfAdminPaise ?? 0) + (run.edliPaise ?? 0),
+	esi: (rows) => sum(rows, (r) => r.esiEmployeePaise + r.esiEmployerPaise),
+	pt: (rows) => sum(rows, (r) => r.ptPaise),
+	lwf: (rows) => sum(rows, (r) => (r.lwfEmployeePaise ?? 0) + (r.lwfEmployerPaise ?? 0)),
 };
+/** A row's State: the one its run saved, or (runs before States) the State saved on the person then. */
+const LEGACY_STATE = '19';
+const stateOfRow = (r: PayrollRow) => r.stateCode ?? LEGACY_STATE;
+/** A filing's key: professional tax and the welfare fund are filed per State. */
+const filingKey = (kind: StatutoryKind, period: string, stateCode: string | null) =>
+	kind === 'pt' || kind === 'lwf' ? `${kind}:${period}:${stateCode ?? LEGACY_STATE}` : `${kind}:${period}`;
 
 /**
  * Payslips (S6), which schemes apply (S2) and the statutory returns (S7): PF ECR, ESI, professional tax and the labour
@@ -174,7 +182,9 @@ export class PayrollReturnsService {
 	/** S7: every return from posted payrolls, monthly ones and TDS by quarter, filed or not, by due day. */
 	async returns(now = new Date()): Promise<StatutoryReturn[]> {
 		const runs = (await this.runs.list()).filter((r) => r.status === 'posted' || r.status === 'paid');
-		const filed = new Map((await this.filings.list()).map((f) => [`${f.kind}:${f.period}`, f]));
+		const filed = new Map(
+			(await this.filings.list()).map((f) => [filingKey(f.kind, f.period, f.stateCode ?? null), f]),
+		);
 		const out: StatutoryReturn[] = [];
 		const row = (
 			kind: StatutoryKind,
@@ -183,10 +193,12 @@ export class PayrollReturnsService {
 			due: string,
 			amount: number,
 			over: boolean,
+			stateCode: string | null = null,
 		) => {
-			const filing = filed.get(`${kind}:${period}`);
+			const filing = filed.get(filingKey(kind, period, stateCode));
 			out.push({
 				kind,
+				stateCode,
 				period,
 				periodTo,
 				due,
@@ -197,11 +209,22 @@ export class PayrollReturnsService {
 			});
 		};
 		for (const run of runs) {
-			const { schemes } = await this.rules.forMonth(run.month);
-			for (const kind of ['pf', 'esi', 'pt', 'lwf'] as const) {
-				const amount = MONTHLY[kind](run);
+			const { schemes, states } = await this.rules.forMonth(run.month);
+			for (const kind of ['pf', 'esi'] as const) {
+				const amount = MONTHLY[kind](run.rows, run);
 				if (amount > 0) row(kind, run.month, run.month, statutoryDue(kind, run.month, schemes), amount, true);
 			}
+			// ST2: professional tax and the welfare fund go to each State, on its own day.
+			for (const stateCode of [...new Set(run.rows.map(stateOfRow))].sort())
+				for (const kind of ['pt', 'lwf'] as const) {
+					const amount = MONTHLY[kind](
+						run.rows.filter((r) => stateOfRow(r) === stateCode),
+						run,
+					);
+					const rules = stateRulesFor(states, stateCode);
+					const due = rules ? stateDue(kind, run.month, rules) : statutoryDue(kind, run.month, schemes);
+					if (amount > 0) row(kind, run.month, run.month, due, amount, true, stateCode);
+				}
 		}
 		const quarters = new Map<string, PayrollRun[]>();
 		for (const run of runs) {
@@ -223,11 +246,16 @@ export class PayrollReturnsService {
 				q.to < current,
 			);
 		}
-		return out.sort((a, b) => a.due.localeCompare(b.due) || a.kind.localeCompare(b.kind));
+		return out.sort(
+			(a, b) =>
+				a.due.localeCompare(b.due) ||
+				a.kind.localeCompare(b.kind) ||
+				(a.stateCode ?? '').localeCompare(b.stateCode ?? ''),
+		);
 	}
 
-	/** S7: the file a portal takes for a return. */
-	async file(kind: StatutoryKind, period: string): Promise<StatutoryFile> {
+	/** S7: the file a portal takes for a return; professional tax and the welfare fund for one State. */
+	async file(kind: StatutoryKind, period: string, stateCode: string | null = null): Promise<StatutoryFile> {
 		const people = new Map((await this.employees.list()).map((e) => [e.id, e]));
 		const who = (r: PayrollRow) => people.get(r.employeeId);
 		if (kind === 'tds') {
@@ -303,21 +331,22 @@ export class PayrollReturnsService {
 				),
 			};
 		}
+		const inState = run.rows.filter((r) => stateOfRow(r) === (stateCode ?? LEGACY_STATE));
 		if (kind === 'pt')
 			return {
-				fileName: `PT-${period}.csv`,
+				fileName: `PT-${stateCode ?? LEGACY_STATE}-${period}.csv`,
 				text: csvText(
 					['Employee', 'PAN', 'Gross salary', 'Professional tax'],
-					run.rows
+					inState
 						.filter((r) => r.ptPaise > 0)
 						.map((r) => [r.name, who(r)?.pan ?? '', whole(r.grossPaise), whole(r.ptPaise)]),
 				),
 			};
 		return {
-			fileName: `LWF-${period}.csv`,
+			fileName: `LWF-${stateCode ?? LEGACY_STATE}-${period}.csv`,
 			text: csvText(
 				['Employee', 'Employee share', 'Employer share'],
-				run.rows
+				inState
 					.filter((r) => (r.lwfEmployeePaise ?? 0) > 0)
 					.map((r) => [r.name, whole(r.lwfEmployeePaise as number), whole(r.lwfEmployerPaise ?? 0)]),
 			),
@@ -332,7 +361,10 @@ export class PayrollReturnsService {
 		principal: AuthenticatedPrincipal | undefined,
 		now = new Date(),
 	): Promise<StatutoryReturn> {
-		const found = (await this.returns(now)).find((r) => r.kind === kind && r.period === period);
+		const state = kind === 'pt' || kind === 'lwf' ? (write.stateCode ?? LEGACY_STATE) : null;
+		const found = (await this.returns(now)).find(
+			(r) => r.kind === kind && r.period === period && r.stateCode === state,
+		);
 		if (!found) throw new NotFoundException(accountsRefusal('statutory_return_not_found'));
 		if (found.status === 'filed') throw new ConflictException(accountsRefusal('statutory_already_filed'));
 		if (found.status === 'later') throw refuse('statutory_not_due_yet');
@@ -340,6 +372,7 @@ export class PayrollReturnsService {
 			await this.filings.insert({
 				kind,
 				period,
+				stateCode: state,
 				filedOn: write.filedOn,
 				reference: write.reference,
 				filedBy: principal?.userId ?? null,

@@ -106,6 +106,7 @@ function build(options: { employees?: Employee[]; attendance?: Attendance[]; run
 		{ withTransaction: async <T>(work: (context: unknown) => Promise<T>) => work({ session: 'tx' }) } as never,
 		{ append: async () => undefined } as never,
 		{ forMonth: async () => rulesOf(BUILT_IN_PAYROLL_RULES) } as never,
+		{ list: async () => [] } as never,
 	);
 	return { service, ledger, runStore };
 }

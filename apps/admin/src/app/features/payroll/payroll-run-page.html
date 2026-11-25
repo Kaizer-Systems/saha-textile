@@ -44,7 +44,7 @@
 				type="button"
 				class="btn btn-theme"
 				id="run_approve"
-				[disabled]="busy() || !r.rows.length"
+				[disabled]="busy() || !r.rows.length || !!r.statesMissing?.length"
 				(click)="step(r, 'approved')"
 			>
 				{{ 'payroll_approve' | transloco }}
@@ -108,6 +108,14 @@
 					</div>
 				</div>
 			</div>
+			@if (r?.statesMissing?.length) {
+			<div
+				class="alert alert-warning"
+				id="run_states_missing"
+			>
+				{{ 'payroll_state_missing' | transloco: { states: statesMissing(r) } }}
+			</div>
+			}
 			<div class="card">
 				<div class="card-body">
 					<div class="table-responsive datatable-wrapper border-table">
@@ -116,6 +124,7 @@
 								<tr>
 									<th>{{ 'payroll_col_employee' | transloco }}</th>
 									<th>{{ 'payroll_col_location' | transloco }}</th>
+									<th>{{ 'payroll_col_state' | transloco }}</th>
 									<th>{{ 'payroll_col_days' | transloco }}</th>
 									<th>{{ 'payroll_col_gross' | transloco }}</th>
 									<th>PF</th>
@@ -138,6 +147,7 @@
 										</a>
 									</td>
 									<td>{{ locationName(row.locationId) }}</td>
+									<td>{{ row.stateCode ? stateName(row.stateCode) : '—' }}</td>
 									<td>{{ row.paidDays }}</td>
 									<td class="text-nowrap">{{ money(row.grossPaise) }}</td>
 									<td class="text-nowrap">{{ money(row.pfEmployeePaise) }}</td>
@@ -150,7 +160,7 @@
 								} @empty {
 								<tr>
 									<td
-										colspan="10"
+										colspan="11"
 										class="text-muted"
 									>
 										{{ 'payroll_run_none' | transloco }}
@@ -158,7 +168,7 @@
 								</tr>
 								} @if (r?.rows?.length) {
 								<tr class="fw-semibold">
-									<td colspan="3">{{ 'payroll_total' | transloco }}</td>
+									<td colspan="4">{{ 'payroll_total' | transloco }}</td>
 									<td class="text-nowrap">{{ money(totals().gross) }}</td>
 									<td class="text-nowrap">{{ money(totals().pf) }}</td>
 									<td class="text-nowrap">{{ money(totals().esi) }}</td>

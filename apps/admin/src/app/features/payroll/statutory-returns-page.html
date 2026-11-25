@@ -39,9 +39,13 @@
 				</tr>
 			</thead>
 			<tbody>
-				@for (r of shown(); track r.kind + r.period) {
+				@for (r of shown(); track r.kind + r.period + (r.stateCode ?? '')) {
 				<tr>
-					<td>{{ 'payroll_return_' + r.kind | transloco }}</td>
+					<td>
+						{{ 'payroll_return_' + r.kind | transloco }} @if (r.stateCode) {
+						<small class="d-block text-muted">{{ stateName(r.stateCode) }}</small>
+						}
+					</td>
 					<td>{{ period(r) }}</td>
 					<td>{{ day(r.due) }}</td>
 					<td class="text-nowrap">{{ money(r.amountPaise) }}</td>

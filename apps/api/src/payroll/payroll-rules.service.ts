@@ -5,11 +5,13 @@ import type { PayrollRulesVersion, PayrollRulesWrite } from '@saha-textile/contr
 import {
 	PAYROLL_RULES_2026,
 	PAYROLL_SCHEMES_2026,
+	stateRulesOf,
 	type AuditLogRepository,
 	type PayrollRules,
 	type PayrollRulesRepository,
 	type PayrollRunRepository,
 	type PayrollSchemes,
+	type StateRules,
 } from '@saha-textile/core-domain';
 
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
@@ -28,6 +30,7 @@ export const BUILT_IN_PAYROLL_RULES: PayrollRulesVersion = {
 	...PAYROLL_SCHEMES_2026,
 	ptSlabs: [...PAYROLL_RULES_2026.ptSlabs],
 	lwfMonths: [...PAYROLL_SCHEMES_2026.lwfMonths],
+	states: [],
 	from: PAYROLL_RULES_2026.from,
 	note: '',
 	id: 'prs_built_in',
@@ -36,10 +39,16 @@ export const BUILT_IN_PAYROLL_RULES: PayrollRulesVersion = {
 	createdAt: '2026-04-01T00:00:00.000Z',
 };
 
-/** A stored version split into the month's pay rules and the scheme rules. */
-export function rulesOf(v: PayrollRulesVersion): { pay: PayrollRules; schemes: PayrollSchemes; from: string } {
+/** A stored version split into the month's pay rules, the scheme rules and each State's set (brief 25 ST1). */
+export function rulesOf(v: PayrollRulesVersion): {
+	pay: PayrollRules;
+	schemes: PayrollSchemes;
+	states: StateRules[];
+	from: string;
+} {
 	return {
 		from: v.from,
+		states: stateRulesOf(v),
 		pay: {
 			from: v.from,
 			pfRatePct: v.pfRatePct,

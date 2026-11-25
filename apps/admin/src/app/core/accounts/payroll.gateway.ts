@@ -123,8 +123,11 @@ export class PayrollGateway {
 		return this.http.get<StatutoryReturn[]>(this.api('statutory'));
 	}
 
-	statutoryFile(kind: StatutoryKind, period: string): Observable<StatutoryFile> {
-		return this.http.get<StatutoryFile>(this.api(`statutory/${kind}/${period}/file`));
+	/** Professional tax and the welfare fund are one file per State (`state`, a GST State code). */
+	statutoryFile(kind: StatutoryKind, period: string, state: string | null = null): Observable<StatutoryFile> {
+		return this.http.get<StatutoryFile>(this.api(`statutory/${kind}/${period}/file`), {
+			params: state ? { state } : {},
+		});
 	}
 
 	markFiled(kind: StatutoryKind, period: string, write: StatutoryFiling): Observable<StatutoryReturn> {

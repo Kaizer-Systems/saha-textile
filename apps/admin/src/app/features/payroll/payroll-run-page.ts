@@ -16,6 +16,7 @@ import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
 import { currentMonth } from './attendance-page';
+import { stateName } from './payroll-rules-page';
 
 import type { ChartOfAccounts, PayrollRow, PayrollRun, PayrollRunStatus } from '@saha-textile/contracts';
 
@@ -108,6 +109,13 @@ export class PayrollRunPage {
 		return chart ? payingFrom(chart) : [];
 	});
 	readonly totals = computed(() => payrollTotals(this.run.data()?.rows ?? []));
+
+	readonly stateName = stateName;
+
+	/** ST1: the States on the run with no payroll rules yet, by name. */
+	statesMissing(run: PayrollRun): string {
+		return (run.statesMissing ?? []).map(stateName).join(', ');
+	}
 
 	locationName(id: string): string {
 		return this.locations.data()?.find((l) => l.id === id)?.name ?? '';

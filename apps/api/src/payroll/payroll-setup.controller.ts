@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Header, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Get, Header, Param, Post, Put, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	AdvanceGive,
@@ -7,6 +7,7 @@ import {
 	SalaryTemplateWrite,
 	StatutoryFiling,
 	StatutoryKind,
+	StatutoryStateQuery,
 	StructurePreviewInput,
 	YearMonth,
 } from '@saha-textile/contracts';
@@ -113,8 +114,9 @@ export class PayrollSetupController {
 	statutoryFile(
 		@Param('kind', new ZodValidationPipe(StatutoryKind)) kind: StatutoryKind,
 		@Param('period', new ZodValidationPipe(YearMonth)) period: string,
+		@Query('state', new ZodValidationPipe(StatutoryStateQuery)) state: string | null,
 	) {
-		return this.returns.file(kind, period);
+		return this.returns.file(kind, period, state);
 	}
 
 	@Post('statutory/:kind/:period/filed')

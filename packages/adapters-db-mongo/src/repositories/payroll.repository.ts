@@ -232,9 +232,11 @@ export class MongoStatutoryFilingRepository implements StatutoryFilingRepository
 	}
 
 	async insert(filing: StatutoryFilingRecord): Promise<void> {
-		await StatutoryFilingModel.create({ _id: `${filing.kind}:${filing.period}`, ...filing }).catch(
-			duplicate('statutory_already_filed'),
-		);
+		// One filing per return: professional tax and the welfare fund once per State (brief 25 ST2).
+		const id = filing.stateCode
+			? `${filing.kind}:${filing.period}:${filing.stateCode}`
+			: `${filing.kind}:${filing.period}`;
+		await StatutoryFilingModel.create({ _id: id, ...filing }).catch(duplicate('statutory_already_filed'));
 	}
 }
 

@@ -31,6 +31,7 @@ import { DocumentsModule } from '../src/documents/documents.module';
 import { LedgerModule } from '../src/ledger/ledger.module';
 import { OrdersSetupModule } from '../src/orders-setup/orders-setup.module';
 import { AttendanceDaysController, AttendanceDaysService } from '../src/payroll/attendance-days';
+import { SalaryRevisionsController, SalaryRevisionsService } from '../src/payroll/salary-revisions';
 import { PayrollAdvancesService } from '../src/payroll/payroll-advances.service';
 import { PayrollReturnsService } from '../src/payroll/payroll-returns.service';
 import { PayrollRulesService } from '../src/payroll/payroll-rules.service';
@@ -136,6 +137,7 @@ describe('the payroll module', () => {
 			PayrollController,
 			PayrollSetupController,
 			AttendanceDaysController,
+			SalaryRevisionsController,
 		]);
 		expect(Reflect.getMetadata('providers', PayrollModule)).toEqual([
 			PayrollService,
@@ -144,6 +146,7 @@ describe('the payroll module', () => {
 			PayrollReturnsService,
 			PayrollAdvancesService,
 			AttendanceDaysService,
+			SalaryRevisionsService,
 			{ provide: PAYROLL_RULES_REPOSITORY, useClass: MongoPayrollRulesRepository },
 			{ provide: SALARY_TEMPLATE_REPOSITORY, useClass: MongoSalaryTemplateRepository },
 			{ provide: STATUTORY_FILING_REPOSITORY, useClass: MongoStatutoryFilingRepository },

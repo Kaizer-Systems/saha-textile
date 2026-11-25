@@ -30,6 +30,7 @@ import { PayrollRulesService } from './payroll-rules.service';
 import { PayrollSetupController } from './payroll-setup.controller';
 import { PayrollController } from './payroll.controller';
 import { PayrollService } from './payroll.service';
+import { SalaryRevisionsController, SalaryRevisionsService } from './salary-revisions';
 import { SalaryTemplatesService } from './salary-templates.service';
 
 /** Employees' store, sealing personal numbers with PAYROLL_PII_KEY when it is set (D29). */
@@ -41,7 +42,7 @@ export function employeeStoreFor(config: Pick<AppConfig, 'payroll'>): MongoEmplo
 /** Payroll (accounts brief S). */
 @Module({
 	imports: [LedgerModule, DocumentsModule, OrdersSetupModule],
-	controllers: [PayrollController, PayrollSetupController, AttendanceDaysController],
+	controllers: [PayrollController, PayrollSetupController, AttendanceDaysController, SalaryRevisionsController],
 	providers: [
 		PayrollService,
 		PayrollRulesService,
@@ -49,6 +50,7 @@ export function employeeStoreFor(config: Pick<AppConfig, 'payroll'>): MongoEmplo
 		PayrollReturnsService,
 		PayrollAdvancesService,
 		AttendanceDaysService,
+		SalaryRevisionsService,
 		{ provide: PAYROLL_RULES_REPOSITORY, useClass: MongoPayrollRulesRepository },
 		{ provide: SALARY_TEMPLATE_REPOSITORY, useClass: MongoSalaryTemplateRepository },
 		{ provide: STATUTORY_FILING_REPOSITORY, useClass: MongoStatutoryFilingRepository },

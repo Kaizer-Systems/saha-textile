@@ -983,7 +983,17 @@ export const SalaryRevisionInput = z.object({
 	way: RevisionWay,
 	from: IsoDate,
 	templateId: Id.nullable().default(null),
-	typed: SalaryStructureWrite.partial().default({}),
+	/** Only the heads typed over (no defaults, so an untouched head is never read as typed at nothing). */
+	typed: z
+		.object({
+			basic: Rupees.optional(),
+			da: Rupees.optional(),
+			hra: Rupees.optional(),
+			special: Rupees.optional(),
+			conveyance: Rupees.optional(),
+			other: Rupees.optional(),
+		})
+		.default({}),
 	lockCtc: z.boolean().default(true),
 	reason: z.string().trim().min(3).max(300),
 	agreed: z.boolean().default(false),

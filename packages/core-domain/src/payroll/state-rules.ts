@@ -1,5 +1,6 @@
 import type { Holiday } from './attendance-days';
 import type { LeaveType } from './leave';
+import type { MinimumWages } from './salary-revision';
 
 /**
  * Professional tax and the labour welfare fund per State (brief 25 ST1, ST2; approved 2026-11-25). Pure. Each dated
@@ -34,6 +35,8 @@ export interface StateRules {
 	ptExemptDisability?: boolean;
 	/** Brief 26 LV1: the State's leave types, each with its rules. */
 	leaveTypes?: readonly LeaveType[];
+	/** Brief 26 SR4: the State's minimum wages a month by skill level, dated by notification. */
+	minimumWages?: readonly MinimumWages[];
 	/** Brief 26 LV1, AT2: the State's holidays, for every store in it or one; a holiday never uses up leave. */
 	holidays?: readonly Holiday[];
 	/** Months a half-yearly or yearly tax is deducted in. */

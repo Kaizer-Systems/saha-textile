@@ -23,15 +23,10 @@
 				<option value="group">{{ 'trial_balance_group_level' | transloco }}</option>
 				<option value="ledger">{{ 'trial_balance_ledger_level' | transloco }}</option>
 			</select>
-			<button
-				type="button"
-				class="btn btn-outline"
-				id="tb_excel"
-				(click)="download()"
-			>
-				<i class="ri-file-excel-2-line"></i>
-				{{ 'gstr9_excel' | transloco }}
-			</button>
+			<app-export-menu
+				id="tb_export"
+				[source]="exportSource"
+			/>
 		</div>
 	</div>
 	<div class="table-responsive datatable-wrapper border-table">

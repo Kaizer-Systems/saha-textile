@@ -9,6 +9,7 @@ import { LEDGER_KEYS, LedgerGateway } from '@core/accounts/ledger.gateway';
 import { downloadCsv, shortDate } from '@core/purchasing/purchasing-format';
 import { chartTree, rupees, type ChartNode } from '@features/accounts/ledger-helpers';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { ExportMenu, type ExportSource } from '@shared/ui/export-menu/export-menu';
 
 import { indent } from './statement-page';
 
@@ -55,7 +56,7 @@ const istToday = (): string => new Date(Date.now() + 5.5 * 3_600_000).toISOStrin
 /** Trial balance (accounts brief U4): group level, or every ledger under its group, as at a day; debits equal credits. */
 @Component({
 	selector: 'app-trial-balance-page',
-	imports: [PageWrapper, TranslocoModule, FormsModule],
+	imports: [PageWrapper, TranslocoModule, FormsModule, ExportMenu],
 	templateUrl: './trial-balance-page.html',
 })
 export class TrialBalancePage {
@@ -90,6 +91,20 @@ export class TrialBalancePage {
 	day(date: string): string {
 		return shortDate(date);
 	}
+
+	/** EX1: the trial balance as the screen shows it, for the Export menu. */
+	readonly exportSource = (): ExportSource => ({
+		fileName: `trial-balance-${this.asAt()}`,
+		title: this.transloco.translate('trial_balance_as_at', { date: this.asAt() }),
+		header: ['', this.transloco.translate('accounts_debit'), this.transloco.translate('accounts_credit')],
+		rows: this.rows().map((r) => [
+			`${'  '.repeat(r.depth)}${r.name}`,
+			r.debitPaise / 100 || null,
+			r.creditPaise / 100 || null,
+		]),
+		kinds: { 1: 'money', 2: 'money' },
+		area: 'accounts',
+	});
 
 	download(): void {
 		downloadCsv(

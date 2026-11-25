@@ -15,6 +15,7 @@ import { runtimeConfig } from '@core/config/runtime-config';
 import { LocationsGateway } from '@core/locations/locations.gateway';
 import { downloadCsv } from '@core/purchasing/purchasing-format';
 import { accountsRange } from '@features/accounts/accounts-period';
+import { NotificationService } from '@data-access/services/notification.service';
 
 import { PlByLocationPage } from './pl-by-location-page';
 import { REPORT_LIBRARY, ReportsLibraryPage } from './reports-library';
@@ -58,6 +59,10 @@ function mount<T>(component: Type<T>, providers: unknown[], route: Record<string
 			provideTanStackQuery(new QueryClient({ defaultOptions: { queries: { retry: false } } })),
 			provideRouter([]),
 			{ provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap(route)) } },
+			// The Export menu (brief 25 EX1) posts to the API and names a failure.
+			provideHttpClient(),
+			provideHttpClientTesting(),
+			{ provide: NotificationService, useValue: { showError: vi.fn(), showSuccess: vi.fn() } },
 			...(providers as never[]),
 		],
 	});
@@ -485,9 +490,17 @@ describe('the trial balance page (U4)', () => {
 		expect(page.level()).toBe('ledger');
 		expect(all(fixture, 'tbody tr')).toHaveLength(12);
 		expect(all(fixture, 'tbody td')[0]?.classList.contains('ps-2')).toBe(true);
-		(el(fixture, '#tb_excel') as HTMLButtonElement).click();
+		expect(el(fixture, '#tb_export')).not.toBeNull();
+		const source = page.exportSource();
+		expect([source.fileName, source.header, source.area]).toEqual([
+			`trial-balance-${istToday()}`,
+			['', 'accounts_debit', 'accounts_credit'],
+			'accounts',
+		]);
+		page.download();
 		const [name, header, csv] = vi.mocked(downloadCsv).mock.lastCall as [string, string[], unknown[][]];
 		expect([name, header]).toEqual([`trial-balance_${istToday()}.csv`, ['', 'accounts_debit', 'accounts_credit']]);
+		expect(source.rows.slice(0, 3)).toEqual(csv.slice(0, 3));
 		expect(csv.slice(0, 3)).toEqual([
 			['Assets', null, null],
 			['  Current assets', null, null],

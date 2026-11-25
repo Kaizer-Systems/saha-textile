@@ -125,6 +125,11 @@ async function settled(page: Page): Promise<void> {
 			{ timeout: 10_000 },
 		)
 		.catch(() => undefined);
+	// A list shows its loader until its rows land, and the page keeps still while it waits, so the still-shape check
+	// below can pass on a busy machine before the rows arrive: wait for the loaders to go first.
+	await page
+		.waitForFunction(() => !document.querySelector('.table-loader'), undefined, { timeout: 20_000 })
+		.catch(() => undefined);
 	const shape = () =>
 		page.evaluate(() => `${document.body.innerHTML.length}:${document.documentElement.scrollHeight}`);
 	let before = await shape();

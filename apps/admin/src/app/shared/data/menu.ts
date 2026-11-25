@@ -1086,6 +1086,14 @@ export const menu: IMenu[] = [
 			},
 			{
 				parent_id: 19,
+				title: 'atr_title',
+				path: '/setting/audit-trail',
+				type: 'link',
+				level: 2,
+				permission: ['audit.index'],
+			},
+			{
+				parent_id: 19,
 				title: 'payroll_rules',
 				path: '/setting/payroll-rules',
 				type: 'link',

@@ -80,6 +80,11 @@ export default [
 		loadComponent: () => import('./cash-boxes/cash-boxes').then((m) => m.CashBoxesSettings),
 	},
 	{
+		// Brief 26 AU1: the whole admin's audit trail.
+		path: 'audit-trail',
+		loadComponent: () => import('@features/audit/audit-trail-page').then((m) => m.AuditTrailPage),
+	},
+	{
 		// Payroll rules as dated versions (accounts brief S1).
 		path: 'payroll-rules',
 		loadComponent: () => import('@features/payroll/payroll-rules-page').then((m) => m.PayrollRulesPage),

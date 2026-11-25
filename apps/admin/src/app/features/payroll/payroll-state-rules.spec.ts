@@ -188,7 +188,11 @@ const chips = () =>
 	modalAll<HTMLButtonElement>('button.btn-sm').filter(
 		(b) => !b.id && !b.classList.contains('text-danger') && b.closest('.d-flex.flex-wrap') !== null,
 	);
-const slabRows = () => modalAll('tbody tr');
+/** The slab rows: only the tables headed "up to", not the pop-up's other tables (shifts, holidays). */
+const slabRows = () =>
+	modalAll<HTMLTableElement>('table')
+		.filter((table) => table.querySelector('th')?.textContent?.trim() === 'payroll_f_pt_up_to')
+		.flatMap((table) => [...table.querySelectorAll('tbody tr')] as HTMLElement[]);
 
 describe('a State’s professional tax and welfare fund, as a form and back (ST1)', () => {
 	it('keeps only months 1 to 12 from what is typed', () => {

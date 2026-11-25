@@ -11,6 +11,7 @@ describe('the payroll routes', () => {
 		expect(pages).toEqual({
 			employees: 'EmployeesPage',
 			attendance: 'AttendancePage',
+			'my-attendance': 'MyAttendancePage',
 			runs: 'PayrollRunPage',
 			'runs/:month/payslips/:employeeId': 'PayslipPage',
 			structures: 'SalaryStructuresPage',

@@ -410,6 +410,11 @@ describe('schemes and payslips', () => {
 		refused(Payslip.safeParse({ ...payslip, deductions: [{ key: 'bonus', paise: 1 }] }).success);
 		refused(Payslip.safeParse({ ...payslip, earnings: [{ head: 'tips', paise: 1 }] }).success);
 		refused(Payslip.safeParse({ ...payslip, daysInMonth: 30.5 }).success);
+		// PS4: numbered when the run is paid, none before; a reprint carries the same number.
+		expect(parsed.payslipNo).toBeNull();
+		expect(Payslip.parse({ ...payslip, payslipNo: 'PS/26-27/000124' }).payslipNo).toBe('PS/26-27/000124');
+		expect(Payslip.parse({ ...payslip, payslipNo: null }).payslipNo).toBeNull();
+		refused(Payslip.safeParse({ ...payslip, payslipNo: 124 }).success);
 	});
 });
 

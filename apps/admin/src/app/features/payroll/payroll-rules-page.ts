@@ -57,6 +57,16 @@ export interface SlabForm {
 export type SlabList = 'ptSlabs' | 'ptWomenSlabs';
 
 /** A State's professional tax and welfare fund in the form (brief 25 ST1), money in rupees, months as "6, 12". */
+/** SR4: the skill levels a State's minimum wages are set by. */
+export const SKILL_LEVELS = ['unskilled', 'semi_skilled', 'skilled', 'highly_skilled'] as const;
+export type SkillLevel = (typeof SKILL_LEVELS)[number];
+
+/** SR4: one set of minimum wages in the form: its date, and rupees a month per level (null: none set). */
+export interface WageSetForm {
+	from: string;
+	levels: Record<SkillLevel, number | null>;
+}
+
 export interface StateForm {
 	stateCode: string;
 	ptFrequency: PtFrequency;
@@ -73,6 +83,8 @@ export interface StateForm {
 	leaveTypes: NonNullable<StatePayrollRules['leaveTypes']>;
 	/** Brief 26 LV1, AT2: the State's holidays, for every store in it (null) or one. */
 	holidays: Holiday[];
+	/** Brief 26 SR4: the State's minimum wages a month by skill level, in rupees, each set from its notification's date. */
+	minimumWages: WageSetForm[];
 	ptMonths: string;
 	ptDueDay: number;
 	lwfEmployee: number;
@@ -172,6 +184,7 @@ export function startingForm(stateCode: string, start: PtStartingSet | undefined
 		ptExemptDisability: rules?.ptExemptDisability ?? false,
 		leaveTypes: [],
 		holidays: [],
+		minimumWages: [],
 		ptMonths: (rules?.ptMonths ?? []).join(', '),
 		ptDueDay: rules?.ptDueDay ?? 21,
 		lwfEmployee: 0,
@@ -193,6 +206,12 @@ export function stateToForm(s: StatePayrollRules): StateForm {
 		ptExemptDisability: s.ptExemptDisability ?? false,
 		leaveTypes: (s.leaveTypes ?? []).map((t) => structuredClone(t)),
 		holidays: (s.holidays ?? []).map((h) => ({ ...h })),
+		minimumWages: (s.minimumWages ?? []).map((w) => ({
+			from: w.from,
+			levels: Object.fromEntries(
+				SKILL_LEVELS.map((l) => [l, w.levels[l] === undefined ? null : inr(w.levels[l] as number)]),
+			) as WageSetForm['levels'],
+		})),
 		ptMonths: s.ptMonths.join(', '),
 		ptDueDay: s.ptDueDay,
 		lwfEmployee: inr(s.lwfEmployeePaise),
@@ -214,6 +233,19 @@ export function stateToWrite(s: StateForm): StatePayrollRules {
 		...(s.ptExemptDisability ? { ptExemptDisability: true } : {}),
 		...(s.leaveTypes.length ? { leaveTypes: s.leaveTypes } : {}),
 		...(s.holidays.length ? { holidays: s.holidays } : {}),
+		...(s.minimumWages.length
+			? {
+					minimumWages: s.minimumWages.map((w) => ({
+						from: w.from,
+						levels: Object.fromEntries(
+							SKILL_LEVELS.flatMap((l) => {
+								const v = w.levels[l];
+								return v === null ? [] : [[l, paise(v)]];
+							}),
+						),
+					})),
+				}
+			: {}),
 		ptMonths: s.ptFrequency === 'half_yearly' || s.ptFrequency === 'yearly' ? monthList(s.ptMonths) : [],
 		ptDueDay: s.ptDueDay,
 		lwfEmployeePaise: paise(s.lwfEmployee),
@@ -698,7 +730,41 @@ export class PayrollRulesPage {
 	/* ------------------------------------------------------------------ brief 26 LV1, LV2: leave per State */
 
 	/** LV1: which part of the State's set is shown: professional tax and the welfare fund, or leave. */
-	readonly stateSection = signal<'pt' | 'leave' | 'holidays'>('pt');
+	readonly stateSection = signal<'pt' | 'leave' | 'holidays' | 'wages'>('pt');
+	readonly skillLevels = SKILL_LEVELS;
+
+	/** SR4: a new set of minimum wages, from today until its notification's date is typed. */
+	addWageSet(): void {
+		const st = this.picked();
+		const levels = Object.fromEntries(SKILL_LEVELS.map((l) => [l, null])) as WageSetForm['levels'];
+		if (st) this.patchState({ minimumWages: [...st.minimumWages, { from: this.today, levels }] });
+	}
+
+	setWageSet(index: number, from: string | null, level: SkillLevel | null, value: unknown): void {
+		const st = this.picked();
+		if (!st) return;
+		this.patchState({
+			minimumWages: st.minimumWages.map((w, i) =>
+				i !== index
+					? w
+					: {
+							from: from ?? w.from,
+							levels: level
+								? {
+										...w.levels,
+										[level]:
+											value === '' || value === null ? null : Math.max(0, Number(value) || 0),
+									}
+								: w.levels,
+						},
+			),
+		});
+	}
+
+	removeWageSet(index: number): void {
+		const st = this.picked();
+		if (st) this.patchState({ minimumWages: st.minimumWages.filter((_, i) => i !== index) });
+	}
 	/** LV2: the leave type whose rules are open, by key ('' for none), and its rule shown. */
 	readonly leaveOpen = signal('');
 	readonly leaveRuleAt = signal(0);

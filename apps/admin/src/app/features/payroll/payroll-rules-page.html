@@ -449,6 +449,16 @@
 				>
 					{{ 'payroll_section_holidays' | transloco }}
 				</button>
+				<button
+					type="button"
+					class="btn btn-sm"
+					id="pr_section_wages"
+					[class.btn-theme]="stateSection() === 'wages'"
+					[class.btn-outline]="stateSection() !== 'wages'"
+					(click)="stateSection.set('wages')"
+				>
+					{{ 'payroll_section_wages' | transloco }}
+				</button>
 			</div>
 			@if (stateSection() === 'leave') {
 			<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
@@ -1020,6 +1030,84 @@
 								class="text-muted"
 							>
 								{{ 'payroll_holidays_none' | transloco }}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			} @if (stateSection() === 'wages') {
+			<!-- Brief 26 SR4: the State's minimum wages by skill level, each set dated by its notification. -->
+			<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+				<small class="text-muted">
+					{{ 'payroll_wages_sub' | transloco: { state: stateName(st.stateCode) } }}
+				</small>
+				<button
+					type="button"
+					class="btn btn-sm btn-outline"
+					id="pr_wages_add"
+					(click)="addWageSet()"
+				>
+					<i class="ri-add-line"></i>
+					{{ 'payroll_wages_add' | transloco }}
+				</button>
+			</div>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'payroll_wages_from' | transloco }}</th>
+							@for (l of skillLevels; track l) {
+							<th>{{ 'payroll_skill_' + l | transloco }}</th>
+							}
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (w of st.minimumWages; track $index; let i = $index) {
+						<tr>
+							<td>
+								<input
+									class="form-control"
+									type="date"
+									[id]="'pr_wages_from_' + i"
+									[attr.aria-label]="'payroll_wages_from' | transloco"
+									[ngModel]="w.from"
+									(ngModelChange)="setWageSet(i, $event, null, null)"
+								/>
+							</td>
+							@for (l of skillLevels; track l) {
+							<td>
+								<input
+									class="form-control"
+									type="number"
+									min="0"
+									[id]="'pr_wages_' + l + '_' + i"
+									[attr.aria-label]="'payroll_skill_' + l | transloco"
+									[ngModel]="w.levels[l]"
+									(ngModelChange)="setWageSet(i, null, l, $event)"
+								/>
+							</td>
+							}
+							<td class="text-end">
+								<button
+									type="button"
+									class="btn btn-sm btn-outline"
+									[id]="'pr_wages_remove_' + i"
+									[title]="'remove' | transloco"
+									(click)="removeWageSet(i)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</button>
+							</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td
+								colspan="6"
+								class="text-muted"
+							>
+								{{ 'payroll_wages_none' | transloco }}
 							</td>
 						</tr>
 						}

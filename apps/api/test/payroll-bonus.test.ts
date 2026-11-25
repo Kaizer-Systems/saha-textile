@@ -103,6 +103,8 @@ interface Options {
 	runs?: PayrollRun[];
 	bonus?: PayrollRulesVersion['bonus'];
 	bonusHeadcount?: number;
+	/** The pay heads the rules count as wages (the Code's list when absent). */
+	wageHeads?: PayrollRulesVersion['wageHeads'];
 }
 
 function build(options: Options = {}) {
@@ -154,6 +156,7 @@ function build(options: Options = {}) {
 				...BUILT_IN_PAYROLL_RULES,
 				bonusHeadcount: options.bonusHeadcount ?? 2,
 				bonus: options.bonus ?? BONUS_2026,
+				...(options.wageHeads ? { wageHeads: options.wageHeads } : {}),
 			}),
 		),
 	};
@@ -188,6 +191,17 @@ describe('the month’s bonus in a run (BN1)', () => {
 			['emp_meera', 7_000_00, 0],
 			['emp_sudip', 0, 0],
 		]);
+	});
+
+	it('counts as wages only the pay heads the rules name, when they name them', async () => {
+		// ₹3,500 basic, ₹1,000 DA and ₹4,000 special allowance: ₹8,500 a month.
+		const people = [employee('emp_rita', 3_500, 1_000), SUDIP];
+		const codeHeads = await build({ people }).service.prepare('2026-11', now);
+		const ownHeads = await build({ people, wageHeads: ['basic', 'da'] }).service.prepare('2026-11', now);
+		// The Code's heads (special allowance included): ₹8,500, held at the ₹7,000 ceiling.
+		expect(bonusOf(codeHeads)[0]).toEqual(['emp_rita', 7_000_00, bonusOn(7_000_00, BONUS_2026)]);
+		// Basic and DA only: ₹4,500, more than half the pay, so the half-pay rule doesn't lift it.
+		expect(bonusOf(ownHeads)[0]).toEqual(['emp_rita', 4_500_00, bonusOn(4_500_00, BONUS_2026)]);
 	});
 
 	it('has no bonus below the Act’s headcount', async () => {

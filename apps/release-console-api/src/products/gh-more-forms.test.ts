@@ -129,6 +129,32 @@ describe('pull requests', () => {
 		expect(asked[1]).toContain('disablePullRequestAutoMerge');
 	});
 
+	it('changes the base branch, refusing the same base, the head branch and anything not a branch', async () => {
+		const sent = github([
+			[/GET .*\/pulls\/7$/, 200, { number: 7, base: { ref: 'dev' }, head: { ref: 'feat/combined-after-pr6' } }],
+			[/PATCH .*\/pulls\/7$/, 200, {}],
+		]);
+		const base = PULLS_EXTRA.forms?.['base'];
+		const form = shown(await base?.read(ctx({ id: '7:staging' })));
+		expect(form).toContain('Change the base branch');
+		expect(form).toContain('was dev');
+		expect(form).toContain('worked out again against staging');
+		expect(form).toContain('"blocked":null');
+		expect(shown(await base?.read(ctx({ id: '7:dev' })))).toContain('#7 already merges into dev.');
+		expect(shown(await base?.read(ctx({ id: '7:feat/combined-after-pr6' })))).toContain(
+			'feat/combined-after-pr6 is the branch #7 comes from.',
+		);
+		expect(shown(await base?.read(ctx({ id: '7' })))).toContain('Choose a branch.');
+		expect(shown(await base?.read(ctx()))).toContain('Open a pull request first.');
+		await expect(base?.send(ctx(), write({ base: 'staging' }))).rejects.toThrow('Choose a branch.');
+		await expect(base?.send(ctx(), write({ base: 'a..b' }, '7:a..b'))).rejects.toThrow('Choose a branch.');
+		expect((await base?.send(ctx(), write({}, '7:staging')))?.message).toBe('#7 now merges into staging');
+		expect((await base?.send(ctx({ id: '7:x' }), write({ base: 'main' })))?.message).toBe(
+			'#7 now merges into main',
+		);
+		expect(changes(sent)).toEqual(['PATCH /pulls/7 {"base":"staging"}', 'PATCH /pulls/7 {"base":"main"}']);
+	});
+
 	it('closes, reopens, updates and re-runs failed checks, and refuses anything else', async () => {
 		const sent = github([
 			[
@@ -204,6 +230,26 @@ describe('runs, workflows and releases', () => {
 			'PUT /actions/workflows/5/enable {}',
 			'PUT /actions/workflows/5/disable {}',
 		]);
+	});
+
+	it('reads a running workflow as on, and one turned off as off', async () => {
+		github([
+			[
+				/actions\/workflows/,
+				200,
+				{
+					workflows: [
+						{ id: 5, name: 'CI', state: 'active' },
+						{ id: 6, name: 'Deploy', state: 'disabled_manually' },
+					],
+				},
+			],
+		]);
+		const flow = PIPELINE_EXTRA.forms?.['workflow'];
+		const on = shown(await flow?.read(ctx({ id: '5' })));
+		expect(on).toContain('CI (active)');
+		expect(on).toContain('"value":"on"');
+		expect(shown(await flow?.read(ctx({ id: '6' })))).toContain('"value":"off"');
 	});
 
 	it('publishes, drafts and saves releases, and deletes one with or without its tag', async () => {

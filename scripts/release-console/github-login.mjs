@@ -44,7 +44,12 @@ export const LOGIN_ARGS = [
 	'https',
 	'--web',
 	'--skip-ssh-key',
+	// The Code page's Packages box reads GitHub's container packages (brief 7Hu1SuB3A8qiJzeDwvFZLR, Q7 A).
+	'--scopes',
+	'read:packages',
 ];
+/** Adds GitHub's packages right to a sign-in made before it was asked for, with the same one-time code. */
+export const PACKAGES_ARGS = ['auth', 'refresh', '--hostname', 'github.com', '--scopes', 'read:packages'];
 export const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 
 /**
@@ -165,7 +170,7 @@ export function argsOf(argv) {
 	const repository = at('--repository');
 	const mode = at('--mode') || 'login';
 	if (!REPOSITORY.test(repository)) throw new Error('Give the repository as owner/name.');
-	if (mode !== 'login' && mode !== 'another') throw new Error('Mode is login or another.');
+	if (!['login', 'another', 'packages'].includes(mode)) throw new Error('Mode is login, another or packages.');
 	return { repository, mode };
 }
 
@@ -224,11 +229,13 @@ export async function main(argv = process.argv) {
 		say(
 			mode === 'another'
 				? 'Signing in another GitHub account: enter the one-time code below at github.com/login/device.'
-				: 'Enter the one-time code below at github.com/login/device.',
+				: mode === 'packages'
+					? 'Adding the packages right: enter the one-time code below at github.com/login/device, then approve read:packages.'
+					: 'Enter the one-time code below at github.com/login/device.',
 		);
 		const done = await new Promise((resolve) => {
 			let output = '';
-			child = spawn(gh, LOGIN_ARGS, { stdio: ['ignore', 'pipe', 'pipe'] });
+			child = spawn(gh, mode === 'packages' ? PACKAGES_ARGS : LOGIN_ARGS, { stdio: ['ignore', 'pipe', 'pipe'] });
 			const relay = (write) => (chunk) => {
 				output += String(chunk);
 				write(String(chunk));
@@ -251,7 +258,7 @@ export async function main(argv = process.argv) {
 			return;
 		}
 		account = signedInAs(run) ?? 'your account';
-		say(`✓ Signed in to GitHub as ${account}.`);
+		say(mode === 'packages' ? `✓ ${account} can read packages now.` : `✓ Signed in to GitHub as ${account}.`);
 	}
 
 	say('3 · Git uses this sign-in');

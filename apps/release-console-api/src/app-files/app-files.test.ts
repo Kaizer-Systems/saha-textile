@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { appFile } from './app-files.js';
+import { appBuild, appFile } from './app-files.js';
 
 describe('console app files', () => {
 	const dir = mkdtempSync(join(tmpdir(), 'release-console-app-'));
@@ -29,5 +29,14 @@ describe('console app files', () => {
 		expect(appFile(dir, '/%2e%2e/%2e%2e/etc/passwd')?.body.toString()).toContain('rc-root');
 		expect(appFile(dir, '/api/projects')).toBeNull();
 		expect(appFile(undefined, '/')).toBeNull();
+	});
+
+	it('fingerprints the app by its page, and has none without an app', () => {
+		const before = appBuild(dir);
+		expect(before).toMatch(/^[0-9a-f]{12}$/);
+		writeFileSync(join(dir, 'index.html'), '<rc-root></rc-root><script src="/assets/main-EFGH5678.js"></script>');
+		expect(appBuild(dir)).not.toBe(before);
+		expect(appBuild(undefined)).toBeNull();
+		expect(appBuild(join(dir, 'assets'))).toBeNull();
 	});
 });

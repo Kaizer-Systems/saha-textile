@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	pullBasePreviewAnswerSchema,
+	pullBasePreviewQuerySchema,
 	pullCommitPageAnswerSchema,
 	pullDiffQuerySchema,
 	pullListQuerySchema,
@@ -84,5 +86,18 @@ describe('the pull request page shapes', () => {
 			},
 		});
 		expect(commit.state).toBe('ok');
+	});
+
+	it('read a base preview, and take only a branch name as the base', () => {
+		expect(pullBasePreviewQuerySchema.parse({ base: 'feat/combined-after-pr6' })).toEqual({
+			base: 'feat/combined-after-pr6',
+		});
+		expect(pullBasePreviewQuerySchema.safeParse({ base: 'dev..main' }).success).toBe(false);
+		const preview = pullBasePreviewAnswerSchema.parse({
+			state: 'ok',
+			readAt: '2026-11-24T08:00:00.000Z',
+			data: { base: 'staging', commits: 1383, files: 4196 },
+		});
+		expect(preview.state === 'ok' && preview.data.files).toBe(4196);
 	});
 });

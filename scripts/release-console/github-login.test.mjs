@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { LOGIN_ARGS, argsOf, repositoryLine, resultEvent, signedInAs, whyLoginFailed } from './github-login.mjs';
+import {
+	LOGIN_ARGS,
+	PACKAGES_ARGS,
+	argsOf,
+	repositoryLine,
+	resultEvent,
+	signedInAs,
+	whyLoginFailed,
+} from './github-login.mjs';
 
 /** A stand-in gh: answers each command from `answers` by its first two words. */
 const gh = (answers) => (args) => answers[args.slice(0, 2).join(' ')] ?? { status: 1, stdout: '', stderr: '' };
@@ -25,7 +33,10 @@ test('the sign-in is gh’s browser device flow, the same on every machine', () 
 		'https',
 		'--web',
 		'--skip-ssh-key',
+		'--scopes',
+		'read:packages',
 	]);
+	assert.deepEqual(PACKAGES_ARGS, ['auth', 'refresh', '--hostname', 'github.com', '--scopes', 'read:packages']);
 });
 
 test('takes only a checked repository and mode', () => {
@@ -34,6 +45,7 @@ test('takes only a checked repository and mode', () => {
 		mode: 'login',
 	});
 	assert.equal(argsOf(['--repository', 'a/b', '--mode', 'another']).mode, 'another');
+	assert.equal(argsOf(['--repository', 'a/b', '--mode', 'packages']).mode, 'packages');
 	assert.throws(() => argsOf(['--repository', 'a/b;rm']), /owner\/name/);
 	assert.throws(() => argsOf(['--repository', 'a/b', '--mode', 'shell']), /Mode/);
 });

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type {
+	PullBasePreview,
 	PullCommitPage,
 	PullCommits,
 	PullDiff,
@@ -13,7 +14,9 @@ import type {
 } from '@saha-textile/release-console-contracts';
 
 import {
+	GITHUB_COMPARE_FILES,
 	GITHUB_FILE_LIMIT,
+	compareCounts,
 	githubCommit,
 	githubPullFiles,
 	jobLog,
@@ -39,7 +42,7 @@ const KEEP = 8;
 const count = (n: number) => n.toLocaleString('en-IN');
 
 /** A small newest-kept memory, so opening file after file reads the list once per head commit. */
-class Recent<T> {
+export class Recent<T> {
 	private readonly items = new Map<string, Promise<T>>();
 	get(key: string, read: () => Promise<T>): Promise<T> {
 		const hit = this.items.get(key);
@@ -49,6 +52,10 @@ class Recent<T> {
 		value.catch(() => this.items.delete(key));
 		if (this.items.size > KEEP) this.items.delete(this.items.keys().next().value as string);
 		return value;
+	}
+	/** Forgets everything: after a change, reads keyed by a branch's name are stale. */
+	clear(): void {
+		this.items.clear();
 	}
 }
 
@@ -133,6 +140,21 @@ export class PullsService {
 		});
 	}
 
+	/**
+	 * What the pull request would hold with `base` as its base (Change the base branch, A3): GitHub's commit count,
+	 * and its file count, from the console's own copy when GitHub's compare stops listing at 300.
+	 */
+	basePreview(p: string, r: string, n: number, base: string): Promise<VendorAnswer<PullBasePreview>> {
+		return this.reads.sourceCode(p, r, async (repo, key) => {
+			const head = await pullHead(repo, key, n);
+			const c = await compareCounts(repo, key, base, head.headSha);
+			if (c.files < GITHUB_COMPARE_FILES) return { base, commits: c.commits, files: c.files };
+			const dir = await this.copy.ready(repo, key, [c.baseSha, head.headSha], refspecs(n, base));
+			const files = await this.copy.files(dir, [`${c.baseSha}...${head.headSha}`]);
+			return { base, commits: c.commits, files: files.length };
+		});
+	}
+
 	/** The pull request's files: GitHub's list up to its 3,000, the console's own copy past that. */
 	private async filesOf(repo: string, key: string, n: number): Promise<FilesRead & { head: Head }> {
 		const head = await pullHead(repo, key, n);
@@ -180,7 +202,7 @@ export const refspecs = (n: number, base: string) => [
 	`+refs/heads/${base}:refs/heads/${base}`,
 ];
 
-const fromPatch = (file: PullFile, patch: string): PullDiff => ({
+export const fromPatch = (file: PullFile, patch: string): PullDiff => ({
 	path: file.path,
 	previous: file.previous,
 	status: file.status,
@@ -192,7 +214,7 @@ const fromPatch = (file: PullFile, patch: string): PullDiff => ({
 	lines: diffLines(patch),
 });
 
-const fromCopy = (file: PullFile, d: CopyDiff, whole: boolean): PullDiff => ({
+export const fromCopy = (file: PullFile, d: CopyDiff, whole: boolean): PullDiff => ({
 	path: file.path,
 	previous: file.previous,
 	status: file.status,

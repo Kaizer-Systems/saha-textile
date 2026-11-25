@@ -505,6 +505,7 @@ export const LOADERS: readonly LoaderArt[] = [
 
 /** Repository screen (menu key) → its loader. Every screen of the approved menu is listed. */
 export const LOADER_OF_SCREEN: Readonly<Record<string, string>> = {
+	code: 'diff',
 	pulls: 'pipeline',
 	pipeline: 'pipeline',
 	logs: 'terminal',

@@ -13,7 +13,11 @@ import { SESSION_HEADER } from './lock/session.guard.js';
  * 127.0.0.1 only. Browser calls from another page are refused (`CONSOLE_ORIGIN`).
  */
 async function bootstrap(): Promise<void> {
-	const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
+	// 40 MB: a file of up to 25 MB (GitHub's own web upload limit) sent as base64 for a commit or a release (Code page).
+	const app = await NestFactory.create<NestFastifyApplication>(
+		AppModule,
+		new FastifyAdapter({ bodyLimit: 40 * 1024 * 1024 }),
+	);
 	app.enableCors({
 		origin: [process.env['CONSOLE_ORIGIN'] ?? 'http://localhost:4400'],
 		methods: ['GET', 'POST', 'PUT', 'DELETE'],

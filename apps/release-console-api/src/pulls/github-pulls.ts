@@ -469,6 +469,23 @@ export async function pullHead(repository: string, key: string, n: number) {
 	};
 }
 
+/** GitHub's compare lists at most this many changed files; past it, the console's own copy counts them. */
+export const GITHUB_COMPARE_FILES = 300;
+
+/**
+ * GitHub's compare of a branch and a commit: how many commits the commit is ahead, how many files it changes
+ * (GitHub lists its first 300), and the branch's own commit, for the console's copy to count past that.
+ */
+export async function compareCounts(repository: string, key: string, base: string, head: string) {
+	const range = `${base.split('/').map(encodeURIComponent).join('/')}...${head}`;
+	const c = rec((await gh(`${API}/repos/${repository}/compare/${range}?per_page=1`, key)).body);
+	return {
+		commits: num(c['total_commits']),
+		files: arr(c['files']).length,
+		baseSha: str(rec(c['base_commit'])['sha']),
+	};
+}
+
 /** GitHub's list of a pull request's changed files with their patches: every page, up to its 3,000. */
 export async function githubPullFiles(repository: string, key: string, n: number, count: number) {
 	const pages = Math.ceil(Math.min(count, GITHUB_FILE_LIMIT) / PAGE);

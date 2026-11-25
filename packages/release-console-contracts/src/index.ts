@@ -40,7 +40,17 @@ export const readinessSchema = z.object({
 export type Readiness = z.infer<typeof readinessSchema>;
 
 /** The console API's own liveness answer. */
-export const consoleApiHealthSchema = z.object({ status: z.literal('ok'), version: z.string() });
+export const consoleApiHealthSchema = z.object({
+	status: z.literal('ok'),
+	version: z.string(),
+	/**
+	 * A fingerprint of the console app this API serves (12 characters from its index page), null when it serves no app
+	 * (the development server). An open tab compares it with the one it loaded with (brief 7Hu1SuB3A8qiJzeDwvFZLR, B).
+	 */
+	build: z.string().nullable().default(null),
+	/** When this console API started (ISO). */
+	startedAt: z.string().default(''),
+});
 export type ConsoleApiHealth = z.infer<typeof consoleApiHealthSchema>;
 
 export * from './projects.js';
@@ -59,3 +69,4 @@ export * from './traces.js';
 export * from './products.js';
 export * from './coverage.js';
 export * from './pulls.js';
+export * from './code.js';

@@ -259,7 +259,7 @@ export class GithubSignIn {
 	private readonly api = inject(ConsoleApi);
 	private readonly term = viewChild<ElementRef<HTMLElement>>('term');
 	readonly repository = input.required<string>();
-	readonly mode = input<'login' | 'another'>('login');
+	readonly mode = input<'login' | 'another' | 'packages'>('login');
 	/** Connected: the page behind turns the row green. */
 	readonly signedIn = output<void>();
 	/** The popup closed: `true` when GitHub is connected, `false` when it was closed before that. */

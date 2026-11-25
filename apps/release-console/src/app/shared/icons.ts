@@ -116,6 +116,7 @@ export const SCREEN_ICONS: Record<string, string> = {
 	overview: 'tabler/layout-dashboard',
 	settings: 'tabler/settings',
 	// Ship
+	code: 'tabler/code',
 	pulls: 'tabler/git-pull-request',
 	pipeline: 'tabler/route-2',
 	logs: 'tabler/file-text',
@@ -265,6 +266,8 @@ export function serviceLogo(name: string): string {
 
 /** Icons named in templates rather than in the maps above (kept whole by a test). */
 export const INLINE_ICONS = [
+	'tabler/check',
+	'tabler/copy',
 	'tabler/send',
 	'tabler/versions',
 	'tabler/arrows-exchange',
@@ -333,6 +336,13 @@ export const INLINE_ICONS = [
 	'tabler/users',
 	'tabler/world',
 	'tabler/world-www',
+	'tabler/tag',
+	'tabler/folder-symlink',
+	'tabler/file',
+	'tabler/book-2',
+	'tabler/git-fork',
+	'tabler/star',
+	'tabler/star-filled',
 ];
 
 /** Every one-colour icon the console can show. */

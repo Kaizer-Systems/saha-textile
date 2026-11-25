@@ -2714,3 +2714,43 @@ rule set builder" (https://claude.ai/artifact/3mjx6XT5w8cpiZkYtgAUNh).
   are drawn in the existing `rc-t` table rather than new rows. Numbers use the console's Indian grouping (6,23,963).
 - **Replaced on screen:** the five drawn Pull requests states (now the page's tabs and merge status) and the old list read;
   both on the end-of-project cleanup list (PR1–PR3).
+
+## Owner decision round (2026-11-24) — Pull request branches, newer-console notice, repository pages
+
+- **Why:** the owner's tab kept the old Pull requests screen after the console restarted (it had loaded two minutes
+  before), and on the page's header: "proper base branch changeable with dropdown should be there. and both branches
+  container on console is overlapping with the lower container's border. also the branches are usually clickable".
+  Then: "include in this brief any other GitHub UI like the code base, like the basically the repository screen … If
+  they are replicable and functionable through the tokens, please add them."
+- **Brief** `7Hu1SuB3A8qiJzeDwvFZLR`. Revision 1 approved 24 Nov ("whatever you have mentioned in the current version of
+  the brief, those are all approved"):
+    - **Part A:** the header, merge status and tabs keep the console's 12 px apart; the base sits in one box with ▾,
+      which opens the console's branch picker (GitHub's branches, never the head) and then **Change the base branch**
+      with the PIN; the head sits in one box with a copy button.
+    - **Q1 B:** that form shows the pull request's commits and files against the base it has and the one picked, first.
+    - **Q2 C:** a branch name opens the console's own Code page for that branch.
+    - **Part B, Q3 A, Q4 A:** an open tab that runs an older console than the console API serves shows a banner under
+      the top bar with Reload (amber with "Reload and lose it" while typed text is not sent); it never reloads by itself.
+    - **Custom C6:** two chips joined as one control. Nothing else drawn new.
+- **Revision 2 approved 24 Nov** (Part C, GitHub's repository pages). The owner: "I hope all the pages that you made
+  are dynamic, right? … If yes, then yeah, the entire brief is approved. You can go ahead and start building that. Make
+  sure the UI and UX is accurate and as per … GitHub, and it shouldn't falter in any way. It should have all the
+  functionalities, the navigations, and everything like properly the way GitHub UI does."
+    - **Q5 B:** one menu item, Ship › Code › Code, with its pages as tabs: Files, Commits, Branches, Tags, Releases,
+      Compare, Activity (Search from the header's box).
+    - **Q6 A:** files can be created, edited, uploaded and deleted from the console, each commit with the PIN, by default
+      on a new branch with a pull request; straight onto a branch only where no rule guards it.
+    - **Q7 A:** Packages needs GitHub's `read:packages` right; the owner signs in to GitHub again from the console and
+      approves it on GitHub's own page.
+    - **Q8 A:** GitHub's other tabs (Issues and Insights first, then Projects, Wiki, Settings) get a brief of their own.
+    - **Custom C7:** the languages bar and dots in GitHub's colour for each language. **Custom C8:** blame's commit
+      column on the left of the code view. Nothing else drawn new.
+    - Files, blame, search and each entry's last commit are read with `git` from the console API's own copy of the
+      repository, so any branch, tag or size works on this Mac and on a server; everything else comes from GitHub.
+    - Not possible through GitHub's API, so not shown: Pin, Report, Sponsor, symbol navigation, the github.dev editor,
+      Codespaces (a link to GitHub instead), star lists, and whether two branches without a pull request can merge.
+- **Payroll key (same day).** The owner on `PAYROLL_PII_KEY`: "put it in the deployment automation scripts that when it
+  runs on local, it creates the key locally, pushes it to in physical once, and then subsequent runs don't generate it
+  anymore. Same for the staging and the production environments, or rather any environment." It is a random 32-byte
+  key made by `scripts/secrets/generate.mjs` when the environment's Infisical place lacks it, like the console's other
+  generated keys; it is never rotated, because it encrypts stored personal data.

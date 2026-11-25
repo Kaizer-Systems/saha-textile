@@ -68,6 +68,27 @@ import {
 	type PullCommits,
 	type PullDiff,
 	type PullFiles,
+	type PullBasePreview,
+	type ConsoleApiHealth,
+	type RepoInfo,
+	type CodeTree,
+	type CodeDoc,
+	type CodeRefs,
+	type CodePaths,
+	type CodeFile,
+	type CodeBlame,
+	type CodeHistory,
+	type CodeBranches,
+	type BranchRules,
+	type CodeTags,
+	type CodeReleases,
+	type ReleaseNotes,
+	type CodeSearch,
+	type CodeActivity,
+	type CodeCompare,
+	type CodeDone,
+	type CodeHtml,
+	type CodePackages,
 	type PullLog,
 	type PullPage,
 	type PullRow,
@@ -123,6 +144,27 @@ import {
 	pullDiffAnswerSchema,
 	pullFilesAnswerSchema,
 	pullLogAnswerSchema,
+	pullBasePreviewAnswerSchema,
+	consoleApiHealthSchema,
+	repoInfoAnswerSchema,
+	codeTreeAnswerSchema,
+	codeDocAnswerSchema,
+	codeRefsAnswerSchema,
+	codePathsAnswerSchema,
+	codeFileAnswerSchema,
+	codeBlameAnswerSchema,
+	codeHistoryAnswerSchema,
+	codeBranchesAnswerSchema,
+	branchRulesAnswerSchema,
+	codeTagsAnswerSchema,
+	codeReleasesAnswerSchema,
+	releaseNotesAnswerSchema,
+	codeSearchAnswerSchema,
+	codeActivityAnswerSchema,
+	codeCompareAnswerSchema,
+	codeDoneSchema,
+	codeHtmlAnswerSchema,
+	codePackagesAnswerSchema,
 	pullPageAnswerSchema,
 	pullRowsAnswerSchema,
 	readinessSchema,
@@ -193,6 +235,7 @@ export interface CoverageQuery {
 }
 const coverageTreeAnswer = vendorAnswer(coverageTreeAnswerSchema);
 const coverageFileAnswer = vendorAnswer(coverageFileAnswerSchema);
+const codeDoneAnswer = vendorAnswer(codeDoneSchema);
 export function coverageQuery(q: CoverageQuery & { path?: string }): string {
 	const p = new URLSearchParams({ source: q.source, run: q.run });
 	if (q.base) p.set('base', q.base);
@@ -384,6 +427,111 @@ export class ConsoleApi {
 	pullLog(p: string, r: string, n: number, job: number): Promise<VendorAnswer<PullLog>> {
 		const path = `/api/projects/${p}/repos/${r}/github/pulls/${n}/checks/${job}/log`;
 		return this.call('GET', path, pullLogAnswerSchema, undefined, 60_000);
+	}
+	/* Ship › Code › Code (brief 7Hu1SuB3A8qiJzeDwvFZLR, Part C) */
+	private code(p: string, r: string, at: string, q: Record<string, string> = {}): string {
+		const query = new URLSearchParams(Object.entries(q).filter(([, v]) => v !== '')).toString();
+		return `/api/projects/${p}/repos/${r}/github/code/${at}${query ? `?${query}` : ''}`;
+	}
+	codeRepo(p: string, r: string): Promise<VendorAnswer<RepoInfo>> {
+		return this.call('GET', this.code(p, r, 'repo'), repoInfoAnswerSchema, undefined, 120_000);
+	}
+	codeTree(p: string, r: string, ref: string, path: string): Promise<VendorAnswer<CodeTree>> {
+		return this.call('GET', this.code(p, r, 'tree', { ref, path }), codeTreeAnswerSchema, undefined, 300_000);
+	}
+	codeDoc(p: string, r: string, ref: string, path: string): Promise<VendorAnswer<CodeDoc>> {
+		return this.call('GET', this.code(p, r, 'doc', { ref, path }), codeDocAnswerSchema, undefined, 60_000);
+	}
+	codeRefs(p: string, r: string): Promise<VendorAnswer<CodeRefs>> {
+		return this.call('GET', this.code(p, r, 'refs'), codeRefsAnswerSchema, undefined, 60_000);
+	}
+	codePaths(p: string, r: string, ref: string): Promise<VendorAnswer<CodePaths>> {
+		return this.call('GET', this.code(p, r, 'paths', { ref }), codePathsAnswerSchema, undefined, 300_000);
+	}
+	codeFile(p: string, r: string, ref: string, path: string): Promise<VendorAnswer<CodeFile>> {
+		return this.call('GET', this.code(p, r, 'file', { ref, path }), codeFileAnswerSchema, undefined, 300_000);
+	}
+	codeBlame(p: string, r: string, ref: string, path: string): Promise<VendorAnswer<CodeBlame>> {
+		return this.call('GET', this.code(p, r, 'blame', { ref, path }), codeBlameAnswerSchema, undefined, 300_000);
+	}
+	codeHistory(p: string, r: string, q: Record<string, string>): Promise<VendorAnswer<CodeHistory>> {
+		return this.call('GET', this.code(p, r, 'history', q), codeHistoryAnswerSchema, undefined, 60_000);
+	}
+	codeBranches(p: string, r: string): Promise<VendorAnswer<CodeBranches>> {
+		return this.call('GET', this.code(p, r, 'branches'), codeBranchesAnswerSchema, undefined, 120_000);
+	}
+	codeRules(p: string, r: string, branch: string): Promise<VendorAnswer<BranchRules>> {
+		return this.call('GET', this.code(p, r, 'rules', { branch }), branchRulesAnswerSchema);
+	}
+	codeTags(p: string, r: string, after: string): Promise<VendorAnswer<CodeTags>> {
+		return this.call('GET', this.code(p, r, 'tags', { after }), codeTagsAnswerSchema);
+	}
+	codeReleases(p: string, r: string, page: number): Promise<VendorAnswer<CodeReleases>> {
+		return this.call('GET', this.code(p, r, 'releases', { page: String(page) }), codeReleasesAnswerSchema);
+	}
+	codeNotes(p: string, r: string, q: Record<string, string>): Promise<VendorAnswer<ReleaseNotes>> {
+		return this.call('GET', this.code(p, r, 'notes', q), releaseNotesAnswerSchema, undefined, 60_000);
+	}
+	codeSearch(p: string, r: string, ref: string, q: string): Promise<VendorAnswer<CodeSearch>> {
+		return this.call('GET', this.code(p, r, 'search', { ref, q }), codeSearchAnswerSchema, undefined, 300_000);
+	}
+	codeActivity(p: string, r: string, q: Record<string, string>): Promise<VendorAnswer<CodeActivity>> {
+		return this.call('GET', this.code(p, r, 'activity', q), codeActivityAnswerSchema);
+	}
+	codeCompare(p: string, r: string, base: string, head: string): Promise<VendorAnswer<CodeCompare>> {
+		return this.call(
+			'GET',
+			this.code(p, r, 'compare', { base, head }),
+			codeCompareAnswerSchema,
+			undefined,
+			300_000,
+		);
+	}
+	codeCompareDiff(
+		p: string,
+		r: string,
+		q: { base: string; head: string; path: string; whole: boolean },
+	): Promise<VendorAnswer<PullDiff>> {
+		const at = this.code(p, r, 'compare/diff', { ...q, whole: q.whole ? '1' : '0' });
+		return this.call('GET', at, pullDiffAnswerSchema, undefined, 300_000);
+	}
+	/** A change on the Code pages, with the PIN in its body; the answer says what changed or why not. */
+	codeChange(p: string, r: string, action: string, body: object): Promise<VendorAnswer<CodeDone>> {
+		return this.call('POST', this.code(p, r, action), codeDoneAnswer, body, 300_000);
+	}
+	/** Markdown drawn by GitHub while editing (Preview). */
+	codeMarkdown(p: string, r: string, text: string): Promise<VendorAnswer<CodeHtml>> {
+		return this.call('POST', this.code(p, r, 'markdown'), codeHtmlAnswerSchema, { text }, 60_000);
+	}
+	codePackages(p: string, r: string): Promise<VendorAnswer<CodePackages>> {
+		return this.call('GET', this.code(p, r, 'packages'), codePackagesAnswerSchema);
+	}
+	/** A file's bytes (a picture, Raw, Download), read with the session like every other call. */
+	codeRaw(p: string, r: string, ref: string, path: string): Promise<Blob> {
+		return this.bytes(this.code(p, r, 'raw', { ref, path }));
+	}
+	/** A ref's files as GitHub's .zip (Code ▾ › Download ZIP). */
+	codeZip(p: string, r: string, ref: string): Promise<Blob> {
+		return this.bytes(this.code(p, r, 'zip', { ref }));
+	}
+	private async bytes(path: string): Promise<Blob> {
+		const token = this.session.token();
+		const res = await fetch(`${CONSOLE_API}${path}`, {
+			headers: token ? { 'x-console-session': token } : {},
+			signal: AbortSignal.timeout(300_000),
+		});
+		if (res.status === 401) this.forget();
+		if (!res.ok) throw new ApiError(await res.text(), res.status);
+		return res.blob();
+	}
+	/** The console API's liveness, with the fingerprint of the app it serves (newer-version notice). */
+	health(): Promise<ConsoleApiHealth> {
+		return this.call('GET', '/api/health', consoleApiHealthSchema, undefined, 10_000);
+	}
+	/** What the pull request would hold with another base (Change the base branch); counting past 300 files takes the copy. */
+	pullBasePreview(p: string, r: string, n: number, base: string): Promise<VendorAnswer<PullBasePreview>> {
+		const at = `/api/projects/${p}/repos/${r}/github/pulls/${n}/base-preview?${new URLSearchParams({ base }).toString()}`;
+		return this.call('GET', at, pullBasePreviewAnswerSchema, undefined, 300_000);
 	}
 	runs(p: string, r: string): Promise<VendorAnswer<WorkflowRun[]>> {
 		return this.call('GET', `/api/projects/${p}/repos/${r}/github/runs`, workflowRunsAnswerSchema);
@@ -815,7 +963,7 @@ export class ConsoleApi {
 		);
 	}
 	/** Starts the GitHub CLI's browser sign-in where the console runs; its lines are read like any job's. */
-	githubLogin(repository: string, mode: 'login' | 'another' = 'login'): Promise<Job> {
+	githubLogin(repository: string, mode: 'login' | 'another' | 'packages' = 'login'): Promise<Job> {
 		return this.call('POST', '/api/local/github/login', jobSchema, { repository, mode });
 	}
 	/** Connect's second way in: the token goes to gh on the console's machine and is kept nowhere. */

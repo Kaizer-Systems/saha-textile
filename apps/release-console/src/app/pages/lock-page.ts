@@ -16,6 +16,7 @@ import { ConsoleApi } from '../data/console-api';
 import { ConsoleSession } from '../data/session';
 import { Icon } from '../shared/icons';
 import { PIN_LENGTH, PinBoxes } from '../shared/pin-boxes';
+import { VersionBanner } from '../shared/version-banner';
 
 const LENGTH = PIN_LENGTH;
 
@@ -27,11 +28,12 @@ export { fillDigits } from '../shared/pin-boxes';
  */
 @Component({
 	selector: 'rc-lock-page',
-	imports: [Icon, PinBoxes],
+	imports: [Icon, PinBoxes, VersionBanner],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<div class="rc">
 			<div class="pj-lock">
+				<rc-version-banner />
 				<form
 					class="pj-lockbox"
 					(submit)="submit($event)"

@@ -6,7 +6,7 @@
  */
 import { z } from 'zod';
 
-import { vendorAnswer } from './projects.js';
+import { branchNameSchema, vendorAnswer } from './projects.js';
 
 /** Where a pull request stands. */
 export const pullStateSchema = z.enum(['open', 'closed', 'merged']);
@@ -251,3 +251,16 @@ export const pullLogSchema = z.object({
 });
 export type PullLog = z.infer<typeof pullLogSchema>;
 export const pullLogAnswerSchema = vendorAnswer(pullLogSchema);
+
+/**
+ * What a pull request would hold if its base were another branch (Change the base branch, brief 7Hu1SuB3A8qiJzeDwvFZLR,
+ * A3 and Q1 B): its commits, and its changed files, counted by the console's own copy past GitHub's 300.
+ */
+export const pullBasePreviewSchema = z.object({
+	base: z.string(),
+	commits: z.number().int().nonnegative(),
+	files: z.number().int().nonnegative(),
+});
+export type PullBasePreview = z.infer<typeof pullBasePreviewSchema>;
+export const pullBasePreviewAnswerSchema = vendorAnswer(pullBasePreviewSchema);
+export const pullBasePreviewQuerySchema = z.object({ base: branchNameSchema });

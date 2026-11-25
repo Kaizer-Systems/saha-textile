@@ -3920,6 +3920,15 @@ figure.gif img {
 .rc-pr-meta b {
 	color: var(--hud-text);
 }
+/* C6 (brief 7Hu1SuB3A8qiJzeDwvFZLR): two chips joined as one control, "dev | ▾" and "feat/… | ⧉". */
+.rc-pr-pair {
+	display: inline-flex;
+}
+.rc-pr-pair > .rc-chip + .rc-chip {
+	margin-left: -1px;
+	padding-inline: 7px;
+	border-left-color: rgba(94, 214, 255, 0.35);
+}
 .rc-mergebox:has(.rc-pr-sum) {
 	flex-wrap: wrap;
 }
@@ -4215,4 +4224,31 @@ figure.gif img {
 	.rc-pr-split.tree-hidden .rc-cov-tree {
 		display: none;
 	}
+}
+/* C7 (brief 7Hu1SuB3A8qiJzeDwvFZLR): the Code page's languages bar spans its box, each language in GitHub's colour. */
+.rc-code-langs .rc-bar {
+	display: flex;
+	width: 100%;
+	height: 8px;
+	overflow: hidden;
+}
+.rc-code-langs .rc-bar i {
+	height: 100%;
+}
+/* C8 (brief 7Hu1SuB3A8qiJzeDwvFZLR): blame's commit column on the left of the code view. */
+.rc-cov-code.blame .l {
+	grid-template-columns: minmax(160px, 260px) 44px max-content;
+}
+.rc-cov-code.blame .who {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	padding-right: 8px;
+	color: var(--hud-muted);
+	border-right: 1px solid var(--hud-line);
+	cursor: pointer;
+}
+.rc-cov-code.blame .l.first .who {
+	color: var(--hud-text);
+	border-top: 1px solid var(--hud-line);
 }

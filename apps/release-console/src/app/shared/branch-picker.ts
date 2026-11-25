@@ -161,6 +161,8 @@ export class BranchPicker {
 	/** Shown while there is no list yet: loading, or why it is missing. */
 	readonly waitingText = input('loading branches…');
 	readonly refreshing = input(false);
+	/** A word put first on a branch's row, e.g. "the base now" on the pull request page; none by default. */
+	readonly notes = input<Record<string, string>>({});
 	readonly picked = output<string>();
 	/** Fetch the list again (the page runs git fetch on this computer and asks GitHub). */
 	readonly refresh = output<void>();
@@ -171,7 +173,7 @@ export class BranchPicker {
 	protected readonly hits = computed(() => matchBranches(this.branches(), this.query()));
 
 	protected where(b: Branch): string {
-		return branchWhere(b, this.defaultBranch(), this.current());
+		return [this.notes()[b.name], branchWhere(b, this.defaultBranch(), this.current())].filter(Boolean).join(' · ');
 	}
 
 	protected openList(): void {

@@ -256,6 +256,19 @@ function apiOf() {
 			}),
 		),
 		repositoryBranches: vi.fn(async () => ({ defaultBranch: 'main', branches: [] })),
+		codeRefs: vi.fn(async () =>
+			ok({
+				defaultBranch: 'dev',
+				branches: [
+					{ name: 'dev', rule: true },
+					{ name: 'feat/combined-after-pr6', rule: false },
+				],
+				tags: [],
+			}),
+		),
+		pullBasePreview: vi.fn(async (_p: string, _r: string, _n: number, base: string) =>
+			ok({ base, commits: 12, files: 40 }),
+		),
 	};
 }
 type Api = ReturnType<typeof apiOf>;
@@ -441,6 +454,159 @@ describe('the page', () => {
 		notForm.c['act']?.('review');
 		await notForm.settle();
 		expect(notForm.c['modalForm']?.()).toBeNull();
+	});
+});
+
+describe('the branches in the header (brief 7Hu1SuB3A8qiJzeDwvFZLR, A1–A4)', () => {
+	const BRANCHES = [
+		{ name: 'dev', onGitHub: true, onThisComputer: true },
+		{ name: 'feat/combined-after-pr6', onGitHub: true, onThisComputer: true },
+		{ name: 'only-here', onGitHub: false, onThisComputer: true },
+		{ name: 'staging', onGitHub: true, onThisComputer: false },
+	];
+
+	it('keeps the header, merge status and tabs apart, joins each branch with its button, and offers ▾ only while open', async () => {
+		const { el, fixture } = await render(PullPage, '/?pr=7', { number: 7 });
+		const content = el.querySelector('.rc-content');
+		expect(content?.querySelector(':scope > .rc-pr-head')).not.toBeNull();
+		expect(content?.querySelector(':scope > .rc-mergebox')).not.toBeNull();
+		const pairs = [...el.querySelectorAll('.rc-pr-pair')];
+		expect(pairs.map((x) => x.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+			'dev ▾',
+			'feat/combined-after-pr6',
+		]);
+		expect([...(pairs[0]?.querySelectorAll('button') ?? [])].map((b) => b.getAttribute('aria-label'))).toEqual([
+			'Open dev in Code',
+			'Change the base branch',
+		]);
+		fixture.destroy();
+		const api = apiOf();
+		api.pull.mockResolvedValue(ok({ ...PAGE, state: 'merged' }) as never);
+		const merged = await render(PullPage, '/?pr=7', { number: 7 }, api);
+		expect(merged.el.querySelector('.rc-pr-pair')?.querySelectorAll('button')).toHaveLength(1);
+	});
+
+	it('opens the branch picker in the base’s place with GitHub’s branches, and puts the box back when focus leaves', async () => {
+		HTMLElement.prototype.showPopover ??= vi.fn();
+		const api = apiOf();
+		api.repositoryBranches.mockResolvedValue({ defaultBranch: 'main', branches: BRANCHES } as never);
+		const { c, el, settle } = await render(PullPage, '/?pr=7', { number: 7 }, api);
+		c['openBase']?.();
+		await settle();
+		expect(el.querySelector('rc-branch-picker')).not.toBeNull();
+		expect(api.repositoryBranches).toHaveBeenCalledWith('o/r');
+		expect((c['baseChoices']?.() as Array<{ name: string }>).map((b) => b.name)).toEqual(['dev', 'staging']);
+		expect(c['baseNotes']?.()).toEqual({ dev: 'the base now' });
+		expect(document.activeElement).toBe(el.querySelector('rc-branch-picker input'));
+		const wrap = el.querySelector('rc-branch-picker')?.parentElement as HTMLElement;
+		c['baseLeft']?.({ currentTarget: wrap, relatedTarget: wrap.querySelector('input') } as unknown as FocusEvent);
+		expect(c['baseOpen']?.()).toBe(true);
+		void (c['bq'] as unknown as { refetch: () => Promise<unknown> }).refetch();
+		await settle();
+		expect(api.repositoryBranches).toHaveBeenCalledTimes(3);
+		c['baseLeft']?.({ currentTarget: wrap, relatedTarget: null } as unknown as FocusEvent);
+		await settle();
+		expect(c['baseOpen']?.()).toBe(false);
+		(document.activeElement as HTMLElement | null)?.blur();
+		c['openBase']?.();
+		await settle();
+		expect(document.activeElement).toBe(el.querySelector('rc-branch-picker input'));
+	});
+
+	it('leaves the picker’s box alone while there are no branches to pick', async () => {
+		const { c, el, settle } = await render(PullPage, '/?pr=7', { number: 7 });
+		c['openBase']?.();
+		await settle();
+		expect(el.querySelector('rc-branch-picker')).not.toBeNull();
+		expect(document.activeElement).not.toBe(el.querySelector('rc-branch-picker input'));
+	});
+
+	it('opens Change the base branch for the branch picked, with its commits and files before and after', async () => {
+		const { c, el, settle, api } = await render(PullPage, '/?pr=7', { number: 7 });
+		expect(c['modalId']?.()).toBe('7');
+		c['changeBase']?.('staging');
+		await settle();
+		expect([c['baseOpen']?.(), c['modal']?.(), c['modalId']?.()]).toEqual([false, 'base', '7:staging']);
+		expect(el.querySelector('.rc-modal')?.getAttribute('aria-label')).toBe('Change the base branch');
+		expect(api.productForm).toHaveBeenLastCalledWith('p', 'r', 'pulls', 'base', '7:staging');
+		expect(api.pullBasePreview).toHaveBeenCalledWith('p', 'r', 7, 'staging');
+		const rows = [...el.querySelectorAll('.rc-modal .rc-kv > div')].map((r) =>
+			[...r.children].map((x) => x.textContent?.trim()),
+		);
+		expect(rows).toEqual([
+			['Into dev, today', '1,339 commits · 3 files'],
+			['Into staging', '12 commits · 40 files'],
+		]);
+		expect(c['held']?.(1, 1)).toBe('1 commit · 1 file');
+	});
+
+	it('says while the counts come, and why when they cannot', async () => {
+		const waiting = apiOf();
+		waiting.pullBasePreview.mockReturnValue(new Promise(() => undefined) as never);
+		const a = await render(PullPage, '/?pr=7', { number: 7 }, waiting);
+		a.c['changeBase']?.('staging');
+		await a.settle();
+		expect(a.c['previewSaid']?.()).toBe('counting…');
+		const said = apiOf();
+		said.pullBasePreview.mockResolvedValue(refused('GitHub answered 404.') as never);
+		const b = await render(PullPage, '/?pr=7', { number: 7 }, said);
+		b.c['changeBase']?.('gone');
+		await b.settle();
+		expect(b.c['previewSaid']?.()).toBe('GitHub answered 404.');
+		const broke = apiOf();
+		broke.pullBasePreview.mockRejectedValue(new Error('down'));
+		const d = await render(PullPage, '/?pr=7', { number: 7 }, broke);
+		d.c['changeBase']?.('staging');
+		await d.settle();
+		expect(d.c['previewSaid']?.()).toBe('could not be counted');
+	});
+
+	it('copies the head branch’s name, or selects it where the browser keeps the clipboard shut', async () => {
+		const { c, el, settle } = await render(PullPage, '/?pr=7', { number: 7 });
+		const name = el.querySelector('[data-head]') as HTMLElement;
+		expect(name.textContent?.trim()).toBe('feat/combined-after-pr6');
+		const selectAllChildren = vi.fn();
+		vi.stubGlobal('getSelection', () => ({ selectAllChildren }));
+		const writeText = vi.fn(async () => undefined);
+		Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+		vi.useFakeTimers({ toFake: ['setTimeout'] });
+		c['copy']?.('feat/combined-after-pr6');
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(writeText).toHaveBeenCalledWith('feat/combined-after-pr6');
+		expect(c['copied']?.()).toBe(true);
+		vi.advanceTimersByTime(1500);
+		expect(c['copied']?.()).toBe(false);
+		vi.useRealTimers();
+		writeText.mockRejectedValueOnce(new Error('denied'));
+		c['copy']?.('feat/combined-after-pr6');
+		await settle();
+		expect(selectAllChildren).toHaveBeenCalledWith(name);
+		Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+		c['copy']?.('feat/combined-after-pr6');
+		expect(selectAllChildren).toHaveBeenCalledTimes(2);
+		el.querySelector('[data-head]')?.remove();
+		c['copy']?.('feat/combined-after-pr6');
+		expect(selectAllChildren).toHaveBeenCalledTimes(2);
+		vi.unstubAllGlobals();
+	});
+
+	it('opens either branch on the Code page, and reads a head GitHub no longer has as deleted', async () => {
+		const { c, el } = await render(PullPage, '/?pr=7', { number: 7 });
+		expect(c['gone']?.('feat/combined-after-pr6')).toBe(false);
+		(el.querySelector('[aria-label="Open dev in Code"]') as HTMLElement).click();
+		expect(navigate).toHaveBeenLastCalledWith(['/p', 'p', 'r', 'r', 'code'], {
+			queryParams: { tab: 'files', ref: 'dev' },
+		});
+		(el.querySelector('[aria-label="Open feat/combined-after-pr6 in Code"]') as HTMLElement).click();
+		expect(navigate).toHaveBeenLastCalledWith(['/p', 'p', 'r', 'r', 'code'], {
+			queryParams: { tab: 'files', ref: 'feat/combined-after-pr6' },
+		});
+		const api = apiOf();
+		api.codeRefs.mockResolvedValue(ok({ defaultBranch: 'dev', branches: [{ name: 'dev', rule: true }], tags: [] }));
+		const merged = await render(PullPage, '/?pr=7', { number: 7 }, api);
+		expect(merged.c['gone']?.('feat/combined-after-pr6')).toBe(true);
+		expect(merged.el.querySelector('[data-head]')?.textContent?.trim()).toBe('feat/combined-after-pr6 · deleted');
 	});
 });
 
@@ -821,6 +987,13 @@ describe('before a project and repository are chosen', () => {
 		await page.settle();
 		expect(api.pull).toHaveBeenCalledWith('', '', 7);
 		expect(api.productForm).toHaveBeenCalledWith('', '', 'pulls', 'merge', '7');
+		page.c['changeBase']?.('staging');
+		await page.settle();
+		expect(api.pullBasePreview).toHaveBeenCalledWith('', '', 7, 'staging');
+		expect(api.codeRefs).toHaveBeenCalledWith('', '');
+		const waiting = apiOf();
+		waiting.pull.mockReturnValue(new Promise(() => undefined) as never);
+		expect((await render(PullPage, '/', { number: 7 }, waiting)).c['baseNotes']?.()).toEqual({});
 		expect((await render(PullOverview, '/', { pull: PAGE }, api, null)).c['goesTo']?.()).toBe('— (dev)');
 		await render(PullCommitsTab, '/', { pull: PAGE }, api, null);
 		expect(api.pullCommits).toHaveBeenCalledWith('', '', 7, 1);

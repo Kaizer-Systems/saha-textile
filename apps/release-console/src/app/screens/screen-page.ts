@@ -7,6 +7,7 @@ import { AlertsScreen } from './alerts-screen';
 import { ApmScreen } from './apm-screen';
 import { ChangesScreen } from './changes-screen';
 import { ClientsScreen } from './clients-screen';
+import { CodeScreen } from './code/code-screen';
 import { CostsScreen } from './costs-screen';
 import { CoverageScreen } from './coverage-screen';
 import { DbMonitorScreen } from './db-monitor';
@@ -52,6 +53,7 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 	apm: ['services', 'endpoint'],
 	secrets: ['matrix', 'problem', 'rotate'],
 	pulls: 'list',
+	code: null,
 	pipeline: 'list',
 	coverage: ['tree', 'map'],
 	droplets: [
@@ -105,6 +107,7 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 		ProductScreen,
 		Loading,
 		PullsScreen,
+		CodeScreen,
 		PipelinesScreen,
 		DropletsScreen,
 		DoCreateScreen,
@@ -226,6 +229,9 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 					}
 					@case ('pulls') {
 						<rc-pulls-screen />
+					}
+					@case ('code') {
+						<rc-code-screen />
 					}
 					@case ('queues') {
 						<rc-jobs-screen />

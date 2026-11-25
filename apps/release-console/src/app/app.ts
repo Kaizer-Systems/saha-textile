@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
+import { VersionWatch } from './data/version-watch';
 import { warmIcons } from './shared/icons';
 
 @Component({
@@ -12,5 +13,6 @@ import { warmIcons } from './shared/icons';
 export class App {
 	constructor() {
 		warmIcons();
+		inject(VersionWatch).start();
 	}
 }

@@ -92,6 +92,13 @@ describe('the branch picker', () => {
 		expect(c.where(branch('main'))).toContain('default branch');
 	});
 
+	it('puts a page’s own word first on a branch’s row', () => {
+		const { c, fixture } = make();
+		fixture.componentRef.setInput('notes', { main: 'the base now' });
+		expect(c.where(branch('main'))).toBe('the base now · default branch · on GitHub');
+		expect(c.where(branch('maintenance'))).toBe('on GitHub');
+	});
+
 	it('moves through the list with the arrows, picks with Enter and closes with Escape', () => {
 		const { c, picked } = make();
 		c.openList();

@@ -1,5 +1,6 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import {
+	type PullBasePreview,
 	type PullCommitPage,
 	type PullCommits,
 	type PullDiff,
@@ -9,6 +10,7 @@ import {
 	type PullRow,
 	type VendorAnswer,
 	commitIdSchema,
+	pullBasePreviewQuerySchema,
 	pullCommitsQuerySchema,
 	pullDiffQuerySchema,
 	pullListQuerySchema,
@@ -70,6 +72,16 @@ export class PullsController {
 	): Promise<VendorAnswer<PullLog>> {
 		parseBody(number, n);
 		return this.pulls.log(p, r, parseBody(number, job));
+	}
+
+	@Get(':n/base-preview')
+	basePreview(
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Param('n') n: string,
+		@Query() q: unknown,
+	): Promise<VendorAnswer<PullBasePreview>> {
+		return this.pulls.basePreview(p, r, parseBody(number, n), parseBody(pullBasePreviewQuerySchema, q).base);
 	}
 
 	@Get(':n/diff')

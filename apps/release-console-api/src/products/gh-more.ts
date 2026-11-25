@@ -4,7 +4,7 @@
  * failed checks again. Runs: cancel, run everything again, turn a workflow on or off. Releases: make,
  * change, delete. Actions variables: add, change, delete. Every change needs the PIN.
  */
-import type { ProductWrite } from '@saha-textile/release-console-contracts';
+import { type ProductWrite, branchNameSchema } from '@saha-textile/release-console-contracts';
 
 import type { ProductCtx, ProductFormSpec } from './kit.js';
 import { action, bool, confirmed, field, form, formTab, note, option, pick, read, text, write } from './kit.js';
@@ -240,6 +240,58 @@ const commentForm: ProductFormSpec = {
 	},
 };
 
+/** "7:staging": the pull request and the branch picked as its new base (`ctx.id` of the base form). */
+const prAndBranch = (id: string | null): [string, string] => {
+	const text = id ?? '';
+	const at = text.indexOf(':');
+	return at > 0 ? [text.slice(0, at), text.slice(at + 1)] : [text, ''];
+};
+
+/**
+ * Change the base branch (pull request page, brief 7Hu1SuB3A8qiJzeDwvFZLR A2–A3). The page picks the branch from its
+ * list and opens this form with "<number>:<branch>"; the commit and file counts beside it are the page's own read.
+ */
+const baseForm: ProductFormSpec = {
+	async read(ctx) {
+		const [n, base] = prAndBranch(ctx.id);
+		const pr = n ? rec(await read('GitHub', `${GH}/repos/${ctx.repository}/pulls/${n}`, ctx.key, 0)) : {};
+		const was = str(rec(pr['base'])['ref']);
+		const head = str(rec(pr['head'])['ref']);
+		const blocked = !n
+			? 'Open a pull request first.'
+			: !branchNameSchema.safeParse(base).success
+				? 'Choose a branch.'
+				: base === was
+					? `#${n} already merges into ${base}.`
+					: base === head
+						? `${base} is the branch #${n} comes from.`
+						: null;
+		return formTab(
+			form({
+				key: 'base',
+				title: 'Change the base branch',
+				submit: 'Change base',
+				blocked,
+				fields: [field('base', 'Merge into', 'text', { value: base, readOnly: true, help: `was ${was}` })],
+				notes: [
+					note(
+						`The commits and files of #${n} will be worked out again against ${base}. Reviews already given stay, but comments on lines that no longer change may show as outdated.`,
+						'amber',
+					),
+				],
+			}),
+		);
+	},
+	async send(ctx, w) {
+		const key = await ctx.writeKey();
+		const [n, picked] = prAndBranch(w.id ?? ctx.id);
+		const base = opt(w, 'base') || picked;
+		if (!n || !branchNameSchema.safeParse(base).success) throw new VendorError('Choose a branch.', 400);
+		await send(ctx, key, 'PATCH', `/pulls/${n}`, { base });
+		return { message: `#${n} now merges into ${base}`, productId: n, follow: [] };
+	},
+};
+
 const AUTO_MERGE_ON = `mutation($id: ID!) {
 	enablePullRequestAutoMerge(input: { pullRequestId: $id, mergeMethod: MERGE }) { clientMutationId }
 }`;
@@ -281,6 +333,7 @@ export const PULLS_EXTRA: ScreenExtra = {
 		prstate: prStateForm,
 		comment: commentForm,
 		automerge: autoMergeForm,
+		base: baseForm,
 	},
 	buttons: {
 		detail: [

@@ -33,6 +33,7 @@ import {
 import { LoadOverlay } from '../shared/loaders/load-overlay';
 import { LOADER_OF_PAGE, LOADER_OF_SCREEN } from '../shared/loaders/loader-art';
 import { VendorLogo } from '../shared/vendor-logo';
+import { VersionBanner } from '../shared/version-banner';
 
 import type { MenuGroup } from '../menu/menu.types';
 import type { Environment, Project } from '@saha-textile/release-console-contracts';
@@ -85,7 +86,7 @@ const PAGE_WORDS: Record<string, string[]> = {
 
 @Component({
 	selector: 'rc-shell',
-	imports: [RouterOutlet, NgTemplateOutlet, Icon, VendorLogo, ConfirmHost, LoadOverlay],
+	imports: [RouterOutlet, NgTemplateOutlet, Icon, VendorLogo, ConfirmHost, LoadOverlay, VersionBanner],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	host: { '(document:keydown)': 'onKey($event)', '(document:click)': 'closeMenus($event)' },
 	templateUrl: './shell.html',

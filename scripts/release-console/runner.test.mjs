@@ -201,6 +201,7 @@ test('the GitHub connection is the helper’s fixed script, on any operating sys
 		'login',
 	]);
 	assert.equal(commandFor('github-login', { repository: 'a/b', mode: 'another' })[3].at(-1), 'another');
+	assert.equal(commandFor('github-login', { repository: 'a/b', mode: 'packages' })[3].at(-1), 'packages');
 	assert.throws(() => commandFor('github-login', { repository: 'a/b; rm -rf /' }), /owner\/name/);
 });
 

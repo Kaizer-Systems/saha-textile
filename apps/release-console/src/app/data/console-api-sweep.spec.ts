@@ -77,6 +77,23 @@ describe('every call of the console data layer', () => {
 		expect(session.token()).toBeNull();
 	}, 60_000);
 
+	it('sends the session with a file’s bytes, and asks for a whole file’s changes', async () => {
+		vi.stubGlobal('fetch', fetchStub);
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [provideRouter([{ path: '**', children: [] }]), provideTanStackQuery(new QueryClient())],
+		});
+		const api = TestBed.inject(ConsoleApi);
+		TestBed.inject(ConsoleSession).set('token-1');
+		reply = { status: 200, body: 'bytes' };
+		expect(await (await api.codeRaw('p', 'r', 'main', 'a.png')).text()).toBe('"bytes"');
+		expect((fetchStub.mock.calls.at(-1) as unknown[] | undefined)?.[1]).toMatchObject({
+			headers: { 'x-console-session': 'token-1' },
+		});
+		await settle(() => api.codeCompareDiff('p', 'r', { base: 'dev', head: 'x', path: 'a.ts', whole: true }));
+		expect(calls.at(-1)).toContain('whole=1');
+	});
+
 	it('names a refusal with the status and its message', () => {
 		const error = new ApiError('Something broke', 500);
 		expect(error.message).toBe('Something broke');

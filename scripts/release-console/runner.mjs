@@ -747,7 +747,7 @@ export function commandFor(action, body = {}, busy = []) {
 		case 'github-login': {
 			// A Node script, so it runs wherever the console does: a Mac, Linux or Windows.
 			const repository = String(body.repository ?? '');
-			const mode = body.mode === 'another' ? 'another' : 'login';
+			const mode = body.mode === 'another' || body.mode === 'packages' ? body.mode : 'login';
 			if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository))
 				throw Object.assign(new Error('Give the repository as owner/name.'), { status: 400 });
 			return [

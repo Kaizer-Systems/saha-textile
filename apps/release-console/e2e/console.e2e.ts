@@ -1548,6 +1548,15 @@ test('Pull requests: a row opens its page with the whole description, the conver
 		expect(await apart(badge, page.getByRole('button', { name, exact: true }))).toBe(true);
 	await expect(page.locator('.rc-mergebox')).toContainText('1 of 3 checks running');
 	await expect(page.getByRole('button', { name: 'Merge', exact: true })).toBeDisabled();
+	// The branch boxes keep the console's 12 px clear of the merge status box (owner, 24 Nov: they sat on its border),
+	// the base has its ▾ and the head its copy button (brief 7Hu1SuB3A8qiJzeDwvFZLR, A1–A4).
+	const branchBox = await page.locator('.rc-pr-meta .rc-pr-pair').last().boundingBox();
+	const mergeBox = await page.locator('.rc-mergebox').boundingBox();
+	if (!branchBox || !mergeBox) throw new Error('not drawn');
+	expect(mergeBox.y - (branchBox.y + branchBox.height)).toBeGreaterThanOrEqual(11.5);
+	await expect(page.getByRole('button', { name: 'Change the base branch' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Copy the branch name' })).toBeVisible();
+	await page.locator('.rc-pr-head').screenshot({ path: info.outputPath('pull-request-header.png') });
 	// The whole description, with its outline; the last section is there too.
 	await expect(page.getByText('Description · 37,071 characters · as GitHub draws it')).toBeVisible();
 	await expect(page.locator('.rc-md h2', { hasText: 'Section 22' })).toHaveCount(1);
@@ -1586,4 +1595,219 @@ test('Pull requests: a row opens its page with the whole description, the conver
 	await page.screenshot({ path: info.outputPath('pull-request-files.png'), fullPage: true });
 	await page.keyboard.press('Escape');
 	await expect(page).not.toHaveURL(/pr=7/);
+});
+
+test('Code: the repository’s home, a folder, a file with marked lines, Go to file, branches and search', async ({
+	page,
+}, info) => {
+	const at = new Date().toISOString();
+	const head = {
+		sha: '10217986aaaabbbbcccc',
+		headline: 'fix(gst): the API starts again, and the GSTR-2B and GSTR-3B pages',
+		author: 'Moulik Patra',
+		login: 'kaizer03',
+		date: at,
+		checks: 'passed',
+	};
+	const last = { sha: head.sha, headline: head.headline, date: at };
+	const coverage = Array.from({ length: 40 }, (_, i) =>
+		i === 34 ? 'const COVERAGE_FLOOR = 10;' : `// line ${i + 1} of scripts/coverage.mjs`,
+	).join('\n');
+	const ok = (data: unknown) => ({ state: 'ok', readAt: at, data });
+	const branch = (name: string, over: Record<string, unknown> = {}) => ({
+		name,
+		isDefault: false,
+		rule: false,
+		sha: head.sha,
+		date: at,
+		author: 'Moulik Patra',
+		login: 'kaizer03',
+		behind: 0,
+		ahead: 0,
+		pull: null,
+		checks: 'none',
+		...over,
+	});
+	const answer = (url: URL): unknown => {
+		const action = url.pathname.split('/github/code/')[1];
+		const path = url.searchParams.get('path') ?? '';
+		const ref = url.searchParams.get('ref') ?? 'main';
+		if (action === 'repo')
+			return ok({
+				owner: 'Kaizer-Systems',
+				name: 'saha-textile',
+				url: 'https://github.com/Kaizer-Systems/saha-textile',
+				visibility: 'public',
+				description: null,
+				homepage: null,
+				topics: [],
+				stars: 0,
+				watchers: 0,
+				forks: 0,
+				defaultBranch: 'main',
+				viewer: 'kaizer03',
+				license: null,
+				watching: 'none',
+				starred: false,
+				branches: 4,
+				tags: 0,
+				releases: { total: 0, latest: null },
+				environments: [
+					{ name: 'staging', deployedAt: null, state: null },
+					{ name: 'production', deployedAt: null, state: null },
+				],
+				contributors: { total: 1, people: [{ login: 'kaizer03', contributions: 1700 }] },
+				languages: [
+					{ name: 'TypeScript', color: '#3178c6', share: 69.5 },
+					{ name: 'JavaScript', color: '#f1e05a', share: 29.4 },
+					{ name: 'CSS', color: '#563d7c', share: 1.1 },
+				],
+				community: [{ key: 'readme', label: 'README', path: 'README.md' }],
+			});
+		if (action === 'tree')
+			return ok({
+				ref,
+				sha: head.sha,
+				path,
+				head,
+				commits: path ? 120 : 1700,
+				entries: path
+					? [{ name: 'coverage.mjs', path: 'scripts/coverage.mjs', kind: 'file', last }]
+					: [
+							{ name: 'apps', path: 'apps', kind: 'dir', last },
+							{ name: 'docs', path: 'docs', kind: 'dir', last },
+							{ name: 'scripts', path: 'scripts', kind: 'dir', last },
+							{ name: 'README.md', path: 'README.md', kind: 'file', last },
+						],
+				readme: path
+					? null
+					: {
+							path: 'README.md',
+							html: '<h1>Saha Textile</h1><p>Custom rebuild of sahatextile.com off WooCommerce, as a pnpm + Turborepo monorepo.</p>',
+						},
+			});
+		if (action === 'refs')
+			return ok({
+				defaultBranch: 'main',
+				branches: [
+					{ name: 'main', rule: true },
+					{ name: 'dev', rule: true },
+					{ name: 'staging', rule: true },
+					{ name: 'feat/combined-after-pr6', rule: false },
+				],
+				tags: [],
+			});
+		if (action === 'paths')
+			return ok({
+				ref,
+				sha: head.sha,
+				paths: ['README.md', 'scripts/coverage.mjs', 'apps/release-console/src/app/screens/coverage-file.ts'],
+			});
+		if (action === 'file')
+			return ok({
+				ref,
+				sha: head.sha,
+				path,
+				size: coverage.length,
+				kind: 'text',
+				text: coverage,
+				lines: 40,
+				html: null,
+				last: head,
+			});
+		if (action === 'branches')
+			return ok({
+				defaultBranch: 'main',
+				viewer: 'kaizer03',
+				rows: [
+					branch('main', { isDefault: true, rule: true }),
+					branch('feat/combined-after-pr6', { ahead: 1699, pull: { number: 7, state: 'open' } }),
+					branch('dev', { rule: true, ahead: 316 }),
+				],
+			});
+		if (action === 'search')
+			return ok({
+				total: 1,
+				cut: false,
+				files: [{ path: 'scripts/coverage.mjs', lines: [{ n: 35, text: 'const COVERAGE_FLOOR = 10;' }] }],
+			});
+		if (action === 'packages') return ok({ packages: [] });
+		return { state: 'error', message: 'not stubbed' };
+	};
+	await page.route(/\/api\/projects\/.*\/github\/code\//, (route) => {
+		const origin = route.request().headers()['origin'] ?? '*';
+		const headers = {
+			'access-control-allow-origin': origin,
+			'access-control-allow-credentials': 'true',
+			'access-control-allow-headers': 'content-type, x-console-session',
+			'access-control-allow-methods': 'GET, POST, OPTIONS',
+		};
+		if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+		const body = answer(new URL(route.request().url()));
+		return route.fulfill({ status: 200, contentType: 'application/json', headers, body: JSON.stringify(body) });
+	});
+	const noSideScroll = async () =>
+		expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+	await unlock(page);
+	// A branch name on a pull request opens this page on that branch (brief 7Hu1SuB3A8qiJzeDwvFZLR, Q2 C).
+	await page.goto(`/p/browser-test-${info.project.name}/r/saha-textile/code?tab=files&ref=feat%2Fcombined-after-pr6`);
+	await expect(page.getByText('Kaizer-Systems / saha-textile')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Switch branches or tags: feat/combined-after-pr6' })).toBeVisible();
+	const files = page.getByRole('table', { name: 'Files' });
+	await expect(files.getByRole('row')).toHaveCount(4);
+	await expect(page.locator('.rc-md h1', { hasText: 'Saha Textile' })).toBeVisible();
+	await expect(page.getByText('TypeScript 69.5%')).toBeVisible();
+	await expect(page.locator('rc-load-overlay.on')).toHaveCount(0);
+	await noSideScroll();
+	await page.screenshot({ path: info.outputPath('code-home.png'), fullPage: true });
+	// The switcher lists the branches, the one shown ticked.
+	await page.getByRole('button', { name: 'Switch branches or tags: feat/combined-after-pr6' }).click();
+	const switcher = page.getByRole('dialog', { name: 'Switch branches or tags' });
+	await expect(switcher.getByText('main')).toBeVisible();
+	await page.screenshot({ path: info.outputPath('code-switcher.png') });
+	await switcher.getByRole('button', { name: 'Close' }).click();
+	// A folder, then a file in it; a line number marks the line in the address.
+	// The name opens the entry; the middle column is its last commit's link, as on GitHub.
+	await files
+		.getByRole('row', { name: /scripts/ })
+		.getByRole('cell')
+		.first()
+		.click();
+	await expect(page).toHaveURL(/path=scripts(&|$)/);
+	await page
+		.getByRole('table', { name: 'Files' })
+		.getByRole('row', { name: /coverage\.mjs/ })
+		.getByRole('cell')
+		.first()
+		.click();
+	await expect(page).toHaveURL(/path=scripts%2Fcoverage\.mjs/);
+	await expect(page.getByText(/40 lines/)).toBeVisible();
+	await page.locator('.rc-cov-code .n').nth(34).click();
+	await expect(page).toHaveURL(/#L35$/);
+	await expect(page.locator('.rc-cov-code .l.part')).toHaveCount(1);
+	await expect(page.locator('rc-load-overlay.on')).toHaveCount(0);
+	await noSideScroll();
+	await page.screenshot({ path: info.outputPath('code-file.png'), fullPage: true });
+	// t opens Go to file; letters in order find a file anywhere in the branch.
+	await page.keyboard.press('t');
+	const finder = page.getByRole('dialog', { name: 'Go to file' });
+	await finder.getByRole('searchbox', { name: 'Go to file' }).fill('covfile');
+	await expect(finder.getByRole('option')).toHaveCount(1);
+	await page.screenshot({ path: info.outputPath('code-finder.png') });
+	await page.keyboard.press('Enter');
+	await expect(page).toHaveURL(/coverage-file\.ts/);
+	// Branches: the default, its rules and the pull request of a branch.
+	await page.getByRole('tab', { name: /Branches/ }).click();
+	await expect(page).toHaveURL(/tab=branches/);
+	// The overview lists a branch under both Your branches and Active branches, as GitHub's does.
+	await expect(page.getByRole('button', { name: '#7 open' })).toHaveCount(2);
+	await expect(page.locator('rc-load-overlay.on')).toHaveCount(0);
+	await noSideScroll();
+	await page.screenshot({ path: info.outputPath('code-branches.png'), fullPage: true });
+	// Search finds the line, which opens the file there.
+	await page.getByRole('searchbox', { name: 'Search this repository' }).fill('COVERAGE_FLOOR');
+	await page.getByRole('searchbox', { name: 'Search this repository' }).press('Enter');
+	await expect(page).toHaveURL(/tab=search/);
+	await expect(page.locator('mark', { hasText: 'COVERAGE_FLOOR' }).first()).toBeVisible();
+	await page.screenshot({ path: info.outputPath('code-search.png'), fullPage: true });
 });

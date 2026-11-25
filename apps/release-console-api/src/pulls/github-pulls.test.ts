@@ -14,6 +14,7 @@ import {
 	lastPage,
 	pullCommits,
 	pullHead,
+	compareCounts,
 	pullPage,
 	pullRows,
 	withPushes,
@@ -547,6 +548,22 @@ describe('files', () => {
 		expect(await githubPullFiles('o/r', 'k', 7, 250)).toHaveLength(3);
 		await githubPullFiles('o/r', 'k', 7, 4105);
 		expect(sent.filter((s) => s.includes('/files?')).length).toBe(3 + 30);
+	});
+
+	it('compares a branch with a commit: commits ahead, files listed, and the branch’s own commit', async () => {
+		const sent = github([
+			[
+				/compare\/feat\/combined-after-pr6\.\.\.head1234567\?per_page=1/,
+				200,
+				{ total_commits: 1383, files: [{}, {}], base_commit: { sha: 'b'.repeat(40) } },
+			],
+		]);
+		expect(await compareCounts('o/r', 'k', 'feat/combined-after-pr6', 'head1234567')).toEqual({
+			commits: 1383,
+			files: 2,
+			baseSha: 'b'.repeat(40),
+		});
+		expect(sent).toHaveLength(1);
 	});
 
 	it('reads one commit with its checks and every page of its files', async () => {

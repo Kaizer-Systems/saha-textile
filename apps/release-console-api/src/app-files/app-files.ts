@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize, sep } from 'node:path';
 
@@ -48,4 +49,13 @@ export function appFile(dir: string | undefined, urlPath: string): AppFile | nul
 				? 'public, max-age=31536000, immutable'
 				: 'public, max-age=3600',
 	};
+}
+
+/**
+ * A fingerprint of the console app in `dir`: 12 characters from its index page, which names every built file by
+ * its content, so any change to the app changes it. `null` when there is no app (the development server).
+ */
+export function appBuild(dir: string | undefined): string | null {
+	const page = dir ? join(dir, 'index.html') : '';
+	return page && existsSync(page) ? createHash('sha256').update(readFileSync(page)).digest('hex').slice(0, 12) : null;
 }

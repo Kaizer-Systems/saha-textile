@@ -112,6 +112,24 @@ export class RepoCopy {
 		};
 	}
 
+	/** A read on the copy (no key: it never reaches GitHub), as text: the Code pages' tree, blame, log and search. */
+	run(dir: string, args: readonly string[]): Promise<string> {
+		return this.git('', dir, args);
+	}
+
+	/** An object's bytes from the copy: a file as stored, for Raw, Download and pictures. */
+	bytes(dir: string, object: string): Promise<Buffer> {
+		return new Promise((resolve, reject) => {
+			execFile(
+				'git',
+				['cat-file', 'blob', object],
+				{ cwd: dir, encoding: 'buffer', maxBuffer: 512 * 1024 * 1024, timeout: 120_000 },
+				(error, stdout) =>
+					error ? reject(new Error(`git cat-file failed: ${error.message}`)) : resolve(stdout),
+			);
+		});
+	}
+
 	/** A commit's first parent, or git's empty folder for a repository's first commit. */
 	async parent(dir: string, sha: string): Promise<string> {
 		return (
@@ -164,7 +182,15 @@ export class RepoCopy {
 				},
 				(error, stdout, stderr) =>
 					error
-						? reject(new Error(`git ${args[0]} failed: ${String(stderr).trim() || error.message}`))
+						? reject(
+								// The exit code rides along: `git grep` ends with 1 when nothing matches.
+								Object.assign(
+									new Error(`git ${args[0]} failed: ${String(stderr).trim() || error.message}`),
+									{
+										code: error.code,
+									},
+								),
+							)
 						: resolve(stdout),
 			);
 		});

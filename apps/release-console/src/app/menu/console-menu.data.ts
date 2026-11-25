@@ -11,7 +11,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 			subs: [
 				{
 					label: 'Code',
-					items: ['pulls', 'pipeline', 'logs', 'coverage'],
+					items: ['code', 'pulls', 'pipeline', 'logs', 'coverage'],
 				},
 				{
 					label: 'Release',
@@ -290,6 +290,19 @@ export const CONSOLE_MENU: ConsoleMenu = {
 			captions: {
 				servers: 'Settings: linked servers, paired once like pm2 link',
 				general: 'Settings: PIN, seeded commands, cache and history',
+			},
+		},
+		code: {
+			label: 'Code',
+			// GitHub's repository pages, its own tabs inside (brief 7Hu1SuB3A8qiJzeDwvFZLR, Part C, Q5 B).
+			states: { files: 'Code' },
+			off: false,
+			tip: null,
+			part: null,
+			offStates: null,
+			partStates: null,
+			captions: {
+				files: 'The repository as GitHub shows it: files, commits, branches, tags, releases, compare, activity',
 			},
 		},
 		pulls: {

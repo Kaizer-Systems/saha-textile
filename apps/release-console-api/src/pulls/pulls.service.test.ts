@@ -249,6 +249,39 @@ describe('a commit opened from the Commits tab', () => {
 	});
 });
 
+describe('changing the base: what the pull request would hold', () => {
+	it('counts GitHub’s commits and files, and its own copy’s files once GitHub stops listing at 300', async () => {
+		const compare = (files: number) => ({
+			total_commits: 12,
+			files: Array.from({ length: files }, () => ({})),
+			base_commit: { sha: 'stag1' },
+		});
+		const small = copyOf();
+		github([
+			[/pulls\/7 /, pr(4196)],
+			[/compare\/staging\.\.\.head1/, compare(40)],
+		]);
+		expect(ok(await new PullsService(reads, small.copy).basePreview('p', 'r', 7, 'staging'))).toEqual({
+			base: 'staging',
+			commits: 12,
+			files: 40,
+		});
+		expect(small.calls).toEqual([]);
+		const big = copyOf();
+		github([
+			[/pulls\/7 /, pr(4196)],
+			[/compare\/staging\.\.\.head1/, compare(300)],
+		]);
+		expect(ok(await new PullsService(reads, big.copy).basePreview('p', 'r', 7, 'staging'))).toEqual({
+			base: 'staging',
+			commits: 12,
+			files: 1,
+		});
+		expect(big.calls).toEqual(['ready stag1,head1']);
+		expect(big.copy.files).toHaveBeenCalledWith('/copy', ['stag1...head1']);
+	});
+});
+
 describe('the pull request routes', () => {
 	const calls: unknown[][] = [];
 	const service = new Proxy(
@@ -271,6 +304,7 @@ describe('the pull request routes', () => {
 		c.files('p', 'r', '7');
 		c.log('p', 'r', '7', '31');
 		c.diff('p', 'r', '7', { path: 'a.ts', whole: '1' });
+		c.basePreview('p', 'r', '7', { base: 'staging' });
 		expect(calls).toEqual([
 			['list', 'p', 'r', 'open'],
 			['list', 'p', 'r', 'closed'],
@@ -280,9 +314,11 @@ describe('the pull request routes', () => {
 			['changedFiles', 'p', 'r', 7],
 			['log', 'p', 'r', 31],
 			['diff', 'p', 'r', 7, { path: 'a.ts', whole: '1' }],
+			['basePreview', 'p', 'r', 7, 'staging'],
 		]);
 		expect(() => c.page('p', 'r', 'seven')).toThrow(BadRequestException);
 		expect(() => c.commit('p', 'r', '7', 'not-a-commit')).toThrow(BadRequestException);
 		expect(() => c.diff('p', 'r', '7', {})).toThrow(BadRequestException);
+		expect(() => c.basePreview('p', 'r', '7', { base: 'dev..main' })).toThrow(BadRequestException);
 	});
 });

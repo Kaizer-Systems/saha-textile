@@ -352,7 +352,7 @@ const githubRepository = z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/, 
 /** Connect's terminal: which repository it checks in step 4, and whether to add another account. */
 export const githubLoginSchema = z.object({
 	repository: githubRepository,
-	mode: z.enum(['login', 'another']).default('login'),
+	mode: z.enum(['login', 'another', 'packages']).default('login'),
 });
 export type GithubLogin = z.infer<typeof githubLoginSchema>;
 /** Connect's second way in: a pasted token, passed to gh and never kept by the console. */

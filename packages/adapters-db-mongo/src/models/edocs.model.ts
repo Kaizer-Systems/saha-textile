@@ -3,7 +3,12 @@ import { type Model, Schema, model, models } from 'mongoose';
 import { COLLECTION_NAMES } from '../collection-names';
 import type { AggregateDoc } from './purchasing.model';
 
-const loose = { strict: false, versionKey: false, timestamps: false } as const;
+/**
+ * Stored in the contract's shape. `strictQuery: false` because the connection sets strict queries on: without it a
+ * filter on a field the schema doesn't name (validUntil, documentNumber, irn, ewbNumber, ackNo) is dropped and matches
+ * every record.
+ */
+const loose = { strict: false, strictQuery: false, versionKey: false, timestamps: false } as const;
 
 /** One per GSTIN (`_id` = GSTIN): Settings › E-invoice and e-way bill. */
 const EDocSettingsSchema = new Schema<AggregateDoc>(

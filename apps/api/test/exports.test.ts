@@ -74,6 +74,7 @@ describe('exports', () => {
 			{ seller: async () => ({ name: 'K.R. Marketing', lines: [] }) } as never,
 			renderer as never,
 			audit as never,
+			{ findById: async () => ({ displayName: 'Mou Ghosh' }) } as never,
 		);
 		const wide = request({
 			format: 'pdf',
@@ -86,6 +87,10 @@ describe('exports', () => {
 			expect.objectContaining({ page: expect.objectContaining({ landscape: true }) }),
 		);
 		expect(audit.append).toHaveBeenCalledWith(expect.objectContaining({ action: 'accounts.export' }));
+		// The PDF names the person, not their user id.
+		const printed = (renderer.renderPdf.mock.calls[0] as unknown as [{ html: string }])[0].html;
+		expect(printed).toContain('Printed by Mou Ghosh at ');
+		expect(printed).not.toContain('adm_1');
 		const csv = await service.file(request(), undefined);
 		expect(csv.contentType).toContain('text/csv');
 		expect(audit.append).toHaveBeenCalledTimes(1);

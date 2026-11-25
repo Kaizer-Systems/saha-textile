@@ -523,6 +523,8 @@ export const Payslip = z.object({
 	rulesFrom: IsoDate,
 	schemesFrom: IsoDate.nullable(),
 	status: PayrollRunStatus,
+	/** PS/26-27/000124, given when the run is paid (PS4); null before. */
+	payslipNo: z.string().nullable().default(null),
 });
 export type Payslip = z.infer<typeof Payslip>;
 

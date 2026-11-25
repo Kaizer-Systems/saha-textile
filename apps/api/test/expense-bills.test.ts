@@ -64,10 +64,18 @@ const REGISTRATIONS = [
 		terms: [{ from: '2020-01-01', kind: 'composition', scheme: 'monthly' }],
 	},
 ];
-/** Expense ledgers open to postings, and ones that aren't: closed, a control ledger, an asset. */
+/** Expense ledgers open to postings, and ones that aren't: closed, a control ledger, an asset, a firm's appropriation. */
 const CHART = {
-	groups: [],
+	groups: [{ id: 'g_appropriation', systemKey: 'appropriation', parentId: null }],
 	ledgers: [
+		{
+			id: 'led_partner_interest',
+			name: "Interest on partners' capital",
+			nature: 'expense',
+			active: true,
+			handPosting: true,
+			groupId: 'g_appropriation',
+		},
 		{ id: 'led_rent', name: 'Rent', nature: 'expense', active: true, handPosting: true },
 		{ id: 'led_audit', name: 'Audit fees', nature: 'expense', active: true, handPosting: true },
 		{ id: 'led_old', name: 'Old expense', nature: 'expense', active: false, handPosting: true },

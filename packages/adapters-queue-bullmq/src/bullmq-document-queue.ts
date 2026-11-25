@@ -19,6 +19,8 @@ interface RenderJobData {
 	title: string;
 	author: string;
 	page: DocumentRenderRequest['page'];
+	/** The page foot (page x of y, an e-invoice's QR band): it must reach the worker too. */
+	footerHtml?: string;
 }
 
 interface RenderJobResult {
@@ -77,6 +79,7 @@ export class BullMqDocumentRenderer implements DocumentRendererPort {
 			title: request.title,
 			author: request.author,
 			page: request.page,
+			...(request.footerHtml ? { footerHtml: request.footerHtml } : {}),
 		});
 		const result = (await job.waitUntilFinished(events, this.waitMs)) as RenderJobResult;
 		return new Uint8Array(Buffer.from(result.pdf, 'base64'));
@@ -106,6 +109,7 @@ export function startDocumentWorker(
 				title: job.data.title,
 				author: job.data.author,
 				page: job.data.page,
+				...(job.data.footerHtml ? { footerHtml: job.data.footerHtml } : {}),
 			});
 			return { pdf: Buffer.from(pdf).toString('base64') };
 		},

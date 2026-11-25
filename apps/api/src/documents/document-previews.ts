@@ -629,6 +629,8 @@ export function previewDocument(doc: DocumentKind): DocumentData {
 				daysInMonth: 30,
 				paidOn: '2026-11-30',
 				rulesFrom: '2026-04-01',
+				// 0.5% each of ₹8,700 PF wages: admin charges and EDLI.
+				pfChargesPaise: 87_00,
 				locationName: 'Barasat warehouse',
 				stateName: 'West Bengal',
 				employee: {

@@ -3,7 +3,12 @@ import { randomUUID } from 'node:crypto';
 import { Body, Controller, Inject, Injectable, Module, Post, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ExportRequest, type ExportColumn } from '@saha-textile/contracts';
-import { csvText, type AuditLogRepository, type DocumentRendererPort } from '@saha-textile/core-domain';
+import {
+	csvText,
+	type AdminUserRepository,
+	type AuditLogRepository,
+	type DocumentRendererPort,
+} from '@saha-textile/core-domain';
 import ExcelJS from 'exceljs';
 import type { FastifyReply } from 'fastify';
 
@@ -12,7 +17,7 @@ import { Audience, type AuthenticatedPrincipal } from '../auth/session.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { DocumentFormatsService } from '../documents/document-formats.service';
 import { DocumentsModule } from '../documents/documents.module';
-import { AUDIT_LOG_REPOSITORY, DOCUMENT_RENDERER } from '../infra/tokens';
+import { ADMIN_USER_REPOSITORY, AUDIT_LOG_REPOSITORY, DOCUMENT_RENDERER } from '../infra/tokens';
 import { API_TAGS } from '../openapi-tags';
 import { escapeHtml as e } from '../purchasing/purchase-order-document';
 
@@ -87,7 +92,24 @@ export async function exportXlsx(request: ExportRequest, company: string): Promi
 	return new Uint8Array(await book.xlsx.writeBuffer());
 }
 
-/** PDF: A4, landscape past six columns; the company, the report and its filters on top, page x of y at the foot. */
+/** When it was printed, as people in the shop read the time: "25 Nov 2026, 18:54 IST". */
+export function printedAt(at: Date): string {
+	const stamp = at.toLocaleString('en-IN', {
+		timeZone: 'Asia/Kolkata',
+		day: 'numeric',
+		month: 'short',
+		year: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit',
+		hourCycle: 'h23',
+	});
+	return `${stamp} IST`;
+}
+
+/**
+ * PDF: A4, landscape past six columns; the company, the report and its filters on top, who printed it and when (in
+ * India's time) below the table, page x of y at the foot.
+ */
 export function exportHtml(request: ExportRequest, company: string, printedBy: string, at: Date): string {
 	const numeric = (c: ExportColumn) => c.kind === 'money' || c.kind === 'number';
 	const cells = (r: Record<string, Cell>) =>
@@ -103,7 +125,7 @@ th{font-size:8pt;color:#3d4a4f;background:#eef3f2}.n{text-align:right;white-spac
 <div class="co">${e(company)}</div><h1>${e(request.title)}</h1><p class="f">${filters}</p>
 <table><thead><tr>${request.columns.map((c) => `<th class="${numeric(c) ? 'n' : ''}">${e(c.label)}</th>`).join('')}</tr></thead>
 <tbody>${request.rows.map((r) => `<tr>${cells(r)}</tr>`).join('')}${request.totals ? `<tr class="t">${cells(request.totals)}</tr>` : ''}</tbody></table>
-<p class="by">Printed by ${e(printedBy)} at ${e(at.toISOString().slice(0, 16).replace('T', ' '))} UTC</p></body></html>`;
+<p class="by">Printed by ${e(printedBy)} at ${e(printedAt(at))}</p></body></html>`;
 }
 
 const TYPES = {
@@ -118,7 +140,15 @@ export class ExportsService {
 		@Inject(DocumentFormatsService) private readonly formats: Pick<DocumentFormatsService, 'seller'>,
 		@Inject(DOCUMENT_RENDERER) private readonly renderer: DocumentRendererPort,
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: Pick<AuditLogRepository, 'append'>,
+		@Inject(ADMIN_USER_REPOSITORY) private readonly admins: Pick<AdminUserRepository, 'findById'>,
 	) {}
+
+	/** The name the PDF prints: display name, else e-mail, else username, as the edit log names people. */
+	private async printedBy(principal: AuthenticatedPrincipal | undefined): Promise<string> {
+		if (!principal) return 'someone';
+		const user = await this.admins.findById(principal.userId);
+		return user?.displayName || user?.email || user?.username || principal.userId;
+	}
 
 	/** EX1: the screen's rows as a file; an accounts export goes to the edit log. */
 	async file(
@@ -127,13 +157,12 @@ export class ExportsService {
 		now = new Date(),
 	): Promise<{ fileName: string; contentType: string; data: Uint8Array }> {
 		const company = (await this.formats.seller({ name: 'Saha Textile', lines: [] })).name;
-		const printedBy = principal?.userId ?? 'someone';
 		let data: Uint8Array;
 		if (request.format === 'csv') data = new TextEncoder().encode(exportCsv(request));
 		else if (request.format === 'xlsx') data = await exportXlsx(request, company);
 		else
 			data = await this.renderer.renderPdf({
-				html: exportHtml(request, company, printedBy, now),
+				html: exportHtml(request, company, await this.printedBy(principal), now),
 				assets: [],
 				title: request.title,
 				author: company,

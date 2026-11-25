@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PERMISSIONS_KEY } from '../src/auth/session.guard';
 import type { DocumentData } from '../src/documents/document-data';
 import { documentHtml } from '../src/documents/document-html';
-import { payslipData, type PayslipInput } from '../src/documents/payslip-print';
+import { payslipData, pfChargesShare, type PayslipInput } from '../src/documents/payslip-print';
 import { PayrollSetupController } from '../src/payroll/payroll-setup.controller';
 import { PayrollReturnsService } from '../src/payroll/payroll-returns.service';
 
@@ -95,6 +95,7 @@ const input = (over: Partial<PayslipInput> = {}): PayslipInput => ({
 	paidOn: '2026-12-01',
 	rulesFrom: '2026-04-01',
 	year: '2026-27',
+	pfChargesPaise: 150_00,
 	...over,
 });
 const cells = (data: DocumentData, table: 'earnings' | 'deductions' | 'employerShare' | 'taxWorking') =>
@@ -173,11 +174,12 @@ describe('a payslip’s figures (PS2)', () => {
 		expect(cells(data, 'employerShare')).toEqual([
 			[{ head: 'Provident fund (EPF)', thisMonth: '₹550.00' }, false, false],
 			[{ head: 'Pension (EPS)', thisMonth: '₹1,250.00' }, false, false],
+			[{ head: 'PF admin charges and EDLI', thisMonth: '₹150.00' }, false, false],
 			[{ head: 'ESI', thisMonth: '₹400.00' }, false, false],
 			[{ head: 'Labour welfare fund', thisMonth: '₹15.00' }, false, false],
 			[{ head: 'Gratuity provision', thisMonth: '₹769.00' }, false, false],
 			[{ head: 'Bonus provision', thisMonth: '₹583.10' }, false, false],
-			[{ head: 'Cost to the company this month', thisMonth: '₹35,567.10' }, false, true],
+			[{ head: 'Cost to the company this month', thisMonth: '₹35,717.10' }, false, true],
 		]);
 		expect(cells(data, 'taxWorking')?.map(([c]) => (c as { value: string }).value)).toEqual([
 			'₹3,84,000.00',
@@ -191,7 +193,7 @@ describe('a payslip’s figures (PS2)', () => {
 
 	it('prints what it can for someone no longer in the register, an unpaid run and a row with nothing kept', () => {
 		const bare = row('emp_gone', { name: 'Gone', paidDays: 31, grossPaise: 9_000_00, netPaise: 9_000_00 });
-		const data = payslipData(input({ row: bare, earlier: [], employee: null, paidOn: null }));
+		const data = payslipData(input({ row: bare, earlier: [], employee: null, paidOn: null, pfChargesPaise: 0 }));
 		expect([data.number, data.date]).toEqual(['', '']);
 		expect(data.values).toMatchObject({
 			employeeCode: '',
@@ -427,5 +429,22 @@ describe('payslips as a PDF (PS4)', () => {
 		expect(Reflect.getMetadata('path', PayrollSetupController.prototype.payslipsPdf)).toBe(
 			'runs/:month/payslips.pdf',
 		);
+	});
+});
+
+describe("a person's share of the PF admin charges and EDLI", () => {
+	const member = (pfEmployeePaise: number) => ({ ...MEERA_NOV, pfEmployeePaise });
+	it("shares the run's charges by each member's PF, the ₹500 admin minimum included", () => {
+		const one = member(1_044_00);
+		const two = member(522_00);
+		const run = { rows: [one, two, member(0)], pfAdminPaise: 500_00, edliPaise: 65_25 };
+		// ₹565.25 shared 2:1.
+		expect(pfChargesShare(run, one)).toBe(376_83);
+		expect(pfChargesShare(run, two)).toBe(188_42);
+	});
+	it('is nothing for someone without PF, or a run that kept no charges', () => {
+		const one = member(1_044_00);
+		expect(pfChargesShare({ rows: [one, member(0)], pfAdminPaise: 500_00, edliPaise: 0 }, member(0))).toBe(0);
+		expect(pfChargesShare({ rows: [one] }, one)).toBe(0);
 	});
 });

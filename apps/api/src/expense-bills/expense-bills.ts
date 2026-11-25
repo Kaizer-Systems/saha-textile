@@ -28,6 +28,7 @@ import {
 	type ExpenseBillForm,
 } from '@saha-textile/contracts';
 import {
+	appropriationLedgerIds,
 	expenseBillPosting,
 	addDays,
 	expenseBillTotals,
@@ -67,9 +68,15 @@ const refuse = (code: string) => new BadRequestException(accountsRefusal(code));
 const ExpenseBillEdit = ExpenseBillWrite.extend({ version: z.number().int().nonnegative() });
 type ExpenseBillEdit = z.infer<typeof ExpenseBillEdit>;
 const ExpenseBillCancel = z.object({ reason: z.string().trim().min(3).max(300) });
-/** The ledgers a bill's line can be booked to: active expense ledgers open to postings (not control ledgers). */
-export const expenseLedgers = (chart: ChartOfAccounts) =>
-	chart.ledgers.filter((l) => l.active && l.nature === 'expense' && l.handPosting);
+/**
+ * The ledgers a bill's line can be booked to: active expense ledgers open to postings (not control ledgers), leaving out
+ * a firm's appropriation ledgers (interest, remuneration and share of profit to partners), which share the profit
+ * instead of making it.
+ */
+export const expenseLedgers = (chart: ChartOfAccounts) => {
+	const shared = appropriationLedgerIds(chart);
+	return chart.ledgers.filter((l) => l.active && l.nature === 'expense' && l.handPosting && !shared.has(l.id));
+};
 const ExpenseBillQuery = z.object({
 	supplierId: z.string().optional(),
 	status: ExpenseBillStatus.optional(),

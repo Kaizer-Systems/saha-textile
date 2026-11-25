@@ -104,3 +104,17 @@ it('decodes the queued asset bytes before rendering and encodes the resulting PD
 	await expect(process({ data: serialized })).resolves.toEqual({ pdf: 'AQID' });
 	expect(renderPdf).toHaveBeenCalledExactlyOnceWith(request);
 });
+
+it('carries a page foot (page x of y, an e-invoice band) to the worker and back to the renderer', async () => {
+	const footed = { ...request, footerHtml: '<div>Page <span class="pageNumber"></span></div>' };
+	await new BullMqDocumentRenderer(redis).renderPdf(footed);
+	expect(queue.add).toHaveBeenLastCalledWith(
+		'render-pdf',
+		expect.objectContaining({ footerHtml: footed.footerHtml }),
+	);
+	const renderPdf = vi.fn(async (_document: DocumentRenderRequest) => Uint8Array.of(1, 2, 3));
+	startDocumentWorker(redis, { renderPdf });
+	const process = queue.workerStarted.mock.calls.at(-1)?.[1] as (job: { data: unknown }) => Promise<unknown>;
+	await process({ data: { ...serialized, footerHtml: footed.footerHtml } });
+	expect(renderPdf).toHaveBeenCalledExactlyOnceWith(footed);
+});

@@ -68,7 +68,7 @@ describe('CSV and PDF without totals', () => {
 		expect(html).not.toContain('class="t"');
 		expect(html).toContain('<td class="">end of March</td>');
 		expect(html).toContain('<p class="f"></p>');
-		expect(html).toContain('Printed by someone at 2027-04-01 05:30 UTC');
+		expect(html).toContain('Printed by someone at 1 Apr 2027, 11:00 IST');
 	});
 });
 
@@ -88,7 +88,12 @@ describe('the exports service and its route', () => {
 	it('writes Excel, and logs an accounts export with no one signed in as no one', async () => {
 		const audit = { append: vi.fn(async () => undefined) };
 		const seller = vi.fn(async () => ({ name: 'K.R. Marketing', lines: [] }));
-		const service = new ExportsService({ seller } as never, { renderPdf: vi.fn() } as never, audit as never);
+		const service = new ExportsService(
+			{ seller } as never,
+			{ renderPdf: vi.fn() } as never,
+			audit as never,
+			{ findById: vi.fn() } as never,
+		);
 		const file = await service.file(request({ area: 'accounts' }), undefined, new Date('2027-04-01T05:30:00Z'));
 		expect(seller).toHaveBeenCalledWith({ name: 'Saha Textile', lines: [] });
 		expect(file).toMatchObject({
@@ -145,5 +150,43 @@ describe('the exports service and its route', () => {
 		expect(Reflect.getMetadata('imports', ExportsModule)).toEqual([DocumentsModule]);
 		expect(Reflect.getMetadata('controllers', ExportsModule)).toEqual([ExportsController]);
 		expect(Reflect.getMetadata('providers', ExportsModule)).toEqual([ExportsService]);
+	});
+});
+
+describe('who printed an export PDF', () => {
+	it('is named by display name, else e-mail, else username, else the user id', async () => {
+		const cases: Array<[Record<string, string> | null, string]> = [
+			[{ displayName: 'Mou Ghosh', email: 'mou@saha-textile.test' }, 'Mou Ghosh'],
+			[{ displayName: '', email: 'mou@saha-textile.test' }, 'mou@saha-textile.test'],
+			[{ displayName: '', email: '', username: 'mou' }, 'mou'],
+			[null, 'adm_9'],
+		];
+		for (const [user, name] of cases) {
+			const renderer = { renderPdf: vi.fn(async () => new Uint8Array([1])) };
+			const service = new ExportsService(
+				{ seller: async () => ({ name: 'K.R. Marketing', lines: [] }) } as never,
+				renderer as never,
+				{ append: vi.fn() } as never,
+				{ findById: async () => user } as never,
+			);
+			await service.file(request({ format: 'pdf' }), { userId: 'adm_9' } as never);
+			const html = (renderer.renderPdf.mock.calls[0] as unknown as [{ html: string }])[0].html;
+			expect(html).toContain(`Printed by ${name} at `);
+		}
+	});
+
+	it('is "someone" when no one is signed in, without asking for a name', async () => {
+		const renderer = { renderPdf: vi.fn(async () => new Uint8Array([1])) };
+		const findById = vi.fn();
+		const service = new ExportsService(
+			{ seller: async () => ({ name: 'K.R. Marketing', lines: [] }) } as never,
+			renderer as never,
+			{ append: vi.fn() } as never,
+			{ findById } as never,
+		);
+		await service.file(request({ format: 'pdf' }), undefined);
+		const html = (renderer.renderPdf.mock.calls[0] as unknown as [{ html: string }])[0].html;
+		expect(html).toContain('Printed by someone at ');
+		expect(findById).not.toHaveBeenCalled();
 	});
 });

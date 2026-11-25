@@ -244,7 +244,7 @@ const SOURCES: readonly Source[] = [
 		chips: {
 			all: {},
 			reverse_charge: { 'against.kind': 'selfInvoice' },
-			supplier_bills: { 'against.kind': 'purchaseEntry' },
+			supplier_bills: { 'against.kind': { $in: ['purchaseEntry', 'expenseBill'] } },
 			cancelled: { status: 'cancelled' },
 		},
 		made: { status: 'paid' },

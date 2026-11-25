@@ -5,7 +5,9 @@
  *
  *   ACCOUNTS_E2E_API_DIST=<api build outside apps/api> node scripts/accounts-e2e/run.mjs [--keep]
  *
- * `--keep` leaves the sandbox database and the API running for a look afterwards (Ctrl+C stops it).
+ * `--keep` leaves the sandbox database and the API running for a look afterwards (Ctrl+C stops it). With
+ * ACCOUNTS_E2E_PASSWORD_FILE set, a kept run writes the test administrator's password to that file (owner-only), so a
+ * browser check can sign in; it is never printed.
  */
 import { writeFileSync } from 'node:fs';
 
@@ -26,6 +28,8 @@ function line(status, name, detail = '') {
 
 try {
 	const password = await prepare();
+	const passwordFile = process.env.ACCOUNTS_E2E_PASSWORD_FILE;
+	if (keep && passwordFile) writeFileSync(passwordFile, password, { mode: 0o600 });
 	api = await startApi();
 	const admin = new Admin('owner');
 	await admin.signIn(ADMIN_EMAIL, password);

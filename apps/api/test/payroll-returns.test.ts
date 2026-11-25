@@ -259,6 +259,18 @@ describe('payslips (S6)', () => {
 		const rahul = row('emp_rahul', 'Rahul', { locationId: 'loc_shop', grossPaise: 1_600_000, netPaise: 1_600_000 });
 		const shop = await build({ runs: [run('2026-10', 'posted', [rahul])] }).service.payslip('2026-10', 'emp_rahul');
 		expect(shop).toMatchObject({ location: '', paidTo: { bank: 'ZZZZ0000001', last4: '1234' } });
+		// A run not yet paid has given no payslip numbers.
+		expect(shop.payslipNo).toBeNull();
+	});
+
+	it('carries the payslip number its paid run gave it (PS4)', async () => {
+		const rahul = row('emp_rahul', 'Rahul', {
+			grossPaise: 1_600_000,
+			netPaise: 1_600_000,
+			payslipNo: 'PS/26-27/000124',
+		});
+		const slip = await build({ runs: [run('2026-10', 'paid', [rahul])] }).service.payslip('2026-10', 'emp_rahul');
+		expect(slip.payslipNo).toBe('PS/26-27/000124');
 	});
 
 	it('refuses a month with no run and someone not in it', async () => {

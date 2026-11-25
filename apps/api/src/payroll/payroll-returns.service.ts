@@ -43,7 +43,7 @@ import {
 } from '../infra/tokens';
 import { DocumentFormatsService } from '../documents/document-formats.service';
 import { previewDocument } from '../documents/document-previews';
-import { payslipData } from '../documents/payslip-print';
+import { payslipData, pfChargesShare } from '../documents/payslip-print';
 import { accountsRefusal } from '../ledger/accounts-refusal';
 import { PayrollAdvancesService } from './payroll-advances.service';
 import { PayrollRulesService } from './payroll-rules.service';
@@ -127,6 +127,7 @@ export class PayrollReturnsService {
 				daysInMonth: daysIn(month),
 				paidOn: run.paidOn ?? null,
 				rulesFrom: run.rulesFrom,
+				pfChargesPaise: pfChargesShare(run, row),
 			});
 		};
 		const head = await page(first);
@@ -223,6 +224,7 @@ export class PayrollReturnsService {
 			rulesFrom: run.rulesFrom,
 			schemesFrom: run.schemesFrom ?? null,
 			status: run.status,
+			payslipNo: row.payslipNo ?? null,
 		};
 	}
 

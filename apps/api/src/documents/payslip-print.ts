@@ -1,4 +1,4 @@
-import type { Employee, PayrollRow } from '@saha-textile/contracts';
+import type { Employee, PayrollRow, PayrollRun } from '@saha-textile/contracts';
 import { SALARY_HEADS, rupeesInWords } from '@saha-textile/core-domain';
 
 import type { DocumentData } from './document-data';
@@ -60,6 +60,20 @@ export interface PayslipInput {
 	rulesFrom: string;
 	/** The financial year, `2026-27`. */
 	year: string;
+	/** The person's share of the run's EPF admin charges and EDLI (`pfChargesShare`). */
+	pfChargesPaise: number;
+}
+
+/**
+ * A person's share of the run's EPF admin charges and EDLI (PS2's "0.5% each"): the run's charges shared by each
+ * member's PF, which is 12% of their capped PF wages, so the shares follow those wages and add up to what the run
+ * posted, the establishment's ₹500 admin minimum included.
+ */
+export function pfChargesShare(run: Pick<PayrollRun, 'rows' | 'pfAdminPaise' | 'edliPaise'>, row: PayrollRow): number {
+	const total = (run.pfAdminPaise ?? 0) + (run.edliPaise ?? 0);
+	if (!total || row.pfEmployeePaise <= 0) return 0;
+	const members = run.rows.reduce((sum, r) => sum + r.pfEmployeePaise, 0);
+	return Math.round((total * row.pfEmployeePaise) / members);
 }
 
 const masked = (value: string, keep: number) =>
@@ -90,8 +104,10 @@ export function payslipData(input: PayslipInput): DocumentData {
 	const totalDeductions = (r: PayrollRow) =>
 		r.pfEmployeePaise + r.esiEmployeePaise + r.ptPaise + r.tdsPaise + (r.lwfEmployeePaise ?? 0) + r.advancePaise;
 	const employerPf = row.pfEmployerPaise - row.epsPaise;
+	const pfCharges = input.pfChargesPaise;
 	const employerTotal =
 		row.pfEmployerPaise +
+		pfCharges +
 		row.esiEmployerPaise +
 		(row.gratuityPaise ?? 0) +
 		(row.bonusPaise ?? 0) +
@@ -164,6 +180,7 @@ export function payslipData(input: PayslipInput): DocumentData {
 				rows: [
 					{ cells: { head: 'Provident fund (EPF)', thisMonth: money(employerPf) }, zero: !employerPf },
 					{ cells: { head: 'Pension (EPS)', thisMonth: money(row.epsPaise) }, zero: !row.epsPaise },
+					{ cells: { head: 'PF admin charges and EDLI', thisMonth: money(pfCharges) }, zero: !pfCharges },
 					{ cells: { head: 'ESI', thisMonth: money(row.esiEmployerPaise) }, zero: !row.esiEmployerPaise },
 					{
 						cells: { head: 'Labour welfare fund', thisMonth: money(row.lwfEmployerPaise ?? 0) },

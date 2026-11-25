@@ -305,7 +305,7 @@ const RUNTIME_ONLY_COLLECTIONS = [
 /**
  * Implemented collections the governed graph has not caught up with (its node count is ratified, so new nodes wait for
  * a graph round): the bundle builder's price methods and Settings › Document formats (22 Nov 2026); the accounts
- * brief's company profile, GST registrations and feature switches (23 Nov 2026).
+ * brief's company profile, GST registrations and feature switches (23 Nov 2026); expense bills (25 Nov 2026).
  */
 export const GRAPH_RECONCILIATION_OWED = [
 	'bundlePriceMethods',
@@ -366,6 +366,7 @@ export const GRAPH_RECONCILIATION_OWED = [
 	'payrollAdvances',
 	'yearCloses',
 	'booksImports',
+	'expenseBills',
 ] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */

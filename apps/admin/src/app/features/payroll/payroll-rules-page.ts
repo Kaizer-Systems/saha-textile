@@ -12,6 +12,9 @@ import {
 	RENT_CITIES_2026,
 	ptStartingSetsFor,
 	ptYearMost,
+	WEST_BENGAL_LEAVE,
+	creditSoFar,
+	type LeaveRule as CoreLeaveRule,
 	type PtSlab,
 	type PtStartingSet,
 	type WageHead,
@@ -63,6 +66,8 @@ export interface StateForm {
 	/** PT1: the age from which the tax stops (null: none), and the disability exemption. */
 	ptExemptAge: number | null;
 	ptExemptDisability: boolean;
+	/** Brief 26 LV1: the State's leave types, as the contract holds them (edited in the leave rule editor). */
+	leaveTypes: NonNullable<StatePayrollRules['leaveTypes']>;
 	ptMonths: string;
 	ptDueDay: number;
 	lwfEmployee: number;
@@ -160,6 +165,7 @@ export function startingForm(stateCode: string, start: PtStartingSet | undefined
 		ptBasis: rules?.ptBasis ?? 'projected',
 		ptExemptAge: rules?.ptExemptFromAge ?? null,
 		ptExemptDisability: rules?.ptExemptDisability ?? false,
+		leaveTypes: [],
 		ptMonths: (rules?.ptMonths ?? []).join(', '),
 		ptDueDay: rules?.ptDueDay ?? 21,
 		lwfEmployee: 0,
@@ -179,6 +185,7 @@ export function stateToForm(s: StatePayrollRules): StateForm {
 		ptBasis: s.ptBasis ?? 'projected',
 		ptExemptAge: s.ptExemptFromAge ?? null,
 		ptExemptDisability: s.ptExemptDisability ?? false,
+		leaveTypes: (s.leaveTypes ?? []).map((t) => structuredClone(t)),
 		ptMonths: s.ptMonths.join(', '),
 		ptDueDay: s.ptDueDay,
 		lwfEmployee: inr(s.lwfEmployeePaise),
@@ -198,6 +205,7 @@ export function stateToWrite(s: StateForm): StatePayrollRules {
 		...(s.ptBasis === 'actual' ? { ptBasis: s.ptBasis } : {}),
 		...(s.ptExemptAge ? { ptExemptFromAge: s.ptExemptAge } : {}),
 		...(s.ptExemptDisability ? { ptExemptDisability: true } : {}),
+		...(s.leaveTypes.length ? { leaveTypes: s.leaveTypes } : {}),
 		ptMonths: s.ptFrequency === 'half_yearly' || s.ptFrequency === 'yearly' ? monthList(s.ptMonths) : [],
 		ptDueDay: s.ptDueDay,
 		lwfEmployeePaise: paise(s.lwfEmployee),
@@ -667,6 +675,161 @@ export class PayrollRulesPage {
 	}
 
 	readonly wageHeadChoices = WAGE_HEAD_CHOICES;
+
+	/* ------------------------------------------------------------------ brief 26 LV1, LV2: leave per State */
+
+	/** LV1: which part of the State's set is shown: professional tax and the welfare fund, or leave. */
+	readonly stateSection = signal<'pt' | 'leave'>('pt');
+	/** LV2: the leave type whose rules are open, by key ('' for none), and its rule shown. */
+	readonly leaveOpen = signal('');
+	readonly leaveRuleAt = signal(0);
+	/** LV2's Try it: a joining date and the days worked so far. */
+	readonly tryJoined = signal('2026-08-12');
+	readonly tryWorked = signal(96);
+
+	private patchLeaveTypes(change: (types: StateForm['leaveTypes']) => StateForm['leaveTypes']): void {
+		const st = this.picked();
+		if (st) this.patchState({ leaveTypes: change(st.leaveTypes) });
+	}
+
+	/** LV-D2: the State's starting set (West Bengal's for now), for the CA to review; other States start empty. */
+	hasLeaveStart(st: StateForm): boolean {
+		return st.stateCode === '19' && !st.leaveTypes.length;
+	}
+
+	startLeave(): void {
+		this.patchLeaveTypes(
+			() => WEST_BENGAL_LEAVE.map((t) => structuredClone(t)) as unknown as StateForm['leaveTypes'],
+		);
+	}
+
+	/** LV1: a new type starts on the company's April-March year, credited nothing until its rules are set. */
+	addLeaveType(): void {
+		const base = structuredClone((WEST_BENGAL_LEAVE.at(-1) as (typeof WEST_BENGAL_LEAVE)[number]).rules[0]);
+		this.patchLeaveTypes((types) => {
+			let n = types.length + 1;
+			while (types.some((t) => t.key === `T${n}`)) n++;
+			const key = `T${n}`;
+			this.leaveOpen.set(key);
+			this.leaveRuleAt.set(0);
+			return [
+				...types,
+				{ key, name: '', paid: 'full', active: true, rules: [base] } as StateForm['leaveTypes'][number],
+			];
+		});
+	}
+
+	setLeaveType(key: string, fields: Partial<StateForm['leaveTypes'][number]>): void {
+		this.patchLeaveTypes((types) => types.map((t) => (t.key === key ? { ...t, ...fields } : t)));
+		if (fields.key && fields.key !== key && this.leaveOpen() === key) this.leaveOpen.set(fields.key);
+	}
+
+	/** A type never used yet can be taken out; one used is switched off instead (its history stays). */
+	removeLeaveType(key: string): void {
+		this.patchLeaveTypes((types) => types.filter((t) => t.key !== key));
+		if (this.leaveOpen() === key) this.leaveOpen.set('');
+	}
+
+	openLeave(key: string): void {
+		this.leaveOpen.set(this.leaveOpen() === key ? '' : key);
+		this.leaveRuleAt.set(0);
+	}
+
+	/** LV2: the open type and its rule shown. */
+	readonly openType = computed(() => this.picked()?.leaveTypes.find((t) => t.key === this.leaveOpen()) ?? null);
+	readonly openRule = computed(
+		() => (this.openType()?.rules[this.leaveRuleAt()] as unknown as CoreLeaveRule) ?? null,
+	);
+
+	/** LV2: change the rule shown, field by field (nested parts replaced whole). */
+	setRule(fields: Partial<CoreLeaveRule>): void {
+		const type = this.openType();
+		if (!type) return;
+		const at = this.leaveRuleAt();
+		const rules = type.rules.map((r, i) =>
+			i === at ? { ...r, ...fields } : r,
+		) as StateForm['leaveTypes'][number]['rules'];
+		this.setLeaveType(type.key, { rules });
+	}
+
+	/** LV2: a condition (a designation or department) gets its own rule, placed before the one for everyone. */
+	addRuleCondition(): void {
+		const type = this.openType();
+		const rule = this.openRule();
+		if (!type || !rule) return;
+		const copy = { ...structuredClone(rule), when: { designation: '', department: '' } };
+		const rules = [copy, ...type.rules] as unknown as StateForm['leaveTypes'][number]['rules'];
+		this.setLeaveType(type.key, { rules });
+		this.leaveRuleAt.set(0);
+	}
+
+	removeRule(index: number): void {
+		const type = this.openType();
+		if (!type || type.rules.length < 2) return;
+		this.setLeaveType(type.key, { rules: type.rules.filter((_, i) => i !== index) });
+		this.leaveRuleAt.set(0);
+	}
+
+	readonly leavePaid = ['full', 'half', 'unpaid'] as const;
+	readonly validityKinds = ['year_end', 'days', 'months', 'never'] as const;
+	readonly creditKinds = ['year_start', 'monthly', 'per_days_worked', 'on_request', 'none'] as const;
+	readonly joinerKinds = ['months_left', 'days_left', 'none'] as const;
+	readonly roundingKinds = ['half', 'whole', 'none'] as const;
+	readonly dayPayKinds = ['month_days', '26', '30'] as const;
+	/** LV2's ticks: how the leave is taken, and encashment on leaving. */
+	readonly takingFlags = [
+		{ key: 'halfDays' },
+		{ key: 'countOffsBetween' },
+		{ key: 'canGoNegative' },
+		{ key: 'onLeaving' },
+	] as const;
+
+	/** LV-D1: the month a type's year starts (0 for "from each person's joining day"), and its length. */
+	yearStartOf(r: CoreLeaveRule): number {
+		return 'fromJoining' in r.year ? 0 : r.year.startMonth;
+	}
+
+	yearMonthsOf(r: CoreLeaveRule): number {
+		return 'fromJoining' in r.year ? 12 : r.year.months;
+	}
+
+	setYearStart(r: CoreLeaveRule, month: number): void {
+		this.setRule({ year: month ? { startMonth: month, months: this.yearMonthsOf(r) } : { fromJoining: true } });
+	}
+
+	setYearMonths(r: CoreLeaveRule, months: number): void {
+		this.setRule({
+			year: { startMonth: this.yearStartOf(r) || 4, months: Math.min(12, Math.max(1, months || 12)) },
+		});
+	}
+
+	/** Each credit's validity; days and months start at 90 and 12. */
+	setValidity(kind: CoreLeaveRule['validity']['kind'], r: CoreLeaveRule): void {
+		const n = 'n' in r.validity ? r.validity.n : kind === 'days' ? 90 : 12;
+		this.setRule({ validity: kind === 'days' || kind === 'months' ? { kind, n } : { kind } });
+	}
+
+	setCreditKind(kind: CoreLeaveRule['credit']['kind']): void {
+		const credit: CoreLeaveRule['credit'] =
+			kind === 'per_days_worked' ? { kind, every: 20, give: 1 } : kind === 'none' ? { kind } : { kind, days: 0 };
+		this.setRule({ credit });
+	}
+
+	flagOn(r: CoreLeaveRule, key: (typeof this.takingFlags)[number]['key']): boolean {
+		return key === 'onLeaving' ? r.encash.onLeaving : r.taking[key];
+	}
+
+	toggleFlag(r: CoreLeaveRule, key: (typeof this.takingFlags)[number]['key']): void {
+		if (key === 'onLeaving') this.setRule({ encash: { ...r.encash, onLeaving: !r.encash.onLeaving } });
+		else this.setRule({ taking: { ...r.taking, [key]: !r.taking[key] } });
+	}
+
+	/** LV2's Try it: what the rule shown credits a joiner so far. */
+	readonly tryCredit = computed(() => {
+		const rule = this.openRule();
+		if (!rule || !this.tryJoined()) return 0;
+		return creditSoFar(rule, { joinedOn: this.tryJoined(), asOf: istToday(), daysWorked: this.tryWorked() });
+	});
 
 	/** BN-D3: a head in or out of the wages. */
 	toggleWageHead(head: WageHead): void {

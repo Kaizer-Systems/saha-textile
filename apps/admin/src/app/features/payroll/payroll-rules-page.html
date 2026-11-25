@@ -417,6 +417,517 @@
 			@if (!f.states.length) {
 			<small class="text-danger d-block">{{ 'payroll_states_none' | transloco }}</small>
 			} @if (picked(); as st) {
+			<!-- Brief 26 LV1: a State's set in two parts, professional tax and the welfare fund, and leave. -->
+			<div class="d-flex mb-3 flex-wrap gap-2">
+				<button
+					type="button"
+					class="btn btn-sm"
+					id="pr_section_pt"
+					[class.btn-theme]="stateSection() === 'pt'"
+					[class.btn-outline]="stateSection() !== 'pt'"
+					(click)="stateSection.set('pt')"
+				>
+					{{ 'payroll_section_pt' | transloco }}
+				</button>
+				<button
+					type="button"
+					class="btn btn-sm"
+					id="pr_section_leave"
+					[class.btn-theme]="stateSection() === 'leave'"
+					[class.btn-outline]="stateSection() !== 'leave'"
+					(click)="stateSection.set('leave')"
+				>
+					{{ 'payroll_section_leave' | transloco }}
+				</button>
+			</div>
+			@if (stateSection() === 'leave') {
+			<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+				<small class="text-muted">
+					{{ 'payroll_leave_sub' | transloco: { state: stateName(st.stateCode) } }}
+				</small>
+				<span class="d-flex gap-2">
+					@if (hasLeaveStart(st)) {
+					<button
+						type="button"
+						class="btn btn-sm btn-outline"
+						id="pr_leave_start"
+						(click)="startLeave()"
+					>
+						{{ 'payroll_leave_start_set' | transloco }}
+					</button>
+					}
+					<button
+						type="button"
+						class="btn btn-sm btn-outline"
+						id="pr_leave_add"
+						(click)="addLeaveType()"
+					>
+						<i class="ri-add-line"></i>
+						{{ 'payroll_leave_add' | transloco }}
+					</button>
+				</span>
+			</div>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'payroll_leave_col_name' | transloco }}</th>
+							<th>{{ 'payroll_leave_col_key' | transloco }}</th>
+							<th>{{ 'payroll_leave_col_paid' | transloco }}</th>
+							<th>{{ 'payroll_leave_col_active' | transloco }}</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (t of st.leaveTypes; track $index) {
+						<tr>
+							<td>
+								<input
+									class="form-control"
+									maxlength="60"
+									[id]="'pr_leave_name_' + t.key"
+									[attr.aria-label]="'payroll_leave_col_name' | transloco"
+									[ngModel]="t.name"
+									(ngModelChange)="setLeaveType(t.key, { name: $event })"
+								/>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									maxlength="6"
+									[id]="'pr_leave_key_' + t.key"
+									[attr.aria-label]="'payroll_leave_col_key' | transloco"
+									[ngModel]="t.key"
+									(ngModelChange)="setLeaveType(t.key, { key: $event.toUpperCase() })"
+								/>
+							</td>
+							<td>
+								<select
+									class="form-select"
+									[attr.aria-label]="'payroll_leave_col_paid' | transloco"
+									[ngModel]="t.paid"
+									(ngModelChange)="setLeaveType(t.key, { paid: $event })"
+								>
+									@for (p of leavePaid; track p) {
+									<option [value]="p">{{ 'payroll_leave_paid_' + p | transloco }}</option>
+									}
+								</select>
+							</td>
+							<td>
+								<input
+									class="form-check-input"
+									type="checkbox"
+									[attr.aria-label]="'payroll_leave_col_active' | transloco"
+									[checked]="t.active"
+									(change)="setLeaveType(t.key, { active: !t.active })"
+								/>
+							</td>
+							<td class="text-nowrap">
+								<button
+									type="button"
+									class="btn btn-sm"
+									[id]="'pr_leave_rules_' + t.key"
+									[class.btn-theme]="leaveOpen() === t.key"
+									[class.btn-outline]="leaveOpen() !== t.key"
+									(click)="openLeave(t.key)"
+								>
+									{{ 'payroll_leave_rules' | transloco }}
+								</button>
+								<button
+									type="button"
+									class="btn btn-outline text-danger btn-sm ms-1"
+									[title]="'remove' | transloco"
+									[attr.aria-label]="'remove' | transloco"
+									(click)="removeLeaveType(t.key)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</button>
+							</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td
+								colspan="5"
+								class="text-muted"
+							>
+								{{ 'payroll_leave_none' | transloco }}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			@if (openType(); as t) { @if (openRule(); as r) {
+			<!-- Brief 26 LV2: one type's rules, the first whose condition matches applying; Try it beside them. -->
+			<div class="row g-3 mt-2">
+				<div class="col-lg-8">
+					<h6 class="mb-2">{{ 'payroll_leave_rules_for' | transloco: { name: t.name || t.key } }}</h6>
+					@if (t.rules.length > 1) {
+					<div class="d-flex mb-2 flex-wrap gap-2">
+						@for (x of t.rules; track $index; let i = $index; let last = $last) {
+						<button
+							type="button"
+							class="btn btn-sm"
+							[class.btn-theme]="leaveRuleAt() === i"
+							[class.btn-outline]="leaveRuleAt() !== i"
+							(click)="leaveRuleAt.set(i)"
+						>
+							{{ (last ? 'payroll_leave_rule_everyone' : 'payroll_leave_rule_n') | transloco: { n: i + 1 }
+							}}
+						</button>
+						}
+					</div>
+					}
+					<div class="row g-2">
+						@if (r.when) {
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="pr_leave_when_designation"
+							>
+								{{ 'payroll_leave_when_designation' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="pr_leave_when_designation"
+								maxlength="80"
+								[ngModel]="r.when.designation ?? ''"
+								(ngModelChange)="setRule({ when: { ...r.when, designation: $event } })"
+							/>
+						</div>
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="pr_leave_when_department"
+							>
+								{{ 'payroll_leave_when_department' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="pr_leave_when_department"
+								maxlength="80"
+								[ngModel]="r.when.department ?? ''"
+								(ngModelChange)="setRule({ when: { ...r.when, department: $event } })"
+							/>
+						</div>
+						}
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="pr_leave_year_start"
+							>
+								{{ 'payroll_leave_year' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="pr_leave_year_start"
+								[ngModel]="yearStartOf(r)"
+								(ngModelChange)="setYearStart(r, +$event)"
+							>
+								@for (m of monthNumbers; track m) {
+								<option [ngValue]="m">
+									{{ 'payroll_leave_year_from' | transloco: { month: ('payroll_month_' + m |
+									transloco) } }}
+								</option>
+								}
+								<option [ngValue]="0">{{ 'payroll_leave_year_joining' | transloco }}</option>
+							</select>
+						</div>
+						@if (yearStartOf(r)) {
+						<div class="col-md-2">
+							<label
+								class="form-label-title"
+								for="pr_leave_year_months"
+							>
+								{{ 'payroll_leave_year_months' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="pr_leave_year_months"
+								type="number"
+								min="1"
+								max="12"
+								[ngModel]="yearMonthsOf(r)"
+								(ngModelChange)="setYearMonths(r, +$event)"
+							/>
+						</div>
+						}
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="pr_leave_valid"
+							>
+								{{ 'payroll_leave_valid' | transloco }}
+							</label>
+							<div class="d-flex gap-2">
+								<select
+									class="form-select"
+									id="pr_leave_valid"
+									[ngModel]="r.validity.kind"
+									(ngModelChange)="setValidity($event, r)"
+								>
+									@for (k of validityKinds; track k) {
+									<option [value]="k">{{ 'payroll_leave_valid_' + k | transloco }}</option>
+									}
+								</select>
+								@if (r.validity.kind === 'days' || r.validity.kind === 'months') {
+								<input
+									class="form-control w-auto"
+									type="number"
+									min="1"
+									[attr.aria-label]="'payroll_leave_valid' | transloco"
+									[ngModel]="r.validity.n"
+									(ngModelChange)="setRule({ validity: { kind: r.validity.kind, n: +$event } })"
+								/>
+								}
+							</div>
+						</div>
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="pr_leave_credit"
+							>
+								{{ 'payroll_leave_credit' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="pr_leave_credit"
+								[ngModel]="r.credit.kind"
+								(ngModelChange)="setCreditKind($event)"
+							>
+								@for (k of creditKinds; track k) {
+								<option [value]="k">{{ 'payroll_leave_credit_' + k | transloco }}</option>
+								}
+							</select>
+						</div>
+						<div class="col-md-6">
+							@if (r.credit.kind === 'per_days_worked') {
+							<span class="form-label-title d-block">{{ 'payroll_leave_credit_every' | transloco }}</span>
+							<div class="d-flex align-items-center gap-2">
+								<input
+									class="form-control w-auto"
+									id="pr_leave_every"
+									type="number"
+									min="1"
+									[attr.aria-label]="'payroll_leave_credit_every' | transloco"
+									[ngModel]="r.credit.every"
+									(ngModelChange)="setRule({ credit: { kind: 'per_days_worked', every: +$event, give: $any(r.credit).give } })"
+								/>
+								<input
+									class="form-control w-auto"
+									id="pr_leave_give"
+									type="number"
+									min="0"
+									step="0.5"
+									[attr.aria-label]="'payroll_leave_credit_give' | transloco"
+									[ngModel]="r.credit.give"
+									(ngModelChange)="setRule({ credit: { kind: 'per_days_worked', every: $any(r.credit).every, give: +$event } })"
+								/>
+							</div>
+							} @else if (r.credit.kind !== 'none') {
+							<label
+								class="form-label-title"
+								for="pr_leave_days"
+							>
+								{{ 'payroll_leave_credit_days' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="pr_leave_days"
+								type="number"
+								min="0"
+								step="0.5"
+								[ngModel]="$any(r.credit).days"
+								(ngModelChange)="setRule({ credit: { kind: r.credit.kind, days: +$event } })"
+							/>
+							}
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="pr_leave_wait"
+							>
+								{{ 'payroll_leave_wait' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="pr_leave_wait"
+								type="number"
+								min="0"
+								[ngModel]="r.waitDays"
+								(ngModelChange)="setRule({ waitDays: $event ? +$event : null })"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="pr_leave_joiners"
+							>
+								{{ 'payroll_leave_joiners' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="pr_leave_joiners"
+								[ngModel]="r.joiners"
+								(ngModelChange)="setRule({ joiners: $event })"
+							>
+								@for (k of joinerKinds; track k) {
+								<option [value]="k">{{ 'payroll_leave_joiners_' + k | transloco }}</option>
+								}
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="pr_leave_rounding"
+							>
+								{{ 'payroll_leave_rounding' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="pr_leave_rounding"
+								[ngModel]="r.rounding"
+								(ngModelChange)="setRule({ rounding: $event })"
+							>
+								@for (k of roundingKinds; track k) {
+								<option [value]="k">{{ 'payroll_leave_rounding_' + k | transloco }}</option>
+								}
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="pr_leave_carry"
+							>
+								{{ 'payroll_leave_carry' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="pr_leave_carry"
+								type="number"
+								min="0"
+								[placeholder]="'payroll_leave_carry_all' | transloco"
+								[ngModel]="r.carryMax"
+								(ngModelChange)="setRule({ carryMax: $event === '' || $event === null ? null : +$event })"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="pr_leave_above"
+							>
+								{{ 'payroll_leave_above' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="pr_leave_above"
+								[ngModel]="r.aboveCap"
+								(ngModelChange)="setRule({ aboveCap: $event })"
+							>
+								<option value="encash">{{ 'payroll_leave_above_encash' | transloco }}</option>
+								<option value="lapse">{{ 'payroll_leave_above_lapse' | transloco }}</option>
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="pr_leave_day_pay"
+							>
+								{{ 'payroll_leave_day_pay' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="pr_leave_day_pay"
+								[ngModel]="r.encash.dayPay"
+								(ngModelChange)="setRule({ encash: { ...r.encash, dayPay: $event } })"
+							>
+								@for (k of dayPayKinds; track k) {
+								<option [value]="k">{{ 'payroll_leave_day_pay_' + k | transloco }}</option>
+								}
+							</select>
+						</div>
+						<div class="d-flex col-12 flex-wrap gap-3">
+							@for (flag of takingFlags; track flag.key) {
+							<div class="form-check">
+								<input
+									class="form-check-input"
+									type="checkbox"
+									[id]="'pr_leave_' + flag.key"
+									[checked]="flagOn(r, flag.key)"
+									(change)="toggleFlag(r, flag.key)"
+								/>
+								<label
+									class="form-check-label"
+									[for]="'pr_leave_' + flag.key"
+								>
+									{{ 'payroll_leave_flag_' + flag.key | transloco }}
+								</label>
+							</div>
+							}
+						</div>
+					</div>
+					<div class="d-flex mt-2 gap-2">
+						<button
+							type="button"
+							class="btn btn-sm btn-outline"
+							id="pr_leave_add_condition"
+							(click)="addRuleCondition()"
+						>
+							<i class="ri-add-line"></i>
+							{{ 'payroll_leave_add_condition' | transloco }}
+						</button>
+						@if (r.when) {
+						<button
+							type="button"
+							class="btn btn-sm btn-outline text-danger"
+							id="pr_leave_remove_rule"
+							(click)="removeRule(leaveRuleAt())"
+						>
+							{{ 'payroll_leave_remove_rule' | transloco }}
+						</button>
+						}
+					</div>
+				</div>
+				<div class="col-lg-4">
+					<div class="rounded border p-3">
+						<h6>{{ 'payroll_leave_try' | transloco }}</h6>
+						<label
+							class="form-label-title"
+							for="pr_leave_try_joined"
+						>
+							{{ 'payroll_col_joined' | transloco }}
+						</label>
+						<input
+							class="form-control"
+							id="pr_leave_try_joined"
+							type="date"
+							[ngModel]="tryJoined()"
+							(ngModelChange)="tryJoined.set($event)"
+						/>
+						<label
+							class="form-label-title mt-2"
+							for="pr_leave_try_worked"
+						>
+							{{ 'payroll_leave_try_worked' | transloco }}
+						</label>
+						<input
+							class="form-control"
+							id="pr_leave_try_worked"
+							type="number"
+							min="0"
+							[ngModel]="tryWorked()"
+							(ngModelChange)="tryWorked.set(+$event)"
+						/>
+						<p
+							class="mt-2 mb-0"
+							id="pr_leave_try_result"
+						>
+							{{ 'payroll_leave_try_result' | transloco: { days: tryCredit(), key: t.key } }}
+						</p>
+					</div>
+				</div>
+			</div>
+			} } } @else {
 			<div class="row g-3">
 				<div class="col-md-4">
 					<label
@@ -718,7 +1229,7 @@
 					/>
 				</div>
 			</div>
-			@if (f.states.length > 1) {
+			} @if (f.states.length > 1) {
 			<button
 				type="button"
 				class="btn btn-sm btn-outline text-danger mt-3"

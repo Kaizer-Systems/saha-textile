@@ -52,7 +52,13 @@ function build(over: { stock?: object; entries?: object; orders?: object; suppor
 		...over.support,
 	};
 	return {
-		service: new StockReportsService(stock as never, entries as never, orders as never, support as never),
+		service: new StockReportsService(
+			stock as never,
+			entries as never,
+			orders as never,
+			support as never,
+			{ list: async () => [] } as never,
+		),
 		stock,
 		entries,
 		orders,

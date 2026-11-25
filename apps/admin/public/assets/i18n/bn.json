@@ -11027,5 +11027,22 @@
 	"eb_problem_use_self_invoice": "GSTIN ছাড়া সাপ্লায়ার GST নিতে পারে না। রিভার্স চার্জে সেলফ-ইনভয়েস এন্ট্রি করুন।",
 	"eb_problem_supplier_unknown": "ওই সাপ্লায়ার আর তালিকায় নেই।",
 	"eb_problem_location_unknown": "ওই লোকেশন আর তালিকায় নেই।",
-	"search_hint_expense_bills": "পরিষেবা আর খরচের জন্য সাপ্লায়ারের বিল (ভাড়া, সফটওয়্যার, ফি), GST ক্রেডিট সমেত।"
+	"search_hint_expense_bills": "পরিষেবা আর খরচের জন্য সাপ্লায়ারের বিল (ভাড়া, সফটওয়্যার, ফি), GST ক্রেডিট সমেত।",
+	"eb_record_payment": "পেমেন্ট লিখুন",
+	"eb_payment_vouchers": "পেমেন্ট ভাউচার",
+	"eb_paid_of": "{{total}}-এর মধ্যে {{paid}} দেওয়া হয়েছে",
+	"eb_no_payments": "এখনও কিছু দেওয়া হয়নি।",
+	"eb_pay_title": "{{name}}-কে পেমেন্ট",
+	"eb_pay_voucher_note": "এই পেমেন্টের সঙ্গে একটা পেমেন্ট ভাউচার (PV) তৈরি হবে, আর দুটোই একসঙ্গে খাতায় উঠবে।",
+	"eb_pay_settled": "{{amount}} দেওয়া হবে: বিল মিটে যাবে।",
+	"eb_pay_part": "{{amount}} দেওয়া হবে; {{left}} বাকি থাকবে।",
+	"eb_pay_confirm": "পেমেন্ট করে ভাউচার তৈরি করুন",
+	"eb_paid_done": "পেমেন্ট হয়েছে; পেমেন্ট ভাউচার {{number}} তৈরি হয়েছে",
+	"eb_problem_expense_bill_paid": "এই বিলে কিছু টাকা দেওয়া হয়ে গেছে। আগে তার পেমেন্ট ভাউচার বাতিল করুন।",
+	"eb_problem_expense_bill_not_posted": "শুধু পোস্ট হওয়া বিলেই পেমেন্ট করা যায়।",
+	"eb_problem_expense_bill_paid_before_bill": "বিলের তারিখের আগের তারিখে পেমেন্ট দেওয়া যায় না।",
+	"eb_problem_overpayment": "এই বিলে যা বাকি তার চেয়ে বেশি।",
+	"eb_problem_paid_in_future": "আজকের পরের তারিখে পেমেন্ট দেওয়া যায় না।",
+	"eb_problem_payment_needs_a_bank_ledger": "খাতায় এখনও পেমেন্ট দেওয়ার মতো কোনও ব্যাংক অ্যাকাউন্ট নেই। Accounts › Ledgers-এ যোগ করুন।",
+	"eb_problem_payment_choose_bank_ledger": "কোন ব্যাংক অ্যাকাউন্ট থেকে দেওয়া হল বেছে নিন।"
 }

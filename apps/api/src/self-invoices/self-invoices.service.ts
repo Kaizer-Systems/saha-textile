@@ -16,6 +16,7 @@ import {
 import {
 	addDays,
 	type CompanyRepository,
+	type ExpenseBillRepository,
 	type GstReturnRepository,
 	istDay,
 	ledgerClass,
@@ -42,6 +43,7 @@ import { AccountsTemplatesService } from '../accounts-templates/accounts-templat
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import {
 	COMPANY_REPOSITORY,
+	EXPENSE_BILL_REPOSITORY,
 	GST_RETURN_REPOSITORY,
 	LOCATION_REPOSITORY,
 	PAYMENT_VOUCHER_REPOSITORY,
@@ -86,6 +88,7 @@ export class SelfInvoicesService {
 		private readonly log: EditLogService,
 		private readonly purchases: PurchaseEntriesService,
 		@Inject(PERIOD_LOCK_REPOSITORY) private readonly periods: Pick<PeriodLockRepository, 'list'>,
+		@Inject(EXPENSE_BILL_REPOSITORY) private readonly expenseBills: Pick<ExpenseBillRepository, 'get' | 'save'>,
 	) {}
 
 	async get(id: string): Promise<SelfInvoice> {
@@ -545,7 +548,8 @@ export class SelfInvoicesService {
 						.then(() => this.vouchers.cancel(cancelled))
 						.then(() => cancelled)
 				: await this.tx.withTransaction(async (context) => {
-						const invoice = await this.get(voucher.against.id);
+						const invoice =
+							voucher.against.kind === 'selfInvoice' ? await this.get(voucher.against.id) : null;
 						const paidFrom = voucher.paidFromLedgerId ? { id: voucher.paidFromLedgerId } : { role: 'cash' };
 						const posted = await this.ledger.post(
 							{
@@ -565,6 +569,10 @@ export class SelfInvoicesService {
 						);
 						const next = { ...cancelled, reversalVoucherId: posted.id };
 						await this.vouchers.cancel(next, context);
+						if (!invoice) {
+							await this.unpayExpenseBill(voucher, at, context);
+							return next;
+						}
 						await this.saveOrConflict(
 							{
 								...invoice,
@@ -587,6 +595,28 @@ export class SelfInvoicesService {
 			{ reason: write.reason },
 		);
 		return done;
+	}
+
+	/** Brief 25 EB: an expense bill's payment voucher cancelled, so the bill is owed that much again. */
+	private async unpayExpenseBill(voucher: PaymentVoucher, at: string, context: TransactionContext): Promise<void> {
+		const bill = await this.expenseBills.get(voucher.against.id);
+		if (!bill) throw new NotFoundException(accountsRefusal('expense_bill_not_found'));
+		try {
+			await this.expenseBills.save(
+				{
+					...bill,
+					paidINR: Math.round((bill.paidINR - voucher.amountINR) * 100) / 100,
+					paymentVouchers: bill.paymentVouchers.filter((pv) => pv.id !== voucher.id),
+					updatedAt: at,
+				},
+				bill.version,
+				context,
+			);
+		} catch (error) {
+			if (error instanceof Error && error.message === 'expense_bill_changed')
+				throw new ConflictException(accountsRefusal('expense_bill_changed'));
+			throw error;
+		}
 	}
 
 	/** Q11: every print is in the document's log. */

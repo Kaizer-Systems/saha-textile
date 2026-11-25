@@ -414,7 +414,9 @@
 				@for (row of unpaid.data()?.rows ?? []; track row.id) {
 				<tr [class.table-warning]="row.nearLimit">
 					<td>
-						<a [routerLink]="['/purchase-entries', row.id]">{{ row.number }}</a>
+						<a [routerLink]="[row.kind === 'expenseBill' ? '/expense-bills' : '/purchase-entries', row.id]">
+							{{ row.number }}
+						</a>
 					</td>
 					<td>{{ row.supplierName }}</td>
 					<td>{{ row.billNumber }}</td>

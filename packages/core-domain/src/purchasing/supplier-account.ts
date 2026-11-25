@@ -1,4 +1,5 @@
 import type {
+	ExpenseBill,
 	PaymentVoucher,
 	PurchaseEntry,
 	PurchaseReturn,
@@ -66,7 +67,9 @@ export function supplierStatement(input: {
 	payments: readonly SupplierPayment[];
 	returns: readonly PurchaseReturn[];
 	selfInvoices?: readonly SelfInvoice[];
+	/** Every payment voucher of the supplier's: those for self-invoices and those for expense bills. */
 	selfInvoicePayments?: readonly PaymentVoucher[];
+	expenseBills?: readonly ExpenseBill[];
 }): SupplierStatementRow[] {
 	type Row = Omit<SupplierStatementRow, 'balanceINR'> & { order: number; billPaise: number; creditPaise: number };
 	const rows: Row[] = [];
@@ -203,6 +206,52 @@ export function supplierStatement(input: {
 				...row,
 				date: voucher.cancelledAt.slice(0, 10),
 				kind: 'self_invoice_payment_cancelled',
+				details: voucher.cancelReason ?? '',
+				order: 4,
+				billPaise: toPaise(voucher.amountINR),
+				creditPaise: 0,
+			});
+	}
+
+	// Brief 25 EB: a posted expense bill is owed to the supplier like a purchase bill; a cancelled one is taken back.
+	for (const bill of input.expenseBills ?? []) {
+		if (!bill.number) continue;
+		const row = { documentId: bill.id, documentNumber: bill.number, details: `Bill ${bill.billNumber}` };
+		push({
+			...row,
+			date: bill.billDate,
+			kind: 'expense_bill',
+			order: 0,
+			billPaise: toPaise(bill.totalINR),
+			creditPaise: 0,
+		});
+		if (bill.cancelledAt)
+			push({
+				...row,
+				date: bill.cancelledAt.slice(0, 10),
+				kind: 'expense_bill_cancelled',
+				details: bill.cancelReason ?? '',
+				order: 1,
+				billPaise: 0,
+				creditPaise: toPaise(bill.totalINR),
+			});
+	}
+	for (const voucher of (input.selfInvoicePayments ?? []).filter((pv) => pv.against.kind === 'expenseBill')) {
+		const row = { documentId: voucher.id, documentNumber: voucher.number };
+		push({
+			...row,
+			date: voucher.date,
+			kind: 'expense_bill_payment',
+			details: voucher.against.number,
+			order: 3,
+			billPaise: 0,
+			creditPaise: toPaise(voucher.amountINR),
+		});
+		if (voucher.cancelledAt)
+			push({
+				...row,
+				date: voucher.cancelledAt.slice(0, 10),
+				kind: 'expense_bill_payment_cancelled',
 				details: voucher.cancelReason ?? '',
 				order: 4,
 				billPaise: toPaise(voucher.amountINR),

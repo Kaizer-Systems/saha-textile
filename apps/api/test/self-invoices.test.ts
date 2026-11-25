@@ -165,6 +165,7 @@ function setup(
 					? [{ month: '2026-11', part: 'bank', state: 'locked', reason: 'Filed', by: null, at: null }]
 					: [],
 		} as never,
+		{ get: async () => null, save: async () => undefined } as never,
 	);
 	return { service, invoices, vouchers, log, post, purchases, raced };
 }

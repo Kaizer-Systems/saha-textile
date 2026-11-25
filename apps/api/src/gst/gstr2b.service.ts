@@ -20,6 +20,7 @@ import {
 	type AdminUserRepository,
 	type BooksBill,
 	type CompanyRepository,
+	type ExpenseBillRepository,
 	type GstReturnRepository,
 	type Gstr2bRepository,
 	type LocationRepository,
@@ -30,6 +31,7 @@ import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import {
 	ADMIN_USER_REPOSITORY,
 	COMPANY_REPOSITORY,
+	EXPENSE_BILL_REPOSITORY,
 	GST_RETURN_REPOSITORY,
 	GSTR2B_REPOSITORY,
 	LOCATION_REPOSITORY,
@@ -59,6 +61,7 @@ export class Gstr2bService {
 		@Inject(LOCATION_REPOSITORY) private readonly locations: Pick<LocationRepository, 'list'>,
 		@Inject(GST_RETURN_REPOSITORY) private readonly filings: Pick<GstReturnRepository, 'list'>,
 		@Inject(ADMIN_USER_REPOSITORY) private readonly admins: Pick<AdminUserRepository, 'findById'>,
+		@Inject(EXPENSE_BILL_REPOSITORY) private readonly expenseBills: Pick<ExpenseBillRepository, 'list'>,
 	) {}
 
 	private async registration(id: string) {
@@ -83,16 +86,42 @@ export class Gstr2bService {
 	/**
 	 * Our bills that may show in this month's 2B: posted with credit, from a supplier with a GSTIN, dated by the month's
 	 * end and still within the s.16(4) time limit, not already found in an earlier month's 2B. Purchases post at the
-	 * stock location, so only its GSTIN has them.
+	 * stock location, so only its GSTIN has them; expense bills (brief 25 EB2) count at the GSTIN they are billed to,
+	 * with their claimable tax only, so accepting one never claims the blocked part.
 	 */
 	async booksBills(gstRegistrationId: string, month: string): Promise<BooksBill[]> {
 		const locations = await this.locations.list();
 		const stock = locations.find((l) => l.id === defaultStockLocation(locations));
-		if (!stock || stock.gstRegistrationId !== gstRegistrationId) return [];
+		const here = new Set(locations.filter((l) => l.gstRegistrationId === gstRegistrationId).map((l) => l.id));
 		const from = `${Number(month.slice(0, 4)) - 2}-04-01`;
 		const earlier = (await this.imports.listForRegistration(gstRegistrationId)).filter((i) => i.month < month);
 		const seen = new Set(earlier.flatMap((i) => i.lines.filter((l) => l.kind === 'invoice').map((l) => l.key)));
-		return (await this.entries.postedBetween(from, monthEnd(month)))
+		const unseen = (b: BooksBill) => !seen.has(`${b.supplierGstin}|invoice|${normalizeBillNumber(b.billNumber)}`);
+		const expense: BooksBill[] = here.size
+			? (await this.expenseBills.list({ status: 'posted', from, to: monthEnd(month) }))
+					.filter(
+						(b) =>
+							here.has(b.locationId) &&
+							!!b.supplierGstin &&
+							b.cgstINR + b.sgstINR + b.igstINR + b.blockedTaxINR > 0 &&
+							lastClaimMonth(b.billDate) >= month,
+					)
+					.map((b) => ({
+						entryId: b.id,
+						entryNumber: b.number ?? '',
+						supplierGstin: (b.supplierGstin as string).toUpperCase(),
+						supplierName: b.supplierName,
+						billNumber: b.billNumber,
+						billDate: b.billDate,
+						taxable: paise(b.taxableINR),
+						igst: paise(b.igstINR),
+						cgst: paise(b.cgstINR),
+						sgst: paise(b.sgstINR),
+					}))
+					.filter(unseen)
+			: [];
+		if (!stock || stock.gstRegistrationId !== gstRegistrationId) return expense;
+		const purchases = (await this.entries.postedBetween(from, monthEnd(month)))
 			.filter((e) => e.itcClaimable && e.supplierGstin && lastClaimMonth(e.billDate) >= month)
 			.map((e) => ({
 				entryId: e.id,
@@ -107,7 +136,8 @@ export class Gstr2bService {
 				sgst: paise(e.totals.sgstINR),
 			}))
 			.filter((b) => b.igst + b.cgst + b.sgst > 0)
-			.filter((b) => !seen.has(`${b.supplierGstin}|invoice|${normalizeBillNumber(b.billNumber)}`));
+			.filter(unseen);
+		return [...purchases, ...expense];
 	}
 
 	/** The month's rows (every result), the import they come from, and whether the month is locked. */

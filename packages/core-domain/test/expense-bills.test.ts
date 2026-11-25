@@ -4,16 +4,17 @@ import { expenseBillPosting, expenseBillTotals } from '../src/ledger/expense-bil
 
 /** Expense bills (brief 25 EB1): the brief's rent and staff-welfare bill. */
 
+const rent = {
+	expenseLedgerId: 'led_rent',
+	what: 'Warehouse rent, November',
+	sac: '997212',
+	taxableINR: 25_000,
+	gstRatePct: 18,
+	credit: 'claim' as const,
+	blockedClause: '',
+};
 const lines = [
-	{
-		expenseLedgerId: 'led_rent',
-		what: 'Warehouse rent, November',
-		sac: '997212',
-		taxableINR: 25_000,
-		gstRatePct: 18,
-		credit: 'claim' as const,
-		blockedClause: '',
-	},
+	rent,
 	{
 		expenseLedgerId: 'led_welfare',
 		what: 'Diwali sweets for staff',
@@ -59,8 +60,8 @@ describe('expense bills', () => {
 	it('posts nothing for a line of ₹0, and IGST for another State', () => {
 		const posted = expenseBillPosting({
 			lines: [
-				{ ...lines[0], taxableINR: 1_000, gstRatePct: 18 },
-				{ ...lines[0], what: 'Free trial month', taxableINR: 0, gstRatePct: 0 },
+				{ ...rent, taxableINR: 1_000, gstRatePct: 18 },
+				{ ...rent, what: 'Free trial month', taxableINR: 0, gstRatePct: 0 },
 			],
 			locationId: 'loc_bar',
 			billNumber: 'SW/1',

@@ -83,11 +83,11 @@ export class PaymentVoucherPage {
 		}
 	}
 
-	/** The page of what it paid: the self-invoice, or the purchase entry. */
+	/** The page of what it paid: the self-invoice, the expense bill, or the purchase entry. */
 	againstLink(voucher: PaymentVoucher): string[] {
-		return voucher.against.kind === 'selfInvoice'
-			? ['/accounts/self-invoices', voucher.against.id]
-			: ['/purchase-entries', voucher.against.id];
+		if (voucher.against.kind === 'selfInvoice') return ['/accounts/self-invoices', voucher.against.id];
+		if (voucher.against.kind === 'expenseBill') return ['/expense-bills', voucher.against.id];
+		return ['/purchase-entries', voucher.against.id];
 	}
 
 	day(iso: string): string {

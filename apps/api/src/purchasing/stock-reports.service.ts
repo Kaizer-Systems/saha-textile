@@ -8,6 +8,7 @@ import {
 } from '@saha-textile/contracts';
 import {
 	AGEING_BANDS,
+	type ExpenseBillRepository,
 	type PurchaseEntryRepository,
 	REORDER_LOOKBACK_DAYS,
 	type StockItemFacts,
@@ -21,7 +22,7 @@ import {
 } from '@saha-textile/core-domain';
 
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
-import { PURCHASE_ENTRY_REPOSITORY, STOCK_READ_REPOSITORY } from '../infra/tokens';
+import { EXPENSE_BILL_REPOSITORY, PURCHASE_ENTRY_REPOSITORY, STOCK_READ_REPOSITORY } from '../infra/tokens';
 import { PurchaseOrdersService } from './purchase-orders.service';
 import { PurchasingSupport, actorOf, canSeeCost, refuse } from './purchasing-support';
 
@@ -61,6 +62,7 @@ export class StockReportsService {
 		@Inject(PURCHASE_ENTRY_REPOSITORY) private readonly entries: PurchaseEntryRepository,
 		private readonly orders: PurchaseOrdersService,
 		private readonly support: PurchasingSupport,
+		@Inject(EXPENSE_BILL_REPOSITORY) private readonly expenseBills: Pick<ExpenseBillRepository, 'list'>,
 	) {}
 
 	private async everything(): Promise<StockItemFacts[]> {
@@ -339,15 +341,23 @@ export class StockReportsService {
 		};
 	}
 
-	/** Unpaid bills, oldest first, with how close each is to the 180-day input-credit rule. */
+	/**
+	 * Unpaid bills, oldest first, with how close each is to the 180-day input-credit rule: purchase entries and posted
+	 * expense bills (brief 25 EB2), each saying which it is.
+	 */
 	async unpaidBills() {
 		const settings = await this.support.settings();
 		const today = this.support.today();
+		const nearLimit = (billDate: string) => billDate <= addDays(today, -settings.unpaidAlertDays);
 		const open = (await this.entries.openPayables()).filter((entry) => entryOutstanding(entry) > 0.005);
+		const expense = (await this.expenseBills.list({ status: 'posted' })).filter(
+			(bill) => bill.totalINR - bill.paidINR > 0.005,
+		);
 		return {
 			alertDays: settings.unpaidAlertDays,
-			rows: open
-				.map((entry) => ({
+			rows: [
+				...open.map((entry) => ({
+					kind: 'purchaseEntry' as const,
 					id: entry.id,
 					number: entry.number,
 					supplierId: entry.supplierId,
@@ -358,9 +368,23 @@ export class StockReportsService {
 					totalINR: entry.totals.totalINR,
 					leftINR: entryOutstanding(entry),
 					days: daysBetween(entry.billDate, today),
-					nearLimit: entry.billDate <= addDays(today, -settings.unpaidAlertDays),
-				}))
-				.sort((a, b) => b.days - a.days),
+					nearLimit: nearLimit(entry.billDate),
+				})),
+				...expense.map((bill) => ({
+					kind: 'expenseBill' as const,
+					id: bill.id,
+					number: bill.number,
+					supplierId: bill.supplierId,
+					supplierName: bill.supplierName,
+					billNumber: bill.billNumber,
+					billDate: bill.billDate,
+					dueOn: bill.billDate,
+					totalINR: bill.totalINR,
+					leftINR: Math.round((bill.totalINR - bill.paidINR) * 100) / 100,
+					days: daysBetween(bill.billDate, today),
+					nearLimit: nearLimit(bill.billDate),
+				})),
+			].sort((a, b) => b.days - a.days),
 		};
 	}
 }

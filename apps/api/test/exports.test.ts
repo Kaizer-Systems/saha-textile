@@ -36,7 +36,9 @@ describe('exports', () => {
 
 	it('writes Excel with the title, filters, a frozen header, ₹ numbers, dates and bold totals', async () => {
 		const book = new ExcelJS.Workbook();
-		await book.xlsx.load(Buffer.from(await exportXlsx(request({ format: 'xlsx' }), 'K.R. Marketing')));
+		const file = Buffer.from(await exportXlsx(request({ format: 'xlsx' }), 'K.R. Marketing'));
+		// exceljs types its input as the older, non-generic Buffer.
+		await book.xlsx.load(file as unknown as Parameters<typeof book.xlsx.load>[0]);
 		const sheet = book.worksheets[0] as ExcelJS.Worksheet;
 		expect(sheet.getCell('A1').value).toBe('K.R. Marketing');
 		expect(sheet.getCell('A3').value).toBe('Period: This month');

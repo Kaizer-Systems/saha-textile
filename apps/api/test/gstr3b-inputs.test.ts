@@ -144,6 +144,8 @@ function build(
 		{ list: async () => options.locations ?? LOCATIONS } as never,
 		entries as never,
 		payments as never,
+		{ list: async () => [] } as never,
+		{ forDocument: async () => [] } as never,
 	);
 	return { inputs, gstr2b, selfInvoices, ledger, entries, payments };
 }

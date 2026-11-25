@@ -10,7 +10,9 @@ import {
 	rule37,
 	type GeneralLedgerRepository,
 	type Gstr3bInput,
+	type ExpenseBillRepository,
 	type LocationRepository,
+	type PaymentVoucherRepository,
 	type PurchaseEntryRepository,
 	type Rule37Bill,
 	type SelfInvoiceRepository,
@@ -19,8 +21,10 @@ import {
 } from '@saha-textile/core-domain';
 
 import {
+	EXPENSE_BILL_REPOSITORY,
 	GENERAL_LEDGER_REPOSITORY,
 	LOCATION_REPOSITORY,
+	PAYMENT_VOUCHER_REPOSITORY,
 	PURCHASE_ENTRY_REPOSITORY,
 	SELF_INVOICE_REPOSITORY,
 	SUPPLIER_PAYMENT_REPOSITORY,
@@ -47,6 +51,8 @@ export class Gstr3bInputs {
 		@Inject(LOCATION_REPOSITORY) private readonly locations: Pick<LocationRepository, 'list'>,
 		@Inject(PURCHASE_ENTRY_REPOSITORY) private readonly entries: Pick<PurchaseEntryRepository, 'postedBetween'>,
 		@Inject(SUPPLIER_PAYMENT_REPOSITORY) private readonly payments: Pick<SupplierPaymentRepository, 'forEntry'>,
+		@Inject(EXPENSE_BILL_REPOSITORY) private readonly expenseBills: Pick<ExpenseBillRepository, 'list'>,
+		@Inject(PAYMENT_VOUCHER_REPOSITORY) private readonly vouchers: Pick<PaymentVoucherRepository, 'forDocument'>,
 	) {}
 
 	async collect(gstRegistrationId: string, month: string): Promise<Gstr3bBooks> {
@@ -60,7 +66,7 @@ export class Gstr3bInputs {
 			this.selfInvoices.issuedForGstin(gstRegistrationId, first, last),
 			this.gstr2b.rows(gstRegistrationId, month),
 			this.fromBooks(first, last, here),
-			stock?.gstRegistrationId === gstRegistrationId ? this.rule37(month, last) : null,
+			this.rule37(month, last, stock?.gstRegistrationId === gstRegistrationId, here),
 		]);
 		const none: TaxHeads = { igst: 0, cgst: 0, sgst: 0 };
 		return {
@@ -124,11 +130,35 @@ export class Gstr3bInputs {
 		return { reversed: reversedInBooks(vouchers, ids, here), isd: isdCreditInBooks(vouchers, ids, here) };
 	}
 
-	/** Rule 37 over bills whose 180 days have ended by the month's last day. */
-	private async rule37(month: string, last: string) {
+	/**
+	 * Rule 37 over bills whose 180 days have ended by the month's last day: purchase entries when the GSTIN holds the
+	 * stock location, and expense bills billed to its locations (brief 25 EB2), on their claimable tax.
+	 */
+	private async rule37(month: string, last: string, stockHere: boolean, here: ReadonlySet<string>) {
 		const from = `${Number(month.slice(0, 4)) - 2}-04-01`;
-		const due = (await this.entries.postedBetween(from, last)).filter(
-			(e) => e.itcClaimable && e.supplierGstin && day180(e.billDate) <= last,
+		const due = stockHere
+			? (await this.entries.postedBetween(from, last)).filter(
+					(e) => e.itcClaimable && e.supplierGstin && day180(e.billDate) <= last,
+				)
+			: [];
+		const expense = (await this.expenseBills.list({ status: 'posted', from, to: last })).filter(
+			(b) =>
+				here.has(b.locationId) &&
+				!!b.supplierGstin &&
+				b.cgstINR + b.sgstINR + b.igstINR > 0 &&
+				day180(b.billDate) <= last,
+		);
+		const expenseBills: Rule37Bill[] = await Promise.all(
+			expense.map(async (b) => ({
+				entryId: b.id,
+				billDate: b.billDate,
+				totalPaise: paise(b.totalINR),
+				creditedPaise: 0,
+				tax: { igst: paise(b.igstINR), cgst: paise(b.cgstINR), sgst: paise(b.sgstINR) },
+				payments: (await this.vouchers.forDocument('expenseBill', b.id))
+					.filter((v) => v.status === 'paid')
+					.map((v) => ({ paidOn: v.date, paise: paise(v.amountINR) })),
+			})),
 		);
 		const bills: Rule37Bill[] = await Promise.all(
 			due.map(async (e) => ({
@@ -142,6 +172,6 @@ export class Gstr3bInputs {
 					.map((p) => ({ paidOn: p.paidOn, paise: paise(p.amountINR) })),
 			})),
 		);
-		return rule37(bills, month);
+		return rule37([...bills, ...expenseBills], month);
 	}
 }

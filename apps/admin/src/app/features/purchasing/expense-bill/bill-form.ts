@@ -1,24 +1,26 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, type TemplateRef } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { NgbModal, type NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 import { expenseBillTotals } from '@saha-textile/core-domain/expense-bills';
 import { istDay } from '@saha-textile/core-domain/purchasing';
 import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { Select2, type Select2Data, type Select2SearchEvent, type Select2UpdateEvent } from 'ng-select2-component';
 import { firstValueFrom, map } from 'rxjs';
 
+import { LedgerGateway } from '@core/accounts/ledger.gateway';
 import { EXPENSE_BILL_KEYS, ExpenseBillsGateway, expenseBillProblemKey } from '@core/purchasing/expense-bills.gateway';
 import { apiProblem } from '@core/purchasing/purchasing-format';
 import { injectSuppliersQuery } from '@core/purchasing/purchasing.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
+import { bankLedgers } from '@features/accounts/cash-bank-ledgers';
 import { rupees } from '@features/accounts/ledger-helpers';
 import { GST_RATES } from '@features/purchasing/purchase-entry/entry-lines';
-import { parseRupees } from '@features/purchasing/shared/payment-popup';
+import { PAYMENT_MODES, parseRupees } from '@features/purchasing/shared/payment-popup';
 import { askReason } from '@features/purchasing/shared/popups';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 
@@ -27,6 +29,8 @@ import type {
 	ExpenseBillLine,
 	ExpenseBillWrite,
 	ExpenseCredit,
+	Ledger,
+	PaymentMode,
 	SupplierListRow,
 } from '@saha-textile/contracts';
 
@@ -85,6 +89,7 @@ export class ExpenseBillFormPage {
 	private readonly auth = inject(AuthStore);
 	private readonly modals = inject(NgbModal);
 	private readonly queries = inject(QueryClient);
+	private readonly ledgers = inject(LedgerGateway);
 
 	readonly id = toSignal(inject(ActivatedRoute).paramMap.pipe(map((p) => p.get('id') ?? '')), { initialValue: '' });
 	readonly today = istDay(new Date());
@@ -102,6 +107,11 @@ export class ExpenseBillFormPage {
 	readonly bill = injectQuery(() => ({
 		queryKey: EXPENSE_BILL_KEYS.one(this.id()),
 		queryFn: () => firstValueFrom(this.gateway.get(this.id())),
+		enabled: !!this.id(),
+	}));
+	readonly vouchers = injectQuery(() => ({
+		queryKey: EXPENSE_BILL_KEYS.vouchers(this.id()),
+		queryFn: () => firstValueFrom(this.gateway.paymentVouchers(this.id())),
 		enabled: !!this.id(),
 	}));
 	readonly options = injectQuery(() => ({
@@ -291,6 +301,67 @@ export class ExpenseBillFormPage {
 			await this.settle(posted);
 			this.notifier.showSuccess(this.transloco.translate('eb_posted', { number: posted.number }));
 			if (!this.id()) await this.router.navigate(['/expense-bills', posted.id]);
+		});
+	}
+
+	/* Pay (the self-invoice page's pop-up, as purchase bills are paid): a payment voucher is issued with it. */
+	readonly modes = PAYMENT_MODES;
+	readonly amount = signal('');
+	readonly paidOn = signal(this.today);
+	readonly mode = signal<PaymentMode>('bank_transfer');
+	readonly reference = signal('');
+	readonly paidFrom = signal('');
+	readonly banks = signal<Ledger[]>([]);
+	private modal: NgbModalRef | null = null;
+
+	readonly owed = computed(() => {
+		const bill = this.bill.data();
+		return bill ? Math.round((bill.totalINR - bill.paidINR) * 100) / 100 : 0;
+	});
+	readonly canPay = computed(
+		() => this.status() === 'posted' && this.owed() > 0 && this.auth.permissions().includes('purchase.payment'),
+	);
+	readonly amountValue = computed(() => parseRupees(this.amount()));
+	/** "Paid from" shows only when a transfer could come from more than one bank. */
+	readonly choosesBank = computed(() => this.mode() !== 'cash' && this.banks().length > 1);
+	readonly canConfirm = computed(() => {
+		const value = this.amountValue();
+		return (
+			!this.busy() &&
+			value !== null &&
+			value > 0 &&
+			value <= this.owed() + 0.005 &&
+			!!this.paidOn() &&
+			(!this.choosesBank() || !!this.paidFrom())
+		);
+	});
+	readonly settles = computed(() => (this.amountValue() ?? 0) >= this.owed() - 0.005);
+
+	async openPay(template: TemplateRef<unknown>): Promise<void> {
+		this.amount.set(String(this.owed()));
+		this.paidOn.set(this.today);
+		this.mode.set('bank_transfer');
+		this.reference.set('');
+		this.paidFrom.set('');
+		if (!this.banks().length) this.banks.set(bankLedgers(await firstValueFrom(this.ledgers.chart())));
+		this.modal = this.modals.open(template, { centered: true });
+	}
+
+	pay(bill: ExpenseBill): Promise<void> {
+		return this.run(async () => {
+			const { bill: paid, voucher } = await firstValueFrom(
+				this.gateway.pay(bill.id, {
+					amountINR: this.amountValue() ?? 0,
+					paidOn: this.paidOn(),
+					mode: this.mode(),
+					reference: this.reference().trim() || null,
+					paidFromLedgerId: this.choosesBank() ? this.paidFrom() : null,
+					version: bill.version,
+				}),
+			);
+			this.modal?.close();
+			await this.settle(paid);
+			this.notifier.showSuccess(this.transloco.translate('eb_paid_done', { number: voucher.number }));
 		});
 	}
 

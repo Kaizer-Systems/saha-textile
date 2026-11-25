@@ -219,6 +219,7 @@ function build(
 				return ADMINS[id] ?? null;
 			},
 		} as never,
+		{ list: async () => [] } as never,
 	);
 	return { service, imports, entries, store };
 }

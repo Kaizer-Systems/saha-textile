@@ -180,6 +180,7 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 		support,
 		{ forSupplier: async () => [] },
 		{ forSupplier: async () => [] },
+		{ list: async () => [] },
 	);
 	const items = new PurchaseItemsService(
 		repos.read,

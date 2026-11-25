@@ -124,7 +124,7 @@ export const SelfInvoicePayWrite = z.object({
 export type SelfInvoicePayWrite = z.infer<typeof SelfInvoicePayWrite>;
 
 export const PaymentVoucherAgainst = z.object({
-	kind: z.enum(['selfInvoice', 'purchaseEntry']),
+	kind: z.enum(['selfInvoice', 'purchaseEntry', 'expenseBill']),
 	id: Id,
 	number: z.string(),
 	/** What it paid for, as A6's Against column shows it ("shop rent"). */

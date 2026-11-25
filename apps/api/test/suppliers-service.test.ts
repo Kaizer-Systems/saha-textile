@@ -170,6 +170,7 @@ function setup(options: { hasDocuments?: boolean } = {}) {
 		support as never,
 		selfInvoices as never,
 		vouchers as never,
+		{ list: async () => [] } as never,
 	);
 	return { service, repo, saved, records, support, itemCodes };
 }

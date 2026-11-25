@@ -13,6 +13,7 @@ import {
 	panFromGstin,
 } from '@saha-textile/contracts';
 import {
+	type ExpenseBillRepository,
 	type PaymentVoucherRepository,
 	type PurchaseEntryRepository,
 	type PurchaseReturnRepository,
@@ -28,6 +29,7 @@ import {
 } from '@saha-textile/core-domain';
 
 import {
+	EXPENSE_BILL_REPOSITORY,
 	PAYMENT_VOUCHER_REPOSITORY,
 	PURCHASE_ENTRY_REPOSITORY,
 	PURCHASE_RETURN_REPOSITORY,
@@ -55,15 +57,17 @@ export class SuppliersService {
 		private readonly support: PurchasingSupport,
 		@Inject(SELF_INVOICE_REPOSITORY) private readonly selfInvoices: Pick<SelfInvoiceRepository, 'forSupplier'>,
 		@Inject(PAYMENT_VOUCHER_REPOSITORY) private readonly vouchers: Pick<PaymentVoucherRepository, 'forSupplier'>,
+		@Inject(EXPENSE_BILL_REPOSITORY) private readonly expenseBills: Pick<ExpenseBillRepository, 'list'>,
 	) {}
 
-	/** What each supplier is owed across their posted, unpaid bills. */
+	/** What each supplier is owed across their posted, unpaid bills: purchase entries and expense bills (brief 25 EB). */
 	private async owedBySupplier(): Promise<Map<string, number>> {
 		const owed = new Map<string, number>();
-		for (const entry of await this.entries.openPayables()) {
-			const left = entryOutstanding(entry);
-			owed.set(entry.supplierId, Math.round(((owed.get(entry.supplierId) ?? 0) + left) * 100) / 100);
-		}
+		const add = (supplierId: string, left: number) =>
+			owed.set(supplierId, Math.round(((owed.get(supplierId) ?? 0) + left) * 100) / 100);
+		for (const entry of await this.entries.openPayables()) add(entry.supplierId, entryOutstanding(entry));
+		for (const bill of await this.expenseBills.list({ status: 'posted' }))
+			if (bill.totalINR - bill.paidINR > 0.005) add(bill.supplierId, bill.totalINR - bill.paidINR);
 		return owed;
 	}
 
@@ -107,13 +111,18 @@ export class SuppliersService {
 	/** The supplier page (s03): tiles and the statement, with self-invoices for their reverse-charge supplies. */
 	async summary(id: string): Promise<SupplierSummary> {
 		const supplier = await this.get(id);
-		const [entries, payments, returns, selfInvoices, vouchers] = await Promise.all([
+		const [entries, payments, returns, selfInvoices, vouchers, expenseBills] = await Promise.all([
 			this.entries.forSupplier(id),
 			this.payments.forSupplier(id),
 			this.returns.forSupplier(id),
 			this.selfInvoices.forSupplier(id),
 			this.vouchers.forSupplier(id),
+			this.expenseBills.list({ supplierId: id }),
 		]);
+		// A posted expense bill is owed until its payment vouchers settle it (brief 25 EB).
+		const expenseBillsOwed = expenseBills
+			.filter((bill) => bill.status === 'posted')
+			.reduce((sum, bill) => sum + Math.max(0, bill.totalINR - bill.paidINR), 0);
 		// An issued self-invoice is owed to the supplier until its payment vouchers settle it.
 		const selfInvoicesOwed = selfInvoices
 			.filter((invoice) => invoice.status === 'issued')
@@ -131,8 +140,12 @@ export class SuppliersService {
 		return {
 			supplier,
 			owedINR:
-				Math.round((posted.reduce((sum, entry) => sum + entryOutstanding(entry), 0) + selfInvoicesOwed) * 100) /
-				100,
+				Math.round(
+					(posted.reduce((sum, entry) => sum + entryOutstanding(entry), 0) +
+						selfInvoicesOwed +
+						expenseBillsOwed) *
+						100,
+				) / 100,
 			owedBills: open.length,
 			nextDueOn: open.reduce<string | null>(
 				(next, entry) => (!next || entry.dueOn < next ? entry.dueOn : next),
@@ -149,6 +162,7 @@ export class SuppliersService {
 				returns,
 				selfInvoices,
 				selfInvoicePayments: vouchers,
+				expenseBills,
 			}),
 		};
 	}

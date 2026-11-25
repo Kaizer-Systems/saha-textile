@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { Id, IsoDateTime } from './common';
 import { IsoDate } from './purchasing';
+import { SelfInvoicePayWrite } from './self-invoices';
 
 /**
  * Bills for services and expenses with their GST credit (brief 25 EB1, EB2; approved 2026-11-25): shop rent from a
@@ -46,6 +47,8 @@ export const ExpenseBill = ExpenseBillWrite.extend({
 	id: Id,
 	/** The supplier's name as it was when the bill was saved, for lists and statements. */
 	supplierName: z.string().default(''),
+	/** The supplier's GSTIN when the bill was saved, for GSTR-2B and rule 37. */
+	supplierGstin: z.string().nullable().default(null),
 	/** EB/26-27/000001, given when it is posted. */
 	number: z.string().nullable().default(null),
 	status: ExpenseBillStatus,
@@ -60,6 +63,11 @@ export const ExpenseBill = ExpenseBillWrite.extend({
 	voucherId: Id.nullable().default(null),
 	postedAt: IsoDateTime.nullable().default(null),
 	postedBy: Id.nullable().default(null),
+	/** Paid so far through payment vouchers (as purchase bills and self-invoices are paid). */
+	paidINR: z.number().nonnegative().default(0),
+	paymentVouchers: z.array(z.object({ id: Id, number: z.string() })).default([]),
+	cancelledAt: IsoDateTime.nullable().default(null),
+	cancelReason: z.string().nullable().default(null),
 	createdAt: IsoDateTime,
 	updatedAt: IsoDateTime,
 	version: z.number().int().nonnegative(),
@@ -81,3 +89,7 @@ export const ExpenseBillForm = z.object({
 	ledgers: z.array(z.object({ id: Id, name: z.string() })),
 });
 export type ExpenseBillForm = z.infer<typeof ExpenseBillForm>;
+
+/** Pay a posted expense bill: the same fields as paying a self-invoice; a payment voucher is issued with it. */
+export const ExpenseBillPayWrite = SelfInvoicePayWrite;
+export type ExpenseBillPayWrite = z.infer<typeof ExpenseBillPayWrite>;

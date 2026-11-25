@@ -32,6 +32,11 @@ export function statementLink(row: SupplierStatementRow): string[] | null {
 	if (row.kind === 'self_invoice_payment' || row.kind === 'self_invoice_payment_cancelled') {
 		return ['/accounts/payment-vouchers', row.documentId];
 	}
+	// Brief 25 EB: the expense bill, or the payment voucher that paid it.
+	if (row.kind === 'expense_bill' || row.kind === 'expense_bill_cancelled') return ['/expense-bills', row.documentId];
+	if (row.kind === 'expense_bill_payment' || row.kind === 'expense_bill_payment_cancelled') {
+		return ['/accounts/payment-vouchers', row.documentId];
+	}
 	if (row.kind === 'bill' || row.kind === 'payment' || row.kind === 'payment_reversed') {
 		return ['/purchase-entries', row.documentId];
 	}

@@ -135,6 +135,8 @@ export interface ValuationResponse {
 export interface UnpaidBillsResponse {
 	alertDays: number;
 	rows: Array<{
+		/** A purchase entry, or an expense bill (brief 25 EB2). */
+		kind?: 'purchaseEntry' | 'expenseBill';
 		id: string;
 		number: string | null;
 		supplierId: string;

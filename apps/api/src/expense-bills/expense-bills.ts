@@ -18,9 +18,11 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+	ExpenseBillPayWrite,
 	ExpenseBillStatus,
 	ExpenseBillWrite,
 	IsoDate,
+	PaymentVoucher,
 	type ChartOfAccounts,
 	type ExpenseBill,
 	type ExpenseBillForm,
@@ -29,10 +31,13 @@ import {
 	expenseBillPosting,
 	expenseBillTotals,
 	istDay,
+	ledgerClass,
+	supplierPaymentPosting,
 	termsOn,
 	type CompanyRepository,
 	type ExpenseBillRepository,
 	type LocationRepository,
+	type PaymentVoucherRepository,
 	type SupplierRepository,
 	type TransactionManagerPort,
 } from '@saha-textile/core-domain';
@@ -45,10 +50,12 @@ import {
 	COMPANY_REPOSITORY,
 	EXPENSE_BILL_REPOSITORY,
 	LOCATION_REPOSITORY,
+	PAYMENT_VOUCHER_REPOSITORY,
 	SUPPLIER_REPOSITORY,
 	TRANSACTION_MANAGER,
 } from '../infra/tokens';
 import { accountsRefusal } from '../ledger/accounts-refusal';
+import { EditLogService } from '../ledger/edit-log';
 import { LedgerModule } from '../ledger/ledger.module';
 import { LedgerService } from '../ledger/ledger.service';
 import { API_TAGS } from '../openapi-tags';
@@ -85,6 +92,9 @@ export class ExpenseBillsService {
 		@Inject(LedgerService) private readonly ledger: Pick<LedgerService, 'post' | 'voucherByKey' | 'chart'>,
 		@Inject(DocumentNumbersService) private readonly numbers: Pick<DocumentNumbersService, 'issue'>,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
+		@Inject(PAYMENT_VOUCHER_REPOSITORY)
+		private readonly vouchers: Pick<PaymentVoucherRepository, 'insert' | 'forDocument'>,
+		@Inject(EditLogService) private readonly log: Pick<EditLogService, 'append'>,
 	) {}
 
 	list(query: z.infer<typeof ExpenseBillQuery>): Promise<ExpenseBill[]> {
@@ -148,6 +158,7 @@ export class ExpenseBillsService {
 		const interState = !!supplier.gstin && supplier.gstin.slice(0, 2) !== location.stateCode;
 		return {
 			supplierName: supplier.shortName || supplier.legalName,
+			supplierGstin: supplier.gstin ?? null,
 			interState,
 			...expenseBillTotals(write.lines, interState),
 		};
@@ -166,6 +177,10 @@ export class ExpenseBillsService {
 				voucherId: null,
 				postedAt: null,
 				postedBy: null,
+				paidINR: 0,
+				paymentVouchers: [],
+				cancelledAt: null,
+				cancelReason: null,
 				createdAt: at,
 				updatedAt: at,
 				version: 0,
@@ -233,6 +248,7 @@ export class ExpenseBillsService {
 	async cancel(id: string, reason: string, principal: AuthenticatedPrincipal | undefined, now = new Date()) {
 		const bill = await this.get(id);
 		if (bill.status === 'cancelled') throw refuse('expense_bill_cancelled');
+		if (bill.paidINR > 0.005) throw refuse('expense_bill_paid');
 		const by = principal?.userId ?? null;
 		return this.transactions.withTransaction(async (context) => {
 			const original = await this.ledger.voucherByKey(`expenseBill:${bill.id}`, context);
@@ -254,8 +270,113 @@ export class ExpenseBillsService {
 					context,
 					by,
 				);
-			return this.saved({ ...bill, status: 'cancelled', updatedAt: now.toISOString() }, bill.version, context);
+			const at = now.toISOString();
+			return this.saved(
+				{ ...bill, status: 'cancelled', cancelledAt: at, cancelReason: reason, updatedAt: at },
+				bill.version,
+				context,
+			);
 		});
+	}
+
+	/** The payment vouchers that paid a bill, newest last. */
+	paymentVouchers(id: string): Promise<PaymentVoucher[]> {
+		return this.vouchers.forDocument('expenseBill', id);
+	}
+
+	/** Where the money left from: cash, the one bank, or the bank picked when there are several. */
+	private async paidFrom(write: Pick<ExpenseBillPayWrite, 'mode' | 'paidFromLedgerId'>) {
+		if (write.mode === 'cash') return { role: 'cash' };
+		const chart = await this.ledger.chart();
+		const banks = chart.ledgers.filter((l) => l.active && ledgerClass(l, chart.groups) === 'bank');
+		if (write.paidFromLedgerId) {
+			if (!banks.some((l) => l.id === write.paidFromLedgerId)) throw refuse('payment_needs_a_bank_ledger');
+			return { id: write.paidFromLedgerId };
+		}
+		const [only, other] = banks;
+		if (!only) throw refuse('payment_needs_a_bank_ledger');
+		if (other) throw refuse('payment_choose_bank_ledger');
+		return { id: only.id };
+	}
+
+	/**
+	 * Pay a posted bill, in part or in full, "with the payment voucher purchase bills already use" (EB1): the voucher
+	 * (PV) is issued and the supplier debited against the bank or cash, all or nothing, as a self-invoice is paid.
+	 */
+	async pay(id: string, write: ExpenseBillPayWrite, principal: AuthenticatedPrincipal | undefined, now = new Date()) {
+		const bill = await this.get(id);
+		if (bill.status !== 'posted') throw new ConflictException(accountsRefusal('expense_bill_not_posted'));
+		if (write.version !== bill.version) throw new ConflictException(accountsRefusal('expense_bill_changed'));
+		if (write.amountINR > bill.totalINR - bill.paidINR + 0.005) throw refuse('overpayment');
+		if (write.paidOn > istDay(now)) throw refuse('paid_in_future');
+		if (write.paidOn < bill.billDate) throw refuse('expense_bill_paid_before_bill');
+		const from = await this.paidFrom(write);
+		const supplier = await this.suppliers.findById(bill.supplierId);
+		const by = principal?.userId ?? null;
+		const at = now.toISOString();
+		const result = await this.transactions.withTransaction(async (context) => {
+			const number = await this.numbers.issue('paymentVoucher', context, now);
+			const voucherId = `pv_${randomUUID()}`;
+			const posted = await this.ledger.post(
+				{
+					date: write.paidOn,
+					narration: `Payment voucher ${number} · ${bill.supplierName} · ${bill.number ?? bill.billNumber}`,
+					lines: supplierPaymentPosting(write.amountINR, from).map((line) => ({
+						...line,
+						locationId: bill.locationId,
+					})),
+					source: { type: 'paymentVoucher', id: voucherId, number },
+					idempotencyKey: `paymentVoucher:${voucherId}`,
+				},
+				context,
+				by,
+			);
+			const voucher = PaymentVoucher.parse({
+				id: voucherId,
+				number,
+				date: write.paidOn,
+				supplierId: bill.supplierId,
+				payeeName: bill.supplierName,
+				payeeAddress: supplier
+					? [supplier.address.line, [supplier.address.city, supplier.address.pin].filter(Boolean).join(' ')]
+							.filter(Boolean)
+							.join(', ')
+					: '',
+				against: {
+					kind: 'expenseBill',
+					id: bill.id,
+					number: bill.number ?? bill.billNumber,
+					detail: bill.lines.map((line) => line.what).join(', '),
+				},
+				amountINR: write.amountINR,
+				mode: write.mode,
+				reference: write.reference,
+				paidFromLedgerId: 'id' in from ? from.id : null,
+				reverseChargeTaxINR: null,
+				supplierPaymentId: null,
+				journalVoucherId: posted.id,
+				locationId: bill.locationId,
+				createdAt: at,
+				createdBy: by,
+			});
+			await this.vouchers.insert(voucher, context);
+			const saved = await this.saved(
+				{
+					...bill,
+					paidINR: Math.round((bill.paidINR + write.amountINR) * 100) / 100,
+					paymentVouchers: [...bill.paymentVouchers, { id: voucher.id, number: voucher.number }],
+					updatedAt: at,
+				},
+				bill.version,
+				context,
+			);
+			return { bill: saved, voucher };
+		});
+		await this.log.append(by, 'paymentVoucher.issue', 'paymentVoucher', result.voucher.id, [], {
+			number: result.voucher.number,
+			against: result.bill.number ?? result.bill.billNumber,
+		});
+		return result;
 	}
 }
 
@@ -308,6 +429,25 @@ export class ExpenseBillsController {
 	@ApiOperation({ operationId: 'expenseBillPost', summary: 'Post an expense bill to the books' })
 	post(@Param('id') id: string, @Principal() principal?: AuthenticatedPrincipal) {
 		return this.bills.post(id, principal);
+	}
+
+	@Get(':id/payment-vouchers')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({ operationId: 'expenseBillPaymentVouchers', summary: 'The payment vouchers that paid a bill' })
+	paymentVouchers(@Param('id') id: string) {
+		return this.bills.paymentVouchers(id);
+	}
+
+	@Post(':id/pay')
+	@RequirePermissions('purchase.payment')
+	@ApiOperation({ operationId: 'expenseBillPay', summary: 'Pay an expense bill; its payment voucher is issued' })
+	pay(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(ExpenseBillPayWrite)) body: ExpenseBillPayWrite,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.bills.pay(id, body, principal);
 	}
 
 	@Post(':id/cancel')

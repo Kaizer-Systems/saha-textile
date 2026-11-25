@@ -11027,5 +11027,22 @@
 	"eb_problem_use_self_invoice": "A supplier without a GSTIN can't charge GST. Under reverse charge, record a self-invoice instead.",
 	"eb_problem_supplier_unknown": "That supplier isn't on the list any more.",
 	"eb_problem_location_unknown": "That location isn't on the list any more.",
-	"search_hint_expense_bills": "Suppliers' bills for services and expenses (rent, software, fees), with their GST credit."
+	"search_hint_expense_bills": "Suppliers' bills for services and expenses (rent, software, fees), with their GST credit.",
+	"eb_record_payment": "Record payment",
+	"eb_payment_vouchers": "Payment vouchers",
+	"eb_paid_of": "{{paid}} paid of {{total}}",
+	"eb_no_payments": "Nothing paid yet.",
+	"eb_pay_title": "Pay {{name}}",
+	"eb_pay_voucher_note": "A payment voucher (PV) is issued with this payment and both go into the books together.",
+	"eb_pay_settled": "Pays {{amount}}: the bill is settled.",
+	"eb_pay_part": "Pays {{amount}}; {{left}} stays owed.",
+	"eb_pay_confirm": "Pay and issue the voucher",
+	"eb_paid_done": "Paid; payment voucher {{number}} issued",
+	"eb_problem_expense_bill_paid": "Something is paid on this bill. Cancel its payment vouchers first.",
+	"eb_problem_expense_bill_not_posted": "Only a posted bill can be paid.",
+	"eb_problem_expense_bill_paid_before_bill": "A payment can't be dated before the bill.",
+	"eb_problem_overpayment": "That's more than is left to pay on this bill.",
+	"eb_problem_paid_in_future": "A payment can't be dated after today.",
+	"eb_problem_payment_needs_a_bank_ledger": "The books have no bank account to pay from yet. Add one in Accounts › Ledgers.",
+	"eb_problem_payment_choose_bank_ledger": "Choose which bank account it was paid from."
 }

@@ -4,7 +4,14 @@ import { inject, Injectable } from '@angular/core';
 import { booksRefusalKey } from '@core/accounts/books-refusal';
 import { runtimeConfig } from '@core/config/runtime-config';
 
-import type { ExpenseBill, ExpenseBillForm, ExpenseBillStatus, ExpenseBillWrite } from '@saha-textile/contracts';
+import type {
+	ExpenseBill,
+	ExpenseBillForm,
+	ExpenseBillPayWrite,
+	ExpenseBillStatus,
+	ExpenseBillWrite,
+	PaymentVoucher,
+} from '@saha-textile/contracts';
 import type { Observable } from 'rxjs';
 
 /** The list's filters: a status (or all) and the bill dates, both inclusive. */
@@ -18,6 +25,7 @@ export const EXPENSE_BILL_KEYS = {
 	all: ['expense-bills'] as const,
 	list: (query: ExpenseBillListQuery) => ['expense-bills', 'list', query] as const,
 	one: (id: string) => ['expense-bills', id] as const,
+	vouchers: (id: string) => ['expense-bills', id, 'payment-vouchers'] as const,
 	form: ['expense-bills', 'form'] as const,
 };
 
@@ -49,6 +57,12 @@ export class ExpenseBillsGateway {
 	post(id: string): Observable<ExpenseBill> {
 		return this.http.post<ExpenseBill>(this.one(id, '/post'), {});
 	}
+	pay(id: string, write: ExpenseBillPayWrite): Observable<{ bill: ExpenseBill; voucher: PaymentVoucher }> {
+		return this.http.post<{ bill: ExpenseBill; voucher: PaymentVoucher }>(this.one(id, '/pay'), write);
+	}
+	paymentVouchers(id: string): Observable<PaymentVoucher[]> {
+		return this.http.get<PaymentVoucher[]>(this.one(id, '/payment-vouchers'));
+	}
 	cancel(id: string, reason: string): Observable<ExpenseBill> {
 		return this.http.post<ExpenseBill>(this.one(id, '/cancel'), { reason });
 	}
@@ -63,6 +77,13 @@ const KNOWN = new Set([
 	'expense_bill_not_an_expense',
 	'expense_bill_no_gstin',
 	'expense_bill_composition_no_credit',
+	'expense_bill_paid',
+	'expense_bill_not_posted',
+	'expense_bill_paid_before_bill',
+	'overpayment',
+	'paid_in_future',
+	'payment_needs_a_bank_ledger',
+	'payment_choose_bank_ledger',
 	'use_self_invoice',
 	'supplier_unknown',
 	'location_unknown',

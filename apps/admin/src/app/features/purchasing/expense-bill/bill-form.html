@@ -39,7 +39,18 @@
 				<i class="ri-check-line"></i>
 				{{ 'eb_post' | transloco }}
 			</button>
-			} } @if (bill.data() && status() !== 'cancelled' && canPost()) {
+			} } @if (canPay()) {
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="eb_pay_open"
+				[disabled]="busy()"
+				(click)="openPay(payModal)"
+			>
+				<i class="ri-money-rupee-circle-line"></i>
+				{{ 'eb_record_payment' | transloco }}
+			</button>
+			} @if (bill.data() && status() !== 'cancelled' && !bill.data()?.paidINR && canPost()) {
 			<button
 				type="button"
 				class="btn btn-outline"
@@ -344,4 +355,189 @@
 			</div>
 		</div>
 	</div>
+	@if (bill.data(); as v) { @if (v.status !== 'draft') {
+	<div class="card">
+		<div class="card-body">
+			<div class="title-header">
+				<h5>{{ 'eb_payment_vouchers' | transloco }}</h5>
+				<small class="text-muted">
+					{{ 'eb_paid_of' | transloco: { paid: inr(v.paidINR), total: inr(v.totalINR) } }}
+				</small>
+			</div>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'pv_number' | transloco }}</th>
+							<th>{{ 'date' | transloco }}</th>
+							<th>{{ 'payment_how' | transloco }}</th>
+							<th>{{ 'payment_reference' | transloco }}</th>
+							<th class="text-end">{{ 'doc_amount' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (p of vouchers.data() ?? []; track p.id) {
+						<tr>
+							<td>
+								<a [routerLink]="['/accounts/payment-vouchers', p.id]">{{ p.number }}</a>
+							</td>
+							<td class="text-nowrap">{{ p.date }}</td>
+							<td>{{ 'payment_mode_' + p.mode | transloco }}</td>
+							<td>{{ p.reference ?? '—' }}</td>
+							<td class="text-end text-nowrap">{{ inr(p.amountINR) }}</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td
+								colspan="5"
+								class="text-muted"
+							>
+								{{ 'eb_no_payments' | transloco }}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+	} }
+
+	<ng-template
+		#payModal
+		let-modal
+	>
+		@if (bill.data(); as v) {
+		<div class="modal-header">
+			<h5 class="mb-0">{{ 'eb_pay_title' | transloco: { name: v.supplierName } }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			<div class="alert alert-info d-flex align-items-center gap-2">
+				<i class="ri-information-line"></i>
+				<span>{{ 'eb_pay_voucher_note' | transloco }}</span>
+			</div>
+			<div class="row g-2">
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="eb_pay_amount"
+					>
+						{{ 'doc_amount' | transloco }}
+					</label>
+					<div class="input-group">
+						<span class="input-group-text">₹</span>
+						<input
+							class="form-control"
+							id="eb_pay_amount"
+							inputmode="decimal"
+							autocomplete="off"
+							[ngModel]="amount()"
+							(ngModelChange)="amount.set($event)"
+						/>
+					</div>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="eb_pay_paid_on"
+					>
+						{{ 'paid_on' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="eb_pay_paid_on"
+						type="date"
+						[min]="v.billDate"
+						[max]="today"
+						[ngModel]="paidOn()"
+						(ngModelChange)="paidOn.set($event)"
+					/>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="eb_pay_mode"
+					>
+						{{ 'payment_how' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="eb_pay_mode"
+						[ngModel]="mode()"
+						(ngModelChange)="mode.set($event)"
+					>
+						@for (m of modes; track m) {
+						<option [value]="m">{{ 'payment_mode_' + m | transloco }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="eb_pay_reference"
+					>
+						{{ 'payment_reference' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="eb_pay_reference"
+						maxlength="80"
+						autocomplete="off"
+						[ngModel]="reference()"
+						(ngModelChange)="reference.set($event)"
+					/>
+				</div>
+				@if (choosesBank()) {
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="eb_pay_from"
+					>
+						{{ 'cn_refund_from' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="eb_pay_from"
+						[ngModel]="paidFrom()"
+						(ngModelChange)="paidFrom.set($event)"
+					>
+						<option value="">—</option>
+						@for (l of banks(); track l.id) {
+						<option [value]="l.id">{{ l.name }}</option>
+						}
+					</select>
+				</div>
+				}
+			</div>
+			<p class="small text-muted mt-3 mb-0">
+				{{ (settles() ? 'eb_pay_settled' : 'eb_pay_part') | transloco: { amount: inr(amountValue() ?? 0), left:
+				inr(owed() - (amountValue() ?? 0)) } }}
+			</p>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="eb_pay_confirm"
+				[disabled]="!canConfirm()"
+				(click)="pay(v)"
+			>
+				{{ 'eb_pay_confirm' | transloco }}
+			</button>
+		</div>
+		}
+	</ng-template>
 </app-page-wrapper>

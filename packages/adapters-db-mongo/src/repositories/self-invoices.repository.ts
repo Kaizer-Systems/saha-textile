@@ -175,7 +175,7 @@ export class MongoPaymentVoucherRepository implements PaymentVoucherRepository {
 		const chips: Record<PaymentVoucherListFilter, Record<string, unknown>> = {
 			all: {},
 			reverse_charge: { 'against.kind': 'selfInvoice' },
-			supplier_bills: { 'against.kind': 'purchaseEntry' },
+			supplier_bills: { 'against.kind': { $in: ['purchaseEntry', 'expenseBill'] } },
 			cancelled: { status: 'cancelled' },
 		};
 		const { docs, total, counts } = await listed(PaymentVoucherModel, base, chips, query.filter, {

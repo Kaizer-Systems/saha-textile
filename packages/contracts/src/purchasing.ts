@@ -171,6 +171,11 @@ export const SupplierStatementRow = z.object({
 		'self_invoice_cancelled',
 		'self_invoice_payment',
 		'self_invoice_payment_cancelled',
+		/** Brief 25 EB: a bill for services or expenses, and the payment vouchers that paid it. */
+		'expense_bill',
+		'expense_bill_cancelled',
+		'expense_bill_payment',
+		'expense_bill_payment_cancelled',
 	]),
 	documentId: Id,
 	documentNumber: z.string(),

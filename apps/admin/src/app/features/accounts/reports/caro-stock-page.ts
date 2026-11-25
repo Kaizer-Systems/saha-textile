@@ -7,6 +7,7 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
 import { REPORT_KEYS, ReportsGateway } from '@core/accounts/reports.gateway';
+import { LOCATION_KEYS, LocationsGateway } from '@core/locations/locations.gateway';
 import { shortDate } from '@core/purchasing/purchasing-format';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 
@@ -29,13 +30,23 @@ export function caroQty(row: Pick<CaroClassRow, 'soldBy'>, qty: number): string 
 })
 export class CaroStockPage {
 	private readonly gateway = inject(ReportsGateway);
+	private readonly locationsGateway = inject(LocationsGateway);
 
 	readonly qty = caroQty;
 	readonly from = signal(yearToDate().from);
 	readonly to = signal(yearToDate().to);
+	/** SC2: one location's counts, or every count ('' for every location). */
+	readonly locationId = signal('');
+	readonly locations = injectQuery(() => ({
+		queryKey: LOCATION_KEYS.list,
+		queryFn: () => firstValueFrom(this.locationsGateway.list()),
+	}));
+	private query() {
+		return { from: this.from(), to: this.to(), ...(this.locationId() ? { locationId: this.locationId() } : {}) };
+	}
 	readonly report = injectQuery(() => ({
-		queryKey: REPORT_KEYS.caroStock({ from: this.from(), to: this.to() }),
-		queryFn: () => firstValueFrom(this.gateway.caroStock({ from: this.from(), to: this.to() })),
+		queryKey: REPORT_KEYS.caroStock(this.query()),
+		queryFn: () => firstValueFrom(this.gateway.caroStock(this.query())),
 		enabled: !!this.from() && !!this.to() && this.from() <= this.to(),
 	}));
 

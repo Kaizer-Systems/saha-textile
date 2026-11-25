@@ -1090,6 +1090,7 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 			const count = await counts.start(
 				{
 					scope: { kind: 'skus', categoryIds: [], variantIds: [ids.gold, ids.fabricVar] },
+					locationId: null,
 					blind: true,
 					counterIds: [],
 					label: 'Test shelf',

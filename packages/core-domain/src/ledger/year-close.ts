@@ -36,7 +36,8 @@ export interface YearCloseCheck {
 export interface YearCloseFacts {
 	cashOpen: number | null;
 	banks: { total: number; reconciled: number } | null;
-	stockCount: { posted: number; open: number } | null;
+	/** Year-end counts posted and still open, and (SC2) warehouse locations no posted count covers. */
+	stockCount: { posted: number; open: number; uncounted?: number } | null;
 	transfersOpen: number | null;
 	depreciationDue: number | null;
 	/** Null when payroll isn't in use; otherwise whether March is posted. */
@@ -69,8 +70,8 @@ export function yearCloseChecks(f: YearCloseFacts): YearCloseCheck[] {
 			: {
 					// Counts still open, out of the year-end counts posted.
 					key: 'stock_count',
-					state: stock.posted > 0 && stock.open === 0 ? 'ok' : 'attention',
-					count: stock.open,
+					state: stock.posted > 0 && stock.open + (stock.uncounted ?? 0) === 0 ? 'ok' : 'attention',
+					count: stock.open + (stock.uncounted ?? 0),
 					of: stock.posted,
 					amountPaise: null,
 				},

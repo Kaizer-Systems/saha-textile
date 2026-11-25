@@ -8,6 +8,7 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 import { of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { LocationsGateway } from '@core/locations/locations.gateway';
 import { StockGateway } from '@core/purchasing/stock.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { CategoryService } from '@data-access/services/category.service';
@@ -216,6 +217,10 @@ function make<T>(type: Type<T>, options: Options = {}) {
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: StockGateway, useValue: gateway },
+			{
+				provide: LocationsGateway,
+				useValue: { list: () => of([{ id: 'loc_1', name: 'Barasat', active: true, warehouse: true }]) },
+			},
 			{ provide: NotificationService, useValue: notifier },
 			{ provide: Router, useValue: router },
 			{ provide: QueryClient, useValue: queryClient },
@@ -474,6 +479,7 @@ describe('Stock counts (c01–c04)', () => {
 		await c.start();
 		expect(gateway.startCount).toHaveBeenCalledWith({
 			scope: c.scope(),
+			locationId: null,
 			blind: true,
 			counterIds: [],
 			label: 'Year end',

@@ -231,14 +231,25 @@ export const CaroClassRow = z.object({
 });
 export type CaroClassRow = z.infer<typeof CaroClassRow>;
 
+/** Brief 25 SC2: the CARO report for a period, for one location's counts or every count. */
+export const CaroStockQuery = z.object({
+	from: IsoDate,
+	to: IsoDate,
+	locationId: Id.nullable().default(null),
+});
+export type CaroStockQuery = z.infer<typeof CaroStockQuery>;
+
 export const CaroStockReport = z.object({
 	from: IsoDate,
 	to: IsoDate,
+	locationId: Id.nullable().default(null),
 	counts: z.array(
 		z.object({
 			id: Id,
 			number: z.string(),
 			label: z.string(),
+			/** The location counted; null for a count of every location. */
+			locationId: Id.nullable().default(null),
 			postedAt: IsoDateTime,
 			classes: z.array(CaroClassRow),
 		}),

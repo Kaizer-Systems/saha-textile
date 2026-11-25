@@ -43,6 +43,8 @@ export interface StockChange {
 	source: 'manual_adjustment' | 'stock_count';
 	/** Pieces added back by a reversal come in at the cost they left at, not the latest known cost (D5). */
 	unitCostINR?: number | null;
+	/** Brief 25 SC1: a count of one location corrects that location's stock; else the default location. */
+	locationId?: string | null;
 }
 
 export interface StockChangeResult {
@@ -96,6 +98,12 @@ export class StockWriter {
 			source: sources.get(part.layerId) as string | null,
 		}));
 		return { ...draw, layers };
+	}
+
+	/** SC1: each variant's on-hand at one location (0 where it has none there). */
+	async onHandAt(variantIds: readonly string[], locationId: string): Promise<Map<string, number>> {
+		const rows = await this.movement.locationStock(variantIds);
+		return new Map(rows.filter((row) => row.locationId === locationId).map((row) => [row.variantId, row.onHand]));
 	}
 
 	async apply(change: StockChange, context: TransactionContext): Promise<StockChangeResult> {
@@ -161,6 +169,7 @@ export class StockWriter {
 				actorUserId: change.actor,
 				approverUserId: change.approver,
 				at,
+				...(change.locationId ? { locationId: change.locationId } : {}),
 			},
 			context,
 		);

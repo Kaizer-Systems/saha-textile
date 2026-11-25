@@ -84,6 +84,14 @@ export class StockCountsService {
 		const facts = await this.stock.items(variantIds);
 		const tracked = [...facts.values()].filter((fact) => fact.tracked && fact.productType !== 'bundle');
 		if (tracked.length === 0) throw refuse('scope_empty', 'Nothing to count in that choice.', 'scope');
+		// SC1: a count of one location expects that location's stock; of every location, the total.
+		const here = body.locationId
+			? await this.writer.onHandAt(
+					tracked.map((fact) => fact.variantId),
+					body.locationId,
+				)
+			: null;
+		const onHand = (fact: (typeof tracked)[number]) => (here ? (here.get(fact.variantId) ?? 0) : fact.onHand);
 		const images = await this.support.thumbnails(tracked.map((fact) => fact.galleryAssetId));
 		const fiscalYear = fiscalYearOf(this.support.today());
 		const settings = await this.support.settings();
@@ -99,6 +107,7 @@ export class StockCountsService {
 			number,
 			label: body.label || (body.scope.kind === 'all' ? 'Whole shop' : (tracked[0]?.categoryName ?? number)),
 			scope: body.scope,
+			locationId: body.locationId,
 			blind: body.blind,
 			counterIds: body.counterIds,
 			counterNames: body.counterIds.map((id) => names.get(id) ?? 'Someone'),
@@ -116,9 +125,9 @@ export class StockCountsService {
 					optionsLabel: fact.optionsLabel,
 					imageUrl: fact.galleryAssetId ? (images.get(fact.galleryAssetId) ?? null) : null,
 					soldBy: fact.soldBy,
-					atStart: fact.onHand,
+					atStart: onHand(fact),
 					soldDuring: 0,
-					expected: fact.onHand,
+					expected: onHand(fact),
 					counted: null,
 					difference: null,
 					valueINR: null,
@@ -149,7 +158,7 @@ export class StockCountsService {
 	private async refreshed(count: StockCount, seeCost: boolean): Promise<StockCount> {
 		const variantIds = count.lines.map((line) => line.variantId);
 		const [moved, layers] = await Promise.all([
-			this.stock.movedSince(variantIds, count.startedAt, count.id),
+			this.stock.movedSince(variantIds, count.startedAt, count.id, count.locationId ?? null),
 			seeCost ? this.stock.openLayers(variantIds) : Promise.resolve([]),
 		]);
 		const lines: StockCountLine[] = count.lines.map((line) => {
@@ -434,6 +443,7 @@ export class StockCountsService {
 							actor,
 							approver,
 							source: 'stock_count',
+							locationId: fresh.locationId ?? null,
 						},
 						context,
 					);

@@ -36,7 +36,7 @@ export const REPORT_KEYS = {
 	ageing: (side: AgeingSide) => ['reports', 'ageing', side] as const,
 	cashFlow: (query: PeriodQuery) => ['reports', 'cash-flow', query] as const,
 	ratios: (query: PeriodQuery) => ['reports', 'ratios', query] as const,
-	caroStock: (query: PeriodQuery) => ['reports', 'caro-stock', query] as const,
+	caroStock: (query: PeriodQuery & { locationId?: string }) => ['reports', 'caro-stock', query] as const,
 	audit: (query: Partial<AuditReportQuery>) => ['reports', 'audit', query] as const,
 };
 
@@ -54,7 +54,7 @@ export class ReportsGateway {
 		return this.http.get<PlByLocation>(this.api('pl-by-location'), { params: { ...query } });
 	}
 
-	caroStock(query: PeriodQuery): Observable<CaroStockReport> {
+	caroStock(query: PeriodQuery & { locationId?: string }): Observable<CaroStockReport> {
 		return this.http.get<CaroStockReport>(this.api('caro-stock'), { params: { ...query } });
 	}
 

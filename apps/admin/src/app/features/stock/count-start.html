@@ -103,6 +103,28 @@
 	<div class="row align-items-center g-2 mb-4">
 		<label
 			class="form-label-title col-sm-3 mb-0"
+			for="count_where"
+		>
+			{{ 'count_where' | transloco }}
+		</label>
+		<div class="col-sm-9">
+			<select
+				class="form-select"
+				id="count_where"
+				[ngModel]="locationId()"
+				(ngModelChange)="locationId.set($event)"
+			>
+				<option value="">{{ 'count_every_location' | transloco }}</option>
+				@for (l of warehouses.data() ?? []; track l.id) {
+				<option [value]="l.id">{{ l.name }}</option>
+				}
+			</select>
+			<p class="help-text">{{ 'count_where_help' | transloco }}</p>
+		</div>
+	</div>
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
 			for="count_blind"
 		>
 			{{ 'blind_count' | transloco }}

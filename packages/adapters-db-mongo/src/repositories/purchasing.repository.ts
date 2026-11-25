@@ -1469,12 +1469,14 @@ export class MongoStockReadRepository implements StockReadRepository {
 		variantIds: readonly string[],
 		since: string,
 		excludeReferenceId: string | null,
+		locationId: string | null = null,
 	): Promise<Map<string, number>> {
 		const match: FilterQuery<AggregateDoc> = {
 			variantId: { $in: [...variantIds] },
 			createdAt: { $gt: new Date(since) },
 		};
 		if (excludeReferenceId) match.referenceId = { $ne: excludeReferenceId };
+		if (locationId) match.locationId = locationId;
 		const rows = await InventoryLedgerModel.aggregate<{ _id: string; units: number }>([
 			{ $match: match },
 			{ $group: { _id: '$variantId', units: { $sum: '$quantityDelta' } } },

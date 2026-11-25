@@ -566,6 +566,8 @@ export const StockCount = z.object({
 	number: z.string(),
 	label: z.string(),
 	scope: StockCountScope,
+	/** SC1: the location counted; null for every location (and for counts made before locations). */
+	locationId: Id.nullable().default(null),
 	blind: z.boolean(),
 	counterIds: z.array(Id),
 	counterNames: z.array(z.string()),
@@ -613,6 +615,8 @@ export type StockCount = z.infer<typeof StockCount>;
 
 export const StockCountStart = z.object({
 	scope: StockCountScope,
+	/** Brief 25 SC1: where the count is taken; null counts every location as one. */
+	locationId: Id.nullable().default(null),
 	blind: z.boolean().default(true),
 	counterIds: z.array(Id).max(20).default([]),
 	label: z.string().trim().max(120).default(''),

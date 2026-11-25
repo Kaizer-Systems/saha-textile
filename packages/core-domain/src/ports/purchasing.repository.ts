@@ -397,11 +397,12 @@ export interface StockReadRepository {
 	}): Promise<{ items: StockLedgerRow[]; total: number }>;
 	/** Net units sold (orders placed less cancelled) per variant since an instant. */
 	soldSince(variantIds: readonly string[] | null, since: string): Promise<Map<string, number>>;
-	/** Net on-hand movement per variant since an instant, leaving out one reference (a count). */
+	/** Net on-hand movement per variant since an instant, leaving out one reference (a count); at one location when named. */
 	movedSince(
 		variantIds: readonly string[],
 		since: string,
 		excludeReferenceId: string | null,
+		locationId?: string | null,
 	): Promise<Map<string, number>>;
 	/** Variants with any ledger row at all (opening stock refuses them). */
 	withMovements(variantIds: readonly string[]): Promise<Set<string>>;

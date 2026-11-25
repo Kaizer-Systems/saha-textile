@@ -409,6 +409,15 @@ export class YearCloseService {
 			stockCount: {
 				posted: recent.filter((c) => c.status === 'posted').length,
 				open: recent.filter((c) => ['counting', 'review', 'awaiting_approval'].includes(c.status)).length,
+				// SC2: every warehouse counted, by a count of its own or one of every location.
+				uncounted: recent.some((c) => c.status === 'posted' && !c.locationId)
+					? 0
+					: books.locations.filter(
+							(l) =>
+								l.active &&
+								l.warehouse &&
+								!recent.some((c) => c.status === 'posted' && c.locationId === l.id),
+						).length,
 			},
 			transfersOpen: moving.flat().length,
 			depreciationDue: assets.filter(

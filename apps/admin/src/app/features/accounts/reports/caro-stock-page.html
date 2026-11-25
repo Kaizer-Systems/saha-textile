@@ -24,6 +24,18 @@
 				[ngModel]="to()"
 				(ngModelChange)="to.set($event)"
 			/>
+			<select
+				class="form-select w-auto"
+				id="caro_location"
+				[attr.aria-label]="'caro_location' | transloco"
+				[ngModel]="locationId()"
+				(ngModelChange)="locationId.set($event)"
+			>
+				<option value="">{{ 'count_every_location' | transloco }}</option>
+				@for (l of locations.data() ?? []; track l.id) {
+				<option [value]="l.id">{{ l.name }}</option>
+				}
+			</select>
 			<a
 				class="btn btn-outline"
 				routerLink="/accounts/reports"

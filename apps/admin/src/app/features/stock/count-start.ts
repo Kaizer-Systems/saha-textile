@@ -4,10 +4,12 @@ import { FormsModule } from '@angular/forms';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
+import { injectQuery } from '@tanstack/angular-query-experimental';
 import { Select2, type Select2Data, type Select2UpdateEvent } from 'ng-select2-component';
 import { catchError, firstValueFrom, of } from 'rxjs';
 
 import { apiProblem } from '@core/purchasing/purchasing-format';
+import { LOCATION_KEYS, LocationsGateway } from '@core/locations/locations.gateway';
 import { StockGateway } from '@core/purchasing/stock.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { injectAdminUsersQuery } from '@data-access/queries/admin-users.queries';
@@ -45,6 +47,15 @@ export class CountStart {
 	readonly categoryIds = signal<string[]>([]);
 	readonly items = signal<PurchaseItemOption[]>([]);
 	readonly blind = signal(true);
+	/** SC1: where the count is taken ('' for every location). */
+	readonly locationId = signal('');
+	private readonly locationsGateway = inject(LocationsGateway);
+	readonly warehouses = injectQuery(() => ({
+		queryKey: LOCATION_KEYS.list,
+		queryFn: () => firstValueFrom(this.locationsGateway.list()),
+		select: (rows: { id: string; name: string; active: boolean; warehouse: boolean }[]) =>
+			rows.filter((l) => l.active && l.warehouse),
+	}));
 	readonly counterIds = signal<string[]>([]);
 	readonly label = signal('');
 	readonly busy = signal(false);
@@ -103,6 +114,7 @@ export class CountStart {
 			const count: StockCount = await firstValueFrom(
 				this.gateway.startCount({
 					scope: this.scope(),
+					locationId: this.locationId() || null,
 					blind: this.blind(),
 					counterIds: this.counterIds(),
 					label: this.label().trim(),

@@ -47,7 +47,7 @@ describe('the CARO stock verification report (R1)', () => {
 			[APRIL, count('unposted', null), count('later', '2027-04-01T00:00:00.000Z'), ...outside],
 			[MARCH],
 		]);
-		const report = await service.report({ from: '2026-04-01', to: '2027-03-31' });
+		const report = await service.report({ from: '2026-04-01', to: '2027-03-31', locationId: null });
 		expect(counts.list.mock.calls.map(([q]) => q)).toEqual([
 			{ filter: 'posted', page: 1, pageSize: 200 },
 			{ filter: 'posted', page: 2, pageSize: 200 },
@@ -93,9 +93,10 @@ describe('the CARO stock verification report (R1)', () => {
 	});
 
 	it('reports nothing when no count was posted', async () => {
-		expect(await build([[]]).service.report({ from: '2026-04-01', to: '2027-03-31' })).toEqual({
+		expect(await build([[]]).service.report({ from: '2026-04-01', to: '2027-03-31', locationId: null })).toEqual({
 			from: '2026-04-01',
 			to: '2027-03-31',
+			locationId: null,
 			counts: [],
 			reportable: 0,
 		});
@@ -103,7 +104,7 @@ describe('the CARO stock verification report (R1)', () => {
 
 	it('answers on the reports route with accounts.index', async () => {
 		const caro = { report: vi.fn(async () => 'report') };
-		const period = { from: '2026-04-01', to: '2027-03-31' };
+		const period = { from: '2026-04-01', to: '2027-03-31', locationId: null };
 		expect(await new CaroStockController(caro as never).report(period)).toBe('report');
 		expect(caro.report).toHaveBeenCalledWith(period);
 		expect(new Reflector().get(PERMISSIONS_KEY, CaroStockController.prototype.report)).toEqual(['accounts.index']);

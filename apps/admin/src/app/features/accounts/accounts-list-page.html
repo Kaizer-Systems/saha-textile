@@ -25,16 +25,11 @@
 			{{ 'accounts_voucher_new' | transloco }}
 		</a>
 		}
-		<button
-			type="button"
-			class="btn btn-outline"
+		<app-export-menu
 			id="al_export"
 			[disabled]="busy()"
-			(click)="exportCsv()"
-		>
-			<i class="ri-download-2-line"></i>
-			{{ (kind() === 'dayBook' ? 'al_export_ca' : 'al_export_csv') | transloco }}
-		</button>
+			[source]="exportSource"
+		/>
 	</div>
 	<p class="small text-muted mb-3">{{ 'al_sub_' + kind() | transloco }}</p>
 	@if (group() === 'sales') {

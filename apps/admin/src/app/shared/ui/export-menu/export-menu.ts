@@ -110,18 +110,18 @@ export class ExportMenu {
 	private readonly notifier = inject(NotificationService);
 	private readonly transloco = inject(TranslocoService);
 
-	/** Gives the rows to export when a format is picked (null: nothing to export yet). */
-	readonly source = input.required<() => ExportSource | null>();
+	/** Gives the rows to export when a format is picked (null: nothing to export yet); may fetch every page first. */
+	readonly source = input.required<() => ExportSource | null | Promise<ExportSource | null>>();
 	readonly id = input('export_menu');
 	readonly disabled = input(false);
 	readonly formats: ExportFormat[] = ['csv', 'xlsx', 'pdf'];
 	readonly busy = signal(false);
 
 	async run(format: ExportFormat): Promise<void> {
-		const source = this.source()();
-		if (!source) return;
 		this.busy.set(true);
 		try {
+			const source = await this.source()();
+			if (!source) return;
 			const request = exportRequest(source, format);
 			const blob = await firstValueFrom(
 				this.http.post(`${runtimeConfig.apiUrl}/admin/exports`, request, { responseType: 'blob' }),

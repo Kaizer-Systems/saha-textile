@@ -10019,6 +10019,7 @@
 	"export_as_xlsx": "Excel (.xlsx)",
 	"export_as_pdf": "PDF",
 	"export_problem_failed": "The export didn't go through. Try again.",
+	"al_period": "Period",
 	"trial_balance_account": "Account",
 	"report_builder_help": "Pick what to report on, the columns and the filters; the preview updates as you go.",
 	"report_save_template": "Save as template",

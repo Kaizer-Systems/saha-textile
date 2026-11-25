@@ -10019,6 +10019,7 @@
 	"export_as_xlsx": "এক্সেল (.xlsx)",
 	"export_as_pdf": "PDF",
 	"export_problem_failed": "এক্সপোর্ট হয়নি। আবার চেষ্টা করুন।",
+	"al_period": "সময়কাল",
 	"trial_balance_account": "খাতা",
 	"report_builder_help": "কী নিয়ে রিপোর্ট, কোন কলাম আর ফিল্টার বেছে নিন; প্রিভিউ সঙ্গে সঙ্গে বদলায়।",
 	"report_save_template": "টেমপ্লেট হিসেবে সেভ",

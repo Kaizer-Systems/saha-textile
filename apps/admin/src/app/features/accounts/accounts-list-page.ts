@@ -14,6 +14,7 @@ import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { ADJUST_REASONS } from '@features/stock/adjust-popup';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { ExportMenu, type ExportSource } from '@shared/ui/export-menu/export-menu';
 import { ACCOUNTS_PRESETS, PeriodPicker, type PeriodChoice } from '@shared/ui/period-picker/period-picker';
 import { Table } from '@shared/ui/table/table';
 
@@ -133,7 +134,7 @@ export const CSV_HEAD = [
  */
 @Component({
 	selector: 'app-accounts-list-page',
-	imports: [PageWrapper, TranslocoModule, FormsModule, RouterLink, PeriodPicker, Table],
+	imports: [PageWrapper, TranslocoModule, FormsModule, RouterLink, PeriodPicker, Table, ExportMenu],
 	templateUrl: './accounts-list-page.html',
 })
 export class AccountsListPage {
@@ -329,6 +330,26 @@ export class AccountsListPage {
 			this.save(rows, 'all');
 		});
 	}
+
+	/** EX1: every row of the chip, period and search, for the Export menu (CSV, Excel or PDF). */
+	readonly exportSource = async (): Promise<ExportSource> => {
+		const rows: AccountsListRow[] = [];
+		for (let page = 1; ; page++) {
+			const part = await firstValueFrom(this.fetch({ ...this.query(), page, pageSize: 100 }));
+			rows.push(...part.items);
+			if (rows.length >= part.total || !part.items.length) break;
+		}
+		const t = (key: string) => this.transloco.translate(key);
+		const { from, to } = this.query();
+		return {
+			fileName: `${this.kind()}-all-${from}-${to}`,
+			title: t(`al_title_${this.kind()}`),
+			header: CSV_HEAD.map(t),
+			rows: csvRows(rows, t),
+			filters: [{ label: t('al_period'), value: `${from} – ${to}` }],
+			area: 'accounts',
+		};
+	};
 
 	private save(rows: readonly AccountsListRow[], what: string): void {
 		const t = (key: string) => this.transloco.translate(key);

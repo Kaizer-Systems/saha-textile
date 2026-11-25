@@ -167,6 +167,16 @@ describe('the Code pages’ reads', () => {
 		expect(ok<{ paths: string[] }>(await s.allPaths('p', 'r', 'dev')).paths).toHaveLength(4);
 	});
 
+	it('reads a path with nothing under it (a file) as an empty folder, without asking GitHub for a README', async () => {
+		const { copy, raw } = copyOf();
+		raw.run.mockImplementation(async () => '');
+		const s = new CodeService(reads, copy, store().store);
+		const sent = github([HEAD]);
+		const tree = ok<{ entries: unknown[]; readme: unknown }>(await s.tree('p', 'r', 'dev', 'AGENTS.md'));
+		expect(tree).toMatchObject({ entries: [], readme: null });
+		expect(sent.some((line) => line.includes('/readme'))).toBe(false);
+	});
+
 	it('reads a file (with its Preview when Markdown), its bytes, its blame, a community file and a search', async () => {
 		const { copy } = copyOf();
 		const s = new CodeService(reads, copy, store().store);

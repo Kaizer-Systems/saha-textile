@@ -83,15 +83,18 @@ import type { PullFile, RepoInfo } from '@saha-textile/release-console-contracts
 					<rc-icon name="tabler/copy" />
 				</button>
 			</span>
-			<button
-				type="button"
-				class="rc-btn ghost"
-				aria-keyshortcuts="t"
-				(click)="nav.finding.set(true)"
-			>
-				Go to file
+			<span class="rc-msearch">
+				<input
+					readonly
+					aria-label="Go to file"
+					aria-haspopup="dialog"
+					aria-keyshortcuts="t"
+					placeholder="Go to file"
+					(click)="nav.finding.set(true)"
+					(keydown.enter)="nav.finding.set(true)"
+				/>
 				<kbd>t</kbd>
-			</button>
+			</span>
 		</div>
 		<div
 			class="rc-g-side rc-cov-split open rc-pr-split"

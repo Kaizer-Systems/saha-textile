@@ -214,6 +214,7 @@ const run = (c: Record<string, unknown>, name: string, ...args: unknown[]) => {
 
 beforeEach(() => {
 	Element.prototype.scrollIntoView = vi.fn();
+	window.scrollTo = vi.fn();
 });
 afterEach(() => vi.unstubAllGlobals());
 

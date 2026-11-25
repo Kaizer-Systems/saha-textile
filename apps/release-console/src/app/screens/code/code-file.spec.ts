@@ -136,6 +136,7 @@ const key = (k: string, target: Element = document.body, more: Partial<KeyboardE
 
 beforeEach(() => {
 	Element.prototype.scrollIntoView = vi.fn();
+	window.scrollTo = vi.fn();
 	URL.createObjectURL = vi.fn(() => 'blob:x');
 	URL.revokeObjectURL = vi.fn();
 });

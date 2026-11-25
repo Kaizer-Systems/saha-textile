@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 
 import { injectQuery, injectQueryClient } from '@tanstack/angular-query-experimental';
 
@@ -74,17 +74,18 @@ import type { RepoInfo } from '@saha-textile/release-console-contracts';
 						}
 					</span>
 					<span class="rc-row">
-						<!-- The same wrapper as Add file and Code, so the three sit on one line. -->
+						<!-- GitHub's Go to file box: the console's menu search box, which opens the finder (t). -->
 						<span class="rc-msearch">
-							<button
-								type="button"
-								class="rc-btn ghost"
+							<input
+								readonly
+								aria-label="Go to file"
+								aria-haspopup="dialog"
 								aria-keyshortcuts="t"
+								placeholder="Go to file"
 								(click)="nav.finding.set(true)"
-							>
-								Go to file
-								<kbd>t</kbd>
-							</button>
+								(keydown.enter)="nav.finding.set(true)"
+							/>
+							<kbd>t</kbd>
 						</span>
 						<span
 							class="rc-msearch"
@@ -605,6 +606,14 @@ export class CodeHome {
 		const a = this.q.data();
 		return a && a.state !== 'ok' ? a.message : 'The folder could not be read.';
 	});
+	constructor() {
+		// Git keeps no empty folders: a folder address with nothing under it names a file, which opens in its place,
+		// as GitHub sends a folder address that names a file to the file's page.
+		effect(() => {
+			const t = this.tree();
+			if (t?.path && !t.entries.length) untracked(() => this.nav.at(this.ref(), t.path, 'blob', null, true));
+		});
+	}
 	readonly crumbs = computed(() => crumbsOf(this.nav.path()));
 	readonly parent = computed(() => parentOf(this.nav.path()));
 	readonly clone = computed(() => cloneWays(this.info().owner, this.info().name));

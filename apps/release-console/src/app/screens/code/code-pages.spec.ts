@@ -1,3 +1,4 @@
+import { ViewportScroller } from '@angular/common';
 import { type Type, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
@@ -165,6 +166,7 @@ const key = (k: string, target: Element = document.body, more: Partial<KeyboardE
 
 beforeEach(() => {
 	Element.prototype.scrollIntoView = vi.fn();
+	window.scrollTo = vi.fn();
 	URL.createObjectURL = vi.fn(() => 'blob:x');
 	URL.revokeObjectURL = vi.fn();
 });
@@ -267,6 +269,19 @@ describe('a folder', () => {
 		expect(params(router).get('type')).toBe('blob');
 	});
 
+	it('opens a folder address with nothing under it as a file, in the address’s place in the history', async () => {
+		const api = apiOf();
+		api.codeTree.mockImplementation(async (_p: string, _r: string, ref: string, path: string) =>
+			ok({ ...TREE, ref, path, entries: [], readme: null }),
+		);
+		const moves = vi.spyOn(Router.prototype, 'navigate');
+		const { router } = await render(CodeHome, '/?tab=files&path=AGENTS.md', { info: INFO, ref: 'main' }, api);
+		expect(params(router).get('type')).toBe('blob');
+		expect(params(router).get('path')).toBe('AGENTS.md');
+		expect(moves).toHaveBeenCalledWith([], expect.objectContaining({ replaceUrl: true }));
+		moves.mockRestore();
+	});
+
 	it('reads a subfolder without the right column, and says why a read failed', async () => {
 		const api = apiOf();
 		api.codeDoc.mockResolvedValue(refused('No such file') as never);
@@ -363,5 +378,26 @@ describe('a folder', () => {
 		expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:x');
 		click.mockRestore();
 		vi.useRealTimers();
+	});
+});
+
+describe('moving around the Code page', () => {
+	it('starts a new folder, file or tab at the top of the page; marked lines and views keep their place', async () => {
+		const { settle } = await render(CodeHome, '/?tab=files', { info: INFO, ref: 'main' });
+		const nav = TestBed.inject(CodeNav);
+		const top = vi.spyOn(TestBed.inject(ViewportScroller), 'scrollToPosition').mockImplementation(() => undefined);
+		nav.at('main', 'apps', 'tree');
+		await settle();
+		expect(top).toHaveBeenCalledTimes(1);
+		nav.at('main', 'README.md', 'blob', 'L3');
+		await settle();
+		expect(top).toHaveBeenCalledTimes(1);
+		nav.go({ view: 'blame' });
+		await settle();
+		expect(top).toHaveBeenCalledTimes(1);
+		nav.open('commits');
+		await settle();
+		expect(top).toHaveBeenCalledTimes(2);
+		expect(top).toHaveBeenLastCalledWith([0, 0]);
 	});
 });

@@ -68,10 +68,12 @@ type Change = 'watch' | 'star' | 'fork';
 								class="rc-search"
 								type="search"
 								aria-label="Search this repository"
-								placeholder="Search this repository  /"
+								placeholder="Search this repository"
+								aria-keyshortcuts="/"
 								[value]="words()"
 								(input)="words.set($any($event.target).value)"
 							/>
+							<kbd>/</kbd>
 						</form>
 						<span
 							class="rc-msearch"

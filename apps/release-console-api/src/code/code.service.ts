@@ -124,7 +124,10 @@ export class CodeService {
 				const dir = await this.ready(repo, key, sha);
 				return lastCommits(this.git, dir, sha, path, await folderEntries(this.git, dir, sha, path));
 			});
-			return { ref, sha, path, head, commits, entries, readme: await readmeOf(repo, key, ref, path) };
+			// Git keeps no empty folders, so a path with nothing under it names a file (or nothing) and has no README;
+			// the page then opens it as a file, as GitHub does with a folder address that names one.
+			const readme = path && !entries.length ? null : await readmeOf(repo, key, ref, path);
+			return { ref, sha, path, head, commits, entries, readme };
 		});
 	}
 

@@ -222,7 +222,8 @@ describe('Payroll › Increments (SR3)', () => {
 	it('narrows the cycle by store, department and joining date', async () => {
 		const { page, find, enter } = await increments();
 		expect(values(find('#inc_store'))).toEqual(['', 'l1', 'l2']);
-		expect(values(find('#inc_department'))).toEqual(['', 'Accounts', 'Sales', 'Stores']);
+		// Departments of current staff only: Accounts had only a leaver.
+		expect(values(find('#inc_department'))).toEqual(['', 'Sales', 'Stores']);
 		await enter(find('#inc_store'), 'l1');
 		expect(page.people().map((e) => e.id)).toEqual(['e1', 'e3']);
 		await enter(find('#inc_department'), 'Sales');
@@ -484,5 +485,68 @@ describe('Payroll › Increments (SR3)', () => {
 			['Rafiq Ali', 'A', 150_000, 3, 154_500, 375, 'no'],
 			['Mitali Sen', 'A', 240_000, 5, 252_000, 1_000, 'yes'],
 		]);
+	});
+
+	it('accepts only a breakup of what is typed now, dimming one still to come, kept from before, or for a part date', async () => {
+		const waiting = await increments({ waiting: true, gateway: { incrementsPreview: vi.fn(() => NEVER) } });
+		waiting.page.reason.set('FY27 cycle');
+		await waiting.settle();
+		const dimmed = (find: typeof waiting.find) => find('.table-responsive')?.classList.contains('opacity-50');
+		expect([
+			waiting.page.current(),
+			dimmed(waiting.find),
+			waiting.find<HTMLButtonElement>('#inc_accept')?.disabled,
+		]).toEqual([false, true, true]);
+		const { page, gateway, find, enter, settle, fixture } = await increments();
+		page.reason.set('FY27 cycle');
+		await settle();
+		const accept = find<HTMLButtonElement>('#inc_accept') as HTMLButtonElement;
+		expect([page.current(), dimmed(find), accept.disabled]).toEqual([true, false, false]);
+		// A part date: the rows kept from before stay, dimmed, and Accept waits.
+		await enter(find('#inc_from'), '');
+		expect([page.preview.data() !== undefined, page.current(), dimmed(find), accept.disabled]).toEqual([
+			true,
+			false,
+			true,
+			true,
+		]);
+		await enter(find('#inc_from'), '2027-04-01');
+		expect([page.current(), accept.disabled]).toEqual([true, false]);
+		// While a new plan is worked out, the last rows show dimmed.
+		gateway.incrementsPreview.mockReturnValue(NEVER);
+		page.pct.set(7);
+		page.kind.set('percent');
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		fixture.detectChanges();
+		expect([page.preview.isPlaceholderData(), page.current(), dimmed(find), accept.disabled]).toEqual([
+			true,
+			false,
+			true,
+			true,
+		]);
+	});
+
+	it('names a new band by the next number not already used', async () => {
+		const { page } = await increments();
+		page.addBand();
+		page.removeBand(0);
+		expect(page.bands().map((b) => b.rating)).toEqual(['A', 'B', 'C', 'R5']);
+		page.addBand();
+		expect(page.bands().map((b) => b.rating)).toEqual(['A', 'B', 'C', 'R5', 'R6']);
+	});
+
+	it('takes a cleared % box back to the band or the plan’s %', async () => {
+		const { page, find, enter } = await increments();
+		const asha = STAFF[0] as EmployeeView;
+		await enter(find('#inc_pct_e1'), '10');
+		expect(page.pctOf(asha)).toBe(10);
+		await enter(find('#inc_pct_e1'), '');
+		expect([page.typedPct(), page.pctOf(asha)]).toEqual([{}, 8]);
+		page.kind.set('percent');
+		for (const cleared of ['', null, undefined]) {
+			page.setPct('e1', 4);
+			page.setPct('e1', cleared);
+			expect(page.pctOf(asha)).toBe(5);
+		}
 	});
 });

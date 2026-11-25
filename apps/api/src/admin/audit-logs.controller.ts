@@ -45,4 +45,11 @@ export class AuditLogsController {
 	list(@Query(new ZodValidationPipe(AuditLogListQuery)) query: AuditLogListQuery): Promise<AuditLogListResponse> {
 		return this.auditLogs.list(query);
 	}
+
+	@Get('people')
+	@RequirePermissions('audit.index')
+	@ApiOperation({ operationId: 'auditLogPeople', summary: 'Everyone who can appear in the trail, by name (AU1)' })
+	people() {
+		return this.auditLogs.people();
+	}
 }

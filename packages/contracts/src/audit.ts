@@ -115,7 +115,10 @@ export type AuditLogListQuery = z.infer<typeof AuditLogListQuery>;
  * `metadata` are redacted before they are ever written (owner lock 2026-07-23 — secrets,
  * tokens and PAN are never persisted), so the read model does not re-litigate that.
  */
-export const AuditLogEntry = AuditLog.omit({ ipHash: true, userAgentHash: true });
+export const AuditLogEntry = AuditLog.omit({ ipHash: true, userAgentHash: true }).extend({
+	/** Brief 26 AU1: the person's name as the admin shows it, when the reader is given it. */
+	actorName: z.string().nullable().optional(),
+});
 export type AuditLogEntry = z.infer<typeof AuditLogEntry>;
 
 /** `GET /admin/audit-logs` response. */

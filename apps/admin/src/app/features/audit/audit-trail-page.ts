@@ -84,6 +84,15 @@ export class AuditTrailPage {
 		placeholderData: keepPreviousData,
 	}));
 	readonly pages = computed(() => Math.max(1, Math.ceil((this.list.data()?.total ?? 0) / this.pageSize)));
+	/** The Who picker: everyone by name. */
+	readonly people = injectQuery(() => ({
+		queryKey: ['audit', 'people'] as const,
+		queryFn: () => firstValueFrom(this.gateway.people()),
+	}));
+	/** A record's person by name, else their id, else the system. */
+	who(e: AuditLogEntry): string {
+		return e.actorName ?? e.actorUserId ?? this.transloco.translate('wl_system');
+	}
 
 	/** A filter changed: back to the first page. */
 	set(which: 'module' | 'action' | 'actor' | 'from' | 'to', value: string): void {
@@ -102,8 +111,20 @@ export class AuditTrailPage {
 		this.modals.open(template, { centered: true, size: 'lg' });
 	}
 
-	readonly exportSource = (): ExportSource => {
+	/** Every record the filters match, read 200 at a time (the trail's own page limit), for the export. */
+	private async everything(): Promise<AuditLogEntry[]> {
+		const out: AuditLogEntry[] = [];
+		for (let page = 1; page <= 500; page++) {
+			const found = await firstValueFrom(this.gateway.list({ ...this.query(), page, pageSize: 200 }));
+			out.push(...found.items);
+			if (page * 200 >= found.total) break;
+		}
+		return out;
+	}
+
+	readonly exportSource = async (): Promise<ExportSource> => {
 		const t = (key: string) => this.transloco.translate(key);
+		const all = await this.everything();
 		return {
 			fileName: 'audit-trail',
 			title: t('atr_title'),
@@ -112,9 +133,9 @@ export class AuditTrailPage {
 				...(this.from() || this.to() ? [{ label: t('atr_when'), value: `${this.from()} – ${this.to()}` }] : []),
 			],
 			header: [t('atr_when'), t('atr_who'), t('atr_module'), t('atr_action'), t('atr_record'), t('atr_what')],
-			rows: (this.list.data()?.items ?? []).map((e) => [
+			rows: all.map((e) => [
 				e.createdAt,
-				e.actorUserId ?? '',
+				e.actorName ?? e.actorUserId ?? '',
 				this.moduleOf(e),
 				e.action,
 				`${e.entityType ?? ''} ${e.entityId ?? ''}`.trim(),

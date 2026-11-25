@@ -121,11 +121,13 @@ export class AttendancePage {
 		});
 		effect(() => {
 			const want = this.wanted();
-			const person = this.grid.data()?.people.find((p) => p.employeeId === want?.employeeId);
+			const grid = this.grid.data();
 			const template = this.dayModal();
-			if (!want || !person || !template) return;
+			if (!want || !grid || !template) return;
+			// The first month read settles the link: the day opens when the person is in it, and never later.
 			this.wanted.set(null);
-			this.openDay(template, person, want.day);
+			const person = grid.people.find((p) => p.employeeId === want.employeeId);
+			if (person) this.openDay(template, person, want.day);
 		});
 	}
 

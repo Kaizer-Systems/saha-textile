@@ -45,13 +45,17 @@
 				>
 					{{ 'atr_who' | transloco }}
 				</label>
-				<input
-					class="form-control"
+				<select
+					class="form-select"
 					id="au_actor"
-					maxlength="80"
 					[ngModel]="actor()"
 					(ngModelChange)="set('actor', $event)"
-				/>
+				>
+					<option value="">{{ 'atr_anyone' | transloco }}</option>
+					@for (p of people.data() ?? []; track p.id) {
+					<option [value]="p.id">{{ p.name }}</option>
+					}
+				</select>
 			</div>
 			<div>
 				<label
@@ -107,7 +111,7 @@
 					(click)="show(detail, e)"
 				>
 					<td class="text-nowrap">{{ when(e.createdAt) }}</td>
-					<td>{{ e.actorUserId ?? ('wl_system' | transloco) }}</td>
+					<td>{{ who(e) }}</td>
 					<td>{{ moduleOf(e) }} · {{ e.action }}</td>
 					<td>{{ e.entityType }} {{ e.entityId }}</td>
 					<td>{{ changeLine(e) || '—' }}</td>
@@ -165,8 +169,8 @@
 		</div>
 		<div class="modal-body">
 			<p class="mb-2">
-				{{ 'atr_who' | transloco }}: {{ e?.actorUserId ?? ('wl_system' | transloco) }} · {{ 'atr_record' |
-				transloco }}: {{ e?.entityType }} {{ e?.entityId }}
+				{{ 'atr_who' | transloco }}: {{ e ? who(e) : '' }} · {{ 'atr_record' | transloco }}: {{ e?.entityType }}
+				{{ e?.entityId }}
 			</p>
 			<div class="table-responsive">
 				<table class="all-package theme-table no-footer table">

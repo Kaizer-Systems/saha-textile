@@ -314,4 +314,35 @@ describe('Revise pay (SR2)', () => {
 		find<HTMLButtonElement>('.modal-footer .btn-outline')?.click();
 		expect(active.dismiss).toHaveBeenCalledTimes(2);
 	});
+
+	it('holds Accept and dims the breakup while what is typed can’t be worked out, or only the last one shows', async () => {
+		const { fixture, popup, gateway, find, enter, pick } = mount();
+		popup.start({ ...ASHA, ctcYearINR: undefined } as unknown as EmployeeView);
+		popup.reason.set('Annual increment');
+		await settle(fixture);
+		const accept = find<HTMLButtonElement>('#rev_accept') as HTMLButtonElement;
+		const breakup = () => find<HTMLElement>('.table-responsive')?.classList.contains('opacity-50');
+		expect([accept.disabled, breakup()]).toEqual([false, false]);
+		// "To a CTC" with no figure: the % breakup stays, dimmed, and Accept waits.
+		await pick('#rev_kind_ctc');
+		expect([popup.ready(), popup.preview.data() !== undefined, accept.disabled, breakup()]).toEqual([
+			false,
+			true,
+			true,
+			true,
+		]);
+		await enter(find('#rev_ctc'), '360000');
+		expect([accept.disabled, breakup()]).toEqual([false, false]);
+		await enter(find('#rev_from'), '');
+		expect([popup.ready(), accept.disabled, breakup()]).toEqual([false, true, true]);
+		await enter(find('#rev_from'), '2026-12-01');
+		expect([accept.disabled, breakup()]).toEqual([false, false]);
+		// While a new figure is worked out, the last breakup shows dimmed.
+		gateway.revisionPreview.mockReturnValue(NEVER);
+		(find('#rev_ctc') as HTMLInputElement).value = '420000';
+		find('#rev_ctc')?.dispatchEvent(new Event('input'));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		fixture.detectChanges();
+		expect([popup.preview.isPlaceholderData(), accept.disabled, breakup()]).toEqual([true, true, true]);
+	});
 });

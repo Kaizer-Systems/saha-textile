@@ -4271,6 +4271,18 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
   the three test chats as each piece landed. Portal pages `docs/accounts/expense-bills.md`, `docs/admin/exports.md`,
   `docs/accounts/payroll-rules.md`, `docs/accounts/year-close.md`, `docs/admin/purchases-and-stock.md`. Not checked in
   the browser yet.
+- 2026-11-25 — [DONE] **Brief 25 checked in the browser (owner, 25 Nov "all have to be checked in a browser").** A kept
+  partnership books run (sandbox API on 4097, admin build on 4311) walked expense bills, supplier payments, the Export
+  menu, payroll rules, the run, payslips, statutory returns, counts and CARO; 17 findings, all fixed and re-checked:
+  `c01a5917` (export PDFs name the printer in IST; the PDF queue keeps footerHtml; payslips' PF admin and EDLI share
+  and PS number; expense ledgers leave out appropriation ledgers; Supplier bills counts expense-bill payments),
+  `c706238c` (supplier Record payment pays expense bills; saved bill's supplier; readable dates; EB1's six columns;
+  voucher Drafts tab; payroll run full width with the name pinned; count header names the location; CARO Export menu
+  and title), `a5f69f61` (expense bills on the schema graph's reconciliation list, for CI). 40% GST on purchase
+  entries `c5a1c8df`. The export page numbers need the document worker restarted on the new build (the running
+  `dist/worker.js` dates from 24 Nov). Admin specs for the new branches are with the admin test chat. Brief 26 (payroll
+  rules for every State, 80D, ₹10 rounding, metro list, Labour Codes) awaits the owner:
+  https://claude.ai/artifact/NUdmapxmXHnxENeeJZG4yd
 
 ## Integration (storefront ↔ API ↔ admin ↔ DB ↔ Meili ↔ Spaces)
 

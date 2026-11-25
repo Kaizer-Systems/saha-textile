@@ -486,7 +486,10 @@ const ISD_SCENARIO = {
 			note: '',
 		});
 		check(
-			!draftBill.interState && draftBill.cgstINR === 90 && draftBill.sgstINR === 90 && draftBill.totalINR === 1180,
+			!draftBill.interState &&
+				draftBill.cgstINR === 90 &&
+				draftBill.sgstINR === 90 &&
+				draftBill.totalINR === 1180,
 			'Within Maharashtra: CGST ₹90 and SGST ₹90, ₹1,180 owed',
 			JSON.stringify([draftBill.cgstINR, draftBill.sgstINR, draftBill.igstINR, draftBill.totalINR]),
 		);
@@ -533,11 +536,7 @@ const ISD_SCENARIO = {
 		const voucher = await admin.ok('GET', `/admin/accounts/vouchers/${six.distributionVoucherId}`);
 		const debit = (voucher.lines ?? []).reduce((sum, l) => sum + l.debitPaise, 0);
 		const credit = (voucher.lines ?? []).reduce((sum, l) => sum + l.creditPaise, 0);
-		check(
-			debit === 18_000 && credit === 18_000,
-			'The distribution journal balances at ₹180',
-			`${debit}/${credit}`,
-		);
+		check(debit === 18_000 && credit === 18_000, 'The distribution journal balances at ₹180', `${debit}/${credit}`);
 		return `ISD ${isdGstin}`;
 	},
 };

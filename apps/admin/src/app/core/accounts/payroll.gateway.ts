@@ -13,6 +13,11 @@ import type {
 	EmployeeView,
 	EmployeeWriteInput,
 	IncomeTaxView,
+	IncrementPlan,
+	IncrementPlanWriteInput,
+	IncrementRowPreview,
+	IncrementRowResult,
+	IncrementRowsInputValue,
 	PayrollRulesVersion,
 	PayrollRulesWriteInput,
 	PayrollRun,
@@ -46,6 +51,7 @@ export const PAYROLL_KEYS = {
 	advances: ['payroll', 'advances'] as const,
 	advance: (employeeId: string) => ['payroll', 'advance', employeeId] as const,
 	bonus: (year: string) => ['payroll', 'bonus', year] as const,
+	incrementPlans: ['payroll', 'increment-plans'] as const,
 };
 
 /** Payroll (accounts brief S). */
@@ -64,6 +70,27 @@ export class PayrollGateway {
 
 	updateEmployee(id: string, write: EmployeeWriteInput & { version: number }): Observable<EmployeeView> {
 		return this.http.put<EmployeeView>(this.api(`employees/${encodeURIComponent(id)}`), write);
+	}
+
+	/** Brief 26 SR3: increment plans saved by name, and a cycle's rows worked out and accepted. */
+	incrementPlans(): Observable<IncrementPlan[]> {
+		return this.http.get<IncrementPlan[]>(this.api('increment-plans'));
+	}
+
+	saveIncrementPlan(write: IncrementPlanWriteInput): Observable<IncrementPlan> {
+		return this.http.put<IncrementPlan>(this.api('increment-plans'), write);
+	}
+
+	deleteIncrementPlan(id: string): Observable<void> {
+		return this.http.delete<void>(this.api(`increment-plans/${encodeURIComponent(id)}`));
+	}
+
+	incrementsPreview(input: IncrementRowsInputValue): Observable<IncrementRowPreview[]> {
+		return this.http.post<IncrementRowPreview[]>(this.api('increments/preview'), input);
+	}
+
+	acceptIncrements(input: IncrementRowsInputValue): Observable<IncrementRowResult[]> {
+		return this.http.post<IncrementRowResult[]>(this.api('increments/accept'), input);
 	}
 
 	/** Brief 26 SR2: a revision worked out, and accepted. */

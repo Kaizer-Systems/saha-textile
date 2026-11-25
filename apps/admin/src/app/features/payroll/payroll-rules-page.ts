@@ -748,7 +748,7 @@ export class PayrollRulesPage {
 				i !== index
 					? w
 					: {
-							from: from ?? w.from,
+							from: from || w.from,
 							levels: level
 								? {
 										...w.levels,

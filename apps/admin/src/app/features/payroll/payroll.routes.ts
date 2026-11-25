@@ -18,6 +18,7 @@ export default [
 		path: 'structures',
 		loadComponent: () => import('./salary-structures-page').then((m) => m.SalaryStructuresPage),
 	},
+	{ path: 'increments', loadComponent: () => import('./increments-page').then((m) => m.IncrementsPage) },
 	{ path: 'advances', loadComponent: () => import('./advances-page').then((m) => m.AdvancesPage) },
 	{ path: 'advances/:employeeId', loadComponent: () => import('./advances-page').then((m) => m.AdvancesPage) },
 	{

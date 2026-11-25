@@ -505,6 +505,15 @@ export const menu: IMenu[] = [
 				level: 2,
 				permission: ['accounts.index'],
 			},
+			// Brief 26 SR3: increment cycles.
+			{
+				parent_id: 27,
+				title: 'payroll_increments',
+				path: '/payroll/increments',
+				type: 'link',
+				level: 2,
+				permission: ['accounts.edit'],
+			},
 			{
 				parent_id: 27,
 				title: 'payroll_advances',

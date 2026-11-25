@@ -333,4 +333,53 @@ describe('holidays and shifts in the add-a-version pop-up (LV1, AT1, AT2)', () =
 		page.toggleOff(0, 1);
 		expect(page.form()).toBeNull();
 	});
+
+	it('offers each shift its own store and the stores without a shift, so a store has one shift', async () => {
+		const { page, redraw } = await editing();
+		await click(redraw, modal('#pr_shift_add'));
+		await click(redraw, modal('#pr_shift_add'));
+		const ids = (index: number) => page.shiftStores(index).map((l) => l.id);
+		expect([ids(0), ids(1)]).toEqual([
+			['loc_b', 'loc_p', 'loc_w'],
+			['loc_s', 'loc_p', 'loc_w'],
+		]);
+		expect(optionsOf('#pr_shift_store_0').map(([id]) => id)).toEqual(['loc_b', 'loc_p', 'loc_w']);
+		expect(optionsOf('#pr_shift_store_1').map(([id]) => id)).toEqual(['loc_s', 'loc_p', 'loc_w']);
+		// A place with no shift yet may take any store not taken.
+		expect(ids(2)).toEqual(['loc_p', 'loc_w']);
+		await enter(redraw, modal('#pr_shift_store_1'), 'loc_w');
+		expect(optionsOf('#pr_shift_store_0').map(([id]) => id)).toEqual(['loc_b', 'loc_s', 'loc_p']);
+		page.form.set(null);
+		expect(ids(0)).toEqual(['loc_b', 'loc_s', 'loc_p', 'loc_w']);
+		const loading = await editing({ locations: null });
+		expect(loading.page.shiftStores(0)).toEqual([]);
+	});
+
+	it('waits to save until every holiday in every State has a name, marking the one without', async () => {
+		const { page, redraw } = await editing();
+		const save = [...document.querySelectorAll('.hs-test-modal button')].find(
+			(b) => text(b) === 'payroll_rules_save',
+		) as HTMLButtonElement;
+		expect([page.unnamedHoliday(), save.disabled]).toEqual([false, false]);
+		page.stateSection.set('holidays');
+		await redraw();
+		await click(redraw, modal('#pr_holiday_add'));
+		expect([page.unnamedHoliday(), save.disabled]).toEqual([true, true]);
+		expect(modal('#pr_holiday_name_0')?.classList.contains('is-invalid')).toBe(true);
+		await enter(redraw, modal('#pr_holiday_name_0'), '   ');
+		expect([page.unnamedHoliday(), modal('#pr_holiday_name_0')?.classList.contains('is-invalid')]).toEqual([
+			true,
+			true,
+		]);
+		await enter(redraw, modal('#pr_holiday_name_0'), 'Kali Puja');
+		expect([page.unnamedHoliday(), save.disabled]).toEqual([false, false]);
+		expect(modal('#pr_holiday_name_0')?.classList.contains('is-invalid')).toBe(false);
+		// Another State's unnamed holiday holds Save too.
+		page.stateAt.set(1);
+		await redraw();
+		await click(redraw, modal('#pr_holiday_add'));
+		expect([page.unnamedHoliday(), save.disabled]).toEqual([true, true]);
+		page.form.set(null);
+		expect(page.unnamedHoliday()).toBe(false);
+	});
 });

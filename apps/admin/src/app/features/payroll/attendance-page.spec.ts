@@ -81,6 +81,8 @@ const ASHA: Person = {
 	withoutPay: 1,
 	lateMarks: 2,
 	unmarked: 3,
+	// The days on her roll nobody marked, as the API names them; the 27th is still to come.
+	unmarkedDays: ['2026-11-06', '2026-11-07', '2026-11-27'],
 };
 const RAFIQ: Person = {
 	employeeId: 'emp_2',
@@ -91,6 +93,7 @@ const RAFIQ: Person = {
 	withoutPay: 0,
 	lateMarks: 0,
 	unmarked: 0,
+	unmarkedDays: [],
 };
 const grid = (over: Partial<AttendanceMonthGrid> = {}): AttendanceMonthGrid => ({
 	month: '2026-11',
@@ -380,7 +383,8 @@ describe('Payroll › Attendance (AT2, AT3)', () => {
 		page.report.set('absences');
 		const absences = page.exportSource();
 		expect(absences?.header).toEqual(['payroll_col_name', 'date', 'att_day']);
-		expect(absences?.rows.filter((r) => r[0] === 'Asha Das').slice(0, 3)).toEqual([
+		// Days marked absent, and the days nobody marked up to today: none still to come or off the roll.
+		expect(absences?.rows).toEqual([
 			['Asha Das', '2026-11-03', 'att_status_absent'],
 			['Asha Das', '2026-11-06', 'att_not_marked'],
 			['Asha Das', '2026-11-07', 'att_not_marked'],
@@ -484,10 +488,17 @@ describe('Payroll › Attendance (AT2, AT3)', () => {
 			outTime: '',
 			was: 'att_status_incomplete',
 		});
+		// A blank day says what the grid shows: a holiday, a weekly off, or not marked.
 		find<HTMLButtonElement>('#att_cell_emp_2_2026-11-14')?.click();
 		await redraw();
-		expect(page.form()).toMatchObject({ status: 'present', leaveKey: 'EL', was: 'att_not_marked' });
+		expect(page.form()).toMatchObject({ status: 'present', leaveKey: 'EL', was: 'att_status_holiday' });
 		expect(inModal('#att_day_status')?.parentElement?.className).toBe('col-12');
+		find<HTMLButtonElement>('#att_cell_emp_2_2026-11-08')?.click();
+		await redraw();
+		expect(page.form()?.was).toBe('att_status_weekly_off');
+		find<HTMLButtonElement>('#att_cell_emp_2_2026-11-03')?.click();
+		await redraw();
+		expect(page.form()?.was).toBe('att_not_marked');
 	});
 
 	it('opens a day with no leave type where the store’s State has none', async () => {

@@ -156,6 +156,7 @@ export const FIXED_ASSET_REPOSITORY = Symbol('FixedAssetRepository');
 export const RECURRING_ENTRY_REPOSITORY = Symbol('RecurringEntryRepository');
 export const EMPLOYEE_REPOSITORY = Symbol('EmployeeRepository');
 export const ATTENDANCE_REPOSITORY = Symbol('AttendanceRepository');
+export const ATTENDANCE_DAY_REPOSITORY = Symbol('AttendanceDayRepository');
 export const PAYROLL_RUN_REPOSITORY = Symbol('PayrollRunRepository');
 export const PAYROLL_RULES_REPOSITORY = Symbol('PayrollRulesRepository');
 export const SALARY_TEMPLATE_REPOSITORY = Symbol('SalaryTemplateRepository');

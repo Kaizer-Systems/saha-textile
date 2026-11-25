@@ -1,3 +1,5 @@
+import type { LeaveType } from './leave';
+
 /**
  * Professional tax and the labour welfare fund per State (brief 25 ST1, ST2; approved 2026-11-25). Pure. Each dated
  * payroll-rules version holds a set per State, entered by the admin or the CA from the State's notification; a person
@@ -29,6 +31,8 @@ export interface StateRules {
 	ptExemptFromAge?: number | null;
 	/** PT1: no tax for a person with a disability of 40% or more, when the State's Act says so. */
 	ptExemptDisability?: boolean;
+	/** Brief 26 LV1: the State's leave types, each with its rules. */
+	leaveTypes?: readonly LeaveType[];
 	/** Months a half-yearly or yearly tax is deducted in. */
 	ptMonths: readonly number[];
 	ptDueDay: number;

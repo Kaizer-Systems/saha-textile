@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import {
+	MongoAttendanceDayRepository,
 	MongoAttendanceRepository,
 	MongoEmployeeRepository,
 	MongoPayrollAdvanceRepository,
@@ -10,6 +11,7 @@ import {
 
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import {
+	ATTENDANCE_DAY_REPOSITORY,
 	ATTENDANCE_REPOSITORY,
 	EMPLOYEE_REPOSITORY,
 	PAYROLL_ADVANCE_REPOSITORY,
@@ -21,6 +23,7 @@ import { DocumentsModule } from '../documents/documents.module';
 import { LedgerModule } from '../ledger/ledger.module';
 import { OrdersSetupModule } from '../orders-setup/orders-setup.module';
 
+import { AttendanceDaysController, AttendanceDaysService } from './attendance-days';
 import { PayrollAdvancesService } from './payroll-advances.service';
 import { PayrollReturnsService } from './payroll-returns.service';
 import { PayrollRulesService } from './payroll-rules.service';
@@ -38,19 +41,21 @@ export function employeeStoreFor(config: Pick<AppConfig, 'payroll'>): MongoEmplo
 /** Payroll (accounts brief S). */
 @Module({
 	imports: [LedgerModule, DocumentsModule, OrdersSetupModule],
-	controllers: [PayrollController, PayrollSetupController],
+	controllers: [PayrollController, PayrollSetupController, AttendanceDaysController],
 	providers: [
 		PayrollService,
 		PayrollRulesService,
 		SalaryTemplatesService,
 		PayrollReturnsService,
 		PayrollAdvancesService,
+		AttendanceDaysService,
 		{ provide: PAYROLL_RULES_REPOSITORY, useClass: MongoPayrollRulesRepository },
 		{ provide: SALARY_TEMPLATE_REPOSITORY, useClass: MongoSalaryTemplateRepository },
 		{ provide: STATUTORY_FILING_REPOSITORY, useClass: MongoStatutoryFilingRepository },
 		{ provide: PAYROLL_ADVANCE_REPOSITORY, useClass: MongoPayrollAdvanceRepository },
 		{ provide: EMPLOYEE_REPOSITORY, inject: [APP_CONFIG], useFactory: employeeStoreFor },
 		{ provide: ATTENDANCE_REPOSITORY, useClass: MongoAttendanceRepository },
+		{ provide: ATTENDANCE_DAY_REPOSITORY, useClass: MongoAttendanceDayRepository },
 	],
 })
 export class PayrollModule {}

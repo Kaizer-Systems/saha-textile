@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 
 import { Reflector } from '@nestjs/core';
 import {
+	MongoAttendanceDayRepository,
 	MongoAttendanceRepository,
 	MongoEmployeeRepository,
 	MongoPayrollAdvanceRepository,
@@ -17,6 +18,7 @@ import { PERMISSIONS_KEY } from '../src/auth/session.guard';
 import { APP_CONFIG, loadConfig } from '../src/config/app-config';
 import { PersistenceModule } from '../src/infra/persistence.module';
 import {
+	ATTENDANCE_DAY_REPOSITORY,
 	ATTENDANCE_REPOSITORY,
 	EMPLOYEE_REPOSITORY,
 	PAYROLL_ADVANCE_REPOSITORY,
@@ -28,6 +30,7 @@ import {
 import { DocumentsModule } from '../src/documents/documents.module';
 import { LedgerModule } from '../src/ledger/ledger.module';
 import { OrdersSetupModule } from '../src/orders-setup/orders-setup.module';
+import { AttendanceDaysController, AttendanceDaysService } from '../src/payroll/attendance-days';
 import { PayrollAdvancesService } from '../src/payroll/payroll-advances.service';
 import { PayrollReturnsService } from '../src/payroll/payroll-returns.service';
 import { PayrollRulesService } from '../src/payroll/payroll-rules.service';
@@ -124,20 +127,31 @@ describe('the payroll module', () => {
 	});
 
 	it('provides the service and its stores, needs the ledger, and is wired into the app', () => {
-		expect(Reflect.getMetadata('imports', PayrollModule)).toEqual([LedgerModule, DocumentsModule, OrdersSetupModule]);
-		expect(Reflect.getMetadata('controllers', PayrollModule)).toEqual([PayrollController, PayrollSetupController]);
+		expect(Reflect.getMetadata('imports', PayrollModule)).toEqual([
+			LedgerModule,
+			DocumentsModule,
+			OrdersSetupModule,
+		]);
+		expect(Reflect.getMetadata('controllers', PayrollModule)).toEqual([
+			PayrollController,
+			PayrollSetupController,
+			AttendanceDaysController,
+		]);
 		expect(Reflect.getMetadata('providers', PayrollModule)).toEqual([
 			PayrollService,
 			PayrollRulesService,
 			SalaryTemplatesService,
 			PayrollReturnsService,
 			PayrollAdvancesService,
+			AttendanceDaysService,
 			{ provide: PAYROLL_RULES_REPOSITORY, useClass: MongoPayrollRulesRepository },
 			{ provide: SALARY_TEMPLATE_REPOSITORY, useClass: MongoSalaryTemplateRepository },
 			{ provide: STATUTORY_FILING_REPOSITORY, useClass: MongoStatutoryFilingRepository },
 			{ provide: PAYROLL_ADVANCE_REPOSITORY, useClass: MongoPayrollAdvanceRepository },
 			{ provide: EMPLOYEE_REPOSITORY, inject: [APP_CONFIG], useFactory: employeeStoreFor },
 			{ provide: ATTENDANCE_REPOSITORY, useClass: MongoAttendanceRepository },
+			// Brief 26 AT: attendance day by day.
+			{ provide: ATTENDANCE_DAY_REPOSITORY, useClass: MongoAttendanceDayRepository },
 		]);
 		// The run store is shared app-wide now: the ledger's month checks read it too.
 		const persistence = Reflect.getMetadata('providers', PersistenceModule) as {

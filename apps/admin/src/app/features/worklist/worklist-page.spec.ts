@@ -1,6 +1,6 @@
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -259,5 +259,25 @@ describe('the worklist (WL1)', () => {
 		expect([page.countOf(''), text(find('td[colspan="6"]'))]).toEqual([0, 'wl_none']);
 		const reading = await worklist({ gateway: { rows: vi.fn(() => throwError(() => new Error('offline'))) } });
 		expect([reading.page.rows(), reading.page.countOf('fix')]).toEqual([[], 0]);
+	});
+
+	it('sends ✕ on opening leave above a cap to the employee’s form to put right, asking no reason', async () => {
+		const overCap: WorklistRow = {
+			id: 'opening_leave_over_cap:e1/EL',
+			kind: 'opening_leave_over_cap',
+			needs: 'check',
+			area: 'payroll',
+			params: { name: 'Asha Das', key: 'EL' },
+			askedBy: null,
+			since: '2026-11-26T06:00:00.000Z',
+			open: { path: ['/payroll', 'employees'], query: { employeeId: 'e1' } },
+			answerable: true,
+		};
+		const { gateway, notifier, asked, find, settle } = await worklist({ rows: [overCap] });
+		const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+		find<HTMLButtonElement>(`#wl_no_${id(overCap.id)}`)?.click();
+		await settle();
+		expect(navigate).toHaveBeenCalledWith(['/payroll', 'employees'], { queryParams: { employeeId: 'e1' } });
+		expect([asked, gateway.reject.mock.calls.length, notifier.showSuccess.mock.calls.length]).toEqual([[], 0, 0]);
 	});
 });

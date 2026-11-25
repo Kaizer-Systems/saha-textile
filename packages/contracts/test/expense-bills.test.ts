@@ -53,12 +53,14 @@ describe('a line of an expense bill', () => {
 		refused(ExpenseBillLine.safeParse({ ...rent, credit: 'partial' }).success);
 	});
 
-	it('keeps the taxable value from nothing to ₹1,000 crore and the rate from 0 to 28%, and a description', () => {
+	it('keeps the taxable value from nothing to ₹1,000 crore and the rate from 0 to 40%, and a description', () => {
 		accepted(ExpenseBillLine.safeParse({ ...rent, taxableINR: 0, gstRatePct: 0 }).success);
-		accepted(ExpenseBillLine.safeParse({ ...rent, taxableINR: 1e10, gstRatePct: 28 }).success);
+		// 12% and 28% for bills before the September 2025 change, 40% after it.
+		for (const gstRatePct of [5, 12, 18, 28, 40])
+			accepted(ExpenseBillLine.safeParse({ ...rent, taxableINR: 1e10, gstRatePct }).success);
 		refused(ExpenseBillLine.safeParse({ ...rent, taxableINR: 1e10 + 1 }).success);
 		refused(ExpenseBillLine.safeParse({ ...rent, taxableINR: -1 }).success);
-		refused(ExpenseBillLine.safeParse({ ...rent, gstRatePct: 28.5 }).success);
+		refused(ExpenseBillLine.safeParse({ ...rent, gstRatePct: 40.5 }).success);
 		refused(ExpenseBillLine.safeParse({ ...rent, gstRatePct: -1 }).success);
 		refused(ExpenseBillLine.safeParse({ ...rent, what: '  ' }).success);
 		refused(ExpenseBillLine.safeParse({ ...rent, what: 'x'.repeat(201) }).success);
@@ -117,6 +119,7 @@ describe('an expense bill as kept', () => {
 			paymentVouchers: [],
 			cancelledAt: null,
 			cancelReason: null,
+			dueOn: null,
 			number: null,
 			voucherId: null,
 			postedAt: null,
@@ -146,9 +149,11 @@ describe('an expense bill as kept', () => {
 			paymentVouchers: [{ id: 'pv_1', number: 'PV/26-27/000009' }],
 			cancelledAt: null,
 			cancelReason: null,
+			dueOn: '2026-12-01',
 			version: 1,
 		};
 		expect(ExpenseBill.parse(posted)).toEqual(posted);
+		refused(ExpenseBill.safeParse({ ...posted, dueOn: '01-12-2026' }).success);
 		const cancelled = {
 			...posted,
 			status: 'cancelled',

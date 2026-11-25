@@ -757,6 +757,7 @@ describe('statutory bonus in the rules, on the run and for the year (brief 25 BN
 		wagesPaise: 84_000_00,
 		providedPaise: 6_997_20,
 		duePaise: 6_997_20,
+		daysWorked: 365,
 	};
 
 	it('shows the year’s bonus person by person, what was provided against what is due, and the payment once made', () => {
@@ -772,6 +773,7 @@ describe('statutory bonus in the rules, on the run and for the year (brief 25 BN
 					wagesPaise: 1_000_00,
 					providedPaise: 83_30,
 					duePaise: 100_00,
+					daysWorked: 30,
 				},
 			],
 			providedPaise: 7_080_50,
@@ -785,6 +787,17 @@ describe('statutory bonus in the rules, on the run and for the year (brief 25 BN
 		refused(BonusYearRow.safeParse({ ...priya, duePaise: 0.5 }).success);
 		refused(BonusYear.safeParse({ ...year, paidVoucherId: undefined }).success);
 		refused(BonusYear.safeParse({ ...year, providedPaise: 1.5 }).success);
+	});
+
+	it('keeps the days paid in the year beside each person, nothing until counted, never below nothing (s.8: 30 to earn)', () => {
+		const { daysWorked: _days, ...uncounted } = priya;
+		expect(BonusYearRow.parse(uncounted).daysWorked).toBe(0);
+		expect(BonusYearRow.parse({ ...priya, daysWorked: 29, duePaise: 0 })).toMatchObject({
+			daysWorked: 29,
+			duePaise: 0,
+		});
+		accepted(BonusYearRow.safeParse({ ...priya, daysWorked: 29.5 }).success);
+		refused(BonusYearRow.safeParse({ ...priya, daysWorked: -1 }).success);
 	});
 
 	it('pays the bonus from a bank ledger on a day', () => {

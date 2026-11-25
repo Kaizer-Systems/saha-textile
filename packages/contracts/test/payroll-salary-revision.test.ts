@@ -3,6 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
 	Employee,
 	EmployeeWrite,
+	IncrementPlan,
+	IncrementPlanWrite,
+	IncrementRowPreview,
+	IncrementRowResult,
+	IncrementRowsInput,
 	MinimumWagesSet,
 	RevisionWay,
 	SalaryRevisionInput,
@@ -260,5 +265,119 @@ describe('a revision’s breakup (SR2, SR4)', () => {
 		);
 		refused(SalaryRevisionPreview.safeParse({ ...preview, arrears: undefined }).success);
 		refused(SalaryRevisionPreview.safeParse({ ...preview, next: { ...side, takeHomeINR: undefined } }).success);
+	});
+});
+
+describe('increments, many at once (brief 26 SR3)', () => {
+	const message = (result: { error?: { issues: { message: string }[] } }) => result.error?.issues[0]?.message;
+	const plan = {
+		name: ' 2027 increments ',
+		kind: 'rating',
+		bands: [
+			{ rating: 'A', pct: 12 },
+			{ rating: 'B', pct: 8 },
+		],
+	};
+
+	it('saves a plan by rating band, the same % or the same amount, the others nothing', () => {
+		expect(IncrementPlanWrite.parse(plan)).toEqual({ ...plan, name: '2027 increments', pct: 0, amountMonthINR: 0 });
+		expect(IncrementPlanWrite.parse({ name: 'Flat', kind: 'percent', pct: 7 })).toEqual({
+			name: 'Flat',
+			kind: 'percent',
+			bands: [],
+			pct: 7,
+			amountMonthINR: 0,
+		});
+		expect(IncrementPlanWrite.parse({ name: 'Flat', kind: 'amount', amountMonthINR: -500 }).amountMonthINR).toBe(
+			-500,
+		);
+		refused(IncrementPlanWrite.safeParse({ ...plan, kind: 'grade' }).success);
+	});
+
+	it('refuses a rating twice, more than ten bands, and %s or amounts beyond the limits', () => {
+		expect(
+			message(
+				IncrementPlanWrite.safeParse({
+					...plan,
+					bands: [
+						{ rating: 'A', pct: 12 },
+						{ rating: 'A', pct: 8 },
+					],
+				}),
+			),
+		).toBe('increment_rating_twice');
+		const band = (at: number) => ({ rating: `R${at}`, pct: 5 });
+		accepted(
+			IncrementPlanWrite.safeParse({ ...plan, bands: Array.from({ length: 10 }, (_, at) => band(at)) }).success,
+		);
+		refused(
+			IncrementPlanWrite.safeParse({ ...plan, bands: Array.from({ length: 11 }, (_, at) => band(at)) }).success,
+		);
+		for (const pct of [-90.5, 500.5]) {
+			refused(IncrementPlanWrite.safeParse({ ...plan, pct }).success);
+			refused(IncrementPlanWrite.safeParse({ ...plan, bands: [{ rating: 'A', pct }] }).success);
+		}
+		for (const pct of [-90, 500]) accepted(IncrementPlanWrite.safeParse({ ...plan, pct }).success);
+		refused(IncrementPlanWrite.safeParse({ ...plan, bands: [{ rating: '', pct: 5 }] }).success);
+		refused(IncrementPlanWrite.safeParse({ ...plan, bands: [{ rating: 'x'.repeat(11), pct: 5 }] }).success);
+		refused(IncrementPlanWrite.safeParse({ ...plan, amountMonthINR: 10_000_001 }).success);
+		refused(IncrementPlanWrite.safeParse({ ...plan, name: 'X' }).success);
+	});
+
+	it('keeps a saved plan with its id and the time it was saved', () => {
+		const saved = IncrementPlan.parse({ ...plan, id: 'ipl_1', updatedAt: '2026-11-26T05:00:00.000Z' });
+		expect(saved).toMatchObject({ id: 'ipl_1', name: '2027 increments' });
+		refused(IncrementPlan.safeParse({ ...plan, id: '', updatedAt: '2026-11-26T05:00:00.000Z' }).success);
+	});
+
+	it('takes 1 to 500 rows from one day for one reason, each a way in with its rating or none', () => {
+		const rows = {
+			from: '2027-04-01',
+			reason: ' 2027 increments ',
+			rows: [{ employeeId: 'emp_1', way: { kind: 'percent', pct: 12 } }],
+		};
+		expect(IncrementRowsInput.parse(rows)).toEqual({
+			from: '2027-04-01',
+			reason: '2027 increments',
+			rows: [{ employeeId: 'emp_1', way: { kind: 'percent', pct: 12 }, rating: null }],
+		});
+		expect(IncrementRowsInput.parse({ ...rows, rows: [{ ...rows.rows[0], rating: ' A ' }] }).rows[0]?.rating).toBe(
+			'A',
+		);
+		refused(IncrementRowsInput.safeParse({ ...rows, rows: [] }).success);
+		const many = (n: number) =>
+			Array.from({ length: n }, (_, at) => ({ employeeId: `emp_${at}`, way: { kind: 'percent', pct: 5 } }));
+		accepted(IncrementRowsInput.safeParse({ ...rows, rows: many(500) }).success);
+		refused(IncrementRowsInput.safeParse({ ...rows, rows: many(501) }).success);
+		refused(IncrementRowsInput.safeParse({ ...rows, reason: 'ok' }).success);
+		refused(
+			IncrementRowsInput.safeParse({ ...rows, rows: [{ ...rows.rows[0], way: { kind: 'percent', pct: 600 } }] })
+				.success,
+		);
+		refused(IncrementRowsInput.safeParse({ ...rows, rows: [{ ...rows.rows[0], rating: 'x'.repeat(11) }] }).success);
+	});
+
+	it('works each row out with its CTC now and new, the change and the checks, and says what Accept did with it', () => {
+		const preview = {
+			employeeId: 'emp_1',
+			ctcYearNowINR: 3_60_000,
+			ctcYearNewINR: 4_03_200,
+			changeMonthINR: 3_600,
+			changePct: 12,
+			checks: [{ code: 'below_minimum_wage', blocking: true }],
+		};
+		expect(IncrementRowPreview.parse(preview).checks).toEqual([
+			{ code: 'below_minimum_wage', blocking: true, inr: 0 },
+		]);
+		refused(IncrementRowPreview.safeParse({ ...preview, checks: [{ code: 'too_high', blocking: true }] }).success);
+		expect(IncrementRowResult.parse({ employeeId: 'emp_1', ok: true, problem: null })).toEqual({
+			employeeId: 'emp_1',
+			ok: true,
+			problem: null,
+		});
+		expect(IncrementRowResult.parse({ employeeId: 'emp_2', ok: false, problem: 'employee_changed' }).problem).toBe(
+			'employee_changed',
+		);
+		refused(IncrementRowResult.safeParse({ employeeId: 'emp_2', ok: false }).success);
 	});
 });

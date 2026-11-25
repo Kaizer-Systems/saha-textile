@@ -7,6 +7,8 @@ import {
 	INCOME_TAX_2026,
 	PAYROLL_RULES_2026,
 	PAYROLL_SCHEMES_2026,
+	PT_YEAR_CAP_PAISE,
+	ptYearMost,
 	stateRulesOf,
 	type AuditLogRepository,
 	type BonusRules,
@@ -140,6 +142,8 @@ export class PayrollRulesService {
 	async add(write: PayrollRulesWrite, principal: AuthenticatedPrincipal | undefined, now = new Date()) {
 		const closed = (await this.runs.list()).filter((r) => r.status !== 'draft').map((r) => monthEnd(r.month));
 		if (closed.some((end) => write.from <= end)) throw refuse('payroll_rules_before_approved');
+		// Brief 26 PT1: no State's professional tax may pass the Constitution's ₹2,500 a year.
+		if (write.states.some((st) => ptYearMost(st) > PT_YEAR_CAP_PAISE)) throw refuse('pt_over_year_cap');
 		const version: PayrollRulesVersion = {
 			...write,
 			id: `prs_${write.from}`,

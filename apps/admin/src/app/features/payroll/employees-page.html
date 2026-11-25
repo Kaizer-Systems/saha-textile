@@ -464,6 +464,64 @@
 					/>
 				</div>
 			</div>
+			<!-- Brief 26 PT3: read only where the work location's State asks (women's slabs, its exemptions). -->
+			<h6 class="mt-4 mb-2">{{ 'payroll_pt_person_title' | transloco }}</h6>
+			<div class="row g-3">
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="emp_gender"
+					>
+						{{ 'payroll_f_gender' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="emp_gender"
+						[ngModel]="f.gender ?? ''"
+						(ngModelChange)="patch({ gender: $event })"
+					>
+						<option value="">—</option>
+						@for (g of genders; track g) {
+						<option [value]="g">{{ 'payroll_gender_' + g | transloco }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-4">
+					<span class="form-label-title d-block">&nbsp;</span>
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="emp_disability"
+							[checked]="!!f.disability"
+							(change)="patch({ disability: !f.disability })"
+						/>
+						<label
+							class="form-check-label"
+							for="emp_disability"
+						>
+							{{ 'payroll_f_disability' | transloco }}
+						</label>
+					</div>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="emp_pt_exempt"
+					>
+						{{ 'payroll_f_pt_exempt' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="emp_pt_exempt"
+						maxlength="120"
+						[placeholder]="'payroll_f_pt_exempt_ph' | transloco"
+						[ngModel]="f.ptExemptReason ?? ''"
+						(ngModelChange)="patch({ ptExemptReason: $event })"
+					/>
+				</div>
+			</div>
+			<p class="help-text mt-1">{{ 'payroll_pt_person_help' | transloco }}</p>
 			<h6 class="mt-4 mb-2">{{ 'payroll_tax_title' | transloco: { year: taxYear } }}</h6>
 			<div class="row g-3">
 				<div class="col-md-4">

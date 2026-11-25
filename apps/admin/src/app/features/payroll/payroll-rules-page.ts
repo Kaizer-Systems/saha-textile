@@ -4,6 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal, type NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 import { GST_STATES } from '@saha-textile/core-domain/company';
+import {
+	PT_YEAR_CAP_PAISE,
+	ptStartingSetsFor,
+	ptYearMost,
+	type PtSlab,
+	type PtStartingSet,
+} from '@saha-textile/core-domain/payroll-rules';
 import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
@@ -18,6 +25,7 @@ import type {
 	IncomeTaxRules,
 	PayrollRulesVersion,
 	PayrollRulesWriteInput,
+	PtBasis,
 	PtFrequency,
 	StatePayrollRules,
 } from '@saha-textile/contracts';
@@ -26,11 +34,30 @@ const inr = (paise: number) => paise / 100;
 const paise = (rupees: number) => Math.round(rupees * 100);
 const num = (n: number) => n.toLocaleString('en-IN');
 
+/** A slab in the form, in rupees, with its one differing month (brief 26 PT1; null for none). */
+export interface SlabForm {
+	upTo: number | null;
+	tax: number;
+	otherMonth: number | null;
+	otherTax: number;
+}
+
+/** Which slab list a slab action works on (PT1: everyone's, or the women's). */
+export type SlabList = 'ptSlabs' | 'ptWomenSlabs';
+
 /** A State's professional tax and welfare fund in the form (brief 25 ST1), money in rupees, months as "6, 12". */
 export interface StateForm {
 	stateCode: string;
 	ptFrequency: PtFrequency;
-	ptSlabs: { upTo: number | null; tax: number }[];
+	ptSlabs: SlabForm[];
+	/** PT1: separate slabs for women, and their list. */
+	ptWomen: boolean;
+	ptWomenSlabs: SlabForm[];
+	/** PT2: what a half-yearly or yearly tax is worked on. */
+	ptBasis: PtBasis;
+	/** PT1: the age from which the tax stops (null: none), and the disability exemption. */
+	ptExemptAge: number | null;
+	ptExemptDisability: boolean;
 	ptMonths: string;
 	ptDueDay: number;
 	lwfEmployee: number;
@@ -68,11 +95,85 @@ export function statesOf(v: PayrollRulesVersion): StatePayrollRules[] {
 	];
 }
 
+type SlabWrite = StatePayrollRules['ptSlabs'][number];
+
+export function slabToForm(x: SlabWrite): SlabForm {
+	return {
+		upTo: x.upToPaise === null ? null : inr(x.upToPaise),
+		tax: inr(x.taxPaise),
+		otherMonth: x.otherMonth?.month ?? null,
+		otherTax: x.otherMonth ? inr(x.otherMonth.taxPaise) : 0,
+	};
+}
+
+/** A slab in paise; its differing month only when it has one, so a plain slab is written as before. */
+export function slabToWrite(x: SlabForm): SlabWrite {
+	return {
+		upToPaise: x.upTo === null ? null : paise(x.upTo),
+		taxPaise: paise(x.tax),
+		...(x.otherMonth ? { otherMonth: { month: x.otherMonth, taxPaise: paise(x.otherTax) } } : {}),
+	};
+}
+
+/** PT1: the State as typed, as the core's year's-most check reads it. */
+export function yearMostOf(st: StateForm): number {
+	const w = stateToWrite(st);
+	const slab = (x: SlabWrite): PtSlab => ({
+		upToPaise: x.upToPaise ?? null,
+		taxPaise: x.taxPaise,
+		otherMonth: x.otherMonth ?? null,
+	});
+	return ptYearMost({
+		stateCode: w.stateCode,
+		ptFrequency: w.ptFrequency,
+		ptSlabs: w.ptSlabs.map(slab),
+		ptWomenSlabs: (w.ptWomenSlabs ?? []).map(slab),
+		ptMonths: [...w.ptMonths],
+		ptDueDay: w.ptDueDay,
+		lwfEmployeePaise: 0,
+		lwfEmployerPaise: 0,
+		lwfMonths: [],
+		lwfDueDay: w.lwfDueDay,
+	});
+}
+
+/** PT4: a State's form from a starting set, or blank (no tax until its slabs are entered). */
+export function startingForm(stateCode: string, start: PtStartingSet | undefined): StateForm {
+	const slab = (x: PtSlab): SlabForm => ({
+		upTo: x.upToPaise === null ? null : inr(x.upToPaise),
+		tax: inr(x.taxPaise),
+		otherMonth: x.otherMonth?.month ?? null,
+		otherTax: x.otherMonth ? inr(x.otherMonth.taxPaise) : 0,
+	});
+	const rules = start?.rules;
+	return {
+		stateCode,
+		ptFrequency: rules?.ptFrequency ?? 'monthly',
+		ptSlabs: rules ? rules.ptSlabs.map(slab) : [{ upTo: null, tax: 0, otherMonth: null, otherTax: 0 }],
+		ptWomen: !!rules?.ptWomenSlabs?.length,
+		ptWomenSlabs: (rules?.ptWomenSlabs ?? []).map(slab),
+		ptBasis: rules?.ptBasis ?? 'projected',
+		ptExemptAge: rules?.ptExemptFromAge ?? null,
+		ptExemptDisability: rules?.ptExemptDisability ?? false,
+		ptMonths: (rules?.ptMonths ?? []).join(', '),
+		ptDueDay: rules?.ptDueDay ?? 21,
+		lwfEmployee: 0,
+		lwfEmployer: 0,
+		lwfMonths: '',
+		lwfDueDay: 15,
+	};
+}
+
 export function stateToForm(s: StatePayrollRules): StateForm {
 	return {
 		stateCode: s.stateCode,
 		ptFrequency: s.ptFrequency,
-		ptSlabs: s.ptSlabs.map((x) => ({ upTo: x.upToPaise === null ? null : inr(x.upToPaise), tax: inr(x.taxPaise) })),
+		ptSlabs: s.ptSlabs.map(slabToForm),
+		ptWomen: !!s.ptWomenSlabs?.length,
+		ptWomenSlabs: (s.ptWomenSlabs ?? []).map(slabToForm),
+		ptBasis: s.ptBasis ?? 'projected',
+		ptExemptAge: s.ptExemptFromAge ?? null,
+		ptExemptDisability: s.ptExemptDisability ?? false,
 		ptMonths: s.ptMonths.join(', '),
 		ptDueDay: s.ptDueDay,
 		lwfEmployee: inr(s.lwfEmployeePaise),
@@ -86,10 +187,12 @@ export function stateToWrite(s: StateForm): StatePayrollRules {
 	return {
 		stateCode: s.stateCode,
 		ptFrequency: s.ptFrequency,
-		ptSlabs:
-			s.ptFrequency === 'none'
-				? []
-				: s.ptSlabs.map((x) => ({ upToPaise: x.upTo === null ? null : paise(x.upTo), taxPaise: paise(x.tax) })),
+		ptSlabs: s.ptFrequency === 'none' ? [] : s.ptSlabs.map(slabToWrite),
+		// Brief 26 PT1, PT2: written only when set, so a State without them is saved as before.
+		...(s.ptFrequency !== 'none' && s.ptWomen ? { ptWomenSlabs: s.ptWomenSlabs.map(slabToWrite) } : {}),
+		...(s.ptBasis === 'actual' ? { ptBasis: s.ptBasis } : {}),
+		...(s.ptExemptAge ? { ptExemptFromAge: s.ptExemptAge } : {}),
+		...(s.ptExemptDisability ? { ptExemptDisability: true } : {}),
 		ptMonths: s.ptFrequency === 'half_yearly' || s.ptFrequency === 'yearly' ? monthList(s.ptMonths) : [],
 		ptDueDay: s.ptDueDay,
 		lwfEmployeePaise: paise(s.lwfEmployee),
@@ -469,6 +572,28 @@ export class PayrollRulesPage {
 	readonly stateChoices = GST_STATES.filter((s) => !s.retired);
 	readonly picked = computed(() => this.form()?.states[this.stateAt()] ?? null);
 	readonly frequencies: PtFrequency[] = ['monthly', 'half_yearly', 'yearly', 'none'];
+	/** PT2: the actual-pay basis first, as the law reads (PT-D3). */
+	readonly bases: PtBasis[] = ['actual', 'projected'];
+	readonly monthNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+	/** PT1: the slab lists a State shows: everyone's, and the women's when it keeps them. */
+	listsOf(st: StateForm): SlabList[] {
+		return st.ptWomen ? ['ptSlabs', 'ptWomenSlabs'] : ['ptSlabs'];
+	}
+
+	/** A slab list of the picked State, for the template (PT1). */
+	slabsOf(st: StateForm, list: SlabList): SlabForm[] {
+		return st[list];
+	}
+	/** PT4: the sets the State being added can start from, and the one picked ('' for blank). */
+	readonly startingSets = computed<PtStartingSet[]>(() => ptStartingSetsFor(this.stateToAdd()));
+	readonly startFrom = signal('');
+	/** PT1: the most one person can pay in a year under the State as typed, and whether it passes ₹2,500. */
+	readonly yearMost = computed(() => {
+		const st = this.picked();
+		return st ? yearMostOf(st) : 0;
+	});
+	readonly overYearCap = computed(() => this.yearMost() > PT_YEAR_CAP_PAISE);
+	readonly yearMostText = computed(() => num(inr(this.yearMost())));
 
 	/** TX2: the income-tax slab tables and surcharge tiers in the form. */
 	readonly slabGroups = SLAB_GROUPS;
@@ -539,9 +664,23 @@ export class PayrollRulesPage {
 		);
 	}
 
-	setSlab(index: number, patch: Partial<StateForm['ptSlabs'][number]>): void {
+	setSlab(index: number, patch: Partial<SlabForm>, list: SlabList = 'ptSlabs'): void {
 		const st = this.picked();
-		if (st) this.patchState({ ptSlabs: st.ptSlabs.map((s, i) => (i === index ? { ...s, ...patch } : s)) });
+		if (st) this.patchState({ [list]: st[list].map((s, i) => (i === index ? { ...s, ...patch } : s)) });
+	}
+
+	/** PT1: separate slabs for women start as a copy of everyone's, so only the differences need typing. */
+	setWomen(on: boolean): void {
+		const st = this.picked();
+		if (!st) return;
+		const copy = on && !st.ptWomenSlabs.length ? st.ptSlabs.map((x) => ({ ...x })) : st.ptWomenSlabs;
+		this.patchState({ ptWomen: on, ptWomenSlabs: copy });
+	}
+
+	/** PT4: picking the State to add picks its first starting set, if it has one. */
+	pickStateToAdd(code: string): void {
+		this.stateToAdd.set(code);
+		this.startFrom.set(ptStartingSetsFor(code)[0]?.label ?? '');
 	}
 
 	/** A slab added below the open top slab. */
@@ -549,46 +688,35 @@ export class PayrollRulesPage {
 	 * A slab is added below the open top slab; a list without one (a State saved as "none", or an older version with no
 	 * slabs) gets the open top slab first, so it can always be saved.
 	 */
-	addSlab(): void {
+	addSlab(list: SlabList = 'ptSlabs'): void {
 		const st = this.picked();
 		if (!st) return;
-		const open = st.ptSlabs.at(-1)?.upTo === null;
+		const slabs = st[list];
+		const blank: SlabForm = { upTo: 0, tax: 0, otherMonth: null, otherTax: 0 };
+		const open = slabs.at(-1)?.upTo === null;
 		this.patchState({
-			ptSlabs: open
-				? [...st.ptSlabs.slice(0, -1), { upTo: 0, tax: 0 }, ...st.ptSlabs.slice(-1)]
-				: [...st.ptSlabs, { upTo: null, tax: 0 }],
+			[list]: open ? [...slabs.slice(0, -1), blank, ...slabs.slice(-1)] : [...slabs, { ...blank, upTo: null }],
 		});
 	}
 
-	removeSlab(index: number): void {
+	removeSlab(index: number, list: SlabList = 'ptSlabs'): void {
 		const st = this.picked();
-		if (st) this.patchState({ ptSlabs: st.ptSlabs.filter((_, i) => i !== index) });
+		if (st) this.patchState({ [list]: st[list].filter((_, i) => i !== index) });
 	}
 
-	/** "Add a State": its set starts empty (no tax until its slabs are entered) and is shown at once. */
+	/**
+	 * "Add a State": its set starts from the starting set picked (PT4), or empty (no tax until its slabs are entered),
+	 * and is shown at once.
+	 */
 	addState(): void {
 		const code = this.stateToAdd();
 		const f = this.form();
 		if (!f || !code || f.states.some((s) => s.stateCode === code)) return;
-		this.form.set({
-			...f,
-			states: [
-				...f.states,
-				{
-					stateCode: code,
-					ptFrequency: 'monthly',
-					ptSlabs: [{ upTo: null, tax: 0 }],
-					ptMonths: '',
-					ptDueDay: 21,
-					lwfEmployee: 0,
-					lwfEmployer: 0,
-					lwfMonths: '',
-					lwfDueDay: 15,
-				},
-			],
-		});
+		const start = this.startingSets().find((x) => x.label === this.startFrom());
+		this.form.set({ ...f, states: [...f.states, startingForm(code, start)] });
 		this.stateAt.set(f.states.length);
 		this.stateToAdd.set('');
+		this.startFrom.set('');
 	}
 
 	removeState(index: number): void {

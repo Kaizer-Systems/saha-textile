@@ -217,7 +217,7 @@ describe('a State’s professional tax and welfare fund, as a form and back (ST1
 
 	it('shows money in rupees and months as words, and writes them back in paise', () => {
 		const form = stateToForm(KERALA);
-		expect(form).toEqual({
+		expect(form).toMatchObject({
 			stateCode: '32',
 			ptFrequency: 'half_yearly',
 			ptSlabs: [
@@ -351,10 +351,10 @@ describe('the States in the add-a-version pop-up (ST1)', () => {
 		enter(slabRows()[1]?.querySelector('input[aria-label="payroll_f_pt_up_to"]'), '16000');
 		enter(slabRows()[1]?.querySelector('input[aria-label="payroll_f_pt_tax"]'), '130');
 		redraw();
-		expect(page.picked()?.ptSlabs[1]).toEqual({ upTo: 16_000, tax: 130 });
+		expect(page.picked()?.ptSlabs[1]).toMatchObject({ upTo: 16_000, tax: 130 });
 		modal<HTMLButtonElement>('#pr_slab_add')?.click();
 		redraw();
-		expect(page.picked()?.ptSlabs).toEqual([
+		expect(page.picked()?.ptSlabs).toMatchObject([
 			{ upTo: 10_000, tax: 0 },
 			{ upTo: 16_000, tax: 130 },
 			{ upTo: 0, tax: 0 },
@@ -383,16 +383,16 @@ describe('the States in the add-a-version pop-up (ST1)', () => {
 		});
 	});
 
-	it('adds a picked State with no tax yet, shows it at once, and leaves it out of the picker', async () => {
+	it('adds a picked State with no starting set and no tax yet, shows it at once, and leaves it out of the picker', async () => {
 		const { page, redraw } = await editing();
-		enter(modal('#pr_state_pick'), '29');
+		enter(modal('#pr_state_pick'), '10');
 		redraw();
 		expect(modal<HTMLButtonElement>('#pr_state_add')?.disabled).toBe(false);
 		modal<HTMLButtonElement>('#pr_state_add')?.click();
 		redraw();
-		expect(page.form()?.states.map((s) => s.stateCode)).toEqual(['19', '32', '29']);
-		expect(page.picked()).toEqual({
-			stateCode: '29',
+		expect(page.form()?.states.map((s) => s.stateCode)).toEqual(['19', '32', '10']);
+		expect(page.picked()).toMatchObject({
+			stateCode: '10',
 			ptFrequency: 'monthly',
 			ptSlabs: [{ upTo: null, tax: 0 }],
 			ptMonths: '',
@@ -405,9 +405,9 @@ describe('the States in the add-a-version pop-up (ST1)', () => {
 		expect(page.stateAt()).toBe(2);
 		expect(page.stateToAdd()).toBe('');
 		expect([...(modal<HTMLSelectElement>('#pr_state_pick')?.options ?? [])].map((o) => o.value)).not.toContain(
-			'29',
+			'10',
 		);
-		expect(chips().map((b) => b.textContent?.trim())).toEqual(['West Bengal', 'Kerala', 'Karnataka']);
+		expect(chips().map((b) => b.textContent?.trim())).toEqual(['West Bengal', 'Kerala', 'Bihar']);
 	});
 
 	it('adds nothing with no State picked, a State already there, or no pop-up open', async () => {
@@ -465,7 +465,7 @@ describe('the States in the add-a-version pop-up (ST1)', () => {
 
 	it('saves each State’s set in paise, the new one included', async () => {
 		const { page, calls, redraw } = await editing();
-		enter(modal('#pr_state_pick'), '29');
+		enter(modal('#pr_state_pick'), '10');
 		redraw();
 		modal<HTMLButtonElement>('#pr_state_add')?.click();
 		redraw();
@@ -477,7 +477,7 @@ describe('the States in the add-a-version pop-up (ST1)', () => {
 			WEST_BENGAL,
 			KERALA,
 			{
-				stateCode: '29',
+				stateCode: '10',
 				ptFrequency: 'monthly',
 				ptSlabs: [{ upToPaise: null, taxPaise: 20_000 }],
 				ptMonths: [],
@@ -499,9 +499,9 @@ describe('a State saved with no professional tax getting slabs again (ST1)', () 
 		expect(page.picked()?.ptSlabs).toEqual([]);
 		page.patchState({ ptFrequency: 'monthly' });
 		page.addSlab();
-		expect(page.picked()?.ptSlabs).toEqual([{ upTo: null, tax: 0 }]);
+		expect(page.picked()?.ptSlabs).toMatchObject([{ upTo: null, tax: 0 }]);
 		page.addSlab();
-		expect(page.picked()?.ptSlabs).toEqual([
+		expect(page.picked()?.ptSlabs).toMatchObject([
 			{ upTo: 0, tax: 0 },
 			{ upTo: null, tax: 0 },
 		]);

@@ -378,13 +378,31 @@
 					id="pr_state_pick"
 					[attr.aria-label]="'payroll_state_add_pick' | transloco"
 					[ngModel]="stateToAdd()"
-					(ngModelChange)="stateToAdd.set($event)"
+					(ngModelChange)="pickStateToAdd($event)"
 				>
 					<option value="">{{ 'payroll_state_add_pick' | transloco }}</option>
 					@for (c of stateChoices; track c.code) { @if (!hasState(c.code)) {
 					<option [value]="c.code">{{ c.name }}</option>
 					} }
 				</select>
+				@if (startingSets().length) {
+				<select
+					class="form-select form-select-sm w-auto"
+					id="pr_state_start"
+					[attr.aria-label]="'payroll_state_start_from' | transloco"
+					[title]="'payroll_pt_start_check_' + stateToAdd() | transloco"
+					[ngModel]="startFrom()"
+					(ngModelChange)="startFrom.set($event)"
+				>
+					@for (x of startingSets(); track x.label) {
+					<option [value]="x.label">
+						{{ 'payroll_state_start_set' | transloco: { state: stateName(x.stateCode), from: day(x.from) }
+						}}
+					</option>
+					}
+					<option value="">{{ 'payroll_state_start_blank' | transloco }}</option>
+				</select>
+				}
 				<button
 					type="button"
 					class="btn btn-sm btn-outline"
@@ -454,17 +472,105 @@
 			</div>
 			<small class="text-muted d-block mt-1">{{ 'payroll_pt_slabs_' + st.ptFrequency | transloco }}</small>
 			@if (st.ptFrequency !== 'none') {
+			<!-- Brief 26 PT1, PT2: who the slabs are for, what a half-yearly or yearly tax is worked on, who is exempt. -->
+			<div class="row g-3 mt-1">
+				<div class="col-md-4">
+					<span class="form-label-title d-block">{{ 'payroll_pt_slabs_who' | transloco }}</span>
+					<div class="d-flex flex-wrap gap-2">
+						<button
+							type="button"
+							class="btn btn-sm"
+							id="pr_pt_same"
+							[class.btn-theme]="!st.ptWomen"
+							[class.btn-outline]="st.ptWomen"
+							(click)="setWomen(false)"
+						>
+							{{ 'payroll_pt_same_for_all' | transloco }}
+						</button>
+						<button
+							type="button"
+							class="btn btn-sm"
+							id="pr_pt_women"
+							[class.btn-theme]="st.ptWomen"
+							[class.btn-outline]="!st.ptWomen"
+							(click)="setWomen(true)"
+						>
+							{{ 'payroll_pt_women_separate' | transloco }}
+						</button>
+					</div>
+				</div>
+				@if (st.ptFrequency === 'half_yearly' || st.ptFrequency === 'yearly') {
+				<div class="col-md-4">
+					<span class="form-label-title d-block">{{ 'payroll_pt_basis' | transloco }}</span>
+					@for (b of bases; track b) {
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="radio"
+							name="pr_pt_basis"
+							[id]="'pr_pt_basis_' + b"
+							[checked]="st.ptBasis === b"
+							(change)="patchState({ ptBasis: b })"
+						/>
+						<label
+							class="form-check-label"
+							[for]="'pr_pt_basis_' + b"
+						>
+							{{ 'payroll_pt_basis_' + b | transloco }}
+						</label>
+					</div>
+					}
+				</div>
+				}
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="pr_pt_exempt_age"
+					>
+						{{ 'payroll_pt_exempt_age' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_pt_exempt_age"
+						type="number"
+						min="18"
+						max="120"
+						[ngModel]="st.ptExemptAge"
+						(ngModelChange)="patchState({ ptExemptAge: $event ? +$event : null })"
+					/>
+					<div class="form-check mt-2">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="pr_pt_exempt_dis"
+							[checked]="st.ptExemptDisability"
+							(change)="patchState({ ptExemptDisability: !st.ptExemptDisability })"
+						/>
+						<label
+							class="form-check-label"
+							for="pr_pt_exempt_dis"
+						>
+							{{ 'payroll_pt_exempt_disability' | transloco }}
+						</label>
+					</div>
+				</div>
+			</div>
+			@for (list of listsOf(st); track list) { @if (st.ptWomen) {
+			<h6 class="mt-3 mb-0">{{ 'payroll_pt_list_' + list | transloco }}</h6>
+			}
 			<div class="table-responsive datatable-wrapper border-table mt-2">
 				<table class="all-package theme-table no-footer table">
 					<thead>
 						<tr>
 							<th>{{ 'payroll_f_pt_up_to' | transloco }}</th>
 							<th>{{ 'payroll_f_pt_tax' | transloco }}</th>
+							<th>{{ 'payroll_pt_other_month' | transloco }}</th>
+							<th>{{ 'payroll_pt_other_tax' | transloco }}</th>
 							<th></th>
 						</tr>
 					</thead>
 					<tbody>
-						@for (s of st.ptSlabs; track $index; let i = $index) {
+						@for (s of slabsOf(st, list); track $index; let i = $index) {
 						<tr>
 							<td>
 								@if (s.upTo === null) { {{ 'payroll_f_pt_above' | transloco }} } @else {
@@ -473,7 +579,7 @@
 									type="number"
 									[attr.aria-label]="'payroll_f_pt_up_to' | transloco"
 									[ngModel]="s.upTo"
-									(ngModelChange)="setSlab(i, { upTo: +$event })"
+									(ngModelChange)="setSlab(i, { upTo: +$event }, list)"
 								/>
 								}
 							</td>
@@ -483,8 +589,32 @@
 									type="number"
 									[attr.aria-label]="'payroll_f_pt_tax' | transloco"
 									[ngModel]="s.tax"
-									(ngModelChange)="setSlab(i, { tax: +$event })"
+									(ngModelChange)="setSlab(i, { tax: +$event }, list)"
 								/>
+							</td>
+							<td>
+								<select
+									class="form-select"
+									[attr.aria-label]="'payroll_pt_other_month' | transloco"
+									[ngModel]="s.otherMonth ?? 0"
+									(ngModelChange)="setSlab(i, { otherMonth: +$event || null }, list)"
+								>
+									<option [ngValue]="0">—</option>
+									@for (m of monthNumbers; track m) {
+									<option [ngValue]="m">{{ 'payroll_month_' + m | transloco }}</option>
+									}
+								</select>
+							</td>
+							<td>
+								@if (s.otherMonth) {
+								<input
+									class="form-control"
+									type="number"
+									[attr.aria-label]="'payroll_pt_other_tax' | transloco"
+									[ngModel]="s.otherTax"
+									(ngModelChange)="setSlab(i, { otherTax: +$event }, list)"
+								/>
+								}
 							</td>
 							<td>
 								@if (s.upTo !== null) {
@@ -493,7 +623,7 @@
 									class="btn btn-outline text-danger btn-sm"
 									[title]="'remove' | transloco"
 									[attr.aria-label]="'remove' | transloco"
-									(click)="removeSlab(i)"
+									(click)="removeSlab(i, list)"
 								>
 									<i class="ri-delete-bin-line"></i>
 								</button>
@@ -507,12 +637,22 @@
 			<button
 				type="button"
 				class="btn btn-sm btn-outline mt-2"
-				id="pr_slab_add"
-				(click)="addSlab()"
+				[id]="list === 'ptSlabs' ? 'pr_slab_add' : 'pr_slab_add_women'"
+				(click)="addSlab(list)"
 			>
 				<i class="ri-add-line"></i>
 				{{ 'payroll_pt_add_slab' | transloco }}
 			</button>
+			}
+			<p
+				class="small mt-2 mb-0"
+				id="pr_pt_year_most"
+				[class.text-danger]="overYearCap()"
+				[class.text-muted]="!overYearCap()"
+			>
+				{{ 'payroll_pt_year_most' | transloco: { amount: yearMostText() } }} @if (overYearCap()) { · {{
+				'payroll_pt_year_over' | transloco }} }
+			</p>
 			}
 			<h6 class="mt-3">{{ 'payroll_rule_lwf' | transloco: { state: stateName(st.stateCode) } }}</h6>
 			<div class="row g-3">

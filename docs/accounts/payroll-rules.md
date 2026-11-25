@@ -3,8 +3,8 @@ title: Payroll rules
 description: Dated versions of the payroll rules, with professional tax and the labour welfare fund kept per State and applied by each employee's work location.
 status: implemented
 audience: [backend, frontend, operator]
-last_verified: '2026-11-25'
-search_keywords: payroll rules version professional tax labour welfare fund state slab half-yearly yearly due day work location statutory returns
+last_verified: '2026-11-26'
+search_keywords: payroll rules version professional tax labour welfare fund state slab half-yearly yearly due day work location statutory returns women slabs february exemption actual pay starting set
 source_of_truth:
     - packages/contracts/src/payroll.ts
     - packages/core-domain/src/payroll
@@ -63,10 +63,24 @@ notification, by the admin or the CA.
 | `ptSlabs`                                                        | Salary up to, and the tax; the last slab is open. Monthly: on the month's salary; half-yearly or yearly: on the period's (this month's times six or twelve) |
 | `ptMonths`                                                       | The months a half-yearly or yearly tax is deducted in                                                                                                       |
 | `ptDueDay`                                                       | Day of the next month the tax is paid by                                                                                                                    |
+| `ptSlabs[].otherMonth`                                           | The one month a slab charges another amount in (Maharashtra's and Karnataka's ₹300 in February)                                                             |
+| `ptWomenSlabs`                                                   | Separate slabs for women, when the State has them; employees with gender "woman" are taxed on them                                                          |
+| `ptBasis`                                                        | Half-yearly or yearly: `actual` (the period's actual pay, deducted in its month or on leaving) or `projected` (this month's times six or twelve)            |
+| `ptExemptFromAge`, `ptExemptDisability`                          | The age from which the State stops the tax, and whether a disability of 40% or more frees a person                                                          |
 | `lwfEmployeePaise`, `lwfEmployerPaise`, `lwfMonths`, `lwfDueDay` | The welfare fund's shares, the months it is due in, and its day                                                                                             |
 
 A version saved before States existed has none listed: its company-wide professional tax and welfare fund figures
-are read as West Bengal's set (GST State code 19), unchanged.
+are read as West Bengal's set (GST State code 19), unchanged. Fields added later read as absent on older versions:
+everyone on `ptSlabs`, no differing month, the projected basis, no exemption.
+
+A State's set is refused on saving when one person could pay more than ₹2,500 in a year under it (Article 276 of
+the Constitution); the editor shows the year's most as it is typed. "Add a State" can start from a starting set kept
+as data in `packages/core-domain/src/payroll/pt-starting-sets.ts` (West Bengal, Maharashtra, Karnataka, and Tamil
+Nadu's half-yearly shape without slabs); once added, the set is the version's own and is edited like any other.
+
+Employees carry three fields only these rules read: `gender`, `disability` and `ptExemptReason` (not charged for
+another reason the State exempts, with the reason kept for the return). Age comes from the date of birth, on the
+month's last day, an age being reached the day before the birthday.
 
 ## Whose State
 

@@ -80,6 +80,12 @@ export const EmployeeWrite = z.object({
 		.string()
 		.regex(/^\d{2}$/)
 		.default('19'),
+	/** Brief 26 PT3: read only where a State's rules ask (separate slabs for women). */
+	gender: z.enum(['', 'woman', 'man', 'other']).optional(),
+	/** PT3: a disability of 40% or more, for a State that exempts it. */
+	disability: z.boolean().optional(),
+	/** PT3: not charged professional tax for another reason the State exempts; the reason is kept for the return. */
+	ptExemptReason: z.string().trim().max(120).optional(),
 	/** The regime for a year without its own declaration (the new regime is the default from 2023-24). */
 	taxRegime: z.enum(['new', 'old']).default('new'),
 	/** For the old regime's age bands (60 and 80). */
@@ -226,7 +232,19 @@ const Pct = z.number().min(0).max(100);
 const Paise = z.number().int().nonnegative();
 const DueDay = z.number().int().min(1).max(31);
 
-const PtSlab = z.object({ upToPaise: Paise.nullable(), taxPaise: Paise });
+/** A slab, and (brief 26 PT1) the one month it charges another amount in, as Maharashtra's ₹300 in February. */
+const PtSlab = z.object({
+	upToPaise: Paise.nullable(),
+	taxPaise: Paise,
+	otherMonth: z
+		.object({ month: z.number().int().min(1).max(12), taxPaise: Paise })
+		.nullable()
+		.optional(),
+});
+
+/** Brief 26 PT2: a half-yearly or yearly tax on the period's actual pay, or on this month's times six or twelve. */
+export const PtBasis = z.enum(['projected', 'actual']);
+export type PtBasis = z.infer<typeof PtBasis>;
 
 /** How often a State's professional tax is deducted; `none` for a State without it. */
 export const PtFrequency = z.enum(['monthly', 'half_yearly', 'yearly', 'none']);
@@ -241,6 +259,13 @@ export const StatePayrollRules = z
 		stateCode: z.string().regex(/^\d{2}$/),
 		ptFrequency: PtFrequency.default('monthly'),
 		ptSlabs: z.array(PtSlab).max(20).default([]),
+		/** PT1: separate slabs for women; null when everyone is on `ptSlabs`. */
+		ptWomenSlabs: z.array(PtSlab).max(20).nullable().optional(),
+		/** PT2: versions saved before read as `projected`, today's way. */
+		ptBasis: PtBasis.optional(),
+		/** PT1: the age from which the State stops the tax, and whether a disability of 40% or more frees a person. */
+		ptExemptFromAge: z.number().int().min(18).max(120).nullable().optional(),
+		ptExemptDisability: z.boolean().optional(),
 		ptMonths: z.array(z.number().int().min(1).max(12)).max(12).default([]),
 		ptDueDay: DueDay.default(21),
 		lwfEmployeePaise: Paise.default(0),
@@ -249,6 +274,9 @@ export const StatePayrollRules = z
 		lwfDueDay: DueDay.default(15),
 	})
 	.refine((s) => s.ptFrequency === 'none' || s.ptSlabs.at(-1)?.upToPaise === null, {
+		message: 'pt_last_slab_open',
+	})
+	.refine((s) => !s.ptWomenSlabs?.length || s.ptWomenSlabs.at(-1)?.upToPaise === null, {
 		message: 'pt_last_slab_open',
 	})
 	.refine((s) => s.ptFrequency === 'none' || s.ptFrequency === 'monthly' || s.ptMonths.length > 0, {

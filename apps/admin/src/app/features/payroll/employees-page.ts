@@ -46,6 +46,9 @@ const blank = (): EmployeeWriteInput => ({
 	uan: '',
 	esiNumber: '',
 	ptState: '19',
+	gender: '',
+	disability: false,
+	ptExemptReason: '',
 	taxRegime: 'new',
 	dateOfBirth: null,
 	taxDeclarations: [],
@@ -114,6 +117,9 @@ export function employeeWrite(e: EmployeeView): EmployeeWriteInput {
 		uan: e.uan,
 		esiNumber: e.esiNumber,
 		ptState: e.ptState,
+		gender: e.gender ?? '',
+		disability: e.disability ?? false,
+		ptExemptReason: e.ptExemptReason ?? '',
 		taxRegime: e.taxRegime,
 		dateOfBirth: e.dateOfBirth,
 		taxDeclarations: e.taxDeclarations.map((d) => ({ ...d, proof: { ...d.proof } })),
@@ -167,6 +173,8 @@ export class EmployeesPage {
 	readonly editing = signal<EmployeeView | null>(null);
 	/** TX1: this financial year, its declaration in the form, and the saved year worked both ways. */
 	readonly taxYear = yearOf(currentMonth());
+	/** Brief 26 PT3: the genders a State's PT may ask about (women's slabs). */
+	readonly genders = ['woman', 'man', 'other'] as const;
 	readonly taxRows = TAX_ROWS;
 	readonly declaration = computed(() => this.form().taxDeclarations?.find((d) => d.year === this.taxYear) ?? null);
 	readonly taxView = signal<IncomeTaxView | null>(null);

@@ -229,7 +229,9 @@ describe('a new employee’s tax for this year (TX1)', () => {
 		await redraw();
 		expect(page.taxYear).toBe(THIS_YEAR);
 		expect(page.declaration()).toBeNull();
-		expect(modal('h6.mt-4.mb-2')?.textContent).toContain('payroll_tax_title');
+		expect(
+			[...document.querySelectorAll('h6.mt-4.mb-2')].some((h) => h.textContent?.includes('payroll_tax_title')),
+		).toBe(true);
 		expect(modal<HTMLSelectElement>('#emp_regime')?.value).toBe('new');
 		expect(modal('#emp_prev_salary')).not.toBeNull();
 		expect(modal('#emp_rent')).toBeNull();

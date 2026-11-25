@@ -83,13 +83,18 @@
       "types": "./dist/bundle/index.d.ts",
       "import": "./dist/esm/bundle/index.js",
       "default": "./dist/bundle/index.js"
+    },
+    "./payroll-rules": {
+      "types": "./dist/payroll/pt-starting-sets.d.ts",
+      "import": "./dist/esm/payroll-rules/payroll/pt-starting-sets.js",
+      "default": "./dist/payroll/pt-starting-sets.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.legacy-esm.json && tsc -p tsconfig.purchasing-esm.json && tsc -p tsconfig.shipping-esm.json && tsc -p tsconfig.bundle-esm.json && tsc -p tsconfig.company-esm.json && tsc -p tsconfig.self-invoice-esm.json && tsc -p tsconfig.bank-statement-esm.json && tsc -p tsconfig.expense-bills-esm.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.legacy-esm.json && tsc -p tsconfig.purchasing-esm.json && tsc -p tsconfig.shipping-esm.json && tsc -p tsconfig.bundle-esm.json && tsc -p tsconfig.company-esm.json && tsc -p tsconfig.self-invoice-esm.json && tsc -p tsconfig.bank-statement-esm.json && tsc -p tsconfig.expense-bills-esm.json && tsc -p tsconfig.payroll-rules-esm.json",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "lint": "eslint .",
     "test": "vitest run"

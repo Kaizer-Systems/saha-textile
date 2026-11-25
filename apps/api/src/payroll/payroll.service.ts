@@ -30,6 +30,8 @@ import {
 	proofDue,
 	taxForYear,
 	pfEstablishmentCharges,
+	ptPeriodMonths,
+	ptPersonOf,
 	resolveRole,
 	stateLwf,
 	statePt,
@@ -359,7 +361,7 @@ export class PayrollService {
 			advanceDuePaise: 0,
 			tdsPaise: 0,
 			rules,
-			ptFor: (gross) => (stateRules ? statePt(month, gross, stateRules) : 0),
+			ptFor: (gross) => (stateRules ? statePt(month, gross, stateRules, ptPersonOf(e, month)) : 0),
 		});
 		const full: MonthFigures = {
 			grossPaise: p.grossPaise,
@@ -501,7 +503,8 @@ export class PayrollService {
 		const { pay: rules, schemes, states, incomeTax, bonus } = await this.rules.forMonth(month);
 		// TX: the year so far, from the runs of the financial year before this month.
 		const fyStart = `${financialYearOf(month).slice(0, 4)}-04`;
-		const earlier = (await this.runs.list()).filter((r) => r.month >= fyStart && r.month < month);
+		const allRuns = await this.runs.list();
+		const earlier = allRuns.filter((r) => r.month >= fyStart && r.month < month);
 		// ST2: a person's State is their work location's; one not found keeps the State saved on the person.
 		const stateOf = new Map((await this.locations.list()).map((l) => [l.id, l.stateCode]));
 		const missing = new Set<string>();
@@ -523,6 +526,15 @@ export class PayrollService {
 			const stateCode = stateOf.get(e.locationId) ?? e.ptState;
 			const stateRules = stateRulesFor(states, stateCode);
 			if (!stateRules) missing.add(stateCode);
+			// Brief 26 PT2, PT3: who the State's rules ask about, and what the PT period paid before this month.
+			const person = ptPersonOf(e, month);
+			const periodBefore = new Set(stateRules ? ptPeriodMonths(month, stateRules) : []);
+			periodBefore.delete(month);
+			const paidBefore = allRuns
+				.filter((r) => periodBefore.has(r.month))
+				.flatMap((r) => r.rows.filter((x) => x.employeeId === e.id))
+				.reduce((sum, x) => sum + x.grossPaise, 0);
+			const leaving = e.leftOn?.slice(0, 7) === month;
 			const base = {
 				structure,
 				daysInMonth: attendance.daysInMonth,
@@ -530,7 +542,10 @@ export class PayrollService {
 				esiOn: e.esiOn,
 				advanceDuePaise: Math.min(paise(e.advancePerMonthINR), paise(e.advanceDueINR)),
 				rules,
-				ptFor: (gross: number) => (stateRules ? statePt(month, gross, stateRules) : 0),
+				ptFor: (gross: number) =>
+					stateRules
+						? statePt(month, gross, stateRules, person, { grossPaise: paidBefore + gross, leaving })
+						: 0,
 			};
 			const figures = (paidDays: number): MonthFigures => {
 				const p = monthPay({ ...base, paidDays, tdsPaise: 0 });

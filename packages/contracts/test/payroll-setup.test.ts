@@ -720,6 +720,43 @@ describe('income tax in the rules, on the run and both ways (brief 25 TX1, TX2)'
 		refused(IncomeTaxView.safeParse({ ...view, new: { ...view.new, taxPaise: 0.5 } }).success);
 		refused(IncomeTaxWorking.safeParse({ ...view.old, regime: 'both' }).success);
 	});
+
+	it('keeps section 126’s limits, rounding to ₹10 or the rupee, and the 50% rent cities, none on a version saved before (brief 26 TX4)', () => {
+		const health126 = {
+			selfPaise: 25_000_00,
+			selfSeniorPaise: 50_000_00,
+			parentsPaise: 25_000_00,
+			parentsSeniorPaise: 50_000_00,
+			checkupPaise: 5_000_00,
+		};
+		const cities = ['Mumbai', 'Delhi', 'Kolkata', 'Chennai', 'Bengaluru', 'Hyderabad', 'Pune', 'Ahmedabad'];
+		const parsed = IncomeTaxRules.parse({
+			...incomeTax,
+			health126,
+			rounding: 'ten',
+			rentCities: cities.map((c) => ` ${c} `),
+		});
+		expect([parsed.health126, parsed.rounding, parsed.rentCities]).toEqual([health126, 'ten', cities]);
+		for (const key of ['health126', 'rounding', 'rentCities'])
+			expect(IncomeTaxRules.parse(incomeTax)).not.toHaveProperty(key);
+		expect(IncomeTaxRules.parse({ ...incomeTax, rounding: 'rupee' }).rounding).toBe('rupee');
+		refused(IncomeTaxRules.safeParse({ ...incomeTax, rounding: 'hundred' }).success);
+		for (const key of Object.keys(health126)) {
+			refused(IncomeTaxRules.safeParse({ ...incomeTax, health126: { ...health126, [key]: -1 } }).success);
+			refused(IncomeTaxRules.safeParse({ ...incomeTax, health126: { ...health126, [key]: 0.5 } }).success);
+		}
+		refused(IncomeTaxRules.safeParse({ ...incomeTax, health126: { selfPaise: 25_000_00 } }).success);
+		accepted(IncomeTaxRules.safeParse({ ...incomeTax, rentCities: [] }).success);
+		accepted(IncomeTaxRules.safeParse({ ...incomeTax, rentCities: ['Go', 'x'.repeat(40)] }).success);
+		refused(IncomeTaxRules.safeParse({ ...incomeTax, rentCities: [' X '] }).success);
+		refused(IncomeTaxRules.safeParse({ ...incomeTax, rentCities: ['x'.repeat(41)] }).success);
+		accepted(
+			IncomeTaxRules.safeParse({ ...incomeTax, rentCities: Array.from({ length: 40 }, () => 'Pune') }).success,
+		);
+		refused(
+			IncomeTaxRules.safeParse({ ...incomeTax, rentCities: Array.from({ length: 41 }, () => 'Pune') }).success,
+		);
+	});
 });
 
 describe('statutory bonus in the rules, on the run and for the year (brief 25 BN1)', () => {

@@ -338,6 +338,43 @@ describe('an employee’s income-tax choice and declarations (brief 25 TX1)', ()
 				.success,
 		);
 	});
+
+	it('declares the rent’s city and section 126’s groups only when given, the old declaration kept as it was (brief 26 TX3, TX5)', () => {
+		const older = TaxDeclaration.parse(declaration);
+		for (const key of [
+			'rentCity',
+			's126SelfCheckupINR',
+			's126SpouseSenior',
+			's126ParentsINR',
+			's126ParentsCheckupINR',
+			's126ParentsSenior',
+			's126SeniorMedicalINR',
+		])
+			expect(older).not.toHaveProperty(key);
+		expect(older.proof).not.toHaveProperty('s126Parents');
+		const health = {
+			...declaration,
+			rentCity: ' Bengaluru ',
+			s80dINR: 25_000,
+			s126SelfCheckupINR: 5_000,
+			s126SpouseSenior: true,
+			s126ParentsINR: 40_000,
+			s126ParentsCheckupINR: 0,
+			s126ParentsSenior: true,
+			s126SeniorMedicalINR: 12_000,
+			proof: { s126Parents: true },
+		};
+		const parsed = TaxDeclaration.parse(health);
+		expect(parsed).toMatchObject({ ...health, rentCity: 'Bengaluru', proof: { s80d: false, s126Parents: true } });
+		expect(TaxDeclaration.parse({ ...declaration, rentCity: '' }).rentCity).toBe('');
+		refused(TaxDeclaration.safeParse({ ...declaration, rentCity: 'x'.repeat(41) }).success);
+		for (const key of ['s126SelfCheckupINR', 's126ParentsINR', 's126ParentsCheckupINR', 's126SeniorMedicalINR']) {
+			refused(TaxDeclaration.safeParse({ ...declaration, [key]: -1 }).success);
+			refused(TaxDeclaration.safeParse({ ...declaration, [key]: 100_000_001 }).success);
+		}
+		refused(TaxDeclaration.safeParse({ ...declaration, s126ParentsSenior: 'yes' }).success);
+		refused(TaxDeclaration.safeParse({ ...declaration, proof: { s126Parents: 'yes' } }).success);
+	});
 });
 
 describe('what a State’s professional tax may read about a person (brief 26 PT3)', () => {

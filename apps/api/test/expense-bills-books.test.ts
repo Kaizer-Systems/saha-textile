@@ -120,11 +120,15 @@ describe('what a supplier is owed, with expense bills (EB2)', () => {
 				bill('eb_6', { totalINR: 500, paidINR: 600 }),
 				bill('eb_5', { status: 'draft', number: null }),
 				bill('eb_7', { status: 'cancelled', paidINR: 0 }),
+				// Due a month after its day.
+				bill('eb_8', { billDate: '2026-09-01', dueOn: '2026-10-01', totalINR: 1_180 }),
 			],
 			[voucher('pv_1', 10_000, '2026-06-01')],
 		);
 		const summary = await service.summary('sup_wb');
-		expect(summary.owedINR).toBe(13_600);
+		expect(summary.owedINR).toBe(14_780);
+		// Both open bills count: one saved before due days (due on its day, 10 May), and the oldest is 199 days old.
+		expect([summary.owedBills, summary.nextDueOn, summary.oldestUnpaidDays]).toEqual([2, '2026-05-10', 199]);
 		expect(summary.statement.map((row) => [row.kind, row.documentNumber])).toEqual(
 			expect.arrayContaining([
 				['expense_bill', 'EB/26-27/eb_1'],
@@ -155,7 +159,7 @@ describe('the unpaid bills report, with expense bills (EB2)', () => {
 			{ settings: async () => ({ unpaidAlertDays: 150 }), today: () => '2026-11-25' } as never,
 			store([
 				bill('eb_old', { billDate: '2026-05-10', paidINR: 3_600.004 }),
-				bill('eb_new', { billDate: '2026-11-20', totalINR: 1_180 }),
+				bill('eb_new', { billDate: '2026-11-20', dueOn: '2026-12-20', totalINR: 1_180 }),
 				bill('eb_paid', { paidINR: 23_600 }),
 				bill('eb_draft', { status: 'draft', number: null }),
 			]) as never,
@@ -165,7 +169,7 @@ describe('the unpaid bills report, with expense bills (EB2)', () => {
 		expect(report.rows.map((r) => [r.kind, r.id, r.dueOn, r.leftINR, r.days, r.nearLimit])).toEqual([
 			['expenseBill', 'eb_old', '2026-05-10', 20_000, 199, true],
 			['purchaseEntry', 'pe_1', '2026-08-31', 3_000, 116, false],
-			['expenseBill', 'eb_new', '2026-11-20', 1_180, 5, false],
+			['expenseBill', 'eb_new', '2026-12-20', 1_180, 5, false],
 		]);
 		expect(report.rows[0]).toMatchObject({
 			number: 'EB/26-27/eb_old',

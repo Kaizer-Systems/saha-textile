@@ -240,7 +240,11 @@ const YEAR_RUNS = [
 		row('emp_priya', { bonusWagesPaise: 7_000_00, bonusPaise: 0 }),
 		row('emp_asha', { bonusWagesPaise: 7_000_00, bonusPaise: 80_000 }),
 	]),
-	run('2026-07', 'draft', [row('emp_meera', { bonusWagesPaise: 7_000_00, bonusPaise: MONTH_BONUS })]),
+	// A draft: not counted, and Asha's move to the kiosk in it doesn't move where her bonus is paid.
+	run('2026-07', 'draft', [
+		row('emp_meera', { bonusWagesPaise: 7_000_00, bonusPaise: MONTH_BONUS }),
+		row('emp_asha', { locationId: 'loc_kiosk', bonusWagesPaise: 7_000_00, bonusPaise: MONTH_BONUS }),
+	]),
 	run('2026-03', 'posted', [row('emp_meera', { bonusWagesPaise: 7_000_00, bonusPaise: MONTH_BONUS })]),
 	run('2027-04', 'posted', [row('emp_meera', { bonusWagesPaise: 7_000_00, bonusPaise: MONTH_BONUS })]),
 ];
@@ -326,6 +330,32 @@ describe('the year’s bonus (BN1)', () => {
 		await expect(
 			service.payBonus('2026-27', { bankLedgerId: 'led_bank', paidOn: '2027-04-21' }, undefined),
 		).rejects.toMatchObject(refusal('bonus_paid'));
+	});
+
+	it('owes no bonus for under 30 days’ work, and takes back what was provided for it', async () => {
+		const { service, ledger } = build({
+			runs: [
+				run('2026-05', 'posted', [
+					// Exactly 30 days: covered.
+					row('emp_meera', { bonusWagesPaise: 7_000_00, bonusPaise: MONTH_BONUS }),
+					row('emp_kavya', { paidDays: 29, bonusWagesPaise: 6_766_67, bonusPaise: 56_366 }),
+				]),
+			],
+		});
+		const year = await service.bonusYear('2026-27');
+		expect(year.rows.map((r) => [r.employeeId, r.daysWorked, r.duePaise])).toEqual([
+			['emp_meera', 30, MONTH_BONUS],
+			['emp_kavya', 29, 0],
+		]);
+		await service.payBonus('2026-27', { bankLedgerId: 'led_bank', paidOn: '2027-04-20' }, ca);
+		const { lines } = ledger.post.mock.calls[0]?.[0] as unknown as {
+			lines: { ledger: { id: string }; locationId: string; debitPaise?: number; creditPaise?: number }[];
+		};
+		// Kavya is paid nothing; her provision goes back from the payable to the year's bonus expense.
+		expect(lines.slice(2)).toEqual([
+			{ ledger: { id: 'led_bonus_payable' }, locationId: 'loc_bar', debitPaise: 56_366 },
+			{ ledger: { id: 'led_bonus' }, locationId: 'loc_bar', creditPaise: 56_366 },
+		]);
 	});
 
 	it('refuses a year with no bonus to pay, and posts as no one when no one is signed in', async () => {

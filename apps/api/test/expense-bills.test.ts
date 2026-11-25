@@ -192,6 +192,8 @@ describe('saving a draft', () => {
 			voucherId: null,
 			postedAt: null,
 			postedBy: null,
+			// Due on the supplier's 30 days' terms from the bill's day.
+			dueOn: '2026-12-20',
 			createdAt: at,
 			updatedAt: at,
 			version: 0,
@@ -222,6 +224,10 @@ describe('saving a draft', () => {
 			refusal('supplier_unknown'),
 		);
 		await expect(service.create(write({ locationId: 'loc_gone' }))).rejects.toMatchObject(
+			refusal('location_unknown'),
+		);
+		// A closed location is no place to bill to either.
+		await expect(service.create(write({ locationId: 'loc_shut' }))).rejects.toMatchObject(
 			refusal('location_unknown'),
 		);
 		await expect(service.create(write({ supplierId: 'sup_none' }))).rejects.toMatchObject(

@@ -1,5 +1,6 @@
-import { Component, computed, effect, inject, signal, type TemplateRef } from '@angular/core';
+import { Component, computed, effect, inject, signal, viewChild, type TemplateRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal, type NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
@@ -101,11 +102,30 @@ export class AttendancePage {
 		enabled: /^\d{4}-\d{2}$/.test(this.month()) && !!this.locationId(),
 	}));
 
+	private readonly route = inject(ActivatedRoute);
+	private readonly dayModal = viewChild<TemplateRef<unknown>>('dayModal');
+	/** Brief 26 WL1: a worklist row's day, opened once the month is read. */
+	private readonly wanted = signal<{ employeeId: string; day: string } | null>(null);
+
 	constructor() {
+		// Opened from the worklist: the month, the store, and the day to open.
+		const q = this.route.snapshot?.queryParamMap;
+		if (q?.get('month')) this.month.set(q.get('month') as string);
+		if (q?.get('locationId')) this.locationId.set(q.get('locationId') as string);
+		if (q?.get('employeeId') && q.get('day'))
+			this.wanted.set({ employeeId: q.get('employeeId') as string, day: q.get('day') as string });
 		// The first store in the user's charge until they pick another.
 		effect(() => {
 			const first = this.stores.data()?.[0]?.id;
 			if (first && !this.locationId()) this.locationId.set(first);
+		});
+		effect(() => {
+			const want = this.wanted();
+			const person = this.grid.data()?.people.find((p) => p.employeeId === want?.employeeId);
+			const template = this.dayModal();
+			if (!want || !person || !template) return;
+			this.wanted.set(null);
+			this.openDay(template, person, want.day);
 		});
 	}
 

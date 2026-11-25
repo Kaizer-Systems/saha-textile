@@ -1,5 +1,6 @@
-import { Component, computed, inject, signal, type TemplateRef } from '@angular/core';
+import { Component, computed, effect, inject, signal, viewChild, type TemplateRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal, type NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
@@ -194,6 +195,18 @@ export class EmployeesPage {
 		queryKey: PAYROLL_KEYS.employees,
 		queryFn: () => firstValueFrom(this.gateway.employees()),
 	}));
+	private readonly route = inject(ActivatedRoute);
+	private readonly employeeModal = viewChild<TemplateRef<unknown>>('employeeModal');
+	/** Brief 26 WL1: a worklist row's person, opened once the staff are read. */
+	private readonly wanted = signal(this.route.snapshot?.queryParamMap?.get('employeeId') ?? '');
+	private readonly openWanted = effect(() => {
+		const e = this.employees.data()?.find((x) => x.id === this.wanted());
+		const template = this.employeeModal();
+		if (!e || !template) return;
+		this.wanted.set('');
+		this.open(template, e);
+	});
+
 	readonly locations = injectQuery(() => ({
 		queryKey: LOCATION_KEYS.list,
 		queryFn: () => firstValueFrom(this.locationsGateway.list()),

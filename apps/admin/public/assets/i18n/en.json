@@ -10319,6 +10319,7 @@
 	"payroll_runs": "Payroll runs",
 	"search_hint_payroll_employees": "Each employee's PAN, UAN, ESI number, bank account and salary structure, with the half-the-pay wage rule checked.",
 	"search_hint_payroll_attendance": "Paid days and leave for each person in a month, locked before the payroll run.",
+	"search_hint_payroll_my_attendance": "Mark yourself in and out, see the leave you have left, and ask for leave.",
 	"search_hint_payroll_runs": "The month's pay with PF, ESI, PT, TDS and advances: approve, post to the books and mark paid.",
 	"payroll_add_employee": "Add employee",
 	"payroll_change_employee": "Change employee",

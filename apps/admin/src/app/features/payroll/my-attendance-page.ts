@@ -70,7 +70,7 @@ export class MyAttendancePage {
 	);
 
 	readonly time = (iso: string) => istTime(iso);
-	/** "Wed 25 Nov 2026" (English digits and month names in both languages, as every date in the admin). */
+	/** "Wed, 25 Nov, 2026" (English digits and month names in both languages, as every date in the admin). */
 	readonly dayName = (day: string) =>
 		new Date(`${day}T12:00:00+05:30`).toLocaleDateString('en-IN', {
 			timeZone: 'Asia/Kolkata',

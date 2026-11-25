@@ -10319,6 +10319,7 @@
 	"payroll_runs": "মাসের বেতন",
 	"search_hint_payroll_employees": "প্রতিটি কর্মীর PAN, UAN, ESI নম্বর, ব্যাংক অ্যাকাউন্ট ও বেতনের কাঠামো, অর্ধেক বেতনের নিয়ম মিলিয়ে।",
 	"search_hint_payroll_attendance": "মাসে প্রত্যেকের বেতনের দিন ও ছুটি, বেতন তৈরির আগে লক করা।",
+	"search_hint_payroll_my_attendance": "নিজের ঢোকা ও বেরোনোর সময় দিন, বাকি ছুটি দেখুন, আর ছুটি চান।",
 	"search_hint_payroll_runs": "PF, ESI, PT, TDS ও অগ্রিম সহ মাসের বেতন: অনুমোদন, খাতায় পোস্ট আর দেওয়া হয়েছে চিহ্নিত করা।",
 	"payroll_add_employee": "কর্মী যোগ করুন",
 	"payroll_change_employee": "কর্মীর তথ্য বদলান",

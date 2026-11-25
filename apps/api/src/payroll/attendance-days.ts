@@ -198,10 +198,11 @@ export class AttendanceDaysService {
 		context: Awaited<ReturnType<AttendanceDaysService['monthContext']>>,
 	) {
 		const set = records.filter(isSet);
-		const { days, unmarked } = settledMonth(month, e, set, context.calendar(e.locationId));
+		const { days, unmarked, unmarkedDays } = settledMonth(month, e, set, context.calendar(e.locationId));
 		return {
 			...monthFromDays(days, context.paidAs(e.locationId)),
 			unmarked,
+			unmarkedDays,
 			lateMarks: set.filter((d) => d.lateMinutes > 0).length,
 		};
 	}
@@ -435,6 +436,7 @@ export class AttendanceDaysService {
 					withoutPay: counted.withoutPay,
 					lateMarks: counted.lateMarks,
 					unmarked: counted.unmarked,
+					unmarkedDays: counted.unmarkedDays,
 				};
 			}),
 		};

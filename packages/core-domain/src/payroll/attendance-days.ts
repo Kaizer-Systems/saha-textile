@@ -155,11 +155,11 @@ export function settledMonth(
 	roll: { joinedOn: string; leftOn: string | null },
 	records: readonly DayRecord[],
 	calendar: StoreCalendar,
-): { days: DayRecord[]; unmarked: number } {
+): { days: DayRecord[]; unmarked: number; unmarkedDays: string[] } {
 	const own = new Map(records.map((r) => [r.day, r]));
 	const holidays = new Set(calendar.holidays.map((h) => h.day));
 	const off = new Set(calendar.offDays);
-	let unmarked = 0;
+	const unmarkedDays: string[] = [];
 	const days = daysOfMonth(month)
 		.filter((day) => day >= roll.joinedOn && (!roll.leftOn || day <= roll.leftOn))
 		.map((day): DayRecord => {
@@ -167,8 +167,8 @@ export function settledMonth(
 			if (record) return record;
 			if (holidays.has(day)) return { day, status: 'holiday' };
 			if (off.has(day)) return { day, status: 'weekly_off' };
-			unmarked += 1;
+			unmarkedDays.push(day);
 			return { day, status: 'absent' };
 		});
-	return { days, unmarked };
+	return { days, unmarked: unmarkedDays.length, unmarkedDays };
 }

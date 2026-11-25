@@ -123,6 +123,7 @@ describe('a store’s month: its shift, weekly offs and holidays, and each day s
 				{ day: '2026-11-30', status: 'absent' },
 			],
 			unmarked: 2,
+			unmarkedDays: ['2026-11-29', '2026-11-30'],
 		});
 		expect(settledMonth('2026-11', { joinedOn: '2026-11-01', leftOn: '2026-11-01' }, [], calendar).days).toEqual([
 			{ day: '2026-11-01', status: 'weekly_off' },

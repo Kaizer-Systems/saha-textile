@@ -271,8 +271,9 @@ export const AttendanceMonthGrid = z.object({
 			leaveByType: z.record(z.string(), z.number()),
 			withoutPay: z.number(),
 			lateMarks: z.number().int(),
-			/** Days on the roll nobody marked or set, counted absent at the lock. */
+			/** Days on the roll nobody marked or set, counted absent at the lock, and which. */
 			unmarked: z.number().int().default(0),
+			unmarkedDays: z.array(IsoDate).default([]),
 		}),
 	),
 	/** The store's weekly offs and holidays in the month, which days nobody marked fall back to. */

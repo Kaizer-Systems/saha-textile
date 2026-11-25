@@ -169,19 +169,19 @@ export class AttendancePage {
 						.map((d) => [p.name, d.day, d.inAt ? istTime(d.inAt) : '', d.lateMinutes]),
 				),
 			};
-		if (report === 'absences')
+		if (report === 'absences') {
+			// Days marked absent, and days on the person's roll nobody marked, up to today (none still to come).
+			const today = new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10);
 			return {
 				...base,
 				header: [t('payroll_col_name'), t('date'), t('att_day')],
 				rows: grid.people.flatMap((p) =>
 					this.days()
-						.filter((d) => {
-							const c = this.cell(p, d);
-							return c.letter === 'A' || c.letter === '';
-						})
+						.filter((d) => this.cell(p, d).letter === 'A' || (p.unmarkedDays.includes(d) && d <= today))
 						.map((d) => [p.name, d, this.cell(p, d).letter ? t('att_status_absent') : t('att_not_marked')]),
 				),
 			};
+		}
 		return {
 			...base,
 			header: [
@@ -245,7 +245,16 @@ export class AttendancePage {
 			inTime: r?.inAt ? istTime(r.inAt) : '',
 			outTime: r?.outAt ? istTime(r.outAt) : '',
 			reason: '',
-			was: r ? this.transloco.translate(`att_status_${r.status}`) : this.transloco.translate('att_not_marked'),
+			// What the grid shows: the day's own status, else its holiday or weekly off, else not marked.
+			was: this.transloco.translate(
+				r
+					? `att_status_${r.status}`
+					: c.letter === 'H'
+						? 'att_status_holiday'
+						: c.letter === 'WO'
+							? 'att_status_weekly_off'
+							: 'att_not_marked',
+			),
 		});
 		this.modal = this.modals.open(template, { centered: true });
 	}

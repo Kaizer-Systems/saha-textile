@@ -4,3 +4,4 @@ export * from './state-rules';
 export * from './income-tax';
 export * from './bonus';
 export * from './leave';
+export * from './attendance-days';

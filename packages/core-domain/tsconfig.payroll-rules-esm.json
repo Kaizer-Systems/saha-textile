@@ -18,6 +18,7 @@
 		"src/payroll/income-tax.ts",
 		"src/payroll/payroll-rules.ts",
 		"src/payroll/bonus.ts",
-		"src/payroll/leave.ts"
+		"src/payroll/leave.ts",
+		"src/payroll/attendance-days.ts"
 	]
 }

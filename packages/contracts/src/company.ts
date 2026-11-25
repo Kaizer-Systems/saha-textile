@@ -54,6 +54,14 @@ export const OtherBusiness = z.object({
 });
 export type OtherBusiness = z.infer<typeof OtherBusiness>;
 
+/** How a working partner's remuneration is set in the deed (brief 25 YC2): a fixed sum a month, a % of book profit, or none. */
+export const RemunerationBasis = z.enum(['monthly', 'percent_of_book_profit', 'none']);
+export type RemunerationBasis = z.infer<typeof RemunerationBasis>;
+
+/** Interest on capital worked on each day's capital (money brought in or taken out counts from the next day), or on the year's opening capital only. */
+export const InterestBasis = z.enum(['daily', 'opening']);
+export type InterestBasis = z.infer<typeof InterestBasis>;
+
 export const Partner = z.object({
 	id: Id,
 	name: Name,
@@ -65,11 +73,37 @@ export const Partner = z.object({
 	/** At most 12% is allowed as a deduction (s.40(b)); more can be agreed but is disallowed for tax. */
 	interestOnCapitalPercent: Percent.default(0),
 	monthlyRemunerationINR: Money.default(0),
+	remunerationBasis: RemunerationBasis.default('monthly'),
+	/** With `percent_of_book_profit`: the partner's % of the year's book profit (s.40(b) meaning). */
+	remunerationPercent: Percent.default(0),
 	/** LLP only: designated partner and their DPIN. */
 	designated: z.boolean().default(false),
 	dpin: Din.nullable().default(null),
 });
 export type Partner = z.infer<typeof Partner>;
+
+/** One partner's terms under a deed: what the year's sharing reads (YC2, YC3). */
+export const DeedTerm = Partner.pick({
+	id: true,
+	name: true,
+	working: true,
+	profitSharePercent: true,
+	interestOnCapitalPercent: true,
+	monthlyRemunerationINR: true,
+	remunerationBasis: true,
+	remunerationPercent: true,
+});
+export type DeedTerm = z.infer<typeof DeedTerm>;
+
+/** An earlier deed, kept when a new one starts ("A new deed from a date"): it ruled from `from` (null: from the start) to `to`. */
+export const PartnerDeed = z.object({
+	from: IsoDate.nullable(),
+	to: IsoDate,
+	interestBasis: InterestBasis,
+	lossYearCharges: z.boolean(),
+	partners: z.array(DeedTerm).max(50),
+});
+export type PartnerDeed = z.infer<typeof PartnerDeed>;
 
 export const Director = z.object({
 	id: Id,
@@ -100,6 +134,13 @@ export const CompanyProfile = z.object({
 	otherBusinesses: z.array(OtherBusiness).max(50).default([]),
 	partners: z.array(Partner).max(50).default([]),
 	partnersCapital: z.enum(['fixed_with_current', 'fluctuating']).default('fixed_with_current'),
+	/** The partners' terms above are the deed in force from this day (null: from the start of the books). */
+	deedFrom: IsoDate.nullable().default(null),
+	interestBasis: InterestBasis.default('daily'),
+	/** Whether the deed pays interest on capital and remuneration in a year of loss too. */
+	lossYearCharges: z.boolean().default(false),
+	/** Deeds that ruled before `deedFrom`, oldest first. */
+	earlierDeeds: z.array(PartnerDeed).max(50).default([]),
 	directors: z.array(Director).max(50).default([]),
 	shareholders: z.array(Shareholder).max(500).default([]),
 	authorisedCapitalINR: Money.default(0),

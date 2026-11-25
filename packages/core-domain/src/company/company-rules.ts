@@ -22,7 +22,8 @@ export type CompanyProblem =
 	| 'company_one_director'
 	| 'cin_needed'
 	| 'llpin_needed'
-	| 'paid_up_over_authorised';
+	| 'paid_up_over_authorised'
+	| 'deed_dates_out_of_order';
 
 /** The kinds of business offered (public limited is not), in the order the picker shows them; same as contracts' BUSINESS_KINDS. */
 export const BUSINESS_KIND_LIST: readonly BusinessKind[] = [
@@ -70,7 +71,22 @@ export function companyProblems(profile: CompanyProfile): CompanyProblem[] {
 		profile.paidUpCapitalINR > profile.authorisedCapitalINR
 	)
 		problems.push('paid_up_over_authorised');
+	if ((profile.kind === 'partnership' || profile.kind === 'llp') && !deedsInOrder(profile))
+		problems.push('deed_dates_out_of_order');
 	return problems;
+}
+
+/**
+ * YC2: earlier deeds run oldest first, each starting before it ends and after the one before ended, and today's deed
+ * starts after the last of them (a deed with earlier ones always has its own start).
+ */
+export function deedsInOrder(profile: Pick<CompanyProfile, 'deedFrom' | 'earlierDeeds'>): boolean {
+	let lastEnd = '';
+	for (const deed of profile.earlierDeeds) {
+		if ((deed.from ?? '') > deed.to || (lastEnd && (deed.from ?? '') <= lastEnd)) return false;
+		lastEnd = deed.to;
+	}
+	return !lastEnd || (profile.deedFrom !== null && profile.deedFrom > lastEnd);
 }
 
 /** What changes with the kind of business (CT6), as the screens and the books read it. */

@@ -48,6 +48,18 @@ const partnerItems = (rules = PARTNER_RULES) => ({
 		ledger('partners_remuneration', "Partners' remuneration", 'appropriation', rules),
 	],
 });
+/** Version 4 of a firm's and an LLP's chart (brief 25 YC3): the ledgers Year close's sharing posts to. */
+export const FIRM_SHARE_LEDGERS: ChartTemplateLedger[] = [
+	ledger('partners_profit_share', 'Share of profit to partners', 'appropriation', PARTNER_RULES),
+	ledger(
+		'tds_payable_partners',
+		'TDS payable on partners (194T)',
+		'duties_and_taxes',
+		'Income-tax Act 1961 s.194T (from 1 Apr 2025; 2025 Act s.393); to be confirmed by the CA.',
+	),
+];
+export const FIRM_SHARE_SOURCE = `Adds the share of profit and TDS on partners, as Year close posts them. ${PARTNER_RULES}`;
+
 const companyItems = () => ({
 	groups: [group('deferred_tax', 'Deferred tax liabilities (net)', 'liability')],
 	ledgers: [
@@ -504,6 +516,20 @@ export const APPROPRIATION = report([
 	line('to_partners', 'Share of profit to partners', null, [...PROFIT, ...groups('appropriation')]),
 ]);
 
+const roles = (...keys: string[]): ReportSource[] => keys.map((key) => ({ kind: 'role', key }));
+
+/**
+ * Version 2 (brief 25 YC3): once Year close shares the profit through the appropriation ledgers, the share of profit is
+ * its own line and the balance carried to the balance sheet is what is left unshared.
+ */
+export const APPROPRIATION_V2 = report([
+	line('net_profit', 'Net profit for the year', null, PROFIT),
+	line('interest', "Interest on partners' capital", null, roles('interest_on_partners_capital')),
+	line('remuneration', "Partners' remuneration", null, roles('partners_remuneration')),
+	line('to_partners', 'Share of profit to partners', null, roles('partners_profit_share')),
+	line('balance', 'Balance carried to the balance sheet', null, [...PROFIT, ...groups('appropriation')]),
+]);
+
 /** An LLP's balance sheet (ICAI guidance note on LLPs): partners' funds as contribution, current accounts and reserves. */
 export const LLP_BALANCE_SHEET = report([
 	line('funds_and_liabilities', "Partners' funds and liabilities", null),
@@ -578,6 +604,8 @@ export const STARTER_REPORTS: {
 	kinds: BusinessKind[];
 	source: string;
 	content: ReportTemplateContent;
+	/** Versions after the first, each from its date. */
+	later?: { content: ReportTemplateContent; source: string; validFrom: string }[];
 }[] = [
 	{
 		code: 'RP-NCE-PL',
@@ -606,6 +634,13 @@ export const STARTER_REPORTS: {
 		kinds: ['partnership', 'llp'],
 		source: `${PARTNER_RULES}`,
 		content: APPROPRIATION,
+		later: [
+			{
+				content: APPROPRIATION_V2,
+				source: `Adds the share of profit and the balance carried, as Year close posts them. ${PARTNER_RULES}`,
+				validFrom: '2026-11-25',
+			},
+		],
 	},
 	{
 		code: 'RP-LLP-BS',

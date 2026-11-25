@@ -1718,7 +1718,61 @@ export const scenarios = [
 				!(await admin.ok('GET', '/admin/accounts/year-close/2026-27')).canPostClosing,
 				'Closing entries wait while checks are open',
 			);
-			return `${view.done} of ${view.checks.length} done; profit row ${plBefore.rows.at(-1)?.thisYearPaise}`;
+			// YC1, YC3 (brief 25): where the profit goes, worked out on these books for each kind.
+			const plan = view.profitPlan;
+			const profitRow = plBefore.rows.at(-1)?.thisYearPaise;
+			check(plan.profitPaise === profitRow, 'The profit to share is the year’s profit', `${plan.profitPaise}`);
+			const sum = (key) => plan.lines.reduce((total, line) => total + line[key], 0);
+			check(sum('debitPaise') === sum('creditPaise'), 'What it posts balances', `${sum('debitPaise')}`);
+			const expected = {
+				proprietorship: ['keep', 'to_capital', 'to_capital_keep_drawings'],
+				partnership: ['keep', 'deed', 'ratio_only'],
+				llp: ['keep', 'deed', 'ratio_only'],
+				private_limited: ['keep', 'to_general_reserve'],
+				private_limited_opc: ['keep', 'to_general_reserve'],
+			}[KIND];
+			check(
+				JSON.stringify(view.profitChoices) === JSON.stringify(expected) &&
+					view.profitChoice.option === (COMPANY ? 'keep' : expected[1]),
+				'The kind’s choices, its usual one picked',
+				`${view.profitChoices.join(',')} → ${view.profitChoice.option}`,
+			);
+			if (KIND === 'proprietorship')
+				check(
+					plan.capitalAfterPaise === 50_000_000 + profitRow - plan.drawingsPaise,
+					'Capital after: ₹5,00,000 + the profit − drawings',
+					String(plan.capitalAfterPaise),
+				);
+			if (PARTNERS) {
+				// 12% on ₹3,00,000 and ₹2,00,000 brought in as opening capital; no remuneration; the rest 60:40.
+				const [a, b] = plan.rows;
+				check(
+					a?.interestPaise === 3_600_000 && b?.interestPaise === 2_400_000,
+					'Interest on capital ₹36,000 and ₹24,000',
+					`${a?.interestPaise} ${b?.interestPaise}`,
+				);
+				check(
+					a?.tdsPaise === 360_000 && b?.tdsPaise === 240_000,
+					'TDS under s.194T ₹3,600 and ₹2,400',
+					`${a?.tdsPaise} ${b?.tdsPaise}`,
+				);
+				check(
+					a.totalPaise + b.totalPaise === profitRow && Math.abs(a.sharePaise * 2 - b.sharePaise * 3) <= 5,
+					'The rest shared 60:40, every paisa',
+					`${a.sharePaise} ${b.sharePaise}`,
+				);
+			}
+			// The year after: last year's profit sits in the profit and loss account, so the balance sheet still balances.
+			const next = await admin.ok('GET', '/admin/accounts/reports/statements/balanceSheet', undefined, {
+				asAt: '2027-04-15',
+			});
+			const sides = next.rows.filter((r) => r.depth === 0).map((r) => r.thisYearPaise);
+			check(
+				sides.length === 2 && sides[0] === sides[1],
+				'The next year’s balance sheet balances with last year’s profit carried',
+				sides.join(' / '),
+			);
+			return `${view.done} of ${view.checks.length} done; profit row ${profitRow}; ${plan.option}`;
 		},
 	},
 ];

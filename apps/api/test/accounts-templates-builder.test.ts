@@ -108,7 +108,7 @@ describe('Save draft, changes and Publish (AT3)', () => {
 			changed: [],
 		});
 		const published = await routes.publish('CH-FIRM', { expectedUpdatedAt: saved.updatedAt }, undefined);
-		expect(published.versions.at(-1)).toMatchObject({ version: 3, validFrom: '2027-04-01', caReview: 'pending' });
+		expect(published.versions.at(-1)).toMatchObject({ version: 4, validFrom: '2027-04-01', caReview: 'pending' });
 		expect(stores.templates.rows.find((t) => t.code === 'CH-FIRM')?.draft).toBeNull();
 		const stale = { ...draft, expectedUpdatedAt: '2000-01-01T00:00:00.000Z' };
 		await expect(service.saveDraft('CH-FIRM', stale, null, now)).rejects.toMatchObject({

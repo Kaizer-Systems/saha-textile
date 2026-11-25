@@ -18,7 +18,14 @@ import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 
-import type { BusinessKind, CompanyProfile, Director, Partner, Shareholder } from '@saha-textile/contracts';
+import type {
+	BusinessKind,
+	CompanyProfile,
+	Director,
+	Partner,
+	PartnerDeed,
+	Shareholder,
+} from '@saha-textile/contracts';
 
 const newId = (prefix: string): string => `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 
@@ -99,10 +106,45 @@ export class CompanyProfileSettings {
 			profitSharePercent: 0,
 			interestOnCapitalPercent: 0,
 			monthlyRemunerationINR: 0,
+			remunerationBasis: 'monthly',
+			remunerationPercent: 0,
 			designated: false,
 			dpin: null,
 		};
 		this.set('partners', [...(this.form()?.partners ?? []), partner]);
+	}
+
+	/** YC2 "A new deed from a date": the day the next deed starts, while it is being picked. */
+	readonly newDeedOn = signal('');
+
+	/** Today's terms are kept as an earlier deed ending the day before, and the partners' terms rule from the new day. */
+	startNewDeed(): void {
+		const form = this.form();
+		const day = this.newDeedOn();
+		if (!form || !day || (form.deedFrom !== null && day <= form.deedFrom)) return;
+		const kept: PartnerDeed = {
+			from: form.deedFrom,
+			to: new Date(Date.parse(`${day}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10),
+			interestBasis: form.interestBasis,
+			lossYearCharges: form.lossYearCharges,
+			partners: form.partners.map((p) => ({
+				id: p.id,
+				name: p.name,
+				working: p.working,
+				profitSharePercent: p.profitSharePercent,
+				interestOnCapitalPercent: p.interestOnCapitalPercent,
+				monthlyRemunerationINR: p.monthlyRemunerationINR,
+				remunerationBasis: p.remunerationBasis,
+				remunerationPercent: p.remunerationPercent,
+			})),
+		};
+		this.form.set({ ...form, earlierDeeds: [...form.earlierDeeds, kept], deedFrom: day });
+		this.newDeedOn.set('');
+	}
+
+	/** An earlier deed's shares in one line: "Arindam 60% · Rupa 40%". */
+	deedShares(deed: PartnerDeed): string {
+		return deed.partners.map((p) => `${p.name} ${p.profitSharePercent}%`).join(' · ');
 	}
 	patchPartner(id: string, change: Partial<Partner>): void {
 		this.set(

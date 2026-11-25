@@ -86,6 +86,7 @@ interface Options {
 	cashOpen?: number;
 	moving?: number;
 	vouchers?: Record<string, unknown>;
+	profile?: unknown;
 }
 
 /** Every check done: banks reconciled, a year-end count posted, March's payroll posted, accruals and suspense settled. */
@@ -102,6 +103,8 @@ function build(options: Options = {}) {
 				(options.balances ?? BALANCES)[`${day}|${ids.join(',')}`] ?? {},
 		),
 		getVoucher: vi.fn(async (id: string) => vouchers.get(id) ?? null),
+		balanceBefore: vi.fn(async () => 0),
+		statementLines: vi.fn(async () => []),
 	};
 	const statements = {
 		summary: async () =>
@@ -138,6 +141,7 @@ function build(options: Options = {}) {
 			return { id: 'jv_undo' };
 		}),
 		lockPeriods: vi.fn(async () => []),
+		ensureRoleLedger: vi.fn(async (role: string) => `led_made_${role}`),
 	};
 	const transactions = {
 		withTransaction: vi.fn(async <T>(work: (context: unknown) => Promise<T>) => work({ session: 'tx' })),
@@ -161,7 +165,10 @@ function build(options: Options = {}) {
 		} as never,
 		{ list: async () => options.assets ?? [] } as never,
 		{ list: async () => options.runs ?? [{ month: '2027-03', status: 'posted' }] } as never,
-		{ listRegistrations: async () => options.registrations ?? [] } as never,
+		{
+			listRegistrations: async () => options.registrations ?? [],
+			getProfile: async () => options.profile ?? null,
+		} as never,
 		{ list: async () => options.filings ?? [] } as never,
 		ledger as never,
 		transactions as never,
@@ -335,21 +342,21 @@ describe('the year’s checks (T3)', () => {
 describe('confirming accruals and suspense (T3)', () => {
 	it('confirms accruals with who and when, and keeps, sets or clears the suspense note', async () => {
 		const { service, saved } = build({ saved: null });
-		await service.confirm(YEAR, { accruals: true, suspenseNote: null }, ca, now);
+		await service.confirm(YEAR, { accruals: true, suspenseNote: null, profitChoice: null }, ca, now);
 		expect(saved()).toMatchObject({
 			accrualsConfirmedBy: 'adm_ca',
 			accrualsConfirmedAt: at,
 			suspenseNote: null,
 			updatedAt: at,
 		});
-		await service.confirm(YEAR, { accruals: false, suspenseNote: 'Carried to next year' }, ca, now);
+		await service.confirm(YEAR, { accruals: false, suspenseNote: 'Carried to next year', profitChoice: null }, ca, now);
 		expect(saved()).toMatchObject({ accrualsConfirmedBy: 'adm_ca', suspenseNote: 'Carried to next year' });
-		await service.confirm(YEAR, { accruals: false, suspenseNote: null }, ca);
+		await service.confirm(YEAR, { accruals: false, suspenseNote: null, profitChoice: null }, ca);
 		expect(saved()?.suspenseNote).toBe('Carried to next year');
-		await service.confirm(YEAR, { accruals: false, suspenseNote: '' }, ca);
+		await service.confirm(YEAR, { accruals: false, suspenseNote: '', profitChoice: null }, ca);
 		expect(saved()?.suspenseNote).toBeNull();
 		const nobody = build({ saved: null });
-		await nobody.service.confirm(YEAR, { accruals: true, suspenseNote: null }, undefined, now);
+		await nobody.service.confirm(YEAR, { accruals: true, suspenseNote: null, profitChoice: null }, undefined, now);
 		expect(nobody.saved()?.accrualsConfirmedBy).toBeNull();
 	});
 
@@ -357,7 +364,7 @@ describe('confirming accruals and suspense (T3)', () => {
 		await expect(
 			build({ saved: record({ closedAt: at }) }).service.confirm(
 				YEAR,
-				{ accruals: true, suspenseNote: null },
+				{ accruals: true, suspenseNote: null, profitChoice: null },
 				ca,
 			),
 		).rejects.toMatchObject(refusal('year_closed'));
@@ -496,7 +503,7 @@ describe('the year-close routes and wiring', () => {
 			},
 		);
 		const c = new YearCloseController(years as never);
-		const confirm = { accruals: true, suspenseNote: null };
+		const confirm = { accruals: true, suspenseNote: null, profitChoice: null };
 		expect([
 			c.view(YEAR),
 			c.confirm(YEAR, confirm, ca),

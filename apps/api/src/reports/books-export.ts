@@ -7,6 +7,7 @@ import {
 	TALLY_GROUPS,
 	csvText,
 	tallyXml,
+	yearFigures,
 	type AuditLogRepository,
 	type GeneralLedgerRepository,
 } from '@saha-textile/core-domain';
@@ -77,7 +78,13 @@ export class BooksExportService {
 		const inScope = (locationId: string) => !only.length || only.includes(locationId);
 		let file: BooksExportFile;
 		if (query.format === 'trial_balance_csv') {
-			const balances = await this.ledger.balancesAtLocations(query.to, principal, only);
+			const eve = `${Number(query.to.slice(0, 4)) - (query.to.slice(5) < '04-01' ? 1 : 0)}-03-31`;
+			const [closing, opening] = await Promise.all([
+				this.ledger.balancesAtLocations(query.to, principal, only),
+				this.ledger.balancesAtLocations(eve, principal, only),
+			]);
+			// Income and expense for the year so far; earlier years' profit in the profit and loss account.
+			const balances = yearFigures(chart.ledgers, closing, opening);
 			file = {
 				fileName: `trial-balance-${query.to}.csv`,
 				text: csvText(

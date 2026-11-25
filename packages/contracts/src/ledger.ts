@@ -555,10 +555,82 @@ export const YearCloseCheck = z.object({
 });
 export type YearCloseCheck = z.infer<typeof YearCloseCheck>;
 
+/**
+ * Where the year's profit goes (brief 25 YC1): kept in the profit and loss account; a proprietor's moved to capital (with
+ * drawings closed into it, or kept apart); a firm's or LLP's shared as the deed says or in the ratio only; a company's
+ * kept as surplus with part moved to general reserve.
+ */
+export const ProfitChoiceOption = z.enum([
+	'keep',
+	'to_capital',
+	'to_capital_keep_drawings',
+	'deed',
+	'ratio_only',
+	'to_general_reserve',
+]);
+export type ProfitChoiceOption = z.infer<typeof ProfitChoiceOption>;
+
+export const ProfitChoice = z.object({
+	option: ProfitChoiceOption,
+	/** General reserve only: an amount in rupees, or a % of the year's profit. */
+	reserveBasis: z.enum(['amount', 'percent']).default('percent'),
+	reserveValue: z.number().nonnegative().max(1e12).default(0),
+});
+export type ProfitChoice = z.infer<typeof ProfitChoice>;
+
+const SignedPaise = z.number().int();
+
+/** One partner's line in the sharing (YC3). */
+export const ProfitShareRow = z.object({
+	partnerId: z.string(),
+	name: z.string(),
+	/** The ratio over the year, days weighted when a deed changed. */
+	sharePercent: z.number(),
+	interestPaise: SignedPaise,
+	/** The part of the interest within 12% a year, allowed for tax. */
+	interestAllowedPaise: SignedPaise,
+	remunerationPaise: SignedPaise,
+	sharePaise: SignedPaise,
+	totalPaise: SignedPaise,
+	/** TDS on interest and remuneration (s.194T, 10% once the year's total passes ₹20,000). */
+	tdsPaise: SignedPaise,
+});
+export type ProfitShareRow = z.infer<typeof ProfitShareRow>;
+
+/** What the chosen option posts, worked out on today's books (YC1, YC3). */
+export const ProfitPlan = z.object({
+	option: ProfitChoiceOption,
+	profitPaise: SignedPaise,
+	rows: z.array(ProfitShareRow),
+	/** Firms and LLPs: book profit (after interest within 12%), the remuneration limit, and what goes over it. */
+	bookProfitPaise: SignedPaise.nullable(),
+	remunerationLimitPaise: SignedPaise.nullable(),
+	remunerationDisallowedPaise: SignedPaise,
+	interestDisallowedPaise: SignedPaise,
+	/** Whether interest and remuneration are posted this year (a loss year only when the deed says so). */
+	chargesApplied: z.boolean(),
+	/** Proprietorship: drawings closed into capital, and the capital after. */
+	drawingsPaise: SignedPaise,
+	capitalAfterPaise: SignedPaise.nullable(),
+	/** Company: what moves to general reserve. */
+	reservePaise: SignedPaise,
+	lines: z.array(
+		z.object({ ledgerName: z.string(), debitPaise: SignedPaise, creditPaise: SignedPaise, narration: z.string() }),
+	),
+	problems: z.array(z.string()),
+});
+export type ProfitPlan = z.infer<typeof ProfitPlan>;
+
 export const YearCloseView = z.object({
 	year: z.string(),
 	from: IsoDate,
 	to: IsoDate,
+	kind: BusinessKind,
+	/** The choice in force (saved, or the kind's default) and the choices the kind offers. */
+	profitChoice: ProfitChoice,
+	profitChoices: z.array(ProfitChoiceOption),
+	profitPlan: ProfitPlan.nullable(),
+	profitVoucherId: Id.nullable(),
 	checks: z.array(YearCloseCheck),
 	done: z.number().int(),
 	/** Whether the closing entries, and the close itself, may go ahead now. */
@@ -577,5 +649,7 @@ export type YearCloseView = z.infer<typeof YearCloseView>;
 export const YearCloseConfirm = z.object({
 	accruals: z.boolean().default(false),
 	suspenseNote: z.string().trim().max(300).nullable().default(null),
+	/** YC1: where the profit goes; takes effect when the closing entries are posted (again). */
+	profitChoice: ProfitChoice.nullable().default(null),
 });
 export type YearCloseConfirm = z.infer<typeof YearCloseConfirm>;

@@ -2,10 +2,28 @@ import { randomUUID } from 'node:crypto';
 
 import { BadRequestException, Body, Controller, Get, Header, Inject, Injectable, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { BOOK_PARTS, FinancialYear, YearCloseConfirm, type YearCloseView } from '@saha-textile/contracts';
 import {
+	BOOK_PARTS,
+	FinancialYear,
+	YearCloseConfirm,
+	type ChartOfAccounts,
+	type CompanyProfile,
+	type JournalVoucher,
+	type Location,
+	type ProfitChoice,
+	type ProfitPlan,
+	type YearCloseView,
+} from '@saha-textile/contracts';
+import {
+	PROFIT_CHOICES,
+	PROFIT_LEDGERS,
 	closingLines,
 	closingStale,
+	partnerRole,
+	profitByLocation,
+	profitChoiceFor,
+	profitPlanLines,
+	shareProfit,
 	yearSpan,
 	resolveRole,
 	rolesOf,
@@ -16,6 +34,7 @@ import {
 	yearCloseReady,
 	type BankRepository,
 	type BankStatementRepository,
+	type CapitalTrail,
 	type CashRepository,
 	type ClosingLine,
 	type CompanyRepository,
@@ -24,6 +43,7 @@ import {
 	type GstReturnRepository,
 	type LocationRepository,
 	type PayrollRunRepository,
+	type ShareResult,
 	type StockCountRepository,
 	type TransactionManagerPort,
 	type TransferRepository,
@@ -59,6 +79,44 @@ const dayAfter = (day: string, days: number) =>
 const QUARTER_ENDS = new Set(['03', '06', '09', '12']);
 /** Clearing ledgers that should be empty at the year's end, besides everything under Suspense. */
 const CLEARING_ROLES = ['gateway_clearing', 'upi_card_clearing', 'cod_receivable'] as const;
+const KEEP: ProfitChoice = { option: 'keep', reserveBasis: 'percent', reserveValue: 0 };
+/** What a choice posts, as a key: the reserve's figures count only for the general reserve. */
+const choiceKey = (choice: ProfitChoice): string =>
+	JSON.stringify(
+		choice.option === 'to_general_reserve'
+			? [choice.option, choice.reserveBasis, choice.reserveValue]
+			: [choice.option],
+	);
+const NO_SHARE: ShareResult = {
+	rows: [],
+	bookProfitPaise: null,
+	remunerationLimitPaise: null,
+	remunerationDisallowedPaise: 0,
+	interestDisallowedPaise: 0,
+	chargesApplied: false,
+	problems: [],
+};
+type ByLocation = Record<string, { closing: Record<string, number>; opening: Record<string, number> }>;
+interface Books {
+	chart: ChartOfAccounts;
+	pl: string;
+	locations: Location[];
+	byLocation: ByLocation;
+}
+/** Where the owners' accounts are kept: the head office, the first active location made. */
+const ownersLocation = (locations: readonly Location[]): string | null =>
+	[...locations].filter((l) => l.active).sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]?.id ?? null;
+/** The balances with a posted profit voucher taken back out, so the sharing it posted reads as it did before. */
+function without(byLocation: ByLocation, voucher: JournalVoucher | null): ByLocation {
+	if (!voucher) return byLocation;
+	const out: ByLocation = {};
+	for (const [location, at] of Object.entries(byLocation)) out[location] = { ...at, closing: { ...at.closing } };
+	for (const line of voucher.lines) {
+		const at = out[line.locationId];
+		if (at) at.closing[line.ledgerId] = (at.closing[line.ledgerId] ?? 0) - line.debitPaise + line.creditPaise;
+	}
+	return out;
+}
 
 /**
  * Closing a financial year (accounts brief T3). Ten checks across the books; then the closing entries (every income
@@ -72,7 +130,10 @@ export class YearCloseService {
 	constructor(
 		@Inject(YEAR_CLOSE_REPOSITORY) private readonly store: YearCloseRepository,
 		@Inject(GENERAL_LEDGER_REPOSITORY)
-		private readonly books: Pick<GeneralLedgerRepository, 'balancesAt' | 'getVoucher'>,
+		private readonly books: Pick<
+			GeneralLedgerRepository,
+			'balancesAt' | 'getVoucher' | 'balanceBefore' | 'statementLines'
+		>,
 		@Inject(LOCATION_REPOSITORY) private readonly locations: Pick<LocationRepository, 'list'>,
 		@Inject(CASH_REPOSITORY) private readonly cash: Pick<CashRepository, 'unfinishedIn'>,
 		@Inject(BANK_REPOSITORY) private readonly banks: Pick<BankRepository, 'list'>,
@@ -82,10 +143,11 @@ export class YearCloseService {
 		@Inject(TRANSFER_REPOSITORY) private readonly transfers: Pick<TransferRepository, 'inTransitFrom'>,
 		@Inject(FIXED_ASSET_REPOSITORY) private readonly assets: Pick<FixedAssetRepository, 'list'>,
 		@Inject(PAYROLL_RUN_REPOSITORY) private readonly payroll: Pick<PayrollRunRepository, 'list'>,
-		@Inject(COMPANY_REPOSITORY) private readonly company: Pick<CompanyRepository, 'listRegistrations'>,
+		@Inject(COMPANY_REPOSITORY)
+		private readonly company: Pick<CompanyRepository, 'listRegistrations' | 'getProfile'>,
 		@Inject(GST_RETURN_REPOSITORY) private readonly filings: Pick<GstReturnRepository, 'list'>,
 		@Inject(LedgerService)
-		private readonly ledger: Pick<LedgerService, 'chart' | 'post' | 'reverse' | 'lockPeriods'>,
+		private readonly ledger: Pick<LedgerService, 'chart' | 'post' | 'reverse' | 'lockPeriods' | 'ensureRoleLedger'>,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
 	) {}
 
@@ -105,8 +167,8 @@ export class YearCloseService {
 		);
 	}
 
-	/** The closing voucher the year needs now, from each location's balances (closing lines left out). */
-	private async wantedClosing(year: string): Promise<{ lines: ClosingLine[]; profitPaise: number }> {
+	/** Each location's balances at the year's end and on its eve (closing lines left out), with the chart. */
+	private async readBooks(year: string): Promise<Books> {
 		const fy = yearSpan(year);
 		const chart = await this.ledger.chart();
 		let pl: string;
@@ -115,15 +177,144 @@ export class YearCloseService {
 		} catch {
 			throw refuse('books_not_set_up');
 		}
-		const byLocation: Record<string, { closing: Record<string, number>; opening: Record<string, number> }> = {};
-		for (const location of await this.locations.list()) {
+		const locations = await this.locations.list();
+		const byLocation: ByLocation = {};
+		for (const location of locations) {
 			const [closing, opening] = await Promise.all([
 				this.books.balancesAt(fy.to, [location.id]),
 				this.books.balancesAt(dayAfter(fy.from, -1), [location.id]),
 			]);
 			byLocation[location.id] = { closing, opening };
 		}
-		return closingLines(chart, byLocation, pl);
+		return { chart, pl, locations, byLocation };
+	}
+
+	/** The closing voucher the year needs now, from each location's balances (closing lines left out). */
+	private wantedClosing(books: Books): { lines: ClosingLine[]; profitPaise: number } {
+		return closingLines(books.chart, books.byLocation, books.pl);
+	}
+
+	/** A partner's capital through the year from their capital ledger. */
+	private async capitalTrail(ledgerId: string, year: string): Promise<CapitalTrail> {
+		const fy = yearSpan(year);
+		const [before, lines] = await Promise.all([
+			this.books.balanceBefore(ledgerId, fy.from, []),
+			this.books.statementLines(ledgerId, fy.from, fy.to, []),
+		]);
+		// Opening balances brought in are capital at the year's start, whatever day the opening entry carries.
+		const opening = lines.filter((l) => l.kind === 'opening');
+		return {
+			openingPaise: opening.reduce((sum, l) => sum + l.creditPaise - l.debitPaise, -before),
+			moves: lines
+				.filter((l) => l.kind !== 'opening')
+				.map((l) => ({ day: l.date, paise: l.creditPaise - l.debitPaise })),
+		};
+	}
+
+	/**
+	 * YC1, YC3: what the choice posts on these books (a posted sharing taken back out first), its lines by ledger for
+	 * comparing with what was posted, and the roles it needs.
+	 */
+	private async profitPlan(
+		year: string,
+		choice: ProfitChoice,
+		books: Books,
+		profile: CompanyProfile | null,
+	): Promise<{ plan: ProfitPlan; lines: ClosingLine[]; roles: string[] }> {
+		const fy = yearSpan(year);
+		const profits = profitByLocation(books.chart, books.byLocation, books.pl);
+		const profit = Object.values(profits).reduce((sum, p) => sum + p, 0);
+		const owners = ownersLocation(books.locations);
+		const byRole = (role: string) =>
+			books.chart.ledgers.find((l) => l.active !== false && rolesOf(l).includes(role));
+		const problems = new Set<string>();
+		let share: ShareResult | null = null;
+		if ((choice.option === 'deed' || choice.option === 'ratio_only') && profile) {
+			const capital: Record<string, CapitalTrail> = {};
+			const ids = new Set(
+				[...profile.partners, ...profile.earlierDeeds.flatMap((deed) => deed.partners)].map((p) => p.id),
+			);
+			for (const id of ids) {
+				const ledger = byRole(partnerRole('capital', id));
+				if (ledger) capital[id] = await this.capitalTrail(ledger.id, year);
+				else problems.add('partner_ledgers_missing');
+			}
+			share = shareProfit({
+				method: choice.option,
+				from: fy.from,
+				to: fy.to,
+				profitPaise: profit,
+				book: profile,
+				capital,
+			});
+			for (const problem of share.problems) problems.add(problem);
+		}
+		const drawings = byRole('drawings');
+		const drawingsByLocation: Record<string, number> = {};
+		if (choice.option === 'to_capital' && drawings)
+			for (const [location, at] of Object.entries(books.byLocation))
+				if (at.closing[drawings.id]) drawingsByLocation[location] = at.closing[drawings.id] as number;
+		if (!owners && choice.option !== 'keep') problems.add('no_location');
+		const planned = profitPlanLines({
+			choice,
+			profitByLocation: profits,
+			ownersLocationId: owners ?? '',
+			drawingsByLocation,
+			share,
+			partnersCapital: profile?.partnersCapital ?? 'fixed_with_current',
+		});
+		const capitalLedger = byRole('capital');
+		const capitalNow = capitalLedger
+			? -Object.values(books.byLocation).reduce((sum, at) => sum + (at.closing[capitalLedger.id] ?? 0), 0)
+			: 0;
+		const done = share ?? NO_SHARE;
+		return {
+			plan: {
+				option: choice.option,
+				profitPaise: profit,
+				rows: done.rows,
+				bookProfitPaise: done.bookProfitPaise,
+				remunerationLimitPaise: done.remunerationLimitPaise,
+				remunerationDisallowedPaise: done.remunerationDisallowedPaise,
+				interestDisallowedPaise: done.interestDisallowedPaise,
+				chargesApplied: done.chargesApplied,
+				drawingsPaise: planned.drawingsPaise,
+				capitalAfterPaise: choice.option.startsWith('to_capital')
+					? capitalNow + profit - planned.drawingsPaise
+					: null,
+				reservePaise: planned.reservePaise,
+				lines: planned.lines.map((line) => ({
+					ledgerName: byRole(line.role)?.name ?? PROFIT_LEDGERS[line.role]?.name ?? line.role,
+					debitPaise: line.debitPaise,
+					creditPaise: line.creditPaise,
+					narration: line.narration,
+				})),
+				problems: [...problems],
+			},
+			lines: planned.lines.map((line) => ({
+				ledgerId: byRole(line.role)?.id ?? `role:${line.role}`,
+				locationId: line.locationId,
+				debitPaise: line.debitPaise,
+				creditPaise: line.creditPaise,
+			})),
+			roles: [...new Set(planned.lines.map((line) => line.role))],
+		};
+	}
+
+	/** The year's choice in force: saved, else the kind's default (a year closed before keeps the profit where it is). */
+	private async choiceFor(year: string, record: YearCloseRecord, profile: CompanyProfile | null) {
+		const start = Number(year.slice(0, 4));
+		const before = await this.store.get(`${start - 1}-${String(start % 100).padStart(2, '0')}`);
+		const kind = profile?.kind ?? 'private_limited';
+		// A year whose closing entries were posted before the choice existed posted "keep".
+		const saved = record.profitChoice ?? (record.closingVoucherId && !record.postedChoice ? KEEP : null);
+		return { kind, choice: profitChoiceFor(kind, saved, !!before?.closedAt) };
+	}
+
+	/** The profit voucher a year posted, while it stands. */
+	private async liveProfitVoucher(record: YearCloseRecord): Promise<JournalVoucher | null> {
+		const voucher = record.profitVoucherId ? await this.books.getVoucher(record.profitVoucherId) : null;
+		return voucher && !voucher.reversedById ? voucher : null;
 	}
 
 	private async suspensePaise(day: string): Promise<number> {
@@ -148,8 +339,8 @@ export class YearCloseService {
 		const fy = yearSpan(year);
 		const record = this.record(year, await this.store.get(year));
 		const march = fy.months[11] as string;
-		const [sheets, moving, banks, summary, assets, runs, registrations, filed, wanted, suspense] =
-			await Promise.all([
+		const [sheets, moving, banks, summary, assets, runs, registrations, filed, books, suspense] = await Promise.all(
+			[
 				Promise.all(fy.months.map((m) => this.cash.unfinishedIn(m))),
 				Promise.all(fy.months.map((m) => this.transfers.inTransitFrom(m))),
 				this.banks.list(),
@@ -158,9 +349,20 @@ export class YearCloseService {
 				this.payroll.list(),
 				this.company.listRegistrations(),
 				this.filings.list(),
-				this.wantedClosing(year),
+				this.readBooks(year),
 				this.suspensePaise(fy.to),
-			]);
+			],
+		);
+		const wanted = this.wantedClosing(books);
+		const profile = await this.company.getProfile();
+		const { kind, choice } = await this.choiceFor(year, record, profile);
+		const liveProfit = await this.liveProfitVoucher(record);
+		const planned = await this.profitPlan(
+			year,
+			choice,
+			{ ...books, byLocation: without(books.byLocation, liveProfit) },
+			profile,
+		);
 		let reconciled = 0;
 		for (const bank of banks) {
 			const reaches = (summary[bank.id]?.lastDate ?? '') >= fy.to;
@@ -191,8 +393,15 @@ export class YearCloseService {
 		let closing: 'none' | 'posted' | 'stale' = 'none';
 		if (record.closingVoucherId) {
 			const voucher = await this.books.getVoucher(record.closingVoucherId);
+			// An open year's closing is out of date too when the choice, or what it shares, has changed since.
+			const moved =
+				!record.closedAt &&
+				((record.postedChoice ?? choiceKey(KEEP)) !== choiceKey(choice) ||
+					closingStale(liveProfit?.lines ?? [], planned.lines));
 			closing =
-				voucher && !voucher.reversedById && !closingStale(voucher.lines, wanted.lines) ? 'posted' : 'stale';
+				voucher && !voucher.reversedById && !closingStale(voucher.lines, wanted.lines) && !moved
+					? 'posted'
+					: 'stale';
 		}
 		const checks = yearCloseChecks({
 			cashOpen: sheets.flat().length,
@@ -220,6 +429,11 @@ export class YearCloseService {
 			year,
 			from: fy.from,
 			to: fy.to,
+			kind,
+			profitChoice: choice,
+			profitChoices: [...PROFIT_CHOICES[kind]],
+			profitPlan: planned.plan,
+			profitVoucherId: liveProfit?.id ?? null,
 			checks,
 			done: yearCloseDone(checks),
 			canPostClosing: !record.closedAt && closing !== 'posted' && yearCloseReady(checks, 'closing_entries'),
@@ -242,8 +456,13 @@ export class YearCloseService {
 	): Promise<YearCloseView> {
 		const record = this.record(year, await this.store.get(year));
 		if (record.closedAt) throw refuse('year_closed');
+		if (write.profitChoice) {
+			const kind = (await this.company.getProfile())?.kind ?? 'private_limited';
+			if (!PROFIT_CHOICES[kind].includes(write.profitChoice.option)) throw refuse('profit_choice_not_offered');
+		}
 		await this.store.save({
 			...record,
+			...(write.profitChoice ? { profitChoice: write.profitChoice } : {}),
 			...(write.accruals
 				? { accrualsConfirmedBy: principal?.userId ?? null, accrualsConfirmedAt: now.toISOString() }
 				: {}),
@@ -253,14 +472,17 @@ export class YearCloseService {
 		return this.view(year);
 	}
 
-	/** T3 Post the closing entries, dated the year's last day; an out-of-date one is reversed and posted again. */
+	/**
+	 * T3 Post the closing entries, dated the year's last day, with where the profit goes (YC1, YC3) posted first as a
+	 * voucher of its own; out-of-date ones are reversed and both posted again.
+	 */
 	async postClosing(year: string, principal: AuthenticatedPrincipal | undefined, now = new Date()) {
 		const view = await this.view(year);
 		if (!view.canPostClosing) throw refuse('year_close_checks_open');
 		const record = this.record(year, await this.store.get(year));
 		const fy = yearSpan(year);
-		if (record.closingVoucherId) {
-			const old = await this.books.getVoucher(record.closingVoucherId);
+		for (const id of [record.closingVoucherId, record.profitVoucherId ?? null]) {
+			const old = id ? await this.books.getVoucher(id) : null;
 			if (old && !old.reversedById)
 				await this.ledger.reverse(
 					old.id,
@@ -272,8 +494,43 @@ export class YearCloseService {
 					principal,
 				);
 		}
-		const wanted = await this.wantedClosing(year);
-		if (!wanted.lines.length) throw refuse('year_close_nothing');
+		const by = principal?.userId ?? null;
+		const before = await this.readBooks(year);
+		const planned = await this.profitPlan(year, view.profitChoice, before, await this.company.getProfile());
+		if (!planned.lines.length && !this.wantedClosing(before).lines.length) throw refuse('year_close_nothing');
+		if (planned.plan.problems.length) throw refuse(`profit_plan_${planned.plan.problems[0]}`);
+		let profitVoucherId: string | null = null;
+		if (planned.lines.length) {
+			const ids = new Map<string, string>();
+			for (const role of planned.roles) {
+				const found = before.chart.ledgers.find((l) => l.active !== false && rolesOf(l).includes(role));
+				const made = PROFIT_LEDGERS[role];
+				if (found) ids.set(role, found.id);
+				else if (made) ids.set(role, await this.ledger.ensureRoleLedger(role, made.name, made.groupKey, by));
+				else throw refuse('profit_plan_ledger_missing');
+			}
+			const roleOf = new Map([...ids].map(([role, id]) => [`role:${role}`, id]));
+			const voucher = await this.transactions.withTransaction((context) =>
+				this.ledger.post(
+					{
+						kind: 'journal',
+						date: fy.to,
+						narration: `Where the profit of ${year} goes`,
+						source: { type: 'profitShare', id: year, number: null },
+						idempotencyKey: `profitShare:${year}:${randomUUID()}`,
+						lines: planned.lines.map(({ ledgerId, ...amounts }, i) => ({
+							ledger: { id: roleOf.get(ledgerId) ?? ledgerId },
+							...amounts,
+							narration: planned.plan.lines[i]?.narration ?? '',
+						})),
+					},
+					context,
+					by,
+				),
+			);
+			profitVoucherId = voucher.id;
+		}
+		const wanted = this.wantedClosing(planned.lines.length ? await this.readBooks(year) : before);
 		const voucher = await this.transactions.withTransaction((context) =>
 			this.ledger.post(
 				{
@@ -285,13 +542,15 @@ export class YearCloseService {
 					lines: wanted.lines.map(({ ledgerId, ...amounts }) => ({ ledger: { id: ledgerId }, ...amounts })),
 				},
 				context,
-				principal?.userId ?? null,
+				by,
 			),
 		);
 		await this.store.save({
 			...record,
 			closingVoucherId: voucher.id,
-			profitPaise: wanted.profitPaise,
+			profitVoucherId,
+			postedChoice: choiceKey(view.profitChoice),
+			profitPaise: planned.plan.profitPaise,
 			updatedAt: now.toISOString(),
 		});
 		return this.view(year);

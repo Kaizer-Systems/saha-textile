@@ -378,6 +378,52 @@
 						{{ 'co_add_business' | transloco }}
 					</button>
 					} } @else if (isFirm(f.kind)) {
+					<div class="d-flex align-items-end mb-2 flex-wrap gap-3">
+						<div>
+							<label
+								class="form-label small mb-1"
+								for="co_deed_from"
+							>
+								{{ 'co_deed_from' | transloco }}
+							</label>
+							<input
+								class="form-control form-control-sm"
+								id="co_deed_from"
+								type="date"
+								[disabled]="!canEdit() || f.earlierDeeds.length > 0"
+								[ngModel]="f.deedFrom"
+								(ngModelChange)="set('deedFrom', $event || null)"
+							/>
+						</div>
+						@if (canEdit()) {
+						<div>
+							<label
+								class="form-label small mb-1"
+								for="co_new_deed_on"
+							>
+								{{ 'co_new_deed' | transloco }}
+							</label>
+							<div class="d-flex gap-2">
+								<input
+									class="form-control form-control-sm"
+									id="co_new_deed_on"
+									type="date"
+									[ngModel]="newDeedOn()"
+									(ngModelChange)="newDeedOn.set($event)"
+								/>
+								<button
+									type="button"
+									class="btn btn-outline btn-sm text-nowrap"
+									id="co_new_deed_start"
+									[disabled]="!newDeedOn() || (!!f.deedFrom && newDeedOn() <= f.deedFrom)"
+									(click)="startNewDeed()"
+								>
+									{{ 'co_new_deed_start' | transloco }}
+								</button>
+							</div>
+						</div>
+						}
+					</div>
 					<div class="table-responsive datatable-wrapper border-table">
 						<table class="all-package theme-table no-footer table">
 							<thead>
@@ -388,7 +434,7 @@
 									<th>{{ 'co_capital' | transloco }}</th>
 									<th>{{ 'co_share' | transloco }}</th>
 									<th>{{ 'co_interest' | transloco }}</th>
-									<th>{{ 'co_pay_month' | transloco }}</th>
+									<th>{{ 'co_remuneration_col' | transloco }}</th>
 									@if (f.kind === 'llp') {
 									<th>{{ 'co_designated' | transloco }}</th>
 									}
@@ -462,6 +508,20 @@
 										/>
 									</td>
 									<td>
+										<select
+											class="form-select mb-1"
+											[attr.aria-label]="'co_remuneration_basis' | transloco"
+											[disabled]="!canEdit() || !p.working"
+											[ngModel]="p.remunerationBasis"
+											(ngModelChange)="patchPartner(p.id, { remunerationBasis: $event })"
+										>
+											<option value="monthly">{{ 'co_remuneration_monthly' | transloco }}</option>
+											<option value="percent_of_book_profit">
+												{{ 'co_remuneration_percent' | transloco }}
+											</option>
+											<option value="none">{{ 'co_remuneration_none' | transloco }}</option>
+										</select>
+										@if (p.remunerationBasis === 'monthly') {
 										<input
 											class="form-control"
 											type="number"
@@ -471,6 +531,18 @@
 											[ngModel]="p.monthlyRemunerationINR"
 											(ngModelChange)="patchPartner(p.id, { monthlyRemunerationINR: num($event) })"
 										/>
+										} @if (p.remunerationBasis === 'percent_of_book_profit') {
+										<input
+											class="form-control"
+											type="number"
+											min="0"
+											max="100"
+											[attr.aria-label]="'co_remuneration_percent' | transloco"
+											[disabled]="!canEdit() || !p.working"
+											[ngModel]="p.remunerationPercent"
+											(ngModelChange)="patchPartner(p.id, { remunerationPercent: num($event) })"
+										/>
+										}
 									</td>
 									@if (f.kind === 'llp') {
 									<td>
@@ -517,6 +589,56 @@
 						</button>
 						}
 					</div>
+					<div class="row g-2 align-items-end mt-2">
+						<div class="col-md-5">
+							<label
+								class="form-label small mb-1"
+								for="co_interest_basis"
+							>
+								{{ 'co_interest_basis' | transloco }}
+							</label>
+							<select
+								class="form-select form-select-sm"
+								id="co_interest_basis"
+								[disabled]="!canEdit()"
+								[ngModel]="f.interestBasis"
+								(ngModelChange)="set('interestBasis', $event)"
+							>
+								<option value="daily">{{ 'co_interest_daily' | transloco }}</option>
+								<option value="opening">{{ 'co_interest_opening' | transloco }}</option>
+							</select>
+						</div>
+						<div class="col-md-7">
+							<div class="form-check form-switch mb-1">
+								<input
+									class="form-check-input"
+									id="co_loss_year"
+									type="checkbox"
+									role="switch"
+									[disabled]="!canEdit()"
+									[checked]="f.lossYearCharges"
+									(change)="set('lossYearCharges', $any($event.target).checked)"
+								/>
+								<label
+									class="form-check-label"
+									for="co_loss_year"
+								>
+									{{ 'co_loss_year_charges' | transloco }}
+								</label>
+							</div>
+						</div>
+					</div>
+					@if (f.earlierDeeds.length) {
+					<h6 class="mt-3 mb-1">{{ 'co_earlier_deeds' | transloco }}</h6>
+					<ul class="small mb-0 ps-3">
+						@for (d of f.earlierDeeds; track $index) {
+						<li>
+							{{ 'co_earlier_deed_line' | transloco: { from: d.from ?? '—', to: d.to, shares:
+							deedShares(d) } }}
+						</li>
+						}
+					</ul>
+					}
 					<p class="help-text mt-2 mb-0">
 						{{ 'co_remuneration_note' | transloco: { limit: remunerationExample.toLocaleString('en-IN') } }}
 					</p>

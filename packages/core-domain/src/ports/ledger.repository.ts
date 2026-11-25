@@ -105,6 +105,10 @@ export interface YearCloseRecord {
 	suspenseNote: string | null;
 	closingVoucherId: string | null;
 	profitPaise: number | null;
+	/** YC1: where the profit goes (null: the kind's default), the voucher that moved it, and the choice it posted. */
+	profitChoice?: import('@saha-textile/contracts').ProfitChoice | null;
+	profitVoucherId?: string | null;
+	postedChoice?: string | null;
 	closedBy: string | null;
 	closedAt: string | null;
 	updatedAt: string;

@@ -6,3 +6,4 @@ export * from './convert';
 export * from './overview-rules';
 export * from './year-close';
 export * from './books-import';
+export * from './profit-share';

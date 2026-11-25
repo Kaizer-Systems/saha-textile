@@ -7,7 +7,17 @@ import type {
 } from '@saha-textile/contracts';
 
 import { type ChartGroupSeed, type ChartLedgerSeed, defaultChart } from '../ledger/chart';
-import { DUE_DATES, DUE_DATES_V2, KIND_PACKS, LIMITS, LIMITS_V2, STARTER_REPORTS, TDS_SECTIONS } from './starter-packs';
+import {
+	DUE_DATES,
+	DUE_DATES_V2,
+	FIRM_SHARE_LEDGERS,
+	FIRM_SHARE_SOURCE,
+	KIND_PACKS,
+	LIMITS,
+	LIMITS_V2,
+	STARTER_REPORTS,
+	TDS_SECTIONS,
+} from './starter-packs';
 import { CASH_LEDGERS, PETTY_GROUP } from '../cash/cash-rules';
 import { BANK_LEDGERS } from '../bank/bank-rules';
 import { TRANSFER_LEDGERS } from '../locations/transfer-rules';
@@ -235,19 +245,28 @@ export function starterTemplates(now: string): AccountsTemplate[] {
 			const before = COMPANIES.includes(kind) ? [version(2, withLedgers(own, COMPANY_LEDGERS), expenses)] : [];
 			const latest = (before[0]?.content ?? own) as ChartTemplateContent;
 			const pack = KIND_PACKS[kind];
+			const t8: ChartTemplateContent = {
+				...latest,
+				groups: [...latest.groups, ...pack.groups],
+				ledgers: [...latest.ledgers, ...pack.ledgers],
+			};
+			const firm = kind === 'partnership' || kind === 'llp';
 			return template(KIND_CHART_CODES[kind], 'chart', KIND_NAMES[kind], { all: false, kinds: [kind] }, [
 				version(1, own, start),
 				...before,
 				// T8: the kind's own groups and ledgers from the plan's matrix.
-				version(
-					before.length + 2,
-					{
-						...latest,
-						groups: [...latest.groups, ...pack.groups],
-						ledgers: [...latest.ledgers, ...pack.ledgers],
-					},
-					packs,
-				),
+				version(before.length + 2, t8, packs),
+				// Brief 25 YC3: a firm's sharing ledgers.
+				...(firm
+					? [
+							version(
+								before.length + 3,
+								{ ...t8, ledgers: [...t8.ledgers, ...FIRM_SHARE_LEDGERS] },
+								FIRM_SHARE_SOURCE,
+								'2026-11-25',
+							),
+						]
+					: []),
 			]);
 		}),
 		template('RS-RCM', 'taxRules', 'Reverse-charge list', { all: true, kinds: [] }, [
@@ -292,6 +311,7 @@ export function starterTemplates(now: string): AccountsTemplate[] {
 		...STARTER_REPORTS.map((starter) =>
 			template(starter.code, 'report', starter.name, { all: false, kinds: starter.kinds }, [
 				version(1, starter.content, starter.source),
+				...(starter.later ?? []).map((next, i) => version(i + 2, next.content, next.source, next.validFrom)),
 			]),
 		),
 	];

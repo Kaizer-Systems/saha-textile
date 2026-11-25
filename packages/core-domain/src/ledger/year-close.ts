@@ -5,6 +5,9 @@
  * Profit and loss account. Year-closing lines never count in balances, so every report reads the year as it was.
  */
 
+import { appropriationLedgerIds } from './profit-share';
+import { rolesOf } from './roles';
+
 export const YEAR_CLOSE_KEYS = [
 	'cash',
 	'banks',
@@ -107,7 +110,13 @@ export function yearCloseReady(checks: readonly YearCloseCheck[], step: 'closing
 }
 
 interface ChartLike {
-	groups: readonly { id: string; parentId: string | null; nature: string }[];
+	groups: readonly {
+		id: string;
+		parentId: string | null;
+		nature: string;
+		systemKey?: string | null;
+		roles?: readonly string[];
+	}[];
 	ledgers: readonly { id: string; groupId: string }[];
 }
 
@@ -184,4 +193,64 @@ export function yearSpan(label: string): { from: string; to: string; months: str
 		return `${month >= 4 ? start : start + 1}-${String(month).padStart(2, '0')}`;
 	});
 	return { from: `${start}-04-01`, to: `${start + 1}-03-31`, months };
+}
+
+/**
+ * Each location's profit for the year before any sharing (YC1): what the closing entries would take to the profit and
+ * loss account with the appropriation ledgers left out, so a posted sharing never changes the profit it shared.
+ */
+export function profitByLocation(
+	chart: ChartLike,
+	byLocation: Readonly<
+		Record<string, { closing: Readonly<Record<string, number>>; opening: Readonly<Record<string, number>> }>
+	>,
+	profitAndLossLedgerId: string,
+): Record<string, number> {
+	const shared = appropriationLedgerIds(chart);
+	const { lines } = closingLines(
+		{ groups: chart.groups, ledgers: chart.ledgers.filter((l) => !shared.has(l.id)) },
+		byLocation,
+		profitAndLossLedgerId,
+	);
+	const out: Record<string, number> = {};
+	for (const line of lines)
+		if (line.ledgerId === profitAndLossLedgerId)
+			out[line.locationId] = (line.creditPaise ?? 0) - (line.debitPaise ?? 0);
+	return out;
+}
+
+interface FigureLedger {
+	id: string;
+	nature: string;
+	systemKey: string | null;
+	roles?: readonly string[];
+}
+
+const nominal = (ledger: FigureLedger): boolean => ledger.nature === 'income' || ledger.nature === 'expense';
+
+/**
+ * Balances as a year's reports read them (debit positive): every earlier year's profit, which the closing entries never
+ * move in balances, carried into the profit and loss account. `opening` is the balances on the year's eve.
+ */
+export function withProfitCarried(
+	ledgers: readonly FigureLedger[],
+	closing: Readonly<Record<string, number>>,
+	opening: Readonly<Record<string, number>>,
+): Record<string, number> {
+	const pl = ledgers.find((l) => rolesOf(l).includes('profit_and_loss'));
+	const carried = ledgers.filter(nominal).reduce((sum, l) => sum + (opening[l.id] ?? 0), 0);
+	if (!pl || !carried) return { ...closing };
+	return { ...closing, [pl.id]: (closing[pl.id] ?? 0) + carried };
+}
+
+/** A trial balance's figures for a day in a year: income and expense for the year so far, earlier profit carried. */
+export function yearFigures(
+	ledgers: readonly FigureLedger[],
+	closing: Readonly<Record<string, number>>,
+	opening: Readonly<Record<string, number>>,
+): Record<string, number> {
+	const out = withProfitCarried(ledgers, closing, opening);
+	for (const ledger of ledgers.filter(nominal))
+		out[ledger.id] = (closing[ledger.id] ?? 0) - (opening[ledger.id] ?? 0);
+	return out;
 }

@@ -121,6 +121,165 @@
 					}
 				</div>
 			</div>
+			@if (v) {
+			<div
+				class="card mt-3"
+				id="yc_profit"
+			>
+				<div class="card-body">
+					<div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+						<h5 class="mb-0">
+							{{ 'year_close_profit_title' | transloco: { amount: money(v.profitPlan?.profitPaise ?? 0) }
+							}} · {{ 'co_kind_' + v.kind | transloco }}
+						</h5>
+						<button
+							*hasPermission="'accounts.post'"
+							type="button"
+							class="btn btn-outline btn-sm"
+							id="yc_choice_save"
+							[disabled]="busy() || !dirty() || !!v.closedAt"
+							(click)="saveChoice()"
+						>
+							{{ 'year_close_choice_save' | transloco }}
+						</button>
+					</div>
+					@for (option of v.profitChoices; track option) {
+					<div class="form-check mb-1">
+						<input
+							class="form-check-input"
+							type="radio"
+							name="yc_choice"
+							[id]="'yc_choice_' + option"
+							[checked]="chosen()?.option === option"
+							[disabled]="!!v.closedAt"
+							(change)="pickChoice(option)"
+						/>
+						<label
+							class="form-check-label"
+							[for]="'yc_choice_' + option"
+						>
+							<b>{{ 'year_close_choice_' + option | transloco }}</b>
+							<small class="d-block text-muted">
+								{{ 'year_close_choice_' + option + '_help' | transloco }}
+							</small>
+						</label>
+					</div>
+					} @if (chosen()?.option === 'to_general_reserve') {
+					<div class="row g-2 ms-3 mb-2">
+						<div class="col-sm-5">
+							<select
+								class="form-select form-select-sm"
+								id="yc_reserve_basis"
+								[attr.aria-label]="'year_close_reserve_basis' | transloco"
+								[disabled]="!!v.closedAt"
+								[ngModel]="chosen()?.reserveBasis"
+								(ngModelChange)="setReserve({ reserveBasis: $event })"
+							>
+								<option value="percent">{{ 'year_close_reserve_percent' | transloco }}</option>
+								<option value="amount">{{ 'year_close_reserve_amount' | transloco }}</option>
+							</select>
+						</div>
+						<div class="col-sm-4">
+							<input
+								class="form-control form-control-sm"
+								id="yc_reserve_value"
+								type="number"
+								min="0"
+								[attr.aria-label]="'year_close_reserve_value' | transloco"
+								[disabled]="!!v.closedAt"
+								[ngModel]="chosen()?.reserveValue"
+								(ngModelChange)="setReserve({ reserveValue: $event })"
+							/>
+						</div>
+					</div>
+					} @if (dirty()) {
+					<small class="d-block text-muted mt-1">{{ 'year_close_choice_unsaved' | transloco }}</small>
+					} @else { @let plan = v.profitPlan; @if (plan) { @if (plan.rows.length) {
+					<div class="table-responsive datatable-wrapper border-table mt-2">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th></th>
+									@for (row of plan.rows; track row.partnerId) {
+									<th class="text-end">{{ row.name }} ({{ row.sharePercent }}%)</th>
+									}
+									<th class="text-end">{{ 'year_close_share_total' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td>{{ 'year_close_share_profit' | transloco }}</td>
+									@for (row of plan.rows; track row.partnerId) {
+									<td></td>
+									}
+									<td class="text-end">{{ money(plan.profitPaise) }}</td>
+								</tr>
+								@for (part of shareParts; track part) {
+								<tr [class.fw-bold]="part === 'totalPaise'">
+									<td>{{ 'year_close_share_' + part | transloco }}</td>
+									@for (row of plan.rows; track row.partnerId) {
+									<td class="text-end">{{ money(row[part]) }}</td>
+									}
+									<td class="text-end">{{ money(total(plan.rows, part)) }}</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					} @if (plan.remunerationLimitPaise !== null && plan.bookProfitPaise !== null) {
+					<small class="d-block text-muted mt-1">
+						{{ 'year_close_share_limit' | transloco: { profit: money(plan.bookProfitPaise), limit:
+						money(plan.remunerationLimitPaise), over: money(plan.remunerationDisallowedPaise) } }}
+					</small>
+					} @if (plan.interestDisallowedPaise) {
+					<small class="d-block text-muted">
+						{{ 'year_close_share_interest_over' | transloco: { amount: money(plan.interestDisallowedPaise) }
+						}}
+					</small>
+					} @if (plan.option === 'deed' && plan.rows.length && !plan.chargesApplied) {
+					<small class="d-block text-muted">{{ 'year_close_share_loss_year' | transloco }}</small>
+					} @if (plan.capitalAfterPaise !== null) {
+					<small class="d-block text-muted mt-1">
+						{{ 'year_close_capital_after' | transloco: { drawings: money(plan.drawingsPaise), capital:
+						money(plan.capitalAfterPaise) } }}
+					</small>
+					} @if (plan.reservePaise) {
+					<small class="d-block text-muted mt-1">
+						{{ 'year_close_reserve_moves' | transloco: { amount: money(plan.reservePaise) } }}
+					</small>
+					} @for (problem of plan.problems; track problem) {
+					<small class="d-block text-danger mt-1">
+						{{ 'year_close_plan_problem_' + problem | transloco }}
+					</small>
+					} @if (plan.lines.length) {
+					<h6 class="mt-3">{{ 'year_close_posts' | transloco: { day: (v.to | date: 'd MMM y') } }}</h6>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'year_close_posts_ledger' | transloco }}</th>
+									<th class="text-end">{{ 'year_close_posts_debit' | transloco }}</th>
+									<th class="text-end">{{ 'year_close_posts_credit' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (line of plan.lines; track $index) {
+								<tr>
+									<td>
+										{{ line.ledgerName }}
+										<small class="d-block text-muted">{{ line.narration }}</small>
+									</td>
+									<td class="text-end">@if (line.debitPaise) { {{ money(line.debitPaise) }} }</td>
+									<td class="text-end">@if (line.creditPaise) { {{ money(line.creditPaise) }} }</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					} } }
+				</div>
+			</div>
+			}
 		</div>
 		<div class="col-xl-4">
 			<div class="card">

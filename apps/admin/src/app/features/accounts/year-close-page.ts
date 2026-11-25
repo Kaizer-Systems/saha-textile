@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -14,7 +15,13 @@ import { rupees } from '@features/accounts/ledger-helpers';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
-import type { YearCloseCheck, YearCloseView } from '@saha-textile/contracts';
+import type {
+	ProfitChoice,
+	ProfitChoiceOption,
+	ProfitShareRow,
+	YearCloseCheck,
+	YearCloseView,
+} from '@saha-textile/contracts';
 
 /** A year's label, `2025-26`, for the year starting in April of `start`. */
 export function yearLabel(start: number): string {
@@ -50,7 +57,7 @@ export function checkIcon(state: YearCloseCheck['state']): string {
  */
 @Component({
 	selector: 'app-year-close-page',
-	imports: [PageWrapper, TranslocoModule, FormsModule, RouterLink, HasPermissionDirective],
+	imports: [PageWrapper, TranslocoModule, FormsModule, RouterLink, HasPermissionDirective, DatePipe],
 	templateUrl: './year-close-page.html',
 })
 export class YearClosePage {
@@ -74,6 +81,42 @@ export class YearClosePage {
 	readonly note = signal('');
 	readonly busy = signal(false);
 	readonly checks = computed(() => this.view.data()?.checks ?? []);
+	/** YC1: the choice being picked, until it is saved (null: the one in force). */
+	readonly picked = signal<ProfitChoice | null>(null);
+	readonly chosen = computed(() => this.picked() ?? this.view.data()?.profitChoice ?? null);
+	readonly dirty = computed(() => {
+		const picked = this.picked();
+		const saved = this.view.data()?.profitChoice;
+		return !!picked && !!saved && JSON.stringify(picked) !== JSON.stringify(saved);
+	});
+	/** YC3's rows, one per part of the sharing, with a figure for each partner. */
+	readonly shareParts = ['interestPaise', 'remunerationPaise', 'sharePaise', 'totalPaise', 'tdsPaise'] as const;
+
+	total(rows: readonly ProfitShareRow[], part: (typeof this.shareParts)[number]): number {
+		return rows.reduce((sum, row) => sum + row[part], 0);
+	}
+
+	pickChoice(option: ProfitChoiceOption): void {
+		const now = this.chosen();
+		this.picked.set({ option, reserveBasis: now?.reserveBasis ?? 'percent', reserveValue: now?.reserveValue ?? 0 });
+	}
+
+	setReserve(change: Partial<Pick<ProfitChoice, 'reserveBasis' | 'reserveValue'>>): void {
+		const now = this.chosen();
+		if (now)
+			this.picked.set({
+				...now,
+				...change,
+				reserveValue: Math.max(0, Number(change.reserveValue ?? now.reserveValue) || 0),
+			});
+	}
+
+	async saveChoice(): Promise<void> {
+		const profitChoice = this.chosen();
+		if (!profitChoice) return;
+		await this.act(() => firstValueFrom(this.gateway.confirm(this.year(), { profitChoice })), 'year_close_saved');
+		this.picked.set(null);
+	}
 
 	pick(year: string): void {
 		void this.router.navigate([], { queryParams: { year } });

@@ -9,6 +9,7 @@ import type {
 } from '@saha-textile/contracts';
 
 import { rolesOf } from '../ledger/roles';
+import { withProfitCarried } from '../ledger/year-close';
 import { chartFor, kindsOf } from './rules';
 
 /** The lines in tree order with their depth: a line whose parent is missing sits at the top; a loop is left out. */
@@ -127,9 +128,16 @@ function figure(ledger: Ledger, column: ReportColumn): number {
 export function reportRows(
 	content: ReportTemplateContent,
 	books: ReportBooks,
-	thisYear: ReportColumn,
-	lastYear: ReportColumn | null,
+	thisYearBalances: ReportColumn,
+	lastYearBalances: ReportColumn | null,
 ): { rows: ReportPreviewRow[]; problems: string[] } {
+	// Earlier years' profit, never moved in balances by the closing entries, sits in the profit and loss account.
+	const carry = (column: ReportColumn): ReportColumn => ({
+		closing: withProfitCarried(books.ledgers, column.closing, column.opening),
+		opening: column.opening,
+	});
+	const thisYear = carry(thisYearBalances);
+	const lastYear = lastYearBalances && carry(lastYearBalances);
 	const problems = new Set<string>();
 	const own = new Map<string, Map<string, Ledger>>();
 	for (const line of content.lines) {

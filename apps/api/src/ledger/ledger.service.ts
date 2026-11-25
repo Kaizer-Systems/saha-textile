@@ -66,6 +66,8 @@ import {
 	voucherProblems,
 	voucherTotals,
 	coveredMonths,
+	PROFIT_LEDGERS,
+	partnerRole,
 	resolveRole,
 	rolesOf,
 	termsOn,
@@ -249,19 +251,23 @@ export class LedgerService {
 	private async partnerLedgers(by: string | null): Promise<void> {
 		const profile = await this.company.getProfile();
 		if (!profile || (profile.kind !== 'partnership' && profile.kind !== 'llp')) return;
-		const role = (what: string, id: string) =>
-			`partner_${what}_${id.toLowerCase().replace(/[^a-z0-9]/g, '_')}`.slice(0, 60);
+		// YC3: the share of profit Year close posts, beside interest and remuneration in the appropriation group.
+		const chart = await this.books.chart();
+		if (chart.groups.some((g) => g.systemKey === 'appropriation')) {
+			const share = PROFIT_LEDGERS.partners_profit_share as { name: string; groupKey: string };
+			await this.ensureRoleLedger('partners_profit_share', share.name, share.groupKey, by);
+		}
 		for (const partner of profile.partners) {
 			const capital = profile.kind === 'llp' ? 'contribution' : 'capital';
 			await this.ensureRoleLedger(
-				role('capital', partner.id),
+				partnerRole('capital', partner.id),
 				`${partner.name} ${capital}`,
 				'capital_account',
 				by,
 			);
 			if (profile.partnersCapital === 'fixed_with_current')
 				await this.ensureRoleLedger(
-					role('current', partner.id),
+					partnerRole('current', partner.id),
 					`${partner.name} current account`,
 					'partners_current',
 					by,

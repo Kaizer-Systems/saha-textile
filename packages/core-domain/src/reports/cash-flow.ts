@@ -47,6 +47,8 @@ function placeOf(chart: ChartLike, groupId: string): { key: string | null; natur
 	const nature = group?.nature ?? 'asset';
 	while (group) {
 		const key = group.systemKey;
+		// Interest, remuneration and shares to partners are what the owners take, not a cost of trading (YC3).
+		if (key === 'appropriation') return { key: 'partners_current', nature: 'equity' };
 		if (key && (CASH_GROUPS.has(key) || INVESTING.has(key) || FINANCING.has(key) || WORKING.includes(key)))
 			return { key, nature };
 		group = group.parentId ? groups.get(group.parentId) : undefined;

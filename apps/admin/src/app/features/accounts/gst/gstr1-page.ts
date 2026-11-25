@@ -8,6 +8,7 @@ import { NgbModal, type NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom, map } from 'rxjs';
 
+import { BANK_KEYS, BanksGateway } from '@core/accounts/banks.gateway';
 import { GST_KEYS, GstReturnsGateway } from '@core/accounts/gst-returns.gateway';
 import { LEDGER_KEYS, LedgerGateway } from '@core/accounts/ledger.gateway';
 import { saveBlob, shortDate } from '@core/purchasing/purchasing-format';
@@ -60,6 +61,7 @@ export class Gstr1Page {
 	private readonly transloco = inject(TranslocoService);
 	private readonly notifier = inject(NotificationService);
 	private readonly queries = inject(QueryClient);
+	private readonly banks = inject(BanksGateway);
 
 	readonly steps = GST_STEPS;
 	readonly pill = GST_STATUS_PILL;
@@ -105,11 +107,11 @@ export class Gstr1Page {
 		return TICKS.has(table) ? `✓ ${this.transloco.translate(`gstr1_ok_${table}`)}` : '✓';
 	}
 
-	/** The file the GST portal takes, named `GSTR1_<GSTIN>_<MMYYYY>.json` as the offline tool names it. */
+	/** The file the GST portal takes, named `<RETURN>_<GSTIN>_<MMYYYY>.json` as the offline tool names it. */
 	download(draft: GstReturnDraft): void {
 		const [year, month] = draft.month.split('-');
 		saveBlob(
-			`GSTR1_${draft.gstin}_${month}${year}.json`,
+			`${draft.returnType.replace(/-/g, '')}_${draft.gstin}_${month}${year}.json`,
 			new Blob([JSON.stringify(draft.portal, null, 2)], { type: 'application/json' }),
 		);
 	}
@@ -121,7 +123,10 @@ export class Gstr1Page {
 		);
 	}
 
-	prepareAgain(draft: GstReturnDraft): Promise<boolean> {
+	/** PMT-06: the month's own tax (self-assessment) or 35% of the last quarter's cash (fixed sum). */
+	readonly method = signal<'self_assessment' | 'fixed_sum'>('self_assessment');
+
+	prepareAgain(draft: GstReturnDraft, inward6a?: Record<string, unknown>): Promise<boolean> {
 		return this.run(
 			() =>
 				firstValueFrom(
@@ -129,9 +134,91 @@ export class Gstr1Page {
 						gstRegistrationId: draft.gstRegistrationId,
 						returnType: draft.returnType,
 						month: draft.month,
+						...(draft.returnType === 'PMT-06' ? { pmt06Method: this.method() } : {}),
+						...(inward6a ? { inward6a } : {}),
 					}),
 				),
 			'gst_done_prepared',
+		);
+	}
+
+	/** GSTR-6: prepare again from a GSTR-6A file chosen from this computer. */
+	async load6a(draft: GstReturnDraft, input: HTMLInputElement): Promise<void> {
+		const file = input.files?.[0];
+		input.value = '';
+		if (!file) return;
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(await file.text());
+		} catch {
+			parsed = null;
+		}
+		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+			this.notifier.showError(this.transloco.translate('gst_problem_gstr6a_file_unreadable'));
+			return;
+		}
+		await this.prepareAgain(draft, parsed as Record<string, unknown>);
+	}
+
+	// PMT-06 and CMP-08: Post the payment (the 3B page's pop-up, copied for these returns).
+	readonly payOpen = signal(false);
+	readonly bankAccounts = injectQuery(() => ({
+		queryKey: BANK_KEYS.list,
+		queryFn: () => firstValueFrom(this.banks.list()),
+		enabled: this.payOpen(),
+	}));
+	readonly payFrom = signal('');
+	readonly paidOn = signal(today());
+	readonly challan = signal('');
+	private payModal: NgbModalRef | null = null;
+	/** A payment return, approved, not yet paid here. */
+	readonly canPay = computed(() => {
+		const d = this.draft.data();
+		return (
+			!!d?.setOff &&
+			(d.returnType === 'PMT-06' || d.returnType === 'CMP-08') &&
+			['approved', 'filed'].includes(d.status) &&
+			!d.challanVoucherId
+		);
+	});
+	/** GSTR-6, approved, its distribution not yet posted. */
+	readonly canDistribute = computed(() => {
+		const d = this.draft.data();
+		return d?.returnType === 'GSTR-6' && ['approved', 'filed'].includes(d.status) && !d.distributionVoucherId;
+	});
+	/** What the challan pays. */
+	readonly payPaise = computed(() => {
+		const s = this.draft.data()?.setOff;
+		return s ? s.cash.igst + s.cash.cgst + s.cash.sgst : 0;
+	});
+	readonly rupees = rupees;
+
+	openPay(template: TemplateRef<unknown>): void {
+		this.payOpen.set(true);
+		this.challan.set('');
+		this.payModal = this.modals.open(template, { centered: true });
+	}
+
+	async pay(draft: GstReturnDraft): Promise<void> {
+		const ok = await this.run(
+			() =>
+				firstValueFrom(
+					this.gateway.postSetOff(draft.id, {
+						bankAccountId: this.payFrom(),
+						paidOn: this.paidOn(),
+						challan: this.challan(),
+						version: draft.version,
+					}),
+				),
+			'gst_payment_posted',
+		);
+		if (ok) this.payModal?.close();
+	}
+
+	distribute(draft: GstReturnDraft): Promise<boolean> {
+		return this.run(
+			() => firstValueFrom(this.gateway.distribute(draft.id, { version: draft.version })),
+			'gst_distribution_posted',
 		);
 	}
 

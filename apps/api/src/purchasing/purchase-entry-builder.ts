@@ -140,6 +140,8 @@ export class PurchaseEntryBuilder {
 			return { write: line, lineId, orderLine };
 		});
 
+		// G2: a buyer under composition takes no input credit; the GST stays in the stock's cost.
+		const itcClaimable = supplier.kind === 'regular' && !(await this.support.buyerUnderComposition(write.billDate));
 		const math = computePurchaseEntry({
 			taxType: supplier.taxType,
 			pricesIncludeGst: write.pricesIncludeGst,
@@ -147,7 +149,7 @@ export class PurchaseEntryBuilder {
 			freightGstRatePct: write.freightGstRatePct,
 			roundOffINR: write.roundOffINR,
 			printedTotalINR: write.printedTotalINR,
-			itcClaimable: supplier.kind === 'regular',
+			itcClaimable,
 			priceChangeWarnPct: settings.priceChangeWarnPct,
 			marginFloorPct: settings.marginFloorPct,
 			lines: prepared.map(({ write: line, lineId, orderLine }) => {
@@ -279,7 +281,7 @@ export class PurchaseEntryBuilder {
 			totals: math.totals,
 			warnings,
 			acceptedWarnings: [],
-			itcClaimable: supplier.kind === 'regular',
+			itcClaimable,
 			dueOn: entryDueOn(write.billDate, supplier.paymentTermsDays),
 			paidINR: 0,
 			creditedINR: 0,

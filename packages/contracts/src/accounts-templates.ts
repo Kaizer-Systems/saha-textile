@@ -80,7 +80,7 @@ export const TaxRuleEntry = z.object({
 	 */
 	due: z
 		.object({
-			returnType: z.enum(['GSTR-1', 'GSTR-3B', 'GSTR-9']),
+			returnType: z.enum(['GSTR-1', 'GSTR-3B', 'GSTR-9', 'IFF', 'PMT-06', 'CMP-08', 'GSTR-4', 'GSTR-6']),
 			scheme: z.enum(['monthly', 'qrmp']).nullable().default(null),
 			day: z.number().int().min(1).max(31),
 			monthsAfter: z.number().int().min(1).max(12).default(1),

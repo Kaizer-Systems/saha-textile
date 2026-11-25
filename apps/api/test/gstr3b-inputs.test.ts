@@ -91,8 +91,8 @@ const entry = (id: string, over: Record<string, unknown> = {}) => ({
 	...over,
 });
 const ENTRIES = [
-	// 180 days end on 16 November with 680 unpaid: that part's credit goes back.
-	entry('pe_due'),
+	// 180 days end on 17 October with 680 unpaid: that part's credit goes back in November's return (rule 37(2)).
+	entry('pe_due', { billDate: '2026-04-20' }),
 	// 180 days ended in August, unpaid then, paid in full in November: its credit comes back.
 	entry('pe_reclaim', {
 		billDate: '2026-03-01',
@@ -175,6 +175,8 @@ describe('GSTR-3B’s figures from the books and 2B (G6)', () => {
 			// 680 of 1,180 unpaid: 18,000 × 68,000 / 118,000 paise of IGST.
 			rule37: { igst: 10_373, cgst: 0, sgst: 0 },
 			reclaimed: { igst: 0, cgst: 2_500, sgst: 2_500 },
+			// No ISD distribution among the month's vouchers.
+			isdCredit: { igst: 0, cgst: 0, sgst: 0 },
 		});
 	});
 

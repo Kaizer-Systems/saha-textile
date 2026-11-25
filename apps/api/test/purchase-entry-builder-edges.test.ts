@@ -106,6 +106,7 @@ function build(parts: Parts = {}) {
 			today: () => TODAY,
 			thumbnails: async () => new Map([['img_1', 'https://cdn.test/img_1.webp']]),
 			attachment: async () => null,
+			buyerUnderComposition: async () => false,
 		} as never,
 	);
 	return { builder, entries };

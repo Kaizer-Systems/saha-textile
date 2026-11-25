@@ -154,6 +154,8 @@ export interface Gstr3bInput {
 	rule37: TaxHeads;
 	reclaimed: TaxHeads;
 	adjustments: readonly Gstr3bAdjustment[];
+	/** Credit an input service distributor passed to this GSTIN in the period (4A(4)). */
+	isdCredit?: TaxHeads;
 }
 
 export type Gstr3bTable = '3.1a' | '3.1b' | '3.1d' | '4A' | '4B' | '4C' | '6';
@@ -181,7 +183,8 @@ export function gstr3b(input: Gstr3bInput): Gstr3bResult {
 	);
 	const adjusted4A = adjusted(input.adjustments, '4A');
 	const itcOther = add(add(input.itc2b, input.reclaimed), adjusted4A);
-	const available = add(itcOther, rcm);
+	const isd = input.isdCredit ?? zero();
+	const available = add(add(itcOther, rcm), isd);
 	const reversedRules = add(input.reversedInBooks, adjusted(input.adjustments, '4B'));
 	const reversed = add(reversedRules, input.rule37);
 	const net = add(available, reversed, -1);
@@ -254,7 +257,7 @@ export function gstr3b(input: Gstr3bInput): Gstr3bResult {
 				{ ty: 'IMPG', ...amt(zero()) },
 				{ ty: 'IMPS', ...amt(zero()) },
 				{ ty: 'ISRC', ...amt(rcm) },
-				{ ty: 'ISD', ...amt(zero()) },
+				{ ty: 'ISD', ...amt(isd) },
 				{ ty: 'OTH', ...amt(itcOther) },
 			],
 			itc_rev: [
@@ -406,6 +409,7 @@ const INPUT_ROLE: Record<keyof TaxHeads, string> = { igst: 'input_igst', cgst: '
 export function setOffPostings(
 	s: SetOff,
 	reverseChargeCash: TaxHeads,
+	deposited: TaxHeads | null = null,
 ): { journal: GstPostingRow[]; challan: GstPostingRow[]; cashPaise: number } {
 	const against: TaxHeads = {
 		igst: s.igstUsed.igst + s.cgstUsed.igst + s.sgstUsed.igst,
@@ -425,15 +429,43 @@ export function setOffPostings(
 		journal.push({ role: INPUT_ROLE[head], creditPaise: from[head] - fromRcm });
 	}
 	journal.push({ role: 'input_gst_rcm', creditPaise: rcmCredit });
+	// QRMP: the quarter's PMT-06 deposits pay each head's cash first, from the cash ledger; the challan pays the rest.
+	const fromDeposits: TaxHeads = deposited
+		? {
+				igst: Math.min(s.cash.igst, deposited.igst),
+				cgst: Math.min(s.cash.cgst, deposited.cgst),
+				sgst: Math.min(s.cash.sgst, deposited.sgst),
+			}
+		: zero();
+	for (const head of HEADS) journal.push({ role: OUTPUT_ROLE[head], debitPaise: fromDeposits[head] });
+	journal.push({ role: 'gst_cash_ledger', creditPaise: total(fromDeposits) });
 	const rcmCash = total(reverseChargeCash);
 	const challan: GstPostingRow[] = [
-		...HEADS.map((head) => ({ role: OUTPUT_ROLE[head], debitPaise: s.cash[head] })),
+		...HEADS.map((head) => ({ role: OUTPUT_ROLE[head], debitPaise: s.cash[head] - fromDeposits[head] })),
 		{ role: 'rcm_payable', debitPaise: rcmCash },
 	];
 	const nonZero = (row: GstPostingRow) => (row.debitPaise ?? 0) > 0 || (row.creditPaise ?? 0) > 0;
 	return {
 		journal: journal.filter(nonZero),
 		challan: challan.filter(nonZero),
-		cashPaise: total(s.cash) + rcmCash,
+		cashPaise: total(s.cash) - total(fromDeposits) + rcmCash,
 	};
+}
+
+/** 4A(4) from the books: input tax an ISD's posted distribution gave a GSTIN's locations (debits less credits). */
+export function isdCreditInBooks(
+	vouchers: readonly VoucherLike[],
+	inputLedgers: Readonly<Record<keyof TaxHeads, string>>,
+	locationIds: ReadonlySet<string>,
+): TaxHeads {
+	const credit = zero();
+	for (const voucher of vouchers) {
+		if (voucher.source?.type !== 'isdDistribution') continue;
+		for (const line of voucher.lines) {
+			if (!locationIds.has(line.locationId)) continue;
+			for (const head of HEADS)
+				if (line.ledgerId === inputLedgers[head]) credit[head] += line.debitPaise - line.creditPaise;
+		}
+	}
+	return { igst: Math.max(0, credit.igst), cgst: Math.max(0, credit.cgst), sgst: Math.max(0, credit.sgst) };
 }

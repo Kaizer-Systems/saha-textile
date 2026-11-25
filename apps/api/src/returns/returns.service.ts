@@ -20,6 +20,7 @@ import {
 	DebitNote,
 	type DebitNoteWrite,
 	GST_RETURN_LOCKS,
+	filingMonths,
 	InventoryCostLayer,
 	LedgerEntry,
 	type Order,
@@ -862,7 +863,7 @@ export class ReturnsService {
 			monthFiled: filings.some(
 				(f) =>
 					f.gstRegistrationId === note.gstRegistrationId &&
-					f.month === month &&
+					filingMonths(f).includes(month) &&
 					GST_RETURN_LOCKS[f.returnType].includes('sales'),
 			),
 			booksClosed: periodStateOf(locks, month, 'sales') !== 'open',

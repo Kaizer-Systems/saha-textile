@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { publishProblems, ruleSetProblems } from '../src/templates/rules';
 import { starterTemplates } from '../src/templates/starter';
-import { DUE_DATES } from '../src/templates/starter-packs';
+import { DUE_DATES, DUE_DATES_V2 } from '../src/templates/starter-packs';
 
 import type { AccountsTemplate, TaxRuleEntry, TaxRuleList, TaxRuleSetContent } from '@saha-textile/contracts';
 
@@ -47,7 +47,22 @@ describe('the due-date rule set in the library', () => {
 			appliesTo: { all: true, kinds: [] },
 			draft: null,
 		});
-		expect(due.versions).toHaveLength(1);
+		// v2 (25 Nov 2026) adds IFF, PMT-06, CMP-08, GSTR-4 and GSTR-6.
+		expect(due.versions).toHaveLength(2);
+		expect(due.versions[1]).toMatchObject({ version: 2, validFrom: '2026-11-25', content: DUE_DATES_V2 });
+		expect(DUE_DATES_V2.entries.map((e) => e.due?.returnType)).toEqual([
+			'GSTR-1',
+			'GSTR-1',
+			'GSTR-3B',
+			'GSTR-3B',
+			'GSTR-3B',
+			'GSTR-9',
+			'IFF',
+			'PMT-06',
+			'CMP-08',
+			'GSTR-4',
+			'GSTR-6',
+		]);
 		expect(due.versions[0]).toMatchObject({
 			version: 1,
 			validFrom: '2017-07-01',

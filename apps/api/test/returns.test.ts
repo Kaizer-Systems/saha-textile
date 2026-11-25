@@ -526,7 +526,9 @@ describe('undoing an issued credit note (B8, B9)', () => {
 	const superAdmin = { userId: 'adm_super' } as never;
 
 	it('says why it may be cancelled, and refuses someone who isn’t a super admin', async () => {
-		const made = setup({ filings: [{ gstRegistrationId: 'reg_wb', month: '2026-11', returnType: 'GSTR-3B' }] });
+		const made = setup({
+			filings: [{ gstRegistrationId: 'reg_wb', month: '2026-11', months: [], returnType: 'GSTR-3B' }],
+		});
 		const { draft } = await checkedDraft(made);
 		await made.service.issue(draft.id, 0, null, NOW);
 		expect(await made.service.cancelChecks(draft.id, superAdmin)).toMatchObject({
@@ -932,7 +934,9 @@ describe('the edit log, prints and the order’s documents (Q11, B1, B3)', () =>
 		await expect(made.service.cancel(price.id, { reason: 'Wrong one' }, undefined, NOW)).rejects.toBeInstanceOf(
 			ForbiddenException,
 		);
-		const filed = setup({ filings: [{ gstRegistrationId: 'reg_wb', month: '2026-11', returnType: 'GSTR-3B' }] });
+		const filed = setup({
+			filings: [{ gstRegistrationId: 'reg_wb', month: '2026-11', months: [], returnType: 'GSTR-3B' }],
+		});
 		const other = await checkedDraft(filed);
 		await filed.service.issue(other.draft.id, 0, null, NOW);
 		await expect(filed.service.cancel(other.draft.id, { reason: 'Wrong one' }, superAdmin, NOW)).rejects.toThrow(

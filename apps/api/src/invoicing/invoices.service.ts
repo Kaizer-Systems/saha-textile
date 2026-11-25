@@ -16,6 +16,7 @@ import {
 	type InvoiceLineInput,
 	invoicePosting,
 	istDay,
+	termsOn,
 	type LocationRepository,
 	type ProductRepository,
 	type ShopDetailsRepository,
@@ -276,17 +277,21 @@ export class InvoicesService {
 		const abroad = !!delivery?.country && !['IN', 'India'].includes(delivery.country);
 		const placeOfSupply = abroad ? '96' : (delivery?.gstStateCode ?? sellerState);
 		const interState = placeOfSupply !== sellerState;
+		const date = istDay(at);
+		// G2: under composition the GSTIN issues bills of supply, and only inside its State.
+		const composition = termsOn(registration, date)?.kind === 'composition';
+		if (composition && interState)
+			throw new BadRequestException(accountsRefusal('invoice_problem:composition_inter_state'));
 		const inputs = await this.inputsOf(shipped);
 		// The delivery charge goes on the order's first invoice.
 		const shippingINR = earlier.length ? 0 : (order.shipping?.chargeINR ?? 0);
-		const built = buildInvoiceLines(inputs, { interState, shippingINR });
+		const built = buildInvoiceLines(inputs, { interState, shippingINR, composition });
 		const problem = built.problems[0];
 		if (problem) {
 			const sku = inputs.find((l) => l.lineId === problem.lineId)?.sku;
 			throw new BadRequestException(accountsRefusal(`invoice_problem:${problem.problem}${sku ? `:${sku}` : ''}`));
 		}
 		const id = `ti_${randomUUID()}`;
-		const date = istDay(at);
 		const number = await this.numbers.issue('taxInvoice', context, new Date(at), registration.id);
 		const costINR = shipped.reduce((sum, line) => sum + (line.unitCostINR ?? 0) * line.quantity, 0);
 		const voucher = await this.ledger.post(
@@ -336,6 +341,7 @@ export class InvoicesService {
 			lines: built.lines,
 			...built.totals,
 			ratesPendingCa: true,
+			billOfSupply: composition,
 			voucherId: voucher.id,
 			createdBy: actorId,
 			createdAt: at,

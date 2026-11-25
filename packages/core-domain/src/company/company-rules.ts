@@ -262,3 +262,15 @@ export function switchRefusals(
 	}
 	return refusals;
 }
+
+/**
+ * G2: a composition seller can't supply outside its own State (s.10(2)(d)), abroad included. True when a sale to this
+ * place of supply (a State code, or `96` abroad) is one it can't make on that day.
+ */
+export function compositionRefuses(
+	registration: Pick<GstRegistration, 'terms' | 'stateCode'>,
+	day: string,
+	placeOfSupply: string,
+): boolean {
+	return termsOn(registration, day)?.kind === 'composition' && placeOfSupply !== registration.stateCode;
+}

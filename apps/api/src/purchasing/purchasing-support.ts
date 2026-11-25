@@ -21,7 +21,10 @@ import {
 	type AdminUserRepository,
 	type AdminUserRoleAssignmentRepository,
 	type AuditLogRepository,
+	type CompanyRepository,
+	defaultStockLocation,
 	type InventorySettingsRepository,
+	type LocationRepository,
 	type MediaAssetRepository,
 	type RoleRepository,
 	type ShopDetailsRepository,
@@ -31,6 +34,7 @@ import {
 	type TransactionManagerPort,
 	istDay,
 	resolveImage,
+	termsOn,
 } from '@saha-textile/core-domain';
 
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
@@ -38,7 +42,9 @@ import {
 	ADMIN_USER_REPOSITORY,
 	ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
+	COMPANY_REPOSITORY,
 	INVENTORY_SETTINGS_REPOSITORY,
+	LOCATION_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
 	ROLE_REPOSITORY,
 	SHOP_DETAILS_REPOSITORY,
@@ -137,7 +143,26 @@ export class PurchasingSupport {
 		@Optional()
 		@Inject(SHOP_DETAILS_REPOSITORY)
 		private readonly shop: ShopDetailsRepository | null = null,
+		@Optional()
+		@Inject(LOCATION_REPOSITORY)
+		private readonly locations: Pick<LocationRepository, 'list'> | null = null,
+		@Optional()
+		@Inject(COMPANY_REPOSITORY)
+		private readonly company: Pick<CompanyRepository, 'getRegistration'> | null = null,
 	) {}
+
+	/**
+	 * G2: whether the GSTIN that receives purchases (the stock location's) is under composition on a day: then no
+	 * input credit is taken and the GST goes into the stock's cost.
+	 */
+	async buyerUnderComposition(day: string): Promise<boolean> {
+		if (!this.locations || !this.company) return false;
+		const all = await this.locations.list();
+		const stock = all.find((l) => l.id === defaultStockLocation(all));
+		if (!stock?.gstRegistrationId) return false;
+		const registration = await this.company.getRegistration(stock.gstRegistrationId);
+		return !!registration && termsOn(registration, day)?.kind === 'composition';
+	}
 
 	/**
 	 * P1: when the super admin narrows a step to one role, only holders of that role (and the

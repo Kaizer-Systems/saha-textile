@@ -7,7 +7,7 @@ import type {
 } from '@saha-textile/contracts';
 
 import { type ChartGroupSeed, type ChartLedgerSeed, defaultChart } from '../ledger/chart';
-import { DUE_DATES, KIND_PACKS, LIMITS, LIMITS_V2, STARTER_REPORTS, TDS_SECTIONS } from './starter-packs';
+import { DUE_DATES, DUE_DATES_V2, KIND_PACKS, LIMITS, LIMITS_V2, STARTER_REPORTS, TDS_SECTIONS } from './starter-packs';
 import { CASH_LEDGERS, PETTY_GROUP } from '../cash/cash-rules';
 import { BANK_LEDGERS } from '../bank/bank-rules';
 import { TRANSFER_LEDGERS } from '../locations/transfer-rules';
@@ -281,6 +281,12 @@ export function starterTemplates(now: string): AccountsTemplate[] {
 				DUE_DATES,
 				'CGST Act and Rules 2017 and the notifications named on each rule; to be confirmed by the CA.',
 				'2017-07-01',
+			),
+			version(
+				2,
+				DUE_DATES_V2,
+				'Adds IFF, PMT-06, CMP-08, GSTR-4 and GSTR-6; to be confirmed by the CA.',
+				'2026-11-25',
 			),
 		]),
 		...STARTER_REPORTS.map((starter) =>

@@ -55,6 +55,11 @@ export class GstReturnsGateway {
 		return this.http.post<GstReturnDraft>(this.api(`/${encodeURIComponent(id)}/set-off`), write);
 	}
 
+	/** GSTR-6: post the approved distribution of the ISD's credit to each GSTIN. */
+	distribute(id: string, write: { version: number }): Observable<GstReturnDraft> {
+		return this.http.post<GstReturnDraft>(this.api(`/${encodeURIComponent(id)}/distribute`), write);
+	}
+
 	/** G9 and the monthly books-to-returns check. */
 	annual(query: GstAnnualQuery): Observable<GstAnnual> {
 		return this.http.get<GstAnnual>(`${runtimeConfig.apiUrl}/admin/accounts/gst/annual`, { params: { ...query } });

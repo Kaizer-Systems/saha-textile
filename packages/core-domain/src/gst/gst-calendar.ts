@@ -5,7 +5,7 @@ import type { TaxRuleEntry } from '@saha-textile/contracts';
  * CBIC notifications change or extend the dates. Pure: an extension for the period and State wins, whenever it was
  * notified (an extension is often dated after the period it extends); otherwise the standing rule in force for the
  * period, the State's before the general one, latest first. Under QRMP, GSTR-1 and GSTR-3B fall due only for
- * quarter-end months.
+ * quarter-end months, IFF and PMT-06 only for the others; CMP-08 is quarterly for everyone who files it.
  */
 
 const quarterEnd = (month: string) => ['03', '06', '09', '12'].includes(month.slice(5, 7));
@@ -23,12 +23,16 @@ type DueRule = TaxRuleEntry & { due: NonNullable<TaxRuleEntry['due']> };
 /** The day a period's return is due by the rules, or null when no rule applies (or QRMP has none that month). */
 export function dueFromRules(
 	entries: readonly TaxRuleEntry[],
-	returnType: 'GSTR-1' | 'GSTR-3B' | 'GSTR-9',
+	returnType: NonNullable<TaxRuleEntry['due']>['returnType'],
 	period: string,
 	scheme: 'monthly' | 'qrmp',
 	stateCode: string,
 ): string | null {
-	if (returnType !== 'GSTR-9' && scheme === 'qrmp' && !quarterEnd(period)) return null;
+	// Quarterly returns fall due for a quarter's last month; IFF and PMT-06 only for its first two.
+	const quarterly =
+		returnType === 'CMP-08' || (scheme === 'qrmp' && (returnType === 'GSTR-1' || returnType === 'GSTR-3B'));
+	if (quarterly && !quarterEnd(period)) return null;
+	if ((returnType === 'IFF' || returnType === 'PMT-06') && quarterEnd(period)) return null;
 	const start = `${period}-01`;
 	const rules = entries.filter(
 		(e): e is DueRule =>

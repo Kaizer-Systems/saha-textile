@@ -1,6 +1,6 @@
 import { Body, Controller, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { GstSetOffPost } from '@saha-textile/contracts';
+import { GstDistributionPost, GstSetOffPost } from '@saha-textile/contracts';
 
 import { Principal } from '../auth/ownership';
 import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../auth/session.guard';
@@ -24,5 +24,15 @@ export class GstSetOffController {
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
 		return this.setOff.post(id, body, principal);
+	}
+	@Post(':id/distribute')
+	@RequirePermissions('accounts.post')
+	@ApiOperation({ operationId: 'gstIsdDistribute', summary: 'Post an approved GSTR-6’s distribution to each GSTIN' })
+	distribute(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(GstDistributionPost)) body: GstDistributionPost,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.setOff.distribute(id, body, principal);
 	}
 }

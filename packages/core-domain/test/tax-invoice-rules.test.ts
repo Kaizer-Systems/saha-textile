@@ -265,8 +265,11 @@ describe('e-invoice edge cases (D1 + addendum 2)', () => {
 	});
 
 	it('sends metres as metres, an export as an export, and no delivery line without a charge', () => {
+		// The export carries IGST (no LUT), so it goes as an export with payment; one without IGST goes under a LUT.
 		const sale = saleFromTaxInvoice(invoiceOf({}), { seller: party('19'), buyer: party('96') });
-		expect(sale.supplyType).toBe('EXPWOP');
+		expect(sale.supplyType).toBe('EXPWP');
+		const underLut = saleFromTaxInvoice(invoiceOf({ igstINR: 0 }), { seller: party('19'), buyer: party('96') });
+		expect(underLut.supplyType).toBe('EXPWOP');
 		expect(sale.lines).toHaveLength(1);
 		expect(sale.lines[0]).toMatchObject({ qty: 2.5, unit: 'm', unitPriceINR: 400 });
 	});

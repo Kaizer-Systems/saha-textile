@@ -388,14 +388,25 @@ export type PeriodCheck = z.infer<typeof PeriodCheck>;
 
 export const PeriodChecksQuery = z.object({ month: YearMonth });
 
-/** GST returns this build records as filed (accounts brief G3, G8); the rest arrive with G1. */
-export const GstReturnType = z.enum(['GSTR-1', 'GSTR-3B']);
+/**
+ * GST returns recorded as filed (accounts brief G3, G8): monthly GSTR-1 and GSTR-3B (quarterly under QRMP, with IFF
+ * and the PMT-06 payment in the quarter's first two months), CMP-08 and GSTR-4 for composition, GSTR-6 for an ISD.
+ */
+export const GstReturnType = z.enum(['GSTR-1', 'GSTR-3B', 'IFF', 'PMT-06', 'CMP-08', 'GSTR-4', 'GSTR-6']);
 export type GstReturnType = z.infer<typeof GstReturnType>;
 
-/** The parts of the books a filed return locks for its GSTIN and month (G8: sales under that GSTIN lock). */
+/**
+ * The parts of the books a filed return locks for its GSTIN and the months it covers (G8: sales under that GSTIN
+ * lock). A payment (PMT-06) and the yearly GSTR-4 lock nothing of their own.
+ */
 export const GST_RETURN_LOCKS: Readonly<Record<GstReturnType, readonly BookPart[]>> = {
 	'GSTR-1': ['sales'],
 	'GSTR-3B': ['sales', 'purchases'],
+	IFF: ['sales'],
+	'PMT-06': [],
+	'CMP-08': ['sales', 'purchases'],
+	'GSTR-4': [],
+	'GSTR-6': ['purchases'],
 };
 
 /** The portal's acknowledgement reference number, as printed. */
@@ -416,8 +427,14 @@ export const GstReturnFiling = z.object({
 	acknowledgement: VoucherAttachment.nullable().default(null),
 	by: Id.nullable().default(null),
 	at: IsoDateTime,
+	/** Every month the return covers (a quarter's three for a quarterly return); empty means only `month`. */
+	months: z.array(YearMonth).max(12).default([]),
 });
 export type GstReturnFiling = z.infer<typeof GstReturnFiling>;
+
+/** The months a filing locks: its own list, else its month. */
+export const filingMonths = (filing: Pick<GstReturnFiling, 'month' | 'months'>): string[] =>
+	filing.months.length ? [...filing.months] : [filing.month];
 
 export const GstReturnFilingWrite = GstReturnFiling.pick({
 	gstRegistrationId: true,

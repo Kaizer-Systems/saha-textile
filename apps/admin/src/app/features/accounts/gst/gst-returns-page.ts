@@ -27,6 +27,14 @@ export const GST_STATUS_PILL: Record<GstCalendarRow['status'], string> = {
 
 /** Refusals the GST return routes give, each with its own words. */
 const GST_PROBLEMS = new Set([
+	'gst_return_quarter_end_only',
+	'gst_return_not_for_this_gstin',
+	'gstr6a_needed',
+	'gstr6a_other_gstin',
+	'gstr6a_other_month',
+	'gstr6a_file_unreadable',
+	'gstr6a_line_unreadable',
+	'gst_distribution_not_isd',
 	'gst_return_not_ready',
 	'gst_return_filed',
 	'gst_return_approved',
@@ -133,8 +141,14 @@ export class GstReturnsPage {
 		return shortDate(date);
 	}
 
-	/** A month's return opens its draft (a GSTR-1 or GSTR-3B not started is prepared first); GSTR-9 opens the year. */
-	async open(row: GstCalendarRow): Promise<void> {
+	/** GSTR-6 not started: the row waiting for its GSTR-6A file, chosen from this computer. */
+	private waiting6a: GstCalendarRow | null = null;
+
+	/**
+	 * A month's return opens its draft (one not started is prepared first; GSTR-6 asks for its GSTR-6A file);
+	 * GSTR-9 opens the year.
+	 */
+	async open(row: GstCalendarRow, sixA?: HTMLInputElement): Promise<void> {
 		if (row.draftId) {
 			void this.router.navigate(returnLink(row.returnType, row.draftId));
 			return;
@@ -143,11 +157,45 @@ export class GstReturnsPage {
 			void this.router.navigate(['/accounts/gst/annual'], { queryParams: { year: row.period } });
 			return;
 		}
-		const returnType = row.returnType;
+		if (row.returnType === 'GSTR-6' && sixA) {
+			this.waiting6a = row;
+			sixA.click();
+			return;
+		}
+		await this.prepare(row);
+	}
+
+	/** The chosen GSTR-6A file prepares the waiting GSTR-6. */
+	async load6a(input: HTMLInputElement): Promise<void> {
+		const file = input.files?.[0];
+		input.value = '';
+		const row = this.waiting6a;
+		this.waiting6a = null;
+		if (!file || !row) return;
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(await file.text());
+		} catch {
+			parsed = null;
+		}
+		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+			this.notifier.showError(this.transloco.translate('gst_problem_gstr6a_file_unreadable'));
+			return;
+		}
+		await this.prepare(row, parsed as Record<string, unknown>);
+	}
+
+	private async prepare(row: GstCalendarRow, inward6a?: Record<string, unknown>): Promise<void> {
+		const returnType = row.returnType as Exclude<GstCalendarRow['returnType'], 'GSTR-9'>;
 		this.busy.set(true);
 		try {
 			const draft = await firstValueFrom(
-				this.gateway.prepare({ gstRegistrationId: this.registrationId(), returnType, month: row.period }),
+				this.gateway.prepare({
+					gstRegistrationId: this.registrationId(),
+					returnType,
+					month: row.period,
+					...(inward6a ? { inward6a } : {}),
+				}),
 			);
 			void this.router.navigate(returnLink(returnType, draft.id));
 		} catch (error) {

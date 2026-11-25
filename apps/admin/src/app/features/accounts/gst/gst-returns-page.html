@@ -38,6 +38,13 @@
 		</button>
 		}
 	</div>
+	<input
+		#sixA
+		type="file"
+		class="d-none"
+		accept="application/json,.json"
+		(change)="load6a(sixA)"
+	/>
 	<div class="table-responsive datatable-wrapper border-table">
 		<table class="all-package theme-table no-footer table">
 			<thead>
@@ -79,7 +86,7 @@
 							class="btn btn-sm p-0"
 							[disabled]="busy()"
 							[title]="'gst_prepare' | transloco"
-							(click)="open(row)"
+							(click)="open(row, sixA)"
 						>
 							<i class="ri-file-add-line"></i>
 						</button>

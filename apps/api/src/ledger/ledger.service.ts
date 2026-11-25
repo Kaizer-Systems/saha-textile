@@ -18,6 +18,7 @@ import {
 	type ChartOfAccounts,
 	type DocumentLock,
 	GST_RETURN_LOCKS,
+	filingMonths,
 	GstReturnFiling,
 	type GstReturnFilingWrite,
 	type JournalLine,
@@ -64,7 +65,10 @@ import {
 	type TransactionManagerPort,
 	voucherProblems,
 	voucherTotals,
+	coveredMonths,
 	resolveRole,
+	rolesOf,
+	termsOn,
 } from '@saha-textile/core-domain';
 
 import { accountsRefusal } from './accounts-refusal';
@@ -281,6 +285,33 @@ export class LedgerService {
 		return ledger;
 	}
 
+	/**
+	 * The ledger playing a role, made (with that role) in the group with the given system key when the books have none
+	 * yet: the GST cash ledger for PMT-06 deposits, composition tax and its payable (G2, QRMP).
+	 */
+	async ensureRoleLedger(role: string, name: string, groupKey: string, by: string | null): Promise<string> {
+		const chart = await this.chart();
+		const found = chart.ledgers.find((l) => l.active !== false && rolesOf(l).includes(role));
+		if (found) return found.id;
+		const group = chart.groups.find((g) => g.systemKey === groupKey);
+		if (!group) throw new BadRequestException(accountsRefusal('books_not_set_up'));
+		const now = new Date().toISOString();
+		const ledger = Ledger.parse({
+			id: `led_${randomUUID()}`,
+			name,
+			groupId: group.id,
+			nature: group.nature,
+			roles: [role],
+			active: true,
+			createdAt: now,
+			updatedAt: now,
+			updatedBy: by,
+		});
+		await this.books.saveLedger(ledger, null);
+		await this.log(by, 'accounts.ledger.create', 'ledger', ledger.id, [{ field: 'name', after: ledger.name }]);
+		return ledger.id;
+	}
+
 	/** Rename, move or switch off a ledger; a system ledger keeps its group, and a used one is never removed. */
 	async saveLedger(id: string, write: LedgerWrite, by: string | null): Promise<Ledger> {
 		const chart = await this.chart();
@@ -369,11 +400,13 @@ export class LedgerService {
 				byHand: check.byHand,
 				mayPostWhenClosed: check.mayPostWhenClosed,
 				sourceType: input.source?.type,
-				filedGst: filings.map((f) => ({
-					gstRegistrationId: f.gstRegistrationId,
-					month: f.month,
-					parts: GST_RETURN_LOCKS[f.returnType],
-				})),
+				filedGst: filings.flatMap((f) =>
+					filingMonths(f).map((month) => ({
+						gstRegistrationId: f.gstRegistrationId,
+						month,
+						parts: GST_RETURN_LOCKS[f.returnType],
+					})),
+				),
 			},
 		);
 		if (problems.length) throw new BadRequestException(accountsRefusal(`voucher_problem:${problems[0]}`));
@@ -766,6 +799,11 @@ export class LedgerService {
 		if (!registration) throw new BadRequestException(accountsRefusal('gst_registration_unknown'));
 		const filing = GstReturnFiling.parse({
 			...write,
+			months: coveredMonths(
+				write.returnType,
+				write.month,
+				termsOn(registration, `${write.month}-01`)?.scheme ?? null,
+			),
 			gstin: registration.gstin,
 			by: principal?.userId ?? null,
 			at: new Date().toISOString(),

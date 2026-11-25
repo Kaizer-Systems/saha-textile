@@ -1,5 +1,5 @@
 import type { AccountsTemplate } from '@saha-textile/contracts';
-import { DUE_DATES } from '@saha-textile/core-domain';
+import { DUE_DATES, DUE_DATES_V2 } from '@saha-textile/core-domain';
 import { describe, expect, it } from 'vitest';
 
 import { AccountsTemplatesService } from '../src/accounts-templates/accounts-templates.service';
@@ -48,8 +48,10 @@ const layout: AccountsTemplate = {
 describe('a tax rule set’s entries on a day', () => {
 	it('reads the starter due-date rules from the version installed, installing the newest the first time', async () => {
 		const { service, stores } = serviceFor();
-		expect(await service.ruleSetEntries('RS-DUE', '2026-11-28')).toEqual(DUE_DATES.entries);
-		expect(stores.installs.rows.map((i) => [i.code, i.version])).toEqual([['RS-DUE', 1]]);
+		// The newest version (v2, from 25 Nov 2026) adds the other taxpayers' returns.
+		expect(await service.ruleSetEntries('RS-DUE', '2026-11-28')).toEqual(DUE_DATES_V2.entries);
+		expect(stores.installs.rows.map((i) => [i.code, i.version])).toEqual([['RS-DUE', 2]]);
+		expect(await service.ruleSetEntries('RS-DUE', '2026-11-24')).toEqual(DUE_DATES.entries);
 		// A day before the set's first version has none.
 		expect(await service.ruleSetEntries('RS-DUE', '2017-06-30')).toEqual([]);
 	});

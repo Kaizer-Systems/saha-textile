@@ -8,6 +8,7 @@ import { AccountsTemplatesModule } from '../src/accounts-templates/accounts-temp
 import { PERMISSIONS_KEY } from '../src/auth/session.guard';
 import { GstReturnsController } from '../src/gst/gst-returns.controller';
 import { GstReturnsService } from '../src/gst/gst-returns.service';
+import { GstSchemesService } from '../src/gst/gst-schemes.service';
 import { GstModule } from '../src/gst/gst.module';
 import { Gstr2bController } from '../src/gst/gstr2b.controller';
 import { Gstr2bService } from '../src/gst/gstr2b.service';
@@ -175,6 +176,27 @@ function build(
 		ruleSetEntries: vi.fn(async (_code: string, _day: string) => [...(options.rules ?? DUE_DATES.entries)]),
 	};
 	const inputs = { collect: vi.fn(async (_registration: string, _month: string) => options.books ?? NO_BOOKS) };
+	const heads = (cgst = 0) => ({ igst: 0, cgst, sgst: cgst });
+	const schemes = {
+		work: vi.fn(),
+		quarterGstr1: vi.fn(async () => ({ summary: [], problems: [], portal: {} })),
+		quarterGstr3b: vi.fn(async () => ({
+			summary: [],
+			problems: [],
+			portal: {},
+			setOff: {
+				liability: heads(),
+				credit: heads(),
+				igstUsed: heads(),
+				cgstUsed: { cgst: 0, igst: 0 },
+				sgstUsed: { sgst: 0, igst: 0 },
+				cash: heads(),
+				carried: heads(),
+			},
+			reverseChargeCash: heads(),
+			deposited: heads(100),
+		})),
+	};
 	const service = new GstReturnsService(
 		drafts as never,
 		{ list: async () => options.filings ?? [] } as never,
@@ -190,8 +212,9 @@ function build(
 			},
 		} as never,
 		inputs,
+		schemes,
 	);
-	return { service, drafts, store, invoices, credit, debit, templates, inputs };
+	return { service, drafts, store, invoices, credit, debit, templates, inputs, schemes };
 }
 
 /** GSTR-3B's figures from the books when nothing happened in the month. */
@@ -343,15 +366,16 @@ describe('preparing GSTR-3B from the filed GSTR-1, the books and 2B (G6)', () =>
 	});
 	const sample = { table: '4B' as const, igst: 0, cgst: 100, sgst: 100, reason: 'Saree given away as a sample' };
 
-	it('refuses a quarterly filer for now', async () => {
-		const { service } = build({ filings: [filedGstr1('reg_qrmp', '2026-09')] });
-		await expect(
-			service.prepare(
-				prepare({ gstRegistrationId: 'reg_qrmp', returnType: 'GSTR-3B', month: '2026-09', adjustments: [] }),
-				accountant,
-				now,
-			),
-		).rejects.toMatchObject(refusal('gst_return_qrmp_later'));
+	it('hands a quarterly filer’s GSTR-1 and GSTR-3B to the quarter’s own working', async () => {
+		const { service, schemes } = build({ filings: [filedGstr1('reg_qrmp', '2026-09')] });
+		const three = await service.prepare(
+			prepare({ gstRegistrationId: 'reg_qrmp', returnType: 'GSTR-3B', month: '2026-09', adjustments: [] }),
+			accountant,
+			now,
+		);
+		expect(schemes.quarterGstr1).toHaveBeenCalledTimes(1);
+		expect(schemes.quarterGstr3b).toHaveBeenCalledTimes(1);
+		expect(three.setOff?.deposited).toEqual({ igst: 0, cgst: 100, sgst: 100 });
 	});
 
 	it('takes outward supplies from the GSTR-1 draft, figures from the books, and keeps the set-off and changes', async () => {
@@ -670,7 +694,12 @@ describe('the GST return routes', () => {
 			['accounts.index'],
 			['accounts.post'],
 		]);
-		expect(Reflect.getMetadata('providers', GstModule)).toEqual([GstReturnsService, Gstr2bService, Gstr3bInputs]);
+		expect(Reflect.getMetadata('providers', GstModule)).toEqual([
+			GstReturnsService,
+			GstSchemesService,
+			Gstr2bService,
+			Gstr3bInputs,
+		]);
 		expect(Reflect.getMetadata('controllers', GstModule)).toEqual([GstReturnsController, Gstr2bController]);
 		// Due dates come from the rule sets the templates library keeps.
 		expect(Reflect.getMetadata('imports', GstModule)).toEqual([AccountsTemplatesModule]);

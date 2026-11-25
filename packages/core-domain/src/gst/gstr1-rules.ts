@@ -159,6 +159,11 @@ export interface Gstr1Input {
 	originals: ReadonlyMap<string, TaxInvoice>;
 	/** HSN digits the registration must show (4 up to ₹5 crore turnover, 6 above). */
 	hsnDigits: 4 | 6;
+	/**
+	 * QRMP: invoice and note numbers a filed IFF already reported, left out of 4A and 9B (CDNR) of the quarter's
+	 * GSTR-1; the HSN summary and table 13 still count them, since IFF has neither.
+	 */
+	reportedInIff?: ReadonlySet<string>;
 }
 
 export interface Gstr1Problem {
@@ -183,7 +188,8 @@ export function gstr1(input: Gstr1Input) {
 	const problems: Gstr1Problem[] = [];
 	const live = input.invoices.filter((invoice) => invoice.status !== 'cancelled');
 	const byClass = (cls: SaleClass) => live.filter((invoice) => saleClass(invoice) === cls);
-	const b2b = byClass('b2b');
+	const inIff = (number: string) => input.reportedInIff?.has(number) ?? false;
+	const b2b = byClass('b2b').filter((invoice) => !inIff(invoice.number));
 	for (const invoice of b2b)
 		if (gstinProblem(invoice.buyer.gstin as string))
 			problems.push({ table: '4A', problem: 'gstin_invalid', document: invoice.number });
@@ -214,7 +220,7 @@ export function gstr1(input: Gstr1Input) {
 	for (const note of notes)
 		if (!note.original) problems.push({ table: '9B', problem: 'note_invoice_missing', document: note.number });
 	const noteClass = (note: NoteRow): SaleClass => (note.original ? saleClass(note.original) : saleClass(note.doc));
-	const cdnr = notes.filter((n) => noteClass(n) === 'b2b');
+	const cdnr = notes.filter((n) => noteClass(n) === 'b2b' && !inIff(n.number));
 	const cdnur = notes.filter((n) => noteClass(n) === 'b2cl' || noteClass(n) === 'exp');
 	const notesIntoB2cs = notes.filter((n) => noteClass(n) === 'b2cs');
 

@@ -1,7 +1,10 @@
 import { ConflictException, Inject, Injectable, Optional } from '@nestjs/common';
 import type { Order, OrderLine } from '@saha-textile/contracts';
 import {
+	compositionRefuses,
 	defaultStockLocation,
+	istDay,
+	type CompanyRepository,
 	type LocationRepository,
 	routeOrder,
 	StockMovementRefusedError,
@@ -15,6 +18,7 @@ import { codedRefusal } from '../common/coded-refusal';
 import type { BundleStockService } from '../catalog/bundles/bundle-stock.service';
 import {
 	BUNDLE_STOCK,
+	COMPANY_REPOSITORY,
 	INVENTORY_COST_LAYER_REPOSITORY,
 	LOCATION_REPOSITORY,
 	PRODUCT_VARIANT_REPOSITORY,
@@ -48,7 +52,33 @@ export class OrderStock {
 		@Optional()
 		@Inject(LOCATION_REPOSITORY)
 		private readonly locations: Pick<LocationRepository, 'list'> | null = null,
+		@Optional()
+		@Inject(COMPANY_REPOSITORY)
+		private readonly company: Pick<CompanyRepository, 'getRegistration'> | null = null,
 	) {}
+
+	/**
+	 * G2: a location whose GSTIN pays composition tax can't sell outside its State (s.10(2)(d)): checkout and Create
+	 * order are refused before anything is kept. The shop's words name the delivery, never GST.
+	 */
+	private async refuseOutsideComposition(order: Order, locationId: string | null, day: string): Promise<void> {
+		const delivery = order.addresses?.delivery;
+		if (!this.company || !this.locations || !locationId || !delivery) return;
+		const location = (await this.locations.list()).find((l) => l.id === locationId);
+		if (!location?.gstRegistrationId) return;
+		const registration = await this.company.getRegistration(location.gstRegistrationId);
+		if (!registration) return;
+		const abroad = !!delivery.country && !['IN', 'India'].includes(delivery.country);
+		const placeOfSupply = abroad ? '96' : (delivery.gstStateCode ?? registration.stateCode);
+		if (compositionRefuses(registration, day, placeOfSupply))
+			throw new ConflictException(
+				codedRefusal(
+					'delivery_outside_state',
+					'We can deliver this order only within our own State',
+					'delivery',
+				),
+			);
+	}
 
 	/**
 	 * Where a new order ships from (accounts brief M2, D14): with "assign by itself", the one shipping location that
@@ -63,16 +93,25 @@ export class OrderStock {
 			if (line.madeToOrder || line.role === 'bundle') continue;
 			lines.push({ variantId: await this.variantIdOf(line), quantity: line.quantity });
 		}
-		if (!lines.length) return null;
-		return routeOrder(
-			{
-				lines,
-				stock: await this.stock.locationStock(lines.map((line) => line.variantId)),
-				shippingLocationIds: locations.filter((l) => l.active && l.warehouse && l.shipsOnline).map((l) => l.id),
-				defaultLocationId: defaultStockLocation(locations),
-			},
-			settings,
-		).assign;
+		const assign = lines.length
+			? routeOrder(
+					{
+						lines,
+						stock: await this.stock.locationStock(lines.map((line) => line.variantId)),
+						shippingLocationIds: locations
+							.filter((l) => l.active && l.warehouse && l.shipsOnline)
+							.map((l) => l.id),
+						defaultLocationId: defaultStockLocation(locations),
+					},
+					settings,
+				).assign
+			: null;
+		await this.refuseOutsideComposition(
+			order,
+			assign ?? defaultStockLocation(locations),
+			istDay(order.createdAt ?? new Date()),
+		);
+		return assign;
 	}
 
 	reserve(

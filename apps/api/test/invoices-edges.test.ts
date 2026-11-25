@@ -6,7 +6,7 @@ import { InvoicesService } from '../src/invoicing/invoices.service';
 
 /** Every fallback of issuing and reading tax invoices (accounts brief D1, Q5), one case each. */
 
-const REG = { id: 'reg_wb', gstin: '19DBYPS6736R1ZZ', stateCode: '19' };
+const REG = { id: 'reg_wb', gstin: '19DBYPS6736R1ZZ', stateCode: '19', terms: [] };
 const BARASAT = {
 	id: 'loc_bar',
 	name: 'Barasat warehouse',

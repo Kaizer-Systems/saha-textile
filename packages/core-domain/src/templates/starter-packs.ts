@@ -364,6 +364,50 @@ export const DUE_DATES: TaxRuleSetContent = {
 	],
 };
 
+/**
+ * RS-DUE v2 (25 Nov 2026, owner: build composition, QRMP and ISD): v1's rules and the other taxpayers' returns.
+ */
+export const DUE_DATES_V2: TaxRuleSetContent = {
+	...DUE_DATES,
+	entries: [
+		...DUE_DATES.entries,
+		dueRule(
+			'iff_qrmp',
+			'IFF, quarterly filers, first two months of a quarter (optional)',
+			{ returnType: 'IFF', scheme: 'qrmp', day: 13, monthsAfter: 1, states: [], period: null },
+			'CGST Rules 2017 rule 59(2); to be confirmed by the CA.',
+			'2021-01-01',
+		),
+		dueRule(
+			'pmt06_qrmp',
+			'PMT-06, quarterly filers, first two months of a quarter',
+			{ returnType: 'PMT-06', scheme: 'qrmp', day: 25, monthsAfter: 1, states: [], period: null },
+			'CGST Rules 2017 rule 61A; to be confirmed by the CA.',
+			'2021-01-01',
+		),
+		dueRule(
+			'cmp08_quarter',
+			'CMP-08, composition, for the quarter',
+			{ returnType: 'CMP-08', scheme: null, day: 18, monthsAfter: 1, states: [], period: null },
+			'CGST Rules 2017 rule 62(1)(i); to be confirmed by the CA.',
+			'2019-04-01',
+		),
+		dueRule(
+			'gstr4_annual',
+			'GSTR-4, composition, for the year (from March)',
+			{ returnType: 'GSTR-4', scheme: null, day: 30, monthsAfter: 1, states: [], period: null },
+			'CGST Rules 2017 rule 62(1)(ii), from 2021-22; to be confirmed by the CA.',
+			'2022-04-01',
+		),
+		dueRule(
+			'gstr6_monthly',
+			'GSTR-6, input service distributor',
+			{ returnType: 'GSTR-6', scheme: null, day: 13, monthsAfter: 1, states: [], period: null },
+			'CGST Rules 2017 rule 65; to be confirmed by the CA.',
+		),
+	],
+};
+
 /* ---------------------------------------------------------------------------------------------- */
 /* Statements (AT6)                                                                                */
 /* ---------------------------------------------------------------------------------------------- */

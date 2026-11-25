@@ -49,17 +49,20 @@ export function taxInvoiceData(
 		row.tax += line.cgstINR + line.sgstINR + line.igstINR;
 		byHsn.set(key, row);
 	}
-	const taxRows = invoice.interState
-		? [{ label: 'IGST', value: money(invoice.igstINR) }]
-		: [
-				{ label: 'CGST', value: money(invoice.cgstINR) },
-				{ label: 'SGST', value: money(invoice.sgstINR) },
-			];
+	// A bill of supply (composition) shows no tax at all.
+	const taxRows = invoice.billOfSupply
+		? []
+		: invoice.interState
+			? [{ label: 'IGST', value: money(invoice.igstINR) }]
+			: [
+					{ label: 'CGST', value: money(invoice.cgstINR) },
+					{ label: 'SGST', value: money(invoice.sgstINR) },
+				];
 	const party = (name: string, gstin: string | null, address: string, code: string) =>
 		[name, address, state(code), ...(gstin ? [`GSTIN ${gstin}`] : [])].filter(Boolean);
 	return {
 		doc: 'taxInvoice',
-		title: 'Tax invoice',
+		title: invoice.billOfSupply ? 'Bill of supply' : 'Tax invoice',
 		number: invoice.number,
 		date: longDate(invoice.date),
 		seller,
@@ -105,8 +108,9 @@ export function taxInvoiceData(
 			roundOff: [{ label: 'Round off', value: money(invoice.roundOffINR) }],
 		},
 		signatures: {
-			declaration:
-				'We declare that this document shows the actual price of the goods described and that all particulars are true and correct.',
+			declaration: invoice.billOfSupply
+				? 'Composition taxable person, not eligible to collect tax on supplies. We declare that this document shows the actual price of the goods described and that all particulars are true and correct.'
+				: 'We declare that this document shows the actual price of the goods described and that all particulars are true and correct.',
 		},
 	};
 }

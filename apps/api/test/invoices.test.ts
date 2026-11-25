@@ -71,7 +71,7 @@ const setup = (on: boolean, product: Record<string, unknown> = { hsnCode: null }
 		} as never,
 		{
 			getFeatures: async () => ({ on: { tax_invoices: on } }),
-			getRegistration: async () => ({ id: 'reg_wb', gstin: '19DBYPS6736R1ZZ', stateCode: '19' }),
+			getRegistration: async () => ({ id: 'reg_wb', gstin: '19DBYPS6736R1ZZ', stateCode: '19', terms: [] }),
 			findRegistrationByGstin: async () => null,
 		} as never,
 		{

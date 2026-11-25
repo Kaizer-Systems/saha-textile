@@ -44,7 +44,7 @@ export type InvoiceProblem = 'hsn_missing' | 'hsn_rate_missing' | 'no_lines';
  */
 export function buildInvoiceLines(
 	lines: readonly InvoiceLineInput[],
-	options: { interState: boolean; shippingINR: number },
+	options: { interState: boolean; shippingINR: number; composition?: boolean },
 ): { problems: { lineId: string; problem: InvoiceProblem }[]; lines: TaxInvoiceLine[]; totals: InvoiceTotals } {
 	const problems: { lineId: string; problem: InvoiceProblem }[] = [];
 	const out: TaxInvoiceLine[] = [];
@@ -54,8 +54,11 @@ export function buildInvoiceLines(
 			continue;
 		}
 		const unitPriceINR = line.quantity > 0 ? line.lineTotalINR / line.quantity : 0;
-		// Fabric is kept in tenths of a metre; its rate band is read on the price per metre.
-		const rate = gstRateFor(line.hsn, line.unit === 'MTR' ? unitPriceINR * 10 : unitPriceINR);
+		// Fabric is kept in tenths of a metre; its rate band is read on the price per metre. A composition seller's
+		// bill of supply charges no tax: the whole price is the value.
+		const rate = options.composition
+			? 0
+			: gstRateFor(line.hsn, line.unit === 'MTR' ? unitPriceINR * 10 : unitPriceINR);
 		if (rate === null) {
 			problems.push({ lineId: line.lineId, problem: 'hsn_rate_missing' });
 			continue;

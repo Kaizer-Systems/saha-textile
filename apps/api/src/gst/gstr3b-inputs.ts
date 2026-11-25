@@ -5,6 +5,7 @@ import {
 	day180,
 	defaultStockLocation,
 	resolveRole,
+	isdCreditInBooks,
 	reversedInBooks,
 	rule37,
 	type GeneralLedgerRepository,
@@ -55,10 +56,10 @@ export class Gstr3bInputs {
 		const locations = await this.locations.list();
 		const here = new Set(locations.filter((l) => l.gstRegistrationId === gstRegistrationId).map((l) => l.id));
 		const stock = locations.find((l) => l.id === defaultStockLocation(locations));
-		const [invoices, twoB, reversed, rule] = await Promise.all([
+		const [invoices, twoB, books, rule] = await Promise.all([
 			this.selfInvoices.issuedForGstin(gstRegistrationId, first, last),
 			this.gstr2b.rows(gstRegistrationId, month),
-			this.reversals(first, last, here),
+			this.fromBooks(first, last, here),
 			stock?.gstRegistrationId === gstRegistrationId ? this.rule37(month, last) : null,
 		]);
 		const none: TaxHeads = { igst: 0, cgst: 0, sgst: 0 };
@@ -72,9 +73,10 @@ export class Gstr3bInputs {
 			twoBImported: twoB.doc !== null,
 			itc2b: claimFrom2b(twoB.rows),
 			acceptedNotInBooks: twoB.rows.filter((r) => r.result === 'only_2b' && r.action === 'accept').length,
-			reversedInBooks: reversed,
+			reversedInBooks: books.reversed,
 			rule37: rule?.reversed ?? none,
 			reclaimed: rule?.reclaimed ?? none,
+			isdCredit: books.isd,
 		};
 	}
 
@@ -83,11 +85,18 @@ export class Gstr3bInputs {
 		const here = new Set(
 			(await this.locations.list()).filter((l) => l.gstRegistrationId === gstRegistrationId).map((l) => l.id),
 		);
-		return this.reversals(from, to, here);
+		return (await this.fromBooks(from, to, here)).reversed;
 	}
 
-	/** 4B(1): input tax the books took back this month at the GSTIN's locations; nothing before the books are set up. */
-	private async reversals(from: string, to: string, here: ReadonlySet<string>): Promise<TaxHeads> {
+	/**
+	 * From the month's vouchers at the GSTIN's locations: 4B(1), input tax the books took back, and 4A(4), credit an ISD
+	 * distributed to it; nothing before the books are set up.
+	 */
+	private async fromBooks(
+		from: string,
+		to: string,
+		here: ReadonlySet<string>,
+	): Promise<{ reversed: TaxHeads; isd: TaxHeads }> {
 		const chart = await this.ledger.chart();
 		let ids: Record<keyof TaxHeads, string>;
 		try {
@@ -97,7 +106,7 @@ export class Gstr3bInputs {
 				sgst: resolveRole(chart.ledgers, 'input_sgst').id,
 			};
 		} catch {
-			return { igst: 0, cgst: 0, sgst: 0 };
+			return { reversed: { igst: 0, cgst: 0, sgst: 0 }, isd: { igst: 0, cgst: 0, sgst: 0 } };
 		}
 		const vouchers: JournalVoucher[] = [];
 		for (let page = 1; ; page += 1) {
@@ -112,7 +121,7 @@ export class Gstr3bInputs {
 			vouchers.push(...found.items);
 			if (vouchers.length >= found.total || !found.items.length) break;
 		}
-		return reversedInBooks(vouchers, ids, here);
+		return { reversed: reversedInBooks(vouchers, ids, here), isd: isdCreditInBooks(vouchers, ids, here) };
 	}
 
 	/** Rule 37 over bills whose 180 days have ended by the month's last day. */

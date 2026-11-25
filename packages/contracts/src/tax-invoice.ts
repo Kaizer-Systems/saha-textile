@@ -64,6 +64,11 @@ export const TaxInvoice = z.object({
 	totalINR: z.number().nonnegative(),
 	/** Today's rates, not yet confirmed by the CA: the print says so. */
 	ratesPendingCa: z.boolean().default(true),
+	/**
+	 * G2: issued by a GSTIN under composition: a bill of supply, with no tax shown or charged (the business pays its
+	 * composition tax on turnover itself, with CMP-08).
+	 */
+	billOfSupply: z.boolean().default(false),
 	status: TaxInvoiceStatus.default('issued'),
 	cancellation: z.object({ at: IsoDateTime, by: Id.nullable(), reason: z.string() }).nullable().default(null),
 	/** The voucher that posted it to the books. */

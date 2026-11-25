@@ -143,7 +143,7 @@ const setup = (
 	const audit: { action: string; retentionTier?: string }[] = [];
 	const company = {
 		getProfile: async () => (options.noProfile ? null : { kind: options.kind ?? 'proprietorship' }),
-		getRegistration: async (id: string) => (id === 'reg_wb' ? { id, gstin: '19DBYPS6736R1ZZ' } : null),
+		getRegistration: async (id: string) => (id === 'reg_wb' ? { id, gstin: '19DBYPS6736R1ZZ', terms: [] } : null),
 	};
 	const templates = templatesFor(company);
 	const service = new LedgerService(
@@ -252,7 +252,7 @@ describe('general ledger (accounts brief Q, T, D10)', () => {
 		const library = await service.setUpBooks('adm_owner');
 		expect(templates.installs.rows.map(({ code, version }) => [code, version])).toEqual([
 			['CH-COMMON', 5],
-			['RS-DUE', 1],
+			['RS-DUE', 2],
 			['RS-LIMITS', 2],
 			['RS-RCM', 1],
 			['RS-TDS', 1],

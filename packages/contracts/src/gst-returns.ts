@@ -10,7 +10,7 @@ import { IsoDate } from './purchasing';
  * the month's sales for that GSTIN.
  */
 
-export const GstDraftType = z.enum(['GSTR-1', 'GSTR-3B']);
+export const GstDraftType = z.enum(['GSTR-1', 'GSTR-3B', 'IFF', 'PMT-06', 'CMP-08', 'GSTR-4', 'GSTR-6']);
 export type GstDraftType = z.infer<typeof GstDraftType>;
 
 export const GstDraftStatus = z.enum(['prepared', 'checked', 'approved', 'filed']);
@@ -43,6 +43,8 @@ export const GstSetOff = z.object({
 	carried: GstTaxHeads,
 	/** Reverse-charge tax, always paid in cash. */
 	reverseChargeCash: GstTaxHeads,
+	/** QRMP: what the quarter's PMT-06 payments put in the cash ledger, used before a new challan. */
+	deposited: GstTaxHeads.nullish(),
 });
 export type GstSetOff = z.infer<typeof GstSetOff>;
 
@@ -96,6 +98,24 @@ export const GstReturnDraft = z.object({
 	challanVoucherId: Id.nullable().default(null),
 	/** GSTR-3B only: the challan paid (PMT-06), once posted. */
 	challan: GstChallan.nullish(),
+	/** GSTR-6 only: the journal that moved the credit from the ISD to each recipient GSTIN, once posted. */
+	distributionVoucherId: Id.nullish(),
+	/** GSTR-6 only: the GSTR-6A file it was prepared from, and each recipient's share as approved. */
+	inward6a: z.record(z.string(), z.unknown()).nullish(),
+	isdShares: z
+		.array(
+			z.object({
+				registrationId: Id,
+				gstin: z.string(),
+				ratioPercent: z.number(),
+				credit: GstTaxHeads,
+				from: GstTaxHeads,
+				invoiceNumber: z.string(),
+			}),
+		)
+		.nullish(),
+	/** CMP-08 only: the quarter's composition tax booked as an expense, once posted. */
+	expenseVoucherId: Id.nullish(),
 	version: z.number().int().nonnegative().default(0),
 });
 export type GstReturnDraft = z.infer<typeof GstReturnDraft>;
@@ -113,14 +133,23 @@ export const GstSetOffPost = z.object({
 	version: z.number().int().nonnegative(),
 });
 export type GstSetOffPost = z.infer<typeof GstSetOffPost>;
+
+/** GSTR-6 Post the distribution: the ISD's credit moved to each recipient GSTIN, as the approved return says. */
+export const GstDistributionPost = z.object({ version: z.number().int().nonnegative() });
+export type GstDistributionPost = z.infer<typeof GstDistributionPost>;
 export type GstSetOffPostInput = z.input<typeof GstSetOffPost>;
 
 /** Prepare (or prepare again, before approval) a return from the books; a GSTR-3B carries the accountant's changes. */
 export const GstReturnPrepare = z.object({
 	gstRegistrationId: Id,
 	returnType: GstDraftType,
+	/** The month; for a quarterly return the quarter's last month; for GSTR-4 the year's last month (March). */
 	month: YearMonth,
 	adjustments: z.array(Gstr3bAdjustment).max(30).default([]),
+	/** PMT-06: 35% of the last quarter's cash (fixed sum), or the month's own tax less its credit (self-assessment). */
+	pmt06Method: z.enum(['fixed_sum', 'self_assessment']).default('self_assessment'),
+	/** GSTR-6: the ISD's GSTR-6A as downloaded from the portal (JSON); kept from the last prepare when left out. */
+	inward6a: z.record(z.string(), z.unknown()).optional(),
 });
 export type GstReturnPrepare = z.infer<typeof GstReturnPrepare>;
 export type GstReturnPrepareInput = z.input<typeof GstReturnPrepare>;
@@ -139,8 +168,8 @@ export const GstCalendarQuery = z.object({ gstRegistrationId: Id, chip: GstCalen
 export type GstCalendarQuery = z.infer<typeof GstCalendarQuery>;
 
 export const GstCalendarRow = z.object({
-	returnType: z.enum(['GSTR-1', 'GSTR-3B', 'GSTR-9']),
-	/** `YYYY-MM`, or the financial year (`2025-26`) for the annual return. */
+	returnType: z.enum(['GSTR-1', 'GSTR-3B', 'GSTR-9', 'IFF', 'PMT-06', 'CMP-08', 'GSTR-4', 'GSTR-6']),
+	/** `YYYY-MM` (a quarter's last month for a quarterly return), or the financial year (`2025-26`) for GSTR-9 and 4. */
 	period: z.string(),
 	dueOn: IsoDate,
 	status: z.enum(['not_started', 'prepared', 'checked', 'approved', 'filed']),

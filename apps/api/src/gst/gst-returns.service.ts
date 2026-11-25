@@ -14,6 +14,7 @@ import type {
 import {
 	dueFromRules,
 	financialYear,
+	returnsFor,
 	gstr1,
 	gstr3b,
 	istDay,
@@ -39,6 +40,7 @@ import {
 } from '../infra/tokens';
 import { AccountsTemplatesService } from '../accounts-templates/accounts-templates.service';
 import { accountsRefusal } from '../ledger/accounts-refusal';
+import { GstSchemesService, type SchemeWork } from './gst-schemes.service';
 import { Gstr3bInputs } from './gstr3b-inputs';
 
 const refuse = (code: string) => new BadRequestException(accountsRefusal(code));
@@ -76,6 +78,9 @@ export class GstReturnsService {
 		@Inject(ADMIN_USER_REPOSITORY) private readonly admins: Pick<AdminUserRepository, 'findById'>,
 		/** GSTR-3B's figures from the books and 2B. */
 		@Inject(Gstr3bInputs) private readonly inputs: Pick<Gstr3bInputs, 'collect'>,
+		/** QRMP, composition and ISD returns (G1–G3, G7). */
+		@Inject(GstSchemesService)
+		private readonly schemes: Pick<GstSchemesService, 'work' | 'quarterGstr1' | 'quarterGstr3b'>,
 	) {}
 
 	/** Who took a step, by name; the user id when the account has no name, '' with no one signed in. */
@@ -97,13 +102,32 @@ export class GstReturnsService {
 		);
 	}
 
-	/** GSTR-1 worked out from the GSTIN's invoices and notes of the month (core `gstr1`). */
+	/**
+	 * GSTR-1 worked out from the GSTIN's invoices and notes of the month (core `gstr1`); under QRMP, of the quarter that
+	 * ends with the month, less what its IFFs reported.
+	 */
 	private gstr1For(registration: GstRegistration, month: string) {
+		if (termsOn(registration, `${month}-01`)?.scheme === 'qrmp')
+			return this.schemes.quarterGstr1(registration, month, this.between);
 		return this.gstr1Between(registration, `${month}-01`, monthEnd(month), month);
 	}
 
+	private readonly between = (
+		registration: GstRegistration,
+		from: string,
+		to: string,
+		month: string,
+		reportedInIff?: ReadonlySet<string>,
+	) => this.gstr1Between(registration, from, to, month, reportedInIff);
+
 	/** GSTR-1's tables worked out from the books between two days (GSTR-9 takes a whole year). */
-	async gstr1Between(registration: GstRegistration, from: string, to: string, month: string) {
+	async gstr1Between(
+		registration: GstRegistration,
+		from: string,
+		to: string,
+		month: string,
+		reportedInIff?: ReadonlySet<string>,
+	) {
 		const [invoices, creditNotes, debitNotes] = await Promise.all([
 			this.invoices.listForGstin(registration.gstin, from, to),
 			this.creditNotes.listForGstin(registration.gstin, from, to),
@@ -122,27 +146,66 @@ export class GstReturnsService {
 			debitNotes,
 			originals,
 			hsnDigits: termsOn(registration, from)?.hsnDigits ?? 4,
+			reportedInIff,
 		});
 	}
 
 	/**
 	 * G6: GSTR-3B from the filed GSTR-1 (as prepared here, else worked out again from the books), the month's
-	 * self-invoices, 2B's accepted credit, the books' reversals and rule 37, with the accountant's changes. Monthly
-	 * filers only for now; GSTR-1 must be filed first, since its values feed 3B.
+	 * self-invoices, 2B's accepted credit, the books' reversals and rule 37, with the accountant's changes. GSTR-1 must
+	 * be filed first, since its values feed 3B. Under QRMP, for the quarter, with its PMT-06 deposits used first.
 	 */
 	private async gstr3bFor(registration: GstRegistration, write: GstReturnPrepare) {
 		if (!(await this.filed(registration.id, 'GSTR-1', write.month))) throw refuse('gst_gstr1_not_filed');
-		if (termsOn(registration, `${write.month}-01`)?.scheme === 'qrmp') throw refuse('gst_return_qrmp_later');
 		const gstr1Draft = await this.drafts.find(registration.id, 'GSTR-1', write.month);
-		const gstr1Portal = gstr1Draft?.portal ?? (await this.gstr1For(registration, write.month)).portal;
+		const gstr1Portal = (gstr1Draft?.portal ?? (await this.gstr1For(registration, write.month)).portal) as Record<
+			string,
+			unknown
+		>;
+		if (termsOn(registration, `${write.month}-01`)?.scheme === 'qrmp')
+			return this.schemes.quarterGstr3b(registration, write, gstr1Portal);
 		const books = await this.inputs.collect(registration.id, write.month);
-		return gstr3b({
-			gstin: registration.gstin,
-			month: write.month,
-			gstr1Portal: gstr1Portal as Record<string, unknown>,
-			...books,
-			adjustments: write.adjustments,
-		});
+		return {
+			...gstr3b({
+				gstin: registration.gstin,
+				month: write.month,
+				gstr1Portal,
+				...books,
+				adjustments: write.adjustments,
+			}),
+			deposited: null,
+		};
+	}
+
+	/** What a return holds once worked out: GSTR-1, GSTR-3B, or one of the other taxpayers' returns. */
+	private async work(
+		registration: GstRegistration,
+		write: GstReturnPrepare,
+		existing: GstReturnDraft | null,
+	): Promise<SchemeWork> {
+		if (write.returnType === 'GSTR-3B') {
+			const r = await this.gstr3bFor(registration, write);
+			return {
+				summary: r.summary,
+				problems: r.problems,
+				portal: r.portal,
+				setOff: { ...r.setOff, reverseChargeCash: r.reverseChargeCash, deposited: r.deposited },
+				inward6a: null,
+				isdShares: null,
+			};
+		}
+		if (write.returnType === 'GSTR-1') {
+			const r = await this.gstr1For(registration, write.month);
+			return {
+				summary: r.summary,
+				problems: r.problems,
+				portal: r.portal as unknown as Record<string, unknown>,
+				setOff: null,
+				inward6a: null,
+				isdShares: null,
+			};
+		}
+		return this.schemes.work(registration, write, existing, this.between);
 	}
 
 	/** G4, G6 Prepare: the return worked out from the books now; a draft not yet approved is replaced. */
@@ -152,10 +215,7 @@ export class GstReturnsService {
 		const existing = await this.drafts.find(registration.id, write.returnType, write.month);
 		if (existing && existing.status !== 'prepared' && existing.status !== 'checked')
 			throw refuse('gst_return_approved');
-		const result =
-			write.returnType === 'GSTR-3B'
-				? await this.gstr3bFor(registration, write)
-				: { ...(await this.gstr1For(registration, write.month)), setOff: null, reverseChargeCash: null };
+		const result = await this.work(registration, write, existing);
 		const draft: GstReturnDraft = {
 			id: existing?.id ?? `gsr_${randomUUID()}`,
 			gstRegistrationId: registration.id,
@@ -165,7 +225,7 @@ export class GstReturnsService {
 			status: 'prepared',
 			summary: result.summary,
 			problems: result.problems,
-			portal: result.portal as unknown as Record<string, unknown>,
+			portal: result.portal,
 			preparedBy: principal?.userId ?? null,
 			preparedAt: now.toISOString(),
 			checkedBy: null,
@@ -177,13 +237,12 @@ export class GstReturnsService {
 			approvedByName: '',
 			arn: null,
 			filedOn: null,
-			setOff:
-				result.setOff && result.reverseChargeCash
-					? { ...result.setOff, reverseChargeCash: result.reverseChargeCash }
-					: null,
+			setOff: result.setOff,
 			adjustments: write.returnType === 'GSTR-3B' ? write.adjustments : [],
 			setOffVoucherId: null,
 			challanVoucherId: null,
+			inward6a: result.inward6a,
+			isdShares: result.isdShares,
 			version: existing?.version ?? 0,
 		};
 		return this.save(draft, existing ? existing.version : null);
@@ -257,7 +316,7 @@ export class GstReturnsService {
 			const month = addMonths(thisMonth, -back);
 			const terms = termsOn(registration, `${month}-01`);
 			if (!terms) continue;
-			for (const returnType of ['GSTR-1', 'GSTR-3B'] as const) {
+			for (const returnType of returnsFor(terms.kind, terms.scheme)) {
 				const dueOn = dueFromRules(rules, returnType, month, terms.scheme, registration.stateCode);
 				if (!dueOn) continue;
 				const filing = filings.find(
@@ -273,7 +332,24 @@ export class GstReturnsService {
 					draftId: draft?.id ?? null,
 				});
 			}
-			if (terms.annualReturn && month.endsWith('-03')) years.add(month);
+			if (terms.annualReturn && terms.kind !== 'composition' && month.endsWith('-03')) years.add(month);
+			// G2: a composition GSTIN's yearly GSTR-4, prepared for the year's last month.
+			if (terms.kind === 'composition' && month.endsWith('-03')) {
+				const dueOn = dueFromRules(rules, 'GSTR-4', month, terms.scheme, registration.stateCode);
+				const filing = filings.find(
+					(f) => f.gstRegistrationId === registration.id && f.returnType === 'GSTR-4' && f.month === month,
+				);
+				const draft = drafts.find((d) => d.returnType === 'GSTR-4' && d.month === month);
+				if (dueOn)
+					rows.push({
+						returnType: 'GSTR-4',
+						period: month,
+						dueOn,
+						status: filing ? 'filed' : (draft?.status ?? 'not_started'),
+						arn: filing?.arn ?? null,
+						draftId: draft?.id ?? null,
+					});
+			}
 		}
 		for (const month of years) {
 			const year = financialYear(month);

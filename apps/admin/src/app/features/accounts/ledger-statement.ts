@@ -9,6 +9,7 @@ import { firstValueFrom, map } from 'rxjs';
 
 import { LEDGER_KEYS, LedgerGateway } from '@core/accounts/ledger.gateway';
 import { LOCATION_KEYS, LocationsGateway } from '@core/locations/locations.gateway';
+import { ShortDatePipe } from '@core/purchasing/purchasing-format';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { ExportMenu, type ExportSource } from '@shared/ui/export-menu/export-menu';
 import { PeriodPicker } from '@shared/ui/period-picker/period-picker';
@@ -27,7 +28,7 @@ const today = (): string => new Date(Date.now() + 5.5 * 3_600_000).toISOString()
  */
 @Component({
 	selector: 'app-ledger-statement',
-	imports: [PageWrapper, TranslocoModule, FormsModule, PeriodPicker, RouterLink, ExportMenu],
+	imports: [PageWrapper, TranslocoModule, FormsModule, PeriodPicker, RouterLink, ExportMenu, ShortDatePipe],
 	templateUrl: './ledger-statement.html',
 })
 export class LedgerStatementPage {

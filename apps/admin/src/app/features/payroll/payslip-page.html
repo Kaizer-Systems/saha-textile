@@ -24,7 +24,8 @@
 						<div>
 							<h5 class="mb-0">{{ p.company }}</h5>
 							<small class="text-muted">
-								{{ 'payroll_payslip_for' | transloco: { month: monthText() } }}
+								{{ 'payroll_payslip_for' | transloco: { month: monthText() } }} @if (p.payslipNo) { · {{
+								p.payslipNo }} }
 							</small>
 						</div>
 						<div class="text-end">

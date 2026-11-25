@@ -270,7 +270,9 @@ describe('a new expense bill (EB1)', () => {
 			'rent',
 			'power',
 		]);
-		expect(el(fixture, 'h5.mb-1')?.textContent).toContain('eb_new');
+		// The page title names a new bill; the line under it shows only its status until it has a number.
+		expect(el(fixture, 'h5.mb-1')?.textContent).not.toContain('eb_new');
+		expect(el(fixture, 'h5.mb-1')?.textContent).toContain('eb_status_draft');
 		expect(el<HTMLButtonElement>(fixture, '#eb_save')?.disabled).toBe(true);
 		expect(el(fixture, '#eb_cancel')).toBeNull();
 	});

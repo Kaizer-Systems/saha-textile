@@ -49,6 +49,12 @@ export default [
 		loadComponent: () => import('./accounts-list-page').then((m) => m.AccountsListPage),
 	},
 	{ path: 'vouchers/new', loadComponent: () => import('./voucher-form').then((m) => m.VoucherFormPage) },
+	// Q3: journal vouchers saved as drafts, listed on the vouchers page's own Drafts tab (before `vouchers/:id`).
+	{
+		path: 'vouchers/drafts',
+		data: { tab: 'drafts' },
+		loadComponent: () => import('./vouchers-list').then((m) => m.VouchersListPage),
+	},
 	{ path: 'vouchers/drafts/:draftId', loadComponent: () => import('./voucher-form').then((m) => m.VoucherFormPage) },
 	{ path: 'vouchers/:id', loadComponent: () => import('./voucher-view').then((m) => m.VoucherViewPage) },
 	{ path: 'ledgers', loadComponent: () => import('./chart-of-accounts').then((m) => m.ChartOfAccountsPage) },

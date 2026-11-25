@@ -125,6 +125,30 @@
 			</select>
 		</div>
 	</div>
+	@if (choosesBank()) {
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="payment_paid_from"
+		>
+			{{ 'cn_refund_from' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<select
+				class="form-select"
+				id="payment_paid_from"
+				[ngModel]="paidFrom()"
+				(ngModelChange)="paidFrom.set($event)"
+			>
+				<option value="">—</option>
+				@for (l of banks(); track l.id) {
+				<option [value]="l.id">{{ l.name }}</option>
+				}
+			</select>
+		</div>
+	</div>
+	}
 	<div class="row align-items-center g-2 mb-4">
 		<label
 			class="form-label-title col-sm-3 mb-0"
@@ -144,6 +168,7 @@
 			<p class="help-text">{{ 'payment_reference_help' | transloco }}</p>
 		</div>
 	</div>
+	@if (!isExpenseBill()) {
 	<div class="row align-items-center g-2 mb-2">
 		<span class="form-label-title col-sm-3 mb-0">{{ 'payment_proof' | transloco }}</span>
 		<div class="col-sm-9">
@@ -171,6 +196,7 @@
 			}
 		</div>
 	</div>
+	}
 	<div class="alert alert-info d-flex align-items-center mt-3 mb-0 gap-2">
 		<i class="ri-information-line"></i>
 		<span>{{ 'pv_entry_note' | transloco }}</span>

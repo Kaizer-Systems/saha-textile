@@ -60,6 +60,16 @@
 				{{ 'al_tab_' + tab | transloco }}
 			</a>
 		</li>
+		} @if (canPost()) {
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				id="al_tab_drafts"
+				routerLink="/accounts/vouchers/drafts"
+			>
+				{{ 'accounts_tab_drafts' | transloco }}
+			</a>
+		</li>
 		}
 	</ul>
 	} @if (kind() === 'creditNotes') {

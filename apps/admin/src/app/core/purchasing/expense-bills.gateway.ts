@@ -14,11 +14,12 @@ import type {
 } from '@saha-textile/contracts';
 import type { Observable } from 'rxjs';
 
-/** The list's filters: a status (or all) and the bill dates, both inclusive. */
+/** The list's filters: a status (or all), the bill dates (both inclusive) and one supplier's bills. */
 export interface ExpenseBillListQuery {
 	status: ExpenseBillStatus | 'all';
 	from?: string;
 	to?: string;
+	supplierId?: string;
 }
 
 export const EXPENSE_BILL_KEYS = {
@@ -37,9 +38,14 @@ export class ExpenseBillsGateway {
 	private readonly one = (id: string, rest = '') => `${this.base()}/${encodeURIComponent(id)}${rest}`;
 
 	list(query: ExpenseBillListQuery): Observable<ExpenseBill[]> {
-		const { status, from, to } = query;
+		const { status, from, to, supplierId } = query;
 		return this.http.get<ExpenseBill[]>(this.base(), {
-			params: { ...(status === 'all' ? {} : { status }), ...(from ? { from } : {}), ...(to ? { to } : {}) },
+			params: {
+				...(status === 'all' ? {} : { status }),
+				...(from ? { from } : {}),
+				...(to ? { to } : {}),
+				...(supplierId ? { supplierId } : {}),
+			},
 		});
 	}
 	get(id: string): Observable<ExpenseBill> {

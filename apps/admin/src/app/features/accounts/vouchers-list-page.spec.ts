@@ -223,8 +223,8 @@ describe('voucher drafts (Q3)', () => {
 		await settle(fixture);
 		expect(el(fixture, '#vouchers_tab_drafts')?.classList.contains('active')).toBe(true);
 		expect(rows(fixture).map(cells)).toEqual([
-			['2026-11-24', 'accounts_kind_payment', 'Electricity', rupees(3_000_00), 'Asha Roy', ''],
-			['2026-11-24', 'accounts_kind_payment', '—', rupees(3_000_00), '—', ''],
+			['24 Nov 2026', 'accounts_kind_payment', 'Electricity', rupees(3_000_00), 'Asha Roy', ''],
+			['24 Nov 2026', 'accounts_kind_payment', '—', rupees(3_000_00), '—', ''],
 		]);
 		expect(el(fixture, 'a[href="/accounts/vouchers/drafts/d1"]')).not.toBeNull();
 		(rows(fixture)[0]?.querySelector('a[title="accounts_delete_draft"]') as HTMLElement).click();

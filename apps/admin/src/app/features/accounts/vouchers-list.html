@@ -2,6 +2,29 @@
 	[gridClass]="'col-sm-12'"
 	[title]="'accounts_vouchers'"
 >
+	@if (fromVoucherTabs) {
+	<!-- The voucher lists' own tabs (accounts-list-page), with Drafts chosen. -->
+	<ul class="nav nav-tabs mb-3">
+		@for (t of voucherTabs; track t) {
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				[routerLink]="['/accounts/vouchers', t]"
+			>
+				{{ 'al_tab_' + t | transloco }}
+			</a>
+		</li>
+		}
+		<li class="nav-item">
+			<a
+				class="nav-link active"
+				id="vouchers_tab_drafts"
+			>
+				{{ 'accounts_tab_drafts' | transloco }}
+			</a>
+		</li>
+	</ul>
+	} @else {
 	<ul class="nav nav-tabs mb-3">
 		@if (canPost()) { @for (t of ['posted', 'drafts']; track t) {
 		<li class="nav-item">
@@ -35,7 +58,7 @@
 			</a>
 		</li>
 	</ul>
-	@if (tab() === 'drafts') {
+	} @if (tab() === 'drafts') {
 	<div class="table-responsive datatable-wrapper border-table">
 		<table class="all-package theme-table no-footer table">
 			<thead>
@@ -52,7 +75,7 @@
 				@for (d of drafts.data() ?? []; track d.id) {
 				<tr>
 					<td class="text-nowrap">
-						<a [routerLink]="['/accounts/vouchers/drafts', d.id]">{{ d.date }}</a>
+						<a [routerLink]="['/accounts/vouchers/drafts', d.id]">{{ d.date | shortDate }}</a>
 					</td>
 					<td>{{ 'accounts_kind_' + d.kind | transloco }}</td>
 					<td>{{ d.narration || '—' }}</td>

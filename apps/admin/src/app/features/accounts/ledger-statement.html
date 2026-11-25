@@ -71,7 +71,7 @@
 			<tbody>
 				@for (r of shown(); track r.voucherId + r.date + $index) {
 				<tr>
-					<td class="text-nowrap">{{ r.date }}</td>
+					<td class="text-nowrap">{{ r.date | shortDate }}</td>
 					<td class="text-nowrap">
 						<a [routerLink]="['/accounts/vouchers', r.voucherId]">{{ r.number }}</a>
 					</td>

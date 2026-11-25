@@ -6,6 +6,7 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
+import { ExpenseBillsGateway } from '@core/purchasing/expense-bills.gateway';
 import { PILLS, RupeesPipe, ShortDatePipe, ShortDateTimePipe } from '@core/purchasing/purchasing-format';
 import { PURCHASING_KEYS, PurchasingGateway, injectSupplierSummaryQuery } from '@core/purchasing/purchasing.gateway';
 import { injectInventorySettingsQuery } from '@core/purchasing/stock.gateway';
@@ -71,6 +72,7 @@ export class SupplierPage {
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
 	private readonly gateway = inject(PurchasingGateway);
+	private readonly expenseBills = inject(ExpenseBillsGateway);
 	private readonly modals = inject(NgbModal);
 	private readonly notifier = inject(NotificationService);
 	private readonly transloco = inject(TranslocoService);
@@ -154,6 +156,7 @@ export class SupplierPage {
 	async recordPayment(): Promise<void> {
 		await recordSupplierPayment(this.id(), {
 			gateway: this.gateway,
+			expenseBills: this.expenseBills,
 			modals: this.modals,
 			notifier: this.notifier,
 			queryClient: this.queryClient,

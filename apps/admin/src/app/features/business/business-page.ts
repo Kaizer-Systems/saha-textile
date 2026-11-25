@@ -15,6 +15,7 @@ import {
 	injectBusinessQuery,
 	injectZoneChoicesQuery,
 } from '@core/business/businesses.gateway';
+import { ExpenseBillsGateway } from '@core/purchasing/expense-bills.gateway';
 import { RupeesPipe, ShortDatePipe, rupees, shortDate } from '@core/purchasing/purchasing-format';
 import { PurchasingGateway, injectSupplierSummaryQuery } from '@core/purchasing/purchasing.gateway';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -86,6 +87,7 @@ export class BusinessPage {
 	);
 	readonly statementLink = statementLink;
 	private readonly purchasing = inject(PurchasingGateway);
+	private readonly expenseBills = inject(ExpenseBillsGateway);
 	readonly zones = injectZoneChoicesQuery();
 	readonly zoneName = computed(() => {
 		const zoneId = this.business()?.roles.customer?.zoneId;
@@ -132,6 +134,7 @@ export class BusinessPage {
 		if (!id) return;
 		await recordSupplierPayment(id, {
 			gateway: this.purchasing,
+			expenseBills: this.expenseBills,
 			modals: this.modals,
 			notifier: this.notifier,
 			queryClient: this.queryClient,

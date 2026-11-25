@@ -10904,6 +10904,8 @@
 	"export_private_body": "Aadhaar and bank numbers never leave in an export.",
 	"export_made": "Export made",
 	"report_caro_stock": "Stock verification (CARO 3(ii)(a))",
+	"caro_title": "Stock verification",
+	"caro_clause": "CARO 2020, clause 3(ii)(a)",
 	"caro_sub": "Each posted stock count, by class of stock: a discrepancy of 10% or more in aggregate is to be reported by the auditor.",
 	"caro_reportable": "{{n}} class difference reaches 10%: the auditor reports it, with how it was dealt with in the books.",
 	"caro_none_reportable": "No class difference reaches 10% in this period.",

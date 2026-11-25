@@ -11,6 +11,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { REPORT_KEYS, ReportsGateway } from '@core/accounts/reports.gateway';
 import { runtimeConfig } from '@core/config/runtime-config';
 import { LocationsGateway } from '@core/locations/locations.gateway';
+import { NotificationService } from '@data-access/services/notification.service';
 import { yearToDate } from '@features/accounts/books-export-page';
 
 import { CaroStockPage } from './caro-stock-page';
@@ -42,6 +43,7 @@ async function opened() {
 			provideTanStackQuery(new QueryClient({ defaultOptions: { queries: { retry: false } } })),
 			provideRouter([]),
 			{ provide: ReportsGateway, useValue: { caroStock } },
+			{ provide: NotificationService, useValue: { showError: vi.fn(), showSuccess: vi.fn() } },
 			{
 				provide: LocationsGateway,
 				useValue: {

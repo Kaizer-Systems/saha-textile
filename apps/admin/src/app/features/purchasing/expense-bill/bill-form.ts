@@ -13,7 +13,7 @@ import { firstValueFrom, map } from 'rxjs';
 
 import { LedgerGateway } from '@core/accounts/ledger.gateway';
 import { EXPENSE_BILL_KEYS, ExpenseBillsGateway, expenseBillProblemKey } from '@core/purchasing/expense-bills.gateway';
-import { apiProblem } from '@core/purchasing/purchasing-format';
+import { ShortDatePipe, apiProblem } from '@core/purchasing/purchasing-format';
 import { injectSuppliersQuery } from '@core/purchasing/purchasing.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -78,7 +78,7 @@ export function expenseLineWrite(line: ExpenseFormLine, composition: boolean): E
  */
 @Component({
 	selector: 'app-expense-bill-form',
-	imports: [PageWrapper, TranslocoModule, FormsModule, RouterLink, Select2],
+	imports: [PageWrapper, TranslocoModule, FormsModule, RouterLink, Select2, ShortDatePipe],
 	templateUrl: './bill-form.html',
 })
 export class ExpenseBillFormPage {
@@ -129,6 +129,8 @@ export class ExpenseBillFormPage {
 		...(this.supplierSearch() ? { q: this.supplierSearch() } : {}),
 	}));
 	private readonly known = signal<ReadonlyMap<string, SupplierListRow>>(new Map());
+	/** The supplier's name as the saved bill keeps it, shown until the supplier list has loaded. */
+	private readonly savedSupplierName = signal('');
 	readonly supplier = computed(() => this.known().get(this.supplierId()) ?? null);
 	readonly supplierOptions = computed<Select2Data>(() => {
 		const rows = (this.suppliersQuery.data()?.items ?? []).filter(
@@ -136,7 +138,12 @@ export class ExpenseBillFormPage {
 		);
 		const chosen = this.supplier();
 		if (chosen && !rows.some((row) => row.id === chosen.id)) rows.unshift(chosen);
-		return rows.map((row) => ({ value: row.id, label: row.shortName || row.legalName }));
+		const options: Select2Data = rows.map((row) => ({ value: row.id, label: row.shortName || row.legalName }));
+		// A saved bill opens before its supplier is in the list; without its option the box would read "Pick a supplier".
+		const id = this.supplierId();
+		if (id && !chosen && !rows.some((row) => row.id === id) && this.savedSupplierName())
+			options.unshift({ value: id, label: this.savedSupplierName() });
+		return options;
 	});
 
 	constructor() {
@@ -158,6 +165,7 @@ export class ExpenseBillFormPage {
 	/** A saved bill opened again: its own values on the form. */
 	fill(bill: ExpenseBill): void {
 		this.supplierId.set(bill.supplierId);
+		this.savedSupplierName.set(bill.supplierName);
 		this.supplierSearch.set(bill.supplierName);
 		this.billNumber.set(bill.billNumber);
 		this.billDate.set(bill.billDate);

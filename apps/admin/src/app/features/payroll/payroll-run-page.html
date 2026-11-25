@@ -104,8 +104,9 @@
 			} @default {} } }
 		</div>
 	</div>
+	<!-- The run's table takes the full width (it has a column per deduction); the posting notes follow beneath it. -->
 	<div class="row g-3">
-		<div class="col-xl-8">
+		<div class="col-12">
 			<div class="card">
 				<div class="card-body">
 					<div class="d-flex flex-wrap gap-2">
@@ -128,8 +129,9 @@
 			}
 			<div class="card">
 				<div class="card-body">
+					<!-- A column per deduction: the person's name stays in place while the figures scroll sideways. -->
 					<div class="table-responsive datatable-wrapper border-table">
-						<table class="all-package theme-table no-footer table">
+						<table class="all-package theme-table no-footer table-sticky-first table">
 							<thead>
 								<tr>
 									<th>{{ 'payroll_col_employee' | transloco }}</th>
@@ -195,7 +197,7 @@
 				</div>
 			</div>
 		</div>
-		<div class="col-xl-4">
+		<div class="col-12">
 			<div class="card">
 				<div class="card-body">
 					<h6>{{ 'payroll_posting_title' | transloco }}</h6>

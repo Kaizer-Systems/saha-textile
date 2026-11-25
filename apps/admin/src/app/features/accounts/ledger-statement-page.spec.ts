@@ -139,7 +139,7 @@ describe('a ledger’s statement (Q2)', () => {
 			[...fixture.nativeElement.querySelectorAll('.small.d-flex b')].map((b) => b.textContent?.trim()),
 		).toEqual([drCr(-5_000_00), rupees(30_000_00), rupees(5_000_00), drCr(20_000_00)]);
 		expect(cells(bodyRows(fixture)[0])).toEqual([
-			'2026-11-01',
+			'1 Nov 2026',
 			'JV/26-27/000001',
 			'Rent 1 Barasat',
 			rupees(1_000_00),
@@ -147,7 +147,7 @@ describe('a ledger’s statement (Q2)', () => {
 			drCr(1_000_00),
 		]);
 		expect(cells(bodyRows(fixture)[1])).toEqual([
-			'2026-11-01',
+			'1 Nov 2026',
 			'JV/26-27/000002',
 			'—',
 			'',

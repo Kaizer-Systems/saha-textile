@@ -5,9 +5,10 @@ import { ActivatedRoute, RouterModule } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { QueryClient } from '@tanstack/angular-query-experimental';
+import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
+import { LOCATION_KEYS, LocationsGateway } from '@core/locations/locations.gateway';
 import { RupeesPipe, StockQuantityPipe, apiProblem, openPdf } from '@core/purchasing/purchasing-format';
 import { STOCK_KEYS, StockGateway } from '@core/purchasing/stock.gateway';
 import { AuthStore } from '@core/state/auth.store';
@@ -67,6 +68,16 @@ export class CountPage {
 	private readonly document = inject(DOCUMENT);
 
 	readonly count = signal<StockCount | null>(null);
+	private readonly locationsGateway = inject(LocationsGateway);
+	private readonly locations = injectQuery(() => ({
+		queryKey: LOCATION_KEYS.list,
+		queryFn: () => firstValueFrom(this.locationsGateway.list()),
+	}));
+	/** SC1: where the count is taken, named in the header beside its number; a count of every location says so. */
+	readonly where = computed(() => {
+		const id = this.count()?.locationId ?? null;
+		return { every: !id, name: (id && this.locations.data()?.find((l) => l.id === id)?.name) || '' };
+	});
 	readonly typed = signal<ReadonlyMap<string, { text: string; note: string }>>(new Map());
 	readonly recount = signal<ReadonlySet<string>>(new Set());
 	readonly busy = signal(false);

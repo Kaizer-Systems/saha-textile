@@ -7,7 +7,8 @@
 		option
 		class="text-muted ms-2"
 	>
-		{{ current.number }} · {{ current.label || ('count_scope_' + current.scope.kind | transloco) }}
+		{{ current.number }} · @if (where().every) { {{ 'count_every_location' | transloco }} } @else { {{ where().name
+		}} } · {{ current.label || ('count_scope_' + current.scope.kind | transloco) }}
 		<a
 			href="javascript:void(0)"
 			class="ms-1"

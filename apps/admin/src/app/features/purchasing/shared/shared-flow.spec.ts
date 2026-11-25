@@ -324,6 +324,7 @@ describe('supplier actions', () => {
 		const results = [Promise.resolve({ saved: true }), Promise.reject(new Error('closed'))];
 		const deps = {
 			gateway: { entries } as never,
+			expenseBills: { list: () => of([]) } as never,
 			modals: {
 				open: () => ({
 					componentInstance: { start: (bills: unknown) => started.push(bills) },
@@ -348,9 +349,64 @@ describe('supplier actions', () => {
 			'payment_saved',
 		);
 		await recordSupplierPayment('sup_1', deps);
+		// Suppliers, purchase entries and expense bills are read again after a saved payment.
 		expect(
 			(deps.queryClient as { invalidateQueries: ReturnType<typeof vi.fn> }).invalidateQueries,
-		).toHaveBeenCalledTimes(2);
+		).toHaveBeenCalledTimes(3);
+	});
+
+	it("lists the supplier's posted expense bills with something left beside the purchase entries, oldest due first", async () => {
+		const entry = {
+			id: 'pe_1',
+			number: 'PE/1',
+			billNumber: 'B1',
+			totalINR: 500,
+			paidINR: 0,
+			leftINR: 500,
+			dueOn: '2026-11-20',
+			status: 'posted',
+		};
+		const expense = (id: string, over: Record<string, unknown> = {}) => ({
+			id,
+			supplierId: 'sup_1',
+			number: `EB/${id}`,
+			billNumber: `R-${id}`,
+			billDate: '2026-11-01',
+			dueOn: '2026-11-10',
+			totalINR: 680,
+			paidINR: 0,
+			version: 3,
+			...over,
+		});
+		const list = vi.fn(() =>
+			of([
+				expense('eb_1'),
+				// No due date kept: the bill date stands in.
+				expense('eb_2', { dueOn: null, billDate: '2026-11-15', number: null }),
+				expense('eb_paid', { paidINR: 680 }),
+				expense('eb_other', { supplierId: 'sup_2' }),
+			]),
+		);
+		const started: unknown[] = [];
+		await recordSupplierPayment('sup_1', {
+			gateway: { entries: () => of({ items: [entry] }) } as never,
+			expenseBills: { list } as never,
+			modals: {
+				open: () => ({
+					componentInstance: { start: (bills: unknown) => started.push(bills) },
+					result: Promise.reject(new Error('closed')),
+				}),
+			} as never,
+			notifier: { showSuccess: vi.fn(), showError: vi.fn() } as never,
+			queryClient: { invalidateQueries: vi.fn() } as never,
+			t: (k: string) => k,
+		});
+		expect(list).toHaveBeenCalledWith({ status: 'posted', supplierId: 'sup_1' });
+		expect(started[0]).toEqual([
+			expect.objectContaining({ id: 'eb_1', number: 'EB/eb_1', leftINR: 680, expenseBillVersion: 3 }),
+			expect.objectContaining({ id: 'eb_2', number: '', expenseBillVersion: 3 }),
+			{ id: 'pe_1', number: 'PE/1', billNumber: 'B1', totalINR: 500, paidINR: 0, leftINR: 500 },
+		]);
 	});
 });
 

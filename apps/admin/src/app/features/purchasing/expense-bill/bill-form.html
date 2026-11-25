@@ -5,9 +5,11 @@
 	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
 		<div>
 			<h5 class="mb-1">
-				{{ bill.data()?.number ?? ('eb_new' | transloco) }}
+				<!-- The page title already says "New expense bill"; until it has a number, the line shows only its status. -->
+				{{ bill.data()?.number ?? '' }}
 				<div
-					class="d-inline-block ms-2"
+					class="d-inline-block"
+					[class.ms-2]="!!bill.data()?.number"
 					[class.status-pending]="status() === 'draft'"
 					[class.status-success]="status() === 'posted'"
 					[class.status-danger]="status() === 'cancelled'"
@@ -166,13 +168,13 @@
 				<table class="all-package theme-table no-footer table">
 					<thead>
 						<tr>
+							<!-- The six columns EB1 draws; a line's remove sits in its Credit cell, so the row fits beside the sidebar. -->
 							<th>{{ 'eb_expense' | transloco }}</th>
 							<th>{{ 'eb_what' | transloco }}</th>
 							<th>SAC</th>
 							<th class="text-end">{{ 'eb_taxable' | transloco }}</th>
 							<th>{{ 'eb_gst' | transloco }}</th>
 							<th>{{ 'eb_credit' | transloco }}</th>
-							<th></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -244,20 +246,37 @@
 									<option [ngValue]="rate">{{ rate }}%</option>
 									}
 								</select>
-								<small class="text-muted text-nowrap">{{ lineTax(i) }}</small>
+								<small class="text-muted d-block">{{ lineTax(i) }}</small>
 							</td>
 							<td>
-								<select
-									class="form-select"
-									[id]="'eb_credit_' + i"
-									[attr.aria-label]="'eb_credit' | transloco"
-									[disabled]="readOnly() || composition()"
-									[ngModel]="composition() ? 'blocked' : line.credit"
-									(ngModelChange)="setLine(i, { credit: $event })"
-								>
-									<option value="claim">{{ 'eb_credit_claim' | transloco }}</option>
-									<option value="blocked">{{ 'eb_credit_blocked' | transloco }}</option>
-								</select>
+								<div class="d-flex align-items-center gap-2">
+									<select
+										class="form-select"
+										[id]="'eb_credit_' + i"
+										[attr.aria-label]="'eb_credit' | transloco"
+										[disabled]="readOnly() || composition()"
+										[ngModel]="composition() ? 'blocked' : line.credit"
+										(ngModelChange)="setLine(i, { credit: $event })"
+									>
+										<option value="claim">{{ 'eb_credit_claim' | transloco }}</option>
+										<option value="blocked">{{ 'eb_credit_blocked' | transloco }}</option>
+									</select>
+									@if (!readOnly() && lines().length > 1) {
+									<ul id="actions">
+										<li>
+											<a
+												href="javascript:void(0)"
+												class="delete"
+												[title]="'eb_remove_line' | transloco"
+												[attr.aria-label]="'eb_remove_line' | transloco"
+												(click)="removeLine(i)"
+											>
+												<i class="ri-delete-bin-line"></i>
+											</a>
+										</li>
+									</ul>
+									}
+								</div>
 								@if (composition() || line.credit === 'blocked') {
 								<div class="input-group input-group-sm mt-1">
 									<span class="input-group-text">s.17(5)</span>
@@ -272,23 +291,6 @@
 										(ngModelChange)="setLine(i, { blockedClause: $event })"
 									/>
 								</div>
-								}
-							</td>
-							<td>
-								@if (!readOnly() && lines().length > 1) {
-								<ul id="actions">
-									<li>
-										<a
-											href="javascript:void(0)"
-											class="delete"
-											[title]="'eb_remove_line' | transloco"
-											[attr.aria-label]="'eb_remove_line' | transloco"
-											(click)="removeLine(i)"
-										>
-											<i class="ri-delete-bin-line"></i>
-										</a>
-									</li>
-								</ul>
 								}
 							</td>
 						</tr>
@@ -381,7 +383,7 @@
 							<td>
 								<a [routerLink]="['/accounts/payment-vouchers', p.id]">{{ p.number }}</a>
 							</td>
-							<td class="text-nowrap">{{ p.date }}</td>
+							<td class="text-nowrap">{{ p.date | shortDate }}</td>
 							<td>{{ 'payment_mode_' + p.mode | transloco }}</td>
 							<td>{{ p.reference ?? '—' }}</td>
 							<td class="text-end text-nowrap">{{ inr(p.amountINR) }}</td>

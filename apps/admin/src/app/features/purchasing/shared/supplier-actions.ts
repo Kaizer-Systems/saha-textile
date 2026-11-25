@@ -2,6 +2,7 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
+import { EXPENSE_BILL_KEYS, type ExpenseBillsGateway } from '@core/purchasing/expense-bills.gateway';
 import { downloadCsv, shortDate } from '@core/purchasing/purchasing-format';
 import { PURCHASING_KEYS, PurchasingGateway } from '@core/purchasing/purchasing.gateway';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -38,11 +39,15 @@ export function exportSupplierStatement(
 	);
 }
 
-/** Record payment (s03): the same popup as on a purchase entry, with the unpaid bills to pick from. */
+/**
+ * Record payment (s03): the same popup as on a purchase entry, with the unpaid bills to pick from: purchase entries and
+ * posted expense bills (brief 25 EB1), oldest due first.
+ */
 export async function recordSupplierPayment(
 	supplierId: string,
 	deps: {
 		gateway: PurchasingGateway;
+		expenseBills: ExpenseBillsGateway;
 		modals: NgbModal;
 		notifier: NotificationService;
 		queryClient: QueryClient;
@@ -50,21 +55,43 @@ export async function recordSupplierPayment(
 	},
 ): Promise<void> {
 	try {
-		const page = await firstValueFrom(
-			deps.gateway.entries({ supplierId, filter: 'unpaid', pageSize: 100, page: 1 }),
-		);
-		const bills: PayableBill[] = page.items
+		const [page, expenseBills] = await Promise.all([
+			firstValueFrom(deps.gateway.entries({ supplierId, filter: 'unpaid', pageSize: 100, page: 1 })),
+			firstValueFrom(deps.expenseBills.list({ status: 'posted', supplierId })),
+		]);
+		const entries = page.items
 			.filter((row) => row.status === 'posted' && row.leftINR > 0.005)
+			.map((row) => ({
+				dueOn: row.dueOn,
+				bill: {
+					id: row.id,
+					number: row.number ?? '',
+					billNumber: row.billNumber,
+					totalINR: row.totalINR,
+					paidINR: row.paidINR,
+					leftINR: row.leftINR,
+				},
+			}));
+		const expenses = expenseBills
+			.map((row) => ({ row, leftINR: Math.round((row.totalINR - row.paidINR) * 100) / 100 }))
+			.filter(({ row, leftINR }) => row.supplierId === supplierId && leftINR > 0.005)
+			.map(({ row, leftINR }) => ({
+				// Bills saved before due dates were kept fall back to the bill date, as the supplier page does.
+				dueOn: row.dueOn ?? row.billDate,
+				bill: {
+					id: row.id,
+					number: row.number ?? '',
+					billNumber: row.billNumber,
+					totalINR: row.totalINR,
+					paidINR: row.paidINR,
+					leftINR,
+					expenseBillVersion: row.version,
+				},
+			}));
+		const bills: PayableBill[] = [...entries, ...expenses]
 			// Oldest due first: that is the one to pay first.
 			.sort((a, b) => a.dueOn.localeCompare(b.dueOn))
-			.map((row) => ({
-				id: row.id,
-				number: row.number ?? '',
-				billNumber: row.billNumber,
-				totalINR: row.totalINR,
-				paidINR: row.paidINR,
-				leftINR: row.leftINR,
-			}));
+			.map(({ bill }) => bill);
 		if (!bills.length) {
 			deps.notifier.showSuccess(deps.t('supplier_nothing_to_pay'));
 			return;
@@ -80,6 +107,7 @@ export async function recordSupplierPayment(
 			deps.notifier.showSuccess(deps.t('payment_saved'));
 			void deps.queryClient.invalidateQueries({ queryKey: PURCHASING_KEYS.suppliers });
 			void deps.queryClient.invalidateQueries({ queryKey: PURCHASING_KEYS.entries });
+			void deps.queryClient.invalidateQueries({ queryKey: EXPENSE_BILL_KEYS.all });
 		}
 	} catch {
 		// The list call failed; the global notice already said why.

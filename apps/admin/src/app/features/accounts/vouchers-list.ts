@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -8,13 +8,14 @@ import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
 import { LEDGER_KEYS, LedgerGateway } from '@core/accounts/ledger.gateway';
-import { apiProblem } from '@core/purchasing/purchasing-format';
+import { ShortDatePipe, apiProblem } from '@core/purchasing/purchasing-format';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { askConfirm } from '@features/purchasing/shared/popups';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { PeriodPicker } from '@shared/ui/period-picker/period-picker';
 
+import { VOUCHER_TABS } from './accounts-list-page';
 import { periodRange } from './edoc-list';
 import { rupees } from './ledger-helpers';
 
@@ -25,7 +26,7 @@ const today = (): string => new Date(Date.now() + 5.5 * 3_600_000).toISOString()
 /** Accounts › Vouchers (accounts brief A, Q3, Q4): every voucher in a period, by kind, with a search. */
 @Component({
 	selector: 'app-vouchers-list',
-	imports: [PageWrapper, TranslocoModule, FormsModule, PeriodPicker, RouterLink],
+	imports: [PageWrapper, TranslocoModule, FormsModule, PeriodPicker, RouterLink, ShortDatePipe],
 	templateUrl: './vouchers-list.html',
 })
 export class VouchersListPage {
@@ -36,7 +37,13 @@ export class VouchersListPage {
 	private readonly transloco = inject(TranslocoService);
 	readonly canPost = computed(() => this.auth.permissions().includes('accounts.post'));
 	readonly kinds: VoucherKind[] = ['journal', 'receipt', 'payment', 'contra', 'opening', 'document'];
-	readonly tab = signal<'posted' | 'drafts'>('posted');
+	/**
+	 * Opened from the voucher tabs' Drafts tab (`vouchers/drafts`), it shows those same tabs with Drafts chosen, and
+	 * its drafts.
+	 */
+	readonly fromVoucherTabs = inject(ActivatedRoute, { optional: true })?.snapshot.data['tab'] === 'drafts';
+	readonly voucherTabs = VOUCHER_TABS;
+	readonly tab = signal<'posted' | 'drafts'>(this.fromVoucherTabs ? 'drafts' : 'posted');
 	readonly kind = signal<VoucherKind | ''>('');
 	readonly search = signal('');
 	readonly range = signal(periodRange({ period: 'last_30_days' }));

@@ -10,6 +10,7 @@ import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SelfInvoicesGateway } from '@core/accounts/self-invoices.gateway';
+import { ExpenseBillsGateway } from '@core/purchasing/expense-bills.gateway';
 import { PurchasingGateway } from '@core/purchasing/purchasing.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -73,6 +74,7 @@ function render<T>(
 				},
 			},
 			{ provide: QueryClient, useValue: client },
+			{ provide: ExpenseBillsGateway, useValue: { list: () => of([]) } },
 			{ provide: NotificationService, useValue: toasts },
 			{ provide: TranslocoService, useValue: transloco },
 			{ provide: AuthStore, useValue: { permissions: signal(['setting.index', 'purchase_return.index']) } },

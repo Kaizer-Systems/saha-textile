@@ -4261,6 +4261,16 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
 - 2026-11-25 — [BLOCKED] **Brief: payslips, exports and year end** (https://claude.ai/artifact/E6mFZwdmbjS9sBghCVGeH7):
   payslip document, both tax regimes, bonus, payroll rules per State, CSV/Excel/PDF export, counts by location,
   partner profit sharing, expense bills. Waits on the owner's approval.
+- 2026-11-25 — [DONE] **Brief 25 approved ("Approve all") and built** on feat/combined-after-pr6 (not pushed). Year-end
+  profit choices and a firm's deed sharing `baf88845`; PT and LWF per State `9f2458b3`; income tax under both regimes
+  `cd1811e0`; statutory bonus `4f34bc60`; payslip document `0fa0c8bf`; counts by location and CARO by location
+  `653168b0`; Export menu (CSV, Excel, PDF) `842e5d04`, `3da885a5` and the screens through `0d516ba0`; expense bills
+  `d7af351a`, `b0db2479`, `b7275b3e`, `a5e882c6` (list and form), `05d386c3` (pay by voucher; statements, unpaid
+  bills, rule 37, GSTR-2B), `ad7c819d` (GSTR-6 needs 6A's invoices booked to the ISD). Books run, all passing:
+  proprietorship 124, partnership 149 (now with the ISD's rent as an expense bill), LLP 131, private limited 124, OPC 119. Tests handed to
+  the three test chats as each piece landed. Portal pages `docs/accounts/expense-bills.md`, `docs/admin/exports.md`,
+  `docs/accounts/payroll-rules.md`, `docs/accounts/year-close.md`, `docs/admin/purchases-and-stock.md`. Not checked in
+  the browser yet.
 
 ## Integration (storefront ↔ API ↔ admin ↔ DB ↔ Meili ↔ Spaces)
 

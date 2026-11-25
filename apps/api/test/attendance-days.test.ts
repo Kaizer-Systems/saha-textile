@@ -1,4 +1,4 @@
-import type { AttendanceDay, Employee } from '@saha-textile/contracts';
+import type { Attendance, AttendanceDay, Employee } from '@saha-textile/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AttendanceDaysController, AttendanceDaysService } from '../src/payroll/attendance-days';
@@ -11,7 +11,15 @@ const status = (error: unknown) => (error as { status?: number }).status;
 const code = (error: unknown) => (error as { response?: { message?: string } }).response?.message;
 
 const person = (id: string, over: Partial<Employee> = {}) =>
-	({ id, name: id, userId: `adm_${id}`, locationId: 'loc_gariahat', leftOn: null, ...over }) as Employee;
+	({
+		id,
+		name: id,
+		userId: `adm_${id}`,
+		locationId: 'loc_gariahat',
+		joinedOn: '2025-01-01',
+		leftOn: null,
+		...over,
+	}) as Employee;
 const PEOPLE = [
 	person('priya'),
 	person('amit'),
@@ -19,7 +27,15 @@ const PEOPLE = [
 	person('far', { locationId: 'loc_far' }),
 ];
 
-function build(options: { access?: { worksAt?: string[]; maySeeAll?: boolean } | null; saveFails?: Error } = {}) {
+function build(
+	options: {
+		access?: { worksAt?: string[]; maySeeAll?: boolean } | null;
+		saveFails?: Error;
+		month?: Attendance;
+		run?: { status: string };
+		monthSaveFails?: Error;
+	} = {},
+) {
 	const store = new Map<string, AttendanceDay>();
 	const days = {
 		get: vi.fn(async (employeeId: string, day: string) => store.get(`${employeeId}_${day}`) ?? null),
@@ -49,19 +65,49 @@ function build(options: { access?: { worksAt?: string[]; maySeeAll?: boolean } |
 						{ key: 'CL', paid: 'full' },
 						{ key: 'SL', paid: 'half' },
 					],
+					holidays: [{ day: '2026-11-08', name: 'Kali Puja', locationId: null }],
 				},
 				{ stateCode: '27' },
+			],
+			// The far store opens at 11:00 with ten minutes' grace and closes on Tuesdays.
+			shifts: [
+				{
+					locationId: 'loc_far',
+					start: '11:00',
+					end: '20:00',
+					fullDayHours: 8,
+					graceMinutes: 10,
+					weeklyOff: [2],
+				},
 			],
 		}),
 	};
 	const access = options.access === undefined ? { worksAt: ['loc_gariahat'] } : options.access;
+	const months = new Map<string, Attendance>(options.month ? [[options.month.month, options.month]] : []);
+	const monthStore = {
+		get: vi.fn(async (month: string) => months.get(month) ?? null),
+		save: vi.fn(async (a: Attendance, expected: number | null) => {
+			if (options.monthSaveFails) throw options.monthSaveFails;
+			const saved = { ...a, version: expected === null ? 0 : expected + 1 };
+			months.set(a.month, saved);
+			return saved;
+		}),
+	};
 	const service = new AttendanceDaysService(
 		days as never,
 		{ list: async () => PEOPLE } as never,
-		{ adminUserLocations: async () => access } as never,
+		{
+			adminUserLocations: async () => access,
+			list: async () => [
+				{ id: 'loc_gariahat', stateCode: '19' },
+				{ id: 'loc_far', stateCode: '27' },
+			],
+		} as never,
 		rules as never,
+		monthStore as never,
+		{ get: async () => options.run ?? null } as never,
 	);
-	return { service, days, store };
+	return { service, days, store, months, monthStore };
 }
 const staff = (id: string) => ({ userId: `adm_${id}`, permissions: ['attendance.use'] }) as never;
 const manager = { userId: 'adm_manager', permissions: ['attendance.index'] } as never;
@@ -147,11 +193,16 @@ describe('a store’s month and changes to it (AT2, AT3)', () => {
 		await change('2026-11-10', 'SL');
 		await change('2026-11-11', 'XX');
 		const grid = await service.grid(manager, '2026-11', 'loc_gariahat');
-		expect(grid.people.map((p) => [p.employeeId, p.paidDays, p.leaveByType, p.withoutPay, p.lateMarks])).toEqual([
-			['priya', 1, {}, 0, 1],
-			['amit', 0.5, { SL: 1, XX: 1 }, 1.5, 0],
-			['gone', 0, {}, 0, 0],
+		// Five Sundays paid (the 8th a holiday too), the days nobody marked counted absent; whoever left is not shown.
+		expect(
+			grid.people.map((p) => [p.employeeId, p.paidDays, p.leaveByType, p.withoutPay, p.lateMarks, p.unmarked]),
+		).toEqual([
+			['priya', 6, {}, 24, 1, 24],
+			['amit', 5.5, { SL: 1, XX: 1 }, 24.5, 0, 23],
 		]);
+		expect(grid.offDays).toEqual(['2026-11-01', '2026-11-08', '2026-11-15', '2026-11-22', '2026-11-29']);
+		expect(grid.holidays).toEqual([{ day: '2026-11-08', name: 'Kali Puja' }]);
+		expect(grid.lockedAt).toBeNull();
 		await expect(service.grid(manager, '2026-11', 'loc_far')).rejects.toSatisfy((e) => status(e) === 403);
 		await expect(service.grid(undefined, '2026-11', 'loc_gariahat')).rejects.toSatisfy((e) => status(e) === 403);
 	});
@@ -264,6 +315,7 @@ describe('the attendance routes', () => {
 			change: vi.fn(),
 			pending: vi.fn(),
 			decide: vi.fn(),
+			lock: vi.fn(),
 		};
 		const c = new AttendanceDaysController(service as never);
 		const p = { employeeId: 'amit', day: '2026-11-08' };
@@ -276,11 +328,173 @@ describe('the attendance routes', () => {
 		c.pending(manager);
 		c.approve(p, manager);
 		c.reject(p, manager);
+		c.lock('2026-11', manager);
+		expect(service.lock).toHaveBeenCalledWith(manager, '2026-11');
 		expect(service.markIn).toHaveBeenCalledWith(manager);
 		expect(service.grid).toHaveBeenCalledWith(manager, '2026-11', 'loc_gariahat');
 		expect(service.decide.mock.calls).toEqual([
 			[manager, 'amit', '2026-11-08', true],
 			[manager, 'amit', '2026-11-08', false],
 		]);
+	});
+});
+
+const NOV = (over: Partial<Attendance> = {}): Attendance => ({
+	month: '2026-11',
+	daysInMonth: 30,
+	rows: [{ employeeId: 'priya', paidDays: 30, leaveTaken: 0, note: '' }],
+	lockedAt: '2026-12-01T05:00:00.000Z',
+	lockedBy: 'adm_accountant',
+	version: 2,
+	...over,
+});
+const present = { status: 'present' as const, leaveKey: null, inAt: null, outAt: null, reason: 'CCTV checked' };
+
+describe('a store’s own shift', () => {
+	it('marks late against the store’s start and grace', async () => {
+		const { service } = build();
+		const far = { userId: 'adm_far', permissions: ['attendance.use'] } as never;
+		expect(await service.markIn(far, at('11:15'))).toMatchObject({ lateMinutes: 5 });
+		// Eight hours from 11:15 is a full day by the far store's shift.
+		expect(await service.markOut(far, at('19:20'))).toMatchObject({ status: 'present' });
+	});
+
+	it('reads a store whose location is unknown as having no State: no holidays, every leave unpaid', async () => {
+		const { service } = build({ access: { maySeeAll: true } });
+		PEOPLE.push(person('lost', { locationId: 'loc_lost' }));
+		try {
+			await service.change(accountant, 'lost', '2026-11-10', { ...present, status: 'leave', leaveKey: 'CL' });
+			const grid = await service.grid(accountant, '2026-11', 'loc_lost');
+			expect(grid.holidays).toEqual([]);
+			expect(grid.people[0]).toMatchObject({ leaveByType: { CL: 1 }, paidDays: 5 });
+		} finally {
+			PEOPLE.pop();
+		}
+	});
+});
+
+describe('locking the month from the days (AT2)', () => {
+	it('counts everyone on the roll, leave by type in the note, for the payroll run', async () => {
+		const { service, months } = build({ access: { maySeeAll: true } });
+		await service.markIn(staff('priya'), at('10:00'));
+		await service.markOut(staff('priya'), at('19:00'));
+		await service.change(accountant, 'amit', '2026-11-10', { ...present, status: 'leave', leaveKey: 'SL' });
+		await service.change(accountant, 'amit', '2026-11-11', { ...present, status: 'leave', leaveKey: 'CL' });
+		// A request turned down leaves a record nobody set: the day falls back to the calendar.
+		await service.change(manager, 'amit', '2026-11-12', present);
+		await service.decide(accountant, 'amit', '2026-11-12', false);
+		const locked = await service.lock(accountant, '2026-11', new Date('2026-12-01T05:00:00Z'));
+		expect(locked).toMatchObject({ daysInMonth: 30, lockedBy: 'adm_accountant', version: 0 });
+		expect(locked.rows).toEqual([
+			{ employeeId: 'priya', paidDays: 6, leaveTaken: 0, note: '' },
+			{ employeeId: 'amit', paidDays: 6.5, leaveTaken: 2, note: 'SL 1 · CL 1' },
+			// The far store closes on Tuesdays and has no holidays.
+			{ employeeId: 'far', paidDays: 4, leaveTaken: 0, note: '' },
+		]);
+		expect(months.get('2026-11')?.lockedAt).toBe('2026-12-01T05:00:00.000Z');
+		expect((await service.grid(accountant, '2026-11', 'loc_gariahat')).lockedAt).toBe('2026-12-01T05:00:00.000Z');
+		await expect(service.lock(accountant, '2026-11')).rejects.toSatisfy((e) => code(e) === 'attendance_locked');
+	});
+
+	it('locks over a month saved by hand, and refuses while a change waits or a day is incomplete', async () => {
+		const open = NOV({ lockedAt: null, lockedBy: null });
+		const waiting = build({ month: open });
+		await waiting.service.change(manager, 'amit', '2026-11-12', present);
+		await expect(waiting.service.lock(accountant, '2026-11')).rejects.toSatisfy(
+			(e) => code(e) === 'attendance_requests_waiting',
+		);
+		const half = build({ month: open });
+		await half.service.markIn(staff('priya'), at('10:00'));
+		await expect(half.service.lock(accountant, '2026-11')).rejects.toSatisfy(
+			(e) => code(e) === 'attendance_days_incomplete',
+		);
+		const ok = build({ month: open });
+		expect(await ok.service.lock(undefined, '2026-11')).toMatchObject({ version: 3, lockedBy: null });
+	});
+
+	it('answers 409 when the month was saved meanwhile, and passes any other failure on', async () => {
+		const conflict = build({ monthSaveFails: new Error('attendance_changed') }).service;
+		await expect(conflict.lock(accountant, '2026-11')).rejects.toSatisfy((e) => status(e) === 409);
+		const broken = build({ monthSaveFails: new Error('disk full') }).service;
+		await expect(broken.lock(accountant, '2026-11')).rejects.toThrow('disk full');
+	});
+});
+
+describe('a locked month (AT-D2)', () => {
+	it('takes no marks and no leave asked for', async () => {
+		const { service } = build({ month: NOV() });
+		await expect(service.markIn(staff('priya'), at('10:00'))).rejects.toSatisfy(
+			(e) => code(e) === 'attendance_locked',
+		);
+		await expect(service.markOut(staff('priya'), at('19:00'))).rejects.toSatisfy(
+			(e) => code(e) === 'attendance_locked',
+		);
+		const ask = { leaveKey: 'CL', half: false, reason: '' };
+		await expect(
+			service.askLeave(staff('priya'), { ...ask, from: '2026-11-30', to: '2026-12-01' }),
+		).rejects.toSatisfy((e) => code(e) === 'attendance_locked');
+		await expect(
+			service.askLeave(staff('priya'), { ...ask, from: '2026-10-31', to: '2026-11-01' }),
+		).rejects.toSatisfy((e) => code(e) === 'attendance_locked');
+	});
+
+	it('changes only by someone who may edit, while the run is a draft, counting the person again', async () => {
+		const { service, months } = build({ month: NOV(), run: { status: 'draft' } });
+		await expect(service.change(manager, 'priya', '2026-11-10', present)).rejects.toSatisfy(
+			(e) => code(e) === 'attendance_locked',
+		);
+		await service.change(accountant, 'priya', '2026-11-10', present);
+		expect(months.get('2026-11')?.rows).toEqual([{ employeeId: 'priya', paidDays: 6, leaveTaken: 0, note: '' }]);
+		await service.change(accountant, 'amit', '2026-11-10', { ...present, status: 'leave', leaveKey: 'CL' });
+		await service.change(accountant, 'priya', '2026-11-11', present);
+		expect(months.get('2026-11')?.rows.map((r) => [r.employeeId, r.paidDays, r.note])).toEqual([
+			['priya', 7, ''],
+			['amit', 6, 'CL 1'],
+		]);
+		const posted = build({ month: NOV(), run: { status: 'posted' } });
+		await expect(posted.service.change(accountant, 'priya', '2026-11-10', present)).rejects.toSatisfy(
+			(e) => code(e) === 'attendance_run_not_draft',
+		);
+		const noRun = build({ month: NOV() });
+		expect(await noRun.service.change(accountant, 'priya', '2026-11-10', present)).toMatchObject({
+			status: 'present',
+		});
+	});
+
+	it('approves a waiting change only by someone who may edit, counting again; a refusal or a gone person counts nothing', async () => {
+		const { service, store, months, monthStore } = build({ month: NOV({ lockedAt: null }) });
+		await service.change(manager, 'priya', '2026-11-10', present);
+		await service.change(manager, 'amit', '2026-11-11', present);
+		months.set('2026-11', NOV());
+		const approver = { userId: 'adm_approver', permissions: ['attendance.approve'] } as never;
+		await expect(service.decide(approver, 'priya', '2026-11-10', true)).rejects.toSatisfy(
+			(e) => code(e) === 'attendance_locked',
+		);
+		await service.decide(accountant, 'priya', '2026-11-10', true);
+		expect(monthStore.save).toHaveBeenCalledTimes(1);
+		await service.decide(accountant, 'amit', '2026-11-11', false);
+		expect(monthStore.save).toHaveBeenCalledTimes(1);
+		store.set('ghost_2026-11-12', {
+			...(store.get('priya_2026-11-10') as AttendanceDay),
+			id: 'ghost_2026-11-12',
+			employeeId: 'ghost',
+			day: '2026-11-12',
+			pending: { ...present, askedBy: 'adm_manager', askedAt: '2026-11-12T10:00:00.000Z' },
+		});
+		expect(await service.decide(accountant, 'ghost', '2026-11-12', true)).toMatchObject({ pending: null });
+		expect(monthStore.save).toHaveBeenCalledTimes(1);
+	});
+
+	it('counts a day as set when only its marker is kept', async () => {
+		const { service, store } = build({ access: { maySeeAll: true } });
+		store.set('priya_2026-11-03', {
+			...(await service.change(accountant, 'priya', '2026-11-02', present)),
+			id: 'priya_2026-11-03',
+			day: '2026-11-03',
+			changedBy: null,
+			markedBy: 'adm_priya',
+		});
+		const grid = await service.grid(accountant, '2026-11', 'loc_gariahat');
+		expect(grid.people[0]?.days.map((d) => d.day)).toEqual(['2026-11-02', '2026-11-03']);
 	});
 });

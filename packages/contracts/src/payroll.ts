@@ -244,8 +244,13 @@ export const AttendanceMonthGrid = z.object({
 			leaveByType: z.record(z.string(), z.number()),
 			withoutPay: z.number(),
 			lateMarks: z.number().int(),
+			/** Days on the roll nobody marked or set, counted absent at the lock. */
+			unmarked: z.number().int().default(0),
 		}),
 	),
+	/** The store's weekly offs and holidays in the month, which days nobody marked fall back to. */
+	offDays: z.array(IsoDate).default([]),
+	holidays: z.array(z.object({ day: IsoDate, name: z.string() })).default([]),
 	lockedAt: IsoDateTime.nullable(),
 });
 export type AttendanceMonthGrid = z.infer<typeof AttendanceMonthGrid>;
@@ -422,6 +427,29 @@ export type PtBasis = z.infer<typeof PtBasis>;
 export const PtFrequency = z.enum(['monthly', 'half_yearly', 'yearly', 'none']);
 export type PtFrequency = z.infer<typeof PtFrequency>;
 
+/** Brief 26 LV1, AT2: a holiday of a State, for every store in it (null) or one; it never uses up leave. */
+export const Holiday = z.object({
+	day: IsoDate,
+	name: z.string().trim().min(1).max(80),
+	locationId: Id.nullable().default(null),
+});
+export type Holiday = z.infer<typeof Holiday>;
+
+const HhMm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+
+/** Brief 26 AT1: a store's shift: its hours, the hours that make a full day, the minutes of grace, the days off. */
+export const StoreShift = z
+	.object({
+		locationId: Id,
+		start: HhMm,
+		end: HhMm,
+		fullDayHours: z.number().positive().max(24),
+		graceMinutes: z.number().int().min(0).max(240).default(0),
+		weeklyOff: z.array(z.number().int().min(0).max(6)).max(7).default([0]),
+	})
+	.refine((s) => s.start < s.end, { message: 'shift_ends_before_start' });
+export type StoreShift = z.infer<typeof StoreShift>;
+
 /**
  * One State's professional tax and labour welfare fund (brief 25 ST1). Slabs are on the gross for the period: a
  * month's gross for `monthly`, six times it for `half_yearly` and twelve for `yearly`, deducted in `ptMonths`.
@@ -444,6 +472,8 @@ export const StatePayrollRules = z
 			.max(20)
 			.refine((types) => new Set(types.map((t) => t.key)).size === types.length, { message: 'leave_key_twice' })
 			.optional(),
+		/** Brief 26 LV1, AT2: the State's holidays, for every store in it (null) or one; none in versions saved before. */
+		holidays: z.array(Holiday).max(60).optional(),
 		ptMonths: z.array(z.number().int().min(1).max(12)).max(12).default([]),
 		ptDueDay: DueDay.default(21),
 		lwfEmployeePaise: Paise.default(0),
@@ -637,6 +667,14 @@ export const PayrollRulesWrite = z.object({
 	pfUsesCodeWages: z.boolean().optional(),
 	/** BN1: bonus; versions saved before it use the built-in figures. */
 	bonus: BonusRules.optional(),
+	/** Brief 26 AT1: each store's shift; a store without one works 10:00-19:00, 8 hours a full day, Sundays off. */
+	shifts: z
+		.array(StoreShift)
+		.max(200)
+		.refine((shifts) => new Set(shifts.map((s) => s.locationId)).size === shifts.length, {
+			message: 'shift_store_twice',
+		})
+		.optional(),
 	states: z
 		.array(StatePayrollRules)
 		.max(40)

@@ -15,9 +15,63 @@ export interface Shift {
 	fullDayHours: number;
 	/** Minutes after the start still on time. */
 	graceMinutes: number;
+	/** Days of the week off, 0 Sunday to 6 Saturday; Sunday when not set. */
+	weeklyOff?: readonly number[];
 }
 
-export const DEFAULT_SHIFT: Shift = { start: '10:00', end: '19:00', fullDayHours: 8, graceMinutes: 0 };
+/** AT1: a store's own shift, kept in the dated payroll rules. */
+export interface StoreShift extends Shift {
+	locationId: string;
+}
+
+/** AT2: a holiday of a State's list, for one store or (null) every store in the State; never uses up leave. */
+export interface Holiday {
+	day: string;
+	name: string;
+	locationId: string | null;
+}
+
+export const DEFAULT_SHIFT: Shift = {
+	start: '10:00',
+	end: '19:00',
+	fullDayHours: 8,
+	graceMinutes: 0,
+	weeklyOff: [0],
+};
+
+/** AT1: the store's shift, or the default one until it is set. */
+export function shiftOf(shifts: readonly StoreShift[] | undefined, locationId: string): Shift {
+	return shifts?.find((s) => s.locationId === locationId) ?? DEFAULT_SHIFT;
+}
+
+/** Every day of a month (`2026-11`), as `YYYY-MM-DD`. */
+export function daysOfMonth(month: string): string[] {
+	const [y, m] = month.split('-').map(Number) as [number, number];
+	const count = new Date(Date.UTC(y, m, 0)).getUTCDate();
+	return Array.from({ length: count }, (_, i) => `${month}-${String(i + 1).padStart(2, '0')}`);
+}
+
+export interface StoreCalendar {
+	/** The store's weekly offs in the month. */
+	offDays: string[];
+	holidays: { day: string; name: string }[];
+}
+
+/** AT2: a store's month: its weekly offs by its shift, and the holidays of its State that apply to it. */
+export function storeCalendar(
+	month: string,
+	locationId: string,
+	shift: Shift,
+	holidays: readonly Holiday[],
+): StoreCalendar {
+	const off = shift.weeklyOff ?? [0];
+	return {
+		offDays: daysOfMonth(month).filter((d) => off.includes(new Date(`${d}T00:00:00Z`).getUTCDay())),
+		holidays: holidays
+			.filter((h) => h.day.startsWith(`${month}-`) && (h.locationId === null || h.locationId === locationId))
+			.map((h) => ({ day: h.day, name: h.name })),
+	};
+}
 
 const minutesOf = (hhmm: string) => {
 	const [h, m] = hhmm.split(':').map(Number) as [number, number];
@@ -90,4 +144,31 @@ export function monthFromDays(
 export function dayLetter(d: DayRecord): string {
 	if (d.status === 'leave') return d.leaveKey ?? 'L';
 	return { present: 'P', half: '½', absent: 'A', weekly_off: 'WO', holiday: 'H', incomplete: '?' }[d.status];
+}
+
+/**
+ * AT2: a person's month with every day on the roll settled: their own record; else a holiday; else a weekly off; else
+ * not marked, which counts as absent (and is counted, so the lock can say how many).
+ */
+export function settledMonth(
+	month: string,
+	roll: { joinedOn: string; leftOn: string | null },
+	records: readonly DayRecord[],
+	calendar: StoreCalendar,
+): { days: DayRecord[]; unmarked: number } {
+	const own = new Map(records.map((r) => [r.day, r]));
+	const holidays = new Set(calendar.holidays.map((h) => h.day));
+	const off = new Set(calendar.offDays);
+	let unmarked = 0;
+	const days = daysOfMonth(month)
+		.filter((day) => day >= roll.joinedOn && (!roll.leftOn || day <= roll.leftOn))
+		.map((day): DayRecord => {
+			const record = own.get(day);
+			if (record) return record;
+			if (holidays.has(day)) return { day, status: 'holiday' };
+			if (off.has(day)) return { day, status: 'weekly_off' };
+			unmarked += 1;
+			return { day, status: 'absent' };
+		});
+	return { days, unmarked };
 }

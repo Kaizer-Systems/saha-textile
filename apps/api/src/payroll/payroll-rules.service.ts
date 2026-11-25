@@ -10,9 +10,11 @@ import {
 	PAYROLL_SCHEMES_2026,
 	PT_YEAR_CAP_PAISE,
 	ptYearMost,
+	RENT_CITIES_2026,
 	stateRulesOf,
 	type AuditLogRepository,
 	type BonusRules,
+	type StoreShift,
 	type IncomeTaxRules,
 	type PayrollRules,
 	type PayrollRulesRepository,
@@ -40,7 +42,7 @@ export const BUILT_IN_INCOME_TAX: NonNullable<PayrollRulesVersion['incomeTax']> 
 	oldSlabs60To79: INCOME_TAX_2026.oldSlabs60To79.map((s) => ({ ...s })),
 	oldSlabs80Plus: INCOME_TAX_2026.oldSlabs80Plus.map((s) => ({ ...s })),
 	oldSurcharge: INCOME_TAX_2026.oldSurcharge.map((t) => ({ ...t })),
-	rentCities: [...(INCOME_TAX_2026.rentCities ?? [])],
+	rentCities: [...RENT_CITIES_2026],
 };
 
 /** The built-in starting version: the 2026 pay rules and schemes, until a person adds a later one (S1). */
@@ -67,10 +69,13 @@ export function rulesOf(v: PayrollRulesVersion): {
 	states: StateRules[];
 	incomeTax: IncomeTaxRules;
 	bonus: BonusRules;
+	shifts: StoreShift[];
 	from: string;
 } {
 	return {
 		from: v.from,
+		// Brief 26 AT1: each store's shift; a store without one works the default shift.
+		shifts: v.shifts ?? [],
 		states: stateRulesOf(v),
 		// TX2: a version saved before income tax was part of the rules uses the built-in 2026-27 rules.
 		incomeTax: v.incomeTax ?? BUILT_IN_INCOME_TAX,

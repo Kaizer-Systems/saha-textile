@@ -111,15 +111,17 @@ export class AuditTrailPage {
 		this.modals.open(template, { centered: true, size: 'lg' });
 	}
 
-	/** Every record the filters match, read 200 at a time (the trail's own page limit), for the export. */
+	/**
+	 * Every record the filters match, read 200 at a time (the trail's own page limit), for the export: no cap, so an
+	 * export is never silently short; it stops when the total is read or a page comes back empty.
+	 */
 	private async everything(): Promise<AuditLogEntry[]> {
 		const out: AuditLogEntry[] = [];
-		for (let page = 1; page <= 500; page++) {
+		for (let page = 1; ; page++) {
 			const found = await firstValueFrom(this.gateway.list({ ...this.query(), page, pageSize: 200 }));
 			out.push(...found.items);
-			if (page * 200 >= found.total) break;
+			if (!found.items.length || page * 200 >= found.total) return out;
 		}
-		return out;
 	}
 
 	readonly exportSource = async (): Promise<ExportSource> => {

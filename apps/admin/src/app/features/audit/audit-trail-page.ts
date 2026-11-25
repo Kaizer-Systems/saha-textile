@@ -92,7 +92,10 @@ export class AuditTrailPage {
 	}
 
 	/** The module of a record: its action's first part. */
-	readonly moduleOf = (e: AuditLogEntry) => e.action.split('.')[0] ?? e.action;
+	readonly moduleOf = (e: AuditLogEntry) => {
+		const dot = e.action.indexOf('.');
+		return dot < 0 ? e.action : e.action.slice(0, dot);
+	};
 
 	show(template: TemplateRef<unknown>, e: AuditLogEntry): void {
 		this.open.set(e);

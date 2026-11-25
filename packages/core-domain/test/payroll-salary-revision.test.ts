@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest';
 import type { SalaryStructure } from '../src/payroll/payroll-rules';
 import {
 	arrears,
+	arrearsDue,
 	breakup,
 	minimumWageShortfall,
 	revisedCtc,
 	structureFromCtc,
+	structureOn,
 	typedOver,
 	type CtcComponent,
 	type EmployerCost,
@@ -127,5 +129,51 @@ describe('arrears and the minimum wage (SR4)', () => {
 		expect(minimumWageShortfall(old, null, wages, '2026-11-30')).toBe(0);
 		expect(minimumWageShortfall(old, 'skilled', undefined, '2026-11-30')).toBe(0);
 		expect(minimumWageShortfall(old, 'skilled', wages, '2025-12-31')).toBe(0);
+	});
+});
+
+describe('the structure in force, and arrears paid in a later month (SR2, SR4)', () => {
+	const v1: SalaryStructure = { basic: r(10_000), da: 0, hra: r(4_000), conveyance: 0, special: r(6_000), other: 0 };
+	const v2: SalaryStructure = { ...v1, basic: r(11_000), special: r(6_600) };
+	const now: SalaryStructure = { ...v2, other: r(100) };
+	const history = [
+		{ from: '2025-01-01', structure: v1 },
+		{ from: '2026-09-01', structure: v2 },
+	];
+
+	it('takes the version from on or before the day, the latest as the person stands, the first before them all', () => {
+		expect(structureOn(now, undefined, '2026-10-31')).toBe(now);
+		expect(structureOn(now, [], '2026-10-31')).toBe(now);
+		expect(structureOn(now, history, '2026-08-31')).toBe(v1);
+		expect(structureOn(now, history, '2026-09-30')).toBe(now);
+		expect(structureOn(now, history, '2024-12-31')).toBe(v1);
+	});
+
+	it('owes the difference for each month paid on the old structure since the revision, once', () => {
+		const months = [
+			{ month: '2026-08', paidDays: 31, daysInMonth: 31, paidPaise: r(20_000), paidPfWagesPaise: r(10_000) },
+			{ month: '2026-09', paidDays: 30, daysInMonth: 30, paidPaise: r(20_000), paidPfWagesPaise: r(10_000) },
+			{ month: '2026-10', paidDays: 15, daysInMonth: 31, paidPaise: 967_742, paidPfWagesPaise: 483_871 },
+			{ month: '2026-11', paidDays: 0, daysInMonth: 0, paidPaise: 0, paidPfWagesPaise: 0 },
+		];
+		const due = arrearsDue({
+			since: '2026-09-01',
+			months,
+			dueOn: (m) => (m >= '2026-09' ? v2 : v1),
+			pfHeads: ['basic', 'da'],
+			arrearsPaid: (m) => (m === '2026-10' ? r(500) : 0),
+		});
+		// September: ₹21,600 due, ₹20,000 paid; October: 15 of 31 days of ₹21,600, less what was paid and ₹500.
+		expect(due.byMonth).toEqual([
+			{ month: '2026-09', paise: r(1_600) },
+			{ month: '2026-10', paise: 1_045_161 - 967_742 - r(500) },
+		]);
+		expect(due.paise).toBe(r(1_600) + 1_045_161 - 967_742 - r(500));
+		// PF wages owed, never more than the arrears themselves (October's are under its PF wages owed).
+		expect(due.pfWagesPaise).toBe(r(1_000) + (1_045_161 - 967_742 - r(500)));
+		expect(
+			arrearsDue({ since: '2026-09-01', months, dueOn: () => v1, pfHeads: ['basic'], arrearsPaid: () => 0 })
+				.paise,
+		).toBe(0);
 	});
 });

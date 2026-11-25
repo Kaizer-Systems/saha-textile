@@ -103,6 +103,11 @@ export interface PayInput {
 	rules: PayrollRules;
 	/** Professional tax on the month's gross by the person's State (brief 25 ST2); the rules' slabs when absent. */
 	ptFor?: (grossPaise: number) => number;
+	/**
+	 * Brief 26 SR4: arrears of a revision dated back, paid with this month: added to the gross, and their PF wages to
+	 * the month's (within the ceiling), so PF and ESI are worked on them too.
+	 */
+	arrears?: { grossPaise: number; pfWagesPaise: number };
 }
 
 export interface PayResult {
@@ -122,10 +127,10 @@ export interface PayResult {
 /** A month's pay: each head paid for the days worked, then PF, ESI, professional tax, TDS and the advance. */
 export function monthPay(input: PayInput): PayResult {
 	const share = input.daysInMonth > 0 ? Math.min(input.paidDays, input.daysInMonth) / input.daysInMonth : 0;
-	const grossPaise = rupee(structureTotal(input.structure) * share);
+	const grossPaise = rupee(structureTotal(input.structure) * share) + (input.arrears?.grossPaise ?? 0);
 	const r = input.rules;
 	const pfHeads = r.pfUsesCodeWages ? (r.wageHeads ?? CODE_WAGE_HEADS) : BASIC_DA_HEADS;
-	const pfWagesPaise = rupee(codeWages(input.structure, pfHeads) * share);
+	const pfWagesPaise = rupee(codeWages(input.structure, pfHeads) * share) + (input.arrears?.pfWagesPaise ?? 0);
 	const pfBase = Math.min(pfWagesPaise, r.pfWageCapPaise);
 	const pfEmployeePaise = input.pfOn ? rupee((pfBase * r.pfRatePct) / 100) : 0;
 	const epsPaise = input.pfOn ? Math.min(rupee((pfBase * r.epsRatePct) / 100), r.epsCapPaise) : 0;

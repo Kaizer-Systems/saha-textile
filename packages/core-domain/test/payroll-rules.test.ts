@@ -82,6 +82,16 @@ describe('the approved S5 picture', () => {
 		});
 	});
 
+	it('adds arrears to the gross and their PF wages to the month’s, under the ceiling (brief 26 SR4)', () => {
+		expect(
+			monthPay(input(halves(6_000), { arrears: { grossPaise: rs(2_000), pfWagesPaise: rs(1_000) } })),
+		).toMatchObject({
+			grossPaise: rs(14_000),
+			pfWagesPaise: rs(7_000),
+			pfEmployeePaise: rs(840),
+		});
+	});
+
 	it('pays Priya ₹17,400 for 29 days, ESI rounded up to ₹131, and recovers ₹1,000 of her advance', () => {
 		expect(monthPay(input(halves(9_000), { paidDays: 29, advanceDuePaise: rs(1_000) }))).toEqual({
 			grossPaise: rs(17_400),

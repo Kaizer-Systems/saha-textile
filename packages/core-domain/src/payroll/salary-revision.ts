@@ -166,3 +166,59 @@ export function minimumWageShortfall(
 	if (!least) return 0;
 	return Math.max(0, least - structure.basic - structure.da);
 }
+
+/** SR2: a dated salary: the structure from a day. */
+export interface DatedStructure {
+	from: string;
+	structure: SalaryStructure;
+}
+
+/**
+ * SR2: the structure in force on a day. Without any revision, the person's structure; otherwise the last version from
+ * on or before the day (the first for a day before them all), the latest being the person's structure as it stands.
+ */
+export function structureOn(
+	current: SalaryStructure,
+	history: readonly DatedStructure[] | undefined,
+	day: string,
+): SalaryStructure {
+	if (!history?.length) return current;
+	let at = 0;
+	history.forEach((v, i) => {
+		if (v.from <= day) at = i;
+	});
+	return at === history.length - 1 ? current : (history[at] as DatedStructure).structure;
+}
+
+/**
+ * SR4: arrears due in a month: for each earlier month paid since the first revision, what the structure in force then
+ * gives for the days paid, less what that month paid and any arrears already paid for it. Never below nothing (a
+ * decrease dated back is not recovered here). PF wages follow the same way.
+ */
+export function arrearsDue(input: {
+	since: string;
+	months: readonly {
+		month: string;
+		paidDays: number;
+		daysInMonth: number;
+		paidPaise: number;
+		paidPfWagesPaise: number;
+	}[];
+	dueOn: (month: string) => SalaryStructure;
+	pfHeads: readonly WageHead[];
+	arrearsPaid: (month: string) => number;
+}): { paise: number; pfWagesPaise: number; byMonth: { month: string; paise: number }[] } {
+	const byMonth: { month: string; paise: number }[] = [];
+	let pfWagesPaise = 0;
+	for (const m of input.months) {
+		if (m.month < input.since.slice(0, 7) || m.daysInMonth <= 0) continue;
+		const share = Math.min(m.paidDays, m.daysInMonth) / m.daysInMonth;
+		const due = input.dueOn(m.month);
+		const owed = Math.round(gross(due) * share) - m.paidPaise - input.arrearsPaid(m.month);
+		if (owed <= 0) continue;
+		byMonth.push({ month: m.month, paise: owed });
+		const pfDue = Math.round(input.pfHeads.reduce((sum, h) => sum + due[h], 0) * share);
+		pfWagesPaise += Math.max(0, Math.min(owed, pfDue - m.paidPfWagesPaise));
+	}
+	return { paise: byMonth.reduce((sum, m) => sum + m.paise, 0), pfWagesPaise, byMonth };
+}

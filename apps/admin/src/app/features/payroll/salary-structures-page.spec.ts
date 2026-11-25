@@ -115,7 +115,7 @@ describe('the salary structures page (S4)', () => {
 	it('previews the starter on ₹20,000, warns only when basic and DA fall short of half, and saves a new one', async () => {
 		const previewStructure = vi.fn(() => of(preview(1_000)));
 		const { fixture, page, calls, notifier, invalidate } = await structures({ previewStructure });
-		expect(previewStructure).toHaveBeenCalledWith({ components: starterComponents(), payINR: 20_000 });
+		expect(previewStructure).toHaveBeenCalledWith({ components: starterComponents(), payINR: 20_000, ctc: false });
 		expect(fixture.nativeElement.querySelector('.alert-warning')).not.toBeNull();
 		expect(page.money(1_234.5)).toBe('₹1,234.50');
 		const save = el(fixture, '#sst_save') as HTMLButtonElement;

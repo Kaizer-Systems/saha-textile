@@ -5,7 +5,7 @@
  */
 
 export type ReportFieldType = 'text' | 'number' | 'money' | 'date' | 'percent';
-export type ReportDatasetKey = 'ledgerLines' | 'invoiceLines' | 'invoices';
+export type ReportDatasetKey = 'ledgerLines' | 'invoiceLines' | 'invoices' | 'auditLines';
 export type ReportValue = string | number | null;
 export type ReportRow = Readonly<Record<string, ReportValue>>;
 
@@ -38,6 +38,26 @@ const ratio = (key: string, top: string, bottom: string): ReportField => ({
 
 /** Each kind of data and the fields it offers (V1 "Report on" and "Columns"). */
 export const REPORT_DATASETS: Readonly<Record<ReportDatasetKey, readonly ReportField[]>> = {
+	/**
+	 * Brief 26 AU2: the audit trail, one row per field changed (one for an action with none): when, who, the module
+	 * and action, the record, the field before and after, the size of a numeric change in %, and the reason given.
+	 */
+	auditLines: [
+		date('date'),
+		text('month'),
+		text('time'),
+		text('weekday'),
+		text('who'),
+		text('module'),
+		text('action'),
+		text('record'),
+		text('field'),
+		text('before'),
+		text('after'),
+		{ key: 'changePercent', type: 'percent', summable: false },
+		text('reason'),
+		number('changes'),
+	],
 	ledgerLines: [
 		date('date'),
 		text('month'),

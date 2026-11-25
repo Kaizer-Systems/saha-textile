@@ -6,6 +6,7 @@ import {
 	ForbiddenException,
 	Inject,
 	Injectable,
+	Optional,
 	NotFoundException,
 } from '@nestjs/common';
 import {
@@ -25,6 +26,7 @@ import {
 	specProblems,
 	type AdminUserRepository,
 	type AdminUserRoleAssignmentRepository,
+	type AuditLogRepository,
 	type CompanyRepository,
 	type CreditNoteRepository,
 	type GeneralLedgerRepository,
@@ -37,6 +39,7 @@ import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import {
 	ADMIN_USER_REPOSITORY,
 	ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY,
+	AUDIT_LOG_REPOSITORY,
 	COMPANY_REPOSITORY,
 	CREDIT_NOTE_REPOSITORY,
 	GENERAL_LEDGER_REPOSITORY,
@@ -72,6 +75,10 @@ export class ReportBuilderService {
 		private readonly assignments: Pick<AdminUserRoleAssignmentRepository, 'listActiveForUser'>,
 		@Inject(ADMIN_USER_REPOSITORY) private readonly admins: Pick<AdminUserRepository, 'findById'>,
 		@Inject(LocationsService) private readonly locations: Pick<LocationsService, 'list'>,
+		// Brief 26 AU2: the audit trail as a source (optional, so an older composition still starts).
+		@Optional()
+		@Inject(AUDIT_LOG_REPOSITORY)
+		private readonly audit: Pick<AuditLogRepository, 'list'> | null = null,
 	) {}
 
 	/** V1 "Report on" and "Columns": each kind of data and its fields. */
@@ -229,7 +236,60 @@ export class ReportBuilderService {
 	private rows(dataset: ReportDataset, from: string, to: string, places: Map<string, string>) {
 		if (dataset === 'ledgerLines') return this.ledgerLines(from, to, places);
 		if (dataset === 'invoiceLines') return this.invoiceLines(from, to, places);
+		if (dataset === 'auditLines') return this.auditLines(from, to);
 		return this.invoiceRows(from, to, places);
+	}
+
+	/**
+	 * Brief 26 AU2: the admin's audit records in the period (up to 5,000, newest first), one row per field changed,
+	 * India's date and time, the module (the action's first part), and a numeric change's size in %.
+	 */
+	private async auditLines(from: string, to: string): Promise<ReportRow[]> {
+		if (!this.audit) return [];
+		const rows: ReportRow[] = [];
+		const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+		for (let page = 1; page <= 25; page++) {
+			const found = await this.audit.list({
+				audience: 'admin',
+				from: new Date(`${from}T00:00:00+05:30`).toISOString(),
+				to: new Date(`${to}T23:59:59+05:30`).toISOString(),
+				page,
+				pageSize: 200,
+			});
+			for (const e of found.items) {
+				const ist = new Date(Date.parse(e.createdAt) + 5.5 * 3_600_000).toISOString();
+				const reason = typeof e.metadata['reason'] === 'string' ? (e.metadata['reason'] as string) : '';
+				const base = {
+					date: ist.slice(0, 10),
+					month: ist.slice(0, 7),
+					time: ist.slice(11, 16),
+					weekday: days[new Date(ist).getUTCDay()] as string,
+					who: e.actorUserId ?? '',
+					module: e.action.split('.')[0] as string,
+					action: e.action,
+					record: `${e.entityType ?? ''} ${e.entityId ?? ''}`.trim(),
+					reason,
+					changes: 1,
+				};
+				const diffs = e.diffs.length ? e.diffs : [{ field: '', before: undefined, after: undefined }];
+				for (const d of diffs) {
+					const before = typeof d.before === 'number' ? d.before : null;
+					const after = typeof d.after === 'number' ? d.after : null;
+					rows.push({
+						...base,
+						field: d.field,
+						before: d.before === undefined || d.before === null ? '' : String(d.before),
+						after: d.after === undefined || d.after === null ? '' : String(d.after),
+						changePercent:
+							before !== null && after !== null && before !== 0
+								? Math.round(((after - before) / before) * 1000) / 10
+								: null,
+					});
+				}
+			}
+			if (page * 200 >= found.total) break;
+		}
+		return rows;
 	}
 
 	/** V1 preview, or a run: the table for the spec over the period. */

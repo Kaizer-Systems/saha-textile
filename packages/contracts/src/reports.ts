@@ -51,7 +51,7 @@ export type PlByLocation = z.infer<typeof PlByLocation>;
 
 /* V1, V2: the custom report builder. */
 
-export const ReportDataset = z.enum(['ledgerLines', 'invoiceLines', 'invoices']);
+export const ReportDataset = z.enum(['ledgerLines', 'invoiceLines', 'invoices', 'auditLines']);
 export type ReportDataset = z.infer<typeof ReportDataset>;
 
 export const ReportFieldType = z.enum(['text', 'number', 'money', 'date', 'percent']);

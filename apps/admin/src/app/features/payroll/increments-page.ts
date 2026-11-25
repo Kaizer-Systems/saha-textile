@@ -84,7 +84,14 @@ export class IncrementsPage {
 	}));
 
 	readonly departments = computed(() =>
-		[...new Set((this.employees.data() ?? []).map((e) => e.department).filter(Boolean))].sort(),
+		[
+			...new Set(
+				(this.employees.data() ?? [])
+					.filter((e) => !e.leftOn)
+					.map((e) => e.department)
+					.filter(Boolean),
+			),
+		].sort(),
 	);
 
 	/** Who is in the cycle: still employed, at the store and in the department picked, joined before the day given. */
@@ -158,8 +165,11 @@ export class IncrementsPage {
 		this.typedPct.update(({ [id]: _drop, ...rest }) => rest);
 	}
 
+	/** A row's % typed over; a cleared box goes back to the band or the plan's %. */
 	setPct(id: string, value: unknown): void {
-		this.typedPct.update((t) => ({ ...t, [id]: Number(value) || 0 }));
+		if (value === '' || value === null || value === undefined)
+			this.typedPct.update(({ [id]: _drop, ...rest }) => rest);
+		else this.typedPct.update((t) => ({ ...t, [id]: Number(value) || 0 }));
 	}
 
 	toggle(id: string): void {
@@ -170,9 +180,19 @@ export class IncrementsPage {
 		this.bands.update((b) => b.map((x, i) => (i === index ? { ...x, ...fields } : x)));
 	}
 
+	/** A new band, named by the next number not already used. */
 	addBand(): void {
-		this.bands.update((b) => [...b, { rating: `R${b.length + 1}`, pct: 0 }]);
+		this.bands.update((b) => {
+			let n = b.length + 1;
+			while (b.some((x) => x.rating === `R${n}`)) n++;
+			return [...b, { rating: `R${n}`, pct: 0 }];
+		});
 	}
+
+	/** The breakup on screen is of what is typed now: a whole date, and not one kept from before. */
+	readonly current = computed(
+		() => !!this.preview.data() && !this.preview.isPlaceholderData() && /^\d{4}-\d{2}-\d{2}$/.test(this.from()),
+	);
 
 	removeBand(index: number): void {
 		this.bands.update((b) => b.filter((_, i) => i !== index));

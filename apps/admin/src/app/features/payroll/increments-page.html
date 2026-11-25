@@ -14,7 +14,7 @@
 				type="button"
 				class="btn btn-theme"
 				id="inc_accept"
-				[disabled]="busy() || !chosen().length || preview.isFetching() || reason().trim().length < 3"
+				[disabled]="busy() || !chosen().length || !current() || preview.isFetching() || reason().trim().length < 3"
 				(click)="accept()"
 			>
 				{{ 'inc_accept' | transloco: { n: chosen().length } }}
@@ -249,7 +249,10 @@
 		</button>
 	</div>
 	}
-	<div class="table-responsive datatable-wrapper border-table">
+	<div
+		class="table-responsive datatable-wrapper border-table"
+		[class.opacity-50]="!current()"
+	>
 		<table class="all-package theme-table no-footer table">
 			<thead>
 				<tr>

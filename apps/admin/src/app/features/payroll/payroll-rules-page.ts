@@ -14,6 +14,7 @@ import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
 import type {
+	BonusRules,
 	IncomeTaxRules,
 	PayrollRulesVersion,
 	PayrollRulesWriteInput,
@@ -209,6 +210,14 @@ export interface RulesForm {
 	states: StateForm[];
 	/** TX2: income tax on salary (null only for a version the screens got without it). */
 	incomeTax: IncomeTaxForm | null;
+	/** BN1: the Bonus Act's figures, money in rupees. */
+	bonus: {
+		ratePct: number;
+		ceiling: number;
+		eligibleUpTo: number;
+		minimum: number;
+		provision: BonusRules['provision'];
+	} | null;
 }
 
 export function toForm(v: PayrollRulesVersion, from: string): RulesForm {
@@ -243,6 +252,15 @@ export function toForm(v: PayrollRulesVersion, from: string): RulesForm {
 		lwfDueDay: v.lwfDueDay,
 		states: statesOf(v).map(stateToForm),
 		incomeTax: v.incomeTax ? taxToForm(v.incomeTax) : null,
+		bonus: v.bonus
+			? {
+					ratePct: v.bonus.ratePct,
+					ceiling: inr(v.bonus.wageCeilingPaise),
+					eligibleUpTo: inr(v.bonus.eligibleUpToPaise),
+					minimum: inr(v.bonus.minimumPaise),
+					provision: v.bonus.provision,
+				}
+			: null,
 	};
 }
 
@@ -278,6 +296,17 @@ export function toWrite(f: RulesForm): PayrollRulesWriteInput {
 		lwfDueDay: f.lwfDueDay,
 		states: f.states.map(stateToWrite),
 		...(f.incomeTax ? { incomeTax: taxToWrite(f.incomeTax) } : {}),
+		...(f.bonus
+			? {
+					bonus: {
+						ratePct: f.bonus.ratePct,
+						wageCeilingPaise: paise(f.bonus.ceiling),
+						eligibleUpToPaise: paise(f.bonus.eligibleUpTo),
+						minimumPaise: paise(f.bonus.minimum),
+						provision: f.bonus.provision,
+					},
+				}
+			: {}),
 	};
 }
 
@@ -350,7 +379,17 @@ export function ruleRows(
 		},
 		...stateRows,
 		{ key: 'deductions', from: v.from, values: { pct: num(v.maxDeductionPct) } },
-		{ key: 'bonus', from: null, values: { n: num(v.bonusHeadcount), warn: num(v.bonusWarnAt) } },
+		{
+			key: 'bonus',
+			from: null,
+			values: {
+				n: num(v.bonusHeadcount),
+				warn: num(v.bonusWarnAt),
+				rate: num(v.bonus?.ratePct ?? 8.33),
+				ceiling: num(inr(v.bonus?.wageCeilingPaise ?? 7_000_00)),
+				limit: num(inr(v.bonus?.eligibleUpToPaise ?? 21_000_00)),
+			},
+		},
 		{
 			key: 'gratuity',
 			from: null,
@@ -437,6 +476,10 @@ export class PayrollRulesPage {
 
 	private patchTaxForm(change: (t: IncomeTaxForm) => IncomeTaxForm): void {
 		this.form.update((f) => (f?.incomeTax ? { ...f, incomeTax: change(f.incomeTax) } : f));
+	}
+
+	patchBonus(fields: Partial<NonNullable<RulesForm['bonus']>>): void {
+		this.form.update((f) => (f?.bonus ? { ...f, bonus: { ...f.bonus, ...fields } } : f));
 	}
 
 	patchTax(fields: Partial<Omit<IncomeTaxForm, 'slabs' | 'tiers'>>): void {

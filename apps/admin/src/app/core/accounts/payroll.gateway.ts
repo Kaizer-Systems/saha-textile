@@ -8,6 +8,8 @@ import type {
 	AdvanceSchedule,
 	Attendance,
 	AttendanceWrite,
+	BonusPay,
+	BonusYear,
 	EmployeeView,
 	EmployeeWriteInput,
 	IncomeTaxView,
@@ -41,6 +43,7 @@ export const PAYROLL_KEYS = {
 	statutory: ['payroll', 'statutory'] as const,
 	advances: ['payroll', 'advances'] as const,
 	advance: (employeeId: string) => ['payroll', 'advance', employeeId] as const,
+	bonus: (year: string) => ['payroll', 'bonus', year] as const,
 };
 
 /** Payroll (accounts brief S). */
@@ -94,6 +97,15 @@ export class PayrollGateway {
 
 	addRules(write: PayrollRulesWriteInput): Observable<PayrollRulesVersion> {
 		return this.http.post<PayrollRulesVersion>(this.api('rules'), write);
+	}
+
+	/** BN1: the year's statutory bonus per person (Payroll › Payroll runs). */
+	bonusYear(year: string): Observable<BonusYear> {
+		return this.http.get<BonusYear>(this.api(`bonus/${year}`));
+	}
+
+	payBonus(year: string, write: BonusPay): Observable<BonusYear> {
+		return this.http.post<BonusYear>(this.api(`bonus/${year}/pay`), write);
 	}
 
 	/** TX1: an employee's year of income tax worked both ways, as saved. */

@@ -869,6 +869,91 @@
 			</button>
 			}
 			<small class="text-muted d-block mt-2">{{ 'payroll_tax_rules_note' | transloco }}</small>
+			} @if (f.bonus; as b) {
+			<h6 class="mt-4">{{ 'payroll_bonus_rules_title' | transloco }}</h6>
+			<div class="row g-3">
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_bonus_rate"
+					>
+						{{ 'payroll_bonus_f_rate' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_bonus_rate"
+						type="number"
+						min="0"
+						[ngModel]="b.ratePct"
+						(ngModelChange)="patchBonus({ ratePct: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_bonus_ceiling"
+					>
+						{{ 'payroll_bonus_f_ceiling' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_bonus_ceiling"
+						type="number"
+						min="0"
+						[ngModel]="b.ceiling"
+						(ngModelChange)="patchBonus({ ceiling: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_bonus_limit"
+					>
+						{{ 'payroll_bonus_f_limit' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_bonus_limit"
+						type="number"
+						min="0"
+						[ngModel]="b.eligibleUpTo"
+						(ngModelChange)="patchBonus({ eligibleUpTo: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_bonus_min"
+					>
+						{{ 'payroll_bonus_f_minimum' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_bonus_min"
+						type="number"
+						min="0"
+						[ngModel]="b.minimum"
+						(ngModelChange)="patchBonus({ minimum: +$event })"
+					/>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="pr_bonus_book"
+					>
+						{{ 'payroll_bonus_f_provision' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="pr_bonus_book"
+						[ngModel]="b.provision"
+						(ngModelChange)="patchBonus({ provision: $event })"
+					>
+						<option value="monthly">{{ 'payroll_bonus_provision_monthly' | transloco }}</option>
+						<option value="year_end">{{ 'payroll_bonus_provision_year_end' | transloco }}</option>
+					</select>
+				</div>
+			</div>
 			}
 			<h6 class="mt-4">{{ 'payroll_rule_bonus' | transloco }} · {{ 'payroll_rule_gratuity' | transloco }}</h6>
 			<div class="row g-3">

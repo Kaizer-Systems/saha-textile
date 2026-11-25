@@ -166,6 +166,9 @@ export const PayrollRow = z.object({
 	gratuityPaise: z.number().int().optional(),
 	/** S6: each head paid for the days worked, kept so a reprint never changes. */
 	headsPaise: z.record(z.string(), z.number().int()).optional(),
+	/** BN1: the month's bonus wages and the bonus provided on them (when the Act applies and it is provided monthly). */
+	bonusWagesPaise: z.number().int().optional(),
+	bonusPaise: z.number().int().optional(),
 	/** TX: the year's working behind this month's TDS, kept so a payslip shows what the run used. */
 	tax: z
 		.object({
@@ -281,6 +284,45 @@ export const IncomeTaxRules = z.object({
 });
 export type IncomeTaxRules = z.infer<typeof IncomeTaxRules>;
 
+/**
+ * Brief 25 BN1: the Payment of Bonus Act's figures as a dated part of the rules. Bonus wages are basic and DA, at most
+ * the ceiling a month (₹7,000 or the State's minimum wage, the higher, as entered); people whose basic and DA pass
+ * `eligibleUpToPaise` a month are not covered; the year's bonus is the rate on the wages, at least `minimumPaise`.
+ */
+export const BonusRules = z.object({
+	ratePct: z.number().min(8.33).max(20),
+	wageCeilingPaise: Paise,
+	eligibleUpToPaise: Paise,
+	minimumPaise: Paise,
+	/** Provided in each month's posting, or worked out only when the year's bonus is paid. */
+	provision: z.enum(['monthly', 'year_end']),
+});
+export type BonusRules = z.infer<typeof BonusRules>;
+
+/** BN1: one person's bonus for a year. */
+export const BonusYearRow = z.object({
+	employeeId: Id,
+	name: z.string(),
+	wagesPaise: z.number().int(),
+	providedPaise: z.number().int(),
+	/** What the Act asks for: the rate on the wages, at least the minimum. */
+	duePaise: z.number().int(),
+});
+export type BonusYearRow = z.infer<typeof BonusYearRow>;
+
+export const BonusYear = z.object({
+	year: z.string(),
+	ratePct: z.number(),
+	rows: z.array(BonusYearRow),
+	providedPaise: z.number().int(),
+	duePaise: z.number().int(),
+	paidVoucherId: Id.nullable(),
+});
+export type BonusYear = z.infer<typeof BonusYear>;
+
+export const BonusPay = z.object({ bankLedgerId: Id, paidOn: IsoDate });
+export type BonusPay = z.infer<typeof BonusPay>;
+
 /** TX1: one regime's working for a year (paise). */
 export const IncomeTaxWorking = z.object({
 	regime: z.enum(['new', 'old']),
@@ -353,6 +395,8 @@ export const PayrollRulesWrite = z.object({
 	 */
 	/** TX2: income tax on salary; versions saved before it use the built-in 2026-27 rules. */
 	incomeTax: IncomeTaxRules.optional(),
+	/** BN1: bonus; versions saved before it use the built-in figures. */
+	bonus: BonusRules.optional(),
 	states: z
 		.array(StatePayrollRules)
 		.max(40)

@@ -1,6 +1,14 @@
 import { Body, Controller, Get, Header, Param, Post, Put } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AttendanceWrite, EmployeeEdit, EmployeeWrite, PayrollStep, YearMonth } from '@saha-textile/contracts';
+import {
+	AttendanceWrite,
+	BonusPay,
+	EmployeeEdit,
+	EmployeeWrite,
+	FinancialYear,
+	PayrollStep,
+	YearMonth,
+} from '@saha-textile/contracts';
 
 import { Principal } from '../auth/ownership';
 import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../auth/session.guard';
@@ -49,6 +57,25 @@ export class PayrollController {
 	})
 	incomeTax(@Param('id') id: string, @Param('month', new ZodValidationPipe(YearMonth)) month: string) {
 		return this.payroll.incomeTax(id, month);
+	}
+
+	@Get('bonus/:year')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({ operationId: 'payrollBonusYear', summary: 'The year’s statutory bonus per person (BN1)' })
+	bonusYear(@Param('year', new ZodValidationPipe(FinancialYear)) year: string) {
+		return this.payroll.bonusYear(year);
+	}
+
+	@Post('bonus/:year/pay')
+	@RequirePermissions('accounts.post')
+	@ApiOperation({ operationId: 'payrollBonusPay', summary: 'Pay the year’s statutory bonus (BN1)' })
+	payBonus(
+		@Param('year', new ZodValidationPipe(FinancialYear)) year: string,
+		@Body(new ZodValidationPipe(BonusPay)) body: BonusPay,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.payroll.payBonus(year, body, principal);
 	}
 
 	@Get('attendance/:month')

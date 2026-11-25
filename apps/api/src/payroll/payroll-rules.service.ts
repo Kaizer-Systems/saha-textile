@@ -3,11 +3,13 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common';
 import type { PayrollRulesVersion, PayrollRulesWrite } from '@saha-textile/contracts';
 import {
+	BONUS_2026,
 	INCOME_TAX_2026,
 	PAYROLL_RULES_2026,
 	PAYROLL_SCHEMES_2026,
 	stateRulesOf,
 	type AuditLogRepository,
+	type BonusRules,
 	type IncomeTaxRules,
 	type PayrollRules,
 	type PayrollRulesRepository,
@@ -45,6 +47,7 @@ export const BUILT_IN_PAYROLL_RULES: PayrollRulesVersion = {
 	lwfMonths: [...PAYROLL_SCHEMES_2026.lwfMonths],
 	states: [],
 	incomeTax: BUILT_IN_INCOME_TAX,
+	bonus: { ...BONUS_2026 },
 	from: PAYROLL_RULES_2026.from,
 	note: '',
 	id: 'prs_built_in',
@@ -59,6 +62,7 @@ export function rulesOf(v: PayrollRulesVersion): {
 	schemes: PayrollSchemes;
 	states: StateRules[];
 	incomeTax: IncomeTaxRules;
+	bonus: BonusRules;
 	from: string;
 } {
 	return {
@@ -66,6 +70,8 @@ export function rulesOf(v: PayrollRulesVersion): {
 		states: stateRulesOf(v),
 		// TX2: a version saved before income tax was part of the rules uses the built-in 2026-27 rules.
 		incomeTax: v.incomeTax ?? BUILT_IN_INCOME_TAX,
+		// BN1: likewise the built-in bonus figures.
+		bonus: v.bonus ?? BONUS_2026,
 		pay: {
 			from: v.from,
 			pfRatePct: v.pfRatePct,
@@ -119,7 +125,7 @@ export class PayrollRulesService {
 		const stored = await this.store.list();
 		// TX2: a version saved before income tax was part of the rules shows (and uses) the built-in rules.
 		return [BUILT_IN_PAYROLL_RULES, ...stored]
-			.map((v) => ({ ...v, incomeTax: v.incomeTax ?? BUILT_IN_INCOME_TAX }))
+			.map((v) => ({ ...v, incomeTax: v.incomeTax ?? BUILT_IN_INCOME_TAX, bonus: v.bonus ?? { ...BONUS_2026 } }))
 			.sort((a, b) => a.from.localeCompare(b.from));
 	}
 

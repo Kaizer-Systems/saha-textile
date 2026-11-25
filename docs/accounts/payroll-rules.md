@@ -41,6 +41,16 @@ month's TDS is the year's tax less what was deducted, spread over the months lef
 working (`tax`), and `GET /admin/payroll/employees/:id/income-tax/:month` shows the year both ways without switching
 the regime.
 
+## Statutory bonus
+
+Each version holds the Payment of Bonus Act's figures too (`bonus`): the year's rate (8.33% to 20%), the most a month
+counts as bonus wages (₹7,000 or the State's minimum wage, the higher, as entered), the basic and DA up to which a
+person is covered (₹21,000 a month), the least bonus a year (₹100), and whether it is provided each month. Once the
+headcount reaches the bonus figure, each run keeps each covered person's bonus wages (basic and DA earned, at most the
+ceiling for the days paid) and, provided monthly, posts Bonus to Bonus payable. Payroll › Payroll runs shows the year:
+what was provided and what the Act asks; Pay bonus (`POST /admin/payroll/bonus/:year/pay`) pays it once from a bank,
+the provision coming off the payable and any difference to the year's bonus expense.
+
 ## Per State
 
 Professional tax and the labour welfare fund are State laws, so each version keeps a set per State

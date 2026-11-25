@@ -208,6 +208,68 @@
 					}
 				</div>
 			</div>
+			@if (bonus.data(); as b) { @if (b.rows.length) {
+			<div
+				class="card mt-3"
+				id="run_bonus"
+			>
+				<div class="card-body">
+					<h6>{{ 'payroll_bonus_title' | transloco: { year: b.year, rate: b.ratePct } }}</h6>
+					<p class="small mb-2">
+						{{ 'payroll_bonus_totals' | transloco: { provided: money(b.providedPaise), due:
+						money(b.duePaise) } }}
+					</p>
+					@for (s of bonusShort(); track s.employeeId) {
+					<small class="d-block text-warning">
+						{{ 'payroll_bonus_short' | transloco: { name: s.name, provided: money(s.providedPaise), due:
+						money(s.duePaise) } }}
+					</small>
+					} @if (b.paidVoucherId) {
+					<a
+						class="d-block small mt-2"
+						[routerLink]="['/accounts/vouchers', b.paidVoucherId]"
+					>
+						{{ 'payroll_bonus_view' | transloco }}
+					</a>
+					} @else {
+					<div
+						*hasPermission="'accounts.post'"
+						class="mt-2"
+					>
+						<select
+							class="form-select form-select-sm mb-2"
+							id="run_bonus_bank"
+							[attr.aria-label]="'payroll_paid_from' | transloco"
+							[ngModel]="bonusBank()"
+							(ngModelChange)="bonusBank.set($event)"
+						>
+							<option value="">{{ 'payroll_paid_from' | transloco }}</option>
+							@for (l of banks(); track l.id) {
+							<option [value]="l.id">{{ l.name }}</option>
+							}
+						</select>
+						<input
+							class="form-control form-control-sm mb-2"
+							id="run_bonus_day"
+							type="date"
+							[attr.aria-label]="'payroll_paid_on' | transloco"
+							[ngModel]="bonusPaidOn()"
+							(ngModelChange)="bonusPaidOn.set($event)"
+						/>
+						<button
+							type="button"
+							class="btn btn-sm btn-theme"
+							id="run_bonus_pay"
+							[disabled]="busy() || !bonusBank() || !bonusPaidOn()"
+							(click)="payBonus()"
+						>
+							{{ 'payroll_bonus_pay' | transloco }}
+						</button>
+					</div>
+					}
+				</div>
+			</div>
+			} }
 		</div>
 	</div>
 </app-page-wrapper>

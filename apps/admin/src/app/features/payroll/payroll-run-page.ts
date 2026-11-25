@@ -16,6 +16,7 @@ import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
 import { currentMonth } from './attendance-page';
+import { yearOf } from './employees-page';
 import { stateName } from './payroll-rules-page';
 
 import type { ChartOfAccounts, PayrollRow, PayrollRun, PayrollRunStatus } from '@saha-textile/contracts';
@@ -111,6 +112,34 @@ export class PayrollRunPage {
 	readonly totals = computed(() => payrollTotals(this.run.data()?.rows ?? []));
 
 	readonly stateName = stateName;
+	/** BN1: the month's financial year, its bonus, and the bank and day it is paid from. */
+	readonly bonusYearLabel = computed(() => yearOf(this.month()));
+	readonly bonus = injectQuery(() => ({
+		queryKey: PAYROLL_KEYS.bonus(this.bonusYearLabel()),
+		queryFn: () => firstValueFrom(this.gateway.bonusYear(this.bonusYearLabel())),
+		enabled: /^\d{4}-\d{2}$/.test(this.month()),
+	}));
+	readonly bonusBank = signal('');
+	readonly bonusPaidOn = signal(istToday());
+	readonly bonusShort = computed(() => (this.bonus.data()?.rows ?? []).filter((r) => r.providedPaise < r.duePaise));
+
+	async payBonus(): Promise<void> {
+		this.busy.set(true);
+		try {
+			await firstValueFrom(
+				this.gateway.payBonus(this.bonusYearLabel(), {
+					bankLedgerId: this.bonusBank(),
+					paidOn: this.bonusPaidOn(),
+				}),
+			);
+			this.notifier.showSuccess(this.transloco.translate('payroll_bonus_paid'));
+			await this.queries.invalidateQueries({ queryKey: PAYROLL_KEYS.all });
+		} catch (error) {
+			this.notifier.showError(this.transloco.translate(`payroll_problem_${apiProblem(error, 'failed')}`));
+		} finally {
+			this.busy.set(false);
+		}
+	}
 
 	/** ST1: the States on the run with no payroll rules yet, by name. */
 	statesMissing(run: PayrollRun): string {

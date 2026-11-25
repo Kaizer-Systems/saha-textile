@@ -2,3 +2,4 @@ export * from './payroll-rules';
 export * from './payroll-statutory';
 export * from './state-rules';
 export * from './income-tax';
+export * from './bonus';

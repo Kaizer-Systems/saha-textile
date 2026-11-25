@@ -8,6 +8,9 @@ import type {
 	EmployeeEdit,
 	EmployeeView,
 	EmployeeWrite,
+	BonusPay,
+	BonusYear,
+	BonusYearRow,
 	IncomeTaxView,
 	PayrollRow,
 	PayrollRun,
@@ -15,6 +18,9 @@ import type {
 } from '@saha-textile/contracts';
 import {
 	ageBand,
+	bonusDue,
+	bonusOn,
+	bonusWages,
 	financialYearOf,
 	gratuityProvision,
 	monthPay,
@@ -72,6 +78,8 @@ export const PAYROLL_LEDGERS = {
 	lwfPayable: { name: 'Labour welfare fund payable', group: 'current_liabilities' },
 	gratuity: { name: 'Gratuity', group: 'indirect_expenses' },
 	gratuityProvision: { name: 'Provision for gratuity', group: 'provisions' },
+	bonus: { name: 'Bonus', group: 'indirect_expenses' },
+	bonusPayable: { name: 'Bonus payable', group: 'provisions' },
 } as const;
 
 /** One person's pay so far in the financial year, from the runs before this month (TX). */
@@ -179,7 +187,8 @@ export class PayrollService {
 		@Inject(EMPLOYEE_REPOSITORY) private readonly employees: EmployeeRepository,
 		@Inject(ATTENDANCE_REPOSITORY) private readonly attendance: AttendanceRepository,
 		@Inject(PAYROLL_RUN_REPOSITORY) private readonly runs: PayrollRunRepository,
-		@Inject(LedgerService) private readonly ledger: Pick<LedgerService, 'chart' | 'addLedger' | 'post'>,
+		@Inject(LedgerService)
+		private readonly ledger: Pick<LedgerService, 'chart' | 'addLedger' | 'post' | 'voucherByKey'>,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: Pick<AuditLogRepository, 'append'>,
 		@Inject(PayrollRulesService) private readonly rules: Pick<PayrollRulesService, 'forMonth'>,
@@ -391,6 +400,82 @@ export class PayrollService {
 		};
 	}
 
+	/** BN1: the year's bonus per covered person from its posted runs: wages, what was provided, what the Act asks. */
+	async bonusYear(year: string): Promise<BonusYear> {
+		const runs = (await this.runs.list()).filter(
+			(r) => financialYearOf(r.month) === year && (r.status === 'posted' || r.status === 'paid'),
+		);
+		const { bonus } = await this.rules.forMonth(`${Number(year.slice(0, 4)) + 1}-03`);
+		const people = new Map<string, BonusYearRow>();
+		for (const row of runs.flatMap((r) => r.rows)) {
+			const one = people.get(row.employeeId) ?? {
+				employeeId: row.employeeId,
+				name: row.name,
+				wagesPaise: 0,
+				providedPaise: 0,
+				duePaise: 0,
+			};
+			one.wagesPaise += row.bonusWagesPaise ?? 0;
+			one.providedPaise += row.bonusPaise ?? 0;
+			people.set(row.employeeId, one);
+		}
+		const rows = [...people.values()]
+			.filter((r) => r.wagesPaise > 0)
+			.map((r) => ({ ...r, duePaise: bonusDue(r.wagesPaise, bonus) }));
+		const paid = await this.ledger.voucherByKey(`bonusPay:${year}`);
+		return {
+			year,
+			ratePct: bonus.ratePct,
+			rows,
+			providedPaise: rows.reduce((s, r) => s + r.providedPaise, 0),
+			duePaise: rows.reduce((s, r) => s + r.duePaise, 0),
+			paidVoucherId: paid?.id ?? null,
+		};
+	}
+
+	/**
+	 * BN1 Pay bonus: once a year, each covered person's bonus as the Act asks; what was provided comes off the payable,
+	 * anything more is the year's bonus expense; paid from a bank at each person's last location.
+	 */
+	async payBonus(year: string, write: BonusPay, principal: AuthenticatedPrincipal | undefined): Promise<BonusYear> {
+		const view = await this.bonusYear(year);
+		if (view.paidVoucherId) throw new ConflictException(accountsRefusal('bonus_paid'));
+		if (!view.rows.length) throw refuse('bonus_nothing');
+		const by = principal?.userId ?? null;
+		const runs = (await this.runs.list()).filter((r) => financialYearOf(r.month) === year);
+		const lastAt = new Map<string, string>();
+		for (const run of [...runs].sort((a, b) => a.month.localeCompare(b.month)))
+			for (const row of run.rows) lastAt.set(row.employeeId, row.locationId);
+		const [expense, payable] = [await this.ledgerFor('bonus', by), await this.ledgerFor('bonusPayable', by)];
+		const lines = view.rows.flatMap((r) => {
+			const locationId = lastAt.get(r.employeeId) as string;
+			const more = r.duePaise - r.providedPaise;
+			return [
+				{ ledger: { id: payable }, locationId, debitPaise: Math.min(r.providedPaise, r.duePaise) },
+				{ ledger: { id: expense }, locationId, debitPaise: Math.max(0, more) },
+				// Provided beyond what is due (a rate lowered after months were provided) goes back.
+				{ ledger: { id: payable }, locationId, debitPaise: Math.max(0, -more) },
+				{ ledger: { id: expense }, locationId, creditPaise: Math.max(0, -more) },
+				{ ledger: { id: write.bankLedgerId }, locationId, creditPaise: r.duePaise },
+			].filter((l) => ((l.debitPaise ?? l.creditPaise) as number) > 0);
+		});
+		await this.transactions.withTransaction((context) =>
+			this.ledger.post(
+				{
+					kind: 'journal',
+					date: write.paidOn,
+					narration: `Bonus for ${year}`,
+					source: { type: 'bonus', id: year, number: null },
+					idempotencyKey: `bonusPay:${year}`,
+					lines,
+				},
+				context,
+				by,
+			),
+		);
+		return this.bonusYear(year);
+	}
+
 	listRuns(): Promise<PayrollRun[]> {
 		return this.runs.list();
 	}
@@ -406,7 +491,7 @@ export class PayrollService {
 		const attendance = await this.attendance.get(month);
 		if (!attendance?.lockedAt) throw refuse('payroll_attendance_not_locked');
 		const people = new Map((await this.employees.list()).map((e) => [e.id, e]));
-		const { pay: rules, schemes, states, incomeTax } = await this.rules.forMonth(month);
+		const { pay: rules, schemes, states, incomeTax, bonus } = await this.rules.forMonth(month);
 		// TX: the year so far, from the runs of the financial year before this month.
 		const fyStart = `${financialYearOf(month).slice(0, 4)}-04`;
 		const earlier = (await this.runs.list()).filter((r) => r.month >= fyStart && r.month < month);
@@ -415,6 +500,8 @@ export class PayrollService {
 		const missing = new Set<string>();
 		const headcount = attendance.rows.filter((a) => people.has(a.employeeId)).length;
 		const gratuityApplies = headcount >= schemes.gratuityHeadcount;
+		// BN1: the Bonus Act applies from its headcount; covered people's bonus is provided monthly when the rules say so.
+		const bonusApplies = headcount >= schemes.bonusHeadcount;
 		const rows: PayrollRow[] = attendance.rows.flatMap((a) => {
 			const e = people.get(a.employeeId);
 			if (!e) return [];
@@ -449,11 +536,23 @@ export class PayrollService {
 					basicDaPaise: h.basic + h.da,
 				};
 			};
+			const thisMonth = figures(a.paidDays);
+			const wages = bonusApplies
+				? bonusWages(
+						{
+							basicDaPaise: thisMonth.basicDaPaise,
+							fullBasicDaPaise: structure.basic + structure.da,
+							paidDays: a.paidDays,
+							daysInMonth: attendance.daysInMonth,
+						},
+						bonus,
+					)
+				: 0;
 			const tax = taxWorkingFor({
 				employee: e,
 				month,
 				ytd: yearToDate(earlier, e.id),
-				thisMonth: figures(a.paidDays),
+				thisMonth,
 				fullMonth: figures(attendance.daysInMonth),
 				rules: incomeTax,
 				regime: null,
@@ -475,6 +574,8 @@ export class PayrollService {
 					lwfEmployerPaise: lwf.employerPaise,
 					gratuityPaise: gratuityProvision(structure, gratuityApplies, schemes),
 					headsPaise: payslipHeads(structure, attendance.daysInMonth, a.paidDays, pay.grossPaise),
+					bonusWagesPaise: wages,
+					bonusPaise: bonus.provision === 'monthly' ? bonusOn(wages, bonus) : 0,
 					tax: {
 						regime: tax.regime,
 						yearSalaryPaise: tax.working.salaryPaise,
@@ -585,7 +686,10 @@ export class PayrollService {
 			const lwfOf = (r: PayrollRow) => (r.lwfEmployeePaise ?? 0) + (r.lwfEmployerPaise ?? 0);
 			const hasLwf = sum(run.rows, lwfOf) > 0;
 			const hasGratuity = sum(run.rows, (r) => r.gratuityPaise ?? 0) > 0;
+			const hasBonus = sum(run.rows, (r) => r.bonusPaise ?? 0) > 0;
 			const more = {
+				bonus: hasBonus ? await this.ledgerFor('bonus', by) : '',
+				bonusPayable: hasBonus ? await this.ledgerFor('bonusPayable', by) : '',
 				employerLwf: hasLwf ? await this.ledgerFor('employerLwf', by) : '',
 				lwfPayable: hasLwf ? await this.ledgerFor('lwfPayable', by) : '',
 				gratuity: hasGratuity ? await this.ledgerFor('gratuity', by) : '',
@@ -613,6 +717,7 @@ export class PayrollService {
 					{ ledger: { id: ids.employerEsi }, debitPaise: sum(rows, (r) => r.esiEmployerPaise) },
 					{ ledger: { id: more.employerLwf }, debitPaise: sum(rows, (r) => r.lwfEmployerPaise ?? 0) },
 					{ ledger: { id: more.gratuity }, debitPaise: sum(rows, (r) => r.gratuityPaise ?? 0) },
+					{ ledger: { id: more.bonus }, debitPaise: sum(rows, (r) => r.bonusPaise ?? 0) },
 					{ ledger: { id: ids.salaryPayable }, creditPaise: sum(rows, (r) => r.netPaise) },
 					{
 						ledger: { id: ids.pfPayable },
@@ -621,6 +726,7 @@ export class PayrollService {
 					},
 					{ ledger: { id: more.lwfPayable }, creditPaise: sum(rows, lwfOf) },
 					{ ledger: { id: more.gratuityProvision }, creditPaise: sum(rows, (r) => r.gratuityPaise ?? 0) },
+					{ ledger: { id: more.bonusPayable }, creditPaise: sum(rows, (r) => r.bonusPaise ?? 0) },
 					{
 						ledger: { id: ids.esiPayable },
 						creditPaise: sum(rows, (r) => r.esiEmployeePaise + r.esiEmployerPaise),

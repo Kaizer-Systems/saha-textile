@@ -102,6 +102,7 @@ describe('an expense bill as kept', () => {
 	it('starts a draft with no number, voucher or posting', () => {
 		expect(ExpenseBillStatus.options).toEqual(['draft', 'posted', 'cancelled']);
 		expect(ExpenseBill.parse(kept)).toMatchObject({
+			supplierName: '',
 			number: null,
 			voucherId: null,
 			postedAt: null,
@@ -114,6 +115,7 @@ describe('an expense bill as kept', () => {
 		const posted = {
 			...kept,
 			billNumber: 'R-1126',
+			supplierName: 'Ghosh Properties',
 			lines: [ExpenseBillLine.parse(rent)],
 			note: '',
 			status: 'posted',
@@ -138,6 +140,7 @@ describe('an expense bill as kept', () => {
 		refused(ExpenseBill.safeParse({ ...kept, blockedTaxINR: undefined }).success);
 		refused(ExpenseBill.safeParse({ ...kept, createdAt: '' }).success);
 		refused(ExpenseBill.safeParse({ ...kept, id: '' }).success);
+		refused(ExpenseBill.safeParse({ ...kept, supplierName: null }).success);
 	});
 });
 

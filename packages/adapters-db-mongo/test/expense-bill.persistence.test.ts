@@ -120,4 +120,22 @@ describe.skipIf(!hasMongoEnv())('expense bills store (integration, rs0)', () => 
 		]);
 		expect(await repo.list({ supplierId: id('sup_nobody') })).toEqual([]);
 	});
+
+	it('lists the bills of a period by bill day, either end on its own or both, each day counted in', async () => {
+		const landlord = { supplierId: id('sup_landlord') };
+		expect(mine(await repo.list({ ...landlord, from: '2026-12-01' }))).toEqual([
+			id('rent_dec_late'),
+			id('rent_dec'),
+		]);
+		expect(mine(await repo.list({ ...landlord, to: '2026-11-30' }))).toEqual([id('rent')]);
+		expect(mine(await repo.list({ from: '2026-11-01', to: '2026-11-20' }))).toEqual([
+			id('courier'),
+			id('ca_fees'),
+			id('rent'),
+		]);
+		expect(mine(await repo.list({ ...landlord, status: 'draft', from: '2026-11-02', to: '2026-11-30' }))).toEqual(
+			[],
+		);
+		expect(mine(await repo.list({ from: '2026-12-02', to: '2026-12-31' }))).toEqual([]);
+	});
 });

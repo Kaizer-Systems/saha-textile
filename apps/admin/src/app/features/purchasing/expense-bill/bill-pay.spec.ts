@@ -338,3 +338,14 @@ describe('paying an expense bill (EB2)', () => {
 		expect(popup.dismiss).toHaveBeenCalled();
 	});
 });
+
+describe('opening Pay when the banks cannot be read (EB2)', () => {
+	it('says why and opens nothing', async () => {
+		const { fixture, page, chart, notifier, popups } = await opened();
+		chart.mockReturnValueOnce(throwError(() => refusal('payment_needs_a_bank_ledger')) as never);
+		(el(fixture, '#eb_pay_open') as HTMLButtonElement).click();
+		await settle(fixture);
+		expect(notifier.showError).toHaveBeenCalledWith('eb_problem_payment_needs_a_bank_ledger');
+		expect([popups.length, page.banks()]).toEqual([0, []]);
+	});
+});

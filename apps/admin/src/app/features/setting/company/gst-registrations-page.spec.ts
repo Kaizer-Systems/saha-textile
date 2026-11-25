@@ -220,6 +220,9 @@ describe('adding and editing a registration (G1, G2)', () => {
 		expect(page.problems()).toContain('composition_rate_needed');
 		await enter(fixture, el(fixture, '#gst_rate'), '1');
 		expect(page.draft()?.compositionRatePercent).toBe(1);
+		await enter(fixture, el(fixture, '#gst_rate'), '');
+		expect(page.draft()?.compositionRatePercent).toBeNull();
+		expect(page.problems()).toContain('composition_rate_needed');
 		await enter(fixture, el(fixture, '#gst_kind'), 'isd');
 		expect(el(fixture, '#gst_rate')).toBeNull();
 		expect(el<HTMLSelectElement>(fixture, '#gst_scheme')?.disabled).toBe(true);

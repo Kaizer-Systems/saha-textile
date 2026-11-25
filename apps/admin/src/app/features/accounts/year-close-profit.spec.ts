@@ -4,7 +4,7 @@ import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angul
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-experimental';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { YearCloseGateway } from '@core/accounts/year-close.gateway';
@@ -417,5 +417,33 @@ describe('a company’s general reserve, and picking and saving a choice (YC1)',
 		page.pickChoice('keep');
 		expect(page.picked()).toEqual(choice('keep'));
 		expect(page.dirty()).toBe(false);
+	});
+});
+
+describe('a loss year and a refused choice at year close (YC1)', () => {
+	it('shows a loss with its minus sign, and titles the card as the year’s loss with the amount unsigned', async () => {
+		const { fixture, page } = await opened(
+			year({
+				profitPlan: plan({
+					profitPaise: -2_00_000_00,
+					rows: [partner('p1', 'Arindam', 100, { sharePaise: -2_00_000_00, totalPaise: -2_00_000_00 })],
+					chargesApplied: false,
+				}),
+			}),
+		);
+		expect([page.money(-1_500_00), page.money(1_500_00)]).toEqual([`−${rupees(1_500_00)}`, rupees(1_500_00)]);
+		expect(card(fixture).querySelector('h5')?.textContent).toContain('year_close_loss_title');
+		expect(card(fixture).querySelector('h5')?.textContent).not.toContain('year_close_profit_title');
+		expect(card(fixture).textContent).toContain(`−${rupees(2_00_000_00)}`);
+	});
+
+	it('keeps what was picked and typed when saving the choice is refused, so it can be put right', async () => {
+		const confirm = vi.fn(() => throwError(() => ({ error: { message: 'year_close_closed' } })));
+		const { page, notifier } = await opened(COMPANY, { confirm });
+		page.setReserve({ reserveBasis: 'amount', reserveValue: 30_000 });
+		await page.saveChoice();
+		expect(notifier.showError).toHaveBeenCalledWith('year_close_problem_year_close_closed');
+		expect(page.picked()).toEqual(choice('to_general_reserve', { reserveBasis: 'amount', reserveValue: 30_000 }));
+		expect(page.dirty()).toBe(true);
 	});
 });

@@ -490,3 +490,20 @@ describe('the States in the add-a-version pop-up (ST1)', () => {
 		]);
 	});
 });
+
+describe('a State saved with no professional tax getting slabs again (ST1)', () => {
+	it('gives the State its open top slab first, then adds capped slabs below it', async () => {
+		const { page } = await editing(
+			version('v4', '2026-04-01', { states: [state('19', { ptFrequency: 'none', ptSlabs: [] })] }),
+		);
+		expect(page.picked()?.ptSlabs).toEqual([]);
+		page.patchState({ ptFrequency: 'monthly' });
+		page.addSlab();
+		expect(page.picked()?.ptSlabs).toEqual([{ upTo: null, tax: 0 }]);
+		page.addSlab();
+		expect(page.picked()?.ptSlabs).toEqual([
+			{ upTo: 0, tax: 0 },
+			{ upTo: null, tax: 0 },
+		]);
+	});
+});

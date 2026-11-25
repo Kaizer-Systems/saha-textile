@@ -538,3 +538,29 @@ describe('a saved expense bill (EB1)', () => {
 		expect(unread.page.status()).toBe('draft');
 	});
 });
+
+describe('a new bill whose posting is refused (EB1)', () => {
+	it('opens the draft it made, says why, and changes that draft on the next save instead of making another', async () => {
+		const post = vi.fn(() => throwError(() => refusal('voucher_problem:period_locked')));
+		const { page, gateway, notifier, navigate } = await opened({ gateway: { post } });
+		page.chooseSupplier({ value: 'sup_wb' } as never);
+		page.billNumber.set('BP-77');
+		page.locationId.set('loc_b');
+		page.lines.set([line()]);
+		await page.post();
+		expect(gateway['create']).toHaveBeenCalledTimes(1);
+		expect(notifier.showError).toHaveBeenCalledWith('accounts_problem_period_locked');
+		expect(navigate).toHaveBeenCalledWith(['/expense-bills', 'eb_9']);
+		await page.save();
+		expect(gateway['create']).toHaveBeenCalledTimes(1);
+		expect(gateway['update']).toHaveBeenCalledWith('eb_9', expect.anything(), 0);
+	});
+
+	it('stays put when a saved bill’s step is refused', async () => {
+		const post = vi.fn(() => throwError(() => refusal('expense_bill_changed')));
+		const { page, notifier, navigate } = await opened({ id: 'eb_1', gateway: { post } });
+		await page.post();
+		expect(notifier.showError).toHaveBeenCalledWith('eb_problem_expense_bill_changed');
+		expect(navigate).not.toHaveBeenCalled();
+	});
+});

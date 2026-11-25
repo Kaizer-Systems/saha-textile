@@ -388,3 +388,24 @@ describe('the year worked under both regimes (TX1)', () => {
 		expect(page.taxView()).toBeNull();
 	});
 });
+
+describe('figures never below nothing on the tax declaration (TX1)', () => {
+	it('stores no negative or unreadable rent, earlier salary or earlier TDS', async () => {
+		const { fixture, page, redraw } = await employees();
+		edit(fixture, 0).click();
+		await redraw();
+		enter(modal('#emp_rent'), '-500');
+		expect(page.declaration()?.rentMonthlyINR).toBe(0);
+		expect([
+			page.atLeastNothing('12'),
+			page.atLeastNothing(-3),
+			page.atLeastNothing('x'),
+			page.atLeastNothing(null),
+		]).toEqual([12, 0, 0, 0]);
+		edit(fixture, 1).click();
+		await redraw();
+		enter(modal('#emp_prev_salary'), '-90000');
+		enter(modal('#emp_prev_tds'), '-1000');
+		expect(page.declaration()).toMatchObject({ previousSalaryINR: 0, previousTdsINR: 0 });
+	});
+});

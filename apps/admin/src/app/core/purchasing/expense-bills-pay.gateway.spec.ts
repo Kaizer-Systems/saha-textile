@@ -51,3 +51,18 @@ describe('the expense bills gateway’s payments', () => {
 			expect(expenseBillProblemKey(code)).toEqual({ key: `eb_problem_${code}`, params: {} });
 	});
 });
+
+describe('one supplier’s expense bills', () => {
+	it('sends the supplier only when one is given', () => {
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+		const gateway = TestBed.inject(ExpenseBillsGateway);
+		const http = TestBed.inject(HttpTestingController);
+		const api = `${runtimeConfig.apiUrl}/admin/expense-bills`;
+		gateway.list({ status: 'posted', supplierId: 'sup_1' }).subscribe();
+		http.expectOne(`${api}?status=posted&supplierId=sup_1`).flush([]);
+		gateway.list({ status: 'posted', supplierId: '' }).subscribe();
+		http.expectOne(`${api}?status=posted`).flush([]);
+		http.verify();
+	});
+});

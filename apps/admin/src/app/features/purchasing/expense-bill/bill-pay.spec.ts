@@ -11,6 +11,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { LedgerGateway } from '@core/accounts/ledger.gateway';
 import { ExpenseBillsGateway } from '@core/purchasing/expense-bills.gateway';
+import { shortDate } from '@core/purchasing/purchasing-format';
 import { PurchasingGateway } from '@core/purchasing/purchasing.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -221,6 +222,9 @@ describe('an expense bill’s payments (EB2)', () => {
 		const { fixture, page, gateway } = await opened();
 		expect(gateway['paymentVouchers']).toHaveBeenCalledWith('eb_1');
 		expect(el(fixture, 'a[href="/accounts/payment-vouchers/pv_1"]')?.textContent?.trim()).toBe('PV/26-27/000011');
+		expect(fixture.nativeElement.textContent).toContain(shortDate('2026-11-22'));
+		expect(el(fixture, 'h5.mb-1')?.textContent).toContain('EB/26-27/000007');
+		expect(el(fixture, 'h5.mb-1 .status-success')?.classList.contains('ms-2')).toBe(true);
 		expect([page.owed(), page.canPay()]).toEqual([50_000, true]);
 		expect(el(fixture, '#eb_pay_open')).not.toBeNull();
 		expect(el(fixture, '#eb_cancel')).toBeNull();

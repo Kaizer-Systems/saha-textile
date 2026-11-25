@@ -18,11 +18,14 @@ import type {
 } from '@saha-textile/contracts';
 import {
 	ageBand,
+	arrearsDue,
+	BASIC_DA_HEADS,
 	bonusDue,
 	bonusOn,
 	bonusWages,
 	CODE_WAGE_HEADS,
 	codeWages,
+	daysOfMonth,
 	financialYearOf,
 	gratuityProvision,
 	monthPay,
@@ -39,12 +42,15 @@ import {
 	stateLwf,
 	statePt,
 	stateRulesFor,
+	structureOn,
 	type AttendanceRepository,
 	type AuditLogRepository,
 	type EmployeeRepository,
 	type IncomeTaxRules,
 	type LocationRepository,
+	type PayrollRules,
 	type PayrollRunRepository,
+	type SalaryStructure,
 	type TransactionManagerPort,
 } from '@saha-textile/core-domain';
 
@@ -69,6 +75,15 @@ const daysIn = (month: string) => {
 	return new Date(Date.UTC(y, m, 0)).getUTCDate();
 };
 const monthEnd = (month: string) => `${month}-${String(daysIn(month)).padStart(2, '0')}`;
+/** A structure kept in rupees, in paise. */
+const paiseOf = (s: Employee['structure']): SalaryStructure => ({
+	basic: paise(s.basic),
+	da: paise(s.da),
+	hra: paise(s.hra),
+	special: paise(s.special),
+	conveyance: paise(s.conveyance),
+	other: paise(s.other),
+});
 const mask = (value: string) => (value ? `••••${value.slice(-4)}` : '');
 
 /** The payroll ledgers, by name, and the group each sits in. */
@@ -512,6 +527,38 @@ export class PayrollService {
 		return this.runs.get(month);
 	}
 
+	/**
+	 * Brief 26 SR4: arrears due to a person in a month: each earlier month paid (approved, posted or paid) since their
+	 * first revision, on the salary in force then for the days paid, less what it paid and arrears paid for it since.
+	 */
+	private arrearsFor(e: Employee, month: string, runs: readonly PayrollRun[], rules: PayrollRules) {
+		const history = e.salaryHistory ?? [];
+		if (history.length < 2) return { paise: 0, pfWagesPaise: 0, byMonth: [] };
+		const closed = runs.filter((r) => r.status !== 'draft' && r.month < month);
+		const mine = closed.flatMap((r) =>
+			r.rows.filter((x) => x.employeeId === e.id).map((x) => ({ run: r, row: x })),
+		);
+		const dated = history.map((v) => ({ from: v.from, structure: paiseOf(v.structure) }));
+		return arrearsDue({
+			since: (history[1] as (typeof history)[number]).from,
+			months: mine.map(({ run, row }) => ({
+				month: run.month,
+				paidDays: row.paidDays,
+				daysInMonth: daysOfMonth(run.month).length,
+				paidPaise: row.grossPaise - (row.arrearsPaise ?? 0),
+				paidPfWagesPaise: row.pfWagesPaise - (row.arrearsPfWagesPaise ?? 0),
+			})),
+			dueOn: (m) => structureOn(paiseOf(e.structure), dated, monthEnd(m)),
+			pfHeads: rules.pfUsesCodeWages ? (rules.wageHeads ?? CODE_WAGE_HEADS) : BASIC_DA_HEADS,
+			arrearsPaid: (m) =>
+				mine.reduce(
+					(sum, { row }) =>
+						sum + (row.arrearsFor ?? []).filter((x) => x.month === m).reduce((s, x) => s + x.paise, 0),
+					0,
+				),
+		});
+	}
+
 	/** S5 Prepare: each person's pay from the locked attendance; a draft is worked out again, never one approved. */
 	async prepare(month: string, now = new Date()): Promise<PayrollRun> {
 		const existing = await this.runs.get(month);
@@ -534,14 +581,12 @@ export class PayrollService {
 		const rows: PayrollRow[] = attendance.rows.flatMap((a) => {
 			const e = people.get(a.employeeId);
 			if (!e) return [];
-			const structure = {
-				basic: paise(e.structure.basic),
-				da: paise(e.structure.da),
-				hra: paise(e.structure.hra),
-				special: paise(e.structure.special),
-				conveyance: paise(e.structure.conveyance),
-				other: paise(e.structure.other),
-			};
+			// Brief 26 SR2: the salary in force in the month.
+			const structure = structureOn(
+				paiseOf(e.structure),
+				e.salaryHistory?.map((v) => ({ from: v.from, structure: paiseOf(v.structure) })),
+				monthEnd(month),
+			);
 			const stateCode = stateOf.get(e.locationId) ?? e.ptState;
 			const stateRules = stateRulesFor(states, stateCode);
 			if (!stateRules) missing.add(stateCode);
@@ -603,7 +648,14 @@ export class PayrollService {
 				rules: incomeTax,
 				regime: null,
 			});
-			const pay = monthPay({ ...base, paidDays: a.paidDays, tdsPaise: tax.monthPaise });
+			// SR4: arrears of a revision dated back, for months already paid on the older salary.
+			const owed = this.arrearsFor(e, month, allRuns, rules);
+			const pay = monthPay({
+				...base,
+				paidDays: a.paidDays,
+				tdsPaise: tax.monthPaise,
+				...(owed.paise ? { arrears: { grossPaise: owed.paise, pfWagesPaise: owed.pfWagesPaise } } : {}),
+			});
 			const lwf = stateRules
 				? stateLwf(month, pay.grossPaise, stateRules)
 				: { employeePaise: 0, employerPaise: 0 };
@@ -619,7 +671,15 @@ export class PayrollService {
 					lwfEmployeePaise: lwf.employeePaise,
 					lwfEmployerPaise: lwf.employerPaise,
 					gratuityPaise: gratuityProvision(structure, gratuityApplies, schemes),
-					headsPaise: payslipHeads(structure, attendance.daysInMonth, a.paidDays, pay.grossPaise),
+					headsPaise: payslipHeads(
+						structure,
+						attendance.daysInMonth,
+						a.paidDays,
+						pay.grossPaise - owed.paise,
+					),
+					...(owed.paise
+						? { arrearsPaise: owed.paise, arrearsFor: owed.byMonth, arrearsPfWagesPaise: owed.pfWagesPaise }
+						: {}),
 					bonusWagesPaise: wages,
 					bonusPaise: bonus.provision === 'monthly' ? bonusOn(wages, bonus) : 0,
 					tax: {

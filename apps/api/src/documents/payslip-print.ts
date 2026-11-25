@@ -10,6 +10,9 @@ import type { DocumentData } from './document-data';
  * and last two characters, the bank account its last four digits.
  */
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** "Sep 2026". */
+const monthShort = (month: string) => `${MONTHS[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`;
 const money = (paise: number) =>
 	`₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const day = (iso: string | null | undefined) =>
@@ -95,6 +98,17 @@ export function payslipData(input: PayslipInput): DocumentData {
 			},
 			zero: !now && !rate,
 		};
+	});
+	// Brief 26 SR4: arrears of a revision dated back, one line with the months they are for.
+	const arrearsMonths = (row.arrearsFor ?? []).map((a) => monthShort(a.month)).join(', ');
+	earnings.push({
+		cells: {
+			head: arrearsMonths ? `Arrears (${arrearsMonths})` : 'Arrears',
+			monthlyRate: money(0),
+			thisMonth: money(row.arrearsPaise ?? 0),
+			yearToDate: money(ytd((r) => r.arrearsPaise ?? 0)),
+		},
+		zero: !row.arrearsPaise,
 	});
 	const monthlyRate = Math.round(Object.values(employee?.structure ?? {}).reduce((s, v) => s + v, 0) * 100);
 	const deduction = (head: string, pick: (r: PayrollRow) => number) => {

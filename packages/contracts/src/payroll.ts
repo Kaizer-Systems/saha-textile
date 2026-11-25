@@ -340,6 +340,13 @@ export const PayrollRow = z.object({
 	gratuityPaise: z.number().int().optional(),
 	/** S6: each head paid for the days worked, kept so a reprint never changes. */
 	headsPaise: z.record(z.string(), z.number().int()).optional(),
+	/**
+	 * Brief 26 SR4: arrears of a revision dated back, paid with this month (inside the gross), by the month they are
+	 * for, and their PF wages (inside the month's).
+	 */
+	arrearsPaise: z.number().int().nonnegative().optional(),
+	arrearsFor: z.array(z.object({ month: YearMonth, paise: z.number().int() })).optional(),
+	arrearsPfWagesPaise: z.number().int().nonnegative().optional(),
 	/** PS-D2: the payslip's number, given when the run is paid; a reprint carries the same one. */
 	payslipNo: z.string().optional(),
 	/** BN1: the month's bonus wages and the bonus provided on them (when the Act applies and it is provided monthly). */

@@ -313,6 +313,72 @@ export type MyAttendance = z.infer<typeof MyAttendance>;
 export const PayrollRunStatus = z.enum(['draft', 'approved', 'posted', 'paid']);
 export type PayrollRunStatus = z.infer<typeof PayrollRunStatus>;
 
+/** Brief 26 PE2: a line added to a payslip, in any section. */
+export const AddedPayslipLine = z.object({
+	id: z.string().min(1).max(40),
+	kind: z.enum(['taxable', 'exempt', 'reimbursement', 'arrears', 'after_tax', 'before_tax', 'tax_adjustment']),
+	name: z.string().trim().min(1).max(80),
+	paise: z.number().int().nonnegative().max(1_000_000_000),
+	/** One-off lines are never carried into the salary (PE-D3). */
+	oneOff: z.boolean().default(true),
+});
+export type AddedPayslipLine = z.infer<typeof AddedPayslipLine>;
+
+const LinePaise = z.number().int().nonnegative().max(1_000_000_000).optional();
+
+/** PE2: what was changed on a payslip: heads and deductions typed over, lines added, and why. */
+export const PayslipEditsInput = z.object({
+	heads: z
+		.object({
+			basic: LinePaise,
+			da: LinePaise,
+			hra: LinePaise,
+			special: LinePaise,
+			conveyance: LinePaise,
+			other: LinePaise,
+		})
+		.default({}),
+	added: z.array(AddedPayslipLine).max(20).default([]),
+	deductions: z
+		.object({ pf: LinePaise, esi: LinePaise, pt: LinePaise, tds: LinePaise, advance: LinePaise })
+		.default({}),
+	reasons: z.record(z.string(), z.string().trim().max(300)).default({}),
+});
+export type PayslipEditsInput = z.infer<typeof PayslipEditsInput>;
+export type PayslipEditsInputValue = z.input<typeof PayslipEditsInput>;
+
+/** PE2-PE4: a payslip check: a blocking one stops publishing, the rest warn. */
+export const PayslipCheck = z.object({
+	code: z.enum([
+		'net_below_zero',
+		'deductions_over_half',
+		'pf_below_law',
+		'esi_below_law',
+		'tds_lowered_without_reason',
+		'reason_needed',
+		'pt_off_slab',
+		'below_minimum_wage',
+	]),
+	blocking: z.boolean(),
+	line: z.string().optional(),
+});
+export type PayslipCheck = z.infer<typeof PayslipCheck>;
+
+/** PE2: the payslip as the rules made it, kept once it is edited, for "By the rules" and the publish pop-ups. */
+export const PayslipByRules = z.object({
+	headsPaise: z.record(z.string(), z.number().int()),
+	grossPaise: z.number().int(),
+	pfEmployeePaise: z.number().int(),
+	pfEmployerPaise: z.number().int(),
+	esiEmployeePaise: z.number().int(),
+	esiEmployerPaise: z.number().int(),
+	ptPaise: z.number().int(),
+	tdsPaise: z.number().int(),
+	advancePaise: z.number().int(),
+	netPaise: z.number().int(),
+});
+export type PayslipByRules = z.infer<typeof PayslipByRules>;
+
 /** S5: one person's pay for the month (paise). */
 export const PayrollRow = z.object({
 	employeeId: Id,
@@ -348,6 +414,12 @@ export const PayrollRow = z.object({
 	arrearsPaise: z.number().int().nonnegative().optional(),
 	arrearsFor: z.array(z.object({ month: YearMonth, paise: z.number().int() })).optional(),
 	arrearsPfWagesPaise: z.number().int().nonnegative().optional(),
+	/** Brief 26 PE2: an edited payslip: what changed, the payslip by the rules, its checks, and added lines' totals. */
+	edits: PayslipEditsInput.optional(),
+	byRules: PayslipByRules.optional(),
+	checks: z.array(PayslipCheck).optional(),
+	otherDeductionsPaise: z.number().int().nonnegative().optional(),
+	reimbursementsPaise: z.number().int().nonnegative().optional(),
 	/** PS-D2: the payslip's number, given when the run is paid; a reprint carries the same one. */
 	payslipNo: z.string().optional(),
 	/** BN1: the month's bonus wages and the bonus provided on them (when the Act applies and it is provided monthly). */

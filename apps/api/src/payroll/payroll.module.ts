@@ -33,6 +33,7 @@ import { PayrollSetupController } from './payroll-setup.controller';
 import { PayrollController } from './payroll.controller';
 import { PayrollService } from './payroll.service';
 import { IncrementsController, IncrementsService } from './increments';
+import { PayslipEditsController, PayslipEditsService } from './payslip-edits';
 import { SalaryRevisionsController, SalaryRevisionsService } from './salary-revisions';
 import { SalaryTemplatesService } from './salary-templates.service';
 
@@ -51,6 +52,7 @@ export function employeeStoreFor(config: Pick<AppConfig, 'payroll'>): MongoEmplo
 		AttendanceDaysController,
 		SalaryRevisionsController,
 		IncrementsController,
+		PayslipEditsController,
 	],
 	providers: [
 		PayrollService,
@@ -61,6 +63,7 @@ export function employeeStoreFor(config: Pick<AppConfig, 'payroll'>): MongoEmplo
 		AttendanceDaysService,
 		SalaryRevisionsService,
 		IncrementsService,
+		PayslipEditsService,
 		{ provide: PAYROLL_RULES_REPOSITORY, useClass: MongoPayrollRulesRepository },
 		{ provide: SALARY_TEMPLATE_REPOSITORY, useClass: MongoSalaryTemplateRepository },
 		{ provide: STATUTORY_FILING_REPOSITORY, useClass: MongoStatutoryFilingRepository },

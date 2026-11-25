@@ -67,6 +67,7 @@ import { accountsRefusal } from '../ledger/accounts-refusal';
 import { LedgerService } from '../ledger/ledger.service';
 import { DocumentNumbersService } from '../orders-setup/document-numbers.service';
 import { PayrollRulesService } from './payroll-rules.service';
+import { applyEdits } from './payslip-edits';
 
 const refuse = (code: string) => new BadRequestException(accountsRefusal(code));
 const paise = (inr: number) => Math.round(inr * 100);
@@ -101,6 +102,9 @@ export const PAYROLL_LEDGERS = {
 	gratuityProvision: { name: 'Provision for gratuity', group: 'provisions' },
 	bonus: { name: 'Bonus', group: 'indirect_expenses' },
 	bonusPayable: { name: 'Bonus payable', group: 'provisions' },
+	// Brief 26 PE2: lines added to payslips: reimbursements paid beside the wages, and other deductions held.
+	reimbursements: { name: 'Staff reimbursements', group: 'indirect_expenses' },
+	otherDeductions: { name: 'Other salary deductions payable', group: 'current_liabilities' },
 } as const;
 
 /** One person's pay so far in the financial year, from the runs before this month (TX). */
@@ -578,6 +582,8 @@ export class PayrollService {
 		const gratuityApplies = headcount >= schemes.gratuityHeadcount;
 		// BN1: the Bonus Act applies from its headcount; covered people's bonus is provided monthly when the rules say so.
 		const bonusApplies = headcount >= schemes.bonusHeadcount;
+		// Brief 26 PE2: the payslips edited on the draft being worked out again.
+		const edited = new Map((existing?.rows ?? []).map((r) => [r.employeeId, r.edits] as const));
 		const rows: PayrollRow[] = attendance.rows.flatMap((a) => {
 			const e = people.get(a.employeeId);
 			if (!e) return [];
@@ -659,44 +665,40 @@ export class PayrollService {
 			const lwf = stateRules
 				? stateLwf(month, pay.grossPaise, stateRules)
 				: { employeePaise: 0, employerPaise: 0 };
-			return [
-				{
-					employeeId: e.id,
-					name: e.name,
-					locationId: e.locationId,
-					stateCode,
-					paidDays: a.paidDays,
-					...pay,
-					netPaise: pay.netPaise - lwf.employeePaise,
-					lwfEmployeePaise: lwf.employeePaise,
-					lwfEmployerPaise: lwf.employerPaise,
-					gratuityPaise: gratuityProvision(structure, gratuityApplies, schemes),
-					headsPaise: payslipHeads(
-						structure,
-						attendance.daysInMonth,
-						a.paidDays,
-						pay.grossPaise - owed.paise,
-					),
-					...(owed.paise
-						? { arrearsPaise: owed.paise, arrearsFor: owed.byMonth, arrearsPfWagesPaise: owed.pfWagesPaise }
-						: {}),
-					bonusWagesPaise: wages,
-					bonusPaise: bonus.provision === 'monthly' ? bonusOn(wages, bonus) : 0,
-					tax: {
-						regime: tax.regime,
-						yearSalaryPaise: tax.working.salaryPaise,
-						deductionsPaise:
-							tax.working.hraExemptPaise +
-							tax.working.standardDeductionPaise +
-							tax.working.deductionsPaise +
-							tax.working.professionalTaxPaise,
-						taxablePaise: tax.working.taxablePaise,
-						yearTaxPaise: tax.working.taxPaise,
-						deductedBeforePaise: tax.deductedBeforePaise,
-						monthsLeft: tax.monthsLeft,
-					},
+			const made: PayrollRow = {
+				employeeId: e.id,
+				name: e.name,
+				locationId: e.locationId,
+				stateCode,
+				paidDays: a.paidDays,
+				...pay,
+				netPaise: pay.netPaise - lwf.employeePaise,
+				lwfEmployeePaise: lwf.employeePaise,
+				lwfEmployerPaise: lwf.employerPaise,
+				gratuityPaise: gratuityProvision(structure, gratuityApplies, schemes),
+				headsPaise: payslipHeads(structure, attendance.daysInMonth, a.paidDays, pay.grossPaise - owed.paise),
+				...(owed.paise
+					? { arrearsPaise: owed.paise, arrearsFor: owed.byMonth, arrearsPfWagesPaise: owed.pfWagesPaise }
+					: {}),
+				bonusWagesPaise: wages,
+				bonusPaise: bonus.provision === 'monthly' ? bonusOn(wages, bonus) : 0,
+				tax: {
+					regime: tax.regime,
+					yearSalaryPaise: tax.working.salaryPaise,
+					deductionsPaise:
+						tax.working.hraExemptPaise +
+						tax.working.standardDeductionPaise +
+						tax.working.deductionsPaise +
+						tax.working.professionalTaxPaise,
+					taxablePaise: tax.working.taxablePaise,
+					yearTaxPaise: tax.working.taxPaise,
+					deductedBeforePaise: tax.deductedBeforePaise,
+					monthsLeft: tax.monthsLeft,
 				},
-			];
+			};
+			// Brief 26 PE2: a draft worked out again keeps each payslip's edits, applied to the fresh figures.
+			const edits = edited.get(e.id);
+			return [edits ? applyEdits(made, edits, { e, month, rules, stateRules }) : made];
 		});
 		const charges = pfEstablishmentCharges(
 			rows.filter((r) => r.pfEmployeePaise > 0).map((r) => Math.min(r.pfWagesPaise, rules.pfWageCapPaise)),
@@ -756,6 +758,9 @@ export class PayrollService {
 			if (!principal?.permissions.includes('accounts.lock')) throw refuse('payroll_approver_only');
 			// ST1: someone works in a State the rules don't cover yet; add its set, then prepare the run again.
 			if (run.statesMissing?.length) throw refuse('payroll_state_rules_missing');
+			// Brief 26 PE-D2: an edited payslip with a blocking check is put right before publishing.
+			if (run.rows.some((r) => r.checks?.some((c) => c.blocking)))
+				throw refuse('payroll_payslip_checks_blocking');
 			return this.save(
 				{
 					...run,
@@ -793,6 +798,8 @@ export class PayrollService {
 			const hasLwf = sum(run.rows, lwfOf) > 0;
 			const hasGratuity = sum(run.rows, (r) => r.gratuityPaise ?? 0) > 0;
 			const hasBonus = sum(run.rows, (r) => r.bonusPaise ?? 0) > 0;
+			const hasReimbursements = sum(run.rows, (r) => r.reimbursementsPaise ?? 0) > 0;
+			const hasOther = sum(run.rows, (r) => r.otherDeductionsPaise ?? 0) > 0;
 			const more = {
 				bonus: hasBonus ? await this.ledgerFor('bonus', by) : '',
 				bonusPayable: hasBonus ? await this.ledgerFor('bonusPayable', by) : '',
@@ -800,6 +807,8 @@ export class PayrollService {
 				lwfPayable: hasLwf ? await this.ledgerFor('lwfPayable', by) : '',
 				gratuity: hasGratuity ? await this.ledgerFor('gratuity', by) : '',
 				gratuityProvision: hasGratuity ? await this.ledgerFor('gratuityProvision', by) : '',
+				reimbursements: hasReimbursements ? await this.ledgerFor('reimbursements', by) : '',
+				otherDeductions: hasOther ? await this.ledgerFor('otherDeductions', by) : '',
 			};
 			const byLocation = new Map<string, PayrollRow[]>();
 			for (const row of run.rows)
@@ -824,6 +833,11 @@ export class PayrollService {
 					{ ledger: { id: more.employerLwf }, debitPaise: sum(rows, (r) => r.lwfEmployerPaise ?? 0) },
 					{ ledger: { id: more.gratuity }, debitPaise: sum(rows, (r) => r.gratuityPaise ?? 0) },
 					{ ledger: { id: more.bonus }, debitPaise: sum(rows, (r) => r.bonusPaise ?? 0) },
+					{ ledger: { id: more.reimbursements }, debitPaise: sum(rows, (r) => r.reimbursementsPaise ?? 0) },
+					{
+						ledger: { id: more.otherDeductions },
+						creditPaise: sum(rows, (r) => r.otherDeductionsPaise ?? 0),
+					},
 					{ ledger: { id: ids.salaryPayable }, creditPaise: sum(rows, (r) => r.netPaise) },
 					{
 						ledger: { id: ids.pfPayable },

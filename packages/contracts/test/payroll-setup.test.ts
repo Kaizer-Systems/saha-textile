@@ -361,6 +361,25 @@ describe('salary structure templates', () => {
 		);
 		refused(StructurePreview.safeParse({ ...preview, structure: { basic: 8_000 } }).success);
 	});
+
+	it('previews from a yearly CTC when asked, with the employer’s share, the month’s CTC and whether it fits (brief 26 SR1)', () => {
+		expect(StructurePreviewInput.parse({ components: s4, payINR: 20_000 }).ctc).toBe(false);
+		expect(StructurePreviewInput.parse({ components: s4, payINR: 3_60_000, ctc: true }).ctc).toBe(true);
+		refused(StructurePreviewInput.safeParse({ components: s4, payINR: 3_60_000, ctc: 'yes' }).success);
+		const fromGross = {
+			structure: { basic: 8_000, da: 1_000, hra: 4_000, conveyance: 1_600, special: 5_400, other: 0 },
+			lines: [{ head: 'basic', inr: 8_000, treatment: 'yes' }],
+			totalINR: 20_000,
+			basicSharePct: 45,
+			shortfallINR: 0,
+		};
+		for (const key of ['employerINR', 'ctcMonthINR', 'fits'])
+			expect(StructurePreview.parse(fromGross)).not.toHaveProperty(key);
+		const fromCtc = { ...fromGross, employerINR: 1_800, ctcMonthINR: 30_000, fits: true };
+		expect(StructurePreview.parse(fromCtc)).toEqual(fromCtc);
+		expect(StructurePreview.parse({ ...fromCtc, fits: false }).fits).toBe(false);
+		refused(StructurePreview.safeParse({ ...fromCtc, fits: 'no' }).success);
+	});
 });
 
 describe('schemes and payslips', () => {
@@ -984,5 +1003,32 @@ describe('each store’s shift in the rules (brief 26 AT1)', () => {
 		accepted(PayrollRulesWrite.safeParse({ ...rules, shifts: many(200) }).success);
 		refused(PayrollRulesWrite.safeParse({ ...rules, shifts: many(201) }).success);
 		refused(PayrollRulesWrite.safeParse({ ...rules, shifts: [{ ...shift, end: '09:00' }] }).success);
+	});
+});
+
+describe('arrears paid with a month (brief 26 SR4)', () => {
+	it('keeps the arrears inside the gross, by the month they are for, and their PF wages, none until paid', () => {
+		for (const key of ['arrearsPaise', 'arrearsFor', 'arrearsPfWagesPaise'])
+			expect(PayrollRow.parse(row)).not.toHaveProperty(key);
+		const paid = {
+			...row,
+			arrearsPaise: 2_160_00,
+			arrearsFor: [
+				{ month: '2026-04', paise: 1_080_00 },
+				{ month: '2026-05', paise: 1_080_00 },
+			],
+			arrearsPfWagesPaise: 1_440_00,
+		};
+		expect(PayrollRow.parse(paid)).toMatchObject({
+			arrearsPaise: paid.arrearsPaise,
+			arrearsFor: paid.arrearsFor,
+			arrearsPfWagesPaise: paid.arrearsPfWagesPaise,
+		});
+		accepted(PayrollRow.safeParse({ ...paid, arrearsPaise: 0, arrearsFor: [], arrearsPfWagesPaise: 0 }).success);
+		refused(PayrollRow.safeParse({ ...paid, arrearsPaise: -1 }).success);
+		refused(PayrollRow.safeParse({ ...paid, arrearsPaise: 0.5 }).success);
+		refused(PayrollRow.safeParse({ ...paid, arrearsPfWagesPaise: -1 }).success);
+		refused(PayrollRow.safeParse({ ...paid, arrearsFor: [{ month: '2026-4', paise: 1 }] }).success);
+		refused(PayrollRow.safeParse({ ...paid, arrearsFor: [{ month: '2026-04', paise: 0.5 }] }).success);
 	});
 });

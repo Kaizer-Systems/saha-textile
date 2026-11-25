@@ -156,7 +156,7 @@ describe('a store’s month', () => {
 	it('shows each person’s days, paid days, leave by type, days without pay and late marks, locked or not', () => {
 		expect(AttendanceMonthGrid.parse(grid)).toEqual({
 			...grid,
-			people: [{ ...person, unmarked: 0 }],
+			people: [{ ...person, unmarked: 0, unmarkedDays: [] }],
 			offDays: [],
 			holidays: [],
 			leaveTypes: [],
@@ -179,7 +179,7 @@ describe('a store’s month', () => {
 	it('counts the days nobody marked, and shows the store’s weekly offs and holidays they fall back to (brief 26 AT2)', () => {
 		const locked = {
 			...grid,
-			people: [{ ...person, unmarked: 3 }],
+			people: [{ ...person, unmarked: 3, unmarkedDays: ['2026-11-11', '2026-11-12', '2026-11-19'] }],
 			offDays: ['2026-11-01', '2026-11-08'],
 			holidays: [{ day: '2026-11-08', name: 'Kali Puja' }],
 			leaveTypes: [
@@ -190,6 +190,9 @@ describe('a store’s month', () => {
 		expect(AttendanceMonthGrid.parse(locked)).toEqual(locked);
 		refused(AttendanceMonthGrid.safeParse({ ...locked, leaveTypes: [{ key: 'EL' }] }).success);
 		refused(AttendanceMonthGrid.safeParse({ ...locked, people: [{ ...person, unmarked: 1.5 }] }).success);
+		refused(
+			AttendanceMonthGrid.safeParse({ ...locked, people: [{ ...person, unmarkedDays: ['11 Nov'] }] }).success,
+		);
 		refused(AttendanceMonthGrid.safeParse({ ...locked, offDays: ['1 Nov'] }).success);
 		refused(AttendanceMonthGrid.safeParse({ ...locked, holidays: [{ day: '2026-11-08' }] }).success);
 	});

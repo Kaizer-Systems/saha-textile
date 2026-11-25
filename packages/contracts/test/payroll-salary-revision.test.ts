@@ -200,6 +200,17 @@ describe('a revision asked for (SR2)', () => {
 		expect(typed).toMatchObject({ templateId: 'sst_shop', typed: { hra: 5_000 }, lockCtc: false, agreed: true });
 	});
 
+	it('keeps only the heads typed over, never reading an untouched head as typed at nothing', () => {
+		const ask = { way: { kind: 'ctc', yearINR: 4_20_000 }, from: '2026-04-01', reason: 'Promotion' };
+		expect(SalaryRevisionInput.parse({ ...ask, typed: {} }).typed).toEqual({});
+		expect(SalaryRevisionInput.parse({ ...ask, typed: { hra: 6_000 } }).typed).toEqual({ hra: 6_000 });
+		expect(SalaryRevisionInput.parse({ ...ask, typed: { basic: 15_000, other: 0 } }).typed).toEqual({
+			basic: 15_000,
+			other: 0,
+		});
+		refused(SalaryRevisionInput.safeParse({ ...ask, typed: { special: 100_000_001 } }).success);
+	});
+
 	it('needs a reason of 3 to 300 letters and a day it counts from', () => {
 		const ask = { way: { kind: 'percent', pct: 8 }, from: '2026-04-01' };
 		for (const reason of ['', 'ok', ' no ']) refused(SalaryRevisionInput.safeParse({ ...ask, reason }).success);

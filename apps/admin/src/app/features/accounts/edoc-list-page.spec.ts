@@ -191,27 +191,28 @@ describe('the e-way bill list (EI13)', () => {
 		doc('4', { kind: 'eWayBill', path: 'ewbProvider', ewbNumber: '331009876546', validUntil: null }),
 	];
 
-	it('splits the same bills into active, ending within a day and ended, with the number and validity', async () => {
-		const { fixture, page } = await opened({ kind: 'eWayBill' }, bills);
+	it('asks the server for each validity tab, so every tab pages on its own bills', async () => {
+		const { fixture, page, documents } = await opened({ kind: 'eWayBill' }, bills);
 		expect(tabs(fixture).map((t) => t.textContent?.trim())).toEqual([
 			'edoc_tab_active',
 			'edoc_tab_endsSoon',
 			'edoc_tab_ended',
 			'edoc_tab_cancelled',
 		]);
-		expect(page.rows().map((r) => r.id)).toEqual(['1', '2', '4']);
+		expect(lastAsked(documents)).toMatchObject({ status: 'active', validity: 'current' });
+		// The server's rows are shown as they come.
+		expect(page.rows().map((r) => r.id)).toEqual(['1', '2', '3', '4']);
 		expect(cells(rows(fixture)[0])[3]).toBe('331009876543');
-		expect(cells(rows(fixture)[2]).slice(3, 5)).toEqual(['331009876546', '—']);
 		expect(rows(fixture)[0]?.querySelectorAll('td')).toHaveLength(7);
 		tabs(fixture)[1]?.click();
 		await settle(fixture);
-		expect(page.rows().map((r) => r.id)).toEqual(['2']);
+		expect(lastAsked(documents)).toMatchObject({ status: 'active', validity: 'endsSoon' });
 		tabs(fixture)[2]?.click();
 		await settle(fixture);
-		expect(page.rows().map((r) => r.id)).toEqual(['3']);
-		expect(cells(rows(fixture)[0])[3]).toBe('—');
+		expect(lastAsked(documents)).toMatchObject({ status: 'active', validity: 'ended' });
 		tabs(fixture)[3]?.click();
 		await settle(fixture);
-		expect(page.rows().map((r) => r.id)).toEqual(['1', '2', '3', '4']);
+		expect(lastAsked(documents)).toMatchObject({ status: 'cancelled' });
+		expect(lastAsked(documents)).not.toHaveProperty('validity');
 	});
 });

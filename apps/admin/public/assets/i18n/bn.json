@@ -11046,5 +11046,7 @@
 	"eb_problem_payment_needs_a_bank_ledger": "খাতায় এখনও পেমেন্ট দেওয়ার মতো কোনও ব্যাংক অ্যাকাউন্ট নেই। Accounts › Ledgers-এ যোগ করুন।",
 	"eb_problem_payment_choose_bank_ledger": "কোন ব্যাংক অ্যাকাউন্ট থেকে দেওয়া হল বেছে নিন।",
 	"gstr1_check_isd_bill_not_in_books": "GSTR-6A-র একটা ইনভয়েস এখনও ISD-র নামে খরচের বিল হিসেবে খাতায় ওঠেনি। Purchases › Expense bills-এ ISD-র লোকেশনের নামে তুলুন।",
-	"gstr1_check_isd_bill_tax_differs": "GSTR-6A-তে একটা ইনভয়েসের ট্যাক্স তার খরচের বিলের থেকে ₹1-এর বেশি আলাদা।"
+	"gstr1_check_isd_bill_tax_differs": "GSTR-6A-তে একটা ইনভয়েসের ট্যাক্স তার খরচের বিলের থেকে ₹1-এর বেশি আলাদা।",
+	"year_close_loss_title": "বছরের লোকসান: {{amount}}",
+	"accounts_delete_draft_body": "খসড়াটা চিরতরে মুছে যাবে; এটা থেকে কিছু পোস্ট হয়নি।"
 }

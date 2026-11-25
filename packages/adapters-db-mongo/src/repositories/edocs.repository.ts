@@ -79,6 +79,17 @@ export class MongoEDocRepository implements EDocRepository {
 			const re = new RegExp(escapeRegex(filter.q.trim()), 'i');
 			query['$or'] = [{ documentNumber: re }, { irn: re }, { ewbNumber: re }, { ackNo: re }];
 		}
+		if (filter.validity) {
+			const at = filter.at ?? new Date().toISOString();
+			const dayLater = new Date(Date.parse(at) + 86_400_000).toISOString();
+			query['$and'] = [
+				filter.validity === 'current'
+					? { $or: [{ validUntil: null }, { validUntil: { $gt: at } }] }
+					: filter.validity === 'endsSoon'
+						? { validUntil: { $gt: at, $lte: dayLater } }
+						: { validUntil: { $ne: null, $lte: at } },
+			];
+		}
 		const [docs, total] = await Promise.all([
 			EDocumentModel.find(query)
 				.sort({ documentDate: -1, _id: -1 })

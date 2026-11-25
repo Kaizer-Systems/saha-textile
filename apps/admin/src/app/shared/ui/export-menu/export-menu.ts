@@ -42,7 +42,9 @@ export function captured(
 	return out;
 }
 
-const MONEY_WORDS = /₹|amount|total|debit|credit|balance|value|paid|due|tax|price|cost|gross|net/i;
+/** Whole words only, so "Days overdue" or "Net weight" stay numbers ("Tax rate %" too: rates are not money). */
+const MONEY_WORDS =
+	/₹|\b(amount|total|debit|credit|balance|value|paid|due|tax|price|cost|gross|net)\b(?!\s*(rate|weight|%|days?|count))/i;
 
 /** Each column's kind: as given, else money for numbers under a money heading, number, date, or text. */
 export function exportColumns(source: ExportSource): ExportColumn[] {

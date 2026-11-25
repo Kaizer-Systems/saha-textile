@@ -132,7 +132,9 @@ describe('a voucher (Q3)', () => {
 		expect(el(fixture, 'a[href="/accounts/ledgers/rent"]')).not.toBeNull();
 		expect(text(fixture)).toContain('accounts_narration: Rent for November');
 		const files = [...fixture.nativeElement.querySelectorAll('a[target="_blank"]')] as HTMLAnchorElement[];
-		expect(files.map((a) => a.textContent?.trim())).toEqual(['rent-receipt.pdf', 'agreement.pdf']);
+		// A file without a link shows its name only, so a click can't open this page again.
+		expect(files.map((a) => a.textContent?.trim())).toEqual(['rent-receipt.pdf']);
+		expect(text(fixture)).toContain('agreement.pdf');
 		expect(files[0]?.getAttribute('href')).toBe('https://cdn.example.test/a1');
 		expect(el(fixture, '#voucher_reverse_open')).not.toBeNull();
 	});

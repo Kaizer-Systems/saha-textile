@@ -211,7 +211,7 @@
 							max="100"
 							step="0.5"
 							[ngModel]="current.compositionRatePercent"
-							(ngModelChange)="patch({ compositionRatePercent: $event === '' ? null : +$event })"
+							(ngModelChange)="patch({ compositionRatePercent: $event === null || $event === '' ? null : +$event })"
 						/>
 						<span class="input-group-text">%</span>
 					</div>

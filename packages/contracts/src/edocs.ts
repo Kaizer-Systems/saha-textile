@@ -105,6 +105,8 @@ export type EDocSettingsSave = z.infer<typeof EDocSettingsSave>;
 export const EDocListQuery = z.object({
 	kind: EDocKind,
 	status: z.enum(['active', 'cancelled']).optional(),
+	/** E-way bills: still valid, ending within a day, or ended, judged on the server's clock. */
+	validity: z.enum(['current', 'endsSoon', 'ended']).optional(),
 	from: z
 		.string()
 		.regex(/^\d{4}-\d{2}-\d{2}$/)

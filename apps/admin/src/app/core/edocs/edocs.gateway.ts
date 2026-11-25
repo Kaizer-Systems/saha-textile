@@ -51,13 +51,16 @@ export class EDocsGateway {
 	documents(query: {
 		kind: 'eInvoice' | 'eWayBill';
 		status?: string;
+		/** E-way bills: current, endsSoon or ended. */
+		validity?: string;
 		from?: string;
 		to?: string;
 		q?: string;
 		page: number;
 	}): Observable<{ rows: EDocument[]; total: number }> {
 		const params: Record<string, string> = { kind: query.kind, page: String(query.page) };
-		for (const key of ['status', 'from', 'to', 'q'] as const) if (query[key]) params[key] = String(query[key]);
+		for (const key of ['status', 'validity', 'from', 'to', 'q'] as const)
+			if (query[key]) params[key] = String(query[key]);
 		return this.http.get<{ rows: EDocument[]; total: number }>(this.api('/documents'), { params });
 	}
 	activity(page: number): Observable<{ rows: EDocCall[]; total: number }> {

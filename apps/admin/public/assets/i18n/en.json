@@ -11046,5 +11046,7 @@
 	"eb_problem_payment_needs_a_bank_ledger": "The books have no bank account to pay from yet. Add one in Accounts › Ledgers.",
 	"eb_problem_payment_choose_bank_ledger": "Choose which bank account it was paid from.",
 	"gstr1_check_isd_bill_not_in_books": "An invoice in GSTR-6A isn't booked as an expense bill to the ISD yet. Book it in Purchases › Expense bills, billed to the ISD's location.",
-	"gstr1_check_isd_bill_tax_differs": "An invoice's tax in GSTR-6A differs from its expense bill by more than ₹1."
+	"gstr1_check_isd_bill_tax_differs": "An invoice's tax in GSTR-6A differs from its expense bill by more than ₹1.",
+	"year_close_loss_title": "The year's loss: {{amount}}",
+	"accounts_delete_draft_body": "The draft goes for good; nothing was posted from it."
 }

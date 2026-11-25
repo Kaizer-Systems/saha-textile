@@ -12,7 +12,7 @@ import { EDOC_KEYS, EDocsGateway } from '@core/edocs/edocs.gateway';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { PeriodPicker } from '@shared/ui/period-picker/period-picker';
 
-import type { DashboardPeriodQuery, EDocument } from '@saha-textile/contracts';
+import type { DashboardPeriodQuery } from '@saha-textile/contracts';
 
 type Tab = 'active' | 'endsSoon' | 'ended' | 'cancelled';
 const DAY = 86_400_000;
@@ -75,6 +75,10 @@ export class EDocListPage {
 				this.gateway.documents({
 					kind: this.kind(),
 					status: this.tab() === 'cancelled' ? 'cancelled' : 'active',
+					// E-way bills' Active, Ends within a day and Ended are split by the server, so each pages correctly.
+					...(this.kind() === 'eWayBill' && this.tab() !== 'cancelled'
+						? { validity: this.tab() === 'active' ? 'current' : this.tab() }
+						: {}),
 					...this.range(),
 					...(this.search().trim() ? { q: this.search().trim() } : {}),
 					page: this.page(),
@@ -82,16 +86,7 @@ export class EDocListPage {
 			),
 	}));
 
-	/** E-way bills: Active, Ends within a day and Ended are the same records split by validity. */
-	readonly rows = computed(() => {
-		const rows = this.query.data()?.rows ?? [];
-		if (this.kind() !== 'eWayBill' || this.tab() === 'cancelled') return rows;
-		const now = Date.now();
-		const ends = (r: EDocument) => (r.validUntil ? new Date(r.validUntil).getTime() : Infinity);
-		if (this.tab() === 'endsSoon') return rows.filter((r) => ends(r) > now && ends(r) - now <= DAY);
-		if (this.tab() === 'ended') return rows.filter((r) => ends(r) <= now);
-		return rows.filter((r) => ends(r) > now);
-	});
+	readonly rows = computed(() => this.query.data()?.rows ?? []);
 	readonly pages = computed(() => Math.max(1, Math.ceil((this.query.data()?.total ?? 0) / 25)));
 
 	setTab(tab: Tab): void {

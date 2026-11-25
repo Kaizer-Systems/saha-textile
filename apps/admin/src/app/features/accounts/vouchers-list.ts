@@ -2,12 +2,16 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
 import { LEDGER_KEYS, LedgerGateway } from '@core/accounts/ledger.gateway';
+import { apiProblem } from '@core/purchasing/purchasing-format';
 import { AuthStore } from '@core/state/auth.store';
+import { NotificationService } from '@data-access/services/notification.service';
+import { askConfirm } from '@features/purchasing/shared/popups';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { PeriodPicker } from '@shared/ui/period-picker/period-picker';
 
@@ -27,6 +31,9 @@ const today = (): string => new Date(Date.now() + 5.5 * 3_600_000).toISOString()
 export class VouchersListPage {
 	private readonly gateway = inject(LedgerGateway);
 	private readonly auth = inject(AuthStore);
+	private readonly modals = inject(NgbModal);
+	private readonly notifier = inject(NotificationService);
+	private readonly transloco = inject(TranslocoService);
 	readonly canPost = computed(() => this.auth.permissions().includes('accounts.post'));
 	readonly kinds: VoucherKind[] = ['journal', 'receipt', 'payment', 'contra', 'opening', 'document'];
 	readonly tab = signal<'posted' | 'drafts'>('posted');
@@ -59,9 +66,21 @@ export class VouchersListPage {
 	}));
 	readonly draftTotal = (lines: { debitPaise: number }[]) => lines.reduce((sum, l) => sum + l.debitPaise, 0);
 
+	/** Delete a draft after a yes; a refusal is named, not lost. */
 	async deleteDraft(id: string): Promise<void> {
-		await firstValueFrom(this.gateway.deleteDraft(id));
-		await this.queryClient.invalidateQueries({ queryKey: LEDGER_KEYS.drafts });
+		const yes = await askConfirm(this.modals, {
+			icon: 'ri-delete-bin-line',
+			title: 'accounts_delete_draft',
+			body: 'accounts_delete_draft_body',
+			yes: 'delete',
+		});
+		if (!yes) return;
+		try {
+			await firstValueFrom(this.gateway.deleteDraft(id));
+			await this.queryClient.invalidateQueries({ queryKey: LEDGER_KEYS.drafts });
+		} catch (error) {
+			this.notifier.showError(apiProblem(error, this.transloco.translate('ord_action_failed')));
+		}
 	}
 
 	setPeriod(q: DashboardPeriodQuery): void {

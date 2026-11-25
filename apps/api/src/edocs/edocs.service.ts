@@ -318,8 +318,9 @@ export class EDocsService {
 		});
 	}
 
-	list(filter: EDocListFilter) {
-		return this.repo.list(filter);
+	/** A validity filter is judged against now. */
+	list(filter: EDocListFilter, now = new Date()) {
+		return this.repo.list(filter.validity ? { ...filter, at: now.toISOString() } : filter);
 	}
 
 	activity(page: number) {

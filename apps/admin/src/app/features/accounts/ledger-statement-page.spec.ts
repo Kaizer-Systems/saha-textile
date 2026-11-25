@@ -1,3 +1,4 @@
+import { provideHttpClient } from '@angular/common/http';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
@@ -9,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { LedgerGateway } from '@core/accounts/ledger.gateway';
 import { LocationsGateway } from '@core/locations/locations.gateway';
+import { NotificationService } from '@data-access/services/notification.service';
 import { PeriodPicker } from '@shared/ui/period-picker/period-picker';
 
 import { periodRange } from './edoc-list';
@@ -65,6 +67,8 @@ function mount(rows: unknown[], id: string | null = 'rent') {
 			provideTanStackQuery(new QueryClient({ defaultOptions: { queries: { retry: false } } })),
 			provideRouter([]),
 			{ provide: LedgerGateway, useValue: calls },
+			{ provide: NotificationService, useValue: { showError: vi.fn(), showSuccess: vi.fn() } },
+			provideHttpClient(),
 			{
 				provide: LocationsGateway,
 				useValue: {
@@ -189,37 +193,31 @@ describe('a ledger’s statement (Q2)', () => {
 		expect(fixture.nativeElement.querySelector('.pagination')).toBeNull();
 	});
 
-	it('saves the entries in view as a spreadsheet named for the ledger and the period, quotes and all', async () => {
-		const { fixture } = await opened([entry(1, { narration: 'Rent "Nov"' }), entry(2, { locationId: 'gone' })]);
-		let saved: Blob | null = null;
-		vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
-			saved = blob as Blob;
-			return 'blob:ledger';
-		});
-		const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
-		const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
-			this: HTMLAnchorElement,
-		) {
-			expect([this.href, this.download]).toEqual(['blob:ledger', 'Rent "shop"-2025-11-26-2026-11-25.csv']);
-		});
-		el<HTMLButtonElement>(fixture, '#ledger_export')?.click();
-		expect(click).toHaveBeenCalledTimes(1);
-		expect(revoke).toHaveBeenCalledWith('blob:ledger');
-		const text = await (saved as unknown as Blob).text();
-		expect(text.split('\n')).toEqual([
-			'"Date","Voucher","Particulars","Location","Debit","Credit","Balance"',
-			'"2026-11-01","JV/26-27/000001","Rent ""Nov""","Barasat","1000","0","1000"',
-			'"2026-11-01","JV/26-27/000002","Rent 2","","1000","0","2000"',
+	it('gives the Export menu every entry in view, named for the ledger and the period, with its filters', async () => {
+		const { page, fixture } = await opened([
+			entry(1, { narration: 'Rent "Nov"' }),
+			entry(2, { locationId: 'gone' }),
 		]);
+		expect(el<HTMLElement>(fixture, '#ledger_export')).toBeTruthy();
+		const source = page.exportSource();
+		expect(source?.fileName).toBe('Rent "shop"-2025-11-26-2026-11-25');
+		expect(source?.header).toHaveLength(7);
+		expect(source?.rows).toEqual([
+			['2026-11-01', 'JV/26-27/000001', 'Rent "Nov"', 'Barasat', 1000, 0, 1000],
+			['2026-11-01', 'JV/26-27/000002', 'Rent 2', '', 1000, 0, 2000],
+		]);
+		expect(source?.filters).toHaveLength(1);
+		page.locationId.set('loc_b');
+		page.search.set(' Rent ');
+		expect(page.exportSource()?.filters).toHaveLength(3);
+		expect(source?.kinds).toEqual({ 4: 'money', 5: 'money', 6: 'money' });
 	});
 
 	it('reads nothing without a ledger, and saves nothing before its statement is read', () => {
 		const { page, calls } = mount([], null);
 		expect(page.id()).toBe('');
 		expect(calls.statement).not.toHaveBeenCalled();
-		const click = vi.spyOn(HTMLAnchorElement.prototype, 'click');
-		page.export();
-		expect(click).not.toHaveBeenCalled();
+		expect(page.exportSource()).toBeNull();
 		expect([page.groupName(), page.rows(), page.locationName('loc_b')]).toEqual(['', [], '']);
 	});
 });

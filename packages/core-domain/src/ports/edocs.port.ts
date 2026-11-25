@@ -98,6 +98,9 @@ export interface EDocListFilter {
 	kind: 'eInvoice' | 'eWayBill';
 	gstin?: string;
 	status?: 'active' | 'cancelled';
+	/** By `validUntil` against `at` (an ISO time): still valid (or no end), ending within a day, or ended. */
+	validity?: 'current' | 'endsSoon' | 'ended';
+	at?: string;
 	from?: string;
 	to?: string;
 	q?: string;

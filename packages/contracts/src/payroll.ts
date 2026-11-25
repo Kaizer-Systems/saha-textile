@@ -310,6 +310,8 @@ export const BonusYearRow = z.object({
 	name: z.string(),
 	wagesPaise: z.number().int(),
 	providedPaise: z.number().int(),
+	/** Days paid in the year's runs; under 30 earns no bonus (s.8). */
+	daysWorked: z.number().nonnegative().default(0),
 	/** What the Act asks for: the rate on the wages, at least the minimum. */
 	duePaise: z.number().int(),
 });

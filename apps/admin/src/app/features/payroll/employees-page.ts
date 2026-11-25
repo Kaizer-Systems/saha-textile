@@ -185,7 +185,12 @@ export class EmployeesPage {
 	}
 
 	setAmount(field: (typeof this.declared)[number]['field'], value: number): void {
-		this.setDeclaration({ [field]: Math.max(0, Number(value) || 0) });
+		this.setDeclaration({ [field]: this.atLeastNothing(value) });
+	}
+
+	/** A typed amount never below nothing (a blank or a minus reads as 0), as the API's rupee amounts require. */
+	atLeastNothing(value: unknown): number {
+		return Math.max(0, Number(value) || 0);
 	}
 
 	proven(key: keyof TaxDeclaration['proof']): boolean {

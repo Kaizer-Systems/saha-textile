@@ -89,12 +89,15 @@ export const INCOME_TAX_2026: IncomeTaxRules = {
 
 export type AgeBand = 'below_60' | '60_to_79' | '80_plus';
 
-/** The old regime's age band: a person's age on the last day of the financial year (`2026-27` → 31 March 2027). */
+/**
+ * The old regime's age band: a person's age on the last day of the financial year (`2026-27` → 31 March 2027). In law
+ * an age is reached on the day before the birthday, so someone born on 1 April counts a year older on 31 March (the
+ * return forms' "born on or before 1 April").
+ */
 export function ageBand(dateOfBirth: string | null, year: string): AgeBand {
 	if (!dateOfBirth) return 'below_60';
-	const end = `${Number(year.slice(0, 4)) + 1}-03-31`;
 	const years =
-		Number(end.slice(0, 4)) - Number(dateOfBirth.slice(0, 4)) - (end.slice(5) < dateOfBirth.slice(5) ? 1 : 0);
+		Number(year.slice(0, 4)) + 1 - Number(dateOfBirth.slice(0, 4)) - (dateOfBirth.slice(5) > '04-01' ? 1 : 0);
 	return years >= 80 ? '80_plus' : years >= 60 ? '60_to_79' : 'below_60';
 }
 

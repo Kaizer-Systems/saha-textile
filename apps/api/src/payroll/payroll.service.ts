@@ -415,15 +415,17 @@ export class PayrollService {
 				name: row.name,
 				wagesPaise: 0,
 				providedPaise: 0,
+				daysWorked: 0,
 				duePaise: 0,
 			};
 			one.wagesPaise += row.bonusWagesPaise ?? 0;
 			one.providedPaise += row.bonusPaise ?? 0;
+			one.daysWorked += row.paidDays;
 			people.set(row.employeeId, one);
 		}
 		const rows = [...people.values()]
 			.filter((r) => r.wagesPaise > 0)
-			.map((r) => ({ ...r, duePaise: bonusDue(r.wagesPaise, bonus) }));
+			.map((r) => ({ ...r, duePaise: bonusDue(r.wagesPaise, bonus, r.daysWorked) }));
 		const paid = await this.ledger.voucherByKey(`bonusPay:${year}`);
 		return {
 			year,
@@ -444,7 +446,10 @@ export class PayrollService {
 		if (view.paidVoucherId) throw new ConflictException(accountsRefusal('bonus_paid'));
 		if (!view.rows.length) throw refuse('bonus_nothing');
 		const by = principal?.userId ?? null;
-		const runs = (await this.runs.list()).filter((r) => financialYearOf(r.month) === year);
+		// Each person's last location in the year's posted or paid runs, as the year's bonus reads them.
+		const runs = (await this.runs.list()).filter(
+			(r) => financialYearOf(r.month) === year && (r.status === 'posted' || r.status === 'paid'),
+		);
 		const lastAt = new Map<string, string>();
 		for (const run of [...runs].sort((a, b) => a.month.localeCompare(b.month)))
 			for (const row of run.rows) lastAt.set(row.employeeId, row.locationId);

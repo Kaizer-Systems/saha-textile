@@ -535,7 +535,7 @@
 									min="0"
 									[attr.aria-label]="'payroll_decl_rent' | transloco"
 									[ngModel]="declaration()?.rentMonthlyINR ?? 0"
-									(ngModelChange)="setDeclaration({ rentMonthlyINR: +$event })"
+									(ngModelChange)="setDeclaration({ rentMonthlyINR: atLeastNothing($event) })"
 								/>
 							</td>
 							<td>
@@ -593,7 +593,7 @@
 						type="number"
 						min="0"
 						[ngModel]="declaration()?.previousSalaryINR ?? 0"
-						(ngModelChange)="setDeclaration({ previousSalaryINR: +$event })"
+						(ngModelChange)="setAmount('previousSalaryINR', $event)"
 					/>
 				</div>
 				<div class="col-md-6">
@@ -609,7 +609,7 @@
 						type="number"
 						min="0"
 						[ngModel]="declaration()?.previousTdsINR ?? 0"
-						(ngModelChange)="setDeclaration({ previousTdsINR: +$event })"
+						(ngModelChange)="setAmount('previousTdsINR', $event)"
 					/>
 				</div>
 			</div>

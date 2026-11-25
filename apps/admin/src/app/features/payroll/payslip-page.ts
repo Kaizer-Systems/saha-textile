@@ -7,7 +7,8 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom, map } from 'rxjs';
 
 import { PAYROLL_KEYS, PayrollGateway } from '@core/accounts/payroll.gateway';
-import { saveBlob, shortDate } from '@core/purchasing/purchasing-format';
+import { apiProblem, saveBlob, shortDate } from '@core/purchasing/purchasing-format';
+import { NotificationService } from '@data-access/services/notification.service';
 import { rupees } from '@features/accounts/ledger-helpers';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 
@@ -27,6 +28,7 @@ export class PayslipPage {
 	private readonly gateway = inject(PayrollGateway);
 	private readonly transloco = inject(TranslocoService);
 	private readonly route = inject(ActivatedRoute);
+	private readonly notifier = inject(NotificationService);
 
 	readonly month = toSignal(this.route.paramMap.pipe(map((p) => p.get('month') ?? '')), { initialValue: '' });
 	readonly employeeId = toSignal(this.route.paramMap.pipe(map((p) => p.get('employeeId') ?? '')), {
@@ -44,8 +46,13 @@ export class PayslipPage {
 		return shortDate(date);
 	}
 
+	/** The payslip's PDF; a refusal (no active payslip format, the run gone) is named, as the run page names it. */
 	async print(): Promise<void> {
-		const blob = await firstValueFrom(this.gateway.payslipsPdf(this.month(), this.employeeId()));
-		saveBlob(`payslip-${this.month()}.pdf`, blob);
+		try {
+			const blob = await firstValueFrom(this.gateway.payslipsPdf(this.month(), this.employeeId()));
+			saveBlob(`payslip-${this.month()}.pdf`, blob);
+		} catch (error) {
+			this.notifier.showError(this.transloco.translate(`payroll_problem_${apiProblem(error, 'failed')}`));
+		}
 	}
 }

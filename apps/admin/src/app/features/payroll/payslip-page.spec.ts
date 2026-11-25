@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { PayrollGateway } from '@core/accounts/payroll.gateway';
 import { saveBlob } from '@core/purchasing/purchasing-format';
+import { NotificationService } from '@data-access/services/notification.service';
 
 import { PayslipPage } from './payslip-page';
 
@@ -74,6 +75,7 @@ function mount(route: Record<string, string>, payslip: unknown = PAYSLIP) {
 			provideTanStackQuery(new QueryClient({ defaultOptions: { queries: { retry: false } } })),
 			provideRouter([]),
 			{ provide: PayrollGateway, useValue: calls },
+			{ provide: NotificationService, useValue: { showError: vi.fn(), showSuccess: vi.fn() } },
 			{ provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap(route)) } },
 		],
 	});

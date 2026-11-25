@@ -16,10 +16,10 @@ describe('statutory bonus', () => {
 
 	it('pays the rate on the year’s wages, at least ₹100, nothing without wages', () => {
 		expect(bonusOn(84_000_00, BONUS_2026)).toBe(6_997_20);
-		expect(bonusDue(84_000_00, BONUS_2026)).toBe(6_997_20);
-		expect(bonusDue(1_000_00, BONUS_2026)).toBe(100_00);
-		expect(bonusDue(0, BONUS_2026)).toBe(0);
-		expect(bonusDue(84_000_00, { ...BONUS_2026, ratePct: 20 })).toBe(16_800_00);
+		expect(bonusDue(84_000_00, BONUS_2026, 365)).toBe(6_997_20);
+		expect(bonusDue(1_000_00, BONUS_2026, 365)).toBe(100_00);
+		expect(bonusDue(0, BONUS_2026, 365)).toBe(0);
+		expect(bonusDue(84_000_00, { ...BONUS_2026, ratePct: 20 }, 365)).toBe(16_800_00);
 	});
 });
 
@@ -62,11 +62,14 @@ describe('statutory bonus at its edges', () => {
 	it('rounds the bonus to the paisa, the minimum only once there are wages', () => {
 		expect(bonusOn(1, BONUS_2026)).toBe(0);
 		expect(bonusOn(7_000_00, BONUS_2026)).toBe(583_10);
-		expect(bonusDue(-1, BONUS_2026)).toBe(0);
-		expect(bonusDue(1, BONUS_2026)).toBe(100_00);
+		expect(bonusDue(-1, BONUS_2026, 365)).toBe(0);
+		expect(bonusDue(1, BONUS_2026, 365)).toBe(100_00);
 		// ₹1,200.48 at 8.33% is ₹100 by itself.
-		expect(bonusDue(1_200_48, BONUS_2026)).toBe(100_00);
-		expect(bonusDue(1_300_00, BONUS_2026)).toBe(108_29);
-		expect(bonusDue(1_000_00, { ...BONUS_2026, minimumPaise: 0 })).toBe(83_30);
+		expect(bonusDue(1_200_48, BONUS_2026, 365)).toBe(100_00);
+		expect(bonusDue(1_300_00, BONUS_2026, 365)).toBe(108_29);
+		expect(bonusDue(1_000_00, { ...BONUS_2026, minimumPaise: 0 }, 365)).toBe(83_30);
+		// s.8: fewer than 30 days worked in the year earns nothing, the minimum included; 30 days earns it.
+		expect(bonusDue(84_000_00, BONUS_2026, 29)).toBe(0);
+		expect(bonusDue(1_000_00, BONUS_2026, 30)).toBe(100_00);
 	});
 });

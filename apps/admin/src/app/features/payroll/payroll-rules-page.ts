@@ -545,10 +545,19 @@ export class PayrollRulesPage {
 	}
 
 	/** A slab added below the open top slab. */
+	/**
+	 * A slab is added below the open top slab; a list without one (a State saved as "none", or an older version with no
+	 * slabs) gets the open top slab first, so it can always be saved.
+	 */
 	addSlab(): void {
 		const st = this.picked();
-		if (st)
-			this.patchState({ ptSlabs: [...st.ptSlabs.slice(0, -1), { upTo: 0, tax: 0 }, ...st.ptSlabs.slice(-1)] });
+		if (!st) return;
+		const open = st.ptSlabs.at(-1)?.upTo === null;
+		this.patchState({
+			ptSlabs: open
+				? [...st.ptSlabs.slice(0, -1), { upTo: 0, tax: 0 }, ...st.ptSlabs.slice(-1)]
+				: [...st.ptSlabs, { upTo: null, tax: 0 }],
+		});
 	}
 
 	removeSlab(index: number): void {

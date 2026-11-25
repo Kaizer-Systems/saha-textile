@@ -293,12 +293,9 @@ export class PayrollReturnsService {
 				q.to < current,
 			);
 		}
-		return out.sort(
-			(a, b) =>
-				a.due.localeCompare(b.due) ||
-				a.kind.localeCompare(b.kind) ||
-				(a.stateCode ?? '').localeCompare(b.stateCode ?? ''),
-		);
+		// By due day, kind, then State: one key per return (due days are fixed-width, and no kind starts another).
+		const order = (r: StatutoryReturn) => `${r.due}|${r.kind}|${r.stateCode ?? ''}`;
+		return out.sort((a, b) => order(a).localeCompare(order(b)));
 	}
 
 	/** S7: the file a portal takes for a return; professional tax and the welfare fund for one State. */

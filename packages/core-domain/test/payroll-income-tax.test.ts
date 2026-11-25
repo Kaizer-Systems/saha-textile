@@ -94,7 +94,9 @@ describe('the rebate, age bands and surcharge', () => {
 	it('reads the age band on the year’s last day', () => {
 		expect(ageBand(null, '2026-27')).toBe('below_60');
 		expect(ageBand('1967-03-31', '2026-27')).toBe('60_to_79');
-		expect(ageBand('1967-04-01', '2026-27')).toBe('below_60');
+		// An age is reached the day before the birthday: born on 1 April 1967, 60 on 31 March 2027.
+		expect(ageBand('1967-04-01', '2026-27')).toBe('60_to_79');
+		expect(ageBand('1967-04-02', '2026-27')).toBe('below_60');
 		expect(ageBand('1945-01-01', '2026-27')).toBe('80_plus');
 	});
 });

@@ -118,7 +118,9 @@ export class PayrollGateway {
 
 	/** TX1: an employee's year of income tax worked both ways, as saved. */
 	incomeTax(employeeId: string, month: string): Observable<IncomeTaxView> {
-		return this.http.get<IncomeTaxView>(this.api(`employees/${employeeId}/income-tax/${month}`));
+		return this.http.get<IncomeTaxView>(
+			this.api(`employees/${encodeURIComponent(employeeId)}/income-tax/${month}`),
+		);
 	}
 
 	schemes(month: string): Observable<SchemeLine[]> {

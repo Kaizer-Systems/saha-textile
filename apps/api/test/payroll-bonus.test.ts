@@ -260,6 +260,7 @@ describe('the year’s bonus (BN1)', () => {
 					name: 'emp_meera',
 					wagesPaise: 14_000_00,
 					providedPaise: 2 * MONTH_BONUS,
+					daysWorked: 90,
 					duePaise: bonusOn(14_000_00, BONUS_2026),
 				},
 				{
@@ -267,6 +268,7 @@ describe('the year’s bonus (BN1)', () => {
 					name: 'emp_asha',
 					wagesPaise: 7_000_00,
 					providedPaise: 80_000,
+					daysWorked: 60,
 					duePaise: MONTH_BONUS,
 				},
 				{
@@ -274,6 +276,7 @@ describe('the year’s bonus (BN1)', () => {
 					name: 'emp_priya',
 					wagesPaise: 7_000_00,
 					providedPaise: 0,
+					daysWorked: 30,
 					duePaise: MONTH_BONUS,
 				},
 			],

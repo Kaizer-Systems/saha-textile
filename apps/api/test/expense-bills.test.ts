@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { ExpenseBill, ExpenseBillWrite } from '@saha-textile/contracts';
+import { ExpenseBill as ExpenseBillSchema, type ExpenseBill, type ExpenseBillWrite } from '@saha-textile/contracts';
 import { expenseBillPosting, expenseBillTotals } from '@saha-textile/core-domain';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -25,10 +25,35 @@ const SUPPLIERS: Record<string, unknown> = {
 	sup_mh: { id: 'sup_mh', name: 'Pune Software', gstin: '27AAACP1234A1Z5' },
 	sup_none: { id: 'sup_none', name: 'Carpenter', gstin: null },
 };
+/** Each location bills under its GSTIN: the fair stall has none, Siliguri is on composition, the old shop is closed. */
 const LOCATIONS = [
-	{ id: 'loc_bar', stateCode: '19' },
-	{ id: 'loc_pune', stateCode: '27' },
+	{ id: 'loc_bar', name: 'Barasat', active: true, stateCode: '19', gstRegistrationId: 'reg_wb' },
+	{ id: 'loc_pune', name: 'Pune', active: true, stateCode: '27', gstRegistrationId: 'reg_mh' },
+	{ id: 'loc_stall', name: 'Fair stall', active: true, stateCode: '19', gstRegistrationId: null },
+	{ id: 'loc_comp', name: 'Siliguri', active: true, stateCode: '19', gstRegistrationId: 'reg_comp' },
+	{ id: 'loc_shut', name: 'Old shop', active: false, stateCode: '19', gstRegistrationId: 'reg_wb' },
 ];
+/** Maharashtra's registration has no terms until 2099, so it is on no scheme yet. */
+const REGISTRATIONS = [
+	{ id: 'reg_wb', gstin: '19DBYPS6736R1ZZ', terms: [{ from: '2020-01-01', kind: 'regular', scheme: 'monthly' }] },
+	{ id: 'reg_mh', gstin: '27DBYPS6736R1ZZ', terms: [{ from: '2099-01-01', kind: 'regular', scheme: 'monthly' }] },
+	{
+		id: 'reg_comp',
+		gstin: '19AAACC1234A1Z5',
+		terms: [{ from: '2020-01-01', kind: 'composition', scheme: 'monthly' }],
+	},
+];
+/** Expense ledgers open to postings, and ones that aren't: closed, a control ledger, an asset. */
+const CHART = {
+	groups: [],
+	ledgers: [
+		{ id: 'led_rent', name: 'Rent', nature: 'expense', active: true, handPosting: true },
+		{ id: 'led_audit', name: 'Audit fees', nature: 'expense', active: true, handPosting: true },
+		{ id: 'led_old', name: 'Old expense', nature: 'expense', active: false, handPosting: true },
+		{ id: 'led_cogs', name: 'Cost of goods sold', nature: 'expense', active: true, handPosting: false },
+		{ id: 'led_cash', name: 'Cash', nature: 'asset', active: true, handPosting: true },
+	],
+};
 const write = (over: Partial<ExpenseBillWrite> = {}): ExpenseBillWrite => ({
 	supplierId: 'sup_wb',
 	billNumber: 'KR/1123',
@@ -48,21 +73,23 @@ const write = (over: Partial<ExpenseBillWrite> = {}): ExpenseBillWrite => ({
 	note: '',
 	...over,
 });
-const bill = (over: Partial<ExpenseBill> = {}): ExpenseBill => ({
-	...write(),
-	...expenseBillTotals(write().lines, false),
-	id: 'eb_1',
-	number: null,
-	status: 'draft',
-	interState: false,
-	voucherId: null,
-	postedAt: null,
-	postedBy: null,
-	createdAt: '2026-11-20T06:00:00.000Z',
-	updatedAt: '2026-11-20T06:00:00.000Z',
-	version: 2,
-	...over,
-});
+/** A saved bill as the contract reads it (defaults filled, the shape checked). */
+const bill = (over: Partial<ExpenseBill> = {}): ExpenseBill =>
+	ExpenseBillSchema.parse({
+		...write(),
+		...expenseBillTotals(write().lines, false),
+		id: 'eb_1',
+		number: null,
+		status: 'draft',
+		interState: false,
+		voucherId: null,
+		postedAt: null,
+		postedBy: null,
+		createdAt: '2026-11-20T06:00:00.000Z',
+		updatedAt: '2026-11-20T06:00:00.000Z',
+		version: 2,
+		...over,
+	});
 
 interface Options {
 	stored?: ExpenseBill | null;
@@ -82,7 +109,9 @@ function build(options: Options = {}) {
 	const ledger = {
 		post: vi.fn(async (_request: unknown, _context: unknown, _by: string | null) => ({ id: 'jv_9' })),
 		voucherByKey: vi.fn(async (_key: string, _context: unknown) => options.original ?? null),
+		chart: async () => CHART,
 	};
+	const company = { listRegistrations: vi.fn(async () => REGISTRATIONS) };
 	const numbers = { issue: vi.fn(async () => 'EB/26-27/000003') };
 	const transactions = {
 		withTransaction: vi.fn(async <T>(work: (context: unknown) => Promise<T>) => work({ session: 'tx' })),
@@ -91,11 +120,12 @@ function build(options: Options = {}) {
 		bills as never,
 		{ findById: async (id: string) => SUPPLIERS[id] ?? null } as never,
 		{ list: async () => LOCATIONS } as never,
+		company as never,
 		ledger as never,
 		numbers as never,
 		transactions as never,
 	);
-	return { service, bills, ledger, numbers, transactions };
+	return { service, bills, ledger, numbers, transactions, company };
 }
 
 describe('reading expense bills', () => {
@@ -160,6 +190,66 @@ describe('saving a draft', () => {
 		);
 		await expect(service.create(write({ supplierId: 'sup_none' }))).rejects.toBeInstanceOf(BadRequestException);
 		expect(bills.save).not.toHaveBeenCalled();
+	});
+});
+
+describe('the form’s choices and the bill’s checks (EB1)', () => {
+	const line = (over: Partial<ExpenseBillWrite['lines'][number]>) =>
+		({ ...write().lines[0], ...over }) as ExpenseBillWrite['lines'][number];
+
+	it('offers the active locations with the GSTIN they bill under, and the expense ledgers by name', async () => {
+		expect(await build().service.form()).toEqual({
+			locations: [
+				{ id: 'loc_bar', name: 'Barasat', stateCode: '19', gstin: '19DBYPS6736R1ZZ', composition: false },
+				{ id: 'loc_pune', name: 'Pune', stateCode: '27', gstin: '27DBYPS6736R1ZZ', composition: false },
+				{ id: 'loc_stall', name: 'Fair stall', stateCode: '19', gstin: null, composition: false },
+				{ id: 'loc_comp', name: 'Siliguri', stateCode: '19', gstin: '19AAACC1234A1Z5', composition: true },
+			],
+			ledgers: [
+				{ id: 'led_audit', name: 'Audit fees' },
+				{ id: 'led_rent', name: 'Rent' },
+			],
+		});
+	});
+
+	it('books lines only to active expense ledgers open to postings, before anything about tax', async () => {
+		const { service, bills } = build();
+		for (const expenseLedgerId of ['led_old', 'led_cogs', 'led_cash', 'led_gone'])
+			await expect(
+				service.create(write({ lines: [write().lines[0] as never, line({ expenseLedgerId })] })),
+			).rejects.toMatchObject(refusal('expense_bill_not_an_expense'));
+		// An unregistered supplier's GST on a ledger that isn't an expense: the ledger is named first.
+		await expect(
+			service.create(write({ supplierId: 'sup_none', lines: [line({ expenseLedgerId: 'led_cash' })] })),
+		).rejects.toMatchObject(refusal('expense_bill_not_an_expense'));
+		expect(bills.save).not.toHaveBeenCalled();
+	});
+
+	it('claims credit only at a location billing under a GSTIN not on composition on the bill’s day', async () => {
+		const { service } = build();
+		await expect(service.create(write({ locationId: 'loc_stall' }))).rejects.toMatchObject(
+			refusal('expense_bill_no_gstin'),
+		);
+		await expect(service.create(write({ locationId: 'loc_comp' }))).rejects.toMatchObject(
+			refusal('expense_bill_composition_no_credit'),
+		);
+		// Pune's GSTIN has no terms on the bill's day: not composition, so the West Bengal supplier's IGST is claimed.
+		expect(await service.create(write({ locationId: 'loc_pune' }), now)).toMatchObject({
+			interState: true,
+			igstINR: 3_600,
+		});
+	});
+
+	it('reads no registration for a bill claiming no credit: blocked tax, or no GST', async () => {
+		const { service, company } = build();
+		const blocked = await service.create(
+			write({ locationId: 'loc_stall', lines: [line({ credit: 'blocked', blockedClause: 'b' })] }),
+			now,
+		);
+		expect(blocked).toMatchObject({ cgstINR: 0, blockedTaxINR: 3_600, totalINR: 23_600 });
+		const untaxed = await service.create(write({ locationId: 'loc_comp', lines: [line({ gstRatePct: 0 })] }), now);
+		expect(untaxed).toMatchObject({ totalINR: 20_000 });
+		expect(company.listRegistrations).not.toHaveBeenCalled();
 	});
 });
 
@@ -309,6 +399,7 @@ describe('the expense bill routes', () => {
 		const body = write();
 		expect([
 			c.list({ status: 'posted' }),
+			c.form(),
 			c.get('eb_1'),
 			c.create(body),
 			c.update('eb_1', { ...body, version: 1 }),
@@ -318,6 +409,7 @@ describe('the expense bill routes', () => {
 			c.cancel('eb_1', { reason: 'Billed twice' }),
 		]).toEqual([
 			['list', { status: 'posted' }],
+			['form'],
 			['get', 'eb_1'],
 			['create', body],
 			['update', 'eb_1', { ...body, version: 1 }],
@@ -328,7 +420,8 @@ describe('the expense bill routes', () => {
 		]);
 		const perm = (m: keyof ExpenseBillsController) =>
 			new Reflector().get(PERMISSIONS_KEY, ExpenseBillsController.prototype[m]);
-		expect(['list', 'get', 'create', 'update', 'post', 'cancel'].map((m) => perm(m as never))).toEqual([
+		expect(['list', 'form', 'get', 'create', 'update', 'post', 'cancel'].map((m) => perm(m as never))).toEqual([
+			['accounts.index'],
 			['accounts.index'],
 			['accounts.index'],
 			['accounts.edit'],
@@ -338,10 +431,13 @@ describe('the expense bill routes', () => {
 		]);
 		expect(Reflect.getMetadata('path', ExpenseBillsController)).toBe('admin/expense-bills');
 		expect(
-			['get', 'update', 'post', 'cancel'].map((m) =>
+			['form', 'get', 'update', 'post', 'cancel'].map((m) =>
 				Reflect.getMetadata('path', ExpenseBillsController.prototype[m as keyof ExpenseBillsController]),
 			),
-		).toEqual([':id', ':id', ':id/post', ':id/cancel']);
+		).toEqual(['form', ':id', ':id', ':id/post', ':id/cancel']);
+		// The form's route is declared before ':id', so "form" is never read as a bill's id.
+		const order = Object.getOwnPropertyNames(ExpenseBillsController.prototype);
+		expect(order.indexOf('form')).toBeLessThan(order.indexOf('get'));
 		expect(Reflect.getMetadata('imports', ExpenseBillsModule)).toEqual([LedgerModule, OrdersSetupModule]);
 		expect(Reflect.getMetadata('controllers', ExpenseBillsModule)).toEqual([ExpenseBillsController]);
 		expect(Reflect.getMetadata('providers', ExpenseBillsModule)).toEqual([ExpenseBillsService]);

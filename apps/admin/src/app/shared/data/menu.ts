@@ -462,8 +462,17 @@ export const menu: IMenu[] = [
 		icon: 'ri-team-line',
 		type: 'sub',
 		level: 1,
-		acl_permission: ['accounts.index'],
+		acl_permission: ['accounts.index', 'attendance.use', 'attendance.index'],
 		children: [
+			// Brief 26 AT1: a person's own attendance, on their phone.
+			{
+				parent_id: 27,
+				title: 'payroll_my_attendance',
+				path: '/payroll/my-attendance',
+				type: 'link',
+				level: 2,
+				permission: ['attendance.use'],
+			},
 			{
 				parent_id: 27,
 				title: 'payroll_employees',
@@ -486,7 +495,7 @@ export const menu: IMenu[] = [
 				path: '/payroll/attendance',
 				type: 'link',
 				level: 2,
-				permission: ['accounts.index'],
+				permission: ['attendance.index'],
 			},
 			{
 				parent_id: 27,

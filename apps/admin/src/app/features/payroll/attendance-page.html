@@ -2,99 +2,94 @@
 	[gridClass]="'col-sm-12'"
 	[title]="'payroll_attendance'"
 >
+	@let g = grid.data();
 	<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-		<div>
-			<h5 class="mb-1">{{ 'payroll_attendance' | transloco }}</h5>
-			<small class="text-muted">
-				{{ (locked() ? 'payroll_attendance_is_locked' : 'payroll_attendance_open') | transloco: { days:
-				attendance.data()?.daysInMonth ?? '' } }}
-			</small>
-		</div>
-		<div class="d-flex align-items-center gap-2">
+		<div class="d-flex align-items-center flex-wrap gap-2">
 			<input
 				class="form-control w-auto"
 				id="att_month"
 				type="month"
-				[attr.aria-label]="'gstr2b_month' | transloco"
+				[attr.aria-label]="'att_month' | transloco"
 				[ngModel]="month()"
 				(ngModelChange)="month.set($event)"
 			/>
+			<select
+				class="form-select w-auto"
+				id="att_store"
+				[attr.aria-label]="'location' | transloco"
+				[ngModel]="locationId()"
+				(ngModelChange)="locationId.set($event)"
+			>
+				@for (s of stores.data() ?? []; track s.id) {
+				<option [value]="s.id">{{ s.name }}</option>
+				}
+			</select>
+			<small class="text-muted">{{ (locked() ? 'att_month_locked' : 'att_month_open') | transloco }}</small>
+		</div>
+		<div class="d-flex align-items-center flex-wrap gap-2">
+			<select
+				class="form-select w-auto"
+				id="att_report"
+				[attr.aria-label]="'att_report' | transloco"
+				[ngModel]="report()"
+				(ngModelChange)="report.set($event)"
+			>
+				@for (r of reports; track r) {
+				<option [value]="r">{{ 'att_report_' + r | transloco }}</option>
+				}
+			</select>
+			<app-export-menu
+				id="att_export"
+				[source]="exportSource"
+			/>
 			@if (!locked()) {
 			<button
-				*hasPermission="'accounts.edit'"
-				type="button"
-				class="btn btn-outline"
-				id="att_save"
-				[disabled]="busy()"
-				(click)="save(false)"
-			>
-				{{ 'save' | transloco }}
-			</button>
-			<button
-				*hasPermission="'accounts.edit'"
+				*hasPermission="'attendance.edit'"
 				type="button"
 				class="btn btn-theme"
 				id="att_lock"
-				[disabled]="busy()"
-				(click)="save(true)"
+				[disabled]="busy() || !g"
+				(click)="lock()"
 			>
-				{{ 'payroll_lock_attendance' | transloco }}
+				{{ 'att_lock' | transloco }}
 			</button>
 			}
 		</div>
 	</div>
-	<div class="table-responsive datatable-wrapper border-table">
-		<table class="all-package theme-table no-footer table">
+	<div class="table-responsive datatable-wrapper border-table mb-2">
+		<table class="all-package theme-table no-footer table-sticky-first table">
 			<thead>
 				<tr>
-					<th>{{ 'payroll_col_name' | transloco }}</th>
-					<th>{{ 'payroll_paid_days' | transloco }}</th>
-					<th>{{ 'payroll_leave_taken' | transloco }}</th>
-					<th>{{ 'payroll_note' | transloco }}</th>
+					<th>{{ 'att_day' | transloco }}</th>
+					@for (d of days(); track d) {
+					<th class="text-center">{{ dayNumber(d) }}</th>
+					}
 				</tr>
 			</thead>
 			<tbody>
-				@for (r of rows(); track r.employeeId; let i = $index) {
+				@for (p of g?.people ?? []; track p.employeeId) {
 				<tr>
-					<td>{{ name(r.employeeId) }}</td>
-					<td>
-						<input
-							class="form-control w-auto"
-							type="number"
-							min="0"
-							[max]="attendance.data()?.daysInMonth ?? 31"
-							[disabled]="locked()"
-							[attr.aria-label]="'payroll_paid_days' | transloco"
-							[ngModel]="r.paidDays"
-							(ngModelChange)="setRow(i, { paidDays: +$event })"
-						/>
+					<td class="text-nowrap">{{ p.name }}</td>
+					@for (d of days(); track d) { @let c = cell(p, d);
+					<td class="p-1 text-center">
+						<button
+							type="button"
+							class="btn btn-sm border-0 p-0"
+							[id]="'att_cell_' + p.employeeId + '_' + d"
+							[title]="p.name + ' · ' + d + (c.waiting ? ' · ' + ('att_waiting' | transloco) : '')"
+							(click)="openDay(dayModal, p, d)"
+						>
+							<span [class]="'badge ' + (c.tone || 'bg-light text-muted border')">
+								{{ c.letter || '·' }}
+							</span>
+						</button>
 					</td>
-					<td>
-						<input
-							class="form-control w-auto"
-							type="number"
-							min="0"
-							[disabled]="locked()"
-							[attr.aria-label]="'payroll_leave_taken' | transloco"
-							[ngModel]="r.leaveTaken"
-							(ngModelChange)="setRow(i, { leaveTaken: +$event })"
-						/>
-					</td>
-					<td>
-						<input
-							class="form-control"
-							maxlength="200"
-							[disabled]="locked()"
-							[attr.aria-label]="'payroll_note' | transloco"
-							[ngModel]="r.note"
-							(ngModelChange)="setRow(i, { note: $event })"
-						/>
-					</td>
+					}
 				</tr>
 				} @empty {
 				<tr>
 					<td
-						colspan="4"
+						[attr.colspan]="days().length + 1"
 						class="text-muted"
 					>
 						{{ 'payroll_no_employees' | transloco }}
@@ -104,4 +99,164 @@
 			</tbody>
 		</table>
 	</div>
+	<small class="text-muted d-block mb-3">{{ 'att_legend' | transloco }}</small>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'payroll_col_name' | transloco }}</th>
+					<th class="text-end">{{ 'att_paid_days' | transloco }}</th>
+					<th class="text-end">{{ 'att_leave_by_type' | transloco }}</th>
+					<th class="text-end">{{ 'att_without_pay' | transloco }}</th>
+					<th class="text-end">{{ 'att_late_marks' | transloco }}</th>
+					<th class="text-end">{{ 'att_unmarked' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (p of g?.people ?? []; track p.employeeId) {
+				<tr>
+					<td>{{ p.name }}</td>
+					<td
+						class="text-end"
+						[id]="'att_paid_' + p.employeeId"
+					>
+						{{ p.paidDays }}
+					</td>
+					<td class="text-end">{{ leaveLine(p) || '—' }}</td>
+					<td class="text-end">{{ p.withoutPay }}</td>
+					<td class="text-end">{{ p.lateMarks }}</td>
+					<td class="text-end">{{ p.unmarked }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<small class="text-muted d-block mt-2">{{ 'att_scope_note' | transloco }}</small>
+	<ng-template
+		#dayModal
+		let-modal
+	>
+		@let f = form(); @if (f) {
+		<div class="modal-header">
+			<h5 class="modal-title">{{ f.person.name }} · {{ f.day }} · {{ f.was }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			<div class="row g-3">
+				<div [class]="needsLeave(f.status) ? 'col-6' : 'col-12'">
+					<label
+						class="form-label-title"
+						for="att_day_status"
+					>
+						{{ 'att_make_it' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="att_day_status"
+						[ngModel]="f.status"
+						(ngModelChange)="setForm({ status: $event })"
+					>
+						@for (s of statuses; track s) {
+						<option [value]="s">{{ 'att_status_' + s | transloco }}</option>
+						}
+					</select>
+				</div>
+				@if (needsLeave(f.status)) {
+				<div class="col-6">
+					<label
+						class="form-label-title"
+						for="att_day_leave"
+					>
+						{{ 'att_leave_type' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="att_day_leave"
+						[ngModel]="f.leaveKey"
+						(ngModelChange)="setForm({ leaveKey: $event })"
+					>
+						@for (l of g?.leaveTypes ?? []; track l.key) {
+						<option [value]="l.key">{{ l.name }} ({{ l.key }})</option>
+						}
+					</select>
+				</div>
+				} @if (worked(f.status)) {
+				<div class="col-6">
+					<label
+						class="form-label-title"
+						for="att_day_in"
+					>
+						{{ 'att_in' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="att_day_in"
+						type="time"
+						[ngModel]="f.inTime"
+						(ngModelChange)="setForm({ inTime: $event })"
+					/>
+				</div>
+				<div class="col-6">
+					<label
+						class="form-label-title"
+						for="att_day_out"
+					>
+						{{ 'att_out' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="att_day_out"
+						type="time"
+						[ngModel]="f.outTime"
+						(ngModelChange)="setForm({ outTime: $event })"
+					/>
+				</div>
+				}
+				<div class="col-12">
+					<label
+						class="form-label-title"
+						for="att_day_reason"
+					>
+						{{ 'att_why' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="att_day_reason"
+						maxlength="300"
+						[ngModel]="f.reason"
+						(ngModelChange)="setForm({ reason: $event })"
+					/>
+				</div>
+			</div>
+			@if (mayEdit()) {
+			<small class="text-muted d-block mt-3">{{ 'att_edit_note' | transloco }}</small>
+			} @else {
+			<div class="alert alert-warning mt-3 mb-0">{{ 'att_ask_note' | transloco }}</div>
+			}
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="att_day_save"
+				[disabled]="busy() || f.reason.trim().length < 3"
+				(click)="saveDay()"
+			>
+				{{ (mayEdit() ? 'save' : 'att_ask_change') | transloco }}
+			</button>
+		</div>
+		}
+	</ng-template>
 </app-page-wrapper>

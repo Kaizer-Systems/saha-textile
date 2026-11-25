@@ -1,0 +1,257 @@
+<app-page-wrapper
+	[gridClass]="'col-md-8 col-lg-6 col-xl-4 m-auto'"
+	[title]="'payroll_my_attendance'"
+>
+	@if (me.data(); as m) {
+	<div class="mb-3">
+		<h6
+			class="mb-0"
+			id="att_me_name"
+		>
+			{{ m.name }} · {{ m.locationName }}
+		</h6>
+		<small class="text-muted">{{ dayName(m.today) }}</small>
+	</div>
+	<div class="mb-3 rounded border p-3">
+		@let d = m.day;
+		<h6
+			class="mb-1"
+			id="att_today"
+		>
+			@if (d?.inAt && d?.outAt) { {{ 'att_in_out' | transloco: { in: time(d?.inAt ?? ''), out: time(d?.outAt ??
+			'') } }} } @else if (d?.inAt) { {{ 'att_in_at' | transloco: { time: time(d?.inAt ?? '') } }} } @else { {{
+			'att_not_in' | transloco }} }
+		</h6>
+		<small class="text-muted d-block mb-2">
+			{{ 'att_shift' | transloco: { start: m.shift.start, end: m.shift.end } }} @if (d?.lateMinutes) { · {{
+			'att_late' | transloco: { n: d?.lateMinutes } }} }
+		</small>
+		@if (state() === 'done') {
+		<span class="badge bg-success">{{ 'att_status_' + d?.status | transloco }}</span>
+		} @else {
+		<button
+			type="button"
+			class="btn btn-theme w-100"
+			id="att_mark"
+			[disabled]="busy()"
+			(click)="mark()"
+		>
+			{{ (state() === 'out' ? 'att_mark_in' : 'att_mark_out') | transloco }}
+		</button>
+		}
+	</div>
+	<div class="table-responsive mb-3">
+		<table class="all-package theme-table no-footer mb-0 table">
+			<tbody>
+				<tr>
+					<td>{{ 'att_this_month' | transloco }}</td>
+					<td
+						class="text-end"
+						id="att_month_line"
+					>
+						{{ monthLine() }}
+					</td>
+				</tr>
+				<tr>
+					<td>{{ 'att_leave_left' | transloco }}</td>
+					<td
+						class="text-end"
+						id="att_leave_line"
+					>
+						{{ leaveLine() || '—' }}
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	<div class="d-grid gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			id="att_ask"
+			[disabled]="!m.leave.length"
+			(click)="openAsk(askModal)"
+		>
+			{{ 'att_ask_leave' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-outline"
+			id="att_my_days"
+			(click)="showDays.set(!showDays())"
+		>
+			{{ 'att_my_days' | transloco }}
+		</button>
+	</div>
+	@if (showDays()) {
+	<div class="table-responsive mt-3">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'date' | transloco }}</th>
+					<th>{{ 'att_day' | transloco }}</th>
+					<th>{{ 'att_in' | transloco }}</th>
+					<th>{{ 'att_out' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (day of days.data() ?? []; track day.id) {
+				<tr>
+					<td>{{ dayName(day.day) }}</td>
+					<td>
+						{{ letter(day) }} @if (day.pending) {
+						<span class="badge bg-light text-dark ms-1 border">{{ 'att_waiting' | transloco }}</span>
+						}
+					</td>
+					<td>{{ day.inAt ? time(day.inAt) : '—' }}</td>
+					<td>{{ day.outAt ? time(day.outAt) : '—' }}</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="4"
+						class="text-muted"
+					>
+						{{ 'att_no_days' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	} } @else if (problem()) {
+	<p
+		class="text-muted mb-0"
+		id="att_problem"
+	>
+		{{ 'payroll_problem_' + problem() | transloco }}
+	</p>
+	}
+	<ng-template
+		#askModal
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="modal-title">{{ 'att_ask_leave' | transloco }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		@let a = ask();
+		<div class="modal-body theme-form theme-form-2">
+			<div class="row g-3">
+				<div class="col-12">
+					<label
+						class="form-label-title"
+						for="att_ask_type"
+					>
+						{{ 'att_leave_type' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="att_ask_type"
+						[ngModel]="a.leaveKey"
+						(ngModelChange)="setAsk({ leaveKey: $event, half: false })"
+					>
+						@for (l of me.data()?.leave ?? []; track l.key) {
+						<option [value]="l.key">
+							{{ l.name }} ({{ l.key }}) · {{ l.left === null ? ('att_no_balance' | transloco) :
+							('att_left_n' | transloco: { n: l.left }) }}
+						</option>
+						}
+					</select>
+					@if (askType()?.noticeDays) {
+					<small class="text-muted">{{ 'att_notice' | transloco: { n: askType()?.noticeDays } }}</small>
+					}
+				</div>
+				<div class="col-6">
+					<label
+						class="form-label-title"
+						for="att_ask_from"
+					>
+						{{ 'att_from' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="att_ask_from"
+						type="date"
+						[ngModel]="a.from"
+						(ngModelChange)="setAsk({ from: $event })"
+					/>
+				</div>
+				<div class="col-6">
+					<label
+						class="form-label-title"
+						for="att_ask_to"
+					>
+						{{ 'att_to' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="att_ask_to"
+						type="date"
+						[min]="a.from"
+						[disabled]="a.half"
+						[ngModel]="a.to"
+						(ngModelChange)="setAsk({ to: $event })"
+					/>
+				</div>
+				@if (askType()?.halfDays) {
+				<div class="col-12">
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							id="att_ask_half"
+							type="checkbox"
+							[checked]="a.half"
+							(change)="setAsk({ half: !a.half })"
+						/>
+						<label
+							class="form-check-label"
+							for="att_ask_half"
+						>
+							{{ 'att_half_day' | transloco }}
+						</label>
+					</div>
+				</div>
+				}
+				<div class="col-12">
+					<label
+						class="form-label-title"
+						for="att_ask_reason"
+					>
+						{{ 'att_reason_optional' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="att_ask_reason"
+						maxlength="300"
+						[ngModel]="a.reason"
+						(ngModelChange)="setAsk({ reason: $event })"
+					/>
+				</div>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="att_ask_send"
+				[disabled]="busy() || !a.leaveKey"
+				(click)="sendAsk()"
+			>
+				{{ 'att_ask_send' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+</app-page-wrapper>

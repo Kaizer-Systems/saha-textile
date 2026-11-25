@@ -127,6 +127,12 @@ export class Dashboard {
 
 	readonly hasAnyWidget = computed(() => WIDGET_PERMISSIONS.some((code) => this.can(code)));
 
+	/** Brief 26 AT-D1: a shop-floor login (Staff: no dashboard, its own attendance) lands on My attendance. */
+	private readonly staffHome = effect(() => {
+		if (!this.hasAnyWidget() && this.can('attendance.use'))
+			void this.router.navigateByUrl('/payroll/my-attendance', { replaceUrl: true });
+	});
+
 	readonly revenuePeriod = signal<DashboardPeriodQuery>({ period: 'last_12_months' });
 	readonly ordersPeriod = signal<DashboardPeriodQuery>({ period: 'last_12_months' });
 	private readonly topProductPeriod = signal<DashboardPeriodQuery>({ period: 'this_year' });

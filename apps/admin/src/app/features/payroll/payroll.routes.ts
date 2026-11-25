@@ -5,6 +5,10 @@ export default [
 	{ path: '', pathMatch: 'full', redirectTo: 'runs' },
 	{ path: 'employees', loadComponent: () => import('./employees-page').then((m) => m.EmployeesPage) },
 	{ path: 'attendance', loadComponent: () => import('./attendance-page').then((m) => m.AttendancePage) },
+	{
+		path: 'my-attendance',
+		loadComponent: () => import('./my-attendance-page').then((m) => m.MyAttendancePage),
+	},
 	{ path: 'runs', loadComponent: () => import('./payroll-run-page').then((m) => m.PayrollRunPage) },
 	{
 		path: 'runs/:month/payslips/:employeeId',

@@ -4,16 +4,11 @@
 >
 	<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
 		<small class="text-muted">{{ 'pv_list_subtitle' | transloco }}</small>
-		<button
-			type="button"
-			class="btn btn-outline"
+		<app-export-menu
 			id="pv_export"
 			[disabled]="busy()"
-			(click)="exportCsv()"
-		>
-			<i class="ri-download-2-line"></i>
-			{{ 'pv_export_csv' | transloco }}
-		</button>
+			[source]="exportSource"
+		/>
 	</div>
 	<ul class="nav nav-tabs mb-3">
 		<li class="nav-item">

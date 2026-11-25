@@ -11,6 +11,7 @@ import { SELF_INVOICE_KEYS, SelfInvoicesGateway } from '@core/accounts/self-invo
 import { apiProblem, downloadCsv, openPdf } from '@core/purchasing/purchasing-format';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { ExportMenu, type CsvWriter, type ExportSource } from '@shared/ui/export-menu/export-menu';
 import { PeriodPicker } from '@shared/ui/period-picker/period-picker';
 
 import { periodRange } from './edoc-list';
@@ -26,7 +27,7 @@ const PAGE_SIZE = 25;
  */
 @Component({
 	selector: 'app-payment-vouchers-list',
-	imports: [PageWrapper, TranslocoModule, FormsModule, RouterLink, PeriodPicker],
+	imports: [PageWrapper, TranslocoModule, FormsModule, RouterLink, PeriodPicker, ExportMenu],
 	templateUrl: './payment-vouchers-list.html',
 })
 export class PaymentVouchersListPage {
@@ -103,8 +104,17 @@ export class PaymentVouchersListPage {
 		return this.run(async () => openPdf(await firstValueFrom(this.gateway.voucherPdf(voucher.id))));
 	}
 
+	/** EX1: every voucher of the chip, period and search, for the Export menu (the CSV code below writes it). */
+	readonly exportSource = async (): Promise<ExportSource | null> => {
+		let out: ExportSource | null = null;
+		await this.exportCsv((fileName, header, rows) => {
+			out = { fileName, title: this.transloco.translate('pv_list_title'), header, rows, area: 'accounts' };
+		});
+		return out;
+	};
+
 	/** Export CSV: every voucher of the chosen chip, period and search, page by page. */
-	exportCsv(): Promise<void> {
+	exportCsv(save: CsvWriter = downloadCsv): Promise<void> {
 		return this.run(async () => {
 			const rows: PaymentVoucher[] = [];
 			for (let page = 1; ; page++) {
@@ -115,7 +125,7 @@ export class PaymentVouchersListPage {
 				if (rows.length >= part.total || !part.items.length) break;
 			}
 			const t = (key: string) => this.transloco.translate(key);
-			downloadCsv(
+			save(
 				`payment-vouchers-${this.listQuery().from}-${this.listQuery().to}.csv`,
 				[
 					t('pv_number'),

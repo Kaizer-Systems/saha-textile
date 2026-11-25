@@ -27,12 +27,18 @@ test.describe('a product page', () => {
 	test('adds to the cart', async ({ page }) => {
 		await page.goto('/en/product/katan-banarasi-saree');
 		const buyBox = await buyBoxReady(page);
-		await buyBox
-			.getByRole('button', { name: /add to cart/i })
-			.first()
-			.click();
+		// The cart lives on the server and the browser keeps its answer: wait for that answer, which a busy machine
+		// gives late, before reading the browser's copy (as cart.spec.ts does).
+		const [saved] = await Promise.all([
+			page.waitForResponse((response) => response.url().includes('/cart/current/lines'), { timeout: 30_000 }),
+			buyBox
+				.getByRole('button', { name: /add to cart/i })
+				.first()
+				.click(),
+		]);
+		expect(saved.status()).toBe(201);
 		await expect
-			.poll(() => page.evaluate(() => localStorage.getItem('ngrx_cart') ?? ''))
+			.poll(() => page.evaluate(() => localStorage.getItem('ngrx_cart') ?? ''), { timeout: 15_000 })
 			.toContain('katan-banarasi-saree');
 	});
 

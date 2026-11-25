@@ -57,7 +57,7 @@ describe('due dates in tax rules', () => {
 	});
 
 	it('refuses another return or scheme, a State code that is not two digits, more than 40 States, or a month not YYYY-MM', () => {
-		refused(withDue({ returnType: 'GSTR-4' }).success);
+		refused(withDue({ returnType: 'GSTR-2' }).success);
 		refused(withDue({ scheme: 'quarterly' }).success);
 		refused(withDue({ states: ['9'] }).success);
 		refused(withDue({ states: ['WB'] }).success);

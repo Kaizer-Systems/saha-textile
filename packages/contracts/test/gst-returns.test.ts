@@ -35,8 +35,8 @@ const refused = (input: unknown) => expect(input).toBe(false);
 const firstMessage = (result: { error?: { issues: { message: string }[] } }) => result.error?.issues[0]?.message;
 
 describe('return drafts', () => {
-	it('knows GSTR-1 and GSTR-3B, prepared, checked, approved and filed', () => {
-		expect(GstDraftType.options).toEqual(['GSTR-1', 'GSTR-3B']);
+	it('knows the returns drafted from the books, prepared, checked, approved and filed', () => {
+		expect(GstDraftType.options).toEqual(['GSTR-1', 'GSTR-3B', 'IFF', 'PMT-06', 'CMP-08', 'GSTR-4', 'GSTR-6']);
 		expect(GstDraftStatus.options).toEqual(['prepared', 'checked', 'approved', 'filed']);
 		refused(GstDraftType.safeParse('GSTR-9').success);
 		refused(GstDraftStatus.safeParse('draft').success);
@@ -114,7 +114,7 @@ describe('return drafts', () => {
 describe('preparing and stepping a return', () => {
 	it('prepares a return for a registration and a month, refusing a month that is not YYYY-MM', () => {
 		const ask = { gstRegistrationId: 'gst_wb', returnType: 'GSTR-3B', month: '2026-11' };
-		expect(GstReturnPrepare.parse(ask)).toEqual({ ...ask, adjustments: [] });
+		expect(GstReturnPrepare.parse(ask)).toEqual({ ...ask, adjustments: [], pmt06Method: 'self_assessment' });
 		for (const month of ['2026-1', '2026-00', '11-2026', '2026-11-01'])
 			expect(firstMessage(GstReturnPrepare.safeParse({ ...ask, month }))).toBe('month_shape');
 		refused(GstReturnPrepare.safeParse({ ...ask, gstRegistrationId: '' }).success);
@@ -156,7 +156,7 @@ describe('the returns calendar', () => {
 		expect(GstCalendarRow.parse(annual)).toEqual(annual);
 		const filed = { ...monthly, status: 'filed', arn: 'AA191126123456X', draftId: 'gstd_1' };
 		expect(GstCalendarRow.parse(filed)).toEqual(filed);
-		refused(GstCalendarRow.safeParse({ ...monthly, returnType: 'GSTR-4' }).success);
+		refused(GstCalendarRow.safeParse({ ...monthly, returnType: 'GSTR-2' }).success);
 		refused(GstCalendarRow.safeParse({ ...monthly, status: 'late' }).success);
 		refused(GstCalendarRow.safeParse({ ...monthly, dueOn: '20-12-2026' }).success);
 		refused(GstCalendarRow.safeParse({ ...monthly, arn: undefined }).success);

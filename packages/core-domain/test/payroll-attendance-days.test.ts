@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	crossesMidnight,
 	DEFAULT_SHIFT,
 	dayLetter,
 	daysOfMonth,
@@ -128,5 +129,19 @@ describe('a store’s month: its shift, weekly offs and holidays, and each day s
 		expect(settledMonth('2026-11', { joinedOn: '2026-11-01', leftOn: '2026-11-01' }, [], calendar).days).toEqual([
 			{ day: '2026-11-01', status: 'weekly_off' },
 		]);
+	});
+});
+
+describe('a shift crossing midnight (PN-D3)', () => {
+	const night = { start: '22:00', end: '06:00', fullDayHours: 8, graceMinutes: 0 };
+	const atIst = (day: string, hhmm: string) => new Date(Date.parse(`${day}T${hhmm}:00+05:30`)).toISOString();
+
+	it('counts lateness across midnight, and the hours worked into the morning', () => {
+		expect(crossesMidnight(night)).toBe(true);
+		expect(crossesMidnight(DEFAULT_SHIFT)).toBe(false);
+		expect(lateMinutes(atIst('2026-11-25', '22:10'), night)).toBe(10);
+		expect(lateMinutes(atIst('2026-11-26', '00:30'), night)).toBe(150);
+		expect(lateMinutes(atIst('2026-11-25', '21:50'), night)).toBe(0);
+		expect(markedStatus(atIst('2026-11-25', '22:00'), atIst('2026-11-26', '06:00'), night)).toBe('present');
 	});
 });

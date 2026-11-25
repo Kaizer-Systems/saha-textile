@@ -92,8 +92,16 @@ function build(
 				},
 				{ stateCode: '27' },
 			],
-			// The far store opens at 11:00 with ten minutes' grace and closes on Tuesdays.
+			// The far store opens at 11:00 with ten minutes' grace and closes on Tuesdays; the night store runs 22:00-06:00.
 			shifts: [
+				{
+					locationId: 'loc_night',
+					start: '22:00',
+					end: '06:00',
+					fullDayHours: 8,
+					graceMinutes: 0,
+					weeklyOff: [],
+				},
 				{
 					locationId: 'loc_far',
 					start: '11:00',
@@ -124,6 +132,7 @@ function build(
 			list: async () => [
 				{ id: 'loc_gariahat', stateCode: '19', name: 'Gariahat store', active: true },
 				{ id: 'loc_far', stateCode: '27', name: 'Far store', active: true },
+				{ id: 'loc_night', stateCode: '19', name: 'Night store', active: false },
 				{ id: 'loc_shut', stateCode: '19', name: 'Shut store', active: false },
 			],
 		} as never,
@@ -666,5 +675,24 @@ describe('the store picker (AT2)', () => {
 			'loc_gariahat',
 			'loc_far',
 		]);
+	});
+});
+
+describe('a night shift (PN-D3)', () => {
+	it('closes the shift begun the evening before when marking out after midnight, and today’s when there is none open', async () => {
+		const { service } = build({ access: { maySeeAll: true } });
+		PEOPLE.push(person('owl', { locationId: 'loc_night' }));
+		try {
+			const owl = staff('owl');
+			const evening = new Date(Date.parse('2026-11-25T22:20:00+05:30'));
+			expect(await service.markIn(owl, evening)).toMatchObject({ day: '2026-11-25', lateMinutes: 20 });
+			const morning = new Date(Date.parse('2026-11-26T06:30:00+05:30'));
+			expect(await service.markOut(owl, morning)).toMatchObject({ day: '2026-11-25', status: 'present' });
+			await expect(service.markOut(owl, new Date(Date.parse('2026-11-26T07:00:00+05:30')))).rejects.toSatisfy(
+				(e) => code(e) === 'attendance_not_in',
+			);
+		} finally {
+			PEOPLE.pop();
+		}
 	});
 });

@@ -595,7 +595,8 @@ export const StoreShift = z
 		graceMinutes: z.number().int().min(0).max(240).default(0),
 		weeklyOff: z.array(z.number().int().min(0).max(6)).max(7).default([0]),
 	})
-	.refine((s) => s.start < s.end, { message: 'shift_ends_before_start' });
+	// Brief 26 PN-D3: a shift may cross midnight (22:00 to 06:00); only a shift of no length is refused.
+	.refine((s) => s.start !== s.end, { message: 'shift_ends_before_start' });
 export type StoreShift = z.infer<typeof StoreShift>;
 
 /**

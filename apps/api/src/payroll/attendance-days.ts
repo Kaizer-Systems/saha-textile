@@ -28,6 +28,7 @@ import {
 	type MyAttendance,
 } from '@saha-textile/contracts';
 import {
+	crossesMidnight,
 	daysOfMonth,
 	lateMinutes,
 	leaveLeft,
@@ -324,9 +325,14 @@ export class AttendanceDaysService {
 	/** AT1: mark out after marking in; the day's status follows the hours. */
 	async markOut(principal: AuthenticatedPrincipal | undefined, now = new Date()): Promise<AttendanceDay> {
 		const { e } = await this.me(principal);
-		const day = istDay(now);
+		const today = istDay(now);
+		const shift0 = (await this.monthContext(monthOf(today))).shift(e.locationId);
+		// Brief 26 PN-D3: after midnight, Mark out closes a shift begun the evening before when it is still open.
+		const yesterday = new Date(Date.parse(`${today}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+		const open = crossesMidnight(shift0) ? await this.days.get(e.id, yesterday) : null;
+		const day = open?.inAt && !open.outAt ? yesterday : today;
 		await this.refuseLocked(monthOf(day));
-		const saved = await this.days.get(e.id, day);
+		const saved = day === today ? await this.days.get(e.id, day) : open;
 		if (!saved?.inAt) throw refuse('attendance_not_in');
 		const at = now.toISOString();
 		const shift = (await this.monthContext(monthOf(day))).shift(e.locationId);

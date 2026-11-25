@@ -99,9 +99,17 @@ export function markedStatus(
 	return hours >= shift.fullDayHours / 2 ? 'half' : 'absent';
 }
 
-/** AT1: minutes late against the shift's start and grace (0 when on time). */
+/** A shift that crosses midnight (22:00 to 06:00). */
+export const crossesMidnight = (shift: Shift) => minutesOf(shift.end) < minutesOf(shift.start);
+
+/**
+ * AT1: minutes late against the shift's start and grace (0 when on time). For a shift crossing midnight, a mark in
+ * after midnight and before the shift's end is late by the minutes since the start the evening before.
+ */
 export function lateMinutes(inAt: string, shift: Shift): number {
-	return Math.max(0, minutesOf(istTime(inAt)) - minutesOf(shift.start) - shift.graceMinutes);
+	const at = minutesOf(istTime(inAt));
+	const since = crossesMidnight(shift) && at < minutesOf(shift.end) ? at + 24 * 60 : at;
+	return Math.max(0, since - minutesOf(shift.start) - shift.graceMinutes);
 }
 
 export interface DayRecord {

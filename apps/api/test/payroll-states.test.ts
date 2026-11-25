@@ -67,6 +67,8 @@ const employee = (id: string, name: string, locationId: string, ptState = '19'):
 	esiNumber: '',
 	ptState,
 	taxRegime: 'old',
+	dateOfBirth: null,
+	taxDeclarations: [],
 	bankAccount: '',
 	ifsc: '',
 	pfOn: false,

@@ -56,22 +56,34 @@ export class SalaryStructuresPage {
 	readonly editing = signal<SalaryTemplate | null>(null);
 	readonly name = signal('');
 	readonly examplePayINR = signal(20_000);
+	/** Brief 26 SR1: built from the yearly CTC (the employer's share inside it) or the month's gross, as before. */
+	readonly basis = signal<'gross' | 'ctc'>('gross');
+	readonly exampleCtcYearINR = signal(360_000);
 	readonly components = signal<StructureComponentWrite[]>(starterComponents());
 	readonly busy = signal(false);
 	readonly free = computed(() => freeHeads(this.components()));
 	readonly preview = injectQuery(() => ({
-		queryKey: ['payroll', 'structure-preview', this.examplePayINR(), JSON.stringify(this.components())],
+		queryKey: ['payroll', 'structure-preview', this.basis(), this.example(), JSON.stringify(this.components())],
 		queryFn: () =>
 			firstValueFrom(
-				this.gateway.previewStructure({ components: this.components(), payINR: this.examplePayINR() }),
+				this.gateway.previewStructure({
+					components: this.components(),
+					payINR: this.example(),
+					ctc: this.basis() === 'ctc',
+				}),
 			),
-		enabled: this.components().length > 0 && this.examplePayINR() >= 0,
+		enabled: this.components().length > 0 && this.example() >= 0,
 	}));
+
+	/** The example the preview splits: a month's gross, or a year's CTC. */
+	readonly example = computed(() => (this.basis() === 'ctc' ? this.exampleCtcYearINR() : this.examplePayINR()));
 
 	pick(template: SalaryTemplate | null): void {
 		this.editing.set(template);
 		this.name.set(template?.name ?? '');
 		this.examplePayINR.set(template?.examplePayINR ?? 20_000);
+		this.basis.set(template?.basis ?? 'gross');
+		this.exampleCtcYearINR.set(template?.exampleCtcYearINR ?? 360_000);
 		this.components.set(template ? template.components.map((c) => ({ ...c })) : starterComponents());
 	}
 
@@ -89,7 +101,13 @@ export class SalaryStructuresPage {
 	}
 
 	async save(): Promise<void> {
-		const write = { name: this.name(), examplePayINR: this.examplePayINR(), components: this.components() };
+		const write = {
+			name: this.name(),
+			examplePayINR: this.examplePayINR(),
+			components: this.components(),
+			// SR1: written only for a CTC structure, so one from the gross saves as before.
+			...(this.basis() === 'ctc' ? { basis: 'ctc' as const, exampleCtcYearINR: this.exampleCtcYearINR() } : {}),
+		};
 		const editing = this.editing();
 		this.busy.set(true);
 		try {

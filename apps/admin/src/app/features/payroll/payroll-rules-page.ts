@@ -811,6 +811,17 @@ export class PayrollRulesPage {
 		this.form.update((f) => (f ? { ...f, shifts: f.shifts.filter((_, i) => i !== index) } : f));
 	}
 
+	/** The stores a shift may be for: its own, and those without a shift yet (one shift per store). */
+	shiftStores(index: number): { id: string; name: string }[] {
+		const taken = new Set((this.form()?.shifts ?? []).filter((_, i) => i !== index).map((sh) => sh.locationId));
+		return (this.locations.data() ?? []).filter((l) => !taken.has(l.id));
+	}
+
+	/** A holiday without a name can't be saved: Save waits until each has one. */
+	readonly unnamedHoliday = computed(() =>
+		(this.form()?.states ?? []).some((st) => st.holidays.some((h) => !h.name.trim())),
+	);
+
 	/** A day of the week on or off for a store's shift. */
 	toggleOff(index: number, weekday: number): void {
 		const sh = this.form()?.shifts[index];

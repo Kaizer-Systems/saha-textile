@@ -981,6 +981,7 @@
 									class="form-control"
 									maxlength="80"
 									[id]="'pr_holiday_name_' + i"
+									[class.is-invalid]="!h.name.trim()"
 									[attr.aria-label]="'payroll_holiday_name' | transloco"
 									[ngModel]="h.name"
 									(ngModelChange)="setHoliday(i, { name: $event })"
@@ -1375,7 +1376,7 @@
 									[ngModel]="sh.locationId"
 									(ngModelChange)="setShift(i, { locationId: $event })"
 								>
-									@for (l of locations.data() ?? []; track l.id) {
+									@for (l of shiftStores(i); track l.id) {
 									<option [value]="l.id">{{ l.name }}</option>
 									}
 								</select>
@@ -2090,7 +2091,7 @@
 			<button
 				type="button"
 				class="btn btn-theme"
-				[disabled]="busy() || !f.from"
+				[disabled]="busy() || !f.from || unnamedHoliday()"
 				(click)="save()"
 			>
 				{{ 'payroll_rules_save' | transloco }}

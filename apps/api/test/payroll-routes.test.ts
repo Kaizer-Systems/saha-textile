@@ -34,6 +34,7 @@ import { LedgerModule } from '../src/ledger/ledger.module';
 import { OrdersSetupModule } from '../src/orders-setup/orders-setup.module';
 import { AttendanceDaysController, AttendanceDaysService } from '../src/payroll/attendance-days';
 import { IncrementsController, IncrementsService } from '../src/payroll/increments';
+import { PayrollDraftsService } from '../src/payroll/payroll-drafts';
 import { PayslipEditsController, PayslipEditsService } from '../src/payroll/payslip-edits';
 import { SalaryRevisionsController, SalaryRevisionsService } from '../src/payroll/salary-revisions';
 import { PayrollAdvancesService } from '../src/payroll/payroll-advances.service';
@@ -155,6 +156,7 @@ describe('the payroll module', () => {
 			SalaryRevisionsService,
 			IncrementsService,
 			PayslipEditsService,
+			PayrollDraftsService,
 			{ provide: PAYROLL_RULES_REPOSITORY, useClass: MongoPayrollRulesRepository },
 			{ provide: SALARY_TEMPLATE_REPOSITORY, useClass: MongoSalaryTemplateRepository },
 			{ provide: STATUTORY_FILING_REPOSITORY, useClass: MongoStatutoryFilingRepository },

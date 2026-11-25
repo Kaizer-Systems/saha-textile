@@ -116,6 +116,22 @@ describe('a QRMP quarter’s GSTR-1', () => {
 });
 
 describe('the other kinds of return', () => {
+	it('refuse GSTR-1 and GSTR-3B for a composition or ISD GSTIN, which file CMP-08 and GSTR-6 instead', async () => {
+		const { service, schemes, drafts } = build();
+		for (const [registration, returnType] of [
+			['reg_c', 'GSTR-1'],
+			['reg_c', 'GSTR-3B'],
+			['reg_isd', 'GSTR-1'],
+			['reg_isd', 'GSTR-3B'],
+		] as const)
+			await expect(
+				service.prepare(prepare(registration, returnType, '2026-12'), accountant, new Date(at)),
+			).rejects.toMatchObject({ response: { message: 'gst_return_not_for_this_gstin' } });
+		expect(
+			[schemes.quarterGstr1, schemes.quarterGstr3b, schemes.work, drafts.save].map((f) => f.mock.calls.length),
+		).toEqual([0, 0, 0, 0]);
+	});
+
 	it('are worked out by the schemes service and kept with their GSTR-6A file and ISD shares', async () => {
 		const existing = {
 			id: 'gsr_isd',

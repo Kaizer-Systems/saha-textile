@@ -12,7 +12,7 @@ import { PayrollGateway } from '@core/accounts/payroll.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 
-import { PayrollRulesPage, ruleRows, toForm, toWrite } from './payroll-rules-page';
+import { PayrollRulesPage, WAGE_HEAD_CHOICES, ruleRows, sameHeads, toForm, toWrite } from './payroll-rules-page';
 
 import type { BonusRules, PayrollRulesVersion } from '@saha-textile/contracts';
 
@@ -219,5 +219,86 @@ describe('the bonus section of the add-a-version pop-up (BN1)', () => {
 		const before = page.form();
 		page.patchBonus({ ratePct: 12 });
 		expect(page.form()).toBe(before);
+	});
+});
+
+describe('bonus under the Code on Wages, and the pay heads counted as wages (brief 26 BN2, BN-D3)', () => {
+	const codeHeads = ['basic', 'da', 'special', 'other'];
+
+	it('takes the law, wage basis and qualifying days from the version, or by the new version’s date', () => {
+		const set = version('v5', { bonus: { ...BONUS, law: 'bonus_act', wageBasis: 'basic_da', minDays: 45 } });
+		expect(toForm(set, '2026-04-01').bonus).toMatchObject({ law: 'bonus_act', wageBasis: 'basic_da', minDays: 45 });
+		expect(toForm(WITH_BONUS, '2025-11-21').bonus).toMatchObject({
+			law: 'code_on_wages',
+			wageBasis: 'code',
+			minDays: 30,
+		});
+		expect(toForm(WITH_BONUS, '2025-11-20').bonus).toMatchObject({
+			law: 'bonus_act',
+			wageBasis: 'basic_da',
+			minDays: 30,
+		});
+	});
+
+	it('takes the heads counted as wages and PF on them from the version, or the Codes’ list and no', () => {
+		expect([toForm(WITH_BONUS, '2026-04-01').wageHeads, toForm(WITH_BONUS, '2026-04-01').pfUsesCodeWages]).toEqual([
+			codeHeads,
+			false,
+		]);
+		const own = toForm(version('v6', { wageHeads: ['basic', 'hra'], pfUsesCodeWages: true }), '2026-04-01');
+		expect([own.wageHeads, own.pfUsesCodeWages]).toEqual([['basic', 'hra'], true]);
+	});
+
+	it('writes the bonus law, basis and days, and the heads and PF only when they differ from what absent means', () => {
+		const form = toForm(WITH_BONUS, '2026-04-01');
+		const plain = toWrite(form);
+		expect(plain.bonus).toMatchObject({ law: 'code_on_wages', wageBasis: 'code', minDays: 30 });
+		expect(['wageHeads' in plain, 'pfUsesCodeWages' in plain]).toEqual([false, false]);
+		expect('wageHeads' in toWrite({ ...form, wageHeads: ['other', 'special', 'da', 'basic'] })).toBe(false);
+		const own = toWrite({ ...form, wageHeads: ['hra', 'basic'], pfUsesCodeWages: true });
+		expect([own.wageHeads, own.pfUsesCodeWages]).toEqual([['basic', 'hra'], true]);
+	});
+
+	it('tells two lists of heads apart only by what they hold', () => {
+		expect(WAGE_HEAD_CHOICES).toEqual(['basic', 'da', 'special', 'other', 'hra', 'conveyance']);
+		expect(sameHeads(['da', 'basic'], ['basic', 'da'])).toBe(true);
+		expect(sameHeads(['basic'], ['basic', 'da'])).toBe(false);
+		expect(sameHeads(['basic', 'hra'], ['basic', 'da'])).toBe(false);
+	});
+
+	it('changes the law, the basis and the days, puts heads in and out, and turns PF on the Codes’ wages on and off', async () => {
+		const { page, redraw } = await editing(WITH_BONUS);
+		enter(modal('#pr_bonus_law'), 'bonus_act');
+		enter(modal('#pr_bonus_basis'), 'basic_da');
+		enter(modal('#pr_bonus_days'), '45');
+		await redraw();
+		expect(page.form()?.bonus).toMatchObject({ law: 'bonus_act', wageBasis: 'basic_da', minDays: 45 });
+		const chip = (head: string) => modal<HTMLButtonElement>(`#pr_wage_head_${head}`) as HTMLButtonElement;
+		expect([chip('basic').classList.contains('btn-theme'), chip('basic').getAttribute('aria-pressed')]).toEqual([
+			true,
+			'true',
+		]);
+		expect([chip('hra').classList.contains('btn-outline'), chip('hra').getAttribute('aria-pressed')]).toEqual([
+			true,
+			'false',
+		]);
+		chip('hra').click();
+		chip('basic').click();
+		await redraw();
+		expect(page.form()?.wageHeads).toEqual(['da', 'special', 'other', 'hra']);
+		expect(chip('hra').classList.contains('btn-theme')).toBe(true);
+		modal<HTMLInputElement>('#pr_pf_code_wages')?.click();
+		await redraw();
+		expect(page.form()?.pfUsesCodeWages).toBe(true);
+		modal<HTMLInputElement>('#pr_pf_code_wages')?.click();
+		await redraw();
+		expect(page.form()?.pfUsesCodeWages).toBe(false);
+	});
+
+	it('changes no heads and no PF before the pop-up opens', () => {
+		const { page } = mount(WITH_BONUS);
+		page.toggleWageHead('hra');
+		page.setPfUsesCodeWages(true);
+		expect(page.form()).toBeNull();
 	});
 });

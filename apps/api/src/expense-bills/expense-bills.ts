@@ -20,6 +20,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	ExpenseBillStatus,
 	ExpenseBillWrite,
+	IsoDate,
 	type ChartOfAccounts,
 	type ExpenseBill,
 	type ExpenseBillForm,
@@ -61,7 +62,12 @@ const ExpenseBillCancel = z.object({ reason: z.string().trim().min(3).max(300) }
 /** The ledgers a bill's line can be booked to: active expense ledgers open to postings (not control ledgers). */
 export const expenseLedgers = (chart: ChartOfAccounts) =>
 	chart.ledgers.filter((l) => l.active && l.nature === 'expense' && l.handPosting);
-const ExpenseBillQuery = z.object({ supplierId: z.string().optional(), status: ExpenseBillStatus.optional() });
+const ExpenseBillQuery = z.object({
+	supplierId: z.string().optional(),
+	status: ExpenseBillStatus.optional(),
+	from: IsoDate.optional(),
+	to: IsoDate.optional(),
+});
 
 /**
  * Purchases › Expense bills (brief 25 EB1, EB2; approved 2026-11-25): a registered supplier's bill for something that
@@ -140,7 +146,11 @@ export class ExpenseBillsService {
 				throw refuse('expense_bill_composition_no_credit');
 		}
 		const interState = !!supplier.gstin && supplier.gstin.slice(0, 2) !== location.stateCode;
-		return { interState, ...expenseBillTotals(write.lines, interState) };
+		return {
+			supplierName: supplier.shortName || supplier.legalName,
+			interState,
+			...expenseBillTotals(write.lines, interState),
+		};
 	}
 
 	async create(write: ExpenseBillWrite, now = new Date()): Promise<ExpenseBill> {

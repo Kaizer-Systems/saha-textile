@@ -7,10 +7,20 @@ import { sessionFrom } from '../transaction-manager';
 
 /** Expense bills in MongoDB (`expenseBills`, brief 25 EB1), saved over the version read. */
 export class MongoExpenseBillRepository implements ExpenseBillRepository {
-	async list(query: { supplierId?: string; status?: ExpenseBillStatus }): Promise<ExpenseBill[]> {
+	async list(query: {
+		supplierId?: string;
+		status?: ExpenseBillStatus;
+		from?: string;
+		to?: string;
+	}): Promise<ExpenseBill[]> {
+		const billDate = {
+			...(query.from ? { $gte: query.from } : {}),
+			...(query.to ? { $lte: query.to } : {}),
+		};
 		const docs = await ExpenseBillModel.find({
 			...(query.supplierId ? { supplierId: query.supplierId } : {}),
 			...(query.status ? { status: query.status } : {}),
+			...(query.from || query.to ? { billDate } : {}),
 		})
 			.sort({ billDate: -1, createdAt: -1 })
 			.lean<AggregateDoc[]>()

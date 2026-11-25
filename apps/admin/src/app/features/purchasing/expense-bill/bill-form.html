@@ -1,0 +1,347 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="id() ? 'eb_title' : 'eb_new'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">
+				{{ bill.data()?.number ?? ('eb_new' | transloco) }}
+				<div
+					class="d-inline-block ms-2"
+					[class.status-pending]="status() === 'draft'"
+					[class.status-success]="status() === 'posted'"
+					[class.status-danger]="status() === 'cancelled'"
+				>
+					<span>{{ 'eb_status_' + status() | transloco }}</span>
+				</div>
+			</h5>
+			<small class="text-muted">{{ 'eb_form_line' | transloco }}</small>
+		</div>
+		<div class="d-flex flex-wrap gap-2">
+			@if (!readOnly()) {
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="eb_save"
+				[disabled]="!ready()"
+				(click)="save()"
+			>
+				{{ 'eb_save_draft' | transloco }}
+			</button>
+			@if (canPost()) {
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="eb_post"
+				[disabled]="!ready()"
+				(click)="post()"
+			>
+				<i class="ri-check-line"></i>
+				{{ 'eb_post' | transloco }}
+			</button>
+			} } @if (bill.data() && status() !== 'cancelled' && canPost()) {
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="eb_cancel"
+				[disabled]="busy()"
+				(click)="cancel()"
+			>
+				{{ 'eb_cancel' | transloco }}
+			</button>
+			}
+		</div>
+	</div>
+	@if (needsSelfInvoice()) {
+	<div
+		class="alert alert-warning d-flex align-items-center gap-2"
+		id="eb_self_invoice"
+	>
+		<i class="ri-error-warning-line"></i>
+		<span>
+			{{ 'eb_use_self_invoice' | transloco }}
+			<a
+				class="text-decoration-underline ms-1"
+				routerLink="/accounts/self-invoices/new"
+			>
+				{{ 'eb_open_self_invoice' | transloco }}
+			</a>
+		</span>
+	</div>
+	}
+	<div class="card">
+		<div class="card-body theme-form theme-form-2">
+			<div class="row g-3 mb-3">
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="eb_supplier"
+					>
+						{{ 'eb_supplier' | transloco }}
+					</label>
+					<select2
+						class="custom-select"
+						id="eb_supplier"
+						[data]="supplierOptions()"
+						[value]="supplierId()"
+						[disabled]="readOnly()"
+						[customSearchEnabled]="true"
+						[placeholder]="'pick_supplier' | transloco"
+						noResultMessage="{{ 'no_data_found' | transloco }}"
+						(search)="searchSuppliers($event)"
+						(update)="chooseSupplier($event)"
+					/>
+					@if (supplier(); as chosen) {
+					<p class="help-text">
+						{{ chosen.gstin ?? ('supplier_kind_unregistered' | transloco) }} · {{ chosen.stateName }}
+					</p>
+					}
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="eb_bill_no"
+					>
+						{{ 'eb_bill_no_and_date' | transloco }}
+					</label>
+					<div class="input-group">
+						<input
+							class="form-control"
+							id="eb_bill_no"
+							maxlength="40"
+							autocomplete="off"
+							[placeholder]="'eb_their_bill' | transloco"
+							[disabled]="readOnly()"
+							[ngModel]="billNumber()"
+							(ngModelChange)="billNumber.set($event)"
+						/>
+						<input
+							class="form-control"
+							id="eb_bill_date"
+							type="date"
+							[max]="today"
+							[attr.aria-label]="'eb_bill_date' | transloco"
+							[disabled]="readOnly()"
+							[ngModel]="billDate()"
+							(ngModelChange)="billDate.set($event)"
+						/>
+					</div>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="eb_location"
+					>
+						{{ 'eb_billed_to' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="eb_location"
+						[disabled]="readOnly()"
+						[ngModel]="locationId()"
+						(ngModelChange)="locationId.set($event)"
+					>
+						<option value="">—</option>
+						@for (l of options.data()?.locations ?? []; track l.id) {
+						<option [value]="l.id">{{ l.name }} · {{ l.gstin ?? ('eb_no_gstin' | transloco) }}</option>
+						}
+					</select>
+					@if (composition()) {
+					<p class="help-text">{{ 'eb_composition_help' | transloco }}</p>
+					}
+				</div>
+			</div>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'eb_expense' | transloco }}</th>
+							<th>{{ 'eb_what' | transloco }}</th>
+							<th>SAC</th>
+							<th class="text-end">{{ 'eb_taxable' | transloco }}</th>
+							<th>{{ 'eb_gst' | transloco }}</th>
+							<th>{{ 'eb_credit' | transloco }}</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (line of lines(); track $index; let i = $index) {
+						<tr>
+							<td>
+								<select
+									class="form-select"
+									[id]="'eb_ledger_' + i"
+									[attr.aria-label]="'eb_expense' | transloco"
+									[disabled]="readOnly()"
+									[ngModel]="line.expenseLedgerId"
+									(ngModelChange)="setLine(i, { expenseLedgerId: $event })"
+								>
+									<option value="">—</option>
+									@for (l of options.data()?.ledgers ?? []; track l.id) {
+									<option [value]="l.id">{{ l.name }}</option>
+									}
+								</select>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									maxlength="200"
+									[id]="'eb_what_' + i"
+									[attr.aria-label]="'eb_what' | transloco"
+									[disabled]="readOnly()"
+									[ngModel]="line.what"
+									(ngModelChange)="setLine(i, { what: $event })"
+								/>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									inputmode="numeric"
+									maxlength="8"
+									aria-label="SAC"
+									[id]="'eb_sac_' + i"
+									[disabled]="readOnly()"
+									[ngModel]="line.sac"
+									(ngModelChange)="setLine(i, { sac: $event })"
+								/>
+							</td>
+							<td>
+								<div class="input-group">
+									<span class="input-group-text">₹</span>
+									<input
+										class="form-control text-end"
+										inputmode="decimal"
+										autocomplete="off"
+										[id]="'eb_taxable_' + i"
+										[attr.aria-label]="'eb_taxable' | transloco"
+										[disabled]="readOnly()"
+										[ngModel]="line.taxable"
+										(ngModelChange)="setLine(i, { taxable: $event })"
+									/>
+								</div>
+							</td>
+							<td>
+								<select
+									class="form-select"
+									[id]="'eb_rate_' + i"
+									[attr.aria-label]="'eb_gst' | transloco"
+									[disabled]="readOnly()"
+									[ngModel]="line.gstRatePct"
+									(ngModelChange)="setLine(i, { gstRatePct: +$event })"
+								>
+									@for (rate of rates; track rate) {
+									<option [ngValue]="rate">{{ rate }}%</option>
+									}
+								</select>
+								<small class="text-muted text-nowrap">{{ lineTax(i) }}</small>
+							</td>
+							<td>
+								<select
+									class="form-select"
+									[id]="'eb_credit_' + i"
+									[attr.aria-label]="'eb_credit' | transloco"
+									[disabled]="readOnly() || composition()"
+									[ngModel]="composition() ? 'blocked' : line.credit"
+									(ngModelChange)="setLine(i, { credit: $event })"
+								>
+									<option value="claim">{{ 'eb_credit_claim' | transloco }}</option>
+									<option value="blocked">{{ 'eb_credit_blocked' | transloco }}</option>
+								</select>
+								@if (composition() || line.credit === 'blocked') {
+								<div class="input-group input-group-sm mt-1">
+									<span class="input-group-text">s.17(5)</span>
+									<input
+										class="form-control"
+										maxlength="10"
+										[id]="'eb_clause_' + i"
+										[attr.aria-label]="'eb_blocked_clause' | transloco"
+										[placeholder]="'eb_blocked_clause' | transloco"
+										[disabled]="readOnly()"
+										[ngModel]="line.blockedClause"
+										(ngModelChange)="setLine(i, { blockedClause: $event })"
+									/>
+								</div>
+								}
+							</td>
+							<td>
+								@if (!readOnly() && lines().length > 1) {
+								<ul id="actions">
+									<li>
+										<a
+											href="javascript:void(0)"
+											class="delete"
+											[title]="'eb_remove_line' | transloco"
+											[attr.aria-label]="'eb_remove_line' | transloco"
+											(click)="removeLine(i)"
+										>
+											<i class="ri-delete-bin-line"></i>
+										</a>
+									</li>
+								</ul>
+								}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			@if (!readOnly()) {
+			<button
+				type="button"
+				class="btn btn-outline btn-sm mt-2"
+				id="eb_add_line"
+				(click)="addLine()"
+			>
+				<i class="ri-add-line"></i>
+				{{ 'eb_add_line' | transloco }}
+			</button>
+			}
+			<div class="row g-3 small mt-3">
+				<div class="col-md-2 col-6">
+					<span class="text-muted d-block">{{ 'eb_taxable' | transloco }}</span>
+					<b>{{ inr(totals().taxableINR) }}</b>
+				</div>
+				@if (interState()) {
+				<div class="col-md-2 col-6">
+					<span class="text-muted d-block">{{ 'eb_input_igst' | transloco }}</span>
+					<b>{{ inr(totals().igstINR) }}</b>
+				</div>
+				} @else {
+				<div class="col-md-2 col-6">
+					<span class="text-muted d-block">{{ 'eb_input_cgst' | transloco }}</span>
+					<b>{{ inr(totals().cgstINR) }}</b>
+				</div>
+				<div class="col-md-2 col-6">
+					<span class="text-muted d-block">{{ 'eb_input_sgst' | transloco }}</span>
+					<b>{{ inr(totals().sgstINR) }}</b>
+				</div>
+				}
+				<div class="col-md-2 col-6">
+					<span class="text-muted d-block">{{ 'eb_blocked_tax' | transloco }}</span>
+					<b>{{ inr(totals().blockedTaxINR) }}</b>
+				</div>
+				<div class="col-md-3 col-6">
+					<span class="text-muted d-block">{{ 'eb_owed' | transloco }}</span>
+					<b id="eb_total">{{ inr(totals().totalINR) }}</b>
+				</div>
+			</div>
+			<p class="help-text mt-2">{{ 'eb_posting_help' | transloco }}</p>
+			<div class="mt-3">
+				<label
+					class="form-label-title"
+					for="eb_note"
+				>
+					{{ 'eb_note' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="eb_note"
+					maxlength="500"
+					[disabled]="readOnly()"
+					[ngModel]="note()"
+					(ngModelChange)="note.set($event)"
+				/>
+			</div>
+		</div>
+	</div>
+</app-page-wrapper>

@@ -168,6 +168,10 @@ export const content: Routes = [
 		loadChildren: () => import('@features/purchasing/purchase-entry/entry.routes'),
 	},
 	{
+		path: 'expense-bills',
+		loadChildren: () => import('@features/purchasing/expense-bill/expense-bill.routes'),
+	},
+	{
 		path: 'stock-counts',
 		loadChildren: () => import('@features/stock/count.routes'),
 	},

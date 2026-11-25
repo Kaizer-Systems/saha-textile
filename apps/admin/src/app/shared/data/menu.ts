@@ -528,6 +528,7 @@ export const menu: IMenu[] = [
 			'purchase_return.index',
 			'supplier.index',
 			'stock.opening',
+			'accounts.index',
 		],
 		children: [
 			{
@@ -545,6 +546,14 @@ export const menu: IMenu[] = [
 				type: 'link',
 				level: 2,
 				permission: ['purchase.index'],
+			},
+			{
+				parent_id: 23,
+				title: 'eb_list_title',
+				path: '/expense-bills',
+				type: 'link',
+				level: 2,
+				permission: ['accounts.index'],
 			},
 			{
 				parent_id: 23,

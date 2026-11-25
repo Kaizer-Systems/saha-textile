@@ -56,6 +56,7 @@ const KEYWORDS: Record<string, string[]> = {
 	order: ['invoice', 'payment', 'delivery'],
 	purchase_orders: ['po', 'order', 'supplier', 'late', 'receive'],
 	purchase_entries: ['bill', 'invoice', 'grn', 'goods', 'purchase', 'payment', 'supplier'],
+	expense_bills: ['expense', 'rent', 'software', 'service', 'fees', 'courier', 'itc', 'credit', 'sac', 'bill'],
 	purchase_returns: ['debit note', 'return', 'damaged', 'short', 'credit note', 'challan'],
 	suppliers: ['vendor', 'gstin', 'weaver', 'statement', 'owed'],
 	opening_stock: ['opening', 'first', 'load', 'migration'],

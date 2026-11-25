@@ -1,0 +1,130 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'eb_list_title'"
+>
+	<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+		<small class="text-muted">{{ 'eb_list_subtitle' | transloco }}</small>
+		<div class="d-flex flex-wrap gap-2">
+			<app-export-menu
+				id="eb_export"
+				[source]="exportSource"
+			/>
+			@if (canEdit()) {
+			<a
+				class="btn btn-theme"
+				id="eb_new"
+				routerLink="/expense-bills/create"
+			>
+				<i class="ri-add-line"></i>
+				{{ 'eb_new' | transloco }}
+			</a>
+			}
+		</div>
+	</div>
+	<div class="d-flex align-items-center mb-3 flex-wrap gap-2">
+		@for (c of chips; track c) {
+		<button
+			type="button"
+			class="btn"
+			[id]="'eb_chip_' + c"
+			[class.btn-theme]="filter() === c"
+			[class.btn-outline]="filter() !== c"
+			(click)="setFilter(c)"
+		>
+			{{ 'eb_chip_' + c | transloco }}
+		</button>
+		}
+		<div class="d-flex ms-auto flex-wrap gap-2">
+			<app-period-picker (changed)="setPeriod($event)" />
+			<input
+				class="form-control w-auto"
+				type="search"
+				id="eb_search"
+				[placeholder]="'eb_search' | transloco"
+				[ngModel]="search()"
+				(ngModelChange)="search.set($event); page.set(1)"
+			/>
+		</div>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'eb_number' | transloco }}</th>
+					<th>{{ 'eb_supplier' | transloco }}</th>
+					<th>{{ 'eb_their_bill' | transloco }}</th>
+					<th>{{ 'eb_bill_date' | transloco }}</th>
+					<th class="text-end">{{ 'eb_taxable' | transloco }}</th>
+					<th class="text-end">{{ 'eb_claimed' | transloco }}</th>
+					<th class="text-end">{{ 'eb_total' | transloco }}</th>
+					<th>{{ 'status' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (b of shown(); track b.id) {
+				<tr>
+					<td class="text-nowrap">{{ b.number ?? ('eb_gets_number' | transloco) }}</td>
+					<td>{{ b.supplierName }}</td>
+					<td class="text-nowrap">{{ b.billNumber }}</td>
+					<td class="text-nowrap">{{ day(b.billDate) }}</td>
+					<td class="text-end text-nowrap">{{ inr(b.taxableINR) }}</td>
+					<td class="text-end text-nowrap">{{ inr(claimed(b)) }}</td>
+					<td class="text-end text-nowrap">{{ inr(b.totalINR) }}</td>
+					<td>
+						<div
+							[class.status-pending]="b.status === 'draft'"
+							[class.status-success]="b.status === 'posted'"
+							[class.status-danger]="b.status === 'cancelled'"
+						>
+							<span>{{ 'eb_status_' + b.status | transloco }}</span>
+						</div>
+					</td>
+					<td>
+						<ul id="actions">
+							<li>
+								<a
+									[routerLink]="['/expense-bills', b.id]"
+									[title]="'view' | transloco"
+									[attr.aria-label]="'view' | transloco"
+								>
+									<i class="ri-eye-line"></i>
+								</a>
+							</li>
+						</ul>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="9"
+						class="text-muted py-4 text-center"
+					>
+						{{ 'eb_list_empty' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if (pages() > 1) {
+	<nav class="custom-pagination">
+		<ul class="pagination justify-content-center">
+			@for (p of [].constructor(pages()); track $index) {
+			<li
+				class="page-item"
+				[class.active]="page() === $index + 1"
+			>
+				<a
+					class="page-link"
+					href="javascript:void(0)"
+					(click)="page.set($index + 1)"
+				>
+					{{ $index + 1 }}
+				</a>
+			</li>
+			}
+		</ul>
+	</nav>
+	}
+</app-page-wrapper>

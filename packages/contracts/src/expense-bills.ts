@@ -44,6 +44,8 @@ export type ExpenseBillWrite = z.infer<typeof ExpenseBillWrite>;
 
 export const ExpenseBill = ExpenseBillWrite.extend({
 	id: Id,
+	/** The supplier's name as it was when the bill was saved, for lists and statements. */
+	supplierName: z.string().default(''),
 	/** EB/26-27/000001, given when it is posted. */
 	number: z.string().nullable().default(null),
 	status: ExpenseBillStatus,

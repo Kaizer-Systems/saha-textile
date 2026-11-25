@@ -2,8 +2,9 @@ import type { TaxRuleEntry } from '@saha-textile/contracts';
 
 /**
  * When GST returns fall due (accounts brief G3), read from the due-date rule set (RS-DUE), which the CA keeps current as
- * CBIC notifications change or extend the dates. Pure: an extension for the period and State wins; otherwise the
- * standing rule for the State, else the general one, latest first. Under QRMP, GSTR-1 and GSTR-3B fall due only for
+ * CBIC notifications change or extend the dates. Pure: an extension for the period and State wins, whenever it was
+ * notified (an extension is often dated after the period it extends); otherwise the standing rule in force for the
+ * period, the State's before the general one, latest first. Under QRMP, GSTR-1 and GSTR-3B fall due only for
  * quarter-end months.
  */
 
@@ -34,14 +35,12 @@ export function dueFromRules(
 			!!e.due &&
 			e.due.returnType === returnType &&
 			(e.due.scheme === null || e.due.scheme === scheme) &&
-			(!e.due.states.length || e.due.states.includes(stateCode)) &&
-			e.from <= start &&
-			(e.to === null || e.to >= start),
+			(!e.due.states.length || e.due.states.includes(stateCode)),
 	);
 	const latest = (a: DueRule, b: DueRule) => b.from.localeCompare(a.from);
 	const extension = rules.filter((e) => e.due.period === period).sort(latest)[0];
 	const standing = rules
-		.filter((e) => e.due.period === null)
+		.filter((e) => e.due.period === null && e.from <= start && (e.to === null || e.to >= start))
 		.sort((a, b) => Number(b.due.states.length > 0) - Number(a.due.states.length > 0) || latest(a, b))[0];
 	const rule = extension ?? standing;
 	if (!rule) return null;

@@ -1,6 +1,7 @@
 /**
  * Customer and supplier outstanding with ageing (accounts brief U5) and the audit report's categories (U8). Pure.
  */
+import { istDay } from '../purchasing/fiscal-year';
 
 export interface AgeingBuckets {
 	notDue: number;
@@ -76,7 +77,7 @@ export function isBooksAudit(entry: Pick<AuditLike, 'action'>): boolean {
 
 /**
  * U8's chips an entry falls under: cancelled (cancel, void, reverse), unlocks (a period lock made looser), take-overs,
- * edits (update, edit, save), backdated (dated before the day it was made), and anything a super admin did.
+ * edits (update, edit, save), backdated (dated before the day it was made, in India), and anything a super admin did.
  */
 export function auditCategories(entry: AuditLike, superAdmins: ReadonlySet<string>): AuditCategory[] {
 	const out: AuditCategory[] = [];
@@ -91,7 +92,7 @@ export function auditCategories(entry: AuditLike, superAdmins: ReadonlySet<strin
 	if (action.includes('take_over')) out.push('takeovers');
 	if (/\.(update|edit|save)$/.test(action) || action.endsWith('_template.edit')) out.push('edits');
 	const dated = entry.metadata['date'];
-	if (entry.metadata['backdated'] === true || (typeof dated === 'string' && dated < entry.createdAt.slice(0, 10)))
+	if (entry.metadata['backdated'] === true || (typeof dated === 'string' && dated < istDay(entry.createdAt)))
 		out.push('backdated');
 	if (entry.actorUserId && superAdmins.has(entry.actorUserId)) out.push('superAdmin');
 	return out;

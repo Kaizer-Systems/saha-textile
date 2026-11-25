@@ -110,7 +110,7 @@ export class GstReturnsService {
 			this.debitNotes.listForGstin(registration.gstin, from, to),
 		]);
 		const originals = new Map<string, TaxInvoice>();
-		for (const id of new Set(creditNotes.map((n) => n.invoiceId))) {
+		for (const id of new Set([...creditNotes, ...debitNotes].map((n) => n.invoiceId))) {
 			const invoice = await this.invoices.get(id);
 			if (invoice) originals.set(id, invoice);
 		}

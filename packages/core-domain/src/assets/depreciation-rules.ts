@@ -19,9 +19,11 @@ export const ASSET_CATEGORIES: readonly AssetCategoryPreset[] = [
 	{ key: 'office_equipment', lifeYears: 5, taxRatePct: 15 },
 	{ key: 'electrical', lifeYears: 10, taxRatePct: 10 },
 	{ key: 'plant', lifeYears: 15, taxRatePct: 15 },
-	{ key: 'vehicles', lifeYears: 10, taxRatePct: 15 },
-	{ key: 'buildings', lifeYears: 30, taxRatePct: 10 },
-	{ key: 'software', lifeYears: 6, taxRatePct: 25 },
+	// Schedule II: motor cars 8 years; buildings other than factory buildings (a shop, an office) 60 years.
+	{ key: 'vehicles', lifeYears: 8, taxRatePct: 15 },
+	{ key: 'buildings', lifeYears: 60, taxRatePct: 10 },
+	// Income Tax: computer software 40%, as computers.
+	{ key: 'software', lifeYears: 6, taxRatePct: 40 },
 ];
 
 /** Schedule II: residual value up to 5% of cost. */
@@ -69,12 +71,13 @@ export function monthlyDepreciation(asset: AssetForDepreciation, month: string):
 
 /**
  * Tax depreciation for a financial year (`2026-27`) on the block's written down value at its start: the block rate,
- * or half of it when the asset was first used in that year for less than 180 days (used on or after 4 October).
+ * or half of it when the asset was first used in that year for less than 180 days, counting the day put to use and
+ * 31 March (from 4 October in most years, 5 October when the year has 29 February).
  */
 export function taxDepreciation(openingWdvPaise: number, taxRatePct: number, putToUseOn: string, year: string): number {
 	const start = Number(year.slice(0, 4));
 	const firstYear = putToUseOn >= `${start}-04-01` && putToUseOn <= `${start + 1}-03-31`;
-	const halfFrom = `${start}-10-04`;
-	const rate = firstYear && putToUseOn >= halfFrom ? taxRatePct / 2 : taxRatePct;
+	const daysUsed = (Date.UTC(start + 1, 2, 31) - Date.parse(`${putToUseOn}T00:00:00Z`)) / 86_400_000 + 1;
+	const rate = firstYear && daysUsed < 180 ? taxRatePct / 2 : taxRatePct;
 	return Math.round((openingWdvPaise * rate) / 100);
 }

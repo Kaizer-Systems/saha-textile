@@ -34,7 +34,9 @@ export function caroClasses(lines: readonly CaroCountLine[]): CaroClassRow[] {
 		const bookQty = mine.reduce((sum, l) => sum + (l.expected as number), 0);
 		const countedQty = mine.reduce((sum, l) => sum + (l.counted as number), 0);
 		const differenceQty = countedQty - bookQty;
-		const percent = bookQty ? Math.round((Math.abs(differenceQty) / bookQty) * 1000) / 10 : null;
+		// Compared unrounded: 9.96% rounds to 10.0% for the screen but is below the 10% line.
+		const share = bookQty ? (Math.abs(differenceQty) / bookQty) * 100 : null;
+		const percent = share === null ? null : Math.round(share * 10) / 10;
 		out.push({
 			soldBy,
 			bookQty,
@@ -42,7 +44,7 @@ export function caroClasses(lines: readonly CaroCountLine[]): CaroClassRow[] {
 			differenceQty,
 			percent,
 			differenceINR: Math.round(mine.reduce((sum, l) => sum + (l.valueINR ?? 0), 0) * 100) / 100,
-			reportable: percent === null ? differenceQty !== 0 : percent >= CARO_LINE_PERCENT,
+			reportable: share === null ? differenceQty !== 0 : share >= CARO_LINE_PERCENT,
 		});
 	}
 	return out;

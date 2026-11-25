@@ -61,7 +61,9 @@ export function saleFromTaxInvoice(
 			totalINR: rupees(taxable + cgst + sgst + igst),
 		});
 	}
-	const supplyType: GovSupplyType = invoice.placeOfSupply === '96' ? 'EXPWOP' : 'B2B';
+	/** An export with IGST charged (no LUT) is EXPWP; one under a LUT or bond, without IGST, is EXPWOP. */
+	const supplyType: GovSupplyType =
+		invoice.placeOfSupply === '96' ? (Math.round(invoice.igstINR * 100) > 0 ? 'EXPWP' : 'EXPWOP') : 'B2B';
 	return {
 		documentType: 'taxInvoice',
 		number: invoice.number,

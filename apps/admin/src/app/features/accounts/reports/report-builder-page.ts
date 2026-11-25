@@ -107,6 +107,8 @@ export class ReportBuilderPage {
 	readonly range = signal(accountsRange({ period: 'this_month' }));
 	readonly busy = signal(false);
 	private loaded = false;
+	/** A new report's first columns are filled once: removing them all later leaves the list empty. */
+	private started = false;
 
 	readonly catalogue = injectQuery(() => ({
 		queryKey: REPORT_KEYS.catalogue,
@@ -150,10 +152,11 @@ export class ReportBuilderPage {
 	}));
 
 	constructor() {
-		// A new report starts on the data asked for (from the library), with its first columns.
+		// A new report starts on the data asked for (from the library), with its first columns, once.
 		effect(() => {
 			const fields = this.catalogue.data();
-			if (!fields || this.id() || this.columns().length) return;
+			if (!fields || this.id() || this.started) return;
+			this.started = true;
 			const asked = this.asked();
 			if (asked && (REPORT_DATASETS as readonly string[]).includes(asked))
 				this.dataset.set(asked as ReportDataset);

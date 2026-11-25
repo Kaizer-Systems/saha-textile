@@ -22,6 +22,10 @@ const row = (table: string, taxable: number, tax = 0): SummaryRow => ({ table, t
 const hsnFile = (b2b: string[], b2c: string[]) => ({
 	hsn: { hsn_b2b: b2b.map((hsn_sc) => ({ hsn_sc })), hsn_b2c: b2c.map((hsn_sc) => ({ hsn_sc })) },
 });
+/** Exports under a LUT (table 6A, WOPAY) worth these taxable values. */
+const lutExports = (...txval: number[]) => ({
+	exp: [{ exp_typ: 'WOPAY', inv: txval.map((value) => ({ itms: [{ txval: value, rt: 0, iamt: 0 }] })) }],
+});
 
 describe('the financial year', () => {
 	it('runs April to March', () => {
@@ -106,11 +110,14 @@ describe('GSTR-9 against the books', () => {
 					row('12', 254_927.08, 12_997.92),
 					row('13', 0),
 				],
-				portal: hsnFile(['50072010', '62114290', '996812'], ['50072010', '996812']),
+				portal: {
+					...hsnFile(['50072010', '62114290', '996812'], ['50072010', '996812']),
+					...lutExports(6_000),
+				},
 			},
 			{
 				summary: [row('4A', 1_000, 50), row('7', 500.5, 25), row('6A', 300)],
-				portal: hsnFile([], ['62114290', '5208']),
+				portal: { ...hsnFile([], ['62114290', '5208']), ...lutExports(300) },
 			},
 		],
 		gstr3b: [
@@ -133,7 +140,7 @@ describe('GSTR-9 against the books', () => {
 				row('9B', -52_900),
 				row('12', 1),
 			],
-			portal: hsnFile(['50072010', '62114290', '996812'], []),
+			portal: { ...hsnFile(['50072010', '62114290', '996812'], []), ...lutExports(6_000, 300) },
 			inputCredit: 2_133_050,
 			reversed: 45_000,
 		},

@@ -114,7 +114,8 @@ export function monthPay(input: PayInput): PayResult {
 	const tdsPaise = Math.min(input.tdsPaise, grossPaise);
 	const statutory = pfEmployeePaise + esiEmployeePaise + ptPaise + tdsPaise;
 	const room = Math.max(0, Math.floor((grossPaise * r.maxDeductionPct) / 100) - statutory);
-	const advancePaise = rupee(Math.min(input.advanceDuePaise, room));
+	// Whole rupees, rounded down so the recovery never goes past the limit.
+	const advancePaise = Math.floor(Math.min(input.advanceDuePaise, room) / 100) * 100;
 	return {
 		grossPaise,
 		pfWagesPaise,
@@ -148,7 +149,9 @@ export function newRegimeTax(annualSalaryPaise: number): number {
 		if (taxable > floor) tax += ((Math.min(taxable, upTo) - floor) * rate) / 100;
 		floor = upTo;
 	}
-	if (taxable <= 12_00_000_00) tax = 0;
+	// Section 87A: no tax up to ₹12 lakh taxable, and above it never more than the income over ₹12 lakh (marginal
+	// relief), before the 4% cess.
+	tax = Math.min(tax, Math.max(0, taxable - 12_00_000_00));
 	return rupee(tax * 1.04);
 }
 

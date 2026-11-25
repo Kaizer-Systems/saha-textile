@@ -33,9 +33,9 @@ export function pastYears(today: string): string[] {
 	return [1, 2, 3].map((back) => `${start - back}-${String(start - back + 1).slice(2)}`);
 }
 
-/** A figure as G9 shows it: rupees, or a count of codes. */
+/** A figure as G9 shows it: rupees with a minus sign when below zero (a difference can be), or a count of codes. */
 export function figure(row: Pick<GstAnnualRow, 'unit'>, value: number): string {
-	return row.unit === 'count' ? String(value) : rupees(value);
+	return row.unit === 'count' ? String(value) : `${value < 0 ? '−' : ''}${rupees(value)}`;
 }
 
 /** A month's returns agree with the books when every filed figure is within ₹1 of them. */

@@ -80,7 +80,7 @@ export class RuleSetBuilderPage {
 	readonly list = computed<TaxRuleList>(() => this.content()?.list ?? 'reverseCharge');
 	/** The first column's and the code column's names for the list. */
 	readonly nameKey = computed(
-		() => ({ reverseCharge: 'rs_service', tds: 'rs_payment', limits: 'rs_what' })[this.list()],
+		() => ({ reverseCharge: 'rs_service', tds: 'rs_payment', limits: 'rs_what', dueDates: 'rs_what' })[this.list()],
 	);
 	readonly codeKey = computed(() => (this.list() === 'tds' ? 'rs_section' : 'rs_sac'));
 	readonly pers: readonly NonNullable<TaxRuleEntry['limitPer']>[] = ['payment', 'month', 'year'];

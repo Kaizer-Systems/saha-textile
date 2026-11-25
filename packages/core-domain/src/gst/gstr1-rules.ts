@@ -11,12 +11,15 @@ import { documentQuantity } from '../invoicing/tax-invoice-rules';
  *
  * - 4A B2B: invoices to a buyer with a GSTIN, item by rate.
  * - 5 B2CL: to an unregistered buyer in another State, invoice value over ₹1,00,000 (from 1 August 2024).
- * - 6A exports (place of supply 96), without payment of tax.
+ * - 6A exports (place of supply 96): with payment of IGST (WPAY) when the invoice carries IGST, as ours do without a
+ *   LUT; under a LUT or bond without it (WOPAY).
  * - 7 B2CS: every other sale to an unregistered buyer, summed by kind of supply, place of supply and rate; credit
  *   and debit notes on such sales net into it.
  * - 9B: notes to a registered buyer (CDNR), and to an unregistered one only when the invoice was B2CL or an export
- *   (CDNUR).
- * - 12 HSN summary, separately for supplies to registered and to unregistered buyers, by HSN, unit and rate.
+ *   (CDNUR). A credit note cancelled outright never happened and stays out of every table but 13, where it counts as
+ *   cancelled; one undone by a debit note stays, with the debit note adding the money back.
+ * - 12 HSN summary, separately for supplies to registered and to unregistered buyers, by HSN, unit and rate. A price
+ *   adjustment moves money, not goods, so its quantity is 0.
  * - 13 Documents issued: each series' first and last number, how many, how many cancelled.
  */
 
@@ -42,6 +45,11 @@ type Document = Pick<
 	TaxInvoice,
 	'lines' | 'taxableINR' | 'igstINR' | 'cgstINR' | 'sgstINR' | 'buyer' | 'placeOfSupply' | 'interState' | 'totalINR'
 >;
+
+/** How an export is reported: with IGST paid (WPAY) or under a LUT or bond without it (WOPAY). */
+export function exportType(doc: Pick<TaxInvoice, 'igstINR'>): 'WPAY' | 'WOPAY' {
+	return paise(doc.igstINR) > 0 ? 'WPAY' : 'WOPAY';
+}
 
 /** Which table a sale belongs to. */
 export function saleClass(invoice: Pick<TaxInvoice, 'buyer' | 'placeOfSupply' | 'interState' | 'totalINR'>): SaleClass {
@@ -89,13 +97,16 @@ export interface HsnRow {
 	sgst: number;
 }
 
-/** A document's lines in the HSN summary, with its delivery charge as the courier service. */
-function hsnLines(doc: Document, sign: 1 | -1): HsnRow[] {
+/**
+ * A document's lines in the HSN summary, with its delivery charge as the courier service. `goods` is false for a
+ * price adjustment, which moves no goods.
+ */
+function hsnLines(doc: Document, sign: 1 | -1, goods = true): HsnRow[] {
 	const rows: HsnRow[] = doc.lines.map((line: TaxInvoiceLine) => ({
 		hsn: line.hsn,
 		uqc: line.unit,
 		rate: line.ratePercent,
-		qty: sign * documentQuantity(line),
+		qty: goods ? sign * documentQuantity(line) : 0,
 		taxable: sign * paise(line.taxableINR),
 		igst: sign * paise(line.igstINR),
 		cgst: sign * paise(line.cgstINR),
@@ -141,10 +152,10 @@ export interface Gstr1Input {
 	month: string;
 	/** The GSTIN's tax invoices dated in the month, cancelled ones too (table 13 counts them). */
 	invoices: readonly TaxInvoice[];
-	/** Credit notes with a number dated in the month (cancelled ones too: a debit note undid them). */
+	/** Credit notes with a number dated in the month, cancelled ones too (table 13 counts them). */
 	creditNotes: readonly CreditNote[];
 	debitNotes: readonly DebitNote[];
-	/** The invoices the notes are against, whichever month they were issued in. */
+	/** The invoices the credit and debit notes are against, whichever month they were issued in. */
 	originals: ReadonlyMap<string, TaxInvoice>;
 	/** HSN digits the registration must show (4 up to ₹5 crore turnover, 6 above). */
 	hsnDigits: 4 | 6;
@@ -164,6 +175,8 @@ interface NoteRow {
 	doc: Document;
 	original: TaxInvoice | undefined;
 	sign: 1 | -1;
+	/** False for a price adjustment (and a debit note undoing one): money only, no goods. */
+	goods: boolean;
 }
 
 export function gstr1(input: Gstr1Input) {
@@ -175,26 +188,28 @@ export function gstr1(input: Gstr1Input) {
 		if (gstinProblem(invoice.buyer.gstin as string))
 			problems.push({ table: '4A', problem: 'gstin_invalid', document: invoice.number });
 
+	// Cancelled outright: never happened. Undone by a debit note: stands, and the debit note adds the money back.
+	const outright = (note: CreditNote) => note.status === 'cancelled' && !note.debitNoteId;
+	const kept = input.creditNotes.filter((note) => !outright(note));
 	const notes: NoteRow[] = [
-		...input.creditNotes.map((note) => ({
+		...kept.map((note) => ({
 			ntty: 'C' as const,
 			number: note.number as string,
 			date: note.date,
 			doc: note,
 			original: input.originals.get(note.invoiceId),
 			sign: -1 as const,
+			goods: note.kind !== 'price_adjustment',
 		})),
-		...input.debitNotes.map((note) => {
-			const credit = input.creditNotes.find((c) => c.id === note.creditNoteId);
-			return {
-				ntty: 'D' as const,
-				number: note.number,
-				date: note.date,
-				doc: { ...note, buyer: note.buyer, placeOfSupply: note.placeOfSupply, interState: note.interState },
-				original: credit ? input.originals.get(credit.invoiceId) : undefined,
-				sign: 1 as const,
-			};
-		}),
+		...input.debitNotes.map((note) => ({
+			ntty: 'D' as const,
+			number: note.number,
+			date: note.date,
+			doc: note,
+			original: input.originals.get(note.invoiceId),
+			sign: 1 as const,
+			goods: note.lines.some((line) => line.outcome !== null),
+		})),
 	];
 	for (const note of notes)
 		if (!note.original) problems.push({ table: '9B', problem: 'note_invoice_missing', document: note.number });
@@ -232,7 +247,8 @@ export function gstr1(input: Gstr1Input) {
 	const hsnB2b = new Map<string, HsnRow>();
 	const hsnB2c = new Map<string, HsnRow>();
 	for (const invoice of live) addHsn(saleClass(invoice) === 'b2b' ? hsnB2b : hsnB2c, hsnLines(invoice, 1));
-	for (const note of notes) addHsn(noteClass(note) === 'b2b' ? hsnB2b : hsnB2c, hsnLines(note.doc, note.sign));
+	for (const note of notes)
+		addHsn(noteClass(note) === 'b2b' ? hsnB2b : hsnB2c, hsnLines(note.doc, note.sign, note.goods));
 	const hsnRows = (map: Map<string, HsnRow>) =>
 		[...map.values()].sort((a, b) => a.hsn.localeCompare(b.hsn) || a.rate - b.rate);
 	for (const row of [...hsnRows(hsnB2b), ...hsnRows(hsnB2c)])
@@ -266,7 +282,7 @@ export function gstr1(input: Gstr1Input) {
 		),
 		...series(
 			5,
-			input.creditNotes.map((n) => ({ number: n.number as string, cancelled: false })),
+			input.creditNotes.map((n) => ({ number: n.number as string, cancelled: outright(n) })),
 		),
 		...series(
 			4,
@@ -323,7 +339,7 @@ export function gstr1(input: Gstr1Input) {
 			exp: byClass('exp'),
 			b2cs,
 			cdnr,
-			cdnur,
+			cdnur: cdnur.map((note) => ({ ...note, exported: noteClass(note) === 'exp' })),
 			hsnB2b: hsnRows(hsnB2b),
 			hsnB2c: hsnRows(hsnB2c),
 			documents,
@@ -354,7 +370,7 @@ function portalJson(
 		exp: readonly TaxInvoice[];
 		b2cs: readonly (RateItem & { interState: boolean; pos: string })[];
 		cdnr: readonly NoteRow[];
-		cdnur: readonly NoteRow[];
+		cdnur: readonly (NoteRow & { exported: boolean })[];
 		hsnB2b: readonly HsnRow[];
 		hsnB2c: readonly HsnRow[];
 		documents: readonly { kind: number; from: string; to: string; total: number; cancelled: number; net: number }[];
@@ -398,24 +414,20 @@ function portalJson(
 			pos,
 			inv: invoices.map((i) => ({ inum: i.number, idt: portalDay(i.date), val: i.totalINR, itms: itms(i) })),
 		})),
-		exp: t.exp.length
-			? [
-					{
-						exp_typ: 'WOPAY',
-						inv: t.exp.map((i) => ({
-							inum: i.number,
-							idt: portalDay(i.date),
-							val: i.totalINR,
-							itms: rateItems(i).map((item) => ({
-								txval: rupees(item.taxable),
-								rt: item.rate,
-								iamt: rupees(item.igst),
-								csamt: 0,
-							})),
-						})),
-					},
-				]
-			: [],
+		exp: group(t.exp, exportType).map(([exp_typ, invoices]) => ({
+			exp_typ,
+			inv: invoices.map((i) => ({
+				inum: i.number,
+				idt: portalDay(i.date),
+				val: i.totalINR,
+				itms: rateItems(i).map((item) => ({
+					txval: rupees(item.taxable),
+					rt: item.rate,
+					iamt: rupees(item.igst),
+					csamt: 0,
+				})),
+			})),
+		})),
 		b2cs: t.b2cs.map((row) => ({
 			sply_ty: row.interState ? 'INTER' : 'INTRA',
 			pos: row.pos,
@@ -441,7 +453,7 @@ function portalJson(
 			})),
 		})),
 		cdnur: t.cdnur.map((n) => ({
-			typ: n.original && saleClass(n.original) === 'exp' ? 'EXPWOP' : 'B2CL',
+			typ: n.exported ? (exportType(n.original ?? n.doc) === 'WPAY' ? 'EXPWP' : 'EXPWOP') : 'B2CL',
 			ntty: n.ntty,
 			nt_num: n.number,
 			nt_dt: portalDay(n.date),

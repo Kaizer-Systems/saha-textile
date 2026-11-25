@@ -323,26 +323,31 @@ export interface Rule37Bill {
 	payments: readonly { paidOn: string; paise: number }[];
 }
 
-/** The day 180 days after the bill's date: credit on what is still unpaid then is taken back in that month's return. */
+/** The day 180 days after the bill's date: credit on what is still unpaid then is taken back (rule 37). */
 export function day180(billDate: string): string {
 	const at = new Date(`${billDate}T00:00:00Z`);
 	at.setUTCDate(at.getUTCDate() + 180);
 	return at.toISOString().slice(0, 10);
 }
 
-const share = (tax: TaxHeads, part: number, whole: number): TaxHeads =>
-	whole > 0
-		? {
-				igst: Math.round((tax.igst * part) / whole),
-				cgst: Math.round((tax.cgst * part) / whole),
-				sgst: Math.round((tax.sgst * part) / whole),
-			}
-		: zero();
+/** A part of a bill's tax, in proportion; only called for a bill with a total above zero. */
+const share = (tax: TaxHeads, part: number, whole: number): TaxHeads => ({
+	igst: Math.round((tax.igst * part) / whole),
+	cgst: Math.round((tax.cgst * part) / whole),
+	sgst: Math.round((tax.sgst * part) / whole),
+});
+
+/** The month after a `YYYY-MM-DD` day's month, `YYYY-MM`. */
+function monthAfter(day: string): string {
+	const [y, m] = day.split('-').map(Number) as [number, number];
+	return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 7);
+}
 
 /**
- * Rule 37: a bill not paid in full within 180 days of its date has the credit on the unpaid part taken back in the
- * return for the month the 180 days end (4B(2)); paying it later brings that credit back in the month paid (4A(5),
- * shown in 4D(1)).
+ * Rule 37(2), as amended from 1 October 2022: a bill not paid in full within 180 days of its date has the credit on
+ * the part unpaid on day 180 taken back in the return for the month after the one the 180 days end in (4B(2)).
+ * Paying it after day 180 brings that credit back (4A(5), shown in 4D(1)): in the reversal month for what was paid
+ * from day 181 to its end, then in the month paid, never more than was taken back.
  */
 export function rule37(
 	bills: readonly Rule37Bill[],
@@ -354,28 +359,28 @@ export function rule37(
 	let reversed = zero();
 	let reclaimed = zero();
 	const entries: { entryId: string; reversed: number; reclaimed: number }[] = [];
+	const before = new Date(`${first}T00:00:00Z`);
+	before.setUTCDate(before.getUTCDate() - 1);
+	const lastOfPrevious = before.toISOString().slice(0, 10);
 	for (const bill of bills) {
 		const due = day180(bill.billDate);
-		if (due > last) continue;
+		const reverseIn = monthAfter(due);
+		if (reverseIn > month) continue;
 		const paidBy = (day: string, after = '') =>
 			bill.payments.filter((p) => p.paidOn <= day && p.paidOn > after).reduce((sum, p) => sum + p.paise, 0);
 		const owedAtDue = Math.max(0, bill.totalPaise - bill.creditedPaise - paidBy(due));
 		if (!owedAtDue) continue;
-		if (due >= first) {
-			const taken = share(bill.tax, owedAtDue, bill.totalPaise);
-			reversed = add(reversed, taken);
-			entries.push({ entryId: bill.entryId, reversed: total(taken), reclaimed: 0 });
-			continue;
-		}
-		const before = new Date(`${first}T00:00:00Z`);
-		before.setUTCDate(before.getUTCDate() - 1);
-		const paidSinceDue = paidBy(before.toISOString().slice(0, 10), due);
-		const paidNow = paidBy(last, before.toISOString().slice(0, 10));
-		const back = Math.max(0, Math.min(paidNow, owedAtDue - paidSinceDue));
-		if (!back) continue;
-		const returned = share(bill.tax, back, bill.totalPaise);
+		const reversalMonth = reverseIn === month;
+		const taken = reversalMonth ? share(bill.tax, owedAtDue, bill.totalPaise) : zero();
+		// Paid after day 180: up to the end of this month, less what earlier months already brought back.
+		const paidEarlier = reversalMonth ? 0 : paidBy(lastOfPrevious, due);
+		const paidNow = paidBy(last, reversalMonth ? due : lastOfPrevious);
+		const back = Math.max(0, Math.min(paidNow, owedAtDue - paidEarlier));
+		const returned = back ? share(bill.tax, back, bill.totalPaise) : zero();
+		if (!reversalMonth && !back) continue;
+		reversed = add(reversed, taken);
 		reclaimed = add(reclaimed, returned);
-		entries.push({ entryId: bill.entryId, reversed: 0, reclaimed: total(returned) });
+		entries.push({ entryId: bill.entryId, reversed: total(taken), reclaimed: total(returned) });
 	}
 	return { reversed, reclaimed, entries };
 }

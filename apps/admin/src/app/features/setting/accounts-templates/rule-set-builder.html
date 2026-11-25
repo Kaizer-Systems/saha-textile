@@ -116,7 +116,7 @@
 						} @empty {
 						<tr>
 							<td
-								[attr.colspan]="list() === 'limits' ? 5 : 7"
+								[attr.colspan]="list() === 'limits' ? 5 : list() === 'dueDates' ? 6 : 7"
 								class="text-muted py-4 text-center"
 							>
 								{{ 'rs_empty' | transloco }}

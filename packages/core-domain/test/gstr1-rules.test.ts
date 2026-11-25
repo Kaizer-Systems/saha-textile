@@ -154,7 +154,8 @@ function debitNote(spec: Spec & { creditNoteId: string; invoiceId: string }): De
 	return {
 		...place,
 		...m,
-		lines: noteLines(m.lines),
+		// Undoing a goods return: the lines keep where the pieces had gone.
+		lines: noteLines(m.lines).map((line) => ({ ...line, outcome: 'restock' as const })),
 		id: spec.id,
 		number: spec.number,
 		date: spec.date ?? '2026-11-24',

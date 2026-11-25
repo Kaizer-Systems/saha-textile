@@ -81,10 +81,13 @@ const GstReturnDraftSchema = new Schema<AggregateDoc>(
 GstReturnDraftSchema.index({ gstRegistrationId: 1, returnType: 1, month: 1 }, { unique: true });
 export const GstReturnDraftModel = reuse('GstReturnDraft', GstReturnDraftSchema);
 
-/** G5: imported GSTR-2B files, one per registration and month. */
+/**
+ * G5: imported GSTR-2B files, one per registration and month. `minimize: false` keeps empty objects (a first import's
+ * decisions are `{}`), which the contract requires when the file is read back.
+ */
 const Gstr2bImportSchema = new Schema<AggregateDoc>(
 	{ _id: { type: String, required: true }, gstRegistrationId: String, month: String },
-	{ ...loose, collection: COLLECTION_NAMES.Gstr2bImport },
+	{ ...loose, collection: COLLECTION_NAMES.Gstr2bImport, minimize: false },
 );
 Gstr2bImportSchema.index({ gstRegistrationId: 1, month: 1 }, { unique: true });
 export const Gstr2bImportModel = reuse('Gstr2bImport', Gstr2bImportSchema);
@@ -133,13 +136,13 @@ export const PayrollAttendanceModel = reuse(
 		{ ...loose, collection: COLLECTION_NAMES.PayrollAttendance },
 	),
 );
-export const PayrollRunModel = reuse(
-	'PayrollRun',
-	new Schema<AggregateDoc>(
-		{ _id: { type: String, required: true } },
-		{ ...loose, collection: COLLECTION_NAMES.PayrollRun },
-	),
+/** S5: one run a month; the unique month keeps two people preparing the same month at once from making two runs. */
+const PayrollRunSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true }, month: String },
+	{ ...loose, collection: COLLECTION_NAMES.PayrollRun },
 );
+PayrollRunSchema.index({ month: 1 }, { unique: true });
+export const PayrollRunModel = reuse('PayrollRun', PayrollRunSchema);
 
 /** S1, S4, S7, S9: payroll rule versions, structure templates, returns marked filed and advances. */
 const payrollModel = (name: string, collection: string) =>

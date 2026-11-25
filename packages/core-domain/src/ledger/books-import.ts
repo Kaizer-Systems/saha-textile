@@ -37,8 +37,9 @@ export const TALLY_PRIMARY: readonly (readonly [string, string])[] = [
 	['Secured Loans', 'secured_loans'],
 	['Unsecured Loans', 'unsecured_loans'],
 	['Sales Accounts', 'sales_accounts'],
-	['Purchase Accounts', 'direct_expenses'],
+	// Direct Expenses first: an export names a direct expense's group by the first match (freight in is not a purchase).
 	['Direct Expenses', 'direct_expenses'],
+	['Purchase Accounts', 'direct_expenses'],
 	['Direct Incomes', 'direct_incomes'],
 	['Indirect Expenses', 'indirect_expenses'],
 	['Indirect Incomes', 'indirect_incomes'],

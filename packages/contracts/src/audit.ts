@@ -81,6 +81,11 @@ export const AuditLogListQuery = z.object({
 	actorUserId: Id.optional(),
 	targetUserId: Id.optional(),
 	action: z.string().optional(),
+	/** Brief 26 AU1: a module, the first part of the action (`payroll` for `payroll.payslip.edit`). */
+	module: z
+		.string()
+		.regex(/^[a-z][a-z_]*$/)
+		.optional(),
 	entityType: z.string().optional(),
 	entityId: Id.optional(),
 	severity: AuditSeverity.optional(),

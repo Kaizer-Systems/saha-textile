@@ -52,6 +52,7 @@ function build(
 		month?: Attendance;
 		run?: { status: string };
 		monthSaveFails?: Error;
+		audited?: boolean;
 	} = {},
 ) {
 	const store = new Map<string, AttendanceDay>();
@@ -113,6 +114,7 @@ function build(
 			],
 		}),
 	};
+	const audit = { append: vi.fn(async () => undefined) };
 	const access = options.access === undefined ? { worksAt: ['loc_gariahat'] } : options.access;
 	const months = new Map<string, Attendance>(options.month ? [[options.month.month, options.month]] : []);
 	const monthStore = {
@@ -139,8 +141,9 @@ function build(
 		rules as never,
 		monthStore as never,
 		{ get: async () => options.run ?? null } as never,
+		...(options.audited ? [audit as never] : []),
 	);
-	return { service, days, store, months, monthStore };
+	return { service, days, store, months, monthStore, audit };
 }
 const staff = (id: string) => ({ userId: `adm_${id}`, permissions: ['attendance.use'] }) as never;
 const manager = { userId: 'adm_manager', permissions: ['attendance.index'] } as never;
@@ -694,5 +697,68 @@ describe('a night shift (PN-D3)', () => {
 		} finally {
 			PEOPLE.pop();
 		}
+	});
+});
+
+describe('attendance in the audit trail (AT3, AU1)', () => {
+	type Logged = { action: string; actorUserId: string | null; entityId: string; diffs: unknown[]; metadata: object };
+	const logged = (audit: { append: { mock: { calls: unknown[][] } } }) =>
+		audit.append.mock.calls.map((c) => c[0] as Logged);
+
+	it('records a direct change with the fields that changed, a request without them, and the answer to it', async () => {
+		const { service, audit } = build({ access: { maySeeAll: true }, audited: true });
+		await service.markIn(staff('priya'), at('10:02'));
+		await service.change(accountant, 'priya', '2026-11-25', { ...present, status: 'leave', leaveKey: 'CL' });
+		await service.change(manager, 'amit', '2026-11-08', present);
+		await service.decide(accountant, 'amit', '2026-11-08', true);
+		await service.change(manager, 'amit', '2026-11-09', present);
+		await service.decide(accountant, 'amit', '2026-11-09', false);
+		const [change, ask, approve, ask2, reject] = logged(audit);
+		expect(change).toMatchObject({
+			action: 'attendance.day.change',
+			actorUserId: 'adm_accountant',
+			entityId: 'priya_2026-11-25',
+			metadata: { employeeId: 'priya', day: '2026-11-25', reason: 'CCTV checked', afterLock: false },
+		});
+		// Only the fields that changed: the day was marked in, so its time in goes, and leave comes.
+		expect(change?.diffs).toEqual([
+			{ field: 'status', before: 'incomplete', after: 'leave' },
+			{ field: 'leaveKey', before: null, after: 'CL' },
+			{ field: 'inAt', before: expect.any(String), after: null },
+		]);
+		expect(ask).toMatchObject({ action: 'attendance.day.ask', diffs: [], metadata: { asked: 'present' } });
+		expect(approve).toMatchObject({
+			action: 'attendance.day.approve',
+			metadata: { askedBy: 'adm_manager', afterLock: false },
+			diffs: [{ field: 'status', before: 'absent', after: 'present' }],
+		});
+		expect(ask2?.action).toBe('attendance.day.ask');
+		expect(reject).toMatchObject({ action: 'attendance.day.reject', diffs: [] });
+	});
+
+	it('says when a change came after the month was locked, and records the lock and leave asked for', async () => {
+		const locked = build({ month: NOV(), run: { status: 'draft' }, audited: true });
+		await locked.service.change(accountant, 'priya', '2026-11-10', present);
+		expect(logged(locked.audit)[0]?.metadata).toMatchObject({ afterLock: true });
+		const open = build({ access: { maySeeAll: true }, audited: true });
+		await open.service.lock(accountant, '2026-11', at('09:00'));
+		await open.service.askLeave(
+			staff('priya'),
+			{ leaveKey: 'CL', from: '2026-12-03', to: '2026-12-04', half: false, reason: 'Wedding' },
+			at('09:00'),
+		);
+		const [lock, leave] = logged(open.audit);
+		expect(lock).toMatchObject({
+			action: 'attendance.month.lock',
+			actorUserId: 'adm_accountant',
+			entityId: '2026-11',
+			metadata: { people: expect.any(Number) },
+		});
+		expect(leave).toMatchObject({
+			action: 'attendance.leave.ask',
+			actorUserId: 'adm_priya',
+			entityId: 'priya',
+			metadata: { leaveKey: 'CL', from: '2026-12-03', to: '2026-12-04', days: 2, reason: 'Wedding' },
+		});
 	});
 });

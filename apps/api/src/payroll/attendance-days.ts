@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import {
 	BadRequestException,
 	Body,
@@ -9,6 +11,7 @@ import {
 	Inject,
 	Injectable,
 	NotFoundException,
+	Optional,
 	Param,
 	Post,
 	Put,
@@ -40,6 +43,7 @@ import {
 	storeCalendar,
 	type AttendanceDayRepository,
 	type AttendanceRepository,
+	type AuditLogRepository,
 	type EmployeeRepository,
 	type LeaveRule,
 	type LeaveType,
@@ -54,6 +58,7 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import {
 	ATTENDANCE_DAY_REPOSITORY,
 	ATTENDANCE_REPOSITORY,
+	AUDIT_LOG_REPOSITORY,
 	EMPLOYEE_REPOSITORY,
 	LOCATION_REPOSITORY,
 	PAYROLL_RUN_REPOSITORY,
@@ -92,6 +97,15 @@ const blankDay = (e: Pick<Employee, 'id' | 'locationId'>, day: string): Attendan
 	version: 0,
 });
 
+/** AT3: the fields of a day a change sets, before and after, for the audit trail. */
+function dayDiffs(before: AttendanceDay, change: DayChange): { field: string; before: unknown; after: unknown }[] {
+	return (['status', 'leaveKey', 'inAt', 'outAt'] as const).map((field) => ({
+		field,
+		before: before[field] ?? null,
+		after: change[field] ?? null,
+	}));
+}
+
 /**
  * Attendance day by day (brief 26 AT1-AT3; approved 2026-11-26). Each person marks their own day from their phone
  * (the server's time); people with "attendance.index" see and report on the stores in their charge; with
@@ -108,7 +122,42 @@ export class AttendanceDaysService {
 		@Inject(PayrollRulesService) private readonly rules: Pick<PayrollRulesService, 'forMonth'>,
 		@Inject(ATTENDANCE_REPOSITORY) private readonly months: AttendanceRepository,
 		@Inject(PAYROLL_RUN_REPOSITORY) private readonly runs: Pick<PayrollRunRepository, 'get'>,
+		@Optional()
+		@Inject(AUDIT_LOG_REPOSITORY)
+		private readonly audit: Pick<AuditLogRepository, 'append'> | null = null,
 	) {}
+
+	/**
+	 * AT3, AU1: each change to attendance in the audit trail: who, the day or month, each field before and after, and
+	 * the reason given; a change made after the month's lock says so.
+	 */
+	private async log(
+		actor: string | null,
+		action: string,
+		entity: { type: string; id: string },
+		diffs: { field: string; before: unknown; after: unknown }[],
+		metadata: Record<string, unknown>,
+		now: Date,
+	): Promise<void> {
+		if (!this.audit) return;
+		await this.audit.append({
+			id: `aud_${randomUUID()}`,
+			actorUserId: actor,
+			targetUserId: null,
+			audience: 'admin',
+			action,
+			entityType: entity.type,
+			entityId: entity.id,
+			severity: 'info',
+			retentionTier: 'financial_security',
+			diffs: diffs.filter((d) => d.before !== d.after),
+			metadata,
+			requestId: null,
+			ipHash: null,
+			userAgentHash: null,
+			createdAt: now.toISOString(),
+		});
+	}
 
 	/** A month's rules for each store: its shift, its calendar (weekly offs and its State's holidays), leave paid. */
 	private async monthContext(month: string) {
@@ -393,6 +442,14 @@ export class AttendanceDaysService {
 				),
 			);
 		}
+		await this.log(
+			userId,
+			'attendance.leave.ask',
+			{ type: 'employee', id: e.id },
+			[],
+			{ leaveKey: ask.leaveKey, from: ask.from, to: ask.to, days: asking, reason: ask.reason },
+			now,
+		);
 		return out;
 	}
 
@@ -469,7 +526,7 @@ export class AttendanceDaysService {
 					context,
 				),
 			);
-		return this.saveMonth(
+		const locked = await this.saveMonth(
 			{
 				month,
 				daysInMonth: daysOfMonth(month).length,
@@ -480,6 +537,15 @@ export class AttendanceDaysService {
 			},
 			saved ? saved.version : null,
 		);
+		await this.log(
+			locked.lockedBy,
+			'attendance.month.lock',
+			{ type: 'attendanceMonth', id: month },
+			[],
+			{ people: rows.length },
+			now,
+		);
+		return locked;
 	}
 
 	/** AT3: change a day: at once with "attendance.edit", otherwise as a request waiting for approval. */
@@ -501,6 +567,21 @@ export class AttendanceDaysService {
 			: { ...base, pending: { ...change, askedBy: who.userId, askedAt: now.toISOString() } };
 		const done = await this.saveOrConflict(next, saved ? saved.version : null);
 		if (locked) await this.recount(locked, e);
+		const direct = !next.pending;
+		await this.log(
+			who.userId,
+			direct ? 'attendance.day.change' : 'attendance.day.ask',
+			{ type: 'attendanceDay', id: done.id },
+			direct ? dayDiffs(base, change) : [],
+			{
+				employeeId,
+				day,
+				reason: change.reason,
+				afterLock: !!locked,
+				...(direct ? {} : { asked: change.status }),
+			},
+			now,
+		);
 		return done;
 	}
 
@@ -523,6 +604,7 @@ export class AttendanceDaysService {
 		employeeId: string,
 		day: string,
 		approve: boolean,
+		now = new Date(),
 	): Promise<AttendanceDay> {
 		const saved = await this.days.get(employeeId, day);
 		if (!saved?.pending) throw new NotFoundException(accountsRefusal('attendance_nothing_waiting'));
@@ -537,6 +619,14 @@ export class AttendanceDaysService {
 		const done = await this.saveOrConflict(next, saved.version);
 		const e = (await this.employees.list()).find((x) => x.id === employeeId);
 		if (locked && approve && e) await this.recount(locked, e);
+		await this.log(
+			who.userId,
+			approve ? 'attendance.day.approve' : 'attendance.day.reject',
+			{ type: 'attendanceDay', id: done.id },
+			approve ? dayDiffs(saved, change) : [],
+			{ employeeId, day, askedBy: saved.pending.askedBy, reason: change.reason, afterLock: !!locked },
+			now,
+		);
 		return done;
 	}
 }

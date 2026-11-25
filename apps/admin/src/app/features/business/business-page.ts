@@ -22,6 +22,7 @@ import { askReason } from '@features/purchasing/shared/popups';
 import { exportSupplierStatement, recordSupplierPayment } from '@features/purchasing/shared/supplier-actions';
 import { statementLink } from '@features/purchasing/supplier/supplier-page';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { ExportMenu, captured, type ExportSource } from '@shared/ui/export-menu/export-menu';
 
 import { BusinessReceiptPopup } from './business-receipt-popup';
 import { BusinessSetOffPopup } from './business-setoff-popup';
@@ -57,7 +58,7 @@ export function statementCsv(rows: readonly LedgerStatementRow[], heads: readonl
 @Component({
 	selector: 'app-business-page',
 	templateUrl: './business-page.html',
-	imports: [HasPermissionDirective, RouterModule, RupeesPipe, ShortDatePipe, TranslocoModule],
+	imports: [HasPermissionDirective, RouterModule, RupeesPipe, ShortDatePipe, TranslocoModule, ExportMenu],
 })
 export class BusinessPage {
 	private readonly route = inject(ActivatedRoute);
@@ -137,6 +138,16 @@ export class BusinessPage {
 			t: (key) => this.transloco.translate(key),
 		});
 	}
+
+	/** EX1: the supplier's statement for the Export menu (written by the statement's CSV code). */
+	readonly supplierStatementSource = (): ExportSource | null => {
+		const summary = this.supplierSummary.data();
+		if (!summary) return null;
+		const title = summary.supplier.shortName || summary.supplier.legalName;
+		return captured(title, 'accounts', (save) =>
+			exportSupplierStatement(summary, (key) => this.transloco.translate(key), save),
+		);
+	};
 
 	exportSupplierStatement(): void {
 		const summary = this.supplierSummary.data();

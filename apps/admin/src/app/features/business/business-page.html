@@ -347,15 +347,10 @@
 							<i class="ri-add-line me-1"></i>
 							{{ 'record_payment' | transloco }}
 						</button>
-						<button
-							type="button"
-							class="btn btn-outline"
-							[disabled]="!supplierSummary.data()"
-							(click)="exportSupplierStatement()"
-						>
-							<i class="ri-download-2-line me-1"></i>
-							{{ 'export_statement' | transloco }}
-						</button>
+						<app-export-menu
+							id="biz_supplier_statement_export"
+							[source]="supplierStatementSource"
+						/>
 					</div>
 				</div>
 			</div>

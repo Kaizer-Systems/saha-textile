@@ -14,6 +14,7 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { PluralPipe, translateCount } from '@shared/pipes/language.pipes';
+import { ExportMenu, captured, type ExportSource } from '@shared/ui/export-menu/export-menu';
 
 import { termsText } from './supplier-list';
 import { exportSupplierStatement, recordSupplierPayment } from '../shared/supplier-actions';
@@ -58,6 +59,7 @@ export function statementLink(row: SupplierStatementRow): string[] | null {
 		ShortDatePipe,
 		ShortDateTimePipe,
 		TranslocoModule,
+		ExportMenu,
 	],
 })
 export class SupplierPage {
@@ -128,6 +130,16 @@ export class SupplierPage {
 	}
 
 	/** The statement as a spreadsheet for the CA or the supplier (s03 Export statement). */
+	/** EX1: the supplier's statement for the Export menu (written by the statement's CSV code). */
+	readonly statementSource = (): ExportSource | null => {
+		const summary = this.summary.data();
+		if (!summary) return null;
+		const title = summary.supplier.shortName || summary.supplier.legalName;
+		return captured(title, 'accounts', (save) =>
+			exportSupplierStatement(summary, (key) => this.transloco.translate(key), save),
+		);
+	};
+
 	exportStatement(): void {
 		const summary = this.summary.data();
 		if (summary) exportSupplierStatement(summary, (key) => this.transloco.translate(key));

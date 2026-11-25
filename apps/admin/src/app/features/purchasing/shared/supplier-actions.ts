@@ -9,6 +9,7 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { PaymentPopup, type PayableBill } from './payment-popup';
 
 import type { SupplierSummary } from '@saha-textile/contracts';
+import type { CsvWriter } from '@shared/ui/export-menu/export-menu';
 
 /**
  * The supplier account's two actions, shared by Purchases › Suppliers and the business page's
@@ -17,9 +18,13 @@ import type { SupplierSummary } from '@saha-textile/contracts';
  */
 
 /** The statement as a spreadsheet for the CA or the supplier (s03 Export statement). */
-export function exportSupplierStatement(summary: SupplierSummary, t: (key: string) => string): void {
+export function exportSupplierStatement(
+	summary: SupplierSummary,
+	t: (key: string) => string,
+	save: CsvWriter = downloadCsv,
+): void {
 	const name = summary.supplier.shortName || summary.supplier.legalName;
-	downloadCsv(
+	save(
 		`statement-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.csv`,
 		[t('date'), t('document'), t('details'), t('bill_amount'), t('paid_or_credited'), t('balance')],
 		summary.statement.map((row) => [

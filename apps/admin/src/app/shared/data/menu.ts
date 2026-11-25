@@ -454,6 +454,16 @@ export const menu: IMenu[] = [
 			},
 		],
 	},
+	// Brief 26 WL1: the worklist, for everyone signed in (each row shows only to those who may act on it).
+	{
+		id: 28,
+		title: 'wl_title',
+		path: '/worklist',
+		active: false,
+		icon: 'ri-task-line',
+		type: 'link',
+		level: 1,
+	},
 	// Payroll (accounts brief S5: its own top menu): employees, attendance and leave, payroll runs.
 	{
 		id: 27,

@@ -10,8 +10,8 @@
 		<span class="badge rounded-pill badge-theme">{{ unreadNotificationCount() }}</span>
 		}
 	</div>
-	@if (notifications().length || languageReminders().length || storageAlert() || missingPictures() || stock().length
-	|| pageReviews().length || pageChecks().length) {
+	@if (worklist() || notifications().length || languageReminders().length || storageAlert() || missingPictures() ||
+	stock().length || pageReviews().length || pageChecks().length) {
 	<ul
 		class="notification-dropdown onhover-show-div"
 		[class.active]="active"
@@ -20,7 +20,19 @@
 			<i class="ri-notification-line"></i>
 			<h6 class="f-18 mb-0">{{ 'notifications' | transloco }}</h6>
 		</li>
-		@if (storageAlert(); as summary) {
+		@if (worklist()) {
+		<li>
+			<a
+				[routerLink]="['/worklist']"
+				id="worklist_bell"
+			>
+				<p>
+					<i class="ri-task-line txt-primary me-2"></i>
+					{{ 'wl_bell' | transloco: { n: worklist() } }}
+				</p>
+			</a>
+		</li>
+		} @if (storageAlert(); as summary) {
 		<li>
 			<a
 				[routerLink]="['/media']"

@@ -119,6 +119,11 @@ export const content: Routes = [
 		loadChildren: () => import('@features/transfers/transfers.routes'),
 	},
 	{
+		// Brief 26 WL1: everything waiting on the signed-in person.
+		path: 'worklist',
+		loadComponent: () => import('@features/worklist/worklist-page').then((m) => m.WorklistPage),
+	},
+	{
 		// Payroll: employees, attendance and leave, payroll runs (accounts brief S).
 		path: 'payroll',
 		loadChildren: () => import('@features/payroll/payroll.routes'),

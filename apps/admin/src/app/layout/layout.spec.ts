@@ -50,6 +50,10 @@ const remindersAsked = vi.hoisted(() => ({ enabled: [] as boolean[] }));
 const pageBuilderAlerts = vi.hoisted(() => ({
 	value: null as null | { reviews: unknown[]; nightly: { checkedAt: string; layouts: unknown[] } | null },
 }));
+// Brief 26 WL1: the worklist's line in the bell, nothing waiting here.
+vi.mock('@core/worklist/worklist.gateway', () => ({
+	injectWorklistCountQuery: () => ({ data: () => ({ count: 0 }) }),
+}));
 vi.mock('@data-access/queries/page-builder.queries', () => ({
 	injectPageBuilderAlertsQuery: () => ({ data: () => pageBuilderAlerts.value }),
 }));

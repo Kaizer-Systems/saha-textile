@@ -179,6 +179,11 @@ export class PayrollRunPage {
 		}
 	}
 
+	/** Brief 26 PE-D2: payslips with a blocking check hold Approve and Publish until they are put right. */
+	blocked(run: PayrollRun): boolean {
+		return run.rows.some((r) => r.checks?.some((c) => c.blocking));
+	}
+
 	/**
 	 * Brief 26 PE3: each changed line of the edited payslips, by the rules and now: "Priya Test · Basic: ₹6,960.00 →
 	 * ₹7,200.00", added lines, and the net.

@@ -15,6 +15,7 @@ import {
 	injectStockAlertsQuery,
 } from '@core/purchasing/stock.gateway';
 import { AuthStore } from '@core/state/auth.store';
+import { injectWorklistCountQuery } from '@core/worklist/worklist.gateway';
 import { injectLanguageRemindersQuery } from '@data-access/queries/admin-languages.queries';
 import { injectMediaStorageQuery, injectNightlyCheckQuery } from '@data-access/queries/media-library.queries';
 import { injectNotificationsQuery } from '@data-access/queries/notification.queries';
@@ -163,8 +164,12 @@ export class Notification {
 	);
 	readonly pageReviews = computed(() => this.pageBuilderQuery.data()?.reviews ?? []);
 	readonly pageChecks = computed(() => this.pageBuilderQuery.data()?.nightly?.layouts ?? []);
+	/** Brief 26 WL1: how many items wait on the signed-in person, from the worklist. */
+	private readonly worklistQuery = injectWorklistCountQuery();
+	readonly worklist = computed(() => this.worklistQuery.data()?.count ?? 0);
 	readonly unreadNotificationCount = computed(
 		() =>
+			(this.worklist() ? 1 : 0) +
 			this.pageReviews().length +
 			this.pageChecks().length +
 			this.languageReminders().length +

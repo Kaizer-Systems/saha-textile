@@ -50,22 +50,22 @@
 			</button>
 			} @if (r) { @switch (r.status) { @case ('draft') {
 			<button
-				*hasPermission="'accounts.lock'"
+				*hasPermission="['accounts.lock', 'accounts.post']"
 				type="button"
 				class="btn btn-theme"
 				id="run_approve"
-				[disabled]="busy() || !r.rows.length || !!r.statesMissing?.length"
+				[disabled]="busy() || !r.rows.length || !!r.statesMissing?.length || blocked(r)"
 				(click)="step(r, 'approved')"
 			>
 				{{ 'payroll_approve' | transloco }}
 			</button>
 			<!-- Brief 26 PE1: Publish = Approve and Post together, with the pop-ups of PE3 and PE4 for edited payslips. -->
 			<button
-				*hasPermission="'accounts.lock'"
+				*hasPermission="['accounts.lock', 'accounts.post']"
 				type="button"
 				class="btn btn-theme"
 				id="run_publish"
-				[disabled]="busy() || !r.rows.length || !!r.statesMissing?.length"
+				[disabled]="busy() || !r.rows.length || !!r.statesMissing?.length || blocked(r)"
 				(click)="publish(r)"
 			>
 				{{ 'pe_publish' | transloco }}

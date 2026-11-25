@@ -1,0 +1,120 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'wl_title'"
+>
+	<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+		<small class="text-muted">{{ 'wl_sub' | transloco: { n: countOf('') } }}</small>
+		<app-export-menu
+			id="wl_export"
+			[source]="exportSource"
+		/>
+	</div>
+	<div class="d-flex mb-3 flex-wrap gap-2">
+		<button
+			type="button"
+			class="btn btn-sm"
+			id="wl_need_all"
+			[class.btn-theme]="!need()"
+			[class.btn-outline]="need()"
+			(click)="need.set('')"
+		>
+			{{ 'wl_all' | transloco }} {{ countOf('') }}
+		</button>
+		@for (n of needs; track n) {
+		<button
+			type="button"
+			class="btn btn-sm"
+			[id]="'wl_need_' + n"
+			[class.btn-theme]="need() === n"
+			[class.btn-outline]="need() !== n"
+			(click)="need.set(n)"
+		>
+			{{ 'wl_needs_' + n | transloco }} {{ countOf(n) }}
+		</button>
+		} @for (a of areas; track a) {
+		<button
+			type="button"
+			class="btn btn-sm"
+			[id]="'wl_area_' + a"
+			[class.btn-theme]="area() === a"
+			[class.btn-outline]="area() !== a"
+			(click)="area.set(area() === a ? '' : a)"
+		>
+			{{ 'wl_area_' + a | transloco }}
+		</button>
+		}
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'wl_col_needs' | transloco }}</th>
+					<th>{{ 'wl_col_from' | transloco }}</th>
+					<th>{{ 'wl_col_what' | transloco }}</th>
+					<th>{{ 'wl_col_asked_by' | transloco }}</th>
+					<th>{{ 'wl_col_since' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (r of rows(); track r.id) {
+				<tr>
+					<td>
+						<span
+							[class]="'badge ' + (r.needs === 'fix' ? 'bg-danger' : r.needs === 'check' ? 'bg-warning text-dark' : 'badge-theme')"
+						>
+							{{ 'wl_needs_' + r.needs | transloco }}
+						</span>
+					</td>
+					<td>{{ 'wl_area_' + r.area | transloco }}</td>
+					<td>{{ what(r) }}</td>
+					<td>{{ r.askedBy ?? ('wl_system' | transloco) }}</td>
+					<td class="text-nowrap">{{ when(r.since) }}</td>
+					<td class="text-nowrap">
+						@if (r.answerable) {
+						<button
+							type="button"
+							class="btn btn-sm me-2 p-0"
+							[id]="'wl_yes_' + r.id"
+							[title]="'wl_approve' | transloco"
+							[disabled]="busy() === r.id"
+							(click)="approve(r)"
+						>
+							<i class="ri-check-line"></i>
+						</button>
+						<button
+							type="button"
+							class="btn btn-sm me-2 p-0"
+							[id]="'wl_no_' + r.id"
+							[title]="'wl_reject' | transloco"
+							[disabled]="busy() === r.id"
+							(click)="reject(r)"
+						>
+							<i class="ri-close-line"></i>
+						</button>
+						}
+						<a
+							class="btn btn-sm btn-outline"
+							[id]="'wl_open_' + r.id"
+							[routerLink]="r.open.path"
+							[queryParams]="r.open.query"
+						>
+							{{ 'wl_open' | transloco }}
+						</a>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="6"
+						class="text-muted"
+					>
+						{{ 'wl_none' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<small class="text-muted d-block mt-2">{{ 'wl_note' | transloco }}</small>
+</app-page-wrapper>

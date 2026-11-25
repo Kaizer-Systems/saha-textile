@@ -133,9 +133,9 @@ function mount(source: () => ExportSource | null | Promise<ExportSource | null>,
 const exportsUrl = `${runtimeConfig.apiUrl}/admin/exports`;
 
 describe('the Export menu', () => {
-	it('offers CSV, Excel and PDF under its own id, and the formats a screen asks for', () => {
+	it('offers CSV, Excel and PDF with each format’s own id, and the formats a screen asks for', () => {
 		const { fixture } = mount(() => SOURCE);
-		const toggle = fixture.nativeElement.querySelector('#export_menu') as HTMLButtonElement;
+		const toggle = fixture.nativeElement.querySelector('[ngbDropdownToggle]') as HTMLButtonElement;
 		expect([toggle.textContent?.trim(), toggle.disabled]).toEqual(['export_menu', false]);
 		expect(
 			[...fixture.nativeElement.querySelectorAll('[ngbDropdownItem]')].map((b) => [
@@ -148,7 +148,10 @@ describe('the Export menu', () => {
 			['export_menu_pdf', 'export_as_pdf'],
 		]);
 		const statement = mount(() => SOURCE, { id: 'tb_export', formats: ['csv', 'xlsx'], disabled: true });
-		expect((statement.fixture.nativeElement.querySelector('#tb_export') as HTMLButtonElement).disabled).toBe(true);
+		expect(
+			(statement.fixture.nativeElement.querySelector('[ngbDropdownToggle]') as HTMLButtonElement).disabled,
+		).toBe(true);
+		expect(statement.fixture.nativeElement.querySelector('[ngbDropdownItem]')?.id).toBe('tb_export_csv');
 		expect(statement.fixture.nativeElement.querySelectorAll('[ngbDropdownItem]')).toHaveLength(2);
 	});
 

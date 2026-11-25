@@ -66,6 +66,7 @@ export * from './media-library';
 export * from './address-book';
 export * from './document-numbering';
 export * from './document-formats';
+export * from './exports';
 export * from './price-zone';
 export * from './business';
 export * from './coupon';

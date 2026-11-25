@@ -4283,6 +4283,18 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
   `dist/worker.js` dates from 24 Nov). Admin specs for the new branches are with the admin test chat. Brief 26 (payroll
   rules for every State, 80D, ₹10 rounding, metro list, Labour Codes) awaits the owner:
   https://claude.ai/artifact/NUdmapxmXHnxENeeJZG4yd
+- 2026-11-26 — [PARTIAL] **Brief 26 approved in full (owner: "all approved … start building") and built through SR**
+  on feat/combined-after-pr6 (not pushed). Revision 1: PT for every State `6e1fc494`, income tax section 126 / ₹10
+  rounding / rent cities `f5af1d9f`, bonus under the Code on Wages `58ad6802`. Leave: core `128e1aa6`, contracts
+  `8120a22e`, opening leave on the employee form `b40b3ebd`, the Leave tab and rule editor `76c6bfd5`, fixes
+  `1d293362`. Attendance day by day: core, contracts, store, API `6724b8f2`–`f891a19b`; month lock from the days with
+  store shifts, weekly offs and holidays `b6a3e70b`; Staff role `67a3c44e` (run seed:system-roles); My attendance
+  summary and leave rules `965bc293`; admin pages `243858a2`; holidays and shifts in Payroll rules `298ca58c`; fixes
+  `1fe335b6`, `2e8ef4a4`. Pay revisions: core `02473c57`, `e2a0ea27`; contracts `cf7779f2`; run uses the salary in
+  force and pays arrears `d5ac8a6c`; revise API `b8a626cb`; Revise pay pop-up `21cbfb40`, `97664e84`; CTC structures
+  `1c5caf89`, `8d9e4eb9`; minimum wages `4ebd5b56`; increment cycles `fa9501d1`, `3a3642d7`. Tests by the three
+  test chats as each lands. Open: "In plain words" for leave rules, the revision letter, then PE (payslip drafts
+  edited live), WL (worklist), AU (audit trail and report builder), and a browser check of the new screens.
 
 ## Integration (storefront ↔ API ↔ admin ↔ DB ↔ Meili ↔ Spaces)
 

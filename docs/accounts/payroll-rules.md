@@ -107,6 +107,42 @@ Employees carry three fields only these rules read: `gender`, `disability` and `
 another reason the State exempts, with the reason kept for the return). Age comes from the date of birth, on the
 month's last day, an age being reached the day before the birthday.
 
+## Leave
+
+Each State's set holds its leave types (`leaveTypes`): a short code (EL, CL, SL), a name, paid in full, at half pay or
+unpaid, and ordered rules, the first whose condition (designation or department) matches the person applying. A
+rule sets the type's own year (any start month and length, or from each person's joining day), how it is credited
+(at the year's start, monthly, one day for every n days worked, on request, or not at all), days worked before any
+credit, how joiners are prorated, rounding, how much carries forward and what happens above it (encashed or lapsed),
+how long each credit stays valid, encashment on leaving or on request, and how the leave is taken (half days,
+notice, weekly offs counted between, going below nothing). West Bengal's starting set is data in
+`packages/core-domain/src/payroll/leave.ts`, marked for the CA's review. An employee added mid-year carries their
+opening leave per type: carried from before the type's year (shut for someone who joined in it), credited so far
+(worked out, editable) and taken so far, as on the day they were added.
+
+## Attendance
+
+Each person marks their own day in and out from their phone (Payroll › My attendance, the server's time); a
+shop-floor login holds the seeded Staff role (`attendance.use` only). The store's shift (Payroll rules › Store
+shifts: start, end, hours of a full day, grace, weekly offs; 10:00–19:00, 8 hours, Sundays off until set) decides
+present, half day or absent and the minutes late. Each State's holidays (Payroll rules › Holidays) are paid and never
+use leave. Payroll › Attendance shows a store's month for those in charge of it; someone with `attendance.edit`
+changes a day at once, a manager's change waits for approval (`attendance.approve`, never by the one who asked).
+Lock the month counts each person's month from the days (weekly offs and holidays paid, days nobody marked absent)
+into the rows the payroll run reads; a locked month changes only by someone who may edit, while its run is a draft.
+
+## Revising pay
+
+A salary structure is built from the monthly gross or from the yearly CTC (Basic as a % of the CTC, heads as a % of
+Basic, fixed heads, and one head taking the rest, with the employer's PF, ESI and gratuity inside the CTC). A
+revision (Employees › Revise pay) changes the CTC by a %, by an amount, to a new CTC kept fixed, or head by head;
+the structure re-splits the heads, any head can be typed over, and the breakup shows now, new, the change, take-home
+and arrears. Accept keeps the old salary as a dated version and saves the new one from its day; each month is paid
+on the salary in force in it, and a revision dated back pays its arrears once, with the next run, as one payslip
+line. A decrease needs the employee's agreement or notice. Each State's minimum wages by skill level (Payroll rules
+› Minimum wages) are checked against each person's skill level. Payroll › Increments runs a cycle for many people
+at once, by rating band, the same % or the same amount, with plans saved by name.
+
 ## Whose State
 
 An employee is taxed by the State of their work location (Settings › Locations), never one typed on the person. The

@@ -275,6 +275,13 @@ describe.skipIf(!hasMongoEnv())('RBAC persistence (integration, rs0)', () => {
 			expect(after?.updatedAt).not.toBe(before?.updatedAt);
 		});
 
+		it('creates the staff role holding only marking one’s own attendance (brief 26 AT-D1)', async () => {
+			const seeded = await ensureSystemRoles();
+			const staff = await roles.findByKey('staff_attendance');
+			expect(seeded.created.concat(seeded.updated)).toContain('staff_attendance');
+			expect(staff).toMatchObject({ isSystem: true, baseRole: 'staff', permissions: ['attendance.use'] });
+		});
+
 		/** A seeded role must be exactly as unremovable as an authored system role. */
 		it('produces a role the admin surface cannot edit or delete', async () => {
 			await ensureSystemRoles();

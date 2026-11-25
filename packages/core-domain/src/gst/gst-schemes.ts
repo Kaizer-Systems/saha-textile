@@ -134,7 +134,7 @@ const addHeads = (a: TaxHeads, b: TaxHeads): TaxHeads => ({
 
 /** The quarter's books for its GSTR-3B: its months' figures added; 2B counts as imported only when every month has one. */
 export function quarterBooks(months: readonly ThreeBBooks[]): ThreeBBooks {
-	return months.reduce<ThreeBBooks>(
+	return months.reduce<ThreeBBooks & { isdCredit: TaxHeads }>(
 		(sum, m) => ({
 			selfInvoices: [...sum.selfInvoices, ...m.selfInvoices],
 			twoBImported: sum.twoBImported && m.twoBImported,
@@ -143,7 +143,7 @@ export function quarterBooks(months: readonly ThreeBBooks[]): ThreeBBooks {
 			reversedInBooks: addHeads(sum.reversedInBooks, m.reversedInBooks),
 			rule37: addHeads(sum.rule37, m.rule37),
 			reclaimed: addHeads(sum.reclaimed, m.reclaimed),
-			isdCredit: addHeads(sum.isdCredit ?? zero(), m.isdCredit ?? zero()),
+			isdCredit: addHeads(sum.isdCredit, m.isdCredit ?? zero()),
 		}),
 		{
 			selfInvoices: [],

@@ -90,9 +90,12 @@ export function taxInvoiceData(
 				lines: party(invoice.buyer.name, null, invoice.buyer.address, invoice.placeOfSupply),
 			},
 		},
-		taxHeading: invoice.interState ? 'IGST' : 'CGST + SGST',
+		// A bill of supply (composition) shows no GST rate, tax or tax summary.
+		...(invoice.billOfSupply
+			? { hideColumns: ['gstRate', 'tax'] }
+			: { taxHeading: invoice.interState ? 'IGST' : 'CGST + SGST' }),
 		rows,
-		hsnSummary: [...byHsn.values()].map((row) => ({
+		hsnSummary: (invoice.billOfSupply ? [] : [...byHsn.values()]).map((row) => ({
 			hsn: row.hsn,
 			taxable: money(row.taxable),
 			rate: `${row.rate}%`,

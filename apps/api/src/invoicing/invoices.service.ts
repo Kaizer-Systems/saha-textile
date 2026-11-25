@@ -202,14 +202,22 @@ export class InvoicesService {
 
 	/**
 	 * What a counter sale's invoice will say before it is made (P1): its lines and tax, sold in the store's State, and
-	 * the lines it can't take yet, by SKU.
+	 * the lines it can't take yet, by SKU. A store whose GSTIN is under composition issues a bill of supply: no tax.
 	 */
-	async counterPreview(lines: readonly OrderLine[]): Promise<{
+	async counterPreview(
+		lines: readonly OrderLine[],
+		locationId: string | null = null,
+		day = istDay(new Date()),
+	): Promise<{
 		totals: { taxableINR: number; cgstINR: number; sgstINR: number };
 		problems: { sku: string; problem: string }[];
 	}> {
 		const inputs = await this.inputsOf(lines.flatMap((line) => (line.role === 'bundle' ? [] : [line])));
-		const built = buildInvoiceLines(inputs, { interState: false, shippingINR: 0 });
+		const built = buildInvoiceLines(inputs, {
+			interState: false,
+			shippingINR: 0,
+			composition: await this.underComposition(locationId, day),
+		});
 		const skuOf = new Map(inputs.map((input) => [input.lineId, input.sku]));
 		return {
 			totals: {
@@ -219,6 +227,16 @@ export class InvoicesService {
 			},
 			problems: built.problems.map((p) => ({ sku: skuOf.get(p.lineId) as string, problem: p.problem })),
 		};
+	}
+
+	/** Whether a location's GSTIN is under composition on a day (G2); false without a location or a GSTIN. */
+	private async underComposition(locationId: string | null, day: string): Promise<boolean> {
+		if (!locationId) return false;
+		const location = (await this.locations.list()).find((l) => l.id === locationId);
+		const registration = location?.gstRegistrationId
+			? await this.company.getRegistration(location.gstRegistrationId)
+			: null;
+		return !!registration && termsOn(registration, day)?.kind === 'composition';
 	}
 
 	/** An invoice's line inputs: the HSN snapshot on the line, else the product's own. */

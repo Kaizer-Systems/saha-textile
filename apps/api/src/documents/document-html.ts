@@ -255,7 +255,7 @@ function rowHtml(row: DocumentRow, columns: readonly string[], block: DocumentBl
 }
 
 function tableBlock(block: DocumentBlock, data: DocumentData): string {
-	const columns = block.fields;
+	const columns = block.fields.filter((column) => !data.hideColumns?.includes(column));
 	if (!columns.length || !data.rows?.length) return '';
 	const head = columns
 		.map((column) => {

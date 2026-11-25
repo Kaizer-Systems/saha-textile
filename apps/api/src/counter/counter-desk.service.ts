@@ -6,6 +6,7 @@ import {
 	type CashRepository,
 	type LocationRepository,
 	type StockReadRepository,
+	istDay,
 } from '@saha-textile/core-domain';
 
 import { AdminCartService } from '../admin-orders/admin-cart.service';
@@ -89,7 +90,11 @@ export class CounterDeskService {
 			{ buyer: null, currency: 'INR', lines: write.lines.map((l) => ({ ...l, addons: [] })) },
 			now,
 		);
-		const preview = await this.invoices.counterPreview(counterLines(priced.lines, now.toISOString(), null));
+		const preview = await this.invoices.counterPreview(
+			counterLines(priced.lines, now.toISOString(), null),
+			write.locationId,
+			istDay(now),
+		);
 		return {
 			lines: priced.lines,
 			...preview.totals,

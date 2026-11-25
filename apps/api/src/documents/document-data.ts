@@ -35,6 +35,8 @@ export interface DocumentData {
 	parties: Record<string, { heading: string; lines: string[] }>;
 	/** The tax split's own heading ("CGST + SGST" or "IGST"), for the table's `tax` column. */
 	taxHeading?: string;
+	/** Table columns this document leaves out whatever its format shows (a bill of supply has no GST rate or tax). */
+	hideColumns?: string[];
 	rows?: DocumentRow[];
 	hsnSummary?: Array<{ hsn: string; taxable: string; rate: string; tax: string }>;
 	/** Field → rows; `totals` holds the sums, `roundOff` its own row. The last `totals` row is the total. */

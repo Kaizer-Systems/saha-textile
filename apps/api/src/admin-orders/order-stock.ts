@@ -60,7 +60,7 @@ export class OrderStock {
 	) {}
 
 	/**
-	 * G2: a location whose GSTIN pays composition tax can't sell outside its State (s.10(2)(d)): checkout and Create
+	 * G2: a location whose GSTIN pays composition tax can't sell outside its State (s.10(2)(c)): checkout and Create
 	 * order are refused before anything is kept. The shop's words name the delivery, never GST.
 	 */
 	private async refuseOutsideComposition(

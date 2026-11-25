@@ -264,7 +264,7 @@ export function switchRefusals(
 }
 
 /**
- * G2: a composition seller can't supply outside its own State (s.10(2)(d)), abroad included. True when a sale to this
+ * G2: a composition seller can't supply outside its own State (s.10(2)(c)), abroad included. True when a sale to this
  * place of supply (a State code, or `96` abroad) is one it can't make on that day.
  */
 export function compositionRefuses(

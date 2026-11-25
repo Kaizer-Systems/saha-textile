@@ -251,6 +251,8 @@ export const AttendanceMonthGrid = z.object({
 	/** The store's weekly offs and holidays in the month, which days nobody marked fall back to. */
 	offDays: z.array(IsoDate).default([]),
 	holidays: z.array(z.object({ day: IsoDate, name: z.string() })).default([]),
+	/** The active leave types of the store's State, for setting a leave day (AT3). */
+	leaveTypes: z.array(z.object({ key: z.string(), name: z.string() })).default([]),
 	lockedAt: IsoDateTime.nullable(),
 });
 export type AttendanceMonthGrid = z.infer<typeof AttendanceMonthGrid>;

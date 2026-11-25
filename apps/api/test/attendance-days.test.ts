@@ -226,6 +226,7 @@ describe('a store’s month and changes to it (AT2, AT3)', () => {
 		]);
 		expect(grid.offDays).toEqual(['2026-11-01', '2026-11-08', '2026-11-15', '2026-11-22', '2026-11-29']);
 		expect(grid.holidays).toEqual([{ day: '2026-11-08', name: 'Kali Puja' }]);
+		expect(grid.leaveTypes.map((t) => t.key)).toEqual(['EL', 'CL', 'SL', 'ML', 'LOP', 'CO', 'NR']);
 		expect(grid.lockedAt).toBeNull();
 		await expect(service.grid(manager, '2026-11', 'loc_far')).rejects.toSatisfy((e) => status(e) === 403);
 		await expect(service.grid(undefined, '2026-11', 'loc_gariahat')).rejects.toSatisfy((e) => status(e) === 403);

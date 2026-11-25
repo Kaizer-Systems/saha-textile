@@ -422,6 +422,7 @@ export class AttendanceDaysService {
 			lockedAt: (await this.months.get(month))?.lockedAt ?? null,
 			offDays: calendar.offDays,
 			holidays: calendar.holidays,
+			leaveTypes: context.leaveTypes(locationId).map((t) => ({ key: t.key, name: t.name })),
 			people: people.map((e) => {
 				const mine = days.filter((d) => d.employeeId === e.id);
 				const counted = this.count(month, e, mine, context);

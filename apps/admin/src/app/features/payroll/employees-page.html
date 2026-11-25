@@ -51,6 +51,16 @@
 						>
 							<i class="ri-pencil-line"></i>
 						</button>
+						<button
+							*hasPermission="'accounts.edit'"
+							type="button"
+							class="btn btn-sm ms-2 p-0"
+							[id]="'emp_revise_' + e.id"
+							[title]="'payroll_revise_pay' | transloco"
+							(click)="revise(e)"
+						>
+							<i class="ri-line-chart-line"></i>
+						</button>
 					</td>
 				</tr>
 				} @empty {
@@ -582,6 +592,25 @@
 			<!-- Brief 26 PT3: read only where the work location's State asks (women's slabs, its exemptions). -->
 			<h6 class="mt-4 mb-2">{{ 'payroll_pt_person_title' | transloco }}</h6>
 			<div class="row g-3">
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="emp_skill"
+					>
+						{{ 'payroll_f_skill_level' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="emp_skill"
+						[ngModel]="f.skillLevel ?? ''"
+						(ngModelChange)="patch({ skillLevel: $event || null })"
+					>
+						<option value="">—</option>
+						@for (s of skillLevels; track s) {
+						<option [value]="s">{{ 'payroll_skill_' + s | transloco }}</option>
+						}
+					</select>
+				</div>
 				<div class="col-md-4">
 					<label
 						class="form-label-title"

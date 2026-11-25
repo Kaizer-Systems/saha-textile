@@ -25,6 +25,7 @@ import { HasPermissionDirective } from '@shared/directives/has-permission.direct
 
 import { currentMonth } from './attendance-page';
 import { inForce } from './payroll-rules-page';
+import { RevisePayPopup } from './revise-pay-popup';
 
 import type {
 	EmployeeView,
@@ -157,6 +158,10 @@ export function employeeWrite(e: EmployeeView): EmployeeWriteInput {
 		advanceDueINR: e.advanceDueINR,
 		advancePerMonthINR: e.advancePerMonthINR,
 		...(e.joinedOnApproximate ? { joinedOnApproximate: true } : {}),
+		// Brief 26 SR: the structure, CTC and skill level, carried as saved.
+		...(e.templateId ? { templateId: e.templateId } : {}),
+		...(e.ctcYearINR ? { ctcYearINR: e.ctcYearINR } : {}),
+		...(e.skillLevel ? { skillLevel: e.skillLevel } : {}),
 		...(e.openingLeave?.length ? { openingLeave: e.openingLeave.map((o) => ({ ...o })) } : {}),
 	};
 }
@@ -339,6 +344,15 @@ export class EmployeesPage {
 
 	locationName(id: string): string {
 		return this.locations.data()?.find((l) => l.id === id)?.name ?? '';
+	}
+
+	/** SR4: the skill levels a State's minimum wages are set by. */
+	readonly skillLevels = ['unskilled', 'semi_skilled', 'skilled', 'highly_skilled'] as const;
+
+	/** SR2: revise a person's pay in its own pop-up. */
+	revise(employee: EmployeeView): void {
+		const popup = this.modals.open(RevisePayPopup, { centered: true, size: 'xl' });
+		(popup.componentInstance as RevisePayPopup).start(employee);
 	}
 
 	open(template: TemplateRef<unknown>, employee: EmployeeView | null): void {

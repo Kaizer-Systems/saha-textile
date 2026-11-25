@@ -18,6 +18,8 @@ import type {
 	PayrollRun,
 	PayrollStep,
 	Payslip,
+	SalaryRevisionInputValue,
+	SalaryRevisionPreview,
 	SalaryTemplate,
 	SalaryTemplateWriteInput,
 	SchemeLine,
@@ -62,6 +64,18 @@ export class PayrollGateway {
 
 	updateEmployee(id: string, write: EmployeeWriteInput & { version: number }): Observable<EmployeeView> {
 		return this.http.put<EmployeeView>(this.api(`employees/${encodeURIComponent(id)}`), write);
+	}
+
+	/** Brief 26 SR2: a revision worked out, and accepted. */
+	revisionPreview(employeeId: string, input: SalaryRevisionInputValue): Observable<SalaryRevisionPreview> {
+		return this.http.post<SalaryRevisionPreview>(
+			this.api(`employees/${encodeURIComponent(employeeId)}/revision/preview`),
+			input,
+		);
+	}
+
+	reviseSalary(employeeId: string, input: SalaryRevisionInputValue): Observable<EmployeeView> {
+		return this.http.post<EmployeeView>(this.api(`employees/${encodeURIComponent(employeeId)}/revision`), input);
 	}
 
 	attendance(month: string): Observable<Attendance> {

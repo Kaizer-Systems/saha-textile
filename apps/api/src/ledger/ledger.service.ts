@@ -237,7 +237,36 @@ export class LedgerService {
 		const [{ chart }, books] = await Promise.all([this.templates.startingChart(), this.books.chart()]);
 		await addChartItems(this.books, { kind: 'chart', ...chart }, books, new Date().toISOString());
 		await this.templates.installUnlocked(by);
+		await this.partnerLedgers(by);
 		return this.templates.library();
+	}
+
+	/**
+	 * AT3: a firm's or LLP's partners each get their own ledgers from Settings › Company: capital (an LLP's
+	 * contribution) and, with fixed capital, a current account for their share of profit, interest and remuneration.
+	 * Each plays its own role, so a later setup or Convert finds it again instead of making another.
+	 */
+	private async partnerLedgers(by: string | null): Promise<void> {
+		const profile = await this.company.getProfile();
+		if (!profile || (profile.kind !== 'partnership' && profile.kind !== 'llp')) return;
+		const role = (what: string, id: string) =>
+			`partner_${what}_${id.toLowerCase().replace(/[^a-z0-9]/g, '_')}`.slice(0, 60);
+		for (const partner of profile.partners) {
+			const capital = profile.kind === 'llp' ? 'contribution' : 'capital';
+			await this.ensureRoleLedger(
+				role('capital', partner.id),
+				`${partner.name} ${capital}`,
+				'capital_account',
+				by,
+			);
+			if (profile.partnersCapital === 'fixed_with_current')
+				await this.ensureRoleLedger(
+					role('current', partner.id),
+					`${partner.name} current account`,
+					'partners_current',
+					by,
+				);
+		}
 	}
 
 	async chart(): Promise<ChartOfAccounts> {

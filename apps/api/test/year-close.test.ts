@@ -287,7 +287,7 @@ describe('the year’s checks (T3)', () => {
 		});
 	});
 
-	it('needs both GST returns each month, quarter ends only under QRMP, for active regular and casual GSTINs', async () => {
+	it('needs each active GSTIN’s own returns: GSTR-1 and 3B (quarterly under QRMP), CMP-08, GSTR-6', async () => {
 		const { service } = build({
 			registrations: [
 				{ id: 'reg_wb', terms: [terms('2017-07-01')] },
@@ -302,11 +302,13 @@ describe('the year’s checks (T3)', () => {
 			filings: [
 				{ gstRegistrationId: 'reg_wb', returnType: 'GSTR-1', month: '2026-04' },
 				{ gstRegistrationId: 'reg_wb', returnType: 'GSTR-3B', month: '2026-04' },
+				// Composition files no GSTR-1, so this one doesn't count; its CMP-08 does.
 				{ gstRegistrationId: 'reg_comp', returnType: 'GSTR-1', month: '2026-04' },
+				{ gstRegistrationId: 'reg_comp', returnType: 'CMP-08', month: '2026-06' },
 			],
 		});
-		// 24 + 8 + 24 + 6 returns needed; 2 of them filed.
-		expect(await stateOf(service, 'gst')).toMatchObject({ state: 'attention', count: 2, of: 62 });
+		// 24 regular + 8 quarterly + 24 casual + 4 CMP-08 + 12 GSTR-6 + 6 from January; 3 of them filed.
+		expect(await stateOf(service, 'gst')).toMatchObject({ state: 'attention', count: 3, of: 78 });
 	});
 
 	it('reads the closing entries posted, out of date when reversed, gone or different', async () => {

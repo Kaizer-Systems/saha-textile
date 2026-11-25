@@ -9,6 +9,7 @@ import {
 	yearSpan,
 	resolveRole,
 	rolesOf,
+	returnsFor,
 	termsOn,
 	yearCloseChecks,
 	yearCloseDone,
@@ -174,9 +175,15 @@ export class YearCloseService {
 		for (const reg of registrations.filter((r) => r.active !== false)) {
 			for (const month of fy.months) {
 				const terms = termsOn(reg, `${month}-01`);
-				if (!terms || (terms.kind !== 'regular' && terms.kind !== 'casual')) continue;
-				if (terms.scheme === 'qrmp' && !QUARTER_ENDS.has(month.slice(5))) continue;
-				needed.push(`${reg.id}:GSTR-1:${month}`, `${reg.id}:GSTR-3B:${month}`);
+				if (!terms) continue;
+				// The returns each kind files (G1–G3): IFF is optional and PMT-06 a payment, so neither is counted.
+				for (const type of returnsFor(terms.kind, terms.scheme)) {
+					if (type === 'IFF' || type === 'PMT-06') continue;
+					const quarterly =
+						type === 'CMP-08' || (terms.scheme === 'qrmp' && (type === 'GSTR-1' || type === 'GSTR-3B'));
+					if (quarterly && !QUARTER_ENDS.has(month.slice(5))) continue;
+					needed.push(`${reg.id}:${type}:${month}`);
+				}
 			}
 		}
 		const filedKeys = new Set(filed.map((f) => `${f.gstRegistrationId}:${f.returnType}:${f.month}`));

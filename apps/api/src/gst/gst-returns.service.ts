@@ -183,6 +183,13 @@ export class GstReturnsService {
 		write: GstReturnPrepare,
 		existing: GstReturnDraft | null,
 	): Promise<SchemeWork> {
+		// GSTR-1 and GSTR-3B are a regular (or casual) taxpayer's; composition files CMP-08 and an ISD GSTR-6.
+		const kind = termsOn(registration, `${write.month}-01`)?.kind;
+		if (
+			(write.returnType === 'GSTR-1' || write.returnType === 'GSTR-3B') &&
+			(kind === 'composition' || kind === 'isd')
+		)
+			throw refuse('gst_return_not_for_this_gstin');
 		if (write.returnType === 'GSTR-3B') {
 			const r = await this.gstr3bFor(registration, write);
 			return {

@@ -159,6 +159,7 @@ describe('a store’s month', () => {
 			people: [{ ...person, unmarked: 0 }],
 			offDays: [],
 			holidays: [],
+			leaveTypes: [],
 		});
 		expect(AttendanceMonthGrid.parse({ ...grid, lockedAt: '2026-12-01T05:00:00.000Z' }).lockedAt).toBe(
 			'2026-12-01T05:00:00.000Z',
@@ -181,8 +182,13 @@ describe('a store’s month', () => {
 			people: [{ ...person, unmarked: 3 }],
 			offDays: ['2026-11-01', '2026-11-08'],
 			holidays: [{ day: '2026-11-08', name: 'Kali Puja' }],
+			leaveTypes: [
+				{ key: 'EL', name: 'Earned leave' },
+				{ key: 'CL', name: 'Casual leave' },
+			],
 		};
 		expect(AttendanceMonthGrid.parse(locked)).toEqual(locked);
+		refused(AttendanceMonthGrid.safeParse({ ...locked, leaveTypes: [{ key: 'EL' }] }).success);
 		refused(AttendanceMonthGrid.safeParse({ ...locked, people: [{ ...person, unmarked: 1.5 }] }).success);
 		refused(AttendanceMonthGrid.safeParse({ ...locked, offDays: ['1 Nov'] }).success);
 		refused(AttendanceMonthGrid.safeParse({ ...locked, holidays: [{ day: '2026-11-08' }] }).success);

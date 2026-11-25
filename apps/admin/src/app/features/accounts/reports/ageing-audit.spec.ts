@@ -1,3 +1,5 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { type Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
@@ -9,6 +11,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ReportsGateway } from '@core/accounts/reports.gateway';
 import { downloadCsv } from '@core/purchasing/purchasing-format';
+import { NotificationService } from '@data-access/services/notification.service';
 import { accountsRange } from '@features/accounts/accounts-period';
 
 import { AGEING_BUCKETS, AgeingPage } from './ageing-page';
@@ -43,6 +46,9 @@ function mount<T>(component: Type<T>, gateway: Record<string, unknown>, route: R
 		providers: [
 			provideTanStackQuery(new QueryClient({ defaultOptions: { queries: { retry: false } } })),
 			provideRouter([]),
+			provideHttpClient(),
+			provideHttpClientTesting(),
+			{ provide: NotificationService, useValue: { showError: vi.fn(), showSuccess: vi.fn() } },
 			{ provide: ReportsGateway, useValue: gateway },
 			{ provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap(route)) } },
 		],
@@ -126,9 +132,15 @@ describe('outstanding with ageing (U5)', () => {
 	});
 
 	it('saves every party and the total as a spreadsheet in rupees', async () => {
-		const { fixture } = mount(AgeingPage, { ageing: vi.fn(() => of(AGEING)) }, { side: 'suppliers' });
+		const { fixture, page } = mount(AgeingPage, { ageing: vi.fn(() => of(AGEING)) }, { side: 'suppliers' });
 		await settle(fixture);
-		(el(fixture, '#ageing_excel') as HTMLButtonElement).click();
+		// EX1: the Export menu takes what the CSV would have saved.
+		expect(el(fixture, '#ageing_export')).not.toBeNull();
+		expect(page.exportSource(AGEING as never)()).toMatchObject({
+			fileName: 'suppliers-ageing_2026-11-24.csv',
+			area: 'accounts',
+		});
+		page.download(AGEING as never);
 		expect(vi.mocked(downloadCsv).mock.lastCall).toEqual([
 			'suppliers-ageing_2026-11-24.csv',
 			[
@@ -152,7 +164,7 @@ describe('outstanding with ageing (U5)', () => {
 		const { fixture } = mount(AgeingPage, { ageing: vi.fn(() => throwError(() => new Error('down'))) });
 		await settle(fixture);
 		expect(el(fixture, '.alert-warning')?.textContent).toContain('statement_problem');
-		expect(el(fixture, '#ageing_excel')).toBeNull();
+		expect(el(fixture, '#ageing_export')).toBeNull();
 	});
 });
 

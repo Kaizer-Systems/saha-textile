@@ -19,15 +19,10 @@
 				(ngModelChange)="q.set($event)"
 			/>
 			@if (report.data(); as r) {
-			<button
-				type="button"
-				class="btn btn-outline"
-				id="ageing_excel"
-				(click)="download(r)"
-			>
-				<i class="ri-file-excel-2-line"></i>
-				{{ 'gstr9_excel' | transloco }}
-			</button>
+			<app-export-menu
+				id="ageing_export"
+				[source]="exportSource(r)"
+			/>
 			}
 		</div>
 	</div>

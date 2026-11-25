@@ -11,6 +11,7 @@ import { REPORT_KEYS, ReportsGateway } from '@core/accounts/reports.gateway';
 import { downloadCsv, shortDate } from '@core/purchasing/purchasing-format';
 import { rupees } from '@features/accounts/ledger-helpers';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { ExportMenu, captured, type CsvWriter, type ExportSource } from '@shared/ui/export-menu/export-menu';
 
 import type { AgeingSide, OutstandingAgeing } from '@saha-textile/contracts';
 
@@ -19,7 +20,7 @@ export const AGEING_BUCKETS = ['notDue', 'days1to30', 'days31to60', 'days61to90'
 /** Customer or supplier outstanding with ageing (accounts brief U5), on today's date; search narrows the parties. */
 @Component({
 	selector: 'app-ageing-page',
-	imports: [PageWrapper, TranslocoModule, FormsModule],
+	imports: [PageWrapper, TranslocoModule, FormsModule, ExportMenu],
 	templateUrl: './ageing-page.html',
 })
 export class AgeingPage {
@@ -46,8 +47,14 @@ export class AgeingPage {
 		return shortDate(date);
 	}
 
-	download(r: OutstandingAgeing): void {
-		downloadCsv(
+	/** EX1: this report for the Export menu, written by the same code as its CSV. */
+	exportSource(r: OutstandingAgeing): () => ExportSource | null {
+		return () =>
+			captured(this.transloco.translate('report_tab_ageing'), 'accounts', (save) => this.download(r, save));
+	}
+
+	download(r: OutstandingAgeing, save: CsvWriter = downloadCsv): void {
+		save(
 			`${r.side}-ageing_${r.asAt}.csv`,
 			[
 				this.transloco.translate('ageing_party'),

@@ -574,7 +574,9 @@ describe('profit and loss by location (U3)', () => {
 		page.setPeriod({ period: 'custom', from: '2026-10-01', to: '2026-10-31' });
 		await settle(fixture);
 		expect(read).toHaveBeenLastCalledWith({ from: '2026-10-01', to: '2026-10-31' });
-		(el(fixture, '#plloc_excel') as HTMLButtonElement).click();
+		expect(el(fixture, '#plloc_export')).not.toBeNull();
+		expect(page.exportSource(page.report.data() as never)()?.area).toBe('accounts');
+		page.download(page.report.data() as never);
 		expect(vi.mocked(downloadCsv).mock.lastCall).toEqual([
 			'pl-by-location_2026-04-01_2027-03-31.csv',
 			['', 'Barasat', 'Head office', 'total'],
@@ -591,6 +593,6 @@ describe('profit and loss by location (U3)', () => {
 		]);
 		await settle(fixture);
 		expect(el(fixture, '.alert-warning')?.textContent).toContain('statement_problem');
-		expect(el(fixture, '#plloc_excel')).toBeNull();
+		expect(el(fixture, '#plloc_export')).toBeNull();
 	});
 });

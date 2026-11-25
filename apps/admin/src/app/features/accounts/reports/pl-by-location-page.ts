@@ -8,6 +8,7 @@ import { firstValueFrom } from 'rxjs';
 import { REPORT_KEYS, ReportsGateway } from '@core/accounts/reports.gateway';
 import { downloadCsv } from '@core/purchasing/purchasing-format';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { ExportMenu, captured, type CsvWriter, type ExportSource } from '@shared/ui/export-menu/export-menu';
 import { ACCOUNTS_PRESETS, PeriodPicker, type PeriodChoice } from '@shared/ui/period-picker/period-picker';
 
 import { accountsRange } from '../accounts-period';
@@ -18,7 +19,7 @@ import type { PlByLocation } from '@saha-textile/contracts';
 /** Profit and loss by location (accounts brief U3): each location's own profit, the head office's costs on their own. */
 @Component({
 	selector: 'app-pl-by-location-page',
-	imports: [PageWrapper, TranslocoModule, FormsModule, PeriodPicker],
+	imports: [PageWrapper, TranslocoModule, FormsModule, PeriodPicker, ExportMenu],
 	templateUrl: './pl-by-location-page.html',
 })
 export class PlByLocationPage {
@@ -41,8 +42,14 @@ export class PlByLocationPage {
 		this.range.set(accountsRange(choice));
 	}
 
-	download(r: PlByLocation): void {
-		downloadCsv(
+	/** EX1: this report for the Export menu, written by the same code as its CSV. */
+	exportSource(r: PlByLocation): () => ExportSource | null {
+		return () =>
+			captured(this.transloco.translate('report_pl_by_location'), 'accounts', (save) => this.download(r, save));
+	}
+
+	download(r: PlByLocation, save: CsvWriter = downloadCsv): void {
+		save(
 			`pl-by-location_${r.from}_${r.to}.csv`,
 			['', ...r.locations.map((l) => l.name), this.transloco.translate('total')],
 			r.rows.map((row) => [

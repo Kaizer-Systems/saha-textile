@@ -26,6 +26,22 @@ export interface ExportSource {
 	area?: 'accounts' | 'other';
 }
 
+/** The shape of a screen's CSV writer (`downloadCsv`), so its own code can feed the Export menu too. */
+export type CsvWriter = (fileName: string, header: readonly string[], rows: ReadonlyArray<ReadonlyArray<Cell>>) => void;
+
+/** A screen's CSV code run once with a stand-in writer: what it would have saved, as an export. */
+export function captured(
+	title: string,
+	area: 'accounts' | 'other',
+	write: (save: CsvWriter) => void,
+): ExportSource | null {
+	let out: ExportSource | null = null;
+	write((fileName, header, rows) => {
+		out = { fileName, title, header, rows, area };
+	});
+	return out;
+}
+
 const MONEY_WORDS = /₹|amount|total|debit|credit|balance|value|paid|due|tax|price|cost|gross|net/i;
 
 /** Each column's kind: as given, else money for numbers under a money heading, number, date, or text. */

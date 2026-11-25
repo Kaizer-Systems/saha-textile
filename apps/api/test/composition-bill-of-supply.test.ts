@@ -1,7 +1,9 @@
 import type { Order, TaxInvoice } from '@saha-textile/contracts';
 import { TaxInvoice as TaxInvoiceSchema } from '@saha-textile/contracts';
+import { ourBlocks } from '@saha-textile/core-domain';
 import { describe, expect, it } from 'vitest';
 
+import { documentHtml } from '../src/documents/document-html';
 import { taxInvoiceData } from '../src/documents/tax-invoice-print';
 import { InvoicesService } from '../src/invoicing/invoices.service';
 
@@ -57,7 +59,7 @@ const orderOf = (delivery: Record<string, unknown>): Order =>
 		],
 	}) as unknown as Order;
 
-function setup() {
+function setup(options: { locations?: unknown[]; registration?: unknown } = {}) {
 	const stored: TaxInvoice[] = [];
 	const posted: unknown[] = [];
 	const service = new InvoicesService(
@@ -68,10 +70,10 @@ function setup() {
 		} as never,
 		{
 			getFeatures: async () => ({ on: { tax_invoices: true } }),
-			getRegistration: async () => COMPOSITION,
+			getRegistration: async () => ('registration' in options ? options.registration : COMPOSITION),
 			findRegistrationByGstin: async () => null,
 		} as never,
-		{ list: async () => [BARASAT] } as never,
+		{ list: async () => options.locations ?? [BARASAT] } as never,
 		{ get: async () => ({ tradeName: 'K.R. Marketing', gstin: COMPOSITION.gstin }) } as never,
 		{ findById: async () => ({ hsnCode: '5007' }) } as never,
 		{ issue: async () => 'TI/26-27/000001' } as never,
@@ -108,47 +110,80 @@ describe('invoicing under composition', () => {
 	});
 });
 
-describe('printing a bill of supply', () => {
-	const party = { name: 'K.R. Marketing', gstin: COMPOSITION.gstin, address: 'Barasat', stateCode: '19' };
-	const bill = TaxInvoiceSchema.parse({
-		id: 'ti_1',
-		number: 'TI/26-27/000001',
-		date: '2026-11-23',
-		gstRegistrationId: 'reg_c',
-		gstin: COMPOSITION.gstin,
-		locationId: 'loc_bar',
-		orderId: 'ord_1',
-		orderNumber: 'ST-2611-000001',
-		seller: party,
-		buyer: { name: 'Ananya Das', gstin: null, address: 'Salt Lake', stateCode: '19' },
-		placeOfSupply: '19',
-		interState: false,
-		billOfSupply: true,
-		lines: [
-			{
-				lineId: 'a',
-				sku: 'S1',
-				title: 'Saree',
-				hsn: '5007',
-				quantity: 1,
-				unitPriceINR: 10_500,
-				ratePercent: 0,
-				taxableINR: 10_500,
-				totalINR: 10_500,
-			},
-		],
-		taxableINR: 10_500,
-		cgstINR: 0,
-		sgstINR: 0,
-		igstINR: 0,
-		roundOffINR: 0,
-		totalINR: 10_500,
-		createdAt: '2026-11-23T10:00:00.000Z',
+describe('a counter quote', () => {
+	const LINES = orderOf({}).lines;
+	const taxOf = async (
+		options: Parameters<typeof setup>[0],
+		locationId: string | null,
+		day = '2026-11-23',
+	): Promise<number> => {
+		const { totals } = await setup(options).service.counterPreview(LINES, locationId, day);
+		return totals.cgstINR + totals.sgstINR;
+	};
+
+	it('shows no tax for a store whose GSTIN is under composition on the day', async () => {
+		expect(await taxOf({}, 'loc_bar')).toBe(0);
+		// Before its terms began the GSTIN was not under composition.
+		expect(await taxOf({}, 'loc_bar', '2026-03-31')).toBeGreaterThan(0);
 	});
+
+	it('charges tax without a store, a store with no GSTIN, an unknown store or an unknown registration', async () => {
+		expect(await taxOf({}, null)).toBeGreaterThan(0);
+		expect(await taxOf({ locations: [{ ...BARASAT, gstRegistrationId: null }] }, 'loc_bar')).toBeGreaterThan(0);
+		expect(await taxOf({}, 'loc_gone')).toBeGreaterThan(0);
+		expect(await taxOf({ registration: null }, 'loc_bar')).toBeGreaterThan(0);
+		const { totals } = await setup().service.counterPreview(LINES);
+		expect(totals.cgstINR).toBeGreaterThan(0);
+	});
+});
+
+const party = { name: 'K.R. Marketing', gstin: COMPOSITION.gstin, address: 'Barasat', stateCode: '19' };
+/** A bill of supply as issued (before parsing). */
+const BILL = {
+	id: 'ti_1',
+	number: 'TI/26-27/000001',
+	date: '2026-11-23',
+	gstRegistrationId: 'reg_c',
+	gstin: COMPOSITION.gstin,
+	locationId: 'loc_bar',
+	orderId: 'ord_1',
+	orderNumber: 'ST-2611-000001',
+	seller: party,
+	buyer: { name: 'Ananya Das', gstin: null, address: 'Salt Lake', stateCode: '19' },
+	placeOfSupply: '19',
+	interState: false,
+	billOfSupply: true,
+	lines: [
+		{
+			lineId: 'a',
+			sku: 'S1',
+			title: 'Saree',
+			hsn: '5007',
+			quantity: 1,
+			unitPriceINR: 10_500,
+			ratePercent: 0,
+			taxableINR: 10_500,
+			totalINR: 10_500,
+		},
+	],
+	taxableINR: 10_500,
+	cgstINR: 0,
+	sgstINR: 0,
+	igstINR: 0,
+	roundOffINR: 0,
+	totalINR: 10_500,
+	createdAt: '2026-11-23T10:00:00.000Z',
+};
+
+describe('printing a bill of supply', () => {
+	const bill = TaxInvoiceSchema.parse(BILL);
 
 	it('is titled a bill of supply, shows no tax rows and carries the composition declaration', () => {
 		const data = taxInvoiceData(bill, { name: 'K.R. Marketing', lines: [] }, 'original', null);
 		expect(data.title).toBe('Bill of supply');
+		expect(data.hideColumns).toEqual(['gstRate', 'tax']);
+		expect(data.taxHeading).toBeUndefined();
+		expect(data.hsnSummary).toEqual([]);
 		expect(data.totals?.totals?.map((t) => t.label)).toEqual(['Taxable value', 'Total']);
 		expect(data.signatures?.declaration).toMatch(
 			/^Composition taxable person, not eligible to collect tax on supplies\./,
@@ -163,7 +198,28 @@ describe('printing a bill of supply', () => {
 			null,
 		);
 		expect(data.title).toBe('Tax invoice');
+		expect(data.hideColumns).toBeUndefined();
+		expect(data.taxHeading).toBe('CGST + SGST');
+		expect(data.hsnSummary).toHaveLength(1);
 		expect(data.totals?.totals?.map((t) => t.label)).toEqual(['Taxable value', 'CGST', 'SGST', 'Total']);
 		expect(data.signatures?.declaration).toMatch(/^We declare/);
+	});
+});
+
+describe('the printed table of a bill of supply', () => {
+	it('leaves out the GST rate and tax columns the format shows, and keeps them on a tax invoice', () => {
+		const seller = { name: 'K.R. Marketing', lines: [] };
+		const format = { name: 'Standard', paper: 'a4' as const, blocks: ourBlocks('taxInvoice') };
+		const brand = { logoSrc: null, themeColor: null, fontFaces: '' };
+		const head = (invoice: TaxInvoice) =>
+			/<table class="dz-table"><thead><tr>(.*?)<\/tr>/.exec(
+				documentHtml(format, taxInvoiceData(invoice, seller, 'original', null), brand),
+			)?.[1] ?? '';
+		const bill = TaxInvoiceSchema.parse(BILL);
+		const invoice = { ...bill, billOfSupply: false };
+		const columns = (html: string) => html.match(/<th/g)?.length ?? 0;
+		expect(columns(head(invoice)) - columns(head(bill))).toBe(2);
+		expect(head(invoice)).toContain('CGST + SGST');
+		expect(head(bill)).not.toContain('CGST + SGST');
 	});
 });

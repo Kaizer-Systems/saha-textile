@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
 	AdvanceGive,
 	AdvanceSchedule,
+	BonusPay,
+	BonusRules,
+	BonusYear,
+	BonusYearRow,
 	IncomeTaxRules,
 	IncomeTaxView,
 	IncomeTaxWorking,
@@ -709,5 +713,84 @@ describe('income tax in the rules, on the run and both ways (brief 25 TX1, TX2)'
 		refused(IncomeTaxView.safeParse({ ...view, declarationsCount: 'yes' }).success);
 		refused(IncomeTaxView.safeParse({ ...view, new: { ...view.new, taxPaise: 0.5 } }).success);
 		refused(IncomeTaxWorking.safeParse({ ...view.old, regime: 'both' }).success);
+	});
+});
+
+describe('statutory bonus in the rules, on the run and for the year (brief 25 BN1)', () => {
+	const bonus = {
+		ratePct: 8.33,
+		wageCeilingPaise: 7_000_00,
+		eligibleUpToPaise: 21_000_00,
+		minimumPaise: 100_00,
+		provision: 'monthly',
+	};
+
+	it('keeps a version’s bonus figures when given, none on a version saved before', () => {
+		expect(PayrollRulesWrite.parse(rules)).not.toHaveProperty('bonus');
+		expect(PayrollRulesWrite.parse({ ...rules, bonus }).bonus).toEqual(bonus);
+		expect(BonusRules.parse({ ...bonus, provision: 'year_end' }).provision).toBe('year_end');
+	});
+
+	it('keeps the rate between the Act’s 8.33% and 20%, amounts in whole paise, provided monthly or at the year’s end', () => {
+		accepted(BonusRules.safeParse({ ...bonus, ratePct: 20 }).success);
+		refused(BonusRules.safeParse({ ...bonus, ratePct: 8.32 }).success);
+		refused(BonusRules.safeParse({ ...bonus, ratePct: 20.01 }).success);
+		for (const key of ['wageCeilingPaise', 'eligibleUpToPaise', 'minimumPaise']) {
+			accepted(BonusRules.safeParse({ ...bonus, [key]: 0 }).success);
+			refused(BonusRules.safeParse({ ...bonus, [key]: -1 }).success);
+			refused(BonusRules.safeParse({ ...bonus, [key]: 0.5 }).success);
+		}
+		refused(BonusRules.safeParse({ ...bonus, provision: 'quarterly' }).success);
+		refused(BonusRules.safeParse({ ...bonus, provision: undefined }).success);
+	});
+
+	it('keeps a month’s bonus wages and the bonus provided on a run’s row, or neither', () => {
+		const provided = PayrollRow.parse({ ...row, bonusWagesPaise: 7_000_00, bonusPaise: 583_10 });
+		expect([provided.bonusWagesPaise, provided.bonusPaise]).toEqual([7_000_00, 583_10]);
+		expect(PayrollRow.parse(row)).not.toHaveProperty('bonusPaise');
+		refused(PayrollRow.safeParse({ ...row, bonusPaise: 0.5 }).success);
+	});
+
+	const priya = {
+		employeeId: 'emp_1',
+		name: 'Priya Sen',
+		wagesPaise: 84_000_00,
+		providedPaise: 6_997_20,
+		duePaise: 6_997_20,
+	};
+
+	it('shows the year’s bonus person by person, what was provided against what is due, and the payment once made', () => {
+		const year = {
+			year: '2026-27',
+			ratePct: 8.33,
+			rows: [
+				priya,
+				{
+					...priya,
+					employeeId: 'emp_2',
+					name: 'Arun',
+					wagesPaise: 1_000_00,
+					providedPaise: 83_30,
+					duePaise: 100_00,
+				},
+			],
+			providedPaise: 7_080_50,
+			duePaise: 7_097_20,
+			paidVoucherId: null,
+		};
+		expect(BonusYear.parse(year)).toEqual(year);
+		expect(BonusYear.parse({ ...year, paidVoucherId: 'vch_bonus_2627' }).paidVoucherId).toBe('vch_bonus_2627');
+		expect(BonusYearRow.parse(priya)).toEqual(priya);
+		refused(BonusYearRow.safeParse({ ...priya, employeeId: '' }).success);
+		refused(BonusYearRow.safeParse({ ...priya, duePaise: 0.5 }).success);
+		refused(BonusYear.safeParse({ ...year, paidVoucherId: undefined }).success);
+		refused(BonusYear.safeParse({ ...year, providedPaise: 1.5 }).success);
+	});
+
+	it('pays the bonus from a bank ledger on a day', () => {
+		const pay = { bankLedgerId: 'led_hdfc', paidOn: '2027-10-30' };
+		expect(BonusPay.parse(pay)).toEqual(pay);
+		refused(BonusPay.safeParse({ ...pay, bankLedgerId: '' }).success);
+		refused(BonusPay.safeParse({ ...pay, paidOn: '30-10-2027' }).success);
 	});
 });

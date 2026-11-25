@@ -1240,6 +1240,24 @@ test('Coverage shows the tree with every folder’s numbers, a file at the side,
 	await expect(run.locator('option[value="902"]')).toBeDisabled();
 	await expect(page.getByText('whole codebase', { exact: true })).toBeVisible();
 	await expect(page.locator('.rc-stat').filter({ hasText: 'tests' })).toContainText('1 failed');
+	// Both dropdowns are the console's own, and Compare with sits in its row, clear of the table below it.
+	const compare = page.getByRole('combobox', { name: 'Compare with' });
+	await expect(run).toHaveClass(/rc-select/);
+	await expect(compare).toHaveClass(/rc-select/);
+	// One arrow: the console's ▾, with Chrome's own picker icon hidden.
+	expect(await compare.evaluate((el) => getComputedStyle(el, '::picker-icon').display)).toBe('none');
+	await compare.scrollIntoViewIfNeeded();
+	const [box, table] = await Promise.all([compare.boundingBox(), page.locator('table.rc-t').first().boundingBox()]);
+	// The console's 12 px between parts, so the row never sits on the table's border.
+	expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual((table?.y ?? 0) - 8);
+	// The console's loader shows for a second on every page; the picture waits for it to lift.
+	await expect(page.locator('rc-load-overlay.on')).toHaveCount(0);
+	const screen = page.viewportSize() ?? { width: 1280, height: 720 };
+	const top = Math.max(0, (box?.y ?? 0) - 120);
+	await page.screenshot({
+		path: info.outputPath('coverage-compare-with.png'),
+		clip: { x: 0, y: top, width: screen.width, height: Math.min(screen.height, (table?.y ?? 0) + 80) - top },
+	});
 	// A folder opens one level; a workspace whose tests failed says so.
 	await page.locator('tr.row[data-path="apps"]').click();
 	await expect(page.locator('tr.row[data-path="apps/release-console-api"]')).toContainText('1 test failed');

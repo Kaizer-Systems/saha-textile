@@ -90,8 +90,8 @@ export function firstRun(runs: CoverageRuns | undefined): { source: CoverageSour
 					</button>
 					@if (chosen()?.source === 'ci') {
 						<select
-							class="rc-search"
-							style="max-width: 100%; min-width: 0"
+							class="rc-select"
+							style="min-width: 0"
 							aria-label="CI run"
 							(change)="pickRun($any($event.target).value)"
 						>
@@ -132,249 +132,258 @@ export function firstRun(runs: CoverageRuns | undefined): { source: CoverageSour
 				[failed]="treeQ.isError()"
 			>
 				@if (tree(); as t) {
-					<div class="rc-tiles">
-						@for (m of tiles(); track m.label) {
-							<div class="rc-stat">
-								<span class="rc-label">{{ m.label }}</span>
-								<b [class]="m.band">{{ m.text }}</b>
-								<small>{{ m.detail }}</small>
-							</div>
-						}
-					</div>
-					<div class="rc-row between">
-						<div class="rc-row">
-							@for (f of flags; track f.key) {
+					<!-- The console's content grid: 12 px between the tiles, the toolbar rows and the table (owner, 25 Nov: Compare with ran into the table). -->
+					<div class="rc-content">
+						<div class="rc-tiles">
+							@for (m of tiles(); track m.label) {
+								<div class="rc-stat">
+									<span class="rc-label">{{ m.label }}</span>
+									<b [class]="m.band">{{ m.text }}</b>
+									<small>{{ m.detail }}</small>
+								</div>
+							}
+						</div>
+						<div class="rc-row between">
+							<div class="rc-row">
+								@for (f of flags; track f.key) {
+									<button
+										type="button"
+										class="rc-chip"
+										[class.on]="flagOn(f.key)"
+										(click)="setFlag(f.key)"
+									>
+										{{ f.label }}
+									</button>
+								}
 								<button
 									type="button"
 									class="rc-chip"
-									[class.on]="flagOn(f.key)"
-									(click)="setFlag(f.key)"
+									[class.on]="base() === 'commit'"
+									(click)="pickBase('commit')"
 								>
-									{{ f.label }}
+									Changed in this commit
 								</button>
-							}
+								@if (mainBranch(); as main) {
+									<button
+										type="button"
+										class="rc-chip"
+										[class.on]="base() === main"
+										(click)="pickBase(main)"
+									>
+										Changed since {{ main }}
+									</button>
+								}
+							</div>
+							<div class="rc-row">
+								<div class="rc-msearch">
+									<input
+										#find
+										aria-label="Find a file"
+										placeholder="Find a file"
+										[value]="query()"
+										(input)="query.set($any($event.target).value)"
+									/>
+									<kbd>/</kbd>
+								</div>
+								<button
+									type="button"
+									class="rc-btn"
+									title="Open every folder that is below 100%"
+									(click)="openEveryGap()"
+								>
+									Open every gap
+								</button>
+							</div>
+						</div>
+						<div class="rc-row">
 							<button
 								type="button"
 								class="rc-chip"
-								[class.on]="base() === 'commit'"
-								(click)="pickBase('commit')"
+								[class.on]="showSlow()"
+								(click)="showSlow.set(!showSlow())"
 							>
-								Changed in this commit
+								Slowest tests
 							</button>
-							@if (mainBranch(); as main) {
-								<button
-									type="button"
-									class="rc-chip"
-									[class.on]="base() === main"
-									(click)="pickBase(main)"
+							<!-- The console's labelled dropdown, as Products' pickers draw it (product-screen.ts). -->
+							<label class="rc-row">
+								<span class="rc-label">Compare with</span>
+								<select
+									class="rc-select"
+									aria-label="Compare with"
+									(change)="pickCompare($any($event.target).value)"
 								>
-									Changed since {{ main }}
-								</button>
+									<option
+										value=""
+										[selected]="!compareWith()"
+									>
+										nothing
+									</option>
+									@for (o of compareChoices(); track o.value) {
+										<option
+											[value]="o.value"
+											[selected]="o.value === compareWith()"
+										>
+											{{ o.label }}
+										</option>
+									}
+								</select>
+							</label>
+							@if (compareWith() && compareQ.isPending()) {
+								<span class="rc-note">Reading the run to compare with…</span>
 							}
 						</div>
-						<div class="rc-row">
-							<div class="rc-msearch">
-								<input
-									#find
-									aria-label="Find a file"
-									placeholder="Find a file"
-									[value]="query()"
-									(input)="query.set($any($event.target).value)"
-								/>
-								<kbd>/</kbd>
+						@if (showSlow()) {
+							<div class="rc-panel">
+								<span class="rc-label">Slowest test files · this run</span>
+								<div class="rc-kv">
+									@for (s of t.tests.slowest; track s.file) {
+										<div>
+											<span>{{ s.file }}</span>
+											<em>{{ seconds(s.ms) }}</em>
+										</div>
+									} @empty {
+										<p class="rc-note">This run kept no test times.</p>
+									}
+								</div>
 							</div>
-							<button
-								type="button"
-								class="rc-btn"
-								title="Open every folder that is below 100%"
-								(click)="openEveryGap()"
-							>
-								Open every gap
-							</button>
-						</div>
-					</div>
-					<div class="rc-row">
-						<button
-							type="button"
-							class="rc-chip"
-							[class.on]="showSlow()"
-							(click)="showSlow.set(!showSlow())"
-						>
-							Slowest tests
-						</button>
-						<label class="rc-form">
-							Compare with
-							<select
-								class="rc-search"
-								style="max-width: 100%; min-width: 0"
-								aria-label="Compare with"
-								(change)="pickCompare($any($event.target).value)"
-							>
-								<option
-									value=""
-									[selected]="!compareWith()"
-								>
-									nothing
-								</option>
-								@for (o of compareChoices(); track o.value) {
-									<option
-										[value]="o.value"
-										[selected]="o.value === compareWith()"
-									>
-										{{ o.label }}
-									</option>
-								}
-							</select>
-						</label>
-						@if (compareWith() && compareQ.isPending()) {
-							<span class="rc-note">Reading the run to compare with…</span>
 						}
-					</div>
-					@if (showSlow()) {
-						<div class="rc-panel">
-							<span class="rc-label">Slowest test files · this run</span>
-							<div class="rc-kv">
-								@for (s of t.tests.slowest; track s.file) {
-									<div>
-										<span>{{ s.file }}</span>
-										<em>{{ seconds(s.ms) }}</em>
-									</div>
-								} @empty {
-									<p class="rc-note">This run kept no test times.</p>
-								}
+						@if (t.changed; as ch) {
+							<div class="rc-banner small">
+								<span [class]="'rc-dot ' + (patch().missed ? 'red' : 'ok')"></span>
+								<div>
+									<b>{{ patch().run }} of {{ patch().run + patch().missed }} changed lines ran</b>
+									({{ ch.label }}, {{ ch.files.length }} measured files).
+									@if (patch().missed) {
+										{{ patch().missed }} changed lines no test ran: the project's rule is that every
+										change keeps its own code at 100%.
+									}
+								</div>
 							</div>
-						</div>
-					}
-					@if (t.changed; as ch) {
-						<div class="rc-banner small">
-							<span [class]="'rc-dot ' + (patch().missed ? 'red' : 'ok')"></span>
-							<div>
-								<b>{{ patch().run }} of {{ patch().run + patch().missed }} changed lines ran</b>
-								({{ ch.label }}, {{ ch.files.length }} measured files).
-								@if (patch().missed) {
-									{{ patch().missed }} changed lines no test ran: the project's rule is that every
-									change keeps its own code at 100%.
-								}
-							</div>
-						</div>
-					}
-					<div
-						class="rc-g-side rc-cov-split"
-						[class.open]="!!open()"
-					>
-						@if (tab() === 'map') {
-							<rc-coverage-map
-								[root]="t.tree"
-								[focusPath]="mapFocus()"
-								(focus)="mapFocus.set($event)"
-								(open)="openFile($event)"
-							/>
-						} @else {
-							<div class="rc-tw rc-cov-tree">
-								<table
-									class="rc-t"
-									role="treegrid"
-									aria-label="Code tree with coverage"
-								>
-									<thead>
-										<tr>
-											<th>Name</th>
-											<th class="rc-cov-bar">Statements</th>
-											<th>Stmts</th>
-											<th>Branch</th>
-											<th>Funcs</th>
-											<th>Lines</th>
-											@if (compared()) {
-												<th title="Change in statements covered since the run compared with">
-													Δ
-												</th>
-											}
-										</tr>
-									</thead>
-									<tbody>
-										@for (row of rows(); track row.path) {
-											<tr
-												class="row"
-												tabindex="-1"
-												[class.sel]="row.path === open()"
-												[class.unmeasured]="!row.counts"
-												[class.in]="fresh().has(row.path)"
-												[attr.data-path]="row.path"
-												[attr.aria-expanded]="row.folder ? row.open : null"
-												[attr.aria-level]="row.depth + 1"
-												(click)="rowClick(row, $any($event).altKey || $any($event).shiftKey)"
-											>
-												<td>
-													<span
-														class="rc-cov-name"
-														[style.padding-left.px]="row.depth * 14"
+						}
+						<div
+							class="rc-g-side rc-cov-split"
+							[class.open]="!!open()"
+						>
+							@if (tab() === 'map') {
+								<rc-coverage-map
+									[root]="t.tree"
+									[focusPath]="mapFocus()"
+									(focus)="mapFocus.set($event)"
+									(open)="openFile($event)"
+								/>
+							} @else {
+								<div class="rc-tw rc-cov-tree">
+									<table
+										class="rc-t"
+										role="treegrid"
+										aria-label="Code tree with coverage"
+									>
+										<thead>
+											<tr>
+												<th>Name</th>
+												<th class="rc-cov-bar">Statements</th>
+												<th>Stmts</th>
+												<th>Branch</th>
+												<th>Funcs</th>
+												<th>Lines</th>
+												@if (compared()) {
+													<th
+														title="Change in statements covered since the run compared with"
 													>
-														<span
-															class="rc-cov-arrow"
-															[class.open]="row.open"
-														>
-															{{ row.folder ? '▸' : '' }}
-														</span>
-														@if (row.path === '') {
-															<b>{{ row.name }}</b>
-															<span class="muted">whole codebase</span>
-														} @else {
-															{{ row.name }}
-														}
-														@if (failedIn(row.path); as n) {
-															<span class="rc-pill red">
-																{{ n }} {{ n === 1 ? 'test' : 'tests' }} failed
-															</span>
-														}
-													</span>
-												</td>
-												<td class="rc-cov-bar">
-													@if (cells(row)[0]; as s) {
-														<span class="rc-bar">
-															<i
-																[class]="s.band"
-																[style.width.%]="s.share"
-															></i>
-														</span>
-													}
-												</td>
-												@for (c of cells(row); track $index) {
-													<td
-														class="num"
-														[class]="c ? 'num ' + c.band : 'num muted'"
-														[title]="c?.title ?? 'not measured'"
-													>
-														{{ c ? c.text : '—' }}
-													</td>
-												}
-												@if (compared(); as before) {
-													@let d = delta(row, before);
-													<td [class]="'num ' + (d?.band ?? 'muted')">{{ d?.text ?? '' }}</td>
+														Δ
+													</th>
 												}
 											</tr>
-										}
-									</tbody>
-								</table>
-							</div>
-						}
-						@if (open(); as path) {
-							<rc-coverage-file
-								[answer]="fileQ.data()"
-								[pending]="fileQ.isPending()"
-								[failed]="fileQ.isError()"
-								[tab]="paneTab()"
-								[line]="line()"
-								[repository]="
-									chosen()?.source === 'ci' ? (ctx.repo()?.sourceCode?.repository ?? null) : null
-								"
-								(closed)="close()"
-								(tabChange)="paneTab.set($event)"
-								(goTo)="jump($event)"
-								[job]="runJob()"
-								[runMessage]="runMessage()"
-								(runSpec)="runSpec($event)"
-							/>
-						}
+										</thead>
+										<tbody>
+											@for (row of rows(); track row.path) {
+												<tr
+													class="row"
+													tabindex="-1"
+													[class.sel]="row.path === open()"
+													[class.unmeasured]="!row.counts"
+													[class.in]="fresh().has(row.path)"
+													[attr.data-path]="row.path"
+													[attr.aria-expanded]="row.folder ? row.open : null"
+													[attr.aria-level]="row.depth + 1"
+													(click)="
+														rowClick(row, $any($event).altKey || $any($event).shiftKey)
+													"
+												>
+													<td>
+														<span
+															class="rc-cov-name"
+															[style.padding-left.px]="row.depth * 14"
+														>
+															<span
+																class="rc-cov-arrow"
+																[class.open]="row.open"
+															>
+																{{ row.folder ? '▸' : '' }}
+															</span>
+															@if (row.path === '') {
+																<b>{{ row.name }}</b>
+																<span class="muted">whole codebase</span>
+															} @else {
+																{{ row.name }}
+															}
+															@if (failedIn(row.path); as n) {
+																<span class="rc-pill red">
+																	{{ n }} {{ n === 1 ? 'test' : 'tests' }} failed
+																</span>
+															}
+														</span>
+													</td>
+													<td class="rc-cov-bar">
+														@if (cells(row)[0]; as s) {
+															<span class="rc-bar">
+																<i
+																	[class]="s.band"
+																	[style.width.%]="s.share"
+																></i>
+															</span>
+														}
+													</td>
+													@for (c of cells(row); track $index) {
+														<td
+															class="num"
+															[class]="c ? 'num ' + c.band : 'num muted'"
+															[title]="c?.title ?? 'not measured'"
+														>
+															{{ c ? c.text : '—' }}
+														</td>
+													}
+													@if (compared(); as before) {
+														@let d = delta(row, before);
+														<td [class]="'num ' + (d?.band ?? 'muted')">
+															{{ d?.text ?? '' }}
+														</td>
+													}
+												</tr>
+											}
+										</tbody>
+									</table>
+								</div>
+							}
+							@if (open(); as path) {
+								<rc-coverage-file
+									[answer]="fileQ.data()"
+									[pending]="fileQ.isPending()"
+									[failed]="fileQ.isError()"
+									[tab]="paneTab()"
+									[line]="line()"
+									[repository]="
+										chosen()?.source === 'ci' ? (ctx.repo()?.sourceCode?.repository ?? null) : null
+									"
+									(closed)="close()"
+									(tabChange)="paneTab.set($event)"
+									(goTo)="jump($event)"
+									[job]="runJob()"
+									[runMessage]="runMessage()"
+									(runSpec)="runSpec($event)"
+								/>
+							}
+						</div>
 					</div>
 				}
 			</rc-vendor-state>

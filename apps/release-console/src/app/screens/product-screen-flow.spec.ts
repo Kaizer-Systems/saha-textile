@@ -101,6 +101,17 @@ describe('a product screen', () => {
 		await vi.waitFor(() => expect(c.data()).toEqual(view('second').data));
 	});
 
+	it('reads a Monitor tab again for each time range, and keeps one read for other tabs', async () => {
+		const { c, api, params, fixture } = make({ tab: 'monitor' });
+		await vi.waitFor(() => expect(c.data()).toEqual(view('first').data));
+		expect(api.productTab).toHaveBeenLastCalledWith('proj_1', 'shop', 'droplets', 'monitor', null, '24h');
+		params.next(convertToParamMap({ range: '7d' }));
+		fixture.detectChanges();
+		await vi.waitFor(() =>
+			expect(api.productTab).toHaveBeenLastCalledWith('proj_1', 'shop', 'droplets', 'monitor', null, '7d'),
+		);
+	});
+
 	it('shows nothing for an answer that is not ok', async () => {
 		const { c } = make({ tab: 'list', tabAnswer: async () => ({ state: 'error', message: 'No key' }) });
 		await vi.waitFor(() => expect(c.q.data()).toBeTruthy());

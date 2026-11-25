@@ -830,8 +830,9 @@ body {
 .rc-select:open {
 	border-color: var(--hud-cyan);
 }
+/* One arrow: the console's own ▾ (::after, as the top bar's pickers draw it), not Chrome's picker icon beside it. */
 .rc-select::picker-icon {
-	color: var(--hud-cyan);
+	display: none;
 }
 .rc-select::picker(select) {
 	margin-top: 6px;

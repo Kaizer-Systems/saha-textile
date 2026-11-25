@@ -5,8 +5,8 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-experimental';
-import { of } from 'rxjs';
-import { describe, expect, it, vi } from 'vitest';
+import { of, throwError } from 'rxjs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PayrollGateway } from '@core/accounts/payroll.gateway';
 import { LocationsGateway } from '@core/locations/locations.gateway';
@@ -60,7 +60,18 @@ const person = (over: Record<string, unknown> = {}) =>
 		...over,
 	}) as unknown as EmployeeView;
 
-async function employees(permissions = ['accounts.index', 'accounts.edit'], route?: unknown, bare = false) {
+async function employees(
+	permissions = ['accounts.index', 'accounts.edit'],
+	route?: unknown,
+	bare = false,
+	extra: { staff?: EmployeeView[]; gateway?: Record<string, unknown> } = {},
+) {
+	const notifier = { showSuccess: vi.fn(), showError: vi.fn() };
+	const gateway = {
+		employees: vi.fn(() => of(extra.staff ?? [person()])),
+		rules: vi.fn(() => of([])),
+		...extra.gateway,
+	};
 	TestBed.resetTestingModule();
 	document.body.querySelectorAll('.rev-test-modal').forEach((node) => node.remove());
 	const views: { detectChanges: () => void }[] = [];
@@ -80,13 +91,13 @@ async function employees(permissions = ['accounts.index', 'accounts.edit'], rout
 			...(route === undefined ? [] : [{ provide: ActivatedRoute, useValue: route }]),
 			{
 				provide: PayrollGateway,
-				useValue: { employees: vi.fn(() => of([person()])), rules: vi.fn(() => of([])) },
+				useValue: gateway,
 			},
 			{
 				provide: LocationsGateway,
 				useValue: { list: vi.fn(() => of([{ id: 'l1', name: 'Barasat', active: true }])) },
 			},
-			{ provide: NotificationService, useValue: { showSuccess: vi.fn(), showError: vi.fn() } },
+			{ provide: NotificationService, useValue: notifier },
 			{ provide: AuthStore, useValue: { permissions: signal(permissions) } },
 			{
 				provide: NgbModal,
@@ -121,7 +132,7 @@ async function employees(permissions = ['accounts.index', 'accounts.edit'], rout
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		views.at(-1)?.detectChanges();
 	};
-	return { fixture, page: fixture.componentInstance, redraw, popups };
+	return { fixture, page: fixture.componentInstance, redraw, popups, gateway, notifier };
 }
 
 const modal = <T extends HTMLElement = HTMLSelectElement>(selector: string) =>
@@ -201,5 +212,61 @@ describe('Revise pay and the skill level on Employees (SR2, SR4)', () => {
 			true,
 		);
 		expect(bare.page.editing()).toBeNull();
+	});
+
+	describe('the revision letter (SR2)', () => {
+		const version = (from: string) => ({ from, structure: {}, ctcYearINR: null, reason: '', decrease: false });
+		const revised = person({ salaryHistory: [version('2026-04-01'), version('2026-12-01')] });
+		const first = person({ id: 'e2', name: 'Rafiq Ali', salaryHistory: [version('2026-04-01')] });
+		const downloads: string[] = [];
+		afterEach(() => vi.restoreAllMocks());
+		const watchDownloads = () => {
+			downloads.length = 0;
+			URL.createObjectURL = vi.fn(() => 'blob:letter');
+			URL.revokeObjectURL = vi.fn();
+			vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+				downloads.push(this.download);
+			});
+		};
+
+		it('offers the letter of a person’s latest revision only, never of a first salary', async () => {
+			const { fixture, page } = await employees(undefined, undefined, false, { staff: [revised, first] });
+			expect([page.lastRevision(revised), page.lastRevision(first), page.lastRevision(person())]).toEqual([
+				'2026-12-01',
+				null,
+				null,
+			]);
+			const letter = fixture.nativeElement.querySelector('#emp_letter_e1') as HTMLButtonElement;
+			expect(letter.title).toBe('payroll_revision_letter');
+			expect(fixture.nativeElement.querySelector('#emp_letter_e2')).toBeNull();
+		});
+
+		it('offers no letter to someone who may not read the books', async () => {
+			const { fixture } = await employees(['accounts.edit'], undefined, false, { staff: [revised] });
+			expect(fixture.nativeElement.querySelector('#emp_letter_e1')).toBeNull();
+		});
+
+		it('downloads the letter of the latest revision, or says why it could not', async () => {
+			watchDownloads();
+			const pdf = new Blob(['%PDF'], { type: 'application/pdf' });
+			const { fixture, page, gateway, notifier } = await employees(undefined, undefined, false, {
+				staff: [revised],
+				gateway: { revisionLetterPdf: vi.fn(() => of(pdf)) },
+			});
+			(fixture.nativeElement.querySelector('#emp_letter_e1') as HTMLButtonElement).click();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			expect(gateway['revisionLetterPdf']).toHaveBeenCalledWith('e1', '2026-12-01');
+			expect([downloads, URL.createObjectURL]).toEqual([
+				['revision-letter-2026-12-01.pdf'],
+				expect.any(Function),
+			]);
+			expect(URL.createObjectURL).toHaveBeenCalledWith(pdf);
+			(gateway['revisionLetterPdf'] as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+				throwError(() => ({ error: { message: 'revision_letter_not_found' } })),
+			);
+			await page.letter(revised, '2026-12-01');
+			expect(notifier.showError).toHaveBeenCalledWith('payroll_problem_revision_letter_not_found');
+			expect(downloads).toHaveLength(1);
+		});
 	});
 });

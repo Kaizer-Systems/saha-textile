@@ -35,4 +35,21 @@ describe('the payroll gateway’s pay revision', () => {
 		accept.flush({});
 		http.verify();
 	});
+
+	it('reads the letter of the revision saved from a day as a file', () => {
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+		const gateway = TestBed.inject(PayrollGateway);
+		const http = TestBed.inject(HttpTestingController);
+		gateway.revisionLetterPdf('emp/1', '2026-12-01').subscribe();
+		const letter = http.expectOne(
+			(req) =>
+				req.method === 'GET' &&
+				req.urlWithParams ===
+					`${runtimeConfig.apiUrl}/admin/payroll/employees/emp%2F1/revision/letter/2026-12-01`,
+		);
+		expect(letter.request.responseType).toBe('blob');
+		letter.flush(new Blob(['%PDF']));
+		http.verify();
+	});
 });

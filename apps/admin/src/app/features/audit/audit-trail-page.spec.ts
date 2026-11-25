@@ -331,4 +331,19 @@ describe('Settings › Audit trail (AU1)', () => {
 		const reads = gateway.list.mock.calls.map(([q]) => q).filter((q) => q['pageSize'] === 200);
 		expect(reads).toEqual([1, 2, 3].map((n) => ({ page: n, pageSize: 200, audience: 'admin', module: 'stock' })));
 	});
+
+	it('stops the export at a page that comes back empty, though the total says there are more', async () => {
+		const { page, gateway } = await trail((query) => ({
+			items:
+				query['pageSize'] === 200
+					? query['page'] === 1
+						? Array.from({ length: 200 }, (_, i) => entry({ id: `au_${i}` }))
+						: []
+					: ENTRIES,
+			total: 1_000,
+		}));
+		const source = await page.exportSource();
+		expect(source.rows).toHaveLength(200);
+		expect(gateway.list.mock.calls.map(([q]) => q).filter((q) => q['pageSize'] === 200)).toHaveLength(2);
+	});
 });

@@ -16,7 +16,7 @@ import { istTime, paiseOf } from './cash-format';
 import type { CashBox, PettyExpenseWrite } from '@saha-textile/contracts';
 
 /** The GST rates a petty bill may carry. */
-export const PETTY_RATES = [5, 12, 18, 28] as const;
+export const PETTY_RATES = [5, 12, 18, 28, 40] as const;
 
 /**
  * O4: a petty expense paid from a box with its sheet open: head, amount, paid to, what for, the bill when it is over

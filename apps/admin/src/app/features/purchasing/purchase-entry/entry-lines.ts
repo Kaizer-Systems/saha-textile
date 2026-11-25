@@ -20,7 +20,8 @@ import type {
 } from '@saha-textile/contracts';
 
 /** GST rates a bill line can carry; 5% is the example rate until the CA's table (round 2, B2.4). */
-export const GST_RATES: readonly number[] = [0, 5, 12, 18, 28];
+/** GST rates a bill line can carry: 40% since the GST Council's September 2025 change; 12% and 28% stay for earlier bills. */
+export const GST_RATES: readonly number[] = [0, 5, 12, 18, 28, 40];
 export const DEFAULT_GST_PCT = 5;
 
 /** One bill line as the entry form holds it while typing (p06). */

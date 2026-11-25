@@ -277,7 +277,7 @@ export const PurchaseOrderLine = z.object({
 	quantity: PositiveUnits,
 	agreedPriceINR: PriceINR,
 	/** For the order's GST estimate only; the supplier's bill sets the real tax. */
-	gstRatePct: z.number().min(0).max(28),
+	gstRatePct: z.number().min(0).max(40),
 	lastCostINR: PriceINR.nullable(),
 	receivedQuantity: NonNegativeUnits,
 	/** The entries that brought this line's goods (po04 "Received on"). */
@@ -330,7 +330,7 @@ export const PurchaseOrderLineWrite = z.object({
 	quantity: PositiveUnits,
 	agreedPriceINR: PriceINR,
 	/** For the estimate only (example rate until the CA's table, round 2 B2.4). */
-	gstRatePct: z.number().min(0).max(28).default(5),
+	gstRatePct: z.number().min(0).max(40).default(5),
 	supplierItemCode: OptionalText(60),
 	/** Backorder lines this line covers (OD2); the Backorders screen fills it. */
 	backorderLineIds: z.array(Id).max(500).default([]),
@@ -424,7 +424,7 @@ export const PurchaseEntryLine = z.object({
 	/** HSN as printed on the supplier's bill; the product keeps its own. */
 	hsnOnBill: z.string().nullable(),
 	productHsn: z.string().nullable(),
-	gstRatePct: z.number().min(0).max(28),
+	gstRatePct: z.number().min(0).max(40),
 	quantity: PositiveUnits,
 	/** As on the bill: before GST, or including GST when the entry says so. */
 	unitPriceINR: PriceINR,
@@ -534,7 +534,7 @@ export const PurchaseEntryLineWrite = z.object({
 		.pipe(HsnCode.nullable())
 		.nullable()
 		.default(null),
-	gstRatePct: z.number().min(0).max(28),
+	gstRatePct: z.number().min(0).max(40),
 	supplierItemCode: OptionalText(60),
 	purchaseOrderLineId: Id.nullable().default(null),
 });

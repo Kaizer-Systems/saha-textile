@@ -93,8 +93,8 @@ export class ExpenseBillFormPage {
 
 	readonly id = toSignal(inject(ActivatedRoute).paramMap.pipe(map((p) => p.get('id') ?? '')), { initialValue: '' });
 	readonly today = istDay(new Date());
-	/** The purchase entry's rates and 40%, the rate the GST Council's September 2025 change added. */
-	readonly rates = [...GST_RATES, 40];
+	/** The purchase entry's rates, 40% included. */
+	readonly rates = GST_RATES;
 	readonly supplierId = signal('');
 	readonly billNumber = signal('');
 	readonly billDate = signal(this.today);

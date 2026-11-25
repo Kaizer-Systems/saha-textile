@@ -151,6 +151,54 @@ export function yearEndSplit(balance: number, rule: LeaveRule): { carry: number;
 	return rule.aboveCap === 'encash' ? { carry, encash: rest, lapse: 0 } : { carry, encash: 0, lapse: rest };
 }
 
+/** OB1, OB2: a person's leave of one type on the day they were added, as kept with the employee. */
+export interface OpeningLeave {
+	asOf: string;
+	carried: number | null;
+	credited: number;
+	/** What the rules worked out on that day, so credit earned since is added on top of a typed figure. */
+	creditedWorkedOut: number;
+	taken: number;
+}
+
+const dayAfter = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+
+/**
+ * AT1: a type's leave left on a day. From the opening balance (or, without one, the joining day), each of the type's
+ * years is credited by its rules (the current one up to the day) less the leave taken in it (leave already approved
+ * for later in the year included), and what is left carries into the next year as its year-end rule says. A credit's
+ * own validity in days or months is applied at the year's end for now.
+ */
+export function leaveLeft(
+	rule: LeaveRule,
+	input: {
+		joinedOn: string;
+		today: string;
+		opening: OpeningLeave | null;
+		/** Leave of this type taken between two days, both counted. */
+		taken: (from: string, to: string) => number;
+	},
+): number {
+	let opening = input.opening;
+	let year = leaveYearOn(rule.year, opening?.asOf ?? input.joinedOn, input.joinedOn);
+	let carry = opening?.carried ?? 0;
+	for (;;) {
+		const upTo = year.end < input.today ? year.end : input.today;
+		const worked = creditSoFar(rule, { joinedOn: input.joinedOn, asOf: upTo });
+		const balance = opening
+			? carry +
+				opening.credited +
+				Math.max(0, worked - opening.creditedWorkedOut) -
+				opening.taken -
+				input.taken(dayAfter(opening.asOf), year.end)
+			: carry + worked - input.taken(year.start, year.end);
+		if (year.end >= input.today) return roundLeave(balance, 'none');
+		carry = yearEndSplit(balance, rule).carry;
+		opening = null;
+		year = leaveYearOn(rule.year, dayAfter(year.end), input.joinedOn);
+	}
+}
+
 /** LV2: a day's pay for encashment: the month's wages over the month's days, or over 26 or 30, as the rule says. */
 export function encashPaise(
 	days: number,

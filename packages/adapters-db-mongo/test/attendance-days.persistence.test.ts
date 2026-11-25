@@ -83,6 +83,16 @@ describe.skipIf(!hasMongoEnv())('attendance days store (integration, rs0)', () =
 		expect(await repo.month('2098-02', { employeeIds: [] })).toEqual([]);
 	});
 
+	it('reads one person’s days between two days, both counted, in order', async () => {
+		expect(ids(await repo.range(priya, '2098-01-31', '2098-02-10'))).toEqual([
+			`${priya}_2098-01-31`,
+			`${priya}_2098-02-03`,
+			`${priya}_2098-02-10`,
+		]);
+		expect(ids(await repo.range(priya, '2098-02-04', '2098-02-28'))).toEqual([`${priya}_2098-02-10`]);
+		expect(await repo.range(rahul, '2098-03-01', '2098-03-31')).toEqual([]);
+	});
+
 	it('lists the changes waiting for approval at some stores, or at every store, by day', async () => {
 		expect(ids(await repo.pending([kolkata]))).toEqual([`${priya}_2098-02-03`]);
 		expect(ids(await repo.pending([kolkata, siliguri]))).toEqual([`${rahul}_2098-02-01`, `${priya}_2098-02-03`]);

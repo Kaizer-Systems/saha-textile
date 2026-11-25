@@ -145,6 +145,14 @@ export class MongoAttendanceDayRepository implements AttendanceDayRepository {
 		return docs.map((d) => MongoAttendanceDayRepository.read(d));
 	}
 
+	async range(employeeId: string, from: string, to: string): Promise<AttendanceDay[]> {
+		const docs = await AttendanceDayModel.find({ employeeId, day: { $gte: from, $lte: to } })
+			.sort({ day: 1 })
+			.lean<AggregateDoc[]>()
+			.exec();
+		return docs.map((d) => MongoAttendanceDayRepository.read(d));
+	}
+
 	async save(day: AttendanceDay, expectedVersion: number | null): Promise<AttendanceDay> {
 		const { id, ...rest } = day;
 		if (expectedVersion === null) {

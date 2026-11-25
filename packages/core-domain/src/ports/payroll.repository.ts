@@ -37,6 +37,8 @@ export interface AttendanceDayRepository {
 	month(month: string, filter: { employeeIds?: readonly string[]; locationId?: string }): Promise<AttendanceDay[]>;
 	/** Days waiting on an approval, for some stores (all when none named). */
 	pending(locationIds: readonly string[] | null): Promise<AttendanceDay[]>;
+	/** One person's days between two days, both counted, in order (AT1: leave taken across a leave year). */
+	range(employeeId: string, from: string, to: string): Promise<AttendanceDay[]>;
 	save(day: AttendanceDay, expectedVersion: number | null): Promise<AttendanceDay>;
 }
 

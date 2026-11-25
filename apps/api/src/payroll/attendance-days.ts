@@ -25,18 +25,23 @@ import {
 	type AttendanceMonthGrid,
 	type AttendanceRow,
 	type Employee,
+	type MyAttendance,
 } from '@saha-textile/contracts';
 import {
 	daysOfMonth,
 	lateMinutes,
+	leaveLeft,
 	markedStatus,
 	monthFromDays,
+	ruleFor,
 	settledMonth,
 	shiftOf,
 	storeCalendar,
 	type AttendanceDayRepository,
 	type AttendanceRepository,
 	type EmployeeRepository,
+	type LeaveRule,
+	type LeaveType,
 	type LocationRepository,
 	type PayrollRunRepository,
 } from '@saha-textile/core-domain';
@@ -59,6 +64,10 @@ import { PayrollRulesService } from './payroll-rules.service';
 const refuse = (code: string) => new BadRequestException(accountsRefusal(code));
 const istDay = (now: Date) => new Date(now.getTime() + 5.5 * 3_600_000).toISOString().slice(0, 10);
 const monthOf = (day: string) => day.slice(0, 7);
+/** The day after the last any leave can be asked for: the end of the range read for leave waiting. */
+const FAR = '2999-12-31';
+const addDays = (day: string, n: number) =>
+	new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 /** A day someone marked or set; a record kept only for a request (or one turned down) is not. */
 const isSet = (d: AttendanceDay) => !!(d.inAt || d.markedBy || d.changedBy);
 /** On the payroll in a month: joined by its end and not gone before it began. */
@@ -113,6 +122,71 @@ export class AttendanceDaysService {
 				const paid = new Map((stateOf(locationId)?.leaveTypes ?? []).map((t) => [t.key, t.paid] as const));
 				return (key: string) => paid.get(key) ?? 'unpaid';
 			},
+			leaveTypes: (locationId: string): readonly LeaveType[] =>
+				(stateOf(locationId)?.leaveTypes ?? []).filter((t) => t.active),
+		};
+	}
+
+	/**
+	 * AT1: each active leave type of the person's State with the rule that applies to them, and the days left; null
+	 * for a type given on request or without pay, which has no balance to keep.
+	 */
+	private async leaveOf(e: Employee, today: string, types: readonly LeaveType[]) {
+		const days = await this.days.range(e.id, e.joinedOn, FAR);
+		const taken = (key: string, waiting: boolean) => (from: string, to: string) =>
+			days
+				.filter((d) => d.day >= from && d.day <= to)
+				.map((d) => (waiting ? d.pending : isSet(d) ? d : null))
+				.reduce(
+					(sum, d) =>
+						sum + (d?.leaveKey !== key ? 0 : d.status === 'leave' ? 1 : d.status === 'half' ? 0.5 : 0),
+					0,
+				);
+		return types.flatMap((type) => {
+			const rule = ruleFor(type, e);
+			if (!rule) return [];
+			const kept = rule.credit.kind !== 'on_request' && type.paid !== 'unpaid';
+			const left = kept
+				? leaveLeft(rule, {
+						joinedOn: e.joinedOn,
+						today,
+						opening: e.openingLeave?.find((o) => o.typeKey === type.key) ?? null,
+						taken: taken(type.key, false),
+					})
+				: null;
+			return [{ type, rule, left, waiting: taken(type.key, true)(today, FAR) }];
+		});
+	}
+
+	/** AT1: My attendance: today, the month so far and the leave left. */
+	async summary(principal: AuthenticatedPrincipal | undefined, now = new Date()): Promise<MyAttendance> {
+		const { e } = await this.me(principal);
+		const today = istDay(now);
+		const context = await this.monthContext(monthOf(today));
+		const shift = context.shift(e.locationId);
+		const set = (await this.days.month(monthOf(today), { employeeIds: [e.id] })).filter(isSet);
+		const leaveByType: Record<string, number> = {};
+		for (const d of set)
+			if (d.leaveKey && (d.status === 'leave' || d.status === 'half'))
+				leaveByType[d.leaveKey] = (leaveByType[d.leaveKey] ?? 0) + (d.status === 'leave' ? 1 : 0.5);
+		const location = (await this.locations.list()).find((l) => l.id === e.locationId);
+		return {
+			employeeId: e.id,
+			name: e.name,
+			locationId: e.locationId,
+			locationName: location?.name ?? e.locationId,
+			today,
+			shift: { start: shift.start, end: shift.end },
+			day: set.find((d) => d.day === today) ?? null,
+			present: set.reduce((n, d) => n + (d.status === 'present' ? 1 : d.status === 'half' ? 0.5 : 0), 0),
+			leaveByType,
+			leave: (await this.leaveOf(e, today, context.leaveTypes(e.locationId))).map(({ type, rule, left }) => ({
+				key: type.key,
+				name: type.name,
+				left,
+				halfDays: rule.taking.halfDays,
+				noticeDays: rule.taking.noticeDays ?? null,
+			})),
 		};
 	}
 
@@ -273,8 +347,27 @@ export class AttendanceDaysService {
 		const { e, userId } = await this.me(principal);
 		await this.refuseLocked(monthOf(ask.from));
 		await this.refuseLocked(monthOf(ask.to));
+		const today = istDay(now);
+		const context = await this.monthContext(monthOf(today));
+		const asked = (await this.leaveOf(e, today, context.leaveTypes(e.locationId))).find(
+			(l) => l.type.key === ask.leaveKey,
+		);
+		if (!asked) throw refuse('leave_type_unknown');
+		const days = await this.leaveDays(e, ask, asked.rule);
+		if (ask.half && !asked.rule.taking.halfDays) throw refuse('leave_no_half_days');
+		if (asked.rule.taking.noticeDays && ask.from < addDays(today, asked.rule.taking.noticeDays))
+			throw refuse('leave_notice');
+		if (!days.length) throw refuse('leave_no_working_days');
+		const asking = ask.half ? 0.5 : days.length;
+		const most =
+			asked.rule.credit.kind === 'on_request'
+				? asked.rule.credit.days - asked.waiting
+				: asked.left === null || asked.rule.taking.canGoNegative
+					? Number.POSITIVE_INFINITY
+					: asked.left - asked.waiting;
+		if (asking > most) throw refuse('leave_not_enough');
 		const out: AttendanceDay[] = [];
-		for (let d = ask.from; d <= ask.to; d = nextDay(d)) {
+		for (const d of days) {
 			const saved = await this.days.get(e.id, d);
 			const change: DayChange = {
 				status: ask.half ? 'half' : 'leave',
@@ -292,6 +385,22 @@ export class AttendanceDaysService {
 					saved ? saved.version : null,
 				),
 			);
+		}
+		return out;
+	}
+
+	/** AT1: the days a leave asked for covers: weekly offs and holidays left out unless the type counts them. */
+	private async leaveDays(e: Employee, ask: LeaveAsk, rule: LeaveRule): Promise<string[]> {
+		const calendars = new Map<string, { offDays: string[]; holidays: { day: string }[] }>();
+		const out: string[] = [];
+		for (let d = ask.from; d <= ask.to; d = nextDay(d)) {
+			if (!rule.taking.countOffsBetween) {
+				const month = monthOf(d);
+				const calendar = calendars.get(month) ?? (await this.monthContext(month)).calendar(e.locationId);
+				calendars.set(month, calendar);
+				if (calendar.offDays.includes(d) || calendar.holidays.some((h) => h.day === d)) continue;
+			}
+			out.push(d);
 		}
 		return out;
 	}
@@ -423,6 +532,14 @@ const GridQuery = z.object({ month: YearMonth, locationId: z.string().min(1) });
 @Controller('admin/attendance')
 export class AttendanceDaysController {
 	constructor(private readonly attendance: AttendanceDaysService) {}
+
+	@Get('me')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('attendance.use')
+	@ApiOperation({ operationId: 'attendanceMe', summary: 'My attendance: today, the month and leave left (AT1)' })
+	summary(@Principal() principal?: AuthenticatedPrincipal) {
+		return this.attendance.summary(principal);
+	}
 
 	@Post('me/in')
 	@RequirePermissions('attendance.use')

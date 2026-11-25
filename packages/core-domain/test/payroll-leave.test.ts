@@ -4,6 +4,7 @@ import {
 	WEST_BENGAL_LEAVE,
 	creditSoFar,
 	encashPaise,
+	leaveLeft,
 	leaveYearOn,
 	roundLeave,
 	ruleFor,
@@ -122,5 +123,44 @@ describe('the year’s end and encashment (LV2)', () => {
 		expect(encashPaise(4, 30_000_00, 30, 'month_days')).toBe(4_000_00);
 		expect(encashPaise(4, 26_000_00, 30, '26')).toBe(4_000_00);
 		expect(encashPaise(3, 30_000_00, 31, '30')).toBe(3_000_00);
+	});
+});
+
+describe('leave left on a day (AT1)', () => {
+	const CL = WEST_BENGAL_LEAVE[1] as LeaveType & { rules: [LeaveRule] };
+	const SL = WEST_BENGAL_LEAVE[2] as LeaveType & { rules: [LeaveRule] };
+	const takenFrom =
+		(days: string[]) =>
+		(from: string, to: string): number =>
+			days.filter((d) => d >= from && d <= to).length;
+
+	it('credits each year from the joining day, lapsing what casual leave does not carry', () => {
+		const left = leaveLeft(CL.rules[0], {
+			joinedOn: '2025-01-01',
+			today: '2026-11-26',
+			opening: null,
+			taken: takenFrom(['2025-02-01', '2025-06-01', '2025-06-02', '2026-05-01', '2026-05-02', '2026-11-20']),
+		});
+		// 2026-27: ten days at the year's start, three taken; what was left before lapsed each 31 March.
+		expect(left).toBe(7);
+	});
+
+	it('starts from the opening balance, adds leave taken since, and carries sick leave up to its cap', () => {
+		const left = leaveLeft(SL.rules[0], {
+			joinedOn: '2010-04-01',
+			today: '2026-11-26',
+			opening: { asOf: '2025-11-10', carried: 20, credited: 14, creditedWorkedOut: 14, taken: 3 },
+			taken: takenFrom(['2025-11-10', '2026-01-05', '2026-01-06', '2026-07-01']),
+		});
+		// 2025-26: 20 + 14 - 3 - 2 = 29, all carried (cap 56); 2026-27: 29 + 14 - 1.
+		expect(left).toBe(42);
+	});
+
+	it('adds credit earned since a typed opening figure, and never takes back credit the rules no longer give', () => {
+		const monthly = { ...CL.rules[0], credit: { kind: 'monthly' as const, days: 1.5 } };
+		const opening = { asOf: '2026-08-20', carried: null, credited: 5, creditedWorkedOut: 4.5, taken: 0 };
+		const input = { joinedOn: '2026-06-15', today: '2026-11-26', taken: takenFrom(['2026-09-01']) };
+		expect(leaveLeft(monthly, { ...input, opening })).toBe(8.5);
+		expect(leaveLeft(monthly, { ...input, opening: { ...opening, creditedWorkedOut: 20 } })).toBe(4);
 	});
 });

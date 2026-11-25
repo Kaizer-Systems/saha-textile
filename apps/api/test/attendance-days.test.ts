@@ -1,4 +1,5 @@
 import type { Attendance, AttendanceDay, Employee } from '@saha-textile/contracts';
+import { WEST_BENGAL_LEAVE, type LeaveType } from '@saha-textile/core-domain';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AttendanceDaysController, AttendanceDaysService } from '../src/payroll/attendance-days';
@@ -20,6 +21,23 @@ const person = (id: string, over: Partial<Employee> = {}) =>
 		leftOn: null,
 		...over,
 	}) as Employee;
+const CL_RULE = (WEST_BENGAL_LEAVE[1] as LeaveType).rules[0] as LeaveType['rules'][number];
+/** A compensatory off: whole days, two days' notice, weekly offs counted, and it may go below nothing. */
+const CO: LeaveType = {
+	key: 'CO',
+	name: 'Compensatory off',
+	paid: 'full',
+	active: true,
+	rules: [
+		{
+			...CL_RULE,
+			taking: { halfDays: false, noticeDays: 2, countOffsBetween: true, canGoNegative: true },
+		},
+	],
+};
+/** A type whose only rule is for someone else, and one switched off. */
+const NOBODY: LeaveType = { ...CO, key: 'NR', rules: [{ ...CL_RULE, when: { designation: 'Nobody' } }] };
+const OFF: LeaveType = { ...CO, key: 'OF', active: false };
 const PEOPLE = [
 	person('priya'),
 	person('amit'),
@@ -46,6 +64,11 @@ function build(
 					(!f.locationId || d.locationId === f.locationId),
 			),
 		),
+		range: vi.fn(async (employeeId: string, from: string, to: string) =>
+			[...store.values()]
+				.filter((d) => d.employeeId === employeeId && d.day >= from && d.day <= to)
+				.sort((a, b) => a.day.localeCompare(b.day)),
+		),
 		pending: vi.fn(async (stores: readonly string[] | null) =>
 			[...store.values()].filter((d) => d.pending && (!stores || stores.includes(d.locationId))),
 		),
@@ -61,11 +84,11 @@ function build(
 			states: [
 				{
 					stateCode: '19',
-					leaveTypes: [
-						{ key: 'CL', paid: 'full' },
-						{ key: 'SL', paid: 'half' },
+					leaveTypes: [...WEST_BENGAL_LEAVE, CO, NOBODY, OFF],
+					holidays: [
+						{ day: '2026-11-08', name: 'Kali Puja', locationId: null },
+						{ day: '2026-12-25', name: 'Christmas', locationId: null },
 					],
-					holidays: [{ day: '2026-11-08', name: 'Kali Puja', locationId: null }],
 				},
 				{ stateCode: '27' },
 			],
@@ -99,8 +122,8 @@ function build(
 		{
 			adminUserLocations: async () => access,
 			list: async () => [
-				{ id: 'loc_gariahat', stateCode: '19' },
-				{ id: 'loc_far', stateCode: '27' },
+				{ id: 'loc_gariahat', stateCode: '19', name: 'Gariahat store' },
+				{ id: 'loc_far', stateCode: '27', name: 'Far store' },
 			],
 		} as never,
 		rules as never,
@@ -316,6 +339,7 @@ describe('the attendance routes', () => {
 			pending: vi.fn(),
 			decide: vi.fn(),
 			lock: vi.fn(),
+			summary: vi.fn(),
 		};
 		const c = new AttendanceDaysController(service as never);
 		const p = { employeeId: 'amit', day: '2026-11-08' };
@@ -329,6 +353,8 @@ describe('the attendance routes', () => {
 		c.approve(p, manager);
 		c.reject(p, manager);
 		c.lock('2026-11', manager);
+		c.summary(manager);
+		expect(service.summary).toHaveBeenCalledWith(manager);
 		expect(service.lock).toHaveBeenCalledWith(manager, '2026-11');
 		expect(service.markIn).toHaveBeenCalledWith(manager);
 		expect(service.grid).toHaveBeenCalledWith(manager, '2026-11', 'loc_gariahat');
@@ -496,5 +522,134 @@ describe('a locked month (AT-D2)', () => {
 		});
 		const grid = await service.grid(accountant, '2026-11', 'loc_gariahat');
 		expect(grid.people[0]?.days.map((d) => d.day)).toEqual(['2026-11-02', '2026-11-03']);
+	});
+});
+
+describe('My attendance and asking for leave (AT1)', () => {
+	const leave = (over: Partial<{ leaveKey: string; from: string; to: string; half: boolean }> = {}) => ({
+		leaveKey: 'CL',
+		from: '2026-12-01',
+		to: '2026-12-01',
+		half: false,
+		reason: '',
+		...over,
+	});
+
+	it('shows today, the month so far and each type’s leave left by its rules', async () => {
+		const { service } = build();
+		await service.change(accountant, 'priya', '2026-11-02', present);
+		await service.change(accountant, 'priya', '2026-11-03', { ...present, status: 'present', leaveKey: 'CL' });
+		await service.change(accountant, 'priya', '2026-11-10', { ...present, status: 'leave', leaveKey: 'CL' });
+		await service.change(accountant, 'priya', '2026-11-11', { ...present, status: 'half', leaveKey: 'SL' });
+		await service.change(accountant, 'priya', '2026-11-12', { ...present, status: 'leave', leaveKey: 'CL' });
+		await service.markIn(staff('priya'), at('10:02'));
+		const me = await service.summary(staff('priya'), at('12:00'));
+		expect(me).toMatchObject({
+			name: 'priya',
+			locationName: 'Gariahat store',
+			today: '2026-11-25',
+			shift: { start: '10:00', end: '19:00' },
+			day: { status: 'incomplete', lateMinutes: 2 },
+			present: 2.5,
+			leaveByType: { CL: 2, SL: 0.5 },
+		});
+		// EL: 15.5 carried from 2025-26 and 10.5 worked this year; CL: 10 less 2; SL: 3.5 + 14 carried, 14 less a half.
+		expect(Object.fromEntries(me.leave.map((l) => [l.key, l.left]))).toEqual({
+			EL: 26,
+			CL: 8,
+			SL: 31,
+			ML: null,
+			LOP: null,
+			CO: 10,
+		});
+		expect(me.leave.find((l) => l.key === 'CO')).toMatchObject({ halfDays: false, noticeDays: 2 });
+	});
+
+	it('starts a type from the leave the person had when added', async () => {
+		const { service } = build();
+		const opening = { asOf: '2026-10-01', carried: 5, credited: 14, creditedWorkedOut: 14, taken: 2 };
+		PEOPLE.push(
+			person('opened', {
+				openingLeave: [
+					{ typeKey: 'CL', ...opening, carried: null },
+					{ typeKey: 'SL', ...opening },
+				],
+			}),
+		);
+		try {
+			const me = await service.summary(staff('opened'), at('12:00'));
+			expect(me.leave.find((l) => l.key === 'SL')?.left).toBe(17);
+		} finally {
+			PEOPLE.pop();
+		}
+	});
+
+	it('names the store by its id when the store is unknown, and starts the month empty', async () => {
+		const { service } = build({ access: { maySeeAll: true } });
+		PEOPLE.push(person('lost', { locationId: 'loc_lost' }));
+		try {
+			expect(await service.summary(staff('lost'), at('12:00'))).toMatchObject({
+				locationName: 'loc_lost',
+				day: null,
+				present: 0,
+				leave: [],
+			});
+		} finally {
+			PEOPLE.pop();
+		}
+	});
+
+	it('refuses a type not in force, half days or short notice where the rules forbid them, and days with none to take', async () => {
+		const { service } = build();
+		const ask = (over: Parameters<typeof leave>[0]) => service.askLeave(staff('priya'), leave(over), at('09:00'));
+		for (const key of ['XX', 'NR', 'OF'])
+			await expect(ask({ leaveKey: key })).rejects.toSatisfy((e) => code(e) === 'leave_type_unknown');
+		await expect(ask({ leaveKey: 'CO', half: true })).rejects.toSatisfy((e) => code(e) === 'leave_no_half_days');
+		await expect(ask({ leaveKey: 'CO', from: '2026-11-26', to: '2026-11-26' })).rejects.toSatisfy(
+			(e) => code(e) === 'leave_notice',
+		);
+		// A Sunday alone, for a type that does not count weekly offs.
+		await expect(ask({ from: '2026-11-29', to: '2026-11-29' })).rejects.toSatisfy(
+			(e) => code(e) === 'leave_no_working_days',
+		);
+	});
+
+	it('leaves out weekly offs and holidays unless the type counts them, across months', async () => {
+		const { service } = build();
+		const days = async (over: Parameters<typeof leave>[0]) =>
+			(await service.askLeave(staff('priya'), leave(over), at('09:00'))).map((d) => d.day);
+		expect(await days({ from: '2026-11-28', to: '2026-12-01' })).toEqual([
+			'2026-11-28',
+			'2026-11-30',
+			'2026-12-01',
+		]);
+		expect(await days({ from: '2026-12-24', to: '2026-12-26' })).toEqual(['2026-12-24', '2026-12-26']);
+		expect(await days({ leaveKey: 'CO', from: '2026-12-05', to: '2026-12-06' })).toEqual([
+			'2026-12-05',
+			'2026-12-06',
+		]);
+	});
+
+	it('refuses more than is left, counting leave already waiting; unpaid leave and a type that may go below nothing have no limit', async () => {
+		const { service } = build();
+		const ask = (over: Parameters<typeof leave>[0]) => service.askLeave(staff('priya'), leave(over), at('09:00'));
+		// December 1-12 holds eleven working days; casual leave has ten.
+		await expect(ask({ to: '2026-12-12' })).rejects.toSatisfy((e) => code(e) === 'leave_not_enough');
+		await ask({ from: '2026-12-01', to: '2026-12-05' });
+		await expect(ask({ from: '2026-12-07', to: '2026-12-12' })).rejects.toSatisfy(
+			(e) => code(e) === 'leave_not_enough',
+		);
+		expect(await ask({ from: '2026-12-07', to: '2026-12-11' })).toHaveLength(5);
+		expect(await ask({ leaveKey: 'LOP', from: '2027-01-04', to: '2027-01-30' })).toHaveLength(24);
+		expect(await ask({ leaveKey: 'CO', from: '2027-02-01', to: '2027-02-28' })).toHaveLength(28);
+	});
+
+	it('gives leave on request up to its days, less what already waits', async () => {
+		const { service } = build();
+		const ask = (from: string, to: string) =>
+			service.askLeave(staff('priya'), leave({ leaveKey: 'ML', from, to }), at('09:00'));
+		await expect(ask('2027-01-01', '2027-08-31')).rejects.toSatisfy((e) => code(e) === 'leave_not_enough');
+		expect(await ask('2027-01-01', '2027-06-30')).toHaveLength(155);
+		await expect(ask('2027-07-01', '2027-08-31')).rejects.toSatisfy((e) => code(e) === 'leave_not_enough');
 	});
 });

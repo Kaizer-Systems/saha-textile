@@ -255,6 +255,31 @@ export const AttendanceMonthGrid = z.object({
 });
 export type AttendanceMonthGrid = z.infer<typeof AttendanceMonthGrid>;
 
+/** AT1: My attendance: the person, their store's shift, today, the month so far, and the leave left by type. */
+export const MyAttendance = z.object({
+	employeeId: Id,
+	name: z.string(),
+	locationId: Id,
+	locationName: z.string(),
+	today: IsoDate,
+	shift: z.object({ start: z.string(), end: z.string() }),
+	day: AttendanceDay.nullable(),
+	/** This month so far: days present (a half day as half), and leave taken by type. */
+	present: z.number(),
+	leaveByType: z.record(z.string(), z.number()),
+	leave: z.array(
+		z.object({
+			key: z.string(),
+			name: z.string(),
+			/** Days left; null for a type given on request (maternity) or without pay. */
+			left: z.number().nullable(),
+			halfDays: z.boolean(),
+			noticeDays: z.number().int().nullable(),
+		}),
+	),
+});
+export type MyAttendance = z.infer<typeof MyAttendance>;
+
 export const PayrollRunStatus = z.enum(['draft', 'approved', 'posted', 'paid']);
 export type PayrollRunStatus = z.infer<typeof PayrollRunStatus>;
 

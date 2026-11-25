@@ -11,6 +11,10 @@ export default [
 	},
 	{ path: 'runs', loadComponent: () => import('./payroll-run-page').then((m) => m.PayrollRunPage) },
 	{
+		path: 'runs/:month/payslips/:employeeId/edit',
+		loadComponent: () => import('./payslip-edit-page').then((m) => m.PayslipEditPage),
+	},
+	{
 		path: 'runs/:month/payslips/:employeeId',
 		loadComponent: () => import('./payslip-page').then((m) => m.PayslipPage),
 	},

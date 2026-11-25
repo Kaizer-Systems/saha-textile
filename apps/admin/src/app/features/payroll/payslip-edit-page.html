@@ -1,0 +1,330 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'pe_title'"
+>
+	@let l = lines(); @let r = byRules();
+	<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">{{ employee()?.name ?? employeeId() }} · {{ month() }}</h5>
+			<small class="text-muted">{{ (draft() ? 'pe_sub' : 'pe_not_draft') | transloco }}</small>
+		</div>
+		<div class="d-flex gap-2">
+			<a
+				class="btn btn-outline"
+				routerLink="/payroll/runs"
+			>
+				{{ 'cancel' | transloco }}
+			</a>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="pe_save"
+				[disabled]="busy() || !draft() || !l || unnamed()"
+				(click)="save()"
+			>
+				{{ 'save' | transloco }}
+			</button>
+		</div>
+	</div>
+	<div class="row g-4">
+		<div class="col-xl-8">
+			<h6>{{ 'pe_earnings' | transloco }}</h6>
+			<div class="table-responsive datatable-wrapper border-table mb-2">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'pe_col_line' | transloco }}</th>
+							<th class="text-end">{{ 'pe_col_rules' | transloco }}</th>
+							<th class="text-end">{{ 'pe_col_this' | transloco }}</th>
+							<th>{{ 'rev_why' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (h of heads; track h) { @if (rule(h) || typed(h)) {
+						<tr>
+							<td>{{ 'payroll_head_' + h | transloco }}</td>
+							<td class="text-end">{{ money(rule(h)) }}</td>
+							<td class="text-end">
+								<div class="d-flex justify-content-end gap-1">
+									<input
+										class="form-control form-control-sm w-auto text-end"
+										type="number"
+										min="0"
+										[id]="'pe_line_' + h"
+										[attr.aria-label]="'payroll_head_' + h | transloco"
+										[ngModel]="now(h) / 100"
+										(ngModelChange)="setLine(h, $event)"
+									/>
+									@if (typed(h)) {
+									<button
+										type="button"
+										class="btn btn-sm p-0"
+										[id]="'pe_reset_' + h"
+										[title]="'pe_reset' | transloco"
+										(click)="reset(h)"
+									>
+										<i class="ri-arrow-go-back-line"></i>
+									</button>
+									}
+								</div>
+							</td>
+							<td>
+								@if (typed(h)) {
+								<input
+									class="form-control form-control-sm"
+									maxlength="300"
+									[id]="'pe_why_' + h"
+									[attr.aria-label]="'rev_why' | transloco"
+									[ngModel]="edits().reasons[h] ?? ''"
+									(ngModelChange)="setReason(h, $event)"
+								/>
+								}
+							</td>
+						</tr>
+						} } @for (a of earningLines(); track a.id) {
+						<tr>
+							<td>
+								<input
+									class="form-control form-control-sm"
+									maxlength="80"
+									[id]="'pe_added_name_' + a.id"
+									[class.is-invalid]="!a.name.trim()"
+									[attr.aria-label]="'pe_added_name' | transloco"
+									[ngModel]="a.name"
+									(ngModelChange)="setAdded(a.id, { name: $event })"
+								/>
+								<small class="text-muted">
+									{{ 'pe_kind_' + a.kind | transloco }} · @if (a.oneOff) { {{ 'pe_one_off' | transloco
+									}} } @else { {{ 'pe_monthly' | transloco }} }
+								</small>
+							</td>
+							<td class="text-end">—</td>
+							<td class="text-end">
+								<input
+									class="form-control form-control-sm ms-auto w-auto text-end"
+									type="number"
+									min="0"
+									[id]="'pe_added_amount_' + a.id"
+									[attr.aria-label]="'pe_added_name' | transloco"
+									[ngModel]="a.paise / 100"
+									(ngModelChange)="setAmount(a.id, $event)"
+								/>
+							</td>
+							<td>
+								<div class="d-flex align-items-center gap-2">
+									<div class="form-check mb-0">
+										<input
+											class="form-check-input"
+											type="checkbox"
+											[id]="'pe_added_monthly_' + a.id"
+											[checked]="!a.oneOff"
+											(change)="setAdded(a.id, { oneOff: !a.oneOff })"
+										/>
+										<label
+											class="form-check-label"
+											[for]="'pe_added_monthly_' + a.id"
+										>
+											{{ 'pe_monthly' | transloco }}
+										</label>
+									</div>
+									<button
+										type="button"
+										class="btn btn-sm p-0"
+										[id]="'pe_added_remove_' + a.id"
+										[title]="'remove' | transloco"
+										(click)="removeAdded(a.id)"
+									>
+										<i class="ri-close-line"></i>
+									</button>
+								</div>
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<div class="d-flex mb-4 gap-2">
+				<select
+					class="form-select form-select-sm w-auto"
+					id="pe_add_earning_kind"
+					[attr.aria-label]="'pe_add_line' | transloco"
+					[ngModel]="newKind()"
+					(ngModelChange)="newKind.set($event)"
+				>
+					@for (k of earningKinds; track k) {
+					<option [value]="k">{{ 'pe_kind_' + k | transloco }}</option>
+					}
+				</select>
+				<button
+					type="button"
+					class="btn btn-sm btn-outline"
+					id="pe_add_earning"
+					(click)="addLine(newKind())"
+				>
+					<i class="ri-add-line"></i>
+					{{ 'pe_add_line' | transloco }}
+				</button>
+			</div>
+			<h6>{{ 'pe_deductions' | transloco }}</h6>
+			<div class="table-responsive datatable-wrapper border-table mb-2">
+				<table class="all-package theme-table no-footer table">
+					<tbody>
+						@for (d of deductionKeys; track d) {
+						<tr>
+							<td>{{ 'pe_deduction_' + d | transloco }}</td>
+							<td class="text-end">{{ money(rule(d)) }}</td>
+							<td class="text-end">
+								<div class="d-flex justify-content-end gap-1">
+									<input
+										class="form-control form-control-sm w-auto text-end"
+										type="number"
+										min="0"
+										[id]="'pe_line_' + d"
+										[attr.aria-label]="'pe_deduction_' + d | transloco"
+										[ngModel]="now(d) / 100"
+										(ngModelChange)="setLine(d, $event)"
+									/>
+									@if (typed(d)) {
+									<button
+										type="button"
+										class="btn btn-sm p-0"
+										[id]="'pe_reset_' + d"
+										[title]="'pe_reset' | transloco"
+										(click)="reset(d)"
+									>
+										<i class="ri-arrow-go-back-line"></i>
+									</button>
+									}
+								</div>
+							</td>
+							<td>
+								@if (typed(d)) {
+								<input
+									class="form-control form-control-sm"
+									maxlength="300"
+									[id]="'pe_why_' + d"
+									[attr.aria-label]="'rev_why' | transloco"
+									[ngModel]="edits().reasons[d] ?? ''"
+									(ngModelChange)="setReason(d, $event)"
+								/>
+								} @else if (now(d) !== rule(d)) {
+								<small class="text-muted">{{ 'pe_follows' | transloco }}</small>
+								}
+							</td>
+						</tr>
+						} @for (a of deductionLines(); track a.id) {
+						<tr>
+							<td>
+								<input
+									class="form-control form-control-sm"
+									maxlength="80"
+									[id]="'pe_added_name_' + a.id"
+									[class.is-invalid]="!a.name.trim()"
+									[attr.aria-label]="'pe_added_name' | transloco"
+									[ngModel]="a.name"
+									(ngModelChange)="setAdded(a.id, { name: $event })"
+								/>
+								<small class="text-muted">{{ 'pe_kind_' + a.kind | transloco }}</small>
+							</td>
+							<td class="text-end">—</td>
+							<td class="text-end">
+								<input
+									class="form-control form-control-sm ms-auto w-auto text-end"
+									type="number"
+									min="0"
+									[id]="'pe_added_amount_' + a.id"
+									[attr.aria-label]="'pe_added_name' | transloco"
+									[ngModel]="a.paise / 100"
+									(ngModelChange)="setAmount(a.id, $event)"
+								/>
+							</td>
+							<td>
+								<button
+									type="button"
+									class="btn btn-sm p-0"
+									[id]="'pe_added_remove_' + a.id"
+									[title]="'remove' | transloco"
+									(click)="removeAdded(a.id)"
+								>
+									<i class="ri-close-line"></i>
+								</button>
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<div class="d-flex gap-2">
+				<select
+					class="form-select form-select-sm w-auto"
+					id="pe_add_deduction_kind"
+					[attr.aria-label]="'pe_add_line' | transloco"
+					[ngModel]="newDeductionKind()"
+					(ngModelChange)="newDeductionKind.set($event)"
+				>
+					@for (k of deductionKinds; track k) {
+					<option [value]="k">{{ 'pe_kind_' + k | transloco }}</option>
+					}
+				</select>
+				<button
+					type="button"
+					class="btn btn-sm btn-outline"
+					id="pe_add_deduction"
+					(click)="addLine(newDeductionKind())"
+				>
+					<i class="ri-add-line"></i>
+					{{ 'pe_add_line' | transloco }}
+				</button>
+			</div>
+		</div>
+		<div class="col-xl-4">
+			<h6>{{ 'pe_live' | transloco }}</h6>
+			@if (l && r) {
+			<div class="table-responsive mb-3">
+				<table class="all-package theme-table no-footer table">
+					<tbody>
+						<tr>
+							<td>{{ 'rev_gross' | transloco }}</td>
+							<td
+								class="text-end"
+								id="pe_gross"
+							>
+								{{ money(r.grossPaise) }} → {{ money(l.grossPaise) }}
+							</td>
+						</tr>
+						<tr>
+							<td>{{ 'pe_deductions' | transloco }}</td>
+							<td class="text-end">{{ money(deductionsTotal(r)) }} → {{ money(deductionsTotal(l)) }}</td>
+						</tr>
+						<tr>
+							<td><b>{{ 'pe_net' | transloco }}</b></td>
+							<td
+								class="text-end"
+								id="pe_net"
+							>
+								<b>{{ money(r.netPaise) }} → {{ money(l.netPaise) }}</b>
+							</td>
+						</tr>
+						<tr>
+							<td colspan="2">
+								<small class="text-muted">{{ inWords() }}</small>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			}
+			<h6>{{ 'inc_checks' | transloco }}</h6>
+			@for (c of checks(); track $index) {
+			<div
+				[class]="'alert py-2 mb-2 ' + (c.blocking ? 'alert-danger' : 'alert-warning')"
+				[id]="'pe_check_' + c.code + (c.line ? '_' + c.line : '')"
+			>
+				{{ 'pe_check_' + c.code | transloco: { line: c.line ? (lineWord(c.line) | transloco) : '' } }}
+			</div>
+			} @empty {
+			<p class="text-muted">{{ 'pe_checks_none' | transloco }}</p>
+			}
+		</div>
+	</div>
+</app-page-wrapper>

@@ -22,6 +22,7 @@ import type {
 	PayrollRulesWriteInput,
 	PayrollRun,
 	PayrollStep,
+	PayslipEditsInputValue,
 	Payslip,
 	SalaryRevisionInputValue,
 	SalaryRevisionPreview,
@@ -70,6 +71,11 @@ export class PayrollGateway {
 
 	updateEmployee(id: string, write: EmployeeWriteInput & { version: number }): Observable<EmployeeView> {
 		return this.http.put<EmployeeView>(this.api(`employees/${encodeURIComponent(id)}`), write);
+	}
+
+	/** Brief 26 PE2: a draft payslip's edits saved; the run comes back worked out again. */
+	editPayslip(month: string, employeeId: string, edits: PayslipEditsInputValue): Observable<PayrollRun> {
+		return this.http.put<PayrollRun>(this.api(`runs/${month}/rows/${encodeURIComponent(employeeId)}/edits`), edits);
 	}
 
 	/** Brief 26 SR3: increment plans saved by name, and a cycle's rows worked out and accepted. */

@@ -21,6 +21,7 @@
 		"src/payroll/leave.ts",
 		"src/payroll/attendance-days.ts",
 		"src/payroll/salary-revision.ts",
-		"src/payroll/payslip-edits.ts"
+		"src/payroll/payslip-edits.ts",
+		"src/documents/words.ts"
 	]
 }

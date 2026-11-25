@@ -145,6 +145,8 @@
 									<th>TDS</th>
 									<th>{{ 'payroll_col_advance' | transloco }}</th>
 									<th>{{ 'payroll_col_net' | transloco }}</th>
+									<th>{{ 'pe_col_checks' | transloco }}</th>
+									<th></th>
 								</tr>
 							</thead>
 							<tbody>
@@ -168,11 +170,36 @@
 									<td class="text-nowrap">{{ money(row.tdsPaise) }}</td>
 									<td class="text-nowrap">{{ money(row.advancePaise) }}</td>
 									<td class="fw-semibold text-nowrap">{{ money(row.netPaise) }}</td>
+									<!-- Brief 26 PE1: an edited payslip and its checks, and the way to edit it on a draft. -->
+									<td class="text-nowrap">
+										@if (row.edits) {
+										<span class="badge bg-light text-dark me-1 border">
+											{{ 'pe_edited' | transloco }}
+										</span>
+										} @for (c of row.checks ?? []; track $index) { @if (c.blocking) {
+										<span class="badge bg-danger me-1">✖</span>
+										} @else {
+										<span class="badge bg-warning text-dark me-1">⚠</span>
+										} }
+									</td>
+									<td>
+										@if (r?.status === 'draft') {
+										<a
+											*hasPermission="'accounts.edit'"
+											class="btn btn-sm p-0"
+											[id]="'run_edit_' + row.employeeId"
+											[routerLink]="['/payroll/runs', month(), 'payslips', row.employeeId, 'edit']"
+											[title]="'pe_title' | transloco"
+										>
+											<i class="ri-edit-line"></i>
+										</a>
+										}
+									</td>
 								</tr>
 								} @empty {
 								<tr>
 									<td
-										colspan="11"
+										colspan="13"
 										class="text-muted"
 									>
 										{{ 'payroll_run_none' | transloco }}

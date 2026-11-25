@@ -17,11 +17,19 @@ import {
 	Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { ExpenseBillStatus, ExpenseBillWrite, type ExpenseBill } from '@saha-textile/contracts';
+import {
+	ExpenseBillStatus,
+	ExpenseBillWrite,
+	type ChartOfAccounts,
+	type ExpenseBill,
+	type ExpenseBillForm,
+} from '@saha-textile/contracts';
 import {
 	expenseBillPosting,
 	expenseBillTotals,
 	istDay,
+	termsOn,
+	type CompanyRepository,
 	type ExpenseBillRepository,
 	type LocationRepository,
 	type SupplierRepository,
@@ -33,6 +41,7 @@ import { Principal } from '../auth/ownership';
 import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../auth/session.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import {
+	COMPANY_REPOSITORY,
 	EXPENSE_BILL_REPOSITORY,
 	LOCATION_REPOSITORY,
 	SUPPLIER_REPOSITORY,
@@ -49,6 +58,9 @@ const refuse = (code: string) => new BadRequestException(accountsRefusal(code));
 const ExpenseBillEdit = ExpenseBillWrite.extend({ version: z.number().int().nonnegative() });
 type ExpenseBillEdit = z.infer<typeof ExpenseBillEdit>;
 const ExpenseBillCancel = z.object({ reason: z.string().trim().min(3).max(300) });
+/** The ledgers a bill's line can be booked to: active expense ledgers open to postings (not control ledgers). */
+export const expenseLedgers = (chart: ChartOfAccounts) =>
+	chart.ledgers.filter((l) => l.active && l.nature === 'expense' && l.handPosting);
 const ExpenseBillQuery = z.object({ supplierId: z.string().optional(), status: ExpenseBillStatus.optional() });
 
 /**
@@ -63,7 +75,8 @@ export class ExpenseBillsService {
 		@Inject(EXPENSE_BILL_REPOSITORY) private readonly bills: ExpenseBillRepository,
 		@Inject(SUPPLIER_REPOSITORY) private readonly suppliers: Pick<SupplierRepository, 'findById'>,
 		@Inject(LOCATION_REPOSITORY) private readonly locations: Pick<LocationRepository, 'list'>,
-		@Inject(LedgerService) private readonly ledger: Pick<LedgerService, 'post' | 'voucherByKey'>,
+		@Inject(COMPANY_REPOSITORY) private readonly company: Pick<CompanyRepository, 'listRegistrations'>,
+		@Inject(LedgerService) private readonly ledger: Pick<LedgerService, 'post' | 'voucherByKey' | 'chart'>,
 		@Inject(DocumentNumbersService) private readonly numbers: Pick<DocumentNumbersService, 'issue'>,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
 	) {}
@@ -78,13 +91,54 @@ export class ExpenseBillsService {
 		return bill;
 	}
 
-	/** The bill's figures from its lines, after the supplier, location and GST checks. */
+	/** EB1's choices: active locations with the GSTIN they bill under, and the expense ledgers by name. */
+	async form(): Promise<ExpenseBillForm> {
+		const [locations, registrations, chart] = await Promise.all([
+			this.locations.list(),
+			this.company.listRegistrations(),
+			this.ledger.chart(),
+		]);
+		const today = istDay(new Date());
+		return {
+			locations: locations
+				.filter((l) => l.active)
+				.map((l) => {
+					const registration = registrations.find((r) => r.id === l.gstRegistrationId) ?? null;
+					return {
+						id: l.id,
+						name: l.name,
+						stateCode: l.stateCode,
+						gstin: registration?.gstin ?? null,
+						composition: registration ? termsOn(registration, today)?.kind === 'composition' : false,
+					};
+				}),
+			ledgers: expenseLedgers(chart)
+				.map((l) => ({ id: l.id, name: l.name }))
+				.sort((a, b) => a.name.localeCompare(b.name)),
+		};
+	}
+
+	/**
+	 * The bill's figures from its lines, after the checks: a known supplier and location; every line on an expense
+	 * ledger; no GST from a supplier without a GSTIN (reverse charge is a self-invoice); credit claimed only at a
+	 * location billing under a GSTIN that isn't on composition.
+	 */
 	private async worked(write: ExpenseBillWrite) {
 		const supplier = await this.suppliers.findById(write.supplierId);
 		if (!supplier) throw refuse('supplier_unknown');
 		const location = (await this.locations.list()).find((l) => l.id === write.locationId);
 		if (!location) throw refuse('location_unknown');
+		const ledgers = new Set(expenseLedgers(await this.ledger.chart()).map((l) => l.id));
+		if (write.lines.some((l) => !ledgers.has(l.expenseLedgerId))) throw refuse('expense_bill_not_an_expense');
 		if (!supplier.gstin && write.lines.some((l) => l.gstRatePct > 0)) throw refuse('use_self_invoice');
+		if (write.lines.some((l) => l.credit === 'claim' && l.gstRatePct > 0)) {
+			const registration = (await this.company.listRegistrations()).find(
+				(r) => r.id === location.gstRegistrationId,
+			);
+			if (!registration) throw refuse('expense_bill_no_gstin');
+			if (termsOn(registration, write.billDate)?.kind === 'composition')
+				throw refuse('expense_bill_composition_no_credit');
+		}
 		const interState = !!supplier.gstin && supplier.gstin.slice(0, 2) !== location.stateCode;
 		return { interState, ...expenseBillTotals(write.lines, interState) };
 	}
@@ -207,6 +261,14 @@ export class ExpenseBillsController {
 	@ApiOperation({ operationId: 'expenseBills', summary: 'Expense bills (brief 25 EB1)' })
 	list(@Query(new ZodValidationPipe(ExpenseBillQuery)) query: z.infer<typeof ExpenseBillQuery>) {
 		return this.bills.list(query);
+	}
+
+	@Get('form')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({ operationId: 'expenseBillForm', summary: 'Locations and expense ledgers for the form' })
+	form() {
+		return this.bills.form();
 	}
 
 	@Get(':id')

@@ -63,3 +63,19 @@ export const ExpenseBill = ExpenseBillWrite.extend({
 	version: z.number().int().nonnegative(),
 });
 export type ExpenseBill = z.infer<typeof ExpenseBill>;
+
+/** What the expense bill form offers: where a bill can be billed to (with its GSTIN), and the expense ledgers. */
+export const ExpenseBillForm = z.object({
+	locations: z.array(
+		z.object({
+			id: Id,
+			name: z.string(),
+			stateCode: z.string(),
+			gstin: z.string().nullable(),
+			/** A composition GSTIN takes no input credit, so every line's tax joins its cost. */
+			composition: z.boolean(),
+		}),
+	),
+	ledgers: z.array(z.object({ id: Id, name: z.string() })),
+});
+export type ExpenseBillForm = z.infer<typeof ExpenseBillForm>;

@@ -74,6 +74,11 @@
       "import": "./dist/esm/self-invoice/invoicing/self-invoice-rules.js",
       "default": "./dist/invoicing/self-invoice-rules.js"
     },
+    "./expense-bills": {
+      "types": "./dist/ledger/expense-bills.d.ts",
+      "import": "./dist/esm/expense-bills/ledger/expense-bills.js",
+      "default": "./dist/ledger/expense-bills.js"
+    },
     "./bundle": {
       "types": "./dist/bundle/index.d.ts",
       "import": "./dist/esm/bundle/index.js",
@@ -84,7 +89,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.legacy-esm.json && tsc -p tsconfig.purchasing-esm.json && tsc -p tsconfig.shipping-esm.json && tsc -p tsconfig.bundle-esm.json && tsc -p tsconfig.company-esm.json && tsc -p tsconfig.self-invoice-esm.json && tsc -p tsconfig.bank-statement-esm.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.legacy-esm.json && tsc -p tsconfig.purchasing-esm.json && tsc -p tsconfig.shipping-esm.json && tsc -p tsconfig.bundle-esm.json && tsc -p tsconfig.company-esm.json && tsc -p tsconfig.self-invoice-esm.json && tsc -p tsconfig.bank-statement-esm.json && tsc -p tsconfig.expense-bills-esm.json",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "lint": "eslint .",
     "test": "vitest run"

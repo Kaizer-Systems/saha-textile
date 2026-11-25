@@ -849,6 +849,40 @@ describe('statutory bonus in the rules, on the run and for the year (brief 25 BN
 		refused(BonusPay.safeParse({ ...pay, bankLedgerId: '' }).success);
 		refused(BonusPay.safeParse({ ...pay, paidOn: '30-10-2027' }).success);
 	});
+
+	it('works under the Code on Wages or the Bonus Act, on the Code’s wages or basic and DA, with the days to qualify (brief 26 BN2)', () => {
+		for (const key of ['law', 'wageBasis', 'minDays']) expect(BonusRules.parse(bonus)).not.toHaveProperty(key);
+		const code = { ...bonus, law: 'code_on_wages', wageBasis: 'code', minDays: 30 };
+		expect(BonusRules.parse(code)).toEqual(code);
+		expect(BonusRules.parse({ ...bonus, law: 'bonus_act', wageBasis: 'basic_da' })).toMatchObject({
+			law: 'bonus_act',
+			wageBasis: 'basic_da',
+		});
+		refused(BonusRules.safeParse({ ...bonus, law: 'wages_act' }).success);
+		refused(BonusRules.safeParse({ ...bonus, wageBasis: 'gross' }).success);
+		for (const minDays of [1, 365]) accepted(BonusRules.safeParse({ ...bonus, minDays }).success);
+		for (const minDays of [0, 366, 29.5]) refused(BonusRules.safeParse({ ...bonus, minDays }).success);
+	});
+
+	it('names up to six of the pay heads as wages, and whether PF is worked on them', () => {
+		for (const key of ['wageHeads', 'pfUsesCodeWages'])
+			expect(PayrollRulesWrite.parse(rules)).not.toHaveProperty(key);
+		const heads = ['basic', 'da', 'special', 'other'];
+		expect(PayrollRulesWrite.parse({ ...rules, wageHeads: heads, pfUsesCodeWages: true })).toMatchObject({
+			wageHeads: heads,
+			pfUsesCodeWages: true,
+		});
+		accepted(PayrollRulesWrite.safeParse({ ...rules, wageHeads: [] }).success);
+		accepted(
+			PayrollRulesWrite.safeParse({
+				...rules,
+				wageHeads: ['basic', 'da', 'hra', 'conveyance', 'special', 'other'],
+			}).success,
+		);
+		refused(PayrollRulesWrite.safeParse({ ...rules, wageHeads: ['basic', 'bonus'] }).success);
+		refused(PayrollRulesWrite.safeParse({ ...rules, wageHeads: Array.from({ length: 7 }, () => 'basic') }).success);
+		refused(PayrollRulesWrite.safeParse({ ...rules, pfUsesCodeWages: 'yes' }).success);
+	});
 });
 
 describe('professional tax that fits every State (brief 26 PT1–PT3)', () => {

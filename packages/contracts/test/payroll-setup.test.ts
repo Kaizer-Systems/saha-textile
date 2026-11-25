@@ -16,6 +16,7 @@ import {
 	PayrollRulesWrite,
 	PayrollRun,
 	Payslip,
+	PtBasis,
 	PtFrequency,
 	SalaryHead,
 	SalaryTemplate,
@@ -810,5 +811,87 @@ describe('statutory bonus in the rules, on the run and for the year (brief 25 BN
 		expect(BonusPay.parse(pay)).toEqual(pay);
 		refused(BonusPay.safeParse({ ...pay, bankLedgerId: '' }).success);
 		refused(BonusPay.safeParse({ ...pay, paidOn: '30-10-2027' }).success);
+	});
+});
+
+describe('professional tax that fits every State (brief 26 PT1–PT3)', () => {
+	/** Maharashtra's shape: ₹200 a month and ₹300 in February, women free up to ₹25,000, the old and disabled exempt. */
+	const maharashtra = {
+		stateCode: '27',
+		ptSlabs: [
+			{ upToPaise: 7_500_00, taxPaise: 0 },
+			{ upToPaise: 10_000_00, taxPaise: 175_00 },
+			{ upToPaise: null, taxPaise: 200_00, otherMonth: { month: 2, taxPaise: 300_00 } },
+		],
+		ptWomenSlabs: [
+			{ upToPaise: 25_000_00, taxPaise: 0 },
+			{ upToPaise: null, taxPaise: 200_00, otherMonth: { month: 2, taxPaise: 300_00 } },
+		],
+		ptExemptFromAge: 65,
+		ptExemptDisability: true,
+	};
+
+	it('keeps a slab’s other month, women’s slabs, an exempt age and the disability exemption', () => {
+		const parsed = StatePayrollRules.parse(maharashtra);
+		expect(parsed).toMatchObject(maharashtra);
+		expect(parsed.ptSlabs[0]).not.toHaveProperty('otherMonth');
+		expect(
+			StatePayrollRules.parse({ ...maharashtra, ptSlabs: [{ upToPaise: null, taxPaise: 0, otherMonth: null }] })
+				.ptSlabs[0]?.otherMonth,
+		).toBeNull();
+	});
+
+	it('leaves the new figures out of a State saved before them, read as today’s way', () => {
+		const older = StatePayrollRules.parse({ stateCode: '19', ptSlabs: [{ upToPaise: null, taxPaise: 200_00 }] });
+		for (const key of ['ptWomenSlabs', 'ptBasis', 'ptExemptFromAge', 'ptExemptDisability'])
+			expect(older).not.toHaveProperty(key);
+		expect(StatePayrollRules.parse({ ...maharashtra, ptWomenSlabs: null, ptExemptFromAge: null })).toMatchObject({
+			ptWomenSlabs: null,
+			ptExemptFromAge: null,
+		});
+	});
+
+	it('takes an other month from January to December, its tax in whole paise', () => {
+		const slab = (otherMonth: unknown) => ({
+			...maharashtra,
+			ptSlabs: [{ upToPaise: null, taxPaise: 200_00, otherMonth }],
+		});
+		for (const month of [1, 12]) accepted(StatePayrollRules.safeParse(slab({ month, taxPaise: 300_00 })).success);
+		for (const month of [0, 13, 2.5])
+			refused(StatePayrollRules.safeParse(slab({ month, taxPaise: 300_00 })).success);
+		refused(StatePayrollRules.safeParse(slab({ month: 2, taxPaise: -1 })).success);
+		refused(StatePayrollRules.safeParse(slab({ month: 2 })).success);
+	});
+
+	it('needs a women’s list to end open above, but not an empty one', () => {
+		const closed = { ...maharashtra, ptWomenSlabs: [{ upToPaise: 25_000_00, taxPaise: 0 }] };
+		expect(message(StatePayrollRules.safeParse(closed))).toBe('pt_last_slab_open');
+		accepted(StatePayrollRules.safeParse({ ...maharashtra, ptWomenSlabs: [] }).success);
+		refused(
+			StatePayrollRules.safeParse({
+				...maharashtra,
+				ptWomenSlabs: Array.from({ length: 21 }, () => ({ upToPaise: null, taxPaise: 0 })),
+			}).success,
+		);
+	});
+
+	it('taxes a periodic State on the period’s actual pay or on this month’s times the months', () => {
+		expect(PtBasis.options).toEqual(['projected', 'actual']);
+		const tamilNadu = {
+			stateCode: '33',
+			ptFrequency: 'half_yearly',
+			ptMonths: [9, 3],
+			ptSlabs: [{ upToPaise: null, taxPaise: 1_250_00 }],
+		};
+		expect(StatePayrollRules.parse({ ...tamilNadu, ptBasis: 'actual' }).ptBasis).toBe('actual');
+		refused(StatePayrollRules.safeParse({ ...tamilNadu, ptBasis: 'average' }).success);
+	});
+
+	it('stops the tax from an age between 18 and 120, whole years', () => {
+		for (const ptExemptFromAge of [18, 120])
+			accepted(StatePayrollRules.safeParse({ ...maharashtra, ptExemptFromAge }).success);
+		for (const ptExemptFromAge of [17, 121, 65.5])
+			refused(StatePayrollRules.safeParse({ ...maharashtra, ptExemptFromAge }).success);
+		refused(StatePayrollRules.safeParse({ ...maharashtra, ptExemptDisability: 'yes' }).success);
 	});
 });

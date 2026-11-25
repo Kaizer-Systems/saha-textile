@@ -339,3 +339,23 @@ describe('an employee’s income-tax choice and declarations (brief 25 TX1)', ()
 		);
 	});
 });
+
+describe('what a State’s professional tax may read about a person (brief 26 PT3)', () => {
+	it('asks no gender, disability or exemption until given', () => {
+		const parsed = EmployeeWrite.parse(employee);
+		for (const key of ['gender', 'disability', 'ptExemptReason']) expect(parsed).not.toHaveProperty(key);
+	});
+
+	it('keeps a gender of woman, man, other or not said, a disability of 40% or more, and an exemption’s reason trimmed', () => {
+		for (const gender of ['', 'woman', 'man', 'other'])
+			expect(EmployeeWrite.parse({ ...employee, gender }).gender).toBe(gender);
+		refused(EmployeeWrite.safeParse({ ...employee, gender: 'female' }).success);
+		expect(EmployeeWrite.parse({ ...employee, disability: true }).disability).toBe(true);
+		refused(EmployeeWrite.safeParse({ ...employee, disability: 'yes' }).success);
+		expect(EmployeeWrite.parse({ ...employee, ptExemptReason: ' Armed forces ' }).ptExemptReason).toBe(
+			'Armed forces',
+		);
+		accepted(EmployeeWrite.safeParse({ ...employee, ptExemptReason: 'x'.repeat(120) }).success);
+		refused(EmployeeWrite.safeParse({ ...employee, ptExemptReason: 'x'.repeat(121) }).success);
+	});
+});

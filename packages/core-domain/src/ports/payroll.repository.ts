@@ -2,6 +2,7 @@ import type {
 	Attendance,
 	AttendanceDay,
 	Employee,
+	IncrementPlan,
 	PayrollAdvance,
 	PayrollRulesVersion,
 	PayrollRun,
@@ -55,6 +56,13 @@ export interface PayrollRulesRepository {
 	list(): Promise<PayrollRulesVersion[]>;
 	/** Refused with `payroll_rules_from_taken` when a version already starts that day. */
 	insert(version: PayrollRulesVersion): Promise<void>;
+}
+
+/** Brief 26 SR3: increment plans, saved by name and reused (one per id). */
+export interface IncrementPlanRepository {
+	list(): Promise<IncrementPlan[]>;
+	save(plan: IncrementPlan): Promise<IncrementPlan>;
+	delete(id: string): Promise<void>;
 }
 
 /** Salary structure templates (S4). */

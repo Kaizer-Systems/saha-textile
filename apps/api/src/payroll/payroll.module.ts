@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import {
 	MongoAttendanceDayRepository,
+	MongoIncrementPlanRepository,
 	MongoAttendanceRepository,
 	MongoEmployeeRepository,
 	MongoPayrollAdvanceRepository,
@@ -12,6 +13,7 @@ import {
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import {
 	ATTENDANCE_DAY_REPOSITORY,
+	INCREMENT_PLAN_REPOSITORY,
 	ATTENDANCE_REPOSITORY,
 	EMPLOYEE_REPOSITORY,
 	PAYROLL_ADVANCE_REPOSITORY,
@@ -30,6 +32,7 @@ import { PayrollRulesService } from './payroll-rules.service';
 import { PayrollSetupController } from './payroll-setup.controller';
 import { PayrollController } from './payroll.controller';
 import { PayrollService } from './payroll.service';
+import { IncrementsController, IncrementsService } from './increments';
 import { SalaryRevisionsController, SalaryRevisionsService } from './salary-revisions';
 import { SalaryTemplatesService } from './salary-templates.service';
 
@@ -42,7 +45,13 @@ export function employeeStoreFor(config: Pick<AppConfig, 'payroll'>): MongoEmplo
 /** Payroll (accounts brief S). */
 @Module({
 	imports: [LedgerModule, DocumentsModule, OrdersSetupModule],
-	controllers: [PayrollController, PayrollSetupController, AttendanceDaysController, SalaryRevisionsController],
+	controllers: [
+		PayrollController,
+		PayrollSetupController,
+		AttendanceDaysController,
+		SalaryRevisionsController,
+		IncrementsController,
+	],
 	providers: [
 		PayrollService,
 		PayrollRulesService,
@@ -51,6 +60,7 @@ export function employeeStoreFor(config: Pick<AppConfig, 'payroll'>): MongoEmplo
 		PayrollAdvancesService,
 		AttendanceDaysService,
 		SalaryRevisionsService,
+		IncrementsService,
 		{ provide: PAYROLL_RULES_REPOSITORY, useClass: MongoPayrollRulesRepository },
 		{ provide: SALARY_TEMPLATE_REPOSITORY, useClass: MongoSalaryTemplateRepository },
 		{ provide: STATUTORY_FILING_REPOSITORY, useClass: MongoStatutoryFilingRepository },
@@ -58,6 +68,8 @@ export function employeeStoreFor(config: Pick<AppConfig, 'payroll'>): MongoEmplo
 		{ provide: EMPLOYEE_REPOSITORY, inject: [APP_CONFIG], useFactory: employeeStoreFor },
 		{ provide: ATTENDANCE_REPOSITORY, useClass: MongoAttendanceRepository },
 		{ provide: ATTENDANCE_DAY_REPOSITORY, useClass: MongoAttendanceDayRepository },
+		// Brief 26 SR3: increment plans.
+		{ provide: INCREMENT_PLAN_REPOSITORY, useClass: MongoIncrementPlanRepository },
 	],
 })
 export class PayrollModule {}

@@ -155,6 +155,8 @@ export const REPORT_DEFINITION_REPOSITORY = Symbol('ReportDefinitionRepository')
 export const FIXED_ASSET_REPOSITORY = Symbol('FixedAssetRepository');
 export const RECURRING_ENTRY_REPOSITORY = Symbol('RecurringEntryRepository');
 export const EMPLOYEE_REPOSITORY = Symbol('EmployeeRepository');
+/** Brief 26 SR3: increment plans saved by name. */
+export const INCREMENT_PLAN_REPOSITORY = Symbol('IncrementPlanRepository');
 export const ATTENDANCE_REPOSITORY = Symbol('AttendanceRepository');
 export const ATTENDANCE_DAY_REPOSITORY = Symbol('AttendanceDayRepository');
 export const PAYROLL_RUN_REPOSITORY = Symbol('PayrollRunRepository');

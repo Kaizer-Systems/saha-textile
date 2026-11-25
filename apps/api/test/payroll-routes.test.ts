@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { Reflector } from '@nestjs/core';
 import {
 	MongoAttendanceDayRepository,
+	MongoIncrementPlanRepository,
 	MongoAttendanceRepository,
 	MongoEmployeeRepository,
 	MongoPayrollAdvanceRepository,
@@ -19,6 +20,7 @@ import { APP_CONFIG, loadConfig } from '../src/config/app-config';
 import { PersistenceModule } from '../src/infra/persistence.module';
 import {
 	ATTENDANCE_DAY_REPOSITORY,
+	INCREMENT_PLAN_REPOSITORY,
 	ATTENDANCE_REPOSITORY,
 	EMPLOYEE_REPOSITORY,
 	PAYROLL_ADVANCE_REPOSITORY,
@@ -31,6 +33,7 @@ import { DocumentsModule } from '../src/documents/documents.module';
 import { LedgerModule } from '../src/ledger/ledger.module';
 import { OrdersSetupModule } from '../src/orders-setup/orders-setup.module';
 import { AttendanceDaysController, AttendanceDaysService } from '../src/payroll/attendance-days';
+import { IncrementsController, IncrementsService } from '../src/payroll/increments';
 import { SalaryRevisionsController, SalaryRevisionsService } from '../src/payroll/salary-revisions';
 import { PayrollAdvancesService } from '../src/payroll/payroll-advances.service';
 import { PayrollReturnsService } from '../src/payroll/payroll-returns.service';
@@ -138,6 +141,7 @@ describe('the payroll module', () => {
 			PayrollSetupController,
 			AttendanceDaysController,
 			SalaryRevisionsController,
+			IncrementsController,
 		]);
 		expect(Reflect.getMetadata('providers', PayrollModule)).toEqual([
 			PayrollService,
@@ -147,6 +151,7 @@ describe('the payroll module', () => {
 			PayrollAdvancesService,
 			AttendanceDaysService,
 			SalaryRevisionsService,
+			IncrementsService,
 			{ provide: PAYROLL_RULES_REPOSITORY, useClass: MongoPayrollRulesRepository },
 			{ provide: SALARY_TEMPLATE_REPOSITORY, useClass: MongoSalaryTemplateRepository },
 			{ provide: STATUTORY_FILING_REPOSITORY, useClass: MongoStatutoryFilingRepository },
@@ -155,6 +160,8 @@ describe('the payroll module', () => {
 			{ provide: ATTENDANCE_REPOSITORY, useClass: MongoAttendanceRepository },
 			// Brief 26 AT: attendance day by day.
 			{ provide: ATTENDANCE_DAY_REPOSITORY, useClass: MongoAttendanceDayRepository },
+			// Brief 26 SR3: increment plans.
+			{ provide: INCREMENT_PLAN_REPOSITORY, useClass: MongoIncrementPlanRepository },
 		]);
 		// The run store is shared app-wide now: the ledger's month checks read it too.
 		const persistence = Reflect.getMetadata('providers', PersistenceModule) as {

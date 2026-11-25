@@ -157,6 +157,8 @@ const payrollModel = (name: string, collection: string) =>
 	reuse(name, new Schema<AggregateDoc>({ _id: { type: String, required: true } }, { ...loose, collection }));
 export const PayrollRulesModel = payrollModel('PayrollRules', COLLECTION_NAMES.PayrollRules);
 export const SalaryTemplateModel = payrollModel('SalaryTemplate', COLLECTION_NAMES.SalaryTemplate);
+/** Brief 26 SR3: increment plans saved by name. */
+export const IncrementPlanModel = payrollModel('IncrementPlan', COLLECTION_NAMES.IncrementPlan);
 export const StatutoryFilingModel = payrollModel('StatutoryFiling', COLLECTION_NAMES.StatutoryFiling);
 export const PayrollAdvanceModel = payrollModel('PayrollAdvance', COLLECTION_NAMES.PayrollAdvance);
 export const YearCloseModel = payrollModel('YearClose', COLLECTION_NAMES.YearClose);

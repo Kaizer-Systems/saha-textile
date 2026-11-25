@@ -1032,3 +1032,54 @@ export const SalaryRevisionPreview = z.object({
 	),
 });
 export type SalaryRevisionPreview = z.infer<typeof SalaryRevisionPreview>;
+
+/* ------------------------------------------------------------------ brief 26 SR3: increments, many at once */
+
+const IncrementPct = z.number().min(-90).max(500);
+
+/** SR3: a plan for an increment cycle, saved by name and reused: by rating band, the same %, or the same amount. */
+export const IncrementPlanWrite = z.object({
+	name: z.string().trim().min(2).max(80),
+	kind: z.enum(['rating', 'percent', 'amount']),
+	bands: z
+		.array(z.object({ rating: z.string().trim().min(1).max(10), pct: IncrementPct }))
+		.max(10)
+		.refine((b) => new Set(b.map((x) => x.rating)).size === b.length, { message: 'increment_rating_twice' })
+		.default([]),
+	pct: IncrementPct.default(0),
+	amountMonthINR: z.number().min(-10_000_000).max(10_000_000).default(0),
+});
+export type IncrementPlanWrite = z.infer<typeof IncrementPlanWrite>;
+export type IncrementPlanWriteInput = z.input<typeof IncrementPlanWrite>;
+
+export const IncrementPlan = IncrementPlanWrite.extend({ id: Id, updatedAt: IsoDateTime });
+export type IncrementPlan = z.infer<typeof IncrementPlan>;
+
+/** SR3: the rows of a cycle, each a revision the same as SR2's, from one day and for one reason. */
+export const IncrementRowsInput = z.object({
+	from: IsoDate,
+	reason: z.string().trim().min(3).max(300),
+	rows: z
+		.array(
+			z.object({ employeeId: Id, way: RevisionWay, rating: z.string().trim().max(10).nullable().default(null) }),
+		)
+		.min(1)
+		.max(500),
+});
+export type IncrementRowsInput = z.infer<typeof IncrementRowsInput>;
+export type IncrementRowsInputValue = z.input<typeof IncrementRowsInput>;
+
+/** SR3: each row worked out: the CTC a year now and new, the change a month, and the checks. */
+export const IncrementRowPreview = z.object({
+	employeeId: Id,
+	ctcYearNowINR: z.number(),
+	ctcYearNewINR: z.number(),
+	changeMonthINR: z.number(),
+	changePct: z.number(),
+	checks: SalaryRevisionPreview.shape.checks,
+});
+export type IncrementRowPreview = z.infer<typeof IncrementRowPreview>;
+
+/** SR3: what Accept did with each row: saved, or the refusal. */
+export const IncrementRowResult = z.object({ employeeId: Id, ok: z.boolean(), problem: z.string().nullable() });
+export type IncrementRowResult = z.infer<typeof IncrementRowResult>;

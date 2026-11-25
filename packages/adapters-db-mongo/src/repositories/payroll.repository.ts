@@ -7,6 +7,7 @@ import {
 	PayrollAdvance,
 	PayrollRulesVersion,
 	PayrollRun,
+	IncrementPlan,
 	SalaryTemplate,
 } from '@saha-textile/contracts';
 import type {
@@ -16,6 +17,7 @@ import type {
 	PayrollAdvanceRepository,
 	PayrollRulesRepository,
 	PayrollRunRepository,
+	IncrementPlanRepository,
 	SalaryTemplateRepository,
 	StatutoryFilingRecord,
 	StatutoryFilingRepository,
@@ -29,6 +31,7 @@ import {
 	PayrollAttendanceModel,
 	PayrollRulesModel,
 	PayrollRunModel,
+	IncrementPlanModel,
 	SalaryTemplateModel,
 	StatutoryFilingModel,
 } from '../models/bank.model';
@@ -280,6 +283,24 @@ export class MongoSalaryTemplateRepository implements SalaryTemplateRepository {
 		).exec();
 		if (!result.matchedCount) throw new Error('salary_template_changed');
 		return { ...template, version: expectedVersion + 1 };
+	}
+}
+
+/** Brief 26 SR3: increment plans in MongoDB (`incrementPlans`), by name. */
+export class MongoIncrementPlanRepository implements IncrementPlanRepository {
+	async list(): Promise<IncrementPlan[]> {
+		const docs = await IncrementPlanModel.find({}).sort({ name: 1 }).lean<AggregateDoc[]>().exec();
+		return docs.map(({ _id, ...rest }) => IncrementPlan.parse({ ...rest, id: _id }));
+	}
+
+	async save(plan: IncrementPlan): Promise<IncrementPlan> {
+		const { id, ...rest } = plan;
+		await IncrementPlanModel.updateOne({ _id: id }, { $set: rest }, { upsert: true }).exec();
+		return plan;
+	}
+
+	async delete(id: string): Promise<void> {
+		await IncrementPlanModel.deleteOne({ _id: id }).exec();
 	}
 }
 

@@ -110,6 +110,34 @@ describe('the ten checks', () => {
 		});
 	});
 
+	it('wants every warehouse covered by a posted count, counting the ones left with those still open (brief 25 SC2)', () => {
+		expect(byKey({ ...done, stockCount: { posted: 2, open: 0, uncounted: 0 } })['stock_count']).toMatchObject({
+			state: 'ok',
+			count: 0,
+			of: 2,
+		});
+		// The Kolkata shop counted, the warehouse never was.
+		expect(byKey({ ...done, stockCount: { posted: 1, open: 0, uncounted: 1 } })['stock_count']).toMatchObject({
+			state: 'attention',
+			count: 1,
+			of: 1,
+		});
+		expect(byKey({ ...done, stockCount: { posted: 1, open: 2, uncounted: 1 } })['stock_count']).toMatchObject({
+			state: 'attention',
+			count: 3,
+		});
+		// No count posted: still wanted, however few warehouses are left.
+		expect(byKey({ ...done, stockCount: { posted: 0, open: 0, uncounted: 0 } })['stock_count']).toMatchObject({
+			state: 'attention',
+			count: 0,
+		});
+		expect(byKey({ ...done, stockCount: { posted: 0, open: 0, uncounted: 2 } })['stock_count']).toMatchObject({
+			state: 'attention',
+			count: 2,
+			of: 0,
+		});
+	});
+
 	it('wants March’s payroll posted and the accruals confirmed', () => {
 		expect(byKey({ ...done, payrollMarchDone: false })['payroll']).toMatchObject({ state: 'attention', count: 1 });
 		expect(byKey(done)['payroll']).toMatchObject({ state: 'ok', count: 0 });

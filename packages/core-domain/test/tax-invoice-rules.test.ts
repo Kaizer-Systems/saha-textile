@@ -131,6 +131,7 @@ describe('a tax invoice as an e-invoice (D1 + addendum 2)', () => {
 			{ interState: true, shippingINR: 210 },
 		);
 		const invoice: TaxInvoice = {
+			billOfSupply: false,
 			id: 'ti_1',
 			number: 'TI/26-27/000001',
 			date: '2026-11-23',
@@ -217,6 +218,7 @@ describe('e-invoice edge cases (D1 + addendum 2)', () => {
 		stateCode,
 	});
 	const invoiceOf = (over: Partial<TaxInvoice>): TaxInvoice => ({
+		billOfSupply: false,
 		id: 'ti_1',
 		number: 'TI/26-27/000001',
 		date: '2026-11-23',

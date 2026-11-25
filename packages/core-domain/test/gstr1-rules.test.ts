@@ -88,6 +88,7 @@ const place = { gstRegistrationId: 'gst_wb', gstin: SELLER, locationId: 'loc_kol
 function invoice(spec: Spec, status: TaxInvoice['status'] = 'issued'): TaxInvoice {
 	return {
 		...place,
+		billOfSupply: false,
 		...money(spec),
 		id: spec.id,
 		number: spec.number,

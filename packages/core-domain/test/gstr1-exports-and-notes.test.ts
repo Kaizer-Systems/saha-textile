@@ -68,6 +68,7 @@ const invoice = (id: string, number: string, pos: string, m: Money): TaxInvoice 
 	return {
 		...base,
 		...totals,
+		billOfSupply: false,
 		id,
 		number,
 		date: '2026-11-10',

@@ -225,6 +225,7 @@ describe.skipIf(!hasMongoEnv())('general ledger persistence (integration, rs0)',
 			acknowledgement: null,
 			by: 'adm_a',
 			at,
+			months: [],
 		};
 		await gst.insert(filing);
 		await expect(gst.insert(filing)).rejects.toThrow('duplicate_gst_filing');
@@ -273,6 +274,7 @@ describe.skipIf(!hasMongoEnv())('general ledger persistence (integration, rs0)',
 			roundOffINR: 0,
 			totalINR: 105,
 			ratesPendingCa: true,
+			billOfSupply: false,
 			status: 'issued' as const,
 			cancellation: null,
 			voucherId: null,

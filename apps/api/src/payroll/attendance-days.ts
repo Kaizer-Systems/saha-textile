@@ -495,6 +495,14 @@ export class AttendanceDaysService {
 		return done;
 	}
 
+	/** AT2: the stores in the user's charge, for the store picker (every active one for those who see all). */
+	async stores(principal: AuthenticatedPrincipal | undefined): Promise<{ id: string; name: string }[]> {
+		const scope = await this.scope(principal);
+		return (await this.locations.list())
+			.filter((l) => l.active && (!scope || scope.includes(l.id)))
+			.map((l) => ({ id: l.id, name: l.name }));
+	}
+
 	/** AT3, WL: the days waiting on approval in the user's stores. */
 	async pending(principal: AuthenticatedPrincipal | undefined): Promise<AttendanceDay[]> {
 		return this.days.pending(await this.scope(principal));
@@ -603,6 +611,14 @@ export class AttendanceDaysController {
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
 		return this.attendance.lock(principal, month);
+	}
+
+	@Get('stores')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('attendance.index')
+	@ApiOperation({ operationId: 'attendanceStores', summary: 'The stores in my charge (AT2)' })
+	stores(@Principal() principal?: AuthenticatedPrincipal) {
+		return this.attendance.stores(principal);
 	}
 
 	@Get('pending')

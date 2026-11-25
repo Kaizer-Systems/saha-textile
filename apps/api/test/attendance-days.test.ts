@@ -122,8 +122,9 @@ function build(
 		{
 			adminUserLocations: async () => access,
 			list: async () => [
-				{ id: 'loc_gariahat', stateCode: '19', name: 'Gariahat store' },
-				{ id: 'loc_far', stateCode: '27', name: 'Far store' },
+				{ id: 'loc_gariahat', stateCode: '19', name: 'Gariahat store', active: true },
+				{ id: 'loc_far', stateCode: '27', name: 'Far store', active: true },
+				{ id: 'loc_shut', stateCode: '19', name: 'Shut store', active: false },
 			],
 		} as never,
 		rules as never,
@@ -340,6 +341,7 @@ describe('the attendance routes', () => {
 			decide: vi.fn(),
 			lock: vi.fn(),
 			summary: vi.fn(),
+			stores: vi.fn(),
 		};
 		const c = new AttendanceDaysController(service as never);
 		const p = { employeeId: 'amit', day: '2026-11-08' };
@@ -354,6 +356,8 @@ describe('the attendance routes', () => {
 		c.reject(p, manager);
 		c.lock('2026-11', manager);
 		c.summary(manager);
+		c.stores(manager);
+		expect(service.stores).toHaveBeenCalledWith(manager);
 		expect(service.summary).toHaveBeenCalledWith(manager);
 		expect(service.lock).toHaveBeenCalledWith(manager, '2026-11');
 		expect(service.markIn).toHaveBeenCalledWith(manager);
@@ -651,5 +655,15 @@ describe('My attendance and asking for leave (AT1)', () => {
 		await expect(ask('2027-01-01', '2027-08-31')).rejects.toSatisfy((e) => code(e) === 'leave_not_enough');
 		expect(await ask('2027-01-01', '2027-06-30')).toHaveLength(155);
 		await expect(ask('2027-07-01', '2027-08-31')).rejects.toSatisfy((e) => code(e) === 'leave_not_enough');
+	});
+});
+
+describe('the store picker (AT2)', () => {
+	it('lists the open stores in the user’s charge, or every open store for those who see all', async () => {
+		expect(await build().service.stores(manager)).toEqual([{ id: 'loc_gariahat', name: 'Gariahat store' }]);
+		expect((await build({ access: { maySeeAll: true } }).service.stores(manager)).map((l) => l.id)).toEqual([
+			'loc_gariahat',
+			'loc_far',
+		]);
 	});
 });

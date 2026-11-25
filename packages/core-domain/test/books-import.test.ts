@@ -374,4 +374,10 @@ describe('taking the books out to Tally', () => {
 				'</VOUCHER></TALLYMESSAGE>',
 		);
 	});
+
+	it('exports direct expenses to Tally’s Direct Expenses, and still reads its Purchase Accounts as direct expenses', () => {
+		expect(tallyGroupFor('direct_expenses')).toBe('Direct Expenses');
+		expect(TALLY_GROUPS['purchase accounts']).toBe('direct_expenses');
+		expect(TALLY_GROUPS['direct expenses']).toBe('direct_expenses');
+	});
 });

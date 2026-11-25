@@ -144,4 +144,20 @@ describe('tax depreciation for a year', () => {
 		expect(taxDepreciation(10_000_000, 40, '2025-11-20', '2026-27')).toBe(4_000_000);
 		expect(taxDepreciation(10_000_000, 40, '2026-03-31', '2026-27')).toBe(4_000_000);
 	});
+
+	it('counts the 180 days to 31 March, so a year with 29 February moves the line a day', () => {
+		// FY 2027-28 ends after 29 February 2028: from 4 October it is exactly 180 days, the full rate.
+		expect(taxDepreciation(10_000_000, 40, '2027-10-04', '2027-28')).toBe(4_000_000);
+		expect(taxDepreciation(10_000_000, 40, '2027-10-05', '2027-28')).toBe(2_000_000);
+		expect(taxDepreciation(10_000_000, 40, '2028-03-31', '2027-28')).toBe(2_000_000);
+	});
+});
+
+describe('the corrected presets', () => {
+	it('gives a car 8 years and a shop or office building 60 (Schedule II), and software the computers’ 40% (Income Tax)', () => {
+		const preset = (key: string) => ASSET_CATEGORIES.find((c) => c.key === key);
+		expect(preset('vehicles')).toEqual({ key: 'vehicles', lifeYears: 8, taxRatePct: 15 });
+		expect(preset('buildings')).toEqual({ key: 'buildings', lifeYears: 60, taxRatePct: 10 });
+		expect(preset('software')).toEqual({ key: 'software', lifeYears: 6, taxRatePct: 40 });
+	});
 });

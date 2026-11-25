@@ -173,4 +173,19 @@ describe('the audit report’s chips', () => {
 		expect(chips(entry('accounts.unlock.take_over.save'))).toEqual(['unlocks', 'takeovers', 'edits']);
 		expect(chips(entry('accounts.voucher.post'))).toEqual([]);
 	});
+
+	it('reads the day an entry was made in India, where the books keep their days', () => {
+		// 20:00 UTC on 24 November is 01:30 on 25 November in India: a voucher dated the 24th is backdated.
+		const lateNight = { createdAt: '2026-11-24T20:00:00.000Z', metadata: { date: '2026-11-24' } };
+		expect(chips(entry('accounts.voucher.post', lateNight))).toEqual(['backdated']);
+		// 18:00 UTC is 23:30 the same day in India: not backdated.
+		expect(
+			chips(
+				entry('accounts.voucher.post', {
+					createdAt: '2026-11-24T18:00:00.000Z',
+					metadata: { date: '2026-11-24' },
+				}),
+			),
+		).toEqual([]);
+	});
 });

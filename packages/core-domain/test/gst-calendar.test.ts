@@ -246,3 +246,29 @@ describe('extensions and changed rules', () => {
 		expect(dueFromRules(gstr1Only, 'GSTR-9', '2026-03', 'monthly', WEST_BENGAL)).toBeNull();
 	});
 });
+
+describe('an extension notified after the month it extends', () => {
+	// CBIC extends September's GSTR-3B for West Bengal on 15 October, days before the 20th: entered with that date.
+	const notifiedLate = rule(
+		'ext_gstr3b_2026_09_wb',
+		{ returnType: 'GSTR-3B', scheme: 'monthly', day: 27, states: [WEST_BENGAL], period: '2026-09' },
+		'2026-10-15',
+		'2026-10-31',
+	);
+
+	it('moves the month it names, whatever day it was notified or until', () => {
+		expect(dueFromRules([...RULES, notifiedLate], 'GSTR-3B', '2026-09', 'monthly', WEST_BENGAL)).toBe('2026-10-27');
+		expect(dueFromRules([...RULES, notifiedLate], 'GSTR-3B', '2026-09', 'monthly', MAHARASHTRA)).toBe('2026-10-20');
+		expect(dueFromRules([...RULES, notifiedLate], 'GSTR-3B', '2026-10', 'monthly', WEST_BENGAL)).toBe('2026-11-20');
+	});
+
+	it('still needs a standing rule to be in force for the month', () => {
+		const later = rule(
+			'gstr3b_monthly_from_2027',
+			{ returnType: 'GSTR-3B', scheme: 'monthly', day: 25 },
+			'2027-01-01',
+		);
+		expect(dueFromRules([later], 'GSTR-3B', '2026-12', 'monthly', WEST_BENGAL)).toBeNull();
+		expect(dueFromRules([later], 'GSTR-3B', '2027-01', 'monthly', WEST_BENGAL)).toBe('2027-02-25');
+	});
+});

@@ -262,3 +262,39 @@ describe('this month’s TDS', () => {
 		expect(monthlyTds(rs(78_000), 0, 0)).toBe(0);
 	});
 });
+
+describe('the s.87A marginal relief just above ₹12 lakh', () => {
+	it('charges no more than the income above ₹12 lakh, with cess', () => {
+		// ₹12,10,000 taxable: the slabs give 61,500; relief keeps it to the 10,000 above ₹12 lakh; with cess ₹10,400.
+		expect(newRegimeTax(rs(12_85_000))).toBe(rs(10_400));
+		// ₹100 above: ₹104.
+		expect(newRegimeTax(rs(12_75_100))).toBe(rs(104));
+		// ₹12,60,000 taxable: 69,000 by the slabs, 60,000 above the line: ₹62,400.
+		expect(newRegimeTax(rs(13_35_000))).toBe(rs(62_400));
+	});
+
+	it('gives way to the slabs once they charge less than the income above ₹12 lakh', () => {
+		// ₹12,80,000 taxable: 72,000 by the slabs, under the 80,000 above the line: ₹74,880.
+		expect(newRegimeTax(rs(13_55_000))).toBe(rs(74_880));
+		expect(newRegimeTax(rs(13_75_000))).toBe(rs(78_000));
+		expect(newRegimeTax(rs(30_75_000))).toBe(rs(4_99_200));
+	});
+});
+
+describe('the advance, in whole rupees', () => {
+	it('rounds the recovery down, so deductions never pass half the pay', () => {
+		// Gross ₹17,401: half is ₹8,700.50; PF, ESI and professional tax take ₹1,305, leaving ₹7,395.50.
+		const pay17401 = pay({ basic: rs(8_700), special: rs(8_701) });
+		const month = monthPay(input(pay17401, { advanceDuePaise: rs(10_000) }));
+		expect(month).toMatchObject({
+			grossPaise: rs(17_401),
+			pfEmployeePaise: rs(1_044),
+			esiEmployeePaise: rs(131),
+			ptPaise: rs(130),
+			advancePaise: rs(7_395),
+		});
+		expect(month.pfEmployeePaise + month.esiEmployeePaise + month.ptPaise + month.advancePaise).toBeLessThanOrEqual(
+			month.grossPaise / 2,
+		);
+	});
+});

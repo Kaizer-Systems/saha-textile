@@ -104,4 +104,10 @@ describe('stock verification under CARO 3(ii)(a)', () => {
 	it('adds the value of the difference to the paisa', () => {
 		expect(caroClasses([piece(10, 9, 10.126), piece(10, 9, 0.004)])[0]?.differenceINR).toBe(10.13);
 	});
+
+	it('judges the 10% line on the share itself, not the share as rounded for the screen', () => {
+		// 249 short of 2,500 is 9.96%: shown as 10.0, still under the line.
+		expect(caroClasses([piece(2_500, 2_251)])[0]).toMatchObject({ percent: 10, reportable: false });
+		expect(caroClasses([piece(2_500, 2_250)])[0]).toMatchObject({ percent: 10, reportable: true });
+	});
 });

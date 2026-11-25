@@ -129,8 +129,9 @@
 				<div class="card-body">
 					<div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
 						<h5 class="mb-0">
-							{{ 'year_close_profit_title' | transloco: { amount: money(v.profitPlan?.profitPaise ?? 0) }
-							}} · {{ 'co_kind_' + v.kind | transloco }}
+							@let yearProfit = v.profitPlan?.profitPaise ?? 0; {{ (yearProfit < 0 ?
+							'year_close_loss_title' : 'year_close_profit_title') | transloco: { amount: money(yearProfit
+							< 0 ? -yearProfit : yearProfit) } }} · {{ 'co_kind_' + v.kind | transloco }}
 						</h5>
 						<button
 							*hasPermission="'accounts.post'"

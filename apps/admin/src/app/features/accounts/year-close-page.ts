@@ -68,7 +68,8 @@ export class YearClosePage {
 	private readonly notifier = inject(NotificationService);
 	private readonly queries = inject(QueryClient);
 
-	readonly money = rupees;
+	/** Rupees with the sign kept: a loss, a negative share or a capital below nil read with their minus. */
+	readonly money = (paise: number) => (paise < 0 ? `−${rupees(-paise)}` : rupees(paise));
 	readonly icon = checkIcon;
 	readonly years = yearChoices();
 	readonly year = toSignal(this.route.queryParamMap.pipe(map((q) => q.get('year') ?? lastEndedYear())), {
@@ -114,46 +115,55 @@ export class YearClosePage {
 	async saveChoice(): Promise<void> {
 		const profitChoice = this.chosen();
 		if (!profitChoice) return;
-		await this.act(() => firstValueFrom(this.gateway.confirm(this.year(), { profitChoice })), 'year_close_saved');
-		this.picked.set(null);
+		// A refused save keeps what was picked and typed, so it can be put right and saved again.
+		if (
+			await this.act(
+				() => firstValueFrom(this.gateway.confirm(this.year(), { profitChoice })),
+				'year_close_saved',
+			)
+		)
+			this.picked.set(null);
 	}
 
 	pick(year: string): void {
 		void this.router.navigate([], { queryParams: { year } });
 	}
 
-	private async act(call: () => Promise<YearCloseView>, done: string): Promise<void> {
+	/** Runs a step; true when it went through, false when it was refused (the refusal is shown). */
+	private async act(call: () => Promise<YearCloseView>, done: string): Promise<boolean> {
 		this.busy.set(true);
 		try {
 			await call();
 			this.notifier.showSuccess(this.transloco.translate(done));
 			await this.queries.invalidateQueries({ queryKey: YEAR_CLOSE_KEYS.one(this.year()) });
+			return true;
 		} catch (error) {
 			this.notifier.showError(this.transloco.translate(`year_close_problem_${apiProblem(error, 'failed')}`));
+			return false;
 		} finally {
 			this.busy.set(false);
 		}
 	}
 
-	confirmAccruals(): Promise<void> {
+	confirmAccruals(): Promise<boolean> {
 		return this.act(
 			() => firstValueFrom(this.gateway.confirm(this.year(), { accruals: true })),
 			'year_close_saved',
 		);
 	}
 
-	carrySuspense(): Promise<void> {
+	carrySuspense(): Promise<boolean> {
 		return this.act(
 			() => firstValueFrom(this.gateway.confirm(this.year(), { suspenseNote: this.note() })),
 			'year_close_saved',
 		);
 	}
 
-	postClosing(): Promise<void> {
+	postClosing(): Promise<boolean> {
 		return this.act(() => firstValueFrom(this.gateway.postClosing(this.year())), 'year_close_posted');
 	}
 
-	close(): Promise<void> {
+	close(): Promise<boolean> {
 		return this.act(() => firstValueFrom(this.gateway.close(this.year())), 'year_close_closed');
 	}
 }

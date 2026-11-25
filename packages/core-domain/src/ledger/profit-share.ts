@@ -62,9 +62,16 @@ export interface DeedBook extends DeedRules {
 	earlierDeeds: readonly (DeedRules & { from: string | null; to: string })[];
 }
 
-/** The deed ruling a day: an earlier one whose dates hold it, else today's. */
-export function deedOn(book: DeedBook, day: string): DeedRules {
-	return book.earlierDeeds.find((deed) => (deed.from ?? '') <= day && day <= deed.to) ?? book;
+/**
+ * The deed ruling a day: an earlier one whose dates hold it, else today's from its start. Null for a day no deed
+ * covers (before today's deed began with no earlier one holding it, or in a gap between deeds): on such a day the
+ * partners share equally and nothing is paid as interest or remuneration (Partnership Act s.13(a), (b); s.40(b) allows
+ * only what a deed authorises, for the period after it).
+ */
+export function deedOn(book: DeedBook, day: string): DeedRules | null {
+	const earlier = book.earlierDeeds.find((deed) => (deed.from ?? '') <= day && day <= deed.to);
+	if (earlier) return earlier;
+	return book.deedFrom === null || day >= book.deedFrom ? book : null;
 }
 
 const nextDay = (day: string): string =>
@@ -169,8 +176,10 @@ export function shareProfit(input: ShareInput): ShareResult {
 	const trail = (id: string): CapitalTrail => input.capital[id] ?? { openingPaise: 0, moves: [] };
 	const sortedMoves = new Map<string, { day: string; paise: number }[]>();
 	for (const day of days) {
-		const deed = deedOn(input.book, day);
-		if (Math.round(deed.partners.reduce((sum, t) => sum + t.profitSharePercent, 0) * 100) !== 10_000)
+		const ruling = deedOn(input.book, day);
+		// A day no deed covers: today's partners, sharing equally, with no interest or remuneration.
+		const deed = ruling ?? input.book;
+		if (ruling && Math.round(deed.partners.reduce((sum, t) => sum + t.profitSharePercent, 0) * 100) !== 10_000)
 			problems.add('partner_shares_total_100');
 		for (const term of deed.partners) {
 			const running = person(term);
@@ -189,6 +198,10 @@ export function shareProfit(input: ShareInput): ShareResult {
 			}
 			capitalNow.set(term.id, capital);
 			nextMove.set(term.id, at);
+			if (!ruling) {
+				running.weight += 1 / deed.partners.length / n;
+				continue;
+			}
 			const base = Math.max(deed.interestBasis === 'opening' ? trail(term.id).openingPaise : capital, 0);
 			running.weight += term.profitSharePercent / 100 / n;
 			running.interest += (base * term.interestOnCapitalPercent) / 100 / n;
@@ -201,7 +214,7 @@ export function shareProfit(input: ShareInput): ShareResult {
 		}
 	}
 	const list = [...people.values()];
-	const lastDeed = deedOn(input.book, input.to);
+	const lastDeed = deedOn(input.book, input.to) ?? input.book;
 	const deedMethod = input.method === 'deed';
 	const chargesApplied = deedMethod && (input.profitPaise > 0 || lastDeed.lossYearCharges);
 	const interest = list.map((p) => (chargesApplied ? Math.round(p.interest) : 0));

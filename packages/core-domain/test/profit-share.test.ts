@@ -200,8 +200,59 @@ describe('the pieces', () => {
 				{ from: null, to: '2026-03-31', interestBasis: 'opening', lossYearCharges: true, partners: [] },
 			],
 		});
-		expect(deedOn(deeds, '2026-03-31').interestBasis).toBe('opening');
-		expect(deedOn(deeds, '2026-04-01').interestBasis).toBe('daily');
+		expect(deedOn(deeds, '2026-03-31')?.interestBasis).toBe('opening');
+		expect(deedOn(deeds, '2026-04-01')?.interestBasis).toBe('daily');
+	});
+
+	it('finds no deed before today’s began, or in a gap between deeds', () => {
+		const later = book({
+			deedFrom: '2026-10-01',
+			earlierDeeds: [
+				{ from: '2026-04-01', to: '2026-06-30', interestBasis: 'opening', lossYearCharges: true, partners: [] },
+			],
+		});
+		expect(deedOn(later, '2026-06-30')?.interestBasis).toBe('opening');
+		expect(deedOn(later, '2026-07-01')).toBeNull();
+		expect(deedOn(later, '2026-09-30')).toBeNull();
+		expect(deedOn(later, '2026-10-01')?.interestBasis).toBe('daily');
+		expect(deedOn(book({ deedFrom: null }), '2020-01-01')?.interestBasis).toBe('daily');
+	});
+
+	it('shares equally and charges nothing for the days no deed covers (s.13(b), s.40(b))', () => {
+		// The deed starts on 1 October with no earlier one: April to September share 50:50 with no interest or pay.
+		const result = shareProfit({
+			method: 'deed',
+			from: '2026-04-01',
+			to: '2027-03-31',
+			profitPaise: 180_000_000,
+			book: book({ deedFrom: '2026-10-01' }),
+			capital,
+		});
+		const [a, r] = result.rows;
+		// Remuneration for October to March only: 6 months at ₹60,000 and ₹40,000.
+		expect([a?.remunerationPaise, r?.remunerationPaise]).toEqual([36_000_000, 24_000_000]);
+		// Interest at 12% for 182 of 365 days on ₹10,00,000 and ₹5,00,000.
+		expect(a?.interestPaise).toBe(Math.round((100_000_000 * 0.12 * 182) / 365));
+		expect(r?.interestPaise).toBe(Math.round((50_000_000 * 0.12 * 182) / 365));
+		// Ratio: 183 days at 50:50 and 182 at 60:40.
+		expect(a?.sharePercent).toBe(Math.round(((183 * 50 + 182 * 60) / 365) * 100) / 100);
+		expect(result.rows.reduce((sum, row) => sum + row.totalPaise, 0)).toBe(180_000_000);
+		expect(result.problems).toEqual([]);
+	});
+
+	it('shares a year before the deed began equally, paying nothing', () => {
+		const result = shareProfit({
+			method: 'deed',
+			from: '2026-04-01',
+			to: '2027-03-31',
+			profitPaise: 100_000,
+			book: book({ deedFrom: '2027-06-01' }),
+			capital,
+		});
+		expect(result.rows.map((row) => [row.interestPaise, row.remunerationPaise, row.sharePaise])).toEqual([
+			[0, 0, 50_000],
+			[0, 0, 50_000],
+		]);
 	});
 
 	it('keeps deeds in order', () => {

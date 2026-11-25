@@ -51,7 +51,10 @@ them again reverses both vouchers and posts both afresh.
 
 Settings › Company › Partners holds the deed: each partner's profit share, interest on capital, whether they work in
 the business, and remuneration as a fixed sum a month, a % of book profit, or none. "A new deed from a date" keeps
-today's terms as an earlier deed ending the day before; a year that spans two deeds uses each for its own days.
+today's terms as an earlier deed ending the day before; a year that spans two deeds uses each for its own days. A day
+no deed covers (before the deed began with no earlier one holding it, or a gap between deeds) pays no interest or
+remuneration, and the partners share that day's profit equally (Partnership Act s.13(a), (b); s.40(b) allows only what
+a deed authorises, from its date).
 
 - **Interest on capital** is worked day by day on each partner's capital ledger (money brought in or taken out counts
   from the next day; opening balances brought in count from the first day), or on the year's opening capital when
@@ -70,7 +73,7 @@ today's terms as an earlier deed ending the day before; a year that spans two de
 What it posts, at the head office (the first location made): interest, remuneration and the share each debited to
 their appropriation ledgers (`interest_on_partners_capital`, `partners_remuneration`, `partners_profit_share`),
 each partner's current account credited (capital account when capital is fluctuating), and the TDS taken from it
-to `tds_payable_partners`. The firm's chart version 4 adds the last two ledgers; the appropriation account's
+to `tds_payable_partners`. The firm's chart version 3 adds the last two ledgers; the appropriation account's
 version 2 shows the share of profit and the balance carried as lines of their own.
 
 ### A proprietor's and a company's profit

@@ -296,6 +296,7 @@ export class YearCloseService {
 				locationId: line.locationId,
 				debitPaise: line.debitPaise,
 				creditPaise: line.creditPaise,
+				narration: line.narration,
 			})),
 			roles: [...new Set(planned.lines.map((line) => line.role))],
 		};
@@ -527,10 +528,9 @@ export class YearCloseService {
 						narration: `Where the profit of ${year} goes`,
 						source: { type: 'profitShare', id: year, number: null },
 						idempotencyKey: `profitShare:${year}:${randomUUID()}`,
-						lines: planned.lines.map(({ ledgerId, ...amounts }, i) => ({
+						lines: planned.lines.map(({ ledgerId, ...line }) => ({
 							ledger: { id: roleOf.get(ledgerId) ?? ledgerId },
-							...amounts,
-							narration: planned.plan.lines[i]?.narration ?? '',
+							...line,
 						})),
 					},
 					context,

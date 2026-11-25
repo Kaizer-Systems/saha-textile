@@ -1013,11 +1013,12 @@ export class PayrollRulesPage {
 						month: this.transloco.translate(`payroll_month_${r.year.startMonth}`),
 						months: r.year.months,
 					}),
+			// One day and several days read differently in English ("1 day is", "1.5 days are").
 			c.kind === 'per_days_worked'
-				? t('credit_worked', { give: c.give, every: c.every })
+				? t(c.give === 1 ? 'credit_worked_one' : 'credit_worked', { give: c.give, every: c.every })
 				: c.kind === 'none'
 					? t('credit_none')
-					: t(`credit_${c.kind}`, { days: c.days }),
+					: t(`credit_${c.kind}${c.days === 1 ? '_one' : ''}`, { days: c.days }),
 			...(r.waitDays ? [t('wait', { days: r.waitDays })] : []),
 			...(r.joiners === 'none' ? [] : [t(`joiners_${r.joiners}`)]),
 			r.validity.kind === 'never'

@@ -527,6 +527,8 @@ describe('leave in a State’s set (LV1, LV2)', () => {
 			plain_credit_monthly: 'MONTHLY {{days}}.',
 			plain_credit_on_request: 'ASKED {{days}}.',
 			plain_credit_worked: 'WORKED {{give}}/{{every}}.',
+			plain_credit_worked_one: 'WORKED ONE/{{every}}.',
+			plain_credit_monthly_one: 'MONTHLY ONE.',
 			plain_credit_none: 'NONE.',
 			plain_wait: 'WAIT {{days}}.',
 			plain_joiners_months_left: 'MONTHS LEFT.',
@@ -551,10 +553,15 @@ describe('leave in a State’s set (LV1, LV2)', () => {
 		expect(modal('#pr_leave_plain')?.textContent?.trim()).toBe('FROM April 12. START 10. MONTHS LEFT. LAPSES.');
 		page.setRule({ year: { fromJoining: true }, credit: { kind: 'per_days_worked', every: 20, give: 1 } });
 		page.setRule({ waitDays: 180, joiners: 'none', carryMax: null });
-		expect(page.plainWords()).toBe('JOIN. WORKED 1/20. WAIT 180. ALL.');
+		// One day reads as one ("1 day is earned"), more as more.
+		expect(page.plainWords()).toBe('JOIN. WORKED ONE/20. WAIT 180. ALL.');
+		page.setRule({ credit: { kind: 'per_days_worked', every: 20, give: 1.5 } });
+		expect(page.plainWords()).toBe('JOIN. WORKED 1.5/20. WAIT 180. ALL.');
 		page.setRule({ year: { startMonth: 1, months: 12 }, credit: { kind: 'monthly', days: 1.5 }, waitDays: null });
 		page.setRule({ joiners: 'days_left', carryMax: 30, aboveCap: 'encash' });
 		expect(page.plainWords()).toBe('FROM January 12. MONTHLY 1.5. DAYS LEFT. UP TO 30, paid.');
+		page.setRule({ credit: { kind: 'monthly', days: 1 } });
+		expect(page.plainWords()).toBe('FROM January 12. MONTHLY ONE. DAYS LEFT. UP TO 30, paid.');
 		page.setRule({ credit: { kind: 'none' }, aboveCap: 'lapse', validity: { kind: 'days', n: 90 } });
 		expect(page.plainWords()).toBe('FROM January 12. NONE. DAYS LEFT. UP TO 30, lost. VALID 90 DAYS.');
 		page.setRule({ credit: { kind: 'on_request', days: 182 }, validity: { kind: 'months', n: 12 } });

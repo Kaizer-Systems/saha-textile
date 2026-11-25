@@ -26,6 +26,8 @@ const employee = (id: string, basic: number, da: number, locationId = 'loc_bar')
 	id,
 	name: id,
 	code: '',
+	designation: '',
+	department: '',
 	userId: null,
 	locationId,
 	joinedOn: '2025-04-01',
@@ -164,6 +166,7 @@ function build(options: Options = {}) {
 		{ append: async () => undefined } as never,
 		rules as never,
 		{ list: async () => [{ id: 'loc_bar', stateCode: '19' }] } as never,
+		{ issue: async () => 'PS/26-27/000001' } as never,
 	);
 	return { service, ledger, rules, runStore, chart };
 }

@@ -57,6 +57,8 @@ const employee = (id: string, name: string, locationId: string, ptState = '19'):
 	id,
 	name,
 	code: '',
+	designation: '',
+	department: '',
 	userId: null,
 	locationId,
 	joinedOn: '2025-04-01',
@@ -120,6 +122,7 @@ function payroll(locations: unknown[] = LOCATIONS) {
 		{ append: async () => undefined } as never,
 		{ forMonth: async () => RULES } as never,
 		{ list: async () => locations } as never,
+		{ issue: async () => 'PS/26-27/000001' } as never,
 	);
 	return { service, runs };
 }
@@ -215,6 +218,7 @@ function returns(filings: unknown[]) {
 		{ get: async () => null } as never,
 		{ forMonth: async () => RULES } as never,
 		{ schedule: async () => ({ rows: [] }) } as never,
+		{ seller: async (f: unknown) => f, renderActiveCopies: async () => new Uint8Array() } as never,
 	);
 }
 

@@ -169,6 +169,8 @@ const employee = (id: string, locationId: string, over: Partial<Employee> = {}):
 	id,
 	name: id,
 	code: '',
+	designation: '',
+	department: '',
 	userId: null,
 	locationId,
 	joinedOn: '2025-04-01',
@@ -223,6 +225,7 @@ function payroll() {
 				{ id: 'loc_pune', stateCode: '27' },
 			],
 		} as never,
+		{ issue: async () => 'PS/26-27/000001' } as never,
 	);
 }
 

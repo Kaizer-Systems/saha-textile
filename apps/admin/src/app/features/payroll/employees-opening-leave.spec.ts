@@ -31,7 +31,12 @@ const settle = async (fixture: { whenStable: () => Promise<unknown>; detectChang
 	}
 };
 
-const [EARNED, CASUAL] = WEST_BENGAL_LEAVE as unknown as [Record<string, unknown>, Record<string, unknown>];
+const [WB_EARNED, CASUAL] = WEST_BENGAL_LEAVE as unknown as [Record<string, unknown>, Record<string, unknown>];
+/** West Bengal's earned leave kept on an April-March year here, so the figures below follow the form, not the set. */
+const EARNED = {
+	...WB_EARNED,
+	rules: [{ ...(WB_EARNED['rules'] as Record<string, unknown>[])[0], year: { startMonth: 4, months: 12 } }],
+};
 const CASUAL_RULE = (CASUAL['rules'] as Record<string, unknown>[])[0];
 /** West Bengal's earned and casual leave, one switched off, and one only for managers. */
 const LEAVE_TYPES = [

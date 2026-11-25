@@ -298,10 +298,10 @@ describe('an employee on the old regime declares rent, 80C, 80D, a home loan and
 		expect(modal<HTMLSelectElement>('#emp_rent_city')?.value).toBe('__metro_before');
 		expect(modal<HTMLInputElement>('#emp_rent')?.value).toBe('12000');
 		const rows = [...declarationRows()];
-		// Rent, section 126's five rows (TX3), 80C, home loan, the earlier job's salary and TDS.
-		expect(rows).toHaveLength(10);
+		// Rent, section 126's six rows (TX3), 80C, home loan, the earlier job's salary and TDS.
+		expect(rows).toHaveLength(11);
 		expect(rows.map((row) => row.querySelectorAll('input[type="checkbox"]').length)).toEqual([
-			1, 2, 0, 2, 0, 0, 1, 1, 0, 0,
+			1, 2, 0, 0, 2, 0, 0, 1, 1, 0, 0,
 		]);
 		expect(modal<HTMLInputElement>('#emp_decl_s80c')?.value).toBe('150000');
 		expect([page.proven('rent'), page.proven('s80c'), page.proven('s80d'), page.proven('homeLoan')]).toEqual([
@@ -461,15 +461,19 @@ describe('rent cities and section 126 on the tax declaration (brief 26 TX3, TX5)
 		edit(fixture, 0).click();
 		await redraw();
 		enter(modal('#emp_decl_health_self_checkup'), '3000');
+		enter(modal('#emp_decl_health_self_senior_medical'), '-50');
+		expect(page.healthAmount('s126SelfSeniorMedicalINR')).toBe(0);
+		enter(modal('#emp_decl_health_self_senior_medical'), '12000');
 		enter(modal('#emp_decl_health_parents'), '-1');
 		enter(modal('#emp_decl_health_parents_checkup'), '4000');
 		enter(modal('#emp_decl_health_senior_medical'), '9000');
 		expect([
 			page.healthAmount('s126SelfCheckupINR'),
+			page.healthAmount('s126SelfSeniorMedicalINR'),
 			page.healthAmount('s126ParentsINR'),
 			page.healthAmount('s126ParentsCheckupINR'),
 			page.healthAmount('s126SeniorMedicalINR'),
-		]).toEqual([3_000, 0, 4_000, 9_000]);
+		]).toEqual([3_000, 12_000, 0, 4_000, 9_000]);
 		modal<HTMLInputElement>('#emp_spouse_senior')?.click();
 		modal<HTMLInputElement>('#emp_parents_senior')?.click();
 		expect([page.declaration()?.s126SpouseSenior, page.declaration()?.s126ParentsSenior]).toEqual([true, true]);
@@ -484,9 +488,11 @@ describe('rent cities and section 126 on the tax declaration (brief 26 TX3, TX5)
 		await own.redraw();
 		own.page.setHealthAmount('s80dINR', 40_000);
 		own.page.setHealthAmount('s126SelfCheckupINR', 3_000);
+		// An uninsured senior's own medical bills count only once the self group is 60 or more.
+		own.page.setHealthAmount('s126SelfSeniorMedicalINR', 10_000);
 		expect(own.page.healthCounts().self).toEqual({ counted: rupees(30_000_00), limit: rupees(30_000_00) });
 		own.page.setDeclaration({ s126SpouseSenior: true });
-		expect(own.page.healthCounts().self).toEqual({ counted: rupees(43_000_00), limit: rupees(60_000_00) });
+		expect(own.page.healthCounts().self).toEqual({ counted: rupees(53_000_00), limit: rupees(60_000_00) });
 		await own.redraw();
 		expect(modal('#emp_counts_self')?.textContent).toContain('payroll_decl_counts_of');
 		const builtIn = await employees();
@@ -519,7 +525,7 @@ describe('rent cities and section 126 on the tax declaration (brief 26 TX3, TX5)
 			modal('#emp_proof_s126Parents')?.closest('td')?.getAttribute('rowspan'),
 			modal('#emp_counts_self')?.getAttribute('rowspan'),
 			modal('#emp_counts_parents')?.getAttribute('rowspan'),
-		]).toEqual(['2', '3', '2', '3']);
+		]).toEqual(['3', '3', '3', '3']);
 		const checkupRow = modal('#emp_decl_health_self_checkup')?.closest('tr') as HTMLElement;
 		expect(checkupRow.querySelectorAll('td')).toHaveLength(3);
 		const rentRow = modal('#emp_rent')?.closest('tr') as HTMLElement;

@@ -446,8 +446,47 @@ describe('section 126’s limits, the rounding and the rent cities (brief 26 TX4
 		expect(cities()).toHaveLength(8);
 	});
 
+	it('counts an uninsured senior’s medical bills in both groups unless a version switches one off, and writes both', () => {
+		expect(taxToForm(TAX).seniorMedical).toEqual({ self: true, parents: true });
+		const off = {
+			...custom,
+			health126: { ...custom.health126, selfSeniorMedical: false, parentsSeniorMedical: true },
+		} as IncomeTaxRules;
+		expect(taxToForm(off).seniorMedical).toEqual({ self: false, parents: true });
+		expect(taxToWrite(taxToForm(off)).health126).toMatchObject({
+			selfSeniorMedical: false,
+			parentsSeniorMedical: true,
+		});
+		expect(taxToWrite(taxToForm(TAX)).health126).toMatchObject({
+			selfSeniorMedical: true,
+			parentsSeniorMedical: true,
+		});
+	});
+
+	it('switches a senior’s medical bills on and off for each group in the pop-up', async () => {
+		const { page, redraw } = await editing();
+		const self = modal<HTMLInputElement>('#pr_tax_senior_medical_self') as HTMLInputElement;
+		const parents = modal<HTMLInputElement>('#pr_tax_senior_medical_parents') as HTMLInputElement;
+		expect([self.checked, parents.checked]).toEqual([true, true]);
+		expect(self.nextElementSibling?.textContent?.trim()).toBe('payroll_tax_senior_medical_self');
+		self.click();
+		await redraw();
+		expect([page.form()?.incomeTax?.seniorMedical, self.checked]).toEqual([{ self: false, parents: true }, false]);
+		parents.click();
+		await redraw();
+		expect(page.form()?.incomeTax?.seniorMedical).toEqual({ self: false, parents: false });
+		self.click();
+		await redraw();
+		expect([page.form()?.incomeTax?.seniorMedical, self.checked, parents.checked]).toEqual([
+			{ self: true, parents: false },
+			true,
+			false,
+		]);
+	});
+
 	it('leaves the limits and cities alone for a version without income tax', async () => {
 		const { page } = await editing(WITHOUT_TAX);
+		page.toggleSeniorMedical('self');
 		page.setHealth('self', 1);
 		page.cityToAdd.set('Kochi');
 		page.addCity();

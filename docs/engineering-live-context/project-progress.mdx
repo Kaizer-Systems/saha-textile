@@ -4245,6 +4245,23 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
 - 2026-11-23 — [PARTIAL] **PR #7 CI repairs.** The account and route-contract guards pass. Operator location assignments use `adminUserLocations`; a database containing the previous collection can preview that single rename with `pnpm mongo:align-collections -- --admin-user-locations --dry-run`. Any rename is a separate, reviewed data migration. Added browser CI geo fixtures, HTTPS trust setup, and local media storage. MongoDB integration tests use the same test-database guard and run serially to stop seed and migration fixtures from deleting each other’s rows. Coverage now measures nine additional Vitest workspaces. ZIP, YouTube, BullMQ and FX reached 100% in the focused runs. Full Playwright and full coverage are still under verification. Tool: codex.
 - 2026-11-23 — [PARTIAL] **PR #7 coverage verification.** The full local coverage run measured 25 workspaces. Thirteen reached 100% on all four metrics, including payments, geo, FX, storage and PDF. Twelve still miss the gate, with 25,910 uncovered statements and 22,048 uncovered branches across the measured workspaces. Typecheck passed all 47 tasks and all 190 CI script tests passed. Tool: codex.
 
+- 2026-11-25 — [DONE] **Accounts error list from the test chats (owner, 25 Nov).** `9f2ebd65`: taxed exports filed as
+  WPAY/EXPWP (GSTR-1, e-invoice, GSTR-9 tables 4/5); cancelled credit notes out of GSTR-1; rule 37 reversal in the
+  month after day 180 with late reclaims; 87A marginal relief; first 2B import readable; payroll runs unique by month;
+  advance recovery rounded down; report builder refill/loop; smaller ones. `5c2be3a9`: unreachable fallbacks rewritten.
+- 2026-11-25 — [DONE] **QRMP, composition and ISD (owner, 25 Nov "yes build it").** `324e5ec8`: IFF, quarterly
+  GSTR-1/3B, PMT-06 into a GST cash ledger; bills of supply, no input credit, out-of-State refusal, CMP-08 booked and
+  paid, GSTR-4; GSTR-6 from GSTR-6A with rule 39 distribution and 4A(4) credit; RS-DUE v2; quarterly filings lock three
+  months. Portal page `docs/accounts/gst-returns.md`.
+- 2026-11-25 — [DONE] **Books run for every kind of business (owner, 25 Nov).** `2eaf8eca`: `ACCOUNTS_E2E_KIND`
+  (proprietorship 119, partnership QRMP + ISD 136, LLP 124, private limited 120, OPC under composition 115 checks).
+  Faults it found and fixed: `781e3359` partners' capital/current ledgers at set-up, year-close counts each kind's
+  returns, GSTR-1/3B refused for composition/ISD; `1df97288` OrderStock's routing was silently null (no @Inject), so
+  order routing never ran. Open: expense/service bills with GST credit have no document (brief 25 section EB).
+- 2026-11-25 — [BLOCKED] **Brief: payslips, exports and year end** (https://claude.ai/artifact/E6mFZwdmbjS9sBghCVGeH7):
+  payslip document, both tax regimes, bonus, payroll rules per State, CSV/Excel/PDF export, counts by location,
+  partner profit sharing, expense bills. Waits on the owner's approval.
+
 ## Integration (storefront ↔ API ↔ admin ↔ DB ↔ Meili ↔ Spaces)
 
 - 2026-07-24 — [PARTIAL] Frontends still largely mock/`assets/data`; live API wiring increases after Chunks D–F. Tool: cursor.

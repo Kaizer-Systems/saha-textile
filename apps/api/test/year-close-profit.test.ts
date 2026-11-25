@@ -61,9 +61,9 @@ const FIRM_LEDGERS = [
 
 /** The shop is listed first, but the bar was made first: the owners' accounts are kept at the bar. */
 const LOCATIONS = [
-	{ id: 'loc_shop', active: true, createdAt: '2026-02-01T00:00:00.000Z' },
-	{ id: 'loc_bar', active: true, createdAt: '2026-01-01T00:00:00.000Z' },
-	{ id: 'loc_old', active: false, createdAt: '2025-01-01T00:00:00.000Z' },
+	{ id: 'loc_shop', active: true, warehouse: true, createdAt: '2026-02-01T00:00:00.000Z' },
+	{ id: 'loc_bar', active: true, warehouse: true, createdAt: '2026-01-01T00:00:00.000Z' },
+	{ id: 'loc_old', active: false, warehouse: true, createdAt: '2025-01-01T00:00:00.000Z' },
 ];
 /** ₹60,000 of profit at the bar and ₹20,000 at the shop; a proprietor's capital and drawings sit at the bar. */
 const BALANCES: Record<string, Record<string, number>> = {
@@ -176,6 +176,8 @@ interface Options {
 	locations?: unknown[];
 	records?: Record<string, YearCloseRecord>;
 	vouchers?: Voucher[];
+	/** The year-end stock counts; one posted count of every location by default. */
+	counts?: unknown[];
 }
 
 /**
@@ -252,7 +254,11 @@ function build(options: Options = {}) {
 		{ unfinishedIn: async () => [] } as never,
 		{ list: async () => [] } as never,
 		{ summary: async () => ({}), inPeriod: async () => [] } as never,
-		{ list: async () => ({ items: [{ startedAt: '2027-03-30T10:00:00.000Z', status: 'posted' }] }) } as never,
+		{
+			list: async () => ({
+				items: options.counts ?? [{ startedAt: '2027-03-30T10:00:00.000Z', status: 'posted' }],
+			}),
+		} as never,
 		{ inTransitFrom: async () => [] } as never,
 		{ list: async () => [] } as never,
 		{ list: async () => [] } as never,
@@ -648,5 +654,35 @@ describe('choosing where the profit goes', () => {
 			company.service.confirm(YEAR, { accruals: false, suspenseNote: null, profitChoice: toCapital }, ca, now),
 		).rejects.toMatchObject(refusal('profit_choice_not_offered'));
 		expect(company.store.save).not.toHaveBeenCalled();
+	});
+});
+
+describe('the year-end stock counts by location (SC2)', () => {
+	const at = (locationId: string | null, status = 'posted') => ({
+		startedAt: '2027-03-30T10:00:00.000Z',
+		status,
+		locationId,
+	});
+	const stock = async (counts: unknown[], locations: unknown[] = LOCATIONS) =>
+		(await build({ counts, locations }).service.view(YEAR)).checks.find((c) => c.key === 'stock_count');
+	/** The bar and the shop are warehouses; the old one is closed and the kiosk keeps no stock. */
+	const WITH_KIOSK = [...LOCATIONS, { id: 'loc_kiosk', active: true, warehouse: false, createdAt: '2026-03-01' }];
+
+	it('waits for every active warehouse to be counted, a count still open at one not counting', async () => {
+		expect(await stock([at('loc_bar'), at('loc_shop', 'counting')], WITH_KIOSK)).toMatchObject({
+			state: 'attention',
+			// The shop's count is open, and the shop is not counted yet.
+			count: 2,
+			of: 1,
+		});
+		expect(await stock([at('loc_bar'), at('loc_shop')], WITH_KIOSK)).toMatchObject({
+			state: 'ok',
+			count: 0,
+			of: 2,
+		});
+	});
+
+	it('takes a posted count of every location as covering every warehouse', async () => {
+		expect(await stock([at('loc_bar'), at(null)], WITH_KIOSK)).toMatchObject({ state: 'ok', count: 0 });
 	});
 });

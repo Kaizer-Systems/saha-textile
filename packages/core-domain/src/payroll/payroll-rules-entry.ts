@@ -13,3 +13,4 @@ export {
 } from './income-tax';
 export { CODE_WAGE_HEADS, type WageHead } from './payroll-rules';
 export { CODE_ON_WAGES_FROM } from './bonus';
+export * from './leave';

@@ -3,7 +3,15 @@ import { FormsModule } from '@angular/forms';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal, type NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
-import { HEALTH_126_2026, RENT_CITIES_2026, healthByGroup } from '@saha-textile/core-domain/payroll-rules';
+import {
+	HEALTH_126_2026,
+	RENT_CITIES_2026,
+	creditSoFar,
+	healthByGroup,
+	leaveYearOn,
+	ruleFor,
+	type LeaveType as CoreLeaveType,
+} from '@saha-textile/core-domain/payroll-rules';
 import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
@@ -23,6 +31,7 @@ import type {
 	EmployeeWriteInput,
 	IncomeTaxView,
 	SalaryStructureWrite,
+	StatePayrollRules,
 	TaxDeclaration,
 } from '@saha-textile/contracts';
 
@@ -36,6 +45,14 @@ export function structureCheck(s: SalaryStructureWrite): { total: number; basicS
 }
 
 const istToday = (): string => new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10);
+
+/**
+ * A rules version's leave type as the core reads it. The API parsed it against the contract, so it is complete; the
+ * admin's compiler only reads the contract's nested fields as optional.
+ */
+export function asCoreLeaveType(type: NonNullable<StatePayrollRules['leaveTypes']>[number]): CoreLeaveType {
+	return type as unknown as CoreLeaveType;
+}
 
 /** TX5: the rent picker's stand-in for a declaration saved before cities, ticked "metro city". */
 export const METRO_BEFORE = '__metro_before';
@@ -183,6 +200,8 @@ export class EmployeesPage {
 	/** TX1: this financial year, its declaration in the form, and the saved year worked both ways. */
 	readonly taxYear = yearOf(currentMonth());
 	readonly metroBefore = METRO_BEFORE;
+	/** The day leave is worked out to (the day the person is added). */
+	readonly today = istToday();
 	/** TX3: section 126's rows, each group's proof and "Counts" spanning its rows. */
 	readonly healthRows = [
 		{ key: 'health_self', field: 's80dINR', group: 'self', proof: 's80d', groupStart: true, rows: 2 },
@@ -387,15 +406,98 @@ export class EmployeesPage {
 		}
 	}
 
+	/**
+	 * Brief 26 OB1, OB2: the leave on the day the person is added, per active leave type of their work location's
+	 * State in the rules in force: carried from before the type's current year (shut for someone who joined in it, and
+	 * absent for a type that lapses at its year's end), credited so far (worked out by the type's rules, editable),
+	 * taken so far, and the balance.
+	 */
+	readonly openingRows = computed(() => {
+		const f = this.form();
+		const today = istToday();
+		const state = this.locations.data()?.find((l) => l.id === f.locationId)?.stateCode;
+		const version = inForce(this.rules.data() ?? [], today);
+		const types = (version?.states?.find((st) => st.stateCode === state)?.leaveTypes ?? []).filter((t) => t.active);
+		return types.flatMap((type) => {
+			const rule = ruleFor(asCoreLeaveType(type), { designation: f.designation, department: f.department });
+			if (!rule || !f.joinedOn) return [];
+			const year = leaveYearOn(rule.year, today, f.joinedOn);
+			const workedOut = creditSoFar(rule, { joinedOn: f.joinedOn, asOf: today });
+			const saved = f.openingLeave?.find((o) => o.typeKey === type.key);
+			const lapses = rule.carryMax === 0 && rule.validity.kind === 'year_end';
+			const carriedOpen = f.joinedOn < year.start && !lapses;
+			const carried = carriedOpen ? (saved?.carried ?? 0) : null;
+			const credited = saved?.credited ?? workedOut;
+			const taken = saved?.taken ?? 0;
+			return [
+				{
+					key: type.key,
+					name: type.name,
+					yearStart: year.start,
+					carriedOpen,
+					lapses,
+					carried,
+					credited,
+					workedOut,
+					changed: credited !== workedOut,
+					taken,
+					balance: Math.round(((carried ?? 0) + credited - taken) * 100) / 100,
+				},
+			];
+		});
+	});
+
+	/** OB1, OB2: change one figure of one type's opening leave (never below nothing). */
+	setOpening(key: string, field: 'carried' | 'credited' | 'taken', value: unknown): void {
+		const row = this.openingRows().find((r) => r.key === key);
+		if (!row) return;
+		const days = this.atLeastNothing(value);
+		const next = {
+			typeKey: key,
+			asOf: istToday(),
+			carried: row.carriedOpen ? (field === 'carried' ? days : row.carried) : null,
+			credited: field === 'credited' ? days : row.credited,
+			creditedWorkedOut: row.workedOut,
+			taken: field === 'taken' ? days : row.taken,
+		};
+		this.form.update((f) => ({
+			...f,
+			openingLeave: [...(f.openingLeave ?? []).filter((o) => o.typeKey !== key), next],
+		}));
+	}
+
+	/** OB1: back to the worked-out figure. */
+	resetCredited(key: string): void {
+		const row = this.openingRows().find((r) => r.key === key);
+		if (row) this.setOpening(key, 'credited', row.workedOut);
+	}
+
+	/** Every type's opening leave as shown, the untouched ones at their worked-out figures. */
+	private withOpening(): EmployeeWriteInput {
+		const rows = this.openingRows();
+		if (!rows.length) return this.form();
+		return {
+			...this.form(),
+			openingLeave: rows.map((r) => ({
+				typeKey: r.key,
+				asOf: istToday(),
+				carried: r.carried,
+				credited: r.credited,
+				creditedWorkedOut: r.workedOut,
+				taken: r.taken,
+			})),
+		};
+	}
+
 	async save(): Promise<void> {
 		this.busy.set(true);
 		try {
 			const editing = this.editing();
 			if (editing)
 				await firstValueFrom(
-					this.gateway.updateEmployee(editing.id, { ...this.form(), version: editing.version }),
+					this.gateway.updateEmployee(editing.id, { ...this.withOpening(), version: editing.version }),
 				);
-			else await firstValueFrom(this.gateway.createEmployee(this.form()));
+			else await firstValueFrom(this.gateway.createEmployee(this.withOpening()));
 			this.notifier.showSuccess(this.transloco.translate('payroll_employee_saved'));
 			await this.queries.invalidateQueries({ queryKey: PAYROLL_KEYS.all });
 			this.modal?.close();

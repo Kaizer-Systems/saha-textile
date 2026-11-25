@@ -214,6 +214,22 @@
 						[ngModel]="f.joinedOn"
 						(ngModelChange)="patch({ joinedOn: $event })"
 					/>
+					<!-- Brief 26 OB-D2: a date set from memory, flagged for gratuity and service reports. -->
+					<div class="form-check mt-1">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="emp_joined_approx"
+							[checked]="!!f.joinedOnApproximate"
+							(change)="patch({ joinedOnApproximate: !f.joinedOnApproximate })"
+						/>
+						<label
+							class="form-check-label small"
+							for="emp_joined_approx"
+						>
+							{{ 'payroll_joined_approx' | transloco }}
+						</label>
+					</div>
 				</div>
 				<div class="col-md-3">
 					<label
@@ -464,6 +480,105 @@
 					/>
 				</div>
 			</div>
+			<!-- Brief 26 OB1, OB2: leave on the day added, worked out by the State's leave rules and editable. -->
+			@if (openingRows().length) {
+			<h6 class="mt-4 mb-2">{{ 'payroll_opening_title' | transloco: { day: day(today) } }}</h6>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'payroll_opening_balance' | transloco }}</th>
+							@for (r of openingRows(); track r.key) {
+							<th [title]="r.name">{{ r.key }}</th>
+							}
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td>{{ 'payroll_opening_carried' | transloco }}</td>
+							@for (r of openingRows(); track r.key) {
+							<td>
+								@if (r.carriedOpen) {
+								<input
+									class="form-control"
+									type="number"
+									min="0"
+									[id]="'emp_open_carried_' + r.key"
+									[attr.aria-label]="'payroll_opening_carried' | transloco"
+									[ngModel]="r.carried"
+									(ngModelChange)="setOpening(r.key, 'carried', $event)"
+								/>
+								} @else {
+								<small class="text-muted">
+									{{ (r.lapses ? 'payroll_opening_lapses' : 'payroll_opening_joined_this_year') |
+									transloco }}
+								</small>
+								}
+							</td>
+							}
+						</tr>
+						<tr>
+							<td>{{ 'payroll_opening_credited' | transloco }}</td>
+							@for (r of openingRows(); track r.key) {
+							<td>
+								<input
+									class="form-control"
+									type="number"
+									min="0"
+									step="0.5"
+									[id]="'emp_open_credited_' + r.key"
+									[attr.aria-label]="'payroll_opening_credited' | transloco"
+									[ngModel]="r.credited"
+									(ngModelChange)="setOpening(r.key, 'credited', $event)"
+								/>
+								@if (r.changed) {
+								<small class="text-muted d-block">
+									{{ 'payroll_opening_changed_from' | transloco: { days: r.workedOut } }}
+									<a
+										href="javascript:void(0)"
+										[id]="'emp_open_reset_' + r.key"
+										[title]="'payroll_opening_reset' | transloco"
+										(click)="resetCredited(r.key)"
+									>
+										↺
+									</a>
+								</small>
+								}
+							</td>
+							}
+						</tr>
+						<tr>
+							<td>{{ 'payroll_opening_taken' | transloco }}</td>
+							@for (r of openingRows(); track r.key) {
+							<td>
+								<input
+									class="form-control"
+									type="number"
+									min="0"
+									step="0.5"
+									[id]="'emp_open_taken_' + r.key"
+									[attr.aria-label]="'payroll_opening_taken' | transloco"
+									[ngModel]="r.taken"
+									(ngModelChange)="setOpening(r.key, 'taken', $event)"
+								/>
+							</td>
+							}
+						</tr>
+						<tr>
+							<td>
+								<b>{{ 'payroll_opening_balance_on' | transloco: { day: day(today) } }}</b>
+							</td>
+							@for (r of openingRows(); track r.key) {
+							<td [id]="'emp_open_balance_' + r.key">
+								<b>{{ r.balance }}</b>
+							</td>
+							}
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<p class="help-text mt-1">{{ 'payroll_opening_help' | transloco }}</p>
+			}
 			<!-- Brief 26 PT3: read only where the work location's State asks (women's slabs, its exemptions). -->
 			<h6 class="mt-4 mb-2">{{ 'payroll_pt_person_title' | transloco }}</h6>
 			<div class="row g-3">

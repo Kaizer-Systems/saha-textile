@@ -101,9 +101,19 @@ export function payslipData(input: PayslipInput): DocumentData {
 	});
 	// Brief 26 SR4: arrears of a revision dated back, one line with the months they are for.
 	const arrearsMonths = (row.arrearsFor ?? []).map((a) => monthShort(a.month)).join(', ');
+	// Brief 26 SR4: arrears for an earlier financial year are taxed now; the employee may claim relief (s.89, Form 10E).
+	const fyOf = (m: string) => (Number(m.slice(5, 7)) >= 4 ? Number(m.slice(0, 4)) : Number(m.slice(0, 4)) - 1);
+	const earlierYears = [
+		...new Set((row.arrearsFor ?? []).map((a) => fyOf(a.month)).filter((y) => y < fyOf(input.month))),
+	]
+		.sort()
+		.map((y) => `${y}-${String((y + 1) % 100).padStart(2, '0')}`);
+	const relief = earlierYears.length
+		? ` · of FY ${earlierYears.join(', ')}: taxed this year; relief under section 89 (Form 10E) may be claimed`
+		: '';
 	earnings.push({
 		cells: {
-			head: arrearsMonths ? `Arrears (${arrearsMonths})` : 'Arrears',
+			head: arrearsMonths ? `Arrears (${arrearsMonths})${relief}` : 'Arrears',
 			monthlyRate: money(0),
 			thisMonth: money(row.arrearsPaise ?? 0),
 			yearToDate: money(ytd((r) => r.arrearsPaise ?? 0)),

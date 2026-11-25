@@ -183,8 +183,27 @@ describe('arrears on the payslip (SR4)', () => {
 				{ month: '2026-10', paise: 160_000 },
 			],
 		} as unknown as PayrollRow;
-		const text = JSON.stringify(payslipData({ row, earlier: [], employee: PEOPLE[0] } as never));
+		const text = JSON.stringify(payslipData({ month: '2026-11', row, earlier: [], employee: PEOPLE[0] } as never));
 		expect(text).toContain('Arrears (Sep 2026, Oct 2026)');
+		expect(text).not.toContain('section 89');
+		// Arrears for March 2026 paid in a 2026-27 month: the earlier year is named, with the relief.
+		const march = JSON.stringify(
+			payslipData({
+				month: '2026-11',
+				row: {
+					...row,
+					arrearsFor: [
+						{ month: '2026-03', paise: 100_000 },
+						{ month: '2026-04', paise: 100_000 },
+					],
+				},
+				earlier: [],
+				employee: PEOPLE[0],
+			} as never),
+		);
+		expect(march).toContain(
+			'Arrears (Mar 2026, Apr 2026) · of FY 2025-26: taxed this year; relief under section 89 (Form 10E) may be claimed',
+		);
 		const none = JSON.stringify(
 			payslipData({
 				row: { ...row, arrearsPaise: undefined, arrearsFor: undefined },

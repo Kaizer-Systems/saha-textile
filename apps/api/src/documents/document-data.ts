@@ -45,4 +45,13 @@ export interface DocumentData {
 	signatures?: Record<string, string>;
 	/** The QR as an SVG string (e-invoice), drawn as it is. */
 	qrSvg?: string;
+	/**
+	 * Brief 25 PS: a payslip's tables by block (earnings, deductions, the employer's share, the tax working, leave):
+	 * each row's cells by field; `zero` rows (nothing this month) show only when the format asks; a `total` row closes.
+	 */
+	payTables?: Partial<
+		Record<PayTableBlock, { rows: Array<{ cells: Record<string, string>; zero?: boolean; total?: boolean }> }>
+	>;
 }
+
+export type PayTableBlock = 'earnings' | 'deductions' | 'employerShare' | 'taxWorking' | 'leaveBalance';

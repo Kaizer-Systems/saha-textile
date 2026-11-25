@@ -8,6 +8,8 @@ import type { DocumentBlockSpec, DocumentBlockType, DocumentKind, DocumentSpec }
 export interface CoreBlockSpec extends DocumentBlockSpec {
 	/** The fields our own format shows; the rest are offered but start off. Defaults to every field. */
 	ours?: string[];
+	/** Our own format carries the block switched off (a payslip's leave balance). */
+	hiddenInOurs?: boolean;
 }
 
 export interface CoreDocumentSpec extends Omit<DocumentSpec, 'blocks' | 'tree'> {
@@ -18,13 +20,14 @@ export interface CoreDocumentSpec extends Omit<DocumentSpec, 'blocks' | 'tree'> 
 const block = (
 	type: DocumentBlockType,
 	fields: string[],
-	extra: { locked?: string[]; required?: boolean; ours?: string[] } = {},
+	extra: { locked?: string[]; required?: boolean; ours?: string[]; hiddenInOurs?: boolean } = {},
 ): CoreBlockSpec => ({
 	type,
 	fields,
 	lockedFields: extra.locked ?? [],
 	required: extra.required ?? false,
 	...(extra.ours ? { ours: extra.ours } : {}),
+	...(extra.hiddenInOurs ? { hiddenInOurs: true } : {}),
 });
 
 /** Text blocks the shop types itself; any document may have several. */
@@ -371,6 +374,70 @@ export const DOCUMENT_SPECS: Record<DocumentKind, CoreDocumentSpec> = {
 			footer,
 		],
 	},
+	payslip: {
+		doc: 'payslip',
+		group: 'payroll',
+		gst: false,
+		blocks: [
+			block('brand', ['logo', 'shop'], { required: true }),
+			block('title', ['month', 'payslipNo', 'paidOn'], { locked: ['month'], required: true }),
+			block(
+				'facts',
+				[
+					'employeeName',
+					'employeeCode',
+					'designation',
+					'department',
+					'location',
+					'joinedOn',
+					'pan',
+					'uan',
+					'esiNumber',
+					'paidTo',
+					'taxRegime',
+					'stateRules',
+					'dateOfBirth',
+					'leftOn',
+				],
+				{
+					locked: ['employeeName'],
+					required: true,
+					ours: [
+						'employeeName',
+						'employeeCode',
+						'designation',
+						'department',
+						'location',
+						'joinedOn',
+						'pan',
+						'uan',
+						'esiNumber',
+						'paidTo',
+						'taxRegime',
+						'stateRules',
+					],
+				},
+			),
+			block('attendance', ['daysInMonth', 'paidDays', 'lossOfPay']),
+			block('earnings', ['head', 'monthlyRate', 'thisMonth', 'yearToDate', 'zeroHeads'], {
+				locked: ['head', 'thisMonth'],
+				required: true,
+				ours: ['head', 'monthlyRate', 'thisMonth', 'yearToDate'],
+			}),
+			block('deductions', ['head', 'thisMonth', 'yearToDate', 'zeroHeads'], {
+				locked: ['head', 'thisMonth'],
+				required: true,
+				ours: ['head', 'thisMonth', 'yearToDate'],
+			}),
+			block('words', ['netPay'], { locked: ['netPay'], required: true }),
+			block('employerShare', ['head', 'thisMonth']),
+			block('taxWorking', ['label', 'value']),
+			block('leaveBalance', ['kind', 'taken'], { hiddenInOurs: true }),
+			text,
+			block('signature', ['computerMade', 'signatory'], { ours: ['computerMade'] }),
+			block('footer', ['rulesUsed', 'pageNumber', 'formatName']),
+		],
+	},
 };
 
 /** The document's spec as the API serves it (the builder's own list of what it may offer). */
@@ -379,6 +446,6 @@ export function documentSpec(doc: DocumentKind): DocumentSpec {
 	return {
 		...spec,
 		tree: spec.tree ?? false,
-		blocks: spec.blocks.map(({ ours: _ours, ...rest }) => rest),
+		blocks: spec.blocks.map(({ ours: _ours, hiddenInOurs: _hidden, ...rest }) => rest),
 	};
 }

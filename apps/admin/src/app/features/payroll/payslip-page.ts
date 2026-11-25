@@ -7,7 +7,7 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom, map } from 'rxjs';
 
 import { PAYROLL_KEYS, PayrollGateway } from '@core/accounts/payroll.gateway';
-import { shortDate } from '@core/purchasing/purchasing-format';
+import { saveBlob, shortDate } from '@core/purchasing/purchasing-format';
 import { rupees } from '@features/accounts/ledger-helpers';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 
@@ -16,7 +16,7 @@ import { monthLabel } from './payroll-format';
 /**
  * A payslip (accounts brief S6): earnings for the days worked, deductions with the wages PF was worked out on and which
  * advance recovery this is, the net pay in words, where it was paid, and the rule versions used, so a reprint never
- * changes. Printed from the browser.
+ * changes. Printed on the active payslip format (Settings › Document formats, brief 25 PS4).
  */
 @Component({
 	selector: 'app-payslip-page',
@@ -44,7 +44,8 @@ export class PayslipPage {
 		return shortDate(date);
 	}
 
-	print(): void {
-		globalThis.print();
+	async print(): Promise<void> {
+		const blob = await firstValueFrom(this.gateway.payslipsPdf(this.month(), this.employeeId()));
+		saveBlob(`payslip-${this.month()}.pdf`, blob);
 	}
 }

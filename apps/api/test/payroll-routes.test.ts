@@ -25,7 +25,9 @@ import {
 	SALARY_TEMPLATE_REPOSITORY,
 	STATUTORY_FILING_REPOSITORY,
 } from '../src/infra/tokens';
+import { DocumentsModule } from '../src/documents/documents.module';
 import { LedgerModule } from '../src/ledger/ledger.module';
+import { OrdersSetupModule } from '../src/orders-setup/orders-setup.module';
 import { PayrollAdvancesService } from '../src/payroll/payroll-advances.service';
 import { PayrollReturnsService } from '../src/payroll/payroll-returns.service';
 import { PayrollRulesService } from '../src/payroll/payroll-rules.service';
@@ -122,7 +124,7 @@ describe('the payroll module', () => {
 	});
 
 	it('provides the service and its stores, needs the ledger, and is wired into the app', () => {
-		expect(Reflect.getMetadata('imports', PayrollModule)).toEqual([LedgerModule]);
+		expect(Reflect.getMetadata('imports', PayrollModule)).toEqual([LedgerModule, DocumentsModule, OrdersSetupModule]);
 		expect(Reflect.getMetadata('controllers', PayrollModule)).toEqual([PayrollController, PayrollSetupController]);
 		expect(Reflect.getMetadata('providers', PayrollModule)).toEqual([
 			PayrollService,

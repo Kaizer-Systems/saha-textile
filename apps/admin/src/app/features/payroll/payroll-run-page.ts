@@ -9,7 +9,7 @@ import { firstValueFrom } from 'rxjs';
 import { LEDGER_KEYS, LedgerGateway } from '@core/accounts/ledger.gateway';
 import { PAYROLL_KEYS, PayrollGateway } from '@core/accounts/payroll.gateway';
 import { LOCATION_KEYS, LocationsGateway } from '@core/locations/locations.gateway';
-import { apiProblem, shortDate } from '@core/purchasing/purchasing-format';
+import { apiProblem, saveBlob, shortDate } from '@core/purchasing/purchasing-format';
 import { NotificationService } from '@data-access/services/notification.service';
 import { rupees } from '@features/accounts/ledger-helpers';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
@@ -122,6 +122,15 @@ export class PayrollRunPage {
 	readonly bonusBank = signal('');
 	readonly bonusPaidOn = signal(istToday());
 	readonly bonusShort = computed(() => (this.bonus.data()?.rows ?? []).filter((r) => r.providedPaise < r.duePaise));
+
+	/** PS4: every payslip of the run in one PDF, each on its own page, on the active payslip format. */
+	async printPayslips(): Promise<void> {
+		try {
+			saveBlob(`payslips-${this.month()}.pdf`, await firstValueFrom(this.gateway.payslipsPdf(this.month())));
+		} catch (error) {
+			this.notifier.showError(this.transloco.translate(`payroll_problem_${apiProblem(error, 'failed')}`));
+		}
+	}
 
 	async payBonus(): Promise<void> {
 		this.busy.set(true);

@@ -7,10 +7,16 @@ import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { PayrollGateway } from '@core/accounts/payroll.gateway';
+import { saveBlob } from '@core/purchasing/purchasing-format';
 
 import { PayslipPage } from './payslip-page';
 
-/** A payslip (accounts brief S6), printed from the browser. */
+vi.mock('@core/purchasing/purchasing-format', async (original) => ({
+	...(await original<typeof import('@core/purchasing/purchasing-format')>()),
+	saveBlob: vi.fn(),
+}));
+
+/** A payslip (accounts brief S6), printed on the active payslip format (brief 25 PS4). */
 
 const settle = async (fixture: { whenStable: () => Promise<unknown>; detectChanges: () => void }) => {
 	for (let i = 0; i < 6; i++) {
@@ -51,7 +57,10 @@ const PAYSLIP = {
 
 function mount(route: Record<string, string>, payslip: unknown = PAYSLIP) {
 	TestBed.resetTestingModule();
-	const calls = { payslip: vi.fn(() => of(payslip)) };
+	const calls = {
+		payslip: vi.fn(() => of(payslip)),
+		payslipsPdf: vi.fn(() => of(new Blob(['%PDF'], { type: 'application/pdf' }))),
+	};
 	TestBed.configureTestingModule({
 		imports: [
 			PayslipPage,
@@ -89,10 +98,10 @@ describe('a payslip (S6)', () => {
 		expect(text).toContain('payroll_rules_used');
 		expect(text).toContain('₹28,133.33');
 		expect(page.day('2026-12-01')).toBeTruthy();
-		const print = vi.spyOn(globalThis, 'print').mockImplementation(() => undefined);
-		(fixture.nativeElement.querySelector('#payslip_print') as HTMLButtonElement).click();
-		expect(print).toHaveBeenCalled();
-		print.mockRestore();
+		// PS4: Print saves the payslip on the active payslip format.
+		await page.print();
+		expect(calls.payslipsPdf).toHaveBeenCalledWith(page.month(), page.employeeId());
+		expect(saveBlob).toHaveBeenCalledWith(`payslip-${page.month()}.pdf`, expect.any(Blob));
 	});
 
 	it('leaves out a code, UAN, recovery count and payment not yet there, and uses the rules’ day for schemes', async () => {

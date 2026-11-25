@@ -898,6 +898,7 @@ describe('document numbering (DEC-NUMBERING)', () => {
 			pettyExpense: series('PC', 6),
 			expenseClaim: series('EC', 6),
 			stockTransfer: series('TR', 6),
+			payslip: series('PS', 6),
 		},
 		lockedTypes: [],
 		revision: 0,

@@ -16,6 +16,8 @@ const ca = { userId: 'adm_ca', permissions: ['accounts.post', 'accounts.lock'] }
 const employee = (id: string, name: string, each: number, over: Partial<Employee> = {}): Employee => ({
 	name,
 	code: '',
+	designation: '',
+	department: '',
 	userId: null,
 	locationId: 'loc_bar',
 	joinedOn: '2025-04-01',
@@ -150,6 +152,7 @@ function build(options: Options = {}) {
 		audit as never,
 		{ forMonth: async () => rulesOf(BUILT_IN_PAYROLL_RULES) } as never,
 		{ list: async () => [] } as never,
+		{ issue: async () => 'PS/26-27/000001' } as never,
 	);
 	return { service, employees, attendance, runs, ledger, audit, people, runStore, chart };
 }

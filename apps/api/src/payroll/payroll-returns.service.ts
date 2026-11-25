@@ -12,8 +12,10 @@ import type {
 } from '@saha-textile/contracts';
 import {
 	SALARY_HEADS,
+	GST_STATES,
 	csvText,
 	ecrFile,
+	financialYearOf,
 	esicFile,
 	ifscBank,
 	payslipHeads,
@@ -39,6 +41,9 @@ import {
 	SHOP_DETAILS_REPOSITORY,
 	STATUTORY_FILING_REPOSITORY,
 } from '../infra/tokens';
+import { DocumentFormatsService } from '../documents/document-formats.service';
+import { previewDocument } from '../documents/document-previews';
+import { payslipData } from '../documents/payslip-print';
 import { accountsRefusal } from '../ledger/accounts-refusal';
 import { PayrollAdvancesService } from './payroll-advances.service';
 import { PayrollRulesService } from './payroll-rules.service';
@@ -90,7 +95,49 @@ export class PayrollReturnsService {
 		@Inject(SHOP_DETAILS_REPOSITORY) private readonly shop: Pick<ShopDetailsRepository, 'get'>,
 		@Inject(PayrollRulesService) private readonly rules: Pick<PayrollRulesService, 'forMonth'>,
 		@Inject(PayrollAdvancesService) private readonly advances: Pick<PayrollAdvancesService, 'schedule'>,
+		@Inject(DocumentFormatsService)
+		private readonly formats: Pick<DocumentFormatsService, 'seller' | 'renderActiveCopies'>,
 	) {}
+
+	/**
+	 * PS4: one person's payslip, or every payslip of the run each on its own page, in the active payslip format. The
+	 * year to date adds their earlier runs of the financial year.
+	 */
+	async payslipsPdf(month: string, employeeId: string | null): Promise<{ fileName: string; data: Uint8Array }> {
+		const run = await this.postedRun(month);
+		const rows = employeeId ? run.rows.filter((r) => r.employeeId === employeeId) : run.rows;
+		const [first] = rows;
+		if (!first) throw new NotFoundException(accountsRefusal('payslip_not_found'));
+		const year = financialYearOf(month);
+		const fyStart = `${year.slice(0, 4)}-04`;
+		const earlier = (await this.runs.list()).filter((r) => r.month >= fyStart && r.month < month);
+		const people = new Map((await this.employees.list()).map((e) => [e.id, e]));
+		const seller = await this.formats.seller(previewDocument('payslip').seller);
+		const page = async (row: PayrollRow) => {
+			const state = row.stateCode ?? '19';
+			return payslipData({
+				seller,
+				month,
+				year,
+				row,
+				earlier: earlier.flatMap((r) => r.rows.filter((x) => x.employeeId === row.employeeId)),
+				employee: people.get(row.employeeId) ?? null,
+				locationName: (await this.locations.get(row.locationId))?.name ?? '',
+				stateName: GST_STATES.find((s) => s.code === state)?.name ?? state,
+				daysInMonth: daysIn(month),
+				paidOn: run.paidOn ?? null,
+				rulesFrom: run.rulesFrom,
+			});
+		};
+		const head = await page(first);
+		const rest = await Promise.all(rows.slice(1).map(page));
+		return {
+			fileName: employeeId
+				? `payslip-${month}-${first.name.replace(/[^A-Za-z0-9]+/g, '-')}.pdf`
+				: `payslips-${month}.pdf`,
+			data: await this.formats.renderActiveCopies('payslip', [head, ...rest]),
+		};
+	}
 
 	/** S2: the schemes for a month, from who is on the roll and what they earn. */
 	async schemes(month: string): Promise<SchemeLine[]> {

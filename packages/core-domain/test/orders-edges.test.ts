@@ -341,6 +341,7 @@ const numbering = (order: DocumentNumberingSettings['order']): DocumentNumbering
 		pettyExpense: series('PC'),
 		expenseClaim: series('EC'),
 		stockTransfer: series('TR'),
+		payslip: series('PS'),
 	},
 	lockedTypes: [],
 	revision: 0,

@@ -38,6 +38,16 @@
 			>
 				{{ (r ? 'payroll_prepare_again' : 'payroll_prepare') | transloco }}
 			</button>
+			} @if (r?.rows?.length) {
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="run_payslips"
+				(click)="printPayslips()"
+			>
+				<i class="ri-printer-line"></i>
+				{{ 'payroll_print_payslips' | transloco: { n: r?.rows?.length } }}
+			</button>
 			} @if (r) { @switch (r.status) { @case ('draft') {
 			<button
 				*hasPermission="'accounts.lock'"

@@ -1,7 +1,7 @@
 import type { DocumentBlock, DocumentPaper } from '@saha-textile/contracts';
 
 import { escapeHtml } from '../purchasing/purchase-order-document';
-import type { DocumentData, DocumentRow } from './document-data';
+import type { DocumentData, DocumentRow, PayTableBlock } from './document-data';
 
 /**
  * A format + a document's data → one HTML page (bundle builder brief F, approved 2026-11-22). Blocks print in the
@@ -61,7 +61,42 @@ export const FIELD_LABELS: Record<string, string> = {
 	noteToSupplier: 'Note to the supplier',
 	rcmNote: 'Reverse charge',
 	narration: 'Narration',
+	// Brief 25 PS2: a payslip's facts and its attendance strip.
+	employeeName: 'Employee',
+	employeeCode: 'Code',
+	designation: 'Designation',
+	department: 'Department',
+	location: 'Location',
+	joinedOn: 'Joined',
+	pan: 'PAN',
+	uan: 'UAN',
+	esiNumber: 'ESI number',
+	paidTo: 'Paid to',
+	taxRegime: 'Tax regime',
+	stateRules: 'State rules',
+	dateOfBirth: 'Date of birth',
+	leftOn: 'Left on',
+	daysInMonth: 'Days in month',
+	paidDays: 'Paid days',
+	lossOfPay: 'Loss of pay',
 };
+
+/** A payslip table's headings: the first column carries the block's own title. */
+const PAY_TITLES: Record<PayTableBlock, string> = {
+	earnings: 'Earnings',
+	deductions: 'Deductions',
+	employerShare: 'Paid by the employer (not part of take-home)',
+	taxWorking: 'Income tax for the year',
+	leaveBalance: 'Leave',
+};
+const PAY_COLUMNS: Record<string, string> = {
+	monthlyRate: 'Monthly rate',
+	thisMonth: 'This month',
+	yearToDate: 'Year to date',
+	value: '',
+	taken: 'This month',
+};
+const PAY_FIRST = new Set(['head', 'label', 'kind']);
 
 /** Column headings of the lines table. `tax` takes the document's own heading (CGST + SGST or IGST). */
 export const COLUMN_LABELS: Record<string, string> = {
@@ -97,6 +132,7 @@ export const COLUMN_LABELS: Record<string, string> = {
 /** Signature lines' captions. */
 const SIGNATURE_LABELS: Record<string, string> = {
 	signature: 'Authorised signatory',
+	signatory: 'Authorised signatory',
 	packedBy: 'Packed by',
 	receivedBy: 'Received by',
 	approvedBy: 'Approved by',
@@ -297,15 +333,41 @@ function signatureBlock(block: DocumentBlock, data: DocumentData): string {
 		has(block, 'declaration') && data.signatures?.['declaration']
 			? `<p class="dz-declaration">${e(data.signatures['declaration'])}</p>`
 			: '<span></span>';
+	// A payslip: "computer-made, needs no signature" in place of a line to sign.
+	const computerMade = has(block, 'computerMade')
+		? '<p class="dz-declaration">This payslip is computer-made and needs no signature.</p>'
+		: '';
 	const lines = block.fields
-		.filter((field) => field !== 'declaration')
+		.filter((field) => field !== 'declaration' && field !== 'computerMade')
 		.map((field) => {
 			const who = data.signatures?.[field] ?? '';
 			const top = field === 'signature' ? `<b>For ${e(data.seller.name)}</b>` : `<b>${e(who)}</b>`;
 			return `<div class="dz-sign">${top}<div class="dz-sign-line"></div><span>${e(SIGNATURE_LABELS[field] ?? field)}</span></div>`;
 		})
 		.join('');
-	return `<section class="dz-signature">${declaration}<div class="dz-signs">${lines}</div></section>`;
+	return `<section class="dz-signature">${computerMade || declaration}<div class="dz-signs">${lines}</div></section>`;
+}
+
+/** Brief 25 PS3: one of a payslip's tables, with the format's columns; heads with nothing this month only on request. */
+function payTableBlock(block: DocumentBlock & { type: PayTableBlock }, data: DocumentData): string {
+	const table = data.payTables?.[block.type];
+	const columns = block.fields.filter((field) => field !== 'zeroHeads');
+	const rows = (table?.rows ?? []).filter((row) => has(block, 'zeroHeads') || !row.zero);
+	if (!columns.length || !rows.length) return '';
+	const head = columns
+		.map((column) =>
+			PAY_FIRST.has(column)
+				? `<th>${e(PAY_TITLES[block.type])}</th>`
+				: `<th class="dz-num">${e(PAY_COLUMNS[column] ?? column)}</th>`,
+		)
+		.join('');
+	const body = rows
+		.map(
+			(row) =>
+				`<tr class="${row.total ? 'dz-pay-total' : ''}">${columns.map((column) => `<td class="${PAY_FIRST.has(column) ? '' : 'dz-num'}">${e(row.cells[column] ?? '')}</td>`).join('')}</tr>`,
+		)
+		.join('');
+	return `<table class="dz-table dz-pay"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
 }
 
 function blockHtml(
@@ -342,9 +404,26 @@ function blockHtml(
 		case 'totals':
 			return totalsBlock(block, data);
 		case 'words':
+			// A payslip's net pay box: the amount and its words.
+			if (has(block, 'netPay'))
+				return data.values['netPay']
+					? `<section class="dz-net"><b>Net pay ${e(data.values['netPay'])}</b><span>${e(data.values['amountInWords'] ?? '')}</span></section>`
+					: '';
 			return data.values['amountInWords']
 				? `<p class="dz-words">Amount in words: <b>${e(data.values['amountInWords'])}</b></p>`
 				: '';
+		case 'attendance': {
+			const items = block.fields.filter((field) => data.values[field] !== undefined);
+			return items.length
+				? `<section class="dz-strip">${items.map((field) => `<span>${e(fieldLabel(field))} <b>${e(data.values[field] as string)}</b></span>`).join('')}</section>`
+				: '';
+		}
+		case 'earnings':
+		case 'deductions':
+		case 'employerShare':
+		case 'taxWorking':
+		case 'leaveBalance':
+			return payTableBlock(block as DocumentBlock & { type: PayTableBlock }, data);
 		case 'payment':
 		case 'note': {
 			const items = block.fields.filter((field) => data.values[field]);
@@ -356,8 +435,13 @@ function blockHtml(
 			return block.text ? labelledBox(block.heading || 'Note', e(block.text).replace(/\n/g, '<br>')) : '';
 		case 'signature':
 			return signatureBlock(block, data);
-		case 'footer':
-			return `<footer class="dz-foot"><span>This is a computer-generated document.</span>${has(block, 'formatName') ? `<span>${e(data.number)} · ${e(formatName)}</span>` : ''}</footer>`;
+		case 'footer': {
+			const rules =
+				has(block, 'rulesUsed') && data.values['rulesUsed']
+					? `<span>${e(data.values['rulesUsed'])}</span>`
+					: '';
+			return `<footer class="dz-foot"><span>This is a computer-generated document.</span>${rules}${has(block, 'formatName') ? `<span>${e(data.number)} · ${e(formatName)}</span>` : ''}</footer>`;
+		}
 	}
 }
 
@@ -437,6 +521,9 @@ body{margin:0;font-family:'Public Sans','Noto Sans Bengali',system-ui,sans-serif
 .dz-check{width:22px}.dz-tick{display:inline-block;width:11px;height:11px;border:1.2px solid #52606d;border-radius:2px}
 .dz-hsn{width:55%;font-size:.88em}
 .dz-totals{margin:0 0 8px auto;width:45%;border:1px solid #e4e7eb;border-radius:4px;padding:6px 8px}
+.dz-strip{display:flex;flex-wrap:wrap;gap:4px 18px;background:#f6f8f7;border-radius:4px;padding:6px 10px;margin:0 0 8px}
+.dz-pay{margin:0 0 8px}.dz-pay-total td{font-weight:700;background:#f6f8f7}
+.dz-net{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;border:2px solid var(--dz-brand,#0e6b5c);border-radius:4px;padding:8px 12px;margin:0 0 8px}
 .dz-paper-roll80 .dz-totals,.dz-paper-roll80 .dz-hsn{width:100%}
 .dz-paper-roll80 .dz-table{font-size:.86em}.dz-paper-roll80 .dz-table th,.dz-paper-roll80 .dz-table td{padding:3px 2px}
 .dz-paper-roll80 .dz-sub,.dz-paper-roll80 .dz-elbow{display:none}.dz-paper-roll80 .dz-depth-1{padding-left:6px!important}.dz-paper-roll80 .dz-depth-2{padding-left:10px!important}

@@ -27,10 +27,12 @@ export const DocumentKind = z.enum([
 	'stockCount',
 	'openingStock',
 	'journal',
+	/** Brief 25 PS1: a person's month of pay. */
+	'payslip',
 ]);
 export type DocumentKind = z.infer<typeof DocumentKind>;
 
-export const DocumentGroup = z.enum(['sales', 'parcels', 'purchases', 'stock']);
+export const DocumentGroup = z.enum(['sales', 'parcels', 'purchases', 'stock', 'payroll']);
 export type DocumentGroup = z.infer<typeof DocumentGroup>;
 
 /** Paper a format prints on: A4 or A5 portrait, or an 80 mm counter-printer roll. */
@@ -57,6 +59,16 @@ export const DocumentBlockType = z.enum([
 	'text',
 	'signature',
 	'footer',
+	/**
+	 * Brief 25 PS3, the payslip's own: the month's days, the earnings and deductions tables, what the employer pays
+	 * on top, the income-tax working, and leave. Their fields are the columns (or, for attendance, the figures).
+	 */
+	'attendance',
+	'earnings',
+	'deductions',
+	'employerShare',
+	'taxWorking',
+	'leaveBalance',
 ]);
 export type DocumentBlockType = z.infer<typeof DocumentBlockType>;
 

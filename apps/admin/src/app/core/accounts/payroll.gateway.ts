@@ -99,6 +99,14 @@ export class PayrollGateway {
 		return this.http.post<PayrollRulesVersion>(this.api('rules'), write);
 	}
 
+	/** PS4: a run's payslips (or one person's) on the active payslip format. */
+	payslipsPdf(month: string, employeeId: string | null = null): Observable<Blob> {
+		return this.http.get(this.api(`runs/${month}/payslips.pdf`), {
+			responseType: 'blob',
+			params: employeeId ? { employeeId } : {},
+		});
+	}
+
 	/** BN1: the year's statutory bonus per person (Payroll › Payroll runs). */
 	bonusYear(year: string): Observable<BonusYear> {
 		return this.http.get<BonusYear>(this.api(`bonus/${year}`));

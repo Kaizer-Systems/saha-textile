@@ -54,6 +54,7 @@ import {
 } from '../infra/tokens';
 import { accountsRefusal } from '../ledger/accounts-refusal';
 import { LedgerService } from '../ledger/ledger.service';
+import { DocumentNumbersService } from '../orders-setup/document-numbers.service';
 import { PayrollRulesService } from './payroll-rules.service';
 
 const refuse = (code: string) => new BadRequestException(accountsRefusal(code));
@@ -193,6 +194,7 @@ export class PayrollService {
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: Pick<AuditLogRepository, 'append'>,
 		@Inject(PayrollRulesService) private readonly rules: Pick<PayrollRulesService, 'forMonth'>,
 		@Inject(LOCATION_REPOSITORY) private readonly locations: Pick<LocationRepository, 'list'>,
+		@Inject(DocumentNumbersService) private readonly numbers: Pick<DocumentNumbersService, 'issue'>,
 	) {}
 
 	private mayseeWhole(principal: AuthenticatedPrincipal | undefined) {
@@ -795,9 +797,19 @@ export class PayrollService {
 				context,
 				by,
 			);
+			// PS-D2: each payslip takes its number now, in the year of the day paid; a reprint carries the same one.
+			const rows: PayrollRow[] = [];
+			for (const row of run.rows)
+				rows.push({
+					...row,
+					payslipNo:
+						row.payslipNo ??
+						(await this.numbers.issue('payslip', context, new Date(`${write.paidOn}T06:30:00Z`))),
+				});
 			return this.save(
 				{
 					...run,
+					rows,
 					status: 'paid',
 					payVoucherId: voucher.id,
 					paidOn: write.paidOn,

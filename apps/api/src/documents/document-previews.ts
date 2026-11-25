@@ -1,6 +1,7 @@
 import { renderSVG } from 'uqr';
 import type { DocumentKind } from '@saha-textile/contracts';
 
+import { payslipData } from './payslip-print';
 import type { DocumentData, DocumentRow } from './document-data';
 
 /**
@@ -619,6 +620,71 @@ export function previewDocument(doc: DocumentKind): DocumentData {
 				totals: { totals: [{ label: 'Opening value', value: '₹76,340.00' }] },
 				signatures: { preparedBy: 'Accounts' },
 			};
+		case 'payslip':
+			// Brief 25 PS2's example: Priya Sen, November 2026.
+			return payslipData({
+				seller: SELLER,
+				month: '2026-11',
+				year: '2026-27',
+				daysInMonth: 30,
+				paidOn: '2026-11-30',
+				rulesFrom: '2026-04-01',
+				locationName: 'Barasat warehouse',
+				stateName: 'West Bengal',
+				employee: {
+					code: 'EMP-0007',
+					designation: 'Packer',
+					department: 'Dispatch',
+					joinedOn: '2025-06-04',
+					leftOn: null,
+					pan: 'ABCPS1234K',
+					uan: '101234567890',
+					esiNumber: '3112345678',
+					bankAccount: '50100123454821',
+					dateOfBirth: null,
+					structure: { basic: 7_200, da: 900, hra: 3_600, conveyance: 1_600, special: 4_700, other: 0 },
+				},
+				earlier: [],
+				row: {
+					employeeId: 'emp_example',
+					name: 'Priya Sen',
+					locationId: 'loc_example',
+					stateCode: '19',
+					paidDays: 29,
+					grossPaise: 1_740_000,
+					pfWagesPaise: 870_000,
+					pfEmployeePaise: 104_400,
+					pfEmployerPaise: 104_400,
+					epsPaise: 72_500,
+					esiEmployeePaise: 13_100,
+					esiEmployerPaise: 56_600,
+					ptPaise: 13_000,
+					tdsPaise: 0,
+					advancePaise: 100_000,
+					netPaise: 1_509_500,
+					lwfEmployeePaise: 0,
+					lwfEmployerPaise: 0,
+					gratuityPaise: 41_800,
+					headsPaise: {
+						basic: 696_000,
+						da: 87_000,
+						hra: 348_000,
+						conveyance: 154_667,
+						special: 454_333,
+						other: 0,
+					},
+					payslipNo: 'PS/26-27/000124',
+					tax: {
+						regime: 'new',
+						yearSalaryPaise: 21_540_000,
+						deductionsPaise: 7_500_000,
+						taxablePaise: 14_040_000,
+						yearTaxPaise: 0,
+						deductedBeforePaise: 0,
+						monthsLeft: 5,
+					},
+				},
+			});
 		case 'journal':
 			return {
 				...base,

@@ -40,6 +40,8 @@ export const NumberedDocumentType = z.enum([
 	'expenseClaim',
 	/** Stock transfers between locations (accounts brief N3). */
 	'stockTransfer',
+	/** Payslips, numbered when their run is paid (brief 25 PS-D2). */
+	'payslip',
 ]);
 export type NumberedDocumentType = z.infer<typeof NumberedDocumentType>;
 
@@ -149,6 +151,7 @@ export const DEFAULT_SERIES: Record<NumberedDocumentType, z.infer<typeof SeriesF
 	pettyExpense: { prefix: 'PC', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
 	expenseClaim: { prefix: 'EC', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
 	stockTransfer: { prefix: 'TR', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
+	payslip: { prefix: 'PS', separator: '/', includeFinancialYear: true, digits: 6, reset: 'fy' },
 };
 
 export const DocumentNumberingSettings = z.object({

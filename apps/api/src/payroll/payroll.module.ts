@@ -17,7 +17,9 @@ import {
 	SALARY_TEMPLATE_REPOSITORY,
 	STATUTORY_FILING_REPOSITORY,
 } from '../infra/tokens';
+import { DocumentsModule } from '../documents/documents.module';
 import { LedgerModule } from '../ledger/ledger.module';
+import { OrdersSetupModule } from '../orders-setup/orders-setup.module';
 
 import { PayrollAdvancesService } from './payroll-advances.service';
 import { PayrollReturnsService } from './payroll-returns.service';
@@ -35,7 +37,7 @@ export function employeeStoreFor(config: Pick<AppConfig, 'payroll'>): MongoEmplo
 
 /** Payroll (accounts brief S). */
 @Module({
-	imports: [LedgerModule],
+	imports: [LedgerModule, DocumentsModule, OrdersSetupModule],
 	controllers: [PayrollController, PayrollSetupController],
 	providers: [
 		PayrollService,

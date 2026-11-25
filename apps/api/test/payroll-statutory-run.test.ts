@@ -25,6 +25,8 @@ const TEN = Array.from({ length: 10 }, (_, i) => ({
 	id: `emp_${i}`,
 	name: `Person ${String(i).padStart(2, '0')}`,
 	code: '',
+	designation: '',
+	department: '',
 	userId: null,
 	locationId: i < 7 ? 'loc_bar' : 'loc_shop',
 	joinedOn: '2025-04-01',
@@ -109,6 +111,7 @@ function build(options: { employees?: Employee[]; attendance?: Attendance[]; run
 		{ append: async () => undefined } as never,
 		{ forMonth: async () => rulesOf(BUILT_IN_PAYROLL_RULES) } as never,
 		{ list: async () => [] } as never,
+		{ issue: async () => 'PS/26-27/000001' } as never,
 	);
 	return { service, ledger, runStore };
 }

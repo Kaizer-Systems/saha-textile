@@ -81,3 +81,17 @@ PF, ESI and TDS are one return each. Professional tax and the welfare fund are o
 on its State's due day, with its own file (`PT-<state>-<month>.csv`, `LWF-<state>-<month>.csv`, from
 `GET /admin/payroll/statutory/:kind/:period/file?state=<code>`) and its own filed mark (`stateCode` in the body of
 `POST /admin/payroll/statutory/:kind/:period/filed`). Filings made before States count as West Bengal's.
+
+## Payslips
+
+A payslip is a document of its own in Settings › Document formats (group Payroll), with the standard A4 format and a
+Compact A5 one (without the employer's share and the tax working), both copyable. Besides the shared blocks (brand,
+title, facts, text, signature, footer) it has six of its own: attendance (days, paid days, loss of pay), earnings
+(head, monthly rate, this month, year to date), deductions (this month, year to date), what the employer pays on top
+(and the month's cost to the company), the income-tax working the run used, and leave. Earnings and deductions leave
+out heads with nothing this month unless the format asks for them. The employee's name, the month and the net pay are
+always printed; Aadhaar never is, PAN shows its first two and last two characters, the bank account its last four.
+
+Each payslip takes a number from the PS series (Settings › Document numbers) when its run is paid, so a reprint
+carries the same number. `GET /admin/payroll/runs/:month/payslips.pdf` prints the run's payslips, each on its own
+page, or one person's with `?employeeId=`.

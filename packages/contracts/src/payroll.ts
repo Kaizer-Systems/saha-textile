@@ -55,6 +55,9 @@ export type TaxDeclaration = z.infer<typeof TaxDeclaration>;
 export const EmployeeWrite = z.object({
 	name: z.string().trim().min(2).max(120),
 	code: z.string().trim().max(20).default(''),
+	/** Printed on the payslip (brief 25 PS2). */
+	designation: z.string().trim().max(80).default(''),
+	department: z.string().trim().max(80).default(''),
 	userId: Id.nullable().default(null),
 	locationId: Id,
 	joinedOn: IsoDate,
@@ -166,6 +169,8 @@ export const PayrollRow = z.object({
 	gratuityPaise: z.number().int().optional(),
 	/** S6: each head paid for the days worked, kept so a reprint never changes. */
 	headsPaise: z.record(z.string(), z.number().int()).optional(),
+	/** PS-D2: the payslip's number, given when the run is paid; a reprint carries the same one. */
+	payslipNo: z.string().optional(),
 	/** BN1: the month's bonus wages and the bonus provided on them (when the Act applies and it is provided monthly). */
 	bonusWagesPaise: z.number().int().optional(),
 	bonusPaise: z.number().int().optional(),

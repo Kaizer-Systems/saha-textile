@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Header, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Get, Header, Param, Post, Put, Query, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	AdvanceGive,
@@ -11,6 +11,8 @@ import {
 	StructurePreviewInput,
 	YearMonth,
 } from '@saha-textile/contracts';
+
+import type { FastifyReply } from 'fastify';
 
 import { Principal } from '../auth/ownership';
 import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../auth/session.guard';
@@ -97,6 +99,22 @@ export class PayrollSetupController {
 	@ApiOperation({ operationId: 'payrollPayslip', summary: 'One person’s payslip for a month (S6)' })
 	payslip(@Param('month', new ZodValidationPipe(YearMonth)) month: string, @Param('employeeId') employeeId: string) {
 		return this.returns.payslip(month, employeeId);
+	}
+
+	@Get('runs/:month/payslips.pdf')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({ operationId: 'payrollPayslipsPdf', summary: 'A run’s payslips, or one person’s, as a PDF (PS4)' })
+	async payslipsPdf(
+		@Param('month', new ZodValidationPipe(YearMonth)) month: string,
+		@Query('employeeId') employeeId: string | undefined,
+		@Res() reply: FastifyReply,
+	) {
+		const file = await this.returns.payslipsPdf(month, employeeId || null);
+		void reply
+			.header('Content-Type', 'application/pdf')
+			.header('Content-Disposition', `attachment; filename="${file.fileName}"`)
+			.header('Cache-Control', 'no-store')
+			.send(Buffer.from(file.data));
 	}
 
 	@Get('statutory')

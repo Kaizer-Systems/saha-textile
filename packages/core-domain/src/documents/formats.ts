@@ -51,7 +51,8 @@ export function ourBlocks(doc: DocumentKind): DocumentBlock[] {
 			continue;
 		}
 		const sizes = item.type === 'table' && spec.tree ? { heading: 11, piece: 10, free: 10 } : {};
-		out.push(blockOf(item.type, [...(item.ours ?? item.fields)], { sizes }));
+		const made = blockOf(item.type, [...(item.ours ?? item.fields)], { sizes });
+		out.push(item.hiddenInOurs ? { ...made, hidden: true } : made);
 	}
 	return out;
 }
@@ -141,7 +142,7 @@ const PAPER_ABOUT: Record<'standard' | 'compact' | 'counter', { name: string; ab
 
 /**
  * Our formats (F01): "Saha Textile standard" for every document, switched on; the tax invoice also has "Compact"
- * (A5) and "Counter receipt" (80 mm roll), switched off, to choose between.
+ * (A5) and "Counter receipt" (80 mm roll), and the payslip "Compact" (A5), switched off, to choose between.
  */
 export function seedDocumentFormats(): DocumentFormat[] {
 	const out: DocumentFormat[] = [];
@@ -163,6 +164,14 @@ export function seedDocumentFormats(): DocumentFormat[] {
 		'compact',
 		ourBlocks('taxInvoice').map((item) =>
 			item.type === 'table' ? { ...item, sizes: { heading: 10, piece: 9, free: 9 } } : item,
+		),
+	);
+	// Brief 25 PS1: a payslip on A5 as well, without the employer's share and the tax working, switched off.
+	make(
+		'payslip',
+		'compact',
+		ourBlocks('payslip').map((item) =>
+			item.type === 'employerShare' || item.type === 'taxWorking' ? { ...item, hidden: true } : item,
 		),
 	);
 	// A counter roll is narrow: the lines keep only what the law needs, the notes and e-documents stay off.

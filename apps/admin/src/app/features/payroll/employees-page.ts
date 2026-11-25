@@ -37,6 +37,8 @@ const istToday = (): string => new Date(Date.now() + 5.5 * 3_600_000).toISOStrin
 const blank = (): EmployeeWriteInput => ({
 	name: '',
 	code: '',
+	designation: '',
+	department: '',
 	locationId: '',
 	joinedOn: istToday(),
 	pan: '',
@@ -101,6 +103,8 @@ export function employeeWrite(e: EmployeeView): EmployeeWriteInput {
 	return {
 		name: e.name,
 		code: e.code,
+		designation: e.designation,
+		department: e.department,
 		userId: e.userId,
 		locationId: e.locationId,
 		joinedOn: e.joinedOn,

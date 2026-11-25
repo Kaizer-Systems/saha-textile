@@ -157,6 +157,10 @@ function build(
 			],
 		})),
 	};
+	const formats = {
+		seller: vi.fn(async (fallback: unknown) => fallback),
+		renderActiveCopies: vi.fn(async (_doc: string, pages: unknown[]) => new Uint8Array([pages.length])),
+	};
 	const service = new PayrollReturnsService(
 		{ list: async () => runs, get: async (month: string) => runs.find((r) => r.month === month) ?? null } as never,
 		{ list: async () => PEOPLE } as never,
@@ -168,8 +172,9 @@ function build(
 		} as never,
 		{ forMonth: async () => rulesOf(BUILT_IN_PAYROLL_RULES) } as never,
 		advances as never,
+		formats as never,
 	);
-	return { service, filings, advances };
+	return { service, filings, advances, formats };
 }
 
 describe('which schemes apply (S2)', () => {

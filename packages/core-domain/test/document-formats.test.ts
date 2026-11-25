@@ -26,11 +26,11 @@ describe('document formats (bundle builder brief F)', () => {
 		}
 	});
 
-	it('seeds ours for all 17 documents switched on, plus Compact and Counter receipt for the tax invoice switched off', () => {
+	it('seeds ours for all 18 documents switched on, plus Compact and Counter receipt for the tax invoice and Compact for the payslip switched off', () => {
 		const seeds = seedDocumentFormats();
-		expect(seeds).toHaveLength(19);
+		expect(seeds).toHaveLength(21);
 		// Each seed is checked against the contract in apps/api/test/document-formats.test.ts.
-		expect(KINDS).toHaveLength(17);
+		expect(KINDS).toHaveLength(18);
 		for (const doc of KINDS) {
 			expect(seeds.filter((row) => row.doc === doc && row.active)).toHaveLength(1);
 		}
@@ -41,6 +41,13 @@ describe('document formats (bundle builder brief F)', () => {
 			['Counter receipt', 'roll80', false],
 		]);
 		for (const row of invoice) expect(checkFormatBlocks('taxInvoice', row.blocks)).toEqual([]);
+		const payslip = seeds.filter((row) => row.doc === 'payslip');
+		expect(payslip.map((row) => [row.paper, row.active])).toEqual([
+			['a4', true],
+			['a5', false],
+		]);
+		for (const row of payslip) expect(checkFormatBlocks('payslip', row.blocks)).toEqual([]);
+		expect(payslip[0]?.blocks.find((b) => b.type === 'leaveBalance')?.hidden).toBe(true);
 	});
 
 	it('refuses fields the document doesn’t have, a legal field left off, a needed block hidden or missing', () => {

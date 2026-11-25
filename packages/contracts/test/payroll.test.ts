@@ -54,6 +54,8 @@ describe('an employee', () => {
 		expect(EmployeeWrite.parse(employee)).toEqual({
 			name: 'Priya Das',
 			code: '',
+			designation: '',
+			department: '',
 			userId: null,
 			locationId: 'loc_kolkata',
 			joinedOn: '2025-06-01',

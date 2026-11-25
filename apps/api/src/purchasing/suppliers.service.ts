@@ -119,10 +119,16 @@ export class SuppliersService {
 			this.vouchers.forSupplier(id),
 			this.expenseBills.list({ supplierId: id }),
 		]);
-		// A posted expense bill is owed until its payment vouchers settle it (brief 25 EB).
-		const expenseBillsOwed = expenseBills
-			.filter((bill) => bill.status === 'posted')
-			.reduce((sum, bill) => sum + Math.max(0, bill.totalINR - bill.paidINR), 0);
+		// A posted expense bill is owed until its payment vouchers settle it (brief 25 EB), and counts in the tiles as a
+		// bill: its due day is the one saved with it (the bill date for bills saved before due days).
+		const openExpense = expenseBills
+			.filter((bill) => bill.status === 'posted' && bill.totalINR - bill.paidINR > 0.005)
+			.map((bill) => ({
+				billDate: bill.billDate,
+				dueOn: bill.dueOn ?? bill.billDate,
+				left: bill.totalINR - bill.paidINR,
+			}));
+		const expenseBillsOwed = openExpense.reduce((sum, bill) => sum + bill.left, 0);
 		// An issued self-invoice is owed to the supplier until its payment vouchers settle it.
 		const selfInvoicesOwed = selfInvoices
 			.filter((invoice) => invoice.status === 'issued')
@@ -130,9 +136,14 @@ export class SuppliersService {
 		const today = this.support.today();
 		const yearStart = fiscalYearStart(fiscalYearOf(today));
 		const posted = entries.filter((entry) => entry.status === 'posted');
-		const open = posted.filter((entry) => entryOutstanding(entry) > 0.005);
+		const open = [
+			...posted
+				.filter((entry) => entryOutstanding(entry) > 0.005)
+				.map((entry) => ({ billDate: entry.billDate, dueOn: entry.dueOn })),
+			...openExpense,
+		];
 		const oldest = open.reduce<string | null>(
-			(first, entry) => (!first || entry.billDate < first ? entry.billDate : first),
+			(first, bill) => (!first || bill.billDate < first ? bill.billDate : first),
 			null,
 		);
 		const sentThisYear = returns.filter((doc) => doc.sentAt && doc.sentAt.slice(0, 10) >= yearStart);
@@ -148,7 +159,7 @@ export class SuppliersService {
 				) / 100,
 			owedBills: open.length,
 			nextDueOn: open.reduce<string | null>(
-				(next, entry) => (!next || entry.dueOn < next ? entry.dueOn : next),
+				(next, bill) => (!next || bill.dueOn < next ? bill.dueOn : next),
 				null,
 			),
 			boughtThisYearINR: Math.round(thisYear.reduce((sum, entry) => sum + entry.totals.totalINR, 0) * 100) / 100,

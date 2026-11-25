@@ -378,7 +378,7 @@ export class StockReportsService {
 					supplierName: bill.supplierName,
 					billNumber: bill.billNumber,
 					billDate: bill.billDate,
-					dueOn: bill.billDate,
+					dueOn: bill.dueOn ?? bill.billDate,
 					totalINR: bill.totalINR,
 					leftINR: Math.round((bill.totalINR - bill.paidINR) * 100) / 100,
 					days: daysBetween(bill.billDate, today),

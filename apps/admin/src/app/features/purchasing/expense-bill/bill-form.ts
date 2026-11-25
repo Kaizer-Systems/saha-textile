@@ -93,7 +93,8 @@ export class ExpenseBillFormPage {
 
 	readonly id = toSignal(inject(ActivatedRoute).paramMap.pipe(map((p) => p.get('id') ?? '')), { initialValue: '' });
 	readonly today = istDay(new Date());
-	readonly rates = GST_RATES;
+	/** The purchase entry's rates and 40%, the rate the GST Council's September 2025 change added. */
+	readonly rates = [...GST_RATES, 40];
 	readonly supplierId = signal('');
 	readonly billNumber = signal('');
 	readonly billDate = signal(this.today);
@@ -194,8 +195,8 @@ export class ExpenseBillFormPage {
 	readonly canEdit = computed(() => this.auth.permissions().includes('accounts.edit'));
 	readonly canPost = computed(() => this.auth.permissions().includes('accounts.post'));
 	readonly linesReady = computed(() =>
-		this.writeLines().every(
-			(l, i) => !!l.expenseLedgerId && !!l.what && parseRupees(this.lines()[i]?.taxable ?? '') !== null,
+		this.lines().every(
+			(line) => !!line.expenseLedgerId && !!line.what.trim() && parseRupees(line.taxable) !== null,
 		),
 	);
 	readonly ready = computed(
@@ -252,12 +253,16 @@ export class ExpenseBillFormPage {
 		};
 	}
 
+	/** A bill made on this page before its address names it: the next save changes it instead of making another. */
+	private readonly created = signal('');
+
 	private async persist(): Promise<ExpenseBill> {
-		const id = this.id();
+		const id = this.id() || this.created();
 		const version = this.version();
 		const saved = await firstValueFrom(
 			id && version !== null ? this.gateway.update(id, this.write(), version) : this.gateway.create(this.write()),
 		);
+		this.created.set(saved.id);
 		this.version.set(saved.version);
 		return saved;
 	}
@@ -268,6 +273,8 @@ export class ExpenseBillFormPage {
 			await work();
 		} catch (error) {
 			this.notifier.showError(this.problem(error));
+			// A new bill saved as a draft before a refused step: open the draft, so its address names it.
+			if (!this.id() && this.created()) await this.router.navigate(['/expense-bills', this.created()]);
 		} finally {
 			this.busy.set(false);
 		}
@@ -343,7 +350,12 @@ export class ExpenseBillFormPage {
 		this.mode.set('bank_transfer');
 		this.reference.set('');
 		this.paidFrom.set('');
-		if (!this.banks().length) this.banks.set(bankLedgers(await firstValueFrom(this.ledgers.chart())));
+		try {
+			if (!this.banks().length) this.banks.set(bankLedgers(await firstValueFrom(this.ledgers.chart())));
+		} catch (error) {
+			this.notifier.showError(this.problem(error));
+			return;
+		}
 		this.modal = this.modals.open(template, { centered: true });
 	}
 

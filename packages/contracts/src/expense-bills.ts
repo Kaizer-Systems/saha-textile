@@ -22,7 +22,8 @@ export const ExpenseBillLine = z.object({
 		.regex(/^(\d{4}|\d{6}|\d{8})?$/, { message: 'sac_shape' })
 		.default(''),
 	taxableINR: z.number().nonnegative().max(1e10),
-	gstRatePct: z.number().min(0).max(28),
+	/** Up to 40%, the rate the GST Council's September 2025 change added; 12% and 28% stay for earlier bills. */
+	gstRatePct: z.number().min(0).max(40),
 	credit: ExpenseCredit.default('claim'),
 	/** Blocked lines: the clause of s.17(5) (e.g. `b` for food and staff welfare). */
 	blockedClause: z.string().trim().max(10).default(''),
@@ -49,6 +50,8 @@ export const ExpenseBill = ExpenseBillWrite.extend({
 	supplierName: z.string().default(''),
 	/** The supplier's GSTIN when the bill was saved, for GSTR-2B and rule 37. */
 	supplierGstin: z.string().nullable().default(null),
+	/** The bill date plus the supplier's payment terms, worked out on save; null on bills saved before it. */
+	dueOn: IsoDate.nullable().default(null),
 	/** EB/26-27/000001, given when it is posted. */
 	number: z.string().nullable().default(null),
 	status: ExpenseBillStatus,

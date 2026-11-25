@@ -26,6 +26,7 @@ const SUPPLIERS: Record<string, unknown> = {
 		shortName: 'Kolkata Rentals',
 		legalName: 'Kolkata Rentals Pvt Ltd',
 		gstin: '19AAACK1234A1Z5',
+		paymentTermsDays: 30,
 		address: { line: '12 Park Street', city: 'Kolkata', pin: '700016' },
 	},
 	sup_mh: {
@@ -33,6 +34,7 @@ const SUPPLIERS: Record<string, unknown> = {
 		shortName: '',
 		legalName: 'Pune Software LLP',
 		gstin: '27AAACP1234A1Z5',
+		paymentTermsDays: 30,
 		address: { line: '', city: 'Pune', pin: '' },
 	},
 	sup_none: {
@@ -40,6 +42,7 @@ const SUPPLIERS: Record<string, unknown> = {
 		shortName: 'Carpenter',
 		legalName: 'Ramesh Mistri',
 		gstin: null,
+		paymentTermsDays: 30,
 		address: { line: '', city: '', pin: '' },
 	},
 };

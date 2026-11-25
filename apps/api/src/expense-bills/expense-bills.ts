@@ -29,6 +29,7 @@ import {
 } from '@saha-textile/contracts';
 import {
 	expenseBillPosting,
+	addDays,
 	expenseBillTotals,
 	istDay,
 	ledgerClass,
@@ -142,7 +143,8 @@ export class ExpenseBillsService {
 	private async worked(write: ExpenseBillWrite) {
 		const supplier = await this.suppliers.findById(write.supplierId);
 		if (!supplier) throw refuse('supplier_unknown');
-		const location = (await this.locations.list()).find((l) => l.id === write.locationId);
+		// Only an active location can be billed to, as the form offers.
+		const location = (await this.locations.list()).find((l) => l.id === write.locationId && l.active);
 		if (!location) throw refuse('location_unknown');
 		const ledgers = new Set(expenseLedgers(await this.ledger.chart()).map((l) => l.id));
 		if (write.lines.some((l) => !ledgers.has(l.expenseLedgerId))) throw refuse('expense_bill_not_an_expense');
@@ -159,6 +161,7 @@ export class ExpenseBillsService {
 		return {
 			supplierName: supplier.shortName || supplier.legalName,
 			supplierGstin: supplier.gstin ?? null,
+			dueOn: addDays(write.billDate, supplier.paymentTermsDays),
 			interState,
 			...expenseBillTotals(write.lines, interState),
 		};

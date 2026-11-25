@@ -68,7 +68,6 @@ export class Gstr3bInputs {
 			this.fromBooks(first, last, here),
 			this.rule37(month, last, stock?.gstRegistrationId === gstRegistrationId, here),
 		]);
-		const none: TaxHeads = { igst: 0, cgst: 0, sgst: 0 };
 		return {
 			selfInvoices: invoices.map((s) => ({
 				taxable: paise(s.taxableINR),
@@ -80,8 +79,8 @@ export class Gstr3bInputs {
 			itc2b: claimFrom2b(twoB.rows),
 			acceptedNotInBooks: twoB.rows.filter((r) => r.result === 'only_2b' && r.action === 'accept').length,
 			reversedInBooks: books.reversed,
-			rule37: rule?.reversed ?? none,
-			reclaimed: rule?.reclaimed ?? none,
+			rule37: rule.reversed,
+			reclaimed: rule.reclaimed,
 			isdCredit: books.isd,
 		};
 	}

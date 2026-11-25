@@ -10592,6 +10592,7 @@
 	"payroll_leave_add": "ছুটির ধরন যোগ করুন",
 	"payroll_leave_col_name": "ছুটি",
 	"payroll_leave_col_key": "কোড",
+	"payroll_leave_key_taken": "এই রাজ্যের আরেকটি ছুটির ধরনে এই কোড আগে থেকেই আছে।",
 	"payroll_leave_col_paid": "বেতন",
 	"payroll_leave_col_active": "চালু",
 	"payroll_leave_paid_full": "পুরো বেতন",

@@ -719,7 +719,16 @@ export class PayrollRulesPage {
 		});
 	}
 
+	/** A type's code is unique in its State: a code another type already has is refused, not applied. */
 	setLeaveType(key: string, fields: Partial<StateForm['leaveTypes'][number]>): void {
+		if (
+			fields.key !== undefined &&
+			fields.key !== key &&
+			this.picked()?.leaveTypes.some((t) => t.key === fields.key)
+		) {
+			this.notifier.showError(this.transloco.translate('payroll_leave_key_taken'));
+			return;
+		}
 		this.patchLeaveTypes((types) => types.map((t) => (t.key === key ? { ...t, ...fields } : t)));
 		if (fields.key && fields.key !== key && this.leaveOpen() === key) this.leaveOpen.set(fields.key);
 	}
@@ -803,9 +812,10 @@ export class PayrollRulesPage {
 		});
 	}
 
-	/** Each credit's validity; days and months start at 90 and 12. */
+	/** Each credit's validity; days and months start at 90 and 12 (a count is kept only while its unit stays). */
 	setValidity(kind: CoreLeaveRule['validity']['kind'], r: CoreLeaveRule): void {
-		const n = 'n' in r.validity ? r.validity.n : kind === 'days' ? 90 : 12;
+		const v = r.validity;
+		const n = (v.kind === 'days' || v.kind === 'months') && v.kind === kind ? v.n : kind === 'days' ? 90 : 12;
 		this.setRule({ validity: kind === 'days' || kind === 'months' ? { kind, n } : { kind } });
 	}
 

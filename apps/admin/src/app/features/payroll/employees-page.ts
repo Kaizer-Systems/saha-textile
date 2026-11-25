@@ -156,6 +156,8 @@ export function employeeWrite(e: EmployeeView): EmployeeWriteInput {
 		structure: { ...e.structure },
 		advanceDueINR: e.advanceDueINR,
 		advancePerMonthINR: e.advancePerMonthINR,
+		...(e.joinedOnApproximate ? { joinedOnApproximate: true } : {}),
+		...(e.openingLeave?.length ? { openingLeave: e.openingLeave.map((o) => ({ ...o })) } : {}),
 	};
 }
 
@@ -421,18 +423,22 @@ export class EmployeesPage {
 		return types.flatMap((type) => {
 			const rule = ruleFor(asCoreLeaveType(type), { designation: f.designation, department: f.department });
 			if (!rule || !f.joinedOn) return [];
-			const year = leaveYearOn(rule.year, today, f.joinedOn);
-			const workedOut = creditSoFar(rule, { joinedOn: f.joinedOn, asOf: today });
+			// The balance is as on the day the person was added: an edit keeps that day.
 			const saved = f.openingLeave?.find((o) => o.typeKey === type.key);
+			const asOf = saved?.asOf ?? today;
+			const year = leaveYearOn(rule.year, asOf, f.joinedOn);
+			const workedOut = creditSoFar(rule, { joinedOn: f.joinedOn, asOf });
 			const lapses = rule.carryMax === 0 && rule.validity.kind === 'year_end';
 			const carriedOpen = f.joinedOn < year.start && !lapses;
 			const carried = carriedOpen ? (saved?.carried ?? 0) : null;
-			const credited = saved?.credited ?? workedOut;
+			// A credit typed over the worked-out one stays; one left as worked out follows the joining date and rules.
+			const credited = saved && saved.credited !== saved.creditedWorkedOut ? saved.credited : workedOut;
 			const taken = saved?.taken ?? 0;
 			return [
 				{
 					key: type.key,
 					name: type.name,
+					asOf,
 					yearStart: year.start,
 					carriedOpen,
 					lapses,
@@ -454,7 +460,7 @@ export class EmployeesPage {
 		const days = this.atLeastNothing(value);
 		const next = {
 			typeKey: key,
-			asOf: istToday(),
+			asOf: row.asOf,
 			carried: row.carriedOpen ? (field === 'carried' ? days : row.carried) : null,
 			credited: field === 'credited' ? days : row.credited,
 			creditedWorkedOut: row.workedOut,
@@ -480,7 +486,7 @@ export class EmployeesPage {
 			...this.form(),
 			openingLeave: rows.map((r) => ({
 				typeKey: r.key,
-				asOf: istToday(),
+				asOf: r.asOf,
 				carried: r.carried,
 				credited: r.credited,
 				creditedWorkedOut: r.workedOut,

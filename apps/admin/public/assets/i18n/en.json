@@ -10592,6 +10592,7 @@
 	"payroll_leave_add": "Add a leave type",
 	"payroll_leave_col_name": "Leave",
 	"payroll_leave_col_key": "Code",
+	"payroll_leave_key_taken": "That code is already used by another leave type in this State.",
 	"payroll_leave_col_paid": "Paid",
 	"payroll_leave_col_active": "On",
 	"payroll_leave_paid_full": "Full pay",

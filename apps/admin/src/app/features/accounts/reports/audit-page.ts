@@ -8,6 +8,7 @@ import { firstValueFrom } from 'rxjs';
 import { REPORT_KEYS, ReportsGateway } from '@core/accounts/reports.gateway';
 import { downloadCsv } from '@core/purchasing/purchasing-format';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { ExportMenu, type CsvWriter, type ExportSource } from '@shared/ui/export-menu/export-menu';
 import { ACCOUNTS_PRESETS, PeriodPicker, type PeriodChoice } from '@shared/ui/period-picker/period-picker';
 
 import { accountsRange } from '../accounts-period';
@@ -42,7 +43,7 @@ export function whenText(at: string): string {
  */
 @Component({
 	selector: 'app-audit-page',
-	imports: [PageWrapper, TranslocoModule, FormsModule, PeriodPicker],
+	imports: [PageWrapper, TranslocoModule, FormsModule, PeriodPicker, ExportMenu],
 	templateUrl: './audit-page.html',
 })
 export class AuditPage {
@@ -83,7 +84,16 @@ export class AuditPage {
 		return Array.from({ length: Math.max(1, Math.ceil(total / 50)) }, (_, i) => i + 1);
 	}
 
-	async export(): Promise<void> {
+	/** EX1: for the Export menu, written by the same code as the CSV (it fetches every row first). */
+	readonly exportSource = async (): Promise<ExportSource | null> => {
+		let out: ExportSource | null = null;
+		await this.export((fileName, header, rows) => {
+			out = { fileName, title: this.transloco.translate('report_audit_report'), header, rows, area: 'accounts' };
+		});
+		return out;
+	};
+
+	async export(save: CsvWriter = downloadCsv): Promise<void> {
 		const all = await firstValueFrom(
 			this.gateway.audit({
 				...this.range(),
@@ -94,7 +104,7 @@ export class AuditPage {
 			}),
 		);
 		const t = (key: string) => this.transloco.translate(key);
-		downloadCsv(
+		save(
 			`audit_${this.range().from}_${this.range().to}.csv`,
 			[t('audit_when'), t('audit_who'), t('audit_document'), t('audit_what'), t('audit_detail')],
 			all.rows.map((r) => [r.at, r.who, `${r.entityType ?? ''} ${r.entityId ?? ''}`.trim(), r.action, r.detail]),

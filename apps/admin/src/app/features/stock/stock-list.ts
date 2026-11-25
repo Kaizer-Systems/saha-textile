@@ -29,6 +29,7 @@ import { quantityText } from '@features/purchasing/shared/purchasing-labels';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { PluralPipe } from '@shared/pipes/language.pipes';
+import { ExportMenu, type CsvWriter, type ExportSource } from '@shared/ui/export-menu/export-menu';
 import { Table } from '@shared/ui/table/table';
 
 import { AdjustPopup } from './adjust-popup';
@@ -96,6 +97,7 @@ export function toStockRow(
 		RupeesPipe,
 		Table,
 		TranslocoModule,
+		ExportMenu,
 	],
 })
 export class StockList {
@@ -232,7 +234,16 @@ export class StockList {
 	}
 
 	/** The list as filtered, as a spreadsheet (cost columns only for those allowed). */
-	async exportList(): Promise<void> {
+	/** EX1: for the Export menu, written by the same code as the CSV (it fetches every row first). */
+	readonly exportListSource = async (): Promise<ExportSource | null> => {
+		let out: ExportSource | null = null;
+		await this.exportList((fileName, header, rows) => {
+			out = { fileName, title: this.transloco.translate('all_stock'), header, rows, area: 'other' };
+		});
+		return out;
+	};
+
+	async exportList(save: CsvWriter = downloadCsv): Promise<void> {
 		const t = (key: string, params?: Record<string, unknown>) => this.transloco.translate(key, params);
 		const all = await firstValueFrom(
 			this.gateway.list({
@@ -243,7 +254,7 @@ export class StockList {
 			}),
 		);
 		const cost = this.canSeeCost();
-		downloadCsv(
+		save(
 			'stock.csv',
 			[
 				t('sku'),

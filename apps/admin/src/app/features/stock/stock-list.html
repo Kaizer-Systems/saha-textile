@@ -68,15 +68,11 @@
 		button
 		class="d-flex gap-2"
 	>
-		<button
+		<app-export-menu
 			*hasPermission="'stock_report.export'"
-			type="button"
-			class="align-items-center btn btn-outline d-flex"
-			(click)="exportList()"
-		>
-			<i class="ri-download-2-line"></i>
-			{{ 'export' | transloco }}
-		</button>
+			id="stock_list_export"
+			[source]="exportListSource"
+		/>
 		<button
 			*hasPermission="'stock_count.create'"
 			type="button"

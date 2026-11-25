@@ -267,8 +267,10 @@ describe('the audit report (U8)', () => {
 		const { fixture, page } = mount(AuditPage, { audit });
 		await settle(fixture);
 		const { from, to } = page.range();
-		(el(fixture, '#audit_export') as HTMLButtonElement).click();
-		await settle(fixture);
+		// EX1: the Export menu fetches the rows through the same code, then the CSV still writes them.
+		expect(el(fixture, '#audit_export')).not.toBeNull();
+		expect((await page.exportSource())?.fileName).toBe(`audit_${from}_${to}.csv`);
+		await page.export();
 		expect(audit).toHaveBeenLastCalledWith({ from, to, chip: 'all', page: 1, pageSize: 500 });
 		expect(vi.mocked(downloadCsv).mock.lastCall).toEqual([
 			`audit_${from}_${to}.csv`,

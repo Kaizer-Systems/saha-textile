@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
 	AdvanceGive,
 	AdvanceSchedule,
+	IncomeTaxRules,
+	IncomeTaxView,
+	IncomeTaxWorking,
 	PayrollAdvance,
 	PayrollRow,
 	PayrollRulesVersion,
@@ -593,5 +596,118 @@ describe('professional tax and the welfare fund per State (brief 25 ST1, ST2)', 
 		expect(StatutoryStateQuery.parse('33')).toBe('33');
 		refused(StatutoryStateQuery.safeParse('3').success);
 		refused(StatutoryStateQuery.safeParse('WB').success);
+	});
+});
+
+describe('income tax in the rules, on the run and both ways (brief 25 TX1, TX2)', () => {
+	const lakh = (n: number) => n * 1_00_000_00;
+	const incomeTax = {
+		newSlabs: [
+			{ upToPaise: lakh(4), ratePct: 0 },
+			{ upToPaise: lakh(8), ratePct: 5 },
+			{ upToPaise: null, ratePct: 30 },
+		],
+		newStandardDeductionPaise: 75_000_00,
+		newRebateUpToPaise: lakh(12),
+		newSurcharge: [{ overPaise: lakh(50), ratePct: 10 }],
+		oldSlabsBelow60: [{ upToPaise: null, ratePct: 30 }],
+		oldSlabs60To79: [{ upToPaise: null, ratePct: 30 }],
+		oldSlabs80Plus: [{ upToPaise: null, ratePct: 30 }],
+		oldStandardDeductionPaise: 50_000_00,
+		oldRebateUpToPaise: lakh(5),
+		oldRebateMaxPaise: 12_500_00,
+		oldSurcharge: [],
+		cessPct: 4,
+		limit80cPaise: 1_50_000_00,
+		limit80dPaise: 25_000_00,
+		limitHomeLoanPaise: 2_00_000_00,
+		proofFromMonth: 1,
+	};
+
+	it('keeps a version’s income-tax rules when given, none on a version saved before', () => {
+		expect(PayrollRulesWrite.parse(rules)).not.toHaveProperty('incomeTax');
+		expect(PayrollRulesWrite.parse({ ...rules, incomeTax }).incomeTax).toEqual(incomeTax);
+		expect(IncomeTaxRules.parse(incomeTax)).toEqual(incomeTax);
+	});
+
+	it('needs each set of slabs to end open above, 1 to 12 of them', () => {
+		for (const key of ['newSlabs', 'oldSlabsBelow60', 'oldSlabs60To79', 'oldSlabs80Plus'])
+			expect(
+				message(IncomeTaxRules.safeParse({ ...incomeTax, [key]: [{ upToPaise: lakh(4), ratePct: 0 }] })),
+			).toBe('tax_last_slab_open');
+		refused(IncomeTaxRules.safeParse({ ...incomeTax, newSlabs: [] }).success);
+		const open = { upToPaise: null, ratePct: 0 };
+		accepted(IncomeTaxRules.safeParse({ ...incomeTax, newSlabs: Array.from({ length: 12 }, () => open) }).success);
+		refused(IncomeTaxRules.safeParse({ ...incomeTax, newSlabs: Array.from({ length: 13 }, () => open) }).success);
+		refused(IncomeTaxRules.safeParse({ ...incomeTax, newSlabs: [{ upToPaise: null, ratePct: 101 }] }).success);
+	});
+
+	it('keeps rates from 0 to 100, up to 8 surcharge tiers, amounts in whole paise and the proof month 1 to 12', () => {
+		const tier = { overPaise: lakh(50), ratePct: 10 };
+		accepted(
+			IncomeTaxRules.safeParse({ ...incomeTax, oldSurcharge: Array.from({ length: 8 }, () => tier) }).success,
+		);
+		refused(
+			IncomeTaxRules.safeParse({ ...incomeTax, oldSurcharge: Array.from({ length: 9 }, () => tier) }).success,
+		);
+		refused(IncomeTaxRules.safeParse({ ...incomeTax, newSurcharge: [{ overPaise: -1, ratePct: 10 }] }).success);
+		refused(IncomeTaxRules.safeParse({ ...incomeTax, cessPct: 100.5 }).success);
+		refused(IncomeTaxRules.safeParse({ ...incomeTax, limit80cPaise: 0.5 }).success);
+		for (const proofFromMonth of [0, 13, 1.5])
+			refused(IncomeTaxRules.safeParse({ ...incomeTax, proofFromMonth }).success);
+		accepted(IncomeTaxRules.safeParse({ ...incomeTax, proofFromMonth: 12 }).success);
+	});
+
+	const tax = {
+		regime: 'new',
+		yearSalaryPaise: 13_20_000_00,
+		deductionsPaise: 75_000_00,
+		taxablePaise: 12_45_000_00,
+		yearTaxPaise: 46_800_00,
+		deductedBeforePaise: 23_400_00,
+		monthsLeft: 4,
+	};
+
+	it('keeps on a run’s row the year’s working behind the month’s TDS, or none', () => {
+		expect(PayrollRow.parse({ ...row, tax }).tax).toEqual(tax);
+		expect(PayrollRow.parse(row)).not.toHaveProperty('tax');
+		refused(PayrollRow.safeParse({ ...row, tax: { ...tax, regime: 'both' } }).success);
+		refused(PayrollRow.safeParse({ ...row, tax: { ...tax, monthsLeft: 0.5 } }).success);
+	});
+
+	const working = (regime: 'new' | 'old', taxPaise: number) => ({
+		regime,
+		salaryPaise: 13_20_000_00,
+		hraExemptPaise: regime === 'old' ? 2_11_200_00 : 0,
+		standardDeductionPaise: regime === 'old' ? 50_000_00 : 75_000_00,
+		deductionsPaise: regime === 'old' ? 3_75_000_00 : 0,
+		professionalTaxPaise: 0,
+		taxablePaise: regime === 'old' ? 6_83_800_00 : 12_45_000_00,
+		slabTaxPaise: regime === 'old' ? 49_260_00 : 66_750_00,
+		rebatePaise: regime === 'old' ? 0 : 21_750_00,
+		surchargePaise: 0,
+		cessPaise: regime === 'old' ? 1_970_00 : 1_800_00,
+		taxPaise,
+		monthlyPaise: Math.round(taxPaise / 12),
+	});
+
+	it('shows the year worked both ways, the regime the run deducts by and the age band', () => {
+		const view = {
+			year: '2026-27',
+			regime: 'old',
+			ageBand: 'below_60',
+			declarationsCount: true,
+			old: working('old', 51_230_00),
+			new: working('new', 46_800_00),
+			deductedPaise: 34_153_00,
+			monthsLeft: 4,
+		};
+		expect(IncomeTaxView.parse(view)).toEqual(view);
+		expect(IncomeTaxWorking.parse(view.old)).toEqual(view.old);
+		for (const ageBand of ['60_to_79', '80_plus']) accepted(IncomeTaxView.safeParse({ ...view, ageBand }).success);
+		refused(IncomeTaxView.safeParse({ ...view, ageBand: 'senior' }).success);
+		refused(IncomeTaxView.safeParse({ ...view, declarationsCount: 'yes' }).success);
+		refused(IncomeTaxView.safeParse({ ...view, new: { ...view.new, taxPaise: 0.5 } }).success);
+		refused(IncomeTaxWorking.safeParse({ ...view.old, regime: 'both' }).success);
 	});
 });

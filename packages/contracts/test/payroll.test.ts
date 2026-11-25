@@ -13,6 +13,7 @@ import {
 	PayrollRunStatus,
 	PayrollStep,
 	SalaryStructureWrite,
+	TaxDeclaration,
 } from '../src/payroll';
 
 /** Payroll (accounts brief S): employees, a month's attendance and the payroll run. */
@@ -63,6 +64,8 @@ describe('an employee', () => {
 			esiNumber: '',
 			ptState: '19',
 			taxRegime: 'new',
+			dateOfBirth: null,
+			taxDeclarations: [],
 			bankAccount: '',
 			ifsc: '',
 			pfOn: true,
@@ -269,5 +272,68 @@ describe('the payroll run', () => {
 		refused(PayrollStep.safeParse({ to: 'draft', version: 0 }).success);
 		refused(PayrollStep.safeParse({ to: 'paid', paidOn: '01-12-2026', version: 2 }).success);
 		refused(PayrollStep.safeParse({ to: 'posted' }).success);
+	});
+});
+
+describe('an employee’s income-tax choice and declarations (brief 25 TX1)', () => {
+	const declaration = { year: '2026-27', regime: 'old' };
+
+	it('declares nothing and has proof of nothing until told', () => {
+		expect(TaxDeclaration.parse(declaration)).toEqual({
+			...declaration,
+			chosenOn: null,
+			rentMonthlyINR: 0,
+			metroCity: false,
+			s80cINR: 0,
+			s80dINR: 0,
+			homeLoanInterestINR: 0,
+			previousSalaryINR: 0,
+			previousTdsINR: 0,
+			proof: { rent: false, s80c: false, s80d: false, homeLoan: false },
+		});
+		expect(TaxDeclaration.parse({ ...declaration, proof: { s80c: true } }).proof).toEqual({
+			rent: false,
+			s80c: true,
+			s80d: false,
+			homeLoan: false,
+		});
+	});
+
+	it('keeps a year as 2026-27, the new or old regime, and rupees from nothing to ₹10 crore', () => {
+		const full = {
+			...declaration,
+			chosenOn: '2026-04-15',
+			rentMonthlyINR: 25_000,
+			metroCity: true,
+			s80cINR: 1_50_000,
+			s80dINR: 25_000,
+			homeLoanInterestINR: 2_00_000,
+			previousSalaryINR: 3_00_000,
+			previousTdsINR: 12_000,
+			proof: { rent: true, s80c: true, s80d: true, homeLoan: true },
+		};
+		expect(TaxDeclaration.parse(full)).toEqual(full);
+		for (const year of ['2026', '2026-2027', '26-27'])
+			refused(TaxDeclaration.safeParse({ ...declaration, year }).success);
+		refused(TaxDeclaration.safeParse({ ...declaration, regime: 'both' }).success);
+		refused(TaxDeclaration.safeParse({ ...declaration, s80cINR: -1 }).success);
+		accepted(TaxDeclaration.safeParse({ ...declaration, previousSalaryINR: 100_000_000 }).success);
+		refused(TaxDeclaration.safeParse({ ...declaration, previousSalaryINR: 100_000_001 }).success);
+		refused(TaxDeclaration.safeParse({ ...declaration, chosenOn: '15-04-2026' }).success);
+	});
+
+	it('keeps a date of birth and up to 20 years of declarations on an employee', () => {
+		const filled = EmployeeWrite.parse({ ...employee, dateOfBirth: '1967-03-31', taxDeclarations: [declaration] });
+		expect(filled.dateOfBirth).toBe('1967-03-31');
+		expect(filled.taxDeclarations[0]?.regime).toBe('old');
+		refused(EmployeeWrite.safeParse({ ...employee, dateOfBirth: '31-03-1967' }).success);
+		accepted(
+			EmployeeWrite.safeParse({ ...employee, taxDeclarations: Array.from({ length: 20 }, () => declaration) })
+				.success,
+		);
+		refused(
+			EmployeeWrite.safeParse({ ...employee, taxDeclarations: Array.from({ length: 21 }, () => declaration) })
+				.success,
+		);
 	});
 });

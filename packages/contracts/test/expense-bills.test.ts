@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import { DEFAULT_SERIES, GST_DOCUMENT_TYPES, NumberedDocumentType } from '../src/document-numbering';
-import { ExpenseBill, ExpenseBillLine, ExpenseBillStatus, ExpenseBillWrite, ExpenseCredit } from '../src/expense-bills';
+import {
+	ExpenseBill,
+	ExpenseBillLine,
+	ExpenseBillPayWrite,
+	ExpenseBillStatus,
+	ExpenseBillWrite,
+	ExpenseCredit,
+} from '../src/expense-bills';
+import { SupplierStatementRow } from '../src/purchasing';
+import { PaymentVoucherAgainst, SelfInvoicePayWrite } from '../src/self-invoices';
 
 /** Bills for services and expenses with their GST credit (brief 25 EB1, EB2): a line, a bill as written, and as kept. */
 
@@ -103,6 +112,11 @@ describe('an expense bill as kept', () => {
 		expect(ExpenseBillStatus.options).toEqual(['draft', 'posted', 'cancelled']);
 		expect(ExpenseBill.parse(kept)).toMatchObject({
 			supplierName: '',
+			supplierGstin: null,
+			paidINR: 0,
+			paymentVouchers: [],
+			cancelledAt: null,
+			cancelReason: null,
 			number: null,
 			voucherId: null,
 			postedAt: null,
@@ -127,9 +141,24 @@ describe('an expense bill as kept', () => {
 			voucherId: 'vch_eb_1',
 			postedAt: '2026-11-03T05:00:00.000Z',
 			postedBy: 'adm_accountant',
+			supplierGstin: '27AAAPG1234K1Z5',
+			paidINR: 30_000,
+			paymentVouchers: [{ id: 'pv_1', number: 'PV/26-27/000009' }],
+			cancelledAt: null,
+			cancelReason: null,
 			version: 1,
 		};
 		expect(ExpenseBill.parse(posted)).toEqual(posted);
+		const cancelled = {
+			...posted,
+			status: 'cancelled',
+			cancelledAt: '2026-11-10T05:00:00.000Z',
+			cancelReason: 'Billed twice',
+		};
+		expect(ExpenseBill.parse(cancelled)).toMatchObject({ status: 'cancelled', cancelReason: 'Billed twice' });
+		refused(ExpenseBill.safeParse({ ...posted, paidINR: -1 }).success);
+		refused(ExpenseBill.safeParse({ ...posted, paymentVouchers: [{ id: '', number: 'PV/26-27/000009' }] }).success);
+		refused(ExpenseBill.safeParse({ ...posted, paymentVouchers: [{ id: 'pv_1' }] }).success);
 	});
 
 	it('refuses an unknown status, a version below 0 or in part, and a missing tax split', () => {
@@ -155,5 +184,48 @@ describe('an expense bill’s number', () => {
 			reset: 'fy',
 		});
 		expect(GST_DOCUMENT_TYPES).not.toContain('expenseBill');
+	});
+});
+
+describe('paying an expense bill (brief 25 EB2)', () => {
+	it('pays it as a self-invoice is paid, with a payment voucher against the bill', () => {
+		expect(ExpenseBillPayWrite).toBe(SelfInvoicePayWrite);
+		const pay = { amountINR: 30_000, paidOn: '2026-11-12', mode: 'bank_transfer', version: 1 };
+		expect(ExpenseBillPayWrite.parse(pay)).toEqual({ ...pay, reference: null, paidFromLedgerId: null });
+		expect(message(ExpenseBillPayWrite.safeParse({ ...pay, amountINR: 0 }))).toBe('amount_positive');
+		expect(PaymentVoucherAgainst.parse({ kind: 'expenseBill', id: 'eb_1', number: 'EB/26-27/000001' })).toEqual({
+			kind: 'expenseBill',
+			id: 'eb_1',
+			number: 'EB/26-27/000001',
+			detail: '',
+		});
+		expect(PaymentVoucherAgainst.shape.kind.options).toEqual(['selfInvoice', 'purchaseEntry', 'expenseBill']);
+	});
+
+	it('shows the bill, its cancelling, its payments and their cancelling on the supplier’s statement', () => {
+		const row = {
+			date: '2026-11-03',
+			kind: 'expense_bill',
+			documentId: 'eb_1',
+			documentNumber: 'EB/26-27/000001',
+			details: 'Shop rent, November',
+			billINR: 59_000,
+			paidOrCreditedINR: 0,
+			balanceINR: 59_000,
+		};
+		for (const kind of [
+			'expense_bill',
+			'expense_bill_cancelled',
+			'expense_bill_payment',
+			'expense_bill_payment_cancelled',
+		])
+			expect(SupplierStatementRow.parse({ ...row, kind }).kind).toBe(kind);
+		expect(SupplierStatementRow.shape.kind.options.slice(-4)).toEqual([
+			'expense_bill',
+			'expense_bill_cancelled',
+			'expense_bill_payment',
+			'expense_bill_payment_cancelled',
+		]);
+		refused(SupplierStatementRow.safeParse({ ...row, kind: 'expense_bill_refund' }).success);
 	});
 });

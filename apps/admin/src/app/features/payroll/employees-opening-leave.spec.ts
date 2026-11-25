@@ -210,6 +210,21 @@ describe('leave on the day a person is added (OB1, OB2)', () => {
 		expect(page.openingRows().map((r) => r.key)).toEqual(['EL', 'CL', 'MGR']);
 	});
 
+	it('follows each type’s own year: the West Bengal set’s earned leave on the calendar year', async () => {
+		const calendar = { ...VERSION, states: [{ stateCode: '19', ptSlabs: [], leaveTypes: [WB_EARNED] }] };
+		const { page } = await employees({ rules: [calendar] });
+		page.form.set({ ...page.form(), locationId: 'l1', joinedOn: '2025-06-01' });
+		expect(page.openingRows()[0]).toMatchObject({
+			key: 'EL',
+			yearStart: '2026-01-01',
+			carriedOpen: true,
+			credited: 14,
+		});
+		// Joined in March: before an April year, but inside this calendar year, so nothing is carried.
+		page.patch({ joinedOn: '2026-03-01' });
+		expect(page.openingRows()[0]).toMatchObject({ yearStart: '2026-01-01', carriedOpen: false, carried: null });
+	});
+
 	it('shuts carried forward for someone who joined in the type’s year, and credits only the part year', async () => {
 		const { page } = await employees();
 		page.form.set({ ...page.form(), locationId: 'l1', joinedOn: '2026-08-12' });

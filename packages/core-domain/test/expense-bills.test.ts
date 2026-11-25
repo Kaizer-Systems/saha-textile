@@ -55,4 +55,23 @@ describe('expense bills', () => {
 			['creditors_control', 0, 3_160_000],
 		]);
 	});
+
+	it('posts nothing for a line of ₹0, and IGST for another State', () => {
+		const posted = expenseBillPosting({
+			lines: [
+				{ ...lines[0], taxableINR: 1_000, gstRatePct: 18 },
+				{ ...lines[0], what: 'Free trial month', taxableINR: 0, gstRatePct: 0 },
+			],
+			locationId: 'loc_bar',
+			billNumber: 'SW/1',
+			interState: true,
+		});
+		expect(
+			posted.map((l) => ['id' in l.ledger ? l.ledger.id : l.ledger.role, l.debitPaise ?? 0, l.creditPaise ?? 0]),
+		).toEqual([
+			['led_rent', 100_000, 0],
+			['input_igst', 18_000, 0],
+			['creditors_control', 0, 118_000],
+		]);
+	});
 });

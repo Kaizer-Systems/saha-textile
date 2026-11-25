@@ -19,11 +19,16 @@ const now = new Date(at);
 const refusal = (code: string) => ({ response: { message: code } });
 const ca = { userId: 'adm_ca', permissions: ['accounts.post'] } as never;
 
-/** A West Bengal supplier, a Maharashtra one, and a carpenter without a GSTIN. */
+/** A West Bengal supplier known by a short name, a Maharashtra one by its legal name only, and a carpenter without a GSTIN. */
 const SUPPLIERS: Record<string, unknown> = {
-	sup_wb: { id: 'sup_wb', name: 'Kolkata Rentals', gstin: '19AAACK1234A1Z5' },
-	sup_mh: { id: 'sup_mh', name: 'Pune Software', gstin: '27AAACP1234A1Z5' },
-	sup_none: { id: 'sup_none', name: 'Carpenter', gstin: null },
+	sup_wb: {
+		id: 'sup_wb',
+		shortName: 'Kolkata Rentals',
+		legalName: 'Kolkata Rentals Pvt Ltd',
+		gstin: '19AAACK1234A1Z5',
+	},
+	sup_mh: { id: 'sup_mh', shortName: '', legalName: 'Pune Software LLP', gstin: '27AAACP1234A1Z5' },
+	sup_none: { id: 'sup_none', shortName: 'Carpenter', legalName: 'Ramesh Mistri', gstin: null },
 };
 /** Each location bills under its GSTIN: the fair stall has none, Siliguri is on composition, the old shop is closed. */
 const LOCATIONS = [
@@ -131,8 +136,9 @@ function build(options: Options = {}) {
 describe('reading expense bills', () => {
 	it('lists them as the store finds them, and refuses one it doesn’t have', async () => {
 		const { service, bills } = build({ stored: null });
-		expect(await service.list({ supplierId: 'sup_wb', status: 'draft' })).toEqual(['bill']);
-		expect(bills.list).toHaveBeenCalledWith({ supplierId: 'sup_wb', status: 'draft' });
+		const query = { supplierId: 'sup_wb', status: 'draft', from: '2026-11-01', to: '2026-11-30' } as const;
+		expect(await service.list(query)).toEqual(['bill']);
+		expect(bills.list).toHaveBeenCalledWith(query);
 		await expect(service.get('eb_gone')).rejects.toBeInstanceOf(NotFoundException);
 		await expect(service.get('eb_gone')).rejects.toMatchObject(refusal('expense_bill_not_found'));
 	});
@@ -144,6 +150,8 @@ describe('saving a draft', () => {
 		const saved = await service.create(write(), now);
 		expect(saved).toMatchObject({
 			...write(),
+			// Saved with the supplier's short name, as lists show it.
+			supplierName: 'Kolkata Rentals',
 			interState: false,
 			taxableINR: 20_000,
 			cgstINR: 1_800,
@@ -166,6 +174,8 @@ describe('saving a draft', () => {
 	it('takes IGST from another State’s supplier, and no tax from one without a GSTIN charging none', async () => {
 		const { service } = build();
 		expect(await service.create(write({ supplierId: 'sup_mh' }), now)).toMatchObject({
+			// No short name: its legal name.
+			supplierName: 'Pune Software LLP',
 			interState: true,
 			cgstINR: 0,
 			igstINR: 3_600,
@@ -261,6 +271,7 @@ describe('changing a draft', () => {
 		expect(changed).toMatchObject({
 			id: 'eb_1',
 			supplierId: 'sup_mh',
+			supplierName: 'Pune Software LLP',
 			interState: true,
 			igstINR: 3_600,
 			updatedAt: at,

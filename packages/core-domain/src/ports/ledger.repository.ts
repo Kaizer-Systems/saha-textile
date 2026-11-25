@@ -9,6 +9,8 @@ import type {
 	VoucherDraft,
 	VoucherKind,
 	BooksImport,
+	ExpenseBill,
+	ExpenseBillStatus,
 } from '@saha-textile/contracts';
 
 import type { StatementLine } from '../ledger/ledger-rules';
@@ -124,4 +126,12 @@ export interface BooksImportRepository {
 export interface YearCloseRepository {
 	get(year: string): Promise<YearCloseRecord | null>;
 	save(record: YearCloseRecord): Promise<void>;
+}
+
+/** Brief 25 EB1: bills for services and expenses; saving checks the version read (a draft edited twice). */
+export interface ExpenseBillRepository {
+	list(query: { supplierId?: string; status?: ExpenseBillStatus }): Promise<ExpenseBill[]>;
+	get(id: string): Promise<ExpenseBill | null>;
+	/** Refused with `expense_bill_changed` when the stored version isn't `expectedVersion` (null: a new bill). */
+	save(bill: ExpenseBill, expectedVersion: number | null, context?: TransactionContext): Promise<ExpenseBill>;
 }

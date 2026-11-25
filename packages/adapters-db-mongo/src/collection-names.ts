@@ -191,6 +191,8 @@ export const COLLECTION_NAMES = {
 	YearClose: 'yearCloses',
 	/** Books brought in from another program (accounts brief I1). */
 	BooksImport: 'booksImports',
+	/** Brief 25 EB1: bills for services and expenses. */
+	ExpenseBill: 'expenseBills',
 	/** Stock split by location (accounts brief F4). */
 	LocationStock: 'locationStock',
 	/** Settings › Document formats (bundle builder brief F, 2026-11-22): one active format per document. */

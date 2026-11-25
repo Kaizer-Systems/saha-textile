@@ -20,6 +20,7 @@ import { BanksModule } from './banks/banks.module';
 import { GstReportsModule } from './gst/gst-reports.module';
 import { ReportsModule } from './reports/reports.module';
 import { AssetsModule } from './assets/assets.module';
+import { ExpenseBillsModule } from './expense-bills/expense-bills';
 import { ExportsModule } from './exports/exports.service';
 import { PayrollModule } from './payroll/payroll.module';
 import { GstSetOffModule } from './gst/gst-set-off.module';
@@ -116,6 +117,7 @@ export class AppModule {
 				AssetsModule,
 				PayrollModule,
 				ExportsModule,
+				ExpenseBillsModule,
 				OrderRoutingModule,
 				OrderShipsFromModule,
 				DocumentsModule,

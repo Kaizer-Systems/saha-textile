@@ -342,6 +342,7 @@ const numbering = (order: DocumentNumberingSettings['order']): DocumentNumbering
 		expenseClaim: series('EC'),
 		stockTransfer: series('TR'),
 		payslip: series('PS'),
+		expenseBill: series('EB'),
 	},
 	lockedTypes: [],
 	revision: 0,

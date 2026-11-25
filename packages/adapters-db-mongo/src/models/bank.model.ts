@@ -153,3 +153,4 @@ export const StatutoryFilingModel = payrollModel('StatutoryFiling', COLLECTION_N
 export const PayrollAdvanceModel = payrollModel('PayrollAdvance', COLLECTION_NAMES.PayrollAdvance);
 export const YearCloseModel = payrollModel('YearClose', COLLECTION_NAMES.YearClose);
 export const BooksImportModel = payrollModel('BooksImport', COLLECTION_NAMES.BooksImport);
+export const ExpenseBillModel = payrollModel('ExpenseBill', COLLECTION_NAMES.ExpenseBill);

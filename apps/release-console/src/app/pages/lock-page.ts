@@ -176,7 +176,7 @@ export class LockPage {
 	constructor() {
 		void this.api.lockStatus().then(
 			(s) => {
-				if (s.unlocked) void this.router.navigate(['/']);
+				if (s.unlocked) void this.router.navigateByUrl(this.session.take());
 			},
 			() => undefined,
 		);
@@ -234,7 +234,7 @@ export class LockPage {
 		this.busy.set(true);
 		try {
 			this.session.set((await this.api.setupPin(this.pin())).session);
-			void this.router.navigate(['/']);
+			void this.router.navigateByUrl(this.session.take());
 		} catch (err) {
 			this.message.set((err as Error).message);
 			void this.status.refetch();
@@ -248,7 +248,7 @@ export class LockPage {
 		this.busy.set(true);
 		try {
 			this.session.set((await this.api.unlock(given)).session);
-			void this.router.navigate(['/']);
+			void this.router.navigateByUrl(this.session.take());
 		} catch (err) {
 			this.message.set((err as Error).message);
 			this.password.set('');

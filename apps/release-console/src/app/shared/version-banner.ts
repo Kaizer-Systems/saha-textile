@@ -47,7 +47,8 @@ export const clock = (iso: string): string =>
 						<div>
 							<b>A newer Release Console is running.</b>
 							It started at {{ clock(started) }}; this tab is still the one from
-							{{ clock(watch.loadedAt) }}. Reload to use it. You stay on this page and stay unlocked.
+							{{ clock(watch.loadedAt) }}. Reload to use it. The restart locked the console: unlock it and
+							you are back on this page.
 						</div>
 						<button
 							type="button"

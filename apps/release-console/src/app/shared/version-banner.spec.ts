@@ -35,6 +35,9 @@ describe('the newer-version banner', () => {
 		expect(el.textContent?.replace(/\s+/g, ' ')).toContain(
 			'A newer Release Console is running. It started at 15:46; this tab is still the one from 15:44.',
 		);
+		expect(el.textContent?.replace(/\s+/g, ' ')).toContain(
+			'The restart locked the console: unlock it and you are back on this page.',
+		);
 		expect(buttons().map((b) => b.textContent?.trim())).toEqual(['Reload']);
 		buttons()[0]?.click();
 		expect(watch.reload).toHaveBeenCalled();

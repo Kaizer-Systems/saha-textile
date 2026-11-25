@@ -314,6 +314,7 @@ export class ConsoleApi {
 		this.forget();
 	}
 	private forget(): void {
+		this.session.keep(this.router.url);
 		this.session.clear();
 		this.drafts.clear();
 		this.queries.clear();

@@ -31,7 +31,7 @@ function make(status: Record<string, unknown>, api: Record<string, unknown> = {}
 		setupPin: vi.fn(async () => ({ session: 'session-2' })),
 		...api,
 	};
-	const router = { navigate: vi.fn(async () => true) };
+	const router = { navigateByUrl: vi.fn(async () => true) };
 	const clear = vi.fn();
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
@@ -60,12 +60,12 @@ describe('the lock page', () => {
 		fixture.detectChanges();
 		expect(c.method()).toBe('password');
 		await vi.waitFor(() => expect(focus).toHaveBeenCalled());
-		expect(router.navigate).not.toHaveBeenCalled();
+		expect(router.navigateByUrl).not.toHaveBeenCalled();
 	});
 
 	it('goes straight in when the console is already unlocked, and opens with the PIN without a password', async () => {
 		const unlocked = make({ unlocked: true });
-		await vi.waitFor(() => expect(unlocked.router.navigate).toHaveBeenCalledWith(['/']));
+		await vi.waitFor(() => expect(unlocked.router.navigateByUrl).toHaveBeenCalledWith('/'));
 		const noPassword = make({ passwordSet: false });
 		await vi.waitFor(() => expect(noPassword.c.status.data()).toBeTruthy());
 		noPassword.fixture.detectChanges();

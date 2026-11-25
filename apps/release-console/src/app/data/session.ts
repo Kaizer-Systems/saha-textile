@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
 const KEY = 'release-console-session';
+const PLACE = 'release-console-place';
 
 function readStored(): string | null {
 	try {
@@ -34,5 +35,26 @@ export class ConsoleSession {
 		} catch {
 			/* nothing stored */
 		}
+	}
+
+	/** Where the tab was when the console locked (a restart, idle time or Lock), to open again after unlocking. */
+	keep(place: string): void {
+		try {
+			sessionStorage.setItem(PLACE, place);
+		} catch {
+			/* storage blocked: unlocking opens the start page */
+		}
+	}
+
+	/** The kept place, once, or the start page; the lock screen itself is never a place to return to. */
+	take(): string {
+		let place: string | null = null;
+		try {
+			place = sessionStorage.getItem(PLACE);
+			sessionStorage.removeItem(PLACE);
+		} catch {
+			/* storage blocked: the start page */
+		}
+		return place?.startsWith('/') && !place.startsWith('/lock') ? place : '/';
 	}
 }

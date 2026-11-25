@@ -8,9 +8,16 @@ import { ProjectPage } from './pages/project-page';
 import { ScreenPage } from './screens/screen-page';
 import { Shell } from './shell/shell';
 
-/** Everything but the lock screen needs an unlocked session; the API ends stale ones with a 401. */
-export const unlocked: CanActivateFn = () =>
-	inject(ConsoleSession).token() ? true : inject(Router).createUrlTree(['/lock']);
+/**
+ * Everything but the lock screen needs an unlocked session; the API ends stale ones with a 401. A locked tab keeps
+ * the address it asked for, and unlocking opens it.
+ */
+export const unlocked: CanActivateFn = (_route, state) => {
+	const session = inject(ConsoleSession);
+	if (session.token()) return true;
+	session.keep(state.url);
+	return inject(Router).createUrlTree(['/lock']);
+};
 
 export const routes: Routes = [
 	{ path: 'lock', component: LockPage },

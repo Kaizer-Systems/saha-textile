@@ -457,13 +457,16 @@ describe('every part of the console against an API that answers anything', () =>
 		expect(calls).toBeGreaterThan(0);
 	}, 180_000);
 
-	it('lets an unlocked session in and sends a locked one to the lock screen', () => {
+	it('lets an unlocked session in and sends a locked one to the lock screen, keeping where it was going', () => {
 		setUp();
 		const session = TestBed.inject(ConsoleSession);
 		session.clear();
-		expect(TestBed.runInInjectionContext(() => unlocked({} as never, {} as never))).not.toBe(true);
+		const asked = { url: '/p/id-1/r/id-1/pulls?pr=7' } as never;
+		expect(TestBed.runInInjectionContext(() => unlocked({} as never, asked))).not.toBe(true);
+		expect(session.take()).toBe('/p/id-1/r/id-1/pulls?pr=7');
 		session.set('token-1');
-		expect(TestBed.runInInjectionContext(() => unlocked({} as never, {} as never))).toBe(true);
+		expect(TestBed.runInInjectionContext(() => unlocked({} as never, asked))).toBe(true);
+		expect(session.take()).toBe('/');
 	});
 });
 

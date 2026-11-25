@@ -173,6 +173,7 @@ export function taxWorkingFor(input: {
 		parentsCheckupPaise: counts(declared?.s126ParentsCheckupINR ?? 0, parentsProof),
 		parentsSenior: !!declared?.s126ParentsSenior,
 		seniorMedicalPaise: counts(declared?.s126SeniorMedicalINR ?? 0, parentsProof),
+		selfSeniorMedicalPaise: counts(declared?.s126SelfSeniorMedicalINR ?? 0, !!declared?.proof.s80d),
 	};
 	// TX5: the rent city against the version's list; a declaration saved before keeps its yes/no.
 	const metro =

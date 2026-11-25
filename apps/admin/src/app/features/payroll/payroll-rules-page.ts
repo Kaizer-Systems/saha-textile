@@ -281,6 +281,8 @@ export interface IncomeTaxForm {
 	proofFromMonth: number;
 	/** Brief 26 TX4: section 126's limits in rupees, the rounding, and the cities where rent counts at 50%. */
 	health: { self: number; selfSenior: number; parents: number; parentsSenior: number; checkup: number };
+	/** Brief 26 TX3: whether an uninsured senior's medical bills count, in each group (the law: both). */
+	seniorMedical: { self: boolean; parents: boolean };
 	rounding: 'ten' | 'rupee';
 	rentCities: string[];
 }
@@ -313,6 +315,7 @@ export function taxToForm(t: IncomeTaxRules): IncomeTaxForm {
 		limit80d: inr(t.limit80dPaise),
 		limitHomeLoan: inr(t.limitHomeLoanPaise),
 		proofFromMonth: t.proofFromMonth,
+		seniorMedical: { self: h.selfSeniorMedical !== false, parents: h.parentsSeniorMedical !== false },
 		health: {
 			self: inr(h.selfPaise),
 			selfSenior: inr(h.selfSeniorPaise),
@@ -354,6 +357,8 @@ export function taxToWrite(f: IncomeTaxForm): IncomeTaxRules {
 			parentsPaise: paise(f.health.parents),
 			parentsSeniorPaise: paise(f.health.parentsSenior),
 			checkupPaise: paise(f.health.checkup),
+			selfSeniorMedical: f.seniorMedical.self,
+			parentsSeniorMedical: f.seniorMedical.parents,
 		},
 		rounding: f.rounding,
 		rentCities: f.rentCities.map((c) => c.trim()).filter((c) => c.length >= 2),
@@ -1029,6 +1034,11 @@ export class PayrollRulesPage {
 	}
 
 	/** TX4: one of section 126's limits. */
+	/** TX3: an uninsured senior's medical bills counted in a group, or not. */
+	toggleSeniorMedical(group: 'self' | 'parents'): void {
+		this.patchTaxForm((t) => ({ ...t, seniorMedical: { ...t.seniorMedical, [group]: !t.seniorMedical[group] } }));
+	}
+
 	setHealth(key: keyof IncomeTaxForm['health'], value: number): void {
 		this.patchTaxForm((t) => ({ ...t, health: { ...t.health, [key]: value } }));
 	}

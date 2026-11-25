@@ -131,3 +131,38 @@ describe('section 126 by group (TX3)', () => {
 		});
 	});
 });
+
+describe('an uninsured senior’s medical bills in each group (s.126, the old 80D(2)/(3))', () => {
+	const cover = {
+		selfPaise: 0,
+		selfCheckupPaise: 0,
+		selfSenior: true,
+		parentsPaise: 0,
+		parentsCheckupPaise: 0,
+		parentsSenior: true,
+		seniorMedicalPaise: 30_000_00,
+		selfSeniorMedicalPaise: 40_000_00,
+	};
+
+	it('counts the employee’s or spouse’s own bills in the family’s ₹50,000, and a parent’s in theirs', () => {
+		const g = healthByGroup(cover, { health126: HEALTH_126_2026 });
+		expect([g.selfPaise, g.parentsPaise]).toEqual([40_000_00, 30_000_00]);
+		expect(
+			healthByGroup({ ...cover, selfSeniorMedicalPaise: 90_000_00 }, { health126: HEALTH_126_2026 }).selfPaise,
+		).toBe(50_000_00);
+	});
+
+	it('counts nothing for someone under 60, a cover made before the field, or a group switched off', () => {
+		expect(
+			healthByGroup({ ...cover, selfSenior: false, parentsSenior: false }, { health126: HEALTH_126_2026 }),
+		).toMatchObject({
+			selfPaise: 0,
+			parentsPaise: 0,
+		});
+		expect(
+			healthByGroup({ ...cover, selfSeniorMedicalPaise: undefined }, { health126: HEALTH_126_2026 }).selfPaise,
+		).toBe(0);
+		const off = { ...HEALTH_126_2026, selfSeniorMedical: false, parentsSeniorMedical: false };
+		expect(healthByGroup(cover, { health126: off })).toMatchObject({ selfPaise: 0, parentsPaise: 0 });
+	});
+});

@@ -1730,6 +1730,23 @@
 							</tbody>
 						</table>
 					</div>
+					@for (g of ['self', 'parents']; track g) {
+					<div class="form-check mt-1">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							[id]="'pr_tax_senior_medical_' + g"
+							[checked]="g === 'self' ? t.seniorMedical.self : t.seniorMedical.parents"
+							(change)="toggleSeniorMedical(g === 'self' ? 'self' : 'parents')"
+						/>
+						<label
+							class="form-check-label"
+							[for]="'pr_tax_senior_medical_' + g"
+						>
+							{{ 'payroll_tax_senior_medical_' + g | transloco }}
+						</label>
+					</div>
+					}
 					<label
 						class="form-label-title mt-2"
 						for="pr_tax_rounding"

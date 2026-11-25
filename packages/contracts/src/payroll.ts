@@ -67,6 +67,8 @@ export const TaxDeclaration = z.object({
 	/** TX3: the self group's check-ups; whether the spouse is 60 or over (the employee's own age comes from the date of birth). */
 	s126SelfCheckupINR: Rupees.optional(),
 	s126SpouseSenior: z.boolean().optional(),
+	/** Medical bills of the employee or spouse aged 60 or over with no health insurance, within the self group's limit. */
+	s126SelfSeniorMedicalINR: Rupees.optional(),
 	/** TX3: parents' health insurance and check-ups, whether a parent is 60 or over, and an uninsured senior's medical bills. */
 	s126ParentsINR: Rupees.optional(),
 	s126ParentsCheckupINR: Rupees.optional(),
@@ -678,6 +680,12 @@ export const IncomeTaxRules = z.object({
 			parentsPaise: Paise,
 			parentsSeniorPaise: Paise,
 			checkupPaise: Paise,
+			/**
+			 * Medical bills of an uninsured senior count within each group's limit (s.126, the old 80D(2)/(3)): the
+			 * employee or spouse aged 60 or over in the self group, a parent in the parents'. Both on unless switched off.
+			 */
+			selfSeniorMedical: z.boolean().optional(),
+			parentsSeniorMedical: z.boolean().optional(),
 		})
 		.optional(),
 	/** TX4: taxable income and tax to the nearest ₹10 (section 516) or the rupee; versions saved before: ₹10. */

@@ -60,7 +60,12 @@ export const METRO_BEFORE = '__metro_before';
 
 /** TX3: the section 126 amounts a declaration holds, in rupees a year. */
 export type HealthField =
-	's80dINR' | 's126SelfCheckupINR' | 's126ParentsINR' | 's126ParentsCheckupINR' | 's126SeniorMedicalINR';
+	| 's80dINR'
+	| 's126SelfCheckupINR'
+	| 's126SelfSeniorMedicalINR'
+	| 's126ParentsINR'
+	| 's126ParentsCheckupINR'
+	| 's126SeniorMedicalINR';
 const blank = (): EmployeeWriteInput => ({
 	name: '',
 	code: '',
@@ -211,10 +216,18 @@ export class EmployeesPage {
 	readonly today = istToday();
 	/** TX3: section 126's rows, each group's proof and "Counts" spanning its rows. */
 	readonly healthRows = [
-		{ key: 'health_self', field: 's80dINR', group: 'self', proof: 's80d', groupStart: true, rows: 2 },
+		{ key: 'health_self', field: 's80dINR', group: 'self', proof: 's80d', groupStart: true, rows: 3 },
 		{
 			key: 'health_self_checkup',
 			field: 's126SelfCheckupINR',
+			group: 'self',
+			proof: 's80d',
+			groupStart: false,
+			rows: 0,
+		},
+		{
+			key: 'health_self_senior_medical',
+			field: 's126SelfSeniorMedicalINR',
 			group: 'self',
 			proof: 's80d',
 			groupStart: false,
@@ -326,6 +339,7 @@ export class EmployeesPage {
 				parentsCheckupPaise: p(d?.s126ParentsCheckupINR),
 				parentsSenior: !!d?.s126ParentsSenior,
 				seniorMedicalPaise: p(d?.s126SeniorMedicalINR),
+				selfSeniorMedicalPaise: p(d?.s126SelfSeniorMedicalINR),
 			},
 			{ health126: this.taxRules()?.health126 ?? HEALTH_126_2026 },
 		);

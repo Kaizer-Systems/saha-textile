@@ -48,6 +48,9 @@ export interface Health126Limits {
 	parentsPaise: number;
 	parentsSeniorPaise: number;
 	checkupPaise: number;
+	/** Whether an uninsured senior's medical bills count in each group (the law: both; off only by choice). */
+	selfSeniorMedical?: boolean;
+	parentsSeniorMedical?: boolean;
 }
 
 export const HEALTH_126_2026: Health126Limits = {
@@ -143,6 +146,8 @@ export interface HealthCover {
 	parentsSenior: boolean;
 	/** Medical bills of a senior parent with no insurance, within the parents' limit. */
 	seniorMedicalPaise: number;
+	/** Medical bills of the employee or spouse aged 60 or over with no insurance, within the self group's limit. */
+	selfSeniorMedicalPaise?: number;
 }
 
 /** TX3: what each group of section 126 counts, against its limit (the employee's card shows both). */
@@ -164,9 +169,12 @@ export function healthByGroup(h: HealthCover, rules: Pick<IncomeTaxRules, 'healt
 	const parentsCheckup = Math.min(h.parentsCheckupPaise, l.checkupPaise - selfCheckup);
 	const selfLimitPaise = h.selfSenior ? l.selfSeniorPaise : l.selfPaise;
 	const parentsLimitPaise = h.parentsSenior ? l.parentsSeniorPaise : l.parentsPaise;
-	const parentsClaimed = h.parentsPaise + parentsCheckup + (h.parentsSenior ? h.seniorMedicalPaise : 0);
+	// An uninsured senior's medical bills count in their own group, as the law reads (each can be switched off).
+	const selfMedical = h.selfSenior && l.selfSeniorMedical !== false ? (h.selfSeniorMedicalPaise ?? 0) : 0;
+	const parentsMedical = h.parentsSenior && l.parentsSeniorMedical !== false ? h.seniorMedicalPaise : 0;
+	const parentsClaimed = h.parentsPaise + parentsCheckup + parentsMedical;
 	return {
-		selfPaise: Math.min(h.selfPaise + selfCheckup, selfLimitPaise),
+		selfPaise: Math.min(h.selfPaise + selfCheckup + selfMedical, selfLimitPaise),
 		selfLimitPaise,
 		parentsPaise: Math.min(parentsClaimed, parentsLimitPaise),
 		parentsLimitPaise,

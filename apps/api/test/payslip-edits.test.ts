@@ -1,5 +1,6 @@
 import type { Attendance, Employee, PayrollRow, PayrollRun } from '@saha-textile/contracts';
 import { PayslipEditsInput } from '@saha-textile/contracts';
+import { BadRequestException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
 import { BUILT_IN_PAYROLL_RULES, rulesOf } from '../src/payroll/payroll-rules.service';
@@ -70,6 +71,13 @@ const PRIYA = employee('emp_priya', 'loc_kolkata', {
 	structure: { basic: 8_700, da: 0, hra: 3_480, special: 5_220, conveyance: 0, other: 0 },
 });
 const PEOPLE = [PRIYA];
+/** People only the keep-figures rows name. */
+const EXTRA = [
+	{ ...PRIYA, id: 'emp_refused' },
+	{ ...PRIYA, id: 'emp_broken' },
+	{ ...PRIYA, id: 'emp_half' },
+	{ ...PRIYA, id: 'emp_none' },
+];
 const ctx = { e: PRIYA, month: '2026-11', rules: RULES.pay, stateRules: RULES.states[0] ?? null };
 const ATTENDANCE: Attendance = {
 	month: '2026-11',
@@ -123,13 +131,28 @@ function service(runOver: Partial<PayrollRun> = {}) {
 		{ issue: async () => 'PS/26-27/000001' } as never,
 	);
 	const audit = vi.fn(async () => undefined);
+	const saved: Employee[] = [];
+	const revisions = {
+		accept: vi.fn(async (id: string) => {
+			if (id === 'emp_refused') throw new BadRequestException({ message: 'revision_not_after_last' });
+			if (id === 'emp_broken') throw new Error('disk full');
+			return {};
+		}),
+	};
 	const editor = new PayslipEditsService(
 		runs as never,
-		{ get: async (id: string) => PEOPLE.find((p) => p.id === id) ?? null } as never,
+		{
+			get: async (id: string) => [...PEOPLE, ...EXTRA].find((p) => p.id === id) ?? null,
+			save: vi.fn(async (e: Employee) => {
+				saved.push(e);
+				return e;
+			}),
+		} as never,
 		{ forMonth: async () => RULES } as never,
 		{ append: audit } as never,
+		revisions as never,
 	);
-	return { payroll, editor, runs, store, ledger, audit, runOver };
+	return { payroll, editor, runs, store, ledger, audit, runOver, revisions, saved };
 }
 
 describe('a payslip edited on a draft (PE2)', () => {
@@ -304,5 +327,82 @@ describe('applying edits to a row (PE2)', () => {
 		const body = edits({});
 		new PayslipEditsController(svc as never).edit({ month: '2026-11', employeeId: 'emp_priya' }, body, undefined);
 		expect(svc.edit).toHaveBeenCalledWith('2026-11', 'emp_priya', body, undefined);
+	});
+});
+
+describe('keeping the new figures as the salary (PE4, PE-D3)', () => {
+	const row = (employeeId: string, over: Partial<PayrollRow>) =>
+		({ employeeId, paidDays: 30, grossPaise: 0, netPaise: 0, ...over }) as PayrollRow;
+	const published = (rows: PayrollRow[]): PayrollRun =>
+		({ month: '2026-11', status: 'posted', rows, version: 3 }) as never;
+
+	it('saves the heads typed and the lines added every month from next month, and an advance’s instalment typed', async () => {
+		const { editor, store, revisions, saved } = service();
+		store.set(
+			'2026-11',
+			published([
+				row('emp_priya', {
+					edits: edits({
+						heads: { basic: 900_000 },
+						added: [
+							{ id: 'a', kind: 'taxable', name: 'Shop allowance', paise: 50_000, oneOff: false },
+							{ id: 'b', kind: 'taxable', name: 'Diwali incentive', paise: 90_000, oneOff: true },
+						],
+						deductions: { advance: 50_000 },
+					}),
+				}),
+				// 15 of 30 days paid: ₹4,500 typed is ₹9,000 for the month.
+				row('emp_half', { paidDays: 15, edits: edits({ heads: { basic: 450_000 } }) }),
+				row('emp_none', { paidDays: 0, edits: edits({ deductions: { advance: 10_000 } }) }),
+				row('emp_refused', { edits: edits({ heads: { basic: 1 } }) }),
+				row('emp_broken', { edits: edits({ heads: { basic: 1 } }) }),
+				row('emp_plain', {}),
+			]),
+		);
+		const results = await editor.keep(
+			'2026-11',
+			['emp_priya', 'emp_half', 'emp_none', 'emp_refused', 'emp_broken', 'emp_plain'],
+			{ userId: 'adm_acc' } as never,
+			now,
+		);
+		expect(results.map((r) => [r.employeeId, r.ok, r.problem])).toEqual([
+			['emp_priya', true, null],
+			['emp_half', true, null],
+			['emp_none', true, null],
+			['emp_refused', false, 'revision_not_after_last'],
+			['emp_broken', false, 'failed'],
+			['emp_plain', false, 'payroll_row_not_found'],
+		]);
+		const first = revisions.accept.mock.calls[0] as unknown as [
+			string,
+			{ way: { structure: Record<string, number> }; from: string },
+		];
+		expect(first[0]).toBe('emp_priya');
+		expect(first[1]).toMatchObject({
+			from: '2026-12-01',
+			way: { kind: 'heads', structure: { basic: 9_000, other: 500 } },
+		});
+		const half = revisions.accept.mock.calls[1] as unknown as [
+			string,
+			{ way: { structure: Record<string, number> } },
+		];
+		expect(half[1].way.structure.basic).toBe(9_000);
+		expect(revisions.accept.mock.calls.map((c) => c[0])).not.toContain('emp_none');
+		expect(saved.map((e) => [e.id, e.advancePerMonthINR])).toEqual([
+			['emp_priya', 500],
+			['emp_none', 100],
+		]);
+	});
+
+	it('refuses a run not there or not published yet, and hands the route to the service', async () => {
+		const { editor, payroll } = service();
+		await expect(editor.keep('2026-11', ['emp_priya'], undefined)).rejects.toSatisfy((e) => status(e) === 404);
+		await payroll.prepare('2026-11', now);
+		await expect(editor.keep('2026-11', ['emp_priya'], undefined)).rejects.toSatisfy(
+			(e) => code(e) === 'payroll_run_not_published',
+		);
+		const svc = { keep: vi.fn() };
+		new PayslipEditsController(svc as never).keep('2026-11', { employeeIds: ['emp_priya'] }, undefined);
+		expect(svc.keep).toHaveBeenCalledWith('2026-11', ['emp_priya'], undefined);
 	});
 });

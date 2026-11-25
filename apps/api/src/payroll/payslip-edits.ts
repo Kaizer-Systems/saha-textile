@@ -9,6 +9,7 @@ import {
 	Injectable,
 	NotFoundException,
 	Param,
+	Post,
 	Put,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -45,6 +46,7 @@ import { AUDIT_LOG_REPOSITORY, EMPLOYEE_REPOSITORY, PAYROLL_RUN_REPOSITORY } fro
 import { accountsRefusal } from '../ledger/accounts-refusal';
 import { API_TAGS } from '../openapi-tags';
 import { PayrollRulesService } from './payroll-rules.service';
+import { SalaryRevisionsService } from './salary-revisions';
 
 const refuse = (code: string) => new BadRequestException(accountsRefusal(code));
 const monthEnd = (month: string) =>
@@ -180,10 +182,89 @@ export function chargesOf(rows: readonly PayrollRow[], pay: PayrollRules, scheme
 export class PayslipEditsService {
 	constructor(
 		@Inject(PAYROLL_RUN_REPOSITORY) private readonly runs: Pick<PayrollRunRepository, 'get' | 'save'>,
-		@Inject(EMPLOYEE_REPOSITORY) private readonly employees: Pick<EmployeeRepository, 'get'>,
+		@Inject(EMPLOYEE_REPOSITORY) private readonly employees: Pick<EmployeeRepository, 'get' | 'save'>,
 		@Inject(PayrollRulesService) private readonly rules: Pick<PayrollRulesService, 'forMonth'>,
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: Pick<AuditLogRepository, 'append'>,
+		@Inject(SalaryRevisionsService) private readonly revisions: Pick<SalaryRevisionsService, 'accept'>,
 	) {}
+
+	/**
+	 * PE4 "Yes", PE-D3: a published run's edited figures kept as each person's salary from the next month: the heads
+	 * typed (for a whole month) and lines added every month into the other allowance, saved as a revision (the old
+	 * salary kept as a dated version), and an advance's instalment typed; one-off lines never carry. A person refused
+	 * keeps the refusal on their result; the others go on.
+	 */
+	async keep(
+		month: string,
+		employeeIds: readonly string[],
+		principal: AuthenticatedPrincipal | undefined,
+		now = new Date(),
+	): Promise<{ employeeId: string; ok: boolean; problem: string | null }[]> {
+		const run = await this.runs.get(month);
+		if (!run) throw new NotFoundException(accountsRefusal('payroll_run_not_found'));
+		if (run.status === 'draft') throw refuse('payroll_run_not_published');
+		const next = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 1))
+			.toISOString()
+			.slice(0, 10);
+		const days = Number(monthEnd(month).slice(8));
+		const out: { employeeId: string; ok: boolean; problem: string | null }[] = [];
+		for (const id of employeeIds) {
+			const row = run.rows.find((r) => r.employeeId === id);
+			const e = await this.employees.get(id);
+			if (!row?.edits || !e) {
+				out.push({ employeeId: id, ok: false, problem: 'payroll_row_not_found' });
+				continue;
+			}
+			const edits = row.edits;
+			// A head typed for the days paid, as a whole month's.
+			const whole = (paise: number) =>
+				(row.paidDays > 0 ? Math.round((paise * days) / row.paidDays) : paise) / 100;
+			const recurring = edits.added
+				.filter((l) => !l.oneOff && ['taxable', 'exempt'].includes(l.kind))
+				.reduce((sum, l) => sum + l.paise, 0);
+			const structure = { ...e.structure };
+			for (const h of ['basic', 'da', 'hra', 'conveyance', 'special', 'other'] as const) {
+				const typed = edits.heads[h];
+				if (typed !== undefined) structure[h] = whole(typed);
+			}
+			structure.other += whole(recurring);
+			try {
+				const headsChanged = Object.values(edits.heads).some((v) => v !== undefined) || recurring > 0;
+				if (headsChanged) {
+					await this.revisions.accept(
+						id,
+						{
+							way: { kind: 'heads', structure },
+							from: next,
+							templateId: null,
+							typed: {},
+							lockCtc: false,
+							reason: `Kept from the payslip of ${month}`,
+							agreed: true,
+						},
+						principal,
+						now,
+					);
+				}
+				const advance = edits.deductions.advance;
+				if (advance !== undefined) {
+					const latest = (await this.employees.get(id)) as Employee;
+					await this.employees.save(
+						{ ...latest, advancePerMonthINR: advance / 100, updatedAt: now.toISOString() },
+						latest.version,
+					);
+				}
+				out.push({ employeeId: id, ok: true, problem: null });
+			} catch (error) {
+				out.push({
+					employeeId: id,
+					ok: false,
+					problem: (error as { response?: { message?: unknown } }).response?.message?.toString() ?? 'failed',
+				});
+			}
+		}
+		return out;
+	}
 
 	async edit(
 		month: string,
@@ -256,15 +337,30 @@ export class PayslipEditsService {
 	}
 }
 
+const KeepFigures = z.object({ employeeIds: z.array(z.string().min(1)).min(1).max(500) });
 const RowParams = z.object({ month: z.string().regex(/^\d{4}-\d{2}$/), employeeId: z.string().min(1) });
 
 @ApiTags(API_TAGS.orders)
 @Audience('admin')
-@Controller('admin/payroll/runs/:month/rows/:employeeId')
+@Controller('admin/payroll/runs/:month')
 export class PayslipEditsController {
 	constructor(private readonly edits: PayslipEditsService) {}
 
-	@Put('edits')
+	@Post('keep-figures')
+	@RequirePermissions('accounts.edit')
+	@ApiOperation({
+		operationId: 'payrollKeepFigures',
+		summary: 'Keep a published run’s edited figures as the salary (PE4)',
+	})
+	keep(
+		@Param('month') month: string,
+		@Body(new ZodValidationPipe(KeepFigures)) body: z.infer<typeof KeepFigures>,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.edits.keep(month, body.employeeIds, principal);
+	}
+
+	@Put('rows/:employeeId/edits')
 	@RequirePermissions('accounts.edit')
 	@ApiOperation({ operationId: 'payrollPayslipEdit', summary: 'Edit a payslip on a draft run (PE2)' })
 	edit(

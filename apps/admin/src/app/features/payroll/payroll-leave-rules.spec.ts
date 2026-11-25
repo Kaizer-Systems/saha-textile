@@ -97,7 +97,8 @@ const version = (states: StatePayrollRules[]) =>
 		states,
 	}) as unknown as PayrollRulesVersion;
 
-async function editing() {
+/** The rules page with the pop-up open; `words` gives some keys their English, to read the figures in them. */
+async function editing(words: Record<string, string> = {}) {
 	TestBed.resetTestingModule();
 	const notifier = { showSuccess: vi.fn(), showError: vi.fn() };
 	document.body.querySelectorAll('.lv-test-modal').forEach((node) => node.remove());
@@ -106,7 +107,7 @@ async function editing() {
 		imports: [
 			PayrollRulesPage,
 			TranslocoTestingModule.forRoot({
-				langs: { en: {} },
+				langs: { en: words },
 				translocoConfig: { availableLangs: ['en'], defaultLang: 'en' },
 				preloadLangs: true,
 			}),
@@ -514,5 +515,55 @@ describe('leave in a State’s set (LV1, LV2)', () => {
 		expect(page.tryJoined()).toBe('2026-10-01');
 		page.tryJoined.set('');
 		expect(page.tryCredit()).toBe(0);
+	});
+
+	it('says the rule shown in plain words, sentence by sentence, and nothing with no rule open', async () => {
+		const words = {
+			payroll_month_1: 'January',
+			payroll_month_4: 'April',
+			plain_year_joining: 'JOIN.',
+			plain_year_from: 'FROM {{month}} {{months}}.',
+			plain_credit_year_start: 'START {{days}}.',
+			plain_credit_monthly: 'MONTHLY {{days}}.',
+			plain_credit_on_request: 'ASKED {{days}}.',
+			plain_credit_worked: 'WORKED {{give}}/{{every}}.',
+			plain_credit_none: 'NONE.',
+			plain_wait: 'WAIT {{days}}.',
+			plain_joiners_months_left: 'MONTHS LEFT.',
+			plain_joiners_days_left: 'DAYS LEFT.',
+			plain_never_lapses: 'NEVER.',
+			plain_carry_all: 'ALL.',
+			plain_carry_none: 'LAPSES.',
+			plain_carry_max: 'UP TO {{days}}, {{above}}.',
+			plain_above_encash: 'paid',
+			plain_above_lapse: 'lost',
+			plain_valid_days: 'VALID {{n}} DAYS.',
+			plain_valid_months: 'VALID {{n}} MONTHS.',
+			plain_encash_leaving: 'LEAVING.',
+		};
+		const { page, redraw } = await editing(words);
+		page.stateAt.set(1);
+		page.stateSection.set('leave');
+		await redraw();
+		expect(page.plainWords()).toBe('');
+		await click(redraw, modal('#pr_leave_rules_T3'));
+		// Casual leave: an April year, 10 days at its start, a share for joiners, nothing carried.
+		expect(modal('#pr_leave_plain')?.textContent?.trim()).toBe('FROM April 12. START 10. MONTHS LEFT. LAPSES.');
+		page.setRule({ year: { fromJoining: true }, credit: { kind: 'per_days_worked', every: 20, give: 1 } });
+		page.setRule({ waitDays: 180, joiners: 'none', carryMax: null });
+		expect(page.plainWords()).toBe('JOIN. WORKED 1/20. WAIT 180. ALL.');
+		page.setRule({ year: { startMonth: 1, months: 12 }, credit: { kind: 'monthly', days: 1.5 }, waitDays: null });
+		page.setRule({ joiners: 'days_left', carryMax: 30, aboveCap: 'encash' });
+		expect(page.plainWords()).toBe('FROM January 12. MONTHLY 1.5. DAYS LEFT. UP TO 30, paid.');
+		page.setRule({ credit: { kind: 'none' }, aboveCap: 'lapse', validity: { kind: 'days', n: 90 } });
+		expect(page.plainWords()).toBe('FROM January 12. NONE. DAYS LEFT. UP TO 30, lost. VALID 90 DAYS.');
+		page.setRule({ credit: { kind: 'on_request', days: 182 }, validity: { kind: 'months', n: 12 } });
+		page.setRule({ encash: { onLeaving: true, onRequestMax: null, dayPay: 'month_days' } });
+		expect(page.plainWords()).toBe(
+			'FROM January 12. ASKED 182. DAYS LEFT. UP TO 30, lost. VALID 12 MONTHS. LEAVING.',
+		);
+		// Leave that never lapses says so, whatever is carried.
+		page.setRule({ validity: { kind: 'never' } });
+		expect(page.plainWords()).toBe('FROM January 12. ASKED 182. DAYS LEFT. NEVER. LEAVING.');
 	});
 });

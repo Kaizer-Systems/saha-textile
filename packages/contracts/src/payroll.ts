@@ -23,6 +23,26 @@ export const SalaryStructureWrite = z.object({
 });
 export type SalaryStructureWrite = z.infer<typeof SalaryStructureWrite>;
 
+/** Brief 26 SR4: the skill level a State's minimum wages are set by. */
+export const SkillLevel = z.enum(['unskilled', 'semi_skilled', 'skilled', 'highly_skilled']);
+export type SkillLevel = z.infer<typeof SkillLevel>;
+
+/**
+ * Brief 26 SR2: one dated salary of a person: the structure from a day, the yearly CTC it was built from (null when
+ * from the gross), why, who accepted it, and the month its arrears were paid with (null until then, or none due).
+ */
+export const SalaryVersion = z.object({
+	from: IsoDate,
+	structure: SalaryStructureWrite,
+	ctcYearINR: Rupees.nullable().default(null),
+	reason: z.string().trim().max(300).default(''),
+	decrease: z.boolean().default(false),
+	acceptedBy: Id.nullable().default(null),
+	acceptedAt: IsoDateTime,
+	arrearsPaidIn: YearMonth.nullable().default(null),
+});
+export type SalaryVersion = z.infer<typeof SalaryVersion>;
+
 /**
  * Brief 25 TX1: an employee's income-tax choice for one financial year and what they declare. Declarations count
  * until the proof month in Payroll rules (January); from then only what has proof. Rupees a year unless named.
@@ -131,6 +151,11 @@ export const EmployeeWrite = z.object({
 	pfOn: z.boolean().default(true),
 	esiOn: z.boolean().default(true),
 	structure: SalaryStructureWrite,
+	/** Brief 26 SR1: the structure template the pay is split by, and the yearly CTC when it is built from one. */
+	templateId: Id.nullable().optional(),
+	ctcYearINR: Rupees.nullable().optional(),
+	/** SR4: the skill level the State's minimum wages are checked at. */
+	skillLevel: SkillLevel.nullable().optional(),
 	/** OB1, OB2: leave on the day the person was added, per type. */
 	openingLeave: z.array(OpeningLeave).max(20).optional(),
 	/** An advance still to be recovered, and how much a month (S9). */
@@ -141,6 +166,8 @@ export type EmployeeWrite = z.infer<typeof EmployeeWrite>;
 export type EmployeeWriteInput = z.input<typeof EmployeeWrite>;
 
 export const Employee = EmployeeWrite.extend({
+	/** SR2: the dated salaries before the one in `structure` (oldest first); none before revisions began. */
+	salaryHistory: z.array(SalaryVersion).max(200).optional(),
 	id: Id,
 	createdAt: IsoDateTime,
 	updatedAt: IsoDateTime,
@@ -454,6 +481,18 @@ export type PtBasis = z.infer<typeof PtBasis>;
 export const PtFrequency = z.enum(['monthly', 'half_yearly', 'yearly', 'none']);
 export type PtFrequency = z.infer<typeof PtFrequency>;
 
+/** Brief 26 SR4: a State's minimum wages a month (paise) by skill level, from its notification's date. */
+export const MinimumWagesSet = z.object({
+	from: IsoDate,
+	levels: z.object({
+		unskilled: Paise.optional(),
+		semi_skilled: Paise.optional(),
+		skilled: Paise.optional(),
+		highly_skilled: Paise.optional(),
+	}),
+});
+export type MinimumWagesSet = z.infer<typeof MinimumWagesSet>;
+
 /** Brief 26 LV1, AT2: a holiday of a State, for every store in it (null) or one; it never uses up leave. */
 export const Holiday = z.object({
 	day: IsoDate,
@@ -499,6 +538,8 @@ export const StatePayrollRules = z
 			.max(20)
 			.refine((types) => new Set(types.map((t) => t.key)).size === types.length, { message: 'leave_key_twice' })
 			.optional(),
+		/** Brief 26 SR4: the State's minimum wages a month by skill level, each set dated by its notification. */
+		minimumWages: z.array(MinimumWagesSet).max(20).optional(),
 		/** Brief 26 LV1, AT2: the State's holidays, for every store in it (null) or one; none in versions saved before. */
 		holidays: z.array(Holiday).max(60).optional(),
 		ptMonths: z.array(z.number().int().min(1).max(12)).max(12).default([]),
@@ -728,14 +769,19 @@ export type SalaryHead = z.infer<typeof SalaryHead>;
 /** S4: one line of a structure template: a % of pay, a fixed amount in rupees, or what is left. */
 export const StructureComponentWrite = z.object({
 	head: SalaryHead,
-	how: z.enum(['percent', 'fixed', 'rest']),
+	/** Brief 26 SR1: `percent_basic` is a % of Basic; `percent` a % of the pay or, for a CTC structure, of the CTC. */
+	how: z.enum(['percent', 'percent_basic', 'fixed', 'rest']),
 	value: z.number().nonnegative().max(100_000_000).default(0),
 });
 export type StructureComponentWrite = z.infer<typeof StructureComponentWrite>;
 
 export const SalaryTemplateWrite = z.object({
 	name: z.string().trim().min(2).max(80),
+	/** Brief 26 SR1: built from the yearly CTC (the employer's share inside it) or from the month's gross (as before). */
+	basis: z.enum(['gross', 'ctc']).optional(),
 	examplePayINR: Rupees.default(20_000),
+	/** SR1: the example a CTC structure is shown on, a year. */
+	exampleCtcYearINR: Rupees.optional(),
 	components: z
 		.array(StructureComponentWrite)
 		.min(1)
@@ -908,3 +954,57 @@ export const AdvanceSchedule = z.object({
 	),
 });
 export type AdvanceSchedule = z.infer<typeof AdvanceSchedule>;
+
+/* ------------------------------------------------------------------ brief 26 SR: revising pay */
+
+/** SR2: the four ways in: a % of the CTC, an amount a month, a new CTC a year, or the heads typed. */
+export const RevisionWay = z.discriminatedUnion('kind', [
+	z.object({ kind: z.literal('percent'), pct: z.number().min(-90).max(500) }),
+	z.object({ kind: z.literal('amount'), monthINR: z.number().min(-10_000_000).max(10_000_000) }),
+	z.object({ kind: z.literal('ctc'), yearINR: z.number().positive().max(1_000_000_000) }),
+	z.object({ kind: z.literal('heads'), structure: SalaryStructureWrite }),
+]);
+export type RevisionWay = z.infer<typeof RevisionWay>;
+
+/**
+ * SR2: a revision asked for: the way in, the day it counts from, the structure it splits by (the person's own when
+ * none), heads typed over after, whether the CTC stays locked while they are, why, and (for a decrease) the tick that
+ * the person agreed in writing or was given notice.
+ */
+export const SalaryRevisionInput = z.object({
+	way: RevisionWay,
+	from: IsoDate,
+	templateId: Id.nullable().default(null),
+	typed: SalaryStructureWrite.partial().default({}),
+	lockCtc: z.boolean().default(true),
+	reason: z.string().trim().min(3).max(300),
+	agreed: z.boolean().default(false),
+});
+export type SalaryRevisionInput = z.infer<typeof SalaryRevisionInput>;
+export type SalaryRevisionInputValue = z.input<typeof SalaryRevisionInput>;
+
+const SideINR = z.object({
+	structure: SalaryStructureWrite,
+	grossINR: z.number(),
+	employerINR: z.number(),
+	ctcMonthINR: z.number(),
+	takeHomeINR: z.number(),
+});
+
+/** SR2's breakup: now and new, each head's change, the arrears, and the checks (a blocking one stops Accept). */
+export const SalaryRevisionPreview = z.object({
+	now: SideINR,
+	next: SideINR,
+	lines: z.array(z.object({ head: SalaryHead, nowINR: z.number(), nextINR: z.number(), changeINR: z.number() })),
+	changePct: z.number(),
+	decrease: z.boolean(),
+	arrears: z.object({ inr: z.number(), months: z.array(z.string()), paidIn: z.string() }).nullable(),
+	checks: z.array(
+		z.object({
+			code: z.enum(['rest_below_zero', 'below_minimum_wage', 'decrease_needs_agreement', 'wages_under_half']),
+			blocking: z.boolean(),
+			inr: z.number().default(0),
+		}),
+	),
+});
+export type SalaryRevisionPreview = z.infer<typeof SalaryRevisionPreview>;

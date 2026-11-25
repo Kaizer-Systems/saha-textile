@@ -163,6 +163,19 @@ describe('salary structure templates', () => {
 		expect(wageShortfall(structure)).toBe(rs(1_000));
 	});
 
+	it('works a head on Basic once Basic is set, wherever it stands in the template (brief 26 SR1)', () => {
+		expect(
+			structureFromTemplate(
+				[
+					{ head: 'hra', how: 'percent_basic', value: 40 },
+					{ head: 'special', how: 'rest', value: 0 },
+					{ head: 'basic', how: 'percent', value: 50 },
+				],
+				rs(20_000),
+			),
+		).toEqual(pay({ basic: rs(10_000), hra: rs(4_000), special: rs(6_000) }));
+	});
+
 	it('adds a fixed amount to a head a percent already set, and rounds a percent to the rupee', () => {
 		expect(
 			structureFromTemplate(

@@ -137,21 +137,26 @@ export function gratuityProvision(structure: SalaryStructure, applies: boolean, 
 	return rupee((codeWages(structure) * s.gratuityDaysPerYear) / s.gratuityMonthDays / 12);
 }
 
-/** S4: how a template sets one head: a % of pay, a fixed amount (paise), or what is left. */
+/** S4: how a template sets one head: a % of pay, a % of Basic (brief 26 SR1), a fixed amount (paise), or what is left. */
 export interface StructureComponent {
 	head: SalaryHead;
-	how: 'percent' | 'fixed' | 'rest';
+	how: 'percent' | 'percent_basic' | 'fixed' | 'rest';
 	value: number;
 }
 
-/** S4: a person's structure from a template and their monthly pay. "The rest" takes whatever the others leave. */
+/**
+ * S4: a person's structure from a template and their monthly pay. Heads on Basic follow Basic; "the rest" takes
+ * whatever the others leave.
+ */
 export function structureFromTemplate(components: readonly StructureComponent[], payPaise: number): SalaryStructure {
 	const out: SalaryStructure = { basic: 0, da: 0, hra: 0, special: 0, conveyance: 0, other: 0 };
 	let rest: SalaryHead | null = null;
 	for (const c of components) {
 		if (c.how === 'rest') rest = c.head;
-		else out[c.head] += c.how === 'percent' ? rupee((payPaise * c.value) / 100) : c.value;
+		else if (c.how !== 'percent_basic')
+			out[c.head] += c.how === 'percent' ? rupee((payPaise * c.value) / 100) : c.value;
 	}
+	for (const c of components) if (c.how === 'percent_basic') out[c.head] += rupee((out.basic * c.value) / 100);
 	if (rest) out[rest] += Math.max(0, payPaise - structureTotal(out));
 	return out;
 }

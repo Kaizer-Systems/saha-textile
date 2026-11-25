@@ -73,7 +73,9 @@ export class PayrollSetupController {
 	@RequirePermissions('accounts.index')
 	@ApiOperation({ operationId: 'payrollStructurePreview', summary: 'What a structure gives on a monthly pay (S4)' })
 	preview(@Body(new ZodValidationPipe(StructurePreviewInput)) body: StructurePreviewInput) {
-		return this.templates.preview(body.components, body.payINR);
+		return body.ctc
+			? this.templates.previewCtc(body.components, body.payINR)
+			: this.templates.preview(body.components, body.payINR);
 	}
 
 	@Post('structures')

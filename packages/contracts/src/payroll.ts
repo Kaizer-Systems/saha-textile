@@ -807,6 +807,8 @@ export type SalaryTemplateWriteInput = z.input<typeof SalaryTemplateWrite>;
 export const StructurePreviewInput = z.object({
 	components: z.array(StructureComponentWrite).min(1).max(6),
 	payINR: Rupees,
+	/** Brief 26 SR1: `payINR` is the yearly CTC, split with the employer's share inside it. */
+	ctc: z.boolean().default(false),
 });
 export type StructurePreviewInput = z.infer<typeof StructurePreviewInput>;
 export type StructurePreviewInputValue = z.input<typeof StructurePreviewInput>;
@@ -821,6 +823,10 @@ export const StructurePreview = z.object({
 	basicSharePct: z.number(),
 	/** Allowances counted as wages because basic and DA are under half (S4's warning). */
 	shortfallINR: z.number(),
+	/** SR1, from a CTC: the employer's share inside it, the month's CTC, and false when the rest would go below 0. */
+	employerINR: z.number().optional(),
+	ctcMonthINR: z.number().optional(),
+	fits: z.boolean().optional(),
 });
 export type StructurePreview = z.infer<typeof StructurePreview>;
 

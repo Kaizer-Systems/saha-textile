@@ -10,15 +10,20 @@ import type {
 	StructureComponentWrite,
 } from '@saha-textile/contracts';
 import {
+	gratuityProvision,
+	monthPay,
 	SALARY_HEADS,
+	structureFromCtc,
 	structureFromTemplate,
 	wageShortfall,
 	wageTreatment,
+	type SalaryStructure,
 	type SalaryTemplateRepository,
 } from '@saha-textile/core-domain';
 
 import { SALARY_TEMPLATE_REPOSITORY } from '../infra/tokens';
 import { accountsRefusal } from '../ledger/accounts-refusal';
+import { PayrollRulesService } from './payroll-rules.service';
 
 const paise = (inr: number) => Math.round(inr * 100);
 
@@ -29,7 +34,10 @@ const inPaise = (components: readonly StructureComponentWrite[]) =>
 /** Salary structure templates (accounts brief S4): a % of pay, a fixed amount or the rest, per head. */
 @Injectable()
 export class SalaryTemplatesService {
-	constructor(@Inject(SALARY_TEMPLATE_REPOSITORY) private readonly store: SalaryTemplateRepository) {}
+	constructor(
+		@Inject(SALARY_TEMPLATE_REPOSITORY) private readonly store: SalaryTemplateRepository,
+		@Inject(PayrollRulesService) private readonly rules: Pick<PayrollRulesService, 'forMonth'>,
+	) {}
 
 	list(): Promise<SalaryTemplate[]> {
 		return this.store.list();
@@ -37,7 +45,43 @@ export class SalaryTemplatesService {
 
 	/** S4: what a template gives on a monthly pay, and how much of it counts as wages. */
 	preview(components: readonly StructureComponentWrite[], payINR: number): StructurePreview {
-		const s = structureFromTemplate(inPaise(components), paise(payINR));
+		return this.shown(components, structureFromTemplate(inPaise(components), paise(payINR)));
+	}
+
+	/**
+	 * Brief 26 SR1: what a template gives from a yearly CTC: a month's CTC split with the employer's PF, ESI and
+	 * gratuity inside it, by this month's rules, for someone on PF and ESI.
+	 */
+	async previewCtc(
+		components: readonly StructureComponentWrite[],
+		ctcYearINR: number,
+		now = new Date(),
+	): Promise<StructurePreview> {
+		const month = new Date(now.getTime() + 5.5 * 3_600_000).toISOString().slice(0, 7);
+		const { pay: rules, schemes } = await this.rules.forMonth(month);
+		const split = structureFromCtc(inPaise(components), Math.round(paise(ctcYearINR) / 12), (s) => {
+			const p = monthPay({
+				structure: s,
+				daysInMonth: 30,
+				paidDays: 30,
+				pfOn: true,
+				esiOn: true,
+				advanceDuePaise: 0,
+				tdsPaise: 0,
+				rules,
+				ptFor: () => 0,
+			});
+			return p.pfEmployerPaise + p.esiEmployerPaise + gratuityProvision(s, true, schemes);
+		});
+		return {
+			...this.shown(components, split.structure),
+			employerINR: split.employerPaise / 100,
+			ctcMonthINR: (split.grossPaise + split.employerPaise) / 100,
+			fits: split.fits,
+		};
+	}
+
+	private shown(components: readonly StructureComponentWrite[], s: SalaryStructure): StructurePreview {
 		const total = SALARY_HEADS.reduce((sum, head) => sum + s[head], 0);
 		const structure = Object.fromEntries(SALARY_HEADS.map((h) => [h, s[h] / 100])) as Record<SalaryHead, number>;
 		return {

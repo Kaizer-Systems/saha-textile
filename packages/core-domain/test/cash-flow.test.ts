@@ -301,3 +301,45 @@ describe('ratios', () => {
 		expect(ratios(ratioChart, open, noLiabilities, 365)).toMatchObject({ currentRatio: null, quickRatio: null });
 	});
 });
+
+describe('a firm’s sharing of profit (brief 25 YC3)', () => {
+	// A firm sells ₹500 for cash; Year close credits the partner ₹120 interest and ₹380 share through the appropriation
+	// ledgers (one kept in a sub-group of its own), and the partner draws ₹200 in cash.
+	const firm = {
+		groups: [
+			group('capital_account', 'liability'),
+			group('partners_current', 'liability'),
+			group('bank_accounts', 'asset'),
+			group('sales_accounts', 'income'),
+			group('appropriation', 'expense'),
+			group('partner_shares', 'expense', 'appropriation', null),
+		],
+		ledgers: [
+			ledger('capital', 'capital_account'),
+			ledger('current', 'partners_current'),
+			ledger('bank', 'bank_accounts'),
+			ledger('sales', 'sales_accounts'),
+			ledger('interest_on_capital', 'appropriation'),
+			ledger('share_of_profit', 'partner_shares'),
+		],
+	};
+	const before = { bank: 100_000, capital: -100_000 };
+	const after = {
+		bank: 130_000,
+		capital: -100_000,
+		current: -30_000,
+		sales: -50_000,
+		interest_on_capital: 12_000,
+		share_of_profit: 38_000,
+	};
+
+	it('keeps the profit before sharing and shows only the cash the partner drew as owners’ money', () => {
+		const statement = cashFlowStatement(firm, before, after);
+		expect(statement.lines).toEqual([
+			{ section: 'operating', key: 'profit', paise: 50_000 },
+			{ section: 'financing', key: 'partners_current', paise: -20_000 },
+		]);
+		expect(statement.netChange).toBe(30_000);
+		expect(statement.openingCash + statement.netChange).toBe(statement.closingCash);
+	});
+});

@@ -23,6 +23,7 @@ import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
 import { PAYROLL_KEYS, PayrollGateway } from '@core/accounts/payroll.gateway';
+import { LOCATION_KEYS, LocationsGateway } from '@core/locations/locations.gateway';
 import { apiProblem, shortDate } from '@core/purchasing/purchasing-format';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
@@ -30,12 +31,14 @@ import { HasPermissionDirective } from '@shared/directives/has-permission.direct
 
 import type {
 	BonusRules,
+	Holiday,
 	IncomeTaxRules,
 	PayrollRulesVersion,
 	PayrollRulesWriteInput,
 	PtBasis,
 	PtFrequency,
 	StatePayrollRules,
+	StoreShift,
 } from '@saha-textile/contracts';
 
 const inr = (paise: number) => paise / 100;
@@ -68,6 +71,8 @@ export interface StateForm {
 	ptExemptDisability: boolean;
 	/** Brief 26 LV1: the State's leave types, as the contract holds them (edited in the leave rule editor). */
 	leaveTypes: NonNullable<StatePayrollRules['leaveTypes']>;
+	/** Brief 26 LV1, AT2: the State's holidays, for every store in it (null) or one. */
+	holidays: Holiday[];
 	ptMonths: string;
 	ptDueDay: number;
 	lwfEmployee: number;
@@ -166,6 +171,7 @@ export function startingForm(stateCode: string, start: PtStartingSet | undefined
 		ptExemptAge: rules?.ptExemptFromAge ?? null,
 		ptExemptDisability: rules?.ptExemptDisability ?? false,
 		leaveTypes: [],
+		holidays: [],
 		ptMonths: (rules?.ptMonths ?? []).join(', '),
 		ptDueDay: rules?.ptDueDay ?? 21,
 		lwfEmployee: 0,
@@ -186,6 +192,7 @@ export function stateToForm(s: StatePayrollRules): StateForm {
 		ptExemptAge: s.ptExemptFromAge ?? null,
 		ptExemptDisability: s.ptExemptDisability ?? false,
 		leaveTypes: (s.leaveTypes ?? []).map((t) => structuredClone(t)),
+		holidays: (s.holidays ?? []).map((h) => ({ ...h })),
 		ptMonths: s.ptMonths.join(', '),
 		ptDueDay: s.ptDueDay,
 		lwfEmployee: inr(s.lwfEmployeePaise),
@@ -206,6 +213,7 @@ export function stateToWrite(s: StateForm): StatePayrollRules {
 		...(s.ptExemptAge ? { ptExemptFromAge: s.ptExemptAge } : {}),
 		...(s.ptExemptDisability ? { ptExemptDisability: true } : {}),
 		...(s.leaveTypes.length ? { leaveTypes: s.leaveTypes } : {}),
+		...(s.holidays.length ? { holidays: s.holidays } : {}),
 		ptMonths: s.ptFrequency === 'half_yearly' || s.ptFrequency === 'yearly' ? monthList(s.ptMonths) : [],
 		ptDueDay: s.ptDueDay,
 		lwfEmployeePaise: paise(s.lwfEmployee),
@@ -368,6 +376,8 @@ export interface RulesForm {
 	/** Brief 26 BN-D3: the heads counted as wages for everyone, and PF on them once the CA confirms. */
 	wageHeads: WageHead[];
 	pfUsesCodeWages: boolean;
+	/** Brief 26 AT1: each store's shift and weekly offs; a store without one works the default shift. */
+	shifts: StoreShift[];
 }
 
 /** Two lists of heads holding the same heads, in any order. */
@@ -425,6 +435,7 @@ export function toForm(v: PayrollRulesVersion, from: string): RulesForm {
 			: null,
 		wageHeads: [...(v.wageHeads ?? CODE_WAGE_HEADS)],
 		pfUsesCodeWages: v.pfUsesCodeWages ?? false,
+		shifts: (v.shifts ?? []).map((sh) => ({ ...sh, weeklyOff: [...sh.weeklyOff] })),
 	};
 }
 
@@ -459,6 +470,7 @@ export function toWrite(f: RulesForm): PayrollRulesWriteInput {
 		ptDueDay: f.ptDueDay,
 		lwfDueDay: f.lwfDueDay,
 		states: f.states.map(stateToWrite),
+		...(f.shifts.length ? { shifts: f.shifts } : {}),
 		...(f.incomeTax ? { incomeTax: taxToWrite(f.incomeTax) } : {}),
 		...(f.bonus
 			? {
@@ -605,6 +617,13 @@ export class PayrollRulesPage {
 	private readonly notifier = inject(NotificationService);
 	private readonly queries = inject(QueryClient);
 
+	private readonly locationsGateway = inject(LocationsGateway);
+	readonly locations = injectQuery(() => ({
+		queryKey: LOCATION_KEYS.list,
+		queryFn: () => firstValueFrom(this.locationsGateway.list()),
+	}));
+	/** Today in India, the date a new holiday starts on. */
+	readonly today = new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10);
 	readonly versions = injectQuery(() => ({
 		queryKey: PAYROLL_KEYS.rules,
 		queryFn: () => firstValueFrom(this.gateway.rules()),
@@ -679,7 +698,7 @@ export class PayrollRulesPage {
 	/* ------------------------------------------------------------------ brief 26 LV1, LV2: leave per State */
 
 	/** LV1: which part of the State's set is shown: professional tax and the welfare fund, or leave. */
-	readonly stateSection = signal<'pt' | 'leave'>('pt');
+	readonly stateSection = signal<'pt' | 'leave' | 'holidays'>('pt');
 	/** LV2: the leave type whose rules are open, by key ('' for none), and its rule shown. */
 	readonly leaveOpen = signal('');
 	readonly leaveRuleAt = signal(0);
@@ -738,6 +757,71 @@ export class PayrollRulesPage {
 		this.patchLeaveTypes((types) => types.filter((t) => t.key !== key));
 		if (this.leaveOpen() === key) this.leaveOpen.set('');
 	}
+
+	/** LV1, AT2: a holiday of the State, today's date and every store until changed. */
+	addHoliday(): void {
+		const st = this.picked();
+		if (st) this.patchState({ holidays: [...st.holidays, { day: this.today, name: '', locationId: null }] });
+	}
+
+	setHoliday(index: number, fields: Partial<Holiday>): void {
+		const st = this.picked();
+		if (st) this.patchState({ holidays: st.holidays.map((h, i) => (i === index ? { ...h, ...fields } : h)) });
+	}
+
+	removeHoliday(index: number): void {
+		const st = this.picked();
+		if (st) this.patchState({ holidays: st.holidays.filter((_, i) => i !== index) });
+	}
+
+	/** The stores of a State, for a holiday kept to one of them. */
+	storesOf(stateCode: string): { id: string; name: string }[] {
+		return (this.locations.data() ?? []).filter((l) => l.stateCode === stateCode);
+	}
+
+	/** AT1: a store's shift, starting from the default (10:00-19:00, 8 hours, Sundays off). */
+	addShift(): void {
+		const f = this.form();
+		const taken = new Set(f?.shifts.map((sh) => sh.locationId));
+		const store = (this.locations.data() ?? []).find((l) => !taken.has(l.id));
+		if (!f || !store) return;
+		this.form.set({
+			...f,
+			shifts: [
+				...f.shifts,
+				{
+					locationId: store.id,
+					start: '10:00',
+					end: '19:00',
+					fullDayHours: 8,
+					graceMinutes: 0,
+					weeklyOff: [0],
+				},
+			],
+		});
+	}
+
+	setShift(index: number, fields: Partial<StoreShift>): void {
+		this.form.update((f) =>
+			f ? { ...f, shifts: f.shifts.map((sh, i) => (i === index ? { ...sh, ...fields } : sh)) } : f,
+		);
+	}
+
+	removeShift(index: number): void {
+		this.form.update((f) => (f ? { ...f, shifts: f.shifts.filter((_, i) => i !== index) } : f));
+	}
+
+	/** A day of the week on or off for a store's shift. */
+	toggleOff(index: number, weekday: number): void {
+		const sh = this.form()?.shifts[index];
+		if (!sh) return;
+		const off = sh.weeklyOff.includes(weekday)
+			? sh.weeklyOff.filter((d) => d !== weekday)
+			: [...sh.weeklyOff, weekday].sort((a, b) => a - b);
+		this.setShift(index, { weeklyOff: off });
+	}
+
+	readonly weekdays = [0, 1, 2, 3, 4, 5, 6] as const;
 
 	openLeave(key: string): void {
 		this.leaveOpen.set(this.leaveOpen() === key ? '' : key);

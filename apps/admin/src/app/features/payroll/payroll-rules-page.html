@@ -439,6 +439,16 @@
 				>
 					{{ 'payroll_section_leave' | transloco }}
 				</button>
+				<button
+					type="button"
+					class="btn btn-sm"
+					id="pr_section_holidays"
+					[class.btn-theme]="stateSection() === 'holidays'"
+					[class.btn-outline]="stateSection() !== 'holidays'"
+					(click)="stateSection.set('holidays')"
+				>
+					{{ 'payroll_section_holidays' | transloco }}
+				</button>
 			</div>
 			@if (stateSection() === 'leave') {
 			<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
@@ -927,7 +937,95 @@
 					</div>
 				</div>
 			</div>
-			} } } @else {
+			} } } @if (stateSection() === 'holidays') {
+			<!-- Brief 26 LV1, AT2: the State's holidays, for every store in it or one; a holiday never uses up leave. -->
+			<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+				<small class="text-muted">
+					{{ 'payroll_holidays_sub' | transloco: { state: stateName(st.stateCode) } }}
+				</small>
+				<button
+					type="button"
+					class="btn btn-sm btn-outline"
+					id="pr_holiday_add"
+					(click)="addHoliday()"
+				>
+					<i class="ri-add-line"></i>
+					{{ 'payroll_holiday_add' | transloco }}
+				</button>
+			</div>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'date' | transloco }}</th>
+							<th>{{ 'payroll_holiday_name' | transloco }}</th>
+							<th>{{ 'location' | transloco }}</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (h of st.holidays; track $index; let i = $index) {
+						<tr>
+							<td>
+								<input
+									class="form-control"
+									type="date"
+									[id]="'pr_holiday_day_' + i"
+									[attr.aria-label]="'date' | transloco"
+									[ngModel]="h.day"
+									(ngModelChange)="setHoliday(i, { day: $event })"
+								/>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									maxlength="80"
+									[id]="'pr_holiday_name_' + i"
+									[attr.aria-label]="'payroll_holiday_name' | transloco"
+									[ngModel]="h.name"
+									(ngModelChange)="setHoliday(i, { name: $event })"
+								/>
+							</td>
+							<td>
+								<select
+									class="form-select"
+									[id]="'pr_holiday_store_' + i"
+									[attr.aria-label]="'location' | transloco"
+									[ngModel]="h.locationId ?? ''"
+									(ngModelChange)="setHoliday(i, { locationId: $event || null })"
+								>
+									<option value="">{{ 'payroll_holiday_every_store' | transloco }}</option>
+									@for (l of storesOf(st.stateCode); track l.id) {
+									<option [value]="l.id">{{ l.name }}</option>
+									}
+								</select>
+							</td>
+							<td class="text-end">
+								<button
+									type="button"
+									class="btn btn-sm btn-outline"
+									[id]="'pr_holiday_remove_' + i"
+									[title]="'remove' | transloco"
+									(click)="removeHoliday(i)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</button>
+							</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td
+								colspan="4"
+								class="text-muted"
+							>
+								{{ 'payroll_holidays_none' | transloco }}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			} @if (stateSection() === 'pt') {
 			<div class="row g-3">
 				<div class="col-md-4">
 					<label
@@ -1238,7 +1336,138 @@
 			>
 				{{ 'payroll_state_remove' | transloco: { state: stateName(st.stateCode) } }}
 			</button>
-			} } @if (f.incomeTax; as t) {
+			} }
+			<!-- Brief 26 AT1: each store's shift: the hours that make a full day, the grace, the weekly offs. -->
+			<div class="d-flex justify-content-between align-items-center mt-4 mb-2 flex-wrap gap-2">
+				<h6 class="mb-0">{{ 'payroll_shifts_title' | transloco }}</h6>
+				<button
+					type="button"
+					class="btn btn-sm btn-outline"
+					id="pr_shift_add"
+					[disabled]="f.shifts.length >= (locations.data()?.length ?? 0)"
+					(click)="addShift()"
+				>
+					<i class="ri-add-line"></i>
+					{{ 'payroll_shift_add' | transloco }}
+				</button>
+			</div>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'location' | transloco }}</th>
+							<th>{{ 'payroll_shift_start' | transloco }}</th>
+							<th>{{ 'payroll_shift_end' | transloco }}</th>
+							<th>{{ 'payroll_shift_full_day' | transloco }}</th>
+							<th>{{ 'payroll_shift_grace' | transloco }}</th>
+							<th>{{ 'payroll_shift_weekly_off' | transloco }}</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (sh of f.shifts; track $index; let i = $index) {
+						<tr>
+							<td>
+								<select
+									class="form-select"
+									[id]="'pr_shift_store_' + i"
+									[attr.aria-label]="'location' | transloco"
+									[ngModel]="sh.locationId"
+									(ngModelChange)="setShift(i, { locationId: $event })"
+								>
+									@for (l of locations.data() ?? []; track l.id) {
+									<option [value]="l.id">{{ l.name }}</option>
+									}
+								</select>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									type="time"
+									[id]="'pr_shift_start_' + i"
+									[attr.aria-label]="'payroll_shift_start' | transloco"
+									[ngModel]="sh.start"
+									(ngModelChange)="setShift(i, { start: $event })"
+								/>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									type="time"
+									[id]="'pr_shift_end_' + i"
+									[attr.aria-label]="'payroll_shift_end' | transloco"
+									[ngModel]="sh.end"
+									(ngModelChange)="setShift(i, { end: $event })"
+								/>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									type="number"
+									min="1"
+									max="24"
+									step="0.5"
+									[id]="'pr_shift_hours_' + i"
+									[attr.aria-label]="'payroll_shift_full_day' | transloco"
+									[ngModel]="sh.fullDayHours"
+									(ngModelChange)="setShift(i, { fullDayHours: +$event })"
+								/>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									type="number"
+									min="0"
+									max="240"
+									[id]="'pr_shift_grace_' + i"
+									[attr.aria-label]="'payroll_shift_grace' | transloco"
+									[ngModel]="sh.graceMinutes"
+									(ngModelChange)="setShift(i, { graceMinutes: +$event })"
+								/>
+							</td>
+							<td>
+								<div class="d-flex flex-wrap gap-1">
+									@for (w of weekdays; track w) {
+									<button
+										type="button"
+										class="btn btn-sm"
+										[id]="'pr_shift_off_' + i + '_' + w"
+										[class.btn-theme]="sh.weeklyOff.includes(w)"
+										[class.btn-outline]="!sh.weeklyOff.includes(w)"
+										[attr.aria-pressed]="sh.weeklyOff.includes(w)"
+										(click)="toggleOff(i, w)"
+									>
+										{{ 'payroll_weekday_' + w | transloco }}
+									</button>
+									}
+								</div>
+							</td>
+							<td class="text-end">
+								<button
+									type="button"
+									class="btn btn-sm btn-outline"
+									[id]="'pr_shift_remove_' + i"
+									[title]="'remove' | transloco"
+									(click)="removeShift(i)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</button>
+							</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td
+								colspan="7"
+								class="text-muted"
+							>
+								{{ 'payroll_shifts_none' | transloco }}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			@if (f.incomeTax; as t) {
 			<h6 class="mt-4">{{ 'payroll_tax_rules_title' | transloco }}</h6>
 			<div class="row g-3">
 				<div class="col-md-3">

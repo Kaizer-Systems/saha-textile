@@ -146,6 +146,7 @@ describe('the due-date table', () => {
 		expect(headings).toContain('rs_due_when');
 		expect(headings).not.toContain('rs_rate');
 		expect(headings).not.toContain('rs_limit');
+		expect(headings[0]).toBe('rs_what');
 		const rows = [...fixture.nativeElement.querySelectorAll('tbody tr')] as HTMLElement[];
 		expect(rows).toHaveLength(4);
 		const cells = (row: HTMLElement) => [...row.querySelectorAll('td')].map((td) => td.textContent?.trim());
@@ -225,6 +226,18 @@ describe('adding and changing a due-date rule', () => {
 		page.selected.set('gstr3b_qrmp_22');
 		await drawn(fixture);
 		expect(field<HTMLInputElement>(fixture, 'rs_due_states').value).toBe('19, 27, 33');
+	});
+
+	it('names the rule column and leaves an empty set’s row across all six columns', async () => {
+		const { fixture, page } = await open(dueSet([]));
+		await drawn(fixture);
+		expect(page.nameKey()).toBe('rs_what');
+		expect(fixture.nativeElement.querySelectorAll('thead th')).toHaveLength(6);
+		expect(field(fixture, 'rs_name')).toBeNull();
+		expect(fixture.nativeElement.querySelector('tbody td')?.getAttribute('colspan')).toBe('6');
+		page.addEntry();
+		await drawn(fixture);
+		expect(fixture.nativeElement.querySelector('label[for="rs_name"]')?.textContent?.trim()).toBe('rs_what');
 	});
 
 	it('shows the due-date form read-only to someone who may not edit templates', async () => {

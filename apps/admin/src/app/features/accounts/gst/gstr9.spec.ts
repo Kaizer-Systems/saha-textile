@@ -162,6 +162,8 @@ describe('the year and the figures', () => {
 	it('shows a count as it is and an amount in rupees', () => {
 		expect(figure({ unit: 'count' }, 14)).toBe('14');
 		expect(figure({ unit: 'paise' }, 123_456)).toBe('₹1,234.56');
+		expect(figure({ unit: 'paise' }, -100_000)).toBe('−₹1,000.00');
+		expect(figure({ unit: 'count' }, -1)).toBe('-1');
 	});
 
 	it('takes a month as agreeing when every filed figure is within ₹1 of the books, ignoring returns not filed', () => {
@@ -238,6 +240,8 @@ describe('the GSTR-9 page (G9)', () => {
 				.slice(1, 4)
 				.map((td) => td.textContent?.trim()),
 		).toEqual(['14', '15', '—']);
+		// Books above the returns: the difference keeps its minus sign.
+		expect(tds(rows[2])[3]?.textContent?.trim()).toBe('−₹500.00');
 		expect(fixture.nativeElement.querySelectorAll('button[title="gstr9_explain"]')).toHaveLength(5);
 	});
 

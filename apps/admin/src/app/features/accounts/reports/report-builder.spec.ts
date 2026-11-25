@@ -578,6 +578,33 @@ describe('saving as a template (V2)', () => {
 	});
 });
 
+describe('a new report’s first columns, filled once', () => {
+	it('leaves the list empty when every column is removed, instead of filling it again', async () => {
+		const { fixture, page } = await builder();
+		expect(page.columns()).toHaveLength(5);
+		for (const key of [...page.columns()]) page.removeColumn(key);
+		await settle(fixture);
+		await page.catalogue.refetch();
+		await settle(fixture);
+		expect(page.columns()).toEqual([]);
+	});
+
+	it('starts with no columns, and does not loop, when the data asked for has no fields or is not in the catalogue', async () => {
+		const empty = await builder(
+			{ catalogue: vi.fn(() => of({ ...CATALOGUE, invoiceLines: [] })) },
+			{ data: 'invoiceLines' },
+		);
+		expect([empty.page.dataset(), empty.page.columns()]).toEqual(['invoiceLines', []]);
+		const missing = await builder({ catalogue: vi.fn(() => of({ invoiceLines: CATALOGUE.invoiceLines })) });
+		expect([missing.page.dataset(), missing.page.columns()]).toEqual(['invoices', []]);
+	});
+
+	it('fills nothing for a saved report', async () => {
+		const { page } = await builder({ one: vi.fn(() => throwError(() => new Error('gone'))) }, { id: 'rep1' });
+		expect(page.columns()).toEqual([]);
+	});
+});
+
 describe('downloading the whole report', () => {
 	it('runs every row and saves a spreadsheet named after the report, or “report”', async () => {
 		const { fixture, page, calls } = await builder();

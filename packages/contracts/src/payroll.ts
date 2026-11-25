@@ -68,6 +68,23 @@ export const TaxDeclaration = z.object({
 });
 export type TaxDeclaration = z.infer<typeof TaxDeclaration>;
 
+const LeaveDays = z.number().min(0).max(366);
+
+/**
+ * OB1, OB2: an employee's leave on the day they were added to these books, per type: carried from before the type's
+ * current year (null when they joined in it), credited this year so far (as worked out, or typed over), and taken.
+ */
+export const OpeningLeave = z.object({
+	typeKey: z.string().trim().min(1).max(6),
+	asOf: IsoDate,
+	carried: LeaveDays.nullable(),
+	credited: LeaveDays,
+	/** What the rules worked out, kept beside a typed-over figure for the audit and the "changed from" note. */
+	creditedWorkedOut: LeaveDays,
+	taken: LeaveDays,
+});
+export type OpeningLeave = z.infer<typeof OpeningLeave>;
+
 export const EmployeeWrite = z.object({
 	name: z.string().trim().min(2).max(120),
 	code: z.string().trim().max(20).default(''),
@@ -77,6 +94,8 @@ export const EmployeeWrite = z.object({
 	userId: Id.nullable().default(null),
 	locationId: Id,
 	joinedOn: IsoDate,
+	/** Brief 26 OB-D2: a joining date set from memory (papers not traced), flagged for gratuity and service reports. */
+	joinedOnApproximate: z.boolean().optional(),
 	leftOn: IsoDate.nullable().default(null),
 	pan: z
 		.string()
@@ -112,6 +131,8 @@ export const EmployeeWrite = z.object({
 	pfOn: z.boolean().default(true),
 	esiOn: z.boolean().default(true),
 	structure: SalaryStructureWrite,
+	/** OB1, OB2: leave on the day the person was added, per type. */
+	openingLeave: z.array(OpeningLeave).max(20).optional(),
 	/** An advance still to be recovered, and how much a month (S9). */
 	advanceDueINR: z.number().nonnegative().default(0),
 	advancePerMonthINR: z.number().nonnegative().default(0),
@@ -248,6 +269,72 @@ const Pct = z.number().min(0).max(100);
 const Paise = z.number().int().nonnegative();
 const DueDay = z.number().int().min(1).max(31);
 
+/**
+ * Brief 26 LV1, LV2 (approved 2026-11-26): a leave type and its ordered rules, the first whose condition matches
+ * applying. Each type runs on its own year: from a month for 1 to 12 months, or from each person's joining day.
+ */
+export const LeaveRule = z.object({
+	when: z
+		.object({
+			designation: z.string().trim().max(80).optional(),
+			department: z.string().trim().max(80).optional(),
+		})
+		.nullable()
+		.optional(),
+	year: z.union([
+		z.object({ startMonth: z.number().int().min(1).max(12), months: z.number().int().min(1).max(12) }),
+		z.object({ fromJoining: z.literal(true) }),
+	]),
+	credit: z.discriminatedUnion('kind', [
+		z.object({ kind: z.literal('year_start'), days: LeaveDays }),
+		z.object({ kind: z.literal('monthly'), days: z.number().min(0).max(31) }),
+		z.object({
+			kind: z.literal('per_days_worked'),
+			every: z.number().int().min(1).max(366),
+			give: z.number().min(0).max(31),
+		}),
+		z.object({ kind: z.literal('on_request'), days: LeaveDays }),
+		z.object({ kind: z.literal('none') }),
+	]),
+	waitDays: z.number().int().min(0).max(366).nullable().optional(),
+	joiners: z.enum(['months_left', 'days_left', 'none']),
+	rounding: z.enum(['half', 'whole', 'none']),
+	carryMax: LeaveDays.nullable(),
+	aboveCap: z.enum(['encash', 'lapse']),
+	validity: z.discriminatedUnion('kind', [
+		z.object({ kind: z.literal('year_end') }),
+		z.object({ kind: z.literal('days'), n: z.number().int().min(1).max(3_650) }),
+		z.object({ kind: z.literal('months'), n: z.number().int().min(1).max(120) }),
+		z.object({ kind: z.literal('never') }),
+	]),
+	encash: z.object({
+		onLeaving: z.boolean(),
+		onRequestMax: LeaveDays.nullable(),
+		dayPay: z.enum(['month_days', '26', '30']),
+	}),
+	taking: z.object({
+		halfDays: z.boolean(),
+		noticeDays: z.number().int().min(0).max(90).nullable(),
+		countOffsBetween: z.boolean(),
+		canGoNegative: z.boolean(),
+	}),
+});
+export type LeaveRule = z.infer<typeof LeaveRule>;
+
+export const LeaveType = z.object({
+	/** Short code shown in attendance (EL, CL, SL). */
+	key: z
+		.string()
+		.trim()
+		.toUpperCase()
+		.regex(/^[A-Z0-9]{1,6}$/, { message: 'leave_key_shape' }),
+	name: z.string().trim().min(2).max(60),
+	paid: z.enum(['full', 'half', 'unpaid']),
+	active: z.boolean(),
+	rules: z.array(LeaveRule).min(1).max(10),
+});
+export type LeaveType = z.infer<typeof LeaveType>;
+
 /** A slab, and (brief 26 PT1) the one month it charges another amount in, as Maharashtra's ₹300 in February. */
 const PtSlab = z.object({
 	upToPaise: Paise.nullable(),
@@ -282,6 +369,12 @@ export const StatePayrollRules = z
 		/** PT1: the age from which the State stops the tax, and whether a disability of 40% or more frees a person. */
 		ptExemptFromAge: z.number().int().min(18).max(120).nullable().optional(),
 		ptExemptDisability: z.boolean().optional(),
+		/** Brief 26 LV1: the State's leave types, each with its rules; none in versions saved before. */
+		leaveTypes: z
+			.array(LeaveType)
+			.max(20)
+			.refine((types) => new Set(types.map((t) => t.key)).size === types.length, { message: 'leave_key_twice' })
+			.optional(),
 		ptMonths: z.array(z.number().int().min(1).max(12)).max(12).default([]),
 		ptDueDay: DueDay.default(21),
 		lwfEmployeePaise: Paise.default(0),

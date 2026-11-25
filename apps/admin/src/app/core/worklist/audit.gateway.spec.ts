@@ -33,4 +33,16 @@ describe('the audit gateway', () => {
 		).flush({ items: [], total: 0, page: 1, pageSize: 50 });
 		http.verify();
 	});
+
+	it('reads everyone who can appear in the trail, by name', () => {
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+		const gateway = TestBed.inject(AuditGateway);
+		const http = TestBed.inject(HttpTestingController);
+		gateway.people().subscribe();
+		http.expectOne(
+			(req) => req.method === 'GET' && req.urlWithParams === `${runtimeConfig.apiUrl}/admin/audit-logs/people`,
+		).flush([]);
+		http.verify();
+	});
 });

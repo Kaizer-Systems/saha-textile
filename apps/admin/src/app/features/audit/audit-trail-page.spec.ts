@@ -17,8 +17,8 @@ import { AUDIT_MODULES, AuditTrailPage, changeLine, shown } from './audit-trail-
 import type { AuditLogEntry } from '@saha-textile/contracts';
 
 /**
- * Settings › Audit trail (brief 26 AU1): every action the admin keeps, reviewed by module, action, person and time,
- * a page at a time; each row opens the change in full; the Export menu.
+ * Settings › Audit trail (brief 26 AU1): every action the admin keeps, reviewed by module, action, person (by name)
+ * and time, a page at a time; each row opens the change in full; the Export menu writes every matching record.
  */
 
 const settle = async (fixture: { whenStable: () => Promise<unknown>; detectChanges: () => void }) => {
@@ -49,7 +49,7 @@ const entry = (over: Partial<AuditLogEntry> = {}): AuditLogEntry =>
 		...over,
 	}) as AuditLogEntry;
 const ENTRIES = [
-	entry(),
+	entry({ actorName: 'Asha Das' }),
 	entry({
 		id: 'au2',
 		actorUserId: null,
@@ -59,13 +59,35 @@ const ENTRIES = [
 		diffs: [],
 		metadata: {},
 	}),
+	entry({
+		id: 'au3',
+		actorUserId: 'usr_9',
+		action: 'stock.adjust',
+		entityType: 'variant',
+		entityId: 'var_1',
+		diffs: [{ field: 'quantity', before: 4, after: 3 }],
+		metadata: {},
+	}),
 ];
+const PEOPLE = [
+	{ id: 'usr_1', name: 'Asha Das' },
+	{ id: 'usr_9', name: 'Mitali Sen' },
+];
+type Query = Record<string, string | number>;
 
-async function trail(response: { items: AuditLogEntry[]; total: number } | null = { items: ENTRIES, total: 2 }) {
+/** The trail as the API pages it: the screen's page of fifty, or the export's pages of 200. */
+async function trail(
+	read: ((query: Query) => { items: AuditLogEntry[]; total: number }) | null = () => ({ items: ENTRIES, total: 3 }),
+) {
 	TestBed.resetTestingModule();
 	const views: { detectChanges: () => void }[] = [];
 	const opened: unknown[] = [];
-	const gateway = { list: vi.fn(() => (response === null ? NEVER : of({ ...response, page: 1, pageSize: 50 }))) };
+	const gateway = {
+		list: vi.fn((query: Query) =>
+			read === null ? NEVER : of({ ...read(query), page: query['page'], pageSize: query['pageSize'] }),
+		),
+		people: vi.fn(() => of(PEOPLE)),
+	};
 	TestBed.configureTestingModule({
 		imports: [
 			AuditTrailPage,
@@ -106,7 +128,7 @@ async function trail(response: { items: AuditLogEntry[]; total: number } | null 
 	const fixture = TestBed.createComponent(AuditTrailPage);
 	fixture.detectChanges();
 	// A trail that never arrives keeps the page from going stable: wait a turn instead.
-	if (response === null) await new Promise((resolve) => setTimeout(resolve, 0));
+	if (read === null) await new Promise((resolve) => setTimeout(resolve, 0));
 	else await settle(fixture);
 	const find = <T extends HTMLElement = HTMLInputElement>(selector: string) =>
 		fixture.nativeElement.querySelector(selector) as T | null;
@@ -115,7 +137,17 @@ async function trail(response: { items: AuditLogEntry[]; total: number } | null 
 		box?.dispatchEvent(new Event(box instanceof HTMLSelectElement ? 'change' : 'input'));
 		await settle(fixture);
 	};
-	return { fixture, page: fixture.componentInstance, gateway, opened, find, enter, settle: () => settle(fixture) };
+	const redrawModal = () => views.at(-1)?.detectChanges();
+	return {
+		fixture,
+		page: fixture.componentInstance,
+		gateway,
+		opened,
+		find,
+		enter,
+		redrawModal,
+		settle: () => settle(fixture),
+	};
 }
 
 const text = (node: Element | null | undefined) => node?.textContent?.replace(/\s+/g, ' ').trim();
@@ -142,7 +174,7 @@ describe('a change as the trail shows it', () => {
 });
 
 describe('Settings › Audit trail (AU1)', () => {
-	it('reads the admin’s first page of fifty, a row per record, and the system for no one', async () => {
+	it('reads the admin’s first page of fifty, each person by name, else by id, else the system', async () => {
 		const { page, gateway, find } = await trail();
 		expect(gateway.list).toHaveBeenCalledWith({ page: 1, pageSize: 50, audience: 'admin' });
 		expect([...(find<HTMLSelectElement>('#au_module')?.options ?? [])].map((o) => o.value)).toEqual([
@@ -150,16 +182,19 @@ describe('Settings › Audit trail (AU1)', () => {
 			...AUDIT_MODULES,
 		]);
 		const rows = [...(find('tbody')?.querySelectorAll('tr') ?? [])] as HTMLElement[];
+		const when = shortDateTime('2026-11-25T06:00:00.000Z');
 		expect(rows.map((tr) => [...tr.querySelectorAll('td')].map((td) => text(td)))).toEqual([
 			[
-				shortDateTime('2026-11-25T06:00:00.000Z'),
-				'usr_1',
+				when,
+				'Asha Das',
 				'payroll · payroll.rules.add',
 				'payroll_rules v5',
 				'pfRatePct: 12 → 10 · note: — → CA review · "New notification"',
 			],
-			[shortDateTime('2026-11-25T06:00:00.000Z'), 'wl_system', 'login · login', '', '—'],
+			[when, 'wl_system', 'login · login', '', '—'],
+			[when, 'usr_9', 'stock · stock.adjust', 'variant var_1', 'quantity: 4 → 3'],
 		]);
+		expect(ENTRIES.map((e) => page.who(e))).toEqual(['Asha Das', 'wl_system', 'usr_9']);
 		// An action without a module part is its own module.
 		expect([
 			page.moduleOf(entry({ action: 'stock.adjust' })),
@@ -168,13 +203,18 @@ describe('Settings › Audit trail (AU1)', () => {
 		]).toEqual(['stock', 'login', 1]);
 	});
 
-	it('narrows by module, action, person and India days, each change going back to the first page', async () => {
+	it('narrows by module, action, person (picked by name) and India days, each change back to the first page', async () => {
 		const { page, gateway, find, enter } = await trail();
+		expect([...(find<HTMLSelectElement>('#au_actor')?.options ?? [])].map((o) => [o.value, text(o)])).toEqual([
+			['', 'atr_anyone'],
+			['usr_1', 'Asha Das'],
+			['usr_9', 'Mitali Sen'],
+		]);
 		page.page.set(3);
 		await enter(find('#au_module'), 'payroll');
 		expect(page.page()).toBe(1);
 		await enter(find('#au_action'), '  payroll.rules.add  ');
-		await enter(find('#au_actor'), ' usr_1 ');
+		await enter(find('#au_actor'), 'usr_1');
 		await enter(find('#au_from'), '2026-11-01');
 		await enter(find('#au_to'), '2026-11-26');
 		expect(gateway.list).toHaveBeenLastCalledWith({
@@ -194,7 +234,7 @@ describe('Settings › Audit trail (AU1)', () => {
 	});
 
 	it('pages through the trail, held at either end', async () => {
-		const { page, gateway, find, settle } = await trail({ items: ENTRIES, total: 120 });
+		const { page, gateway, find, settle } = await trail(() => ({ items: ENTRIES, total: 120 }));
 		const prev = find<HTMLButtonElement>('#au_prev') as HTMLButtonElement;
 		const next = find<HTMLButtonElement>('#au_next') as HTMLButtonElement;
 		expect([page.pages(), prev.disabled, next.disabled]).toEqual([3, true, false]);
@@ -213,18 +253,20 @@ describe('Settings › Audit trail (AU1)', () => {
 		expect(page.page()).toBe(2);
 	});
 
-	it('says so when nothing is kept, with one page', async () => {
-		const { page, find } = await trail({ items: [], total: 0 });
+	it('says so when nothing is kept, with one page, and counts one page before the trail is read', async () => {
+		const { page, find } = await trail(() => ({ items: [], total: 0 }));
 		expect([page.pages(), text(find('td[colspan="5"]'))]).toEqual([1, 'atr_none']);
 		expect(find<HTMLButtonElement>('#au_next')?.disabled).toBe(true);
+		const reading = await trail(null);
+		expect(reading.page.pages()).toBe(1);
 	});
 
-	it('opens a record in full: who, the record, every field before and after, and what else was kept', async () => {
-		const { page, opened, find } = await trail();
+	it('opens a record in full: who by name, the record, every field before and after, and what else was kept', async () => {
+		const { page, opened, find, redrawModal } = await trail();
 		find('#atr_row_au1')?.click();
 		expect([page.open()?.id, opened]).toEqual(['au1', [{ centered: true, size: 'lg' }]]);
 		expect(text(inModal('.modal-title'))).toBe(`payroll.rules.add · ${shortDateTime('2026-11-25T06:00:00.000Z')}`);
-		expect(text(inModal('.modal-body p'))).toBe('atr_who: usr_1 · atr_record: payroll_rules v5');
+		expect(text(inModal('.modal-body p'))).toBe('atr_who: Asha Das · atr_record: payroll_rules v5');
 		const rows = [...(inModal('tbody')?.querySelectorAll('tr') ?? [])].map((tr) =>
 			[...tr.querySelectorAll('td')].map((td) => text(td)),
 		);
@@ -237,11 +279,16 @@ describe('Settings › Audit trail (AU1)', () => {
 		expect(text(inModal('.modal-body p'))).toBe('atr_who: wl_system · atr_record:');
 		expect(text(inModal('td[colspan="3"]'))).toBe('atr_no_fields');
 		expect(inModal('#au_metadata')?.textContent?.trim()).toBe('{}');
+		// Closed underneath: the pop-up names no one.
+		page.open.set(null);
+		redrawModal();
+		expect(text(inModal('.modal-body p'))).toBe('atr_who: · atr_record:');
 	});
 
-	it('writes the page shown for the Export menu, naming the module and days asked for', async () => {
-		const { page } = await trail();
-		expect(page.exportSource()).toEqual({
+	it('exports every record the filters match, read 200 at a time, naming the module and days asked for', async () => {
+		const { page, gateway } = await trail();
+		const source = await page.exportSource();
+		expect(source).toEqual({
 			fileName: 'audit-trail',
 			title: 'atr_title',
 			filters: [],
@@ -249,29 +296,39 @@ describe('Settings › Audit trail (AU1)', () => {
 			rows: [
 				[
 					'2026-11-25T06:00:00.000Z',
-					'usr_1',
+					'Asha Das',
 					'payroll',
 					'payroll.rules.add',
 					'payroll_rules v5',
 					'pfRatePct: 12 → 10 · note: — → CA review · "New notification"',
 				],
 				['2026-11-25T06:00:00.000Z', '', 'login', 'login', '', ''],
+				['2026-11-25T06:00:00.000Z', 'usr_9', 'stock', 'stock.adjust', 'variant var_1', 'quantity: 4 → 3'],
 			],
 		});
+		expect(gateway.list).toHaveBeenLastCalledWith({ page: 1, pageSize: 200, audience: 'admin' });
 		page.set('module', 'payroll');
 		page.set('to', '2026-11-26');
-		expect(page.exportSource().filters).toEqual([
+		expect((await page.exportSource()).filters).toEqual([
 			{ label: 'atr_module', value: 'payroll' },
 			{ label: 'atr_when', value: ' – 2026-11-26' },
 		]);
 		page.set('module', '');
 		page.set('to', '');
 		page.set('from', '2026-11-01');
-		expect(page.exportSource().filters).toEqual([{ label: 'atr_when', value: '2026-11-01 – ' }]);
+		expect((await page.exportSource()).filters).toEqual([{ label: 'atr_when', value: '2026-11-01 – ' }]);
 	});
 
-	it('writes no rows, and counts one page, before the trail is read', async () => {
-		const { page } = await trail(null);
-		expect([page.exportSource().rows, page.pages()]).toEqual([[], 1]);
+	it('reads page after page for the export until every matching record is in', async () => {
+		const pageOf = (n: number) => Array.from({ length: n }, (_, i) => entry({ id: `au_${i}` }));
+		const { page, gateway } = await trail((query) => ({
+			items: query['pageSize'] === 200 ? pageOf(query['page'] === 3 ? 50 : 200) : ENTRIES,
+			total: 450,
+		}));
+		page.set('module', 'stock');
+		const source = await page.exportSource();
+		expect(source.rows).toHaveLength(450);
+		const reads = gateway.list.mock.calls.map(([q]) => q).filter((q) => q['pageSize'] === 200);
+		expect(reads).toEqual([1, 2, 3].map((n) => ({ page: n, pageSize: 200, audience: 'admin', module: 'stock' })));
 	});
 });

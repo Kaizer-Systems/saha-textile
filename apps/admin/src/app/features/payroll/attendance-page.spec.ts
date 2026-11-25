@@ -645,6 +645,13 @@ describe('Payroll › Attendance (AT2, AT3)', () => {
 			},
 		});
 		expect([stranger.page.form(), stranger.refs.length, stranger.page.locationId()]).toEqual([null, 0, 'loc_b']);
+		// The first month read settles the link: a later month or store with the person in it opens nothing.
+		stranger.gateway.grid.mockImplementation((month: string, locationId: string) =>
+			of(grid({ month, locationId, people: [{ ...ASHA, employeeId: 'emp_9' }] })),
+		);
+		stranger.page.locationId.set('loc_s');
+		await stranger.settle();
+		expect([stranger.page.form(), stranger.refs.length]).toEqual([null, 0]);
 		const noDay = await attendance({
 			route: { snapshot: { queryParamMap: convertToParamMap({ month: '2026-09', employeeId: 'emp_1' }) } },
 		});

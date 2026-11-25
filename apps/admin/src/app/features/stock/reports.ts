@@ -21,6 +21,7 @@ import { AuthStore } from '@core/state/auth.store';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { PluralPipe } from '@shared/pipes/language.pipes';
+import { ExportMenu, captured, type CsvWriter, type ExportSource } from '@shared/ui/export-menu/export-menu';
 import { Pagination } from '@shared/ui/pagination/pagination';
 
 import { AdjustPopup } from './adjust-popup';
@@ -85,6 +86,7 @@ export const rowFromAgeing = (row: AgeingRow): StockListRow => ({
 		ShortDateTimePipe,
 		StockQuantityPipe,
 		TranslocoModule,
+		ExportMenu,
 	],
 })
 export class Reports {
@@ -218,8 +220,13 @@ export class Reports {
 			void this.queryClient.invalidateQueries({ queryKey: STOCK_KEYS.reports });
 	}
 
-	exportAgeing(): void {
-		downloadCsv(
+	/** EX1: for the Export menu, written by the same code as the CSV. */
+	exportAgeingSource(): () => ExportSource | null {
+		return () => captured(this.t('report_stock_ageing'), 'other', (save) => this.exportAgeing(save));
+	}
+
+	exportAgeing(save: CsvWriter = downloadCsv): void {
+		save(
 			'stock-ageing.csv',
 			[
 				this.t('sku'),
@@ -240,10 +247,15 @@ export class Reports {
 		);
 	}
 
-	exportValuation(): void {
+	/** EX1: for the Export menu, written by the same code as the CSV. */
+	exportValuationSource(): () => ExportSource | null {
+		return () => captured(this.t('report_stock_value'), 'other', (save) => this.exportValuation(save));
+	}
+
+	exportValuation(save: CsvWriter = downloadCsv): void {
 		const data = this.valuation.data();
 		if (!data) return;
-		downloadCsv(
+		save(
 			`stock-value-${data.asOn}.csv`,
 			[
 				this.t(`group_${data.groupBy}`),
@@ -266,9 +278,14 @@ export class Reports {
 	}
 
 	/** The register as the CA's capture list (21 Aug 2026); the GSTR-2B layout waits on the CA (B8.5). */
-	exportRegister(): void {
+	/** EX1: for the Export menu, written by the same code as the CSV. */
+	exportRegisterSource(): () => ExportSource | null {
+		return () => captured(this.t('report_stock_register'), 'other', (save) => this.exportRegister(save));
+	}
+
+	exportRegister(save: CsvWriter = downloadCsv): void {
 		const rows = this.register.data()?.rows ?? [];
-		downloadCsv(
+		save(
 			`purchase-register-${this.month()}.csv`,
 			[
 				'Bill date',
@@ -301,10 +318,15 @@ export class Reports {
 		);
 	}
 
-	exportUnpaid(): void {
+	/** EX1: for the Export menu, written by the same code as the CSV. */
+	exportUnpaidSource(): () => ExportSource | null {
+		return () => captured(this.t('filter_unpaid'), 'other', (save) => this.exportUnpaid(save));
+	}
+
+	exportUnpaid(save: CsvWriter = downloadCsv): void {
 		const data = this.unpaid.data();
 		if (!data) return;
-		downloadCsv(
+		save(
 			'unpaid-bills.csv',
 			[
 				this.t('entry_no'),

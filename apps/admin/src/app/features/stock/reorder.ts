@@ -15,6 +15,7 @@ import { parseQuantity } from '@features/purchasing/shared/variant-grid';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { PluralPipe } from '@shared/pipes/language.pipes';
+import { ExportMenu, captured, type CsvWriter, type ExportSource } from '@shared/ui/export-menu/export-menu';
 
 import type { ReorderRow } from '@saha-textile/contracts';
 
@@ -59,6 +60,7 @@ export function orderLines(
 		RupeesPipe,
 		StockQuantityPipe,
 		TranslocoModule,
+		ExportMenu,
 	],
 })
 export class Reorder {
@@ -139,9 +141,14 @@ export class Reorder {
 		}
 	}
 
-	exportList(): void {
+	/** EX1: for the Export menu, written by the same code as the CSV. */
+	exportListSource(): () => ExportSource | null {
+		return () => captured(this.transloco.translate('reorder_list'), 'other', (save) => this.exportList(save));
+	}
+
+	exportList(save: CsvWriter = downloadCsv): void {
 		const t = (key: string, params?: Record<string, unknown>) => this.transloco.translate(key, params);
-		downloadCsv(
+		save(
 			'reorder-list.csv',
 			[
 				t('sku'),

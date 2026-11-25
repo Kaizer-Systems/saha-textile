@@ -146,15 +146,11 @@
 	</nav>
 	}
 	<div class="d-flex justify-content-end mt-3 flex-wrap gap-2">
-		<button
+		<app-export-menu
 			*hasPermission="'stock_report.export'"
-			type="button"
-			class="btn btn-outline"
-			(click)="exportAgeing()"
-		>
-			<i class="ri-download-2-line me-1"></i>
-			{{ 'export' | transloco }}
-		</button>
+			id="stock_ageing_export"
+			[source]="exportAgeingSource()"
+		/>
 		<button
 			type="button"
 			class="btn btn-theme"
@@ -202,15 +198,11 @@
 			</select>
 		</div>
 		<div class="col-md-6 text-end">
-			<button
+			<app-export-menu
 				*hasPermission="'stock_report.export'"
-				type="button"
-				class="btn btn-outline"
-				(click)="exportValuation()"
-			>
-				<i class="ri-file-excel-2-line me-1"></i>
-				{{ 'export_excel' | transloco }}
-			</button>
+				id="stock_valuation_export"
+				[source]="exportValuationSource()"
+			/>
 		</div>
 	</div>
 	@if (valuation.data(); as data) {
@@ -360,15 +352,11 @@
 			/>
 		</div>
 		<div class="col-md-9 text-end">
-			<button
+			<app-export-menu
 				*hasPermission="'stock_report.export'"
-				type="button"
-				class="btn btn-theme"
-				(click)="exportRegister()"
-			>
-				<i class="ri-file-excel-2-line me-1"></i>
-				{{ 'export_for_ca' | transloco }}
-			</button>
+				id="stock_register_export"
+				[source]="exportRegisterSource()"
+			/>
 		</div>
 	</div>
 	<div class="table-responsive datatable-wrapper border-table">
@@ -449,15 +437,11 @@
 	</div>
 	<div class="d-flex justify-content-between mt-3 flex-wrap gap-2">
 		<p class="small text-muted mb-0">{{ 'unpaid_note' | transloco: { days: unpaid.data()?.alertDays ?? 150 } }}</p>
-		<button
+		<app-export-menu
 			*hasPermission="'stock_report.export'"
-			type="button"
-			class="btn btn-outline"
-			(click)="exportUnpaid()"
-		>
-			<i class="ri-download-2-line me-1"></i>
-			{{ 'export' | transloco }}
-		</button>
+			id="stock_unpaid_export"
+			[source]="exportUnpaidSource()"
+		/>
 	</div>
 	} }
 </app-page-wrapper>

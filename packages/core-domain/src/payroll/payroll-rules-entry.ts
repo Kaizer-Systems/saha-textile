@@ -16,3 +16,4 @@ export { CODE_ON_WAGES_FROM } from './bonus';
 export * from './leave';
 export * from './attendance-days';
 export * from './salary-revision';
+export * from './payslip-edits';

@@ -33,6 +33,10 @@ describe('statutory bonus at its edges', () => {
 			eligibleUpToPaise: 21_000_00,
 			minimumPaise: 100_00,
 			provision: 'monthly',
+			// Brief 26 BN2: the Code on Wages, its wages, and 30 days to qualify.
+			law: 'code_on_wages',
+			wageBasis: 'code',
+			minDays: 30,
 		});
 	});
 

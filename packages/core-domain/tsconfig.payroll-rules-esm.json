@@ -15,6 +15,8 @@
 		"src/payroll/payroll-rules-entry.ts",
 		"src/payroll/pt-starting-sets.ts",
 		"src/payroll/state-rules.ts",
-		"src/payroll/income-tax.ts"
+		"src/payroll/income-tax.ts",
+		"src/payroll/payroll-rules.ts",
+		"src/payroll/bonus.ts"
 	]
 }

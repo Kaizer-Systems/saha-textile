@@ -13,6 +13,12 @@ export interface BonusRules {
 	eligibleUpToPaise: number;
 	minimumPaise: number;
 	provision: 'monthly' | 'year_end';
+	/** Brief 26 BN2: the law the version works under; set by its date when absent (`bonusRulesOn`). */
+	law?: 'code_on_wages' | 'bonus_act';
+	/** BN2: bonus wages as the Code defines wages (`code`), or basic and DA (the Act's reading). */
+	wageBasis?: 'code' | 'basic_da';
+	/** BN2: days worked in the year to qualify (30 when absent). */
+	minDays?: number;
 }
 
 export const BONUS_2026: BonusRules = {
@@ -21,19 +27,50 @@ export const BONUS_2026: BonusRules = {
 	eligibleUpToPaise: 21_000_00,
 	minimumPaise: 100_00,
 	provision: 'monthly',
+	law: 'code_on_wages',
+	wageBasis: 'code',
+	minDays: 30,
 };
 
+/** The day the Code on Wages 2019 replaced the Payment of Bonus Act (all four Codes in force). */
+export const CODE_ON_WAGES_FROM = '2025-11-21';
+
 /**
- * A month's bonus wages: basic and DA earned, at most the ceiling for the days paid; nothing for someone whose full
- * month's basic and DA pass the limit.
+ * BN-D2: a version's bonus law and wage basis follow its date when it doesn't set them: the Code and its wages from
+ * 21 Nov 2025, the Act and basic and DA before; qualifying days 30.
+ */
+export function bonusRulesOn(rules: BonusRules, from: string): BonusRules {
+	const code = from >= CODE_ON_WAGES_FROM;
+	return {
+		...rules,
+		law: rules.law ?? (code ? 'code_on_wages' : 'bonus_act'),
+		wageBasis: rules.wageBasis ?? (code ? 'code' : 'basic_da'),
+		minDays: rules.minDays ?? BONUS_MIN_DAYS,
+	};
+}
+
+/**
+ * A month's bonus wages: the wages earned (the Code's wages, or basic and DA, by the rules' basis), at most the
+ * ceiling for the days paid; nothing for someone whose full month's wages pass the limit.
  */
 export function bonusWages(
-	input: { basicDaPaise: number; fullBasicDaPaise: number; paidDays: number; daysInMonth: number },
+	input: {
+		basicDaPaise: number;
+		fullBasicDaPaise: number;
+		paidDays: number;
+		daysInMonth: number;
+		/** BN2: the month's wages as the Code defines them, earned and for a full month. */
+		codeWagesPaise?: number;
+		fullCodeWagesPaise?: number;
+	},
 	rules: BonusRules,
 ): number {
-	if (input.fullBasicDaPaise > rules.eligibleUpToPaise || input.daysInMonth <= 0) return 0;
+	const code = rules.wageBasis === 'code';
+	const earned = code ? (input.codeWagesPaise ?? input.basicDaPaise) : input.basicDaPaise;
+	const full = code ? (input.fullCodeWagesPaise ?? input.fullBasicDaPaise) : input.fullBasicDaPaise;
+	if (full > rules.eligibleUpToPaise || input.daysInMonth <= 0) return 0;
 	const ceiling = (rules.wageCeilingPaise * Math.min(input.paidDays, input.daysInMonth)) / input.daysInMonth;
-	return Math.round(Math.min(input.basicDaPaise, ceiling));
+	return Math.round(Math.min(earned, ceiling));
 }
 
 /** The bonus on some wages at the rules' rate. */
@@ -52,6 +89,6 @@ export const BONUS_MIN_DAYS = 30;
  * someone who worked fewer than 30 days in the year.
  */
 export function bonusDue(yearWagesPaise: number, rules: BonusRules, daysWorked: number): number {
-	if (yearWagesPaise <= 0 || daysWorked < BONUS_MIN_DAYS) return 0;
+	if (yearWagesPaise <= 0 || daysWorked < (rules.minDays ?? BONUS_MIN_DAYS)) return 0;
 	return Math.max(bonusOn(yearWagesPaise, rules), rules.minimumPaise);
 }

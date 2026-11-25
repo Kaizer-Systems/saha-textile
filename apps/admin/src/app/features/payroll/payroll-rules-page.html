@@ -1172,7 +1172,94 @@
 					</select>
 				</div>
 			</div>
+			<!-- Brief 26 BN2: the law, the wage basis, the days worked to qualify. -->
+			<div class="row g-3 mt-1">
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="pr_bonus_law"
+					>
+						{{ 'payroll_bonus_f_law' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="pr_bonus_law"
+						[ngModel]="b.law"
+						(ngModelChange)="patchBonus({ law: $event })"
+					>
+						<option value="code_on_wages">{{ 'payroll_bonus_law_code_on_wages' | transloco }}</option>
+						<option value="bonus_act">{{ 'payroll_bonus_law_bonus_act' | transloco }}</option>
+					</select>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="pr_bonus_basis"
+					>
+						{{ 'payroll_bonus_f_basis' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="pr_bonus_basis"
+						[ngModel]="b.wageBasis"
+						(ngModelChange)="patchBonus({ wageBasis: $event })"
+					>
+						<option value="code">{{ 'payroll_bonus_basis_code' | transloco }}</option>
+						<option value="basic_da">{{ 'payroll_bonus_basis_basic_da' | transloco }}</option>
+					</select>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="pr_bonus_days"
+					>
+						{{ 'payroll_bonus_f_days' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_bonus_days"
+						type="number"
+						min="1"
+						max="365"
+						[ngModel]="b.minDays"
+						(ngModelChange)="patchBonus({ minDays: +$event })"
+					/>
+				</div>
+			</div>
 			}
+			<!-- Brief 26 BN-D3: the heads the Codes count as wages, one list for bonus and (once the CA confirms) PF. -->
+			<h6 class="mt-4 mb-1">{{ 'payroll_wage_heads_title' | transloco }}</h6>
+			<div class="d-flex flex-wrap gap-2">
+				@for (h of wageHeadChoices; track h) {
+				<button
+					type="button"
+					class="btn btn-sm"
+					[id]="'pr_wage_head_' + h"
+					[class.btn-theme]="f.wageHeads.includes(h)"
+					[class.btn-outline]="!f.wageHeads.includes(h)"
+					[attr.aria-pressed]="f.wageHeads.includes(h)"
+					(click)="toggleWageHead(h)"
+				>
+					{{ 'payroll_head_' + h | transloco }}
+				</button>
+				}
+			</div>
+			<div class="form-check mt-2">
+				<input
+					class="form-check-input"
+					type="checkbox"
+					id="pr_pf_code_wages"
+					[checked]="f.pfUsesCodeWages"
+					(change)="setPfUsesCodeWages(!f.pfUsesCodeWages)"
+				/>
+				<label
+					class="form-check-label"
+					for="pr_pf_code_wages"
+				>
+					{{ 'payroll_pf_code_wages' | transloco }}
+				</label>
+			</div>
+			<p class="help-text mt-1">{{ 'payroll_wage_heads_help' | transloco }}</p>
 			<h6 class="mt-4">{{ 'payroll_rule_bonus' | transloco }} · {{ 'payroll_rule_gratuity' | transloco }}</h6>
 			<div class="row g-3">
 				<div class="col-md-3">

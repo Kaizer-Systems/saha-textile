@@ -24,6 +24,10 @@ export interface PayrollRules {
 	ptSlabs: readonly { upToPaise: number | null; taxPaise: number }[];
 	/** Most of a month's wages that deductions (advance recovery included) may take, %. */
 	maxDeductionPct: number;
+	/** Brief 26 BN-D3: the pay heads counted as wages for bonus (and PF once switched on); the Codes' list when absent. */
+	wageHeads?: WageHead[];
+	/** BN-D3: PF on the wages of `wageHeads`, switched on after the CA confirms; basic and DA otherwise. */
+	pfUsesCodeWages?: boolean;
 }
 
 const rupee = (paise: number) => Math.round(paise / 100) * 100;
@@ -61,9 +65,25 @@ export interface SalaryStructure {
 
 export const structureTotal = (s: SalaryStructure) => s.basic + s.da + s.hra + s.special + s.conveyance + s.other;
 
-/** Labour Codes' wage rule: basic and DA, raised to half the pay when they fall short. */
-export function codeWages(s: SalaryStructure): number {
-	return Math.max(s.basic + s.da, Math.ceil(structureTotal(s) / 2));
+/** A pay head a structure holds. */
+export type WageHead = keyof SalaryStructure;
+
+/**
+ * BN-D3: the heads the Code on Wages s.2(y) counts as wages, read as its text runs: all pay but the listed few, so
+ * rent allowance and conveyance are left out (the CA confirms the special allowance).
+ */
+export const CODE_WAGE_HEADS: readonly WageHead[] = ['basic', 'da', 'special', 'other'];
+
+/** The heads PF counted before the Codes' list: basic and DA. */
+export const BASIC_DA_HEADS: readonly WageHead[] = ['basic', 'da'];
+
+/**
+ * Labour Codes' wage rule: the heads counted as wages (basic and DA unless named), and when the heads left out come to
+ * more than half the pay, the excess counts too, so wages are never under half the pay.
+ */
+export function codeWages(s: SalaryStructure, heads: readonly WageHead[] = BASIC_DA_HEADS): number {
+	const included = [...new Set(heads)].reduce((sum, h) => sum + s[h], 0);
+	return Math.max(included, Math.ceil(structureTotal(s) / 2));
 }
 
 /** The professional tax for a month's gross pay. */
@@ -103,8 +123,9 @@ export interface PayResult {
 export function monthPay(input: PayInput): PayResult {
 	const share = input.daysInMonth > 0 ? Math.min(input.paidDays, input.daysInMonth) / input.daysInMonth : 0;
 	const grossPaise = rupee(structureTotal(input.structure) * share);
-	const pfWagesPaise = rupee(codeWages(input.structure) * share);
 	const r = input.rules;
+	const pfHeads = r.pfUsesCodeWages ? (r.wageHeads ?? CODE_WAGE_HEADS) : BASIC_DA_HEADS;
+	const pfWagesPaise = rupee(codeWages(input.structure, pfHeads) * share);
 	const pfBase = Math.min(pfWagesPaise, r.pfWageCapPaise);
 	const pfEmployeePaise = input.pfOn ? rupee((pfBase * r.pfRatePct) / 100) : 0;
 	const epsPaise = input.pfOn ? Math.min(rupee((pfBase * r.epsRatePct) / 100), r.epsCapPaise) : 0;

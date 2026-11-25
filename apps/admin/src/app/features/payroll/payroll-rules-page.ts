@@ -5,6 +5,8 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal, type NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 import { GST_STATES } from '@saha-textile/core-domain/company';
 import {
+	CODE_ON_WAGES_FROM,
+	CODE_WAGE_HEADS,
 	HEALTH_126_2026,
 	PT_YEAR_CAP_PAISE,
 	RENT_CITIES_2026,
@@ -12,6 +14,7 @@ import {
 	ptYearMost,
 	type PtSlab,
 	type PtStartingSet,
+	type WageHead,
 } from '@saha-textile/core-domain/payroll-rules';
 import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
@@ -343,15 +346,29 @@ export interface RulesForm {
 	states: StateForm[];
 	/** TX2: income tax on salary (null only for a version the screens got without it). */
 	incomeTax: IncomeTaxForm | null;
-	/** BN1: the Bonus Act's figures, money in rupees. */
+	/** BN1: the Bonus Act's figures, money in rupees; brief 26 BN2: the law, the wage basis, the qualifying days. */
 	bonus: {
 		ratePct: number;
 		ceiling: number;
 		eligibleUpTo: number;
 		minimum: number;
 		provision: BonusRules['provision'];
+		law: NonNullable<BonusRules['law']>;
+		wageBasis: NonNullable<BonusRules['wageBasis']>;
+		minDays: number;
 	} | null;
+	/** Brief 26 BN-D3: the heads counted as wages for everyone, and PF on them once the CA confirms. */
+	wageHeads: WageHead[];
+	pfUsesCodeWages: boolean;
 }
+
+/** Two lists of heads holding the same heads, in any order. */
+export function sameHeads(a: readonly WageHead[], b: readonly WageHead[]): boolean {
+	return a.length === b.length && a.every((h) => b.includes(h));
+}
+
+/** BN-D3: the heads a structure holds, in the order the chips show them. */
+export const WAGE_HEAD_CHOICES: readonly WageHead[] = ['basic', 'da', 'special', 'other', 'hra', 'conveyance'];
 
 export function toForm(v: PayrollRulesVersion, from: string): RulesForm {
 	return {
@@ -392,8 +409,14 @@ export function toForm(v: PayrollRulesVersion, from: string): RulesForm {
 					eligibleUpTo: inr(v.bonus.eligibleUpToPaise),
 					minimum: inr(v.bonus.minimumPaise),
 					provision: v.bonus.provision,
+					// BN-D2: a version without its own law follows the new version's date.
+					law: v.bonus.law ?? (from >= CODE_ON_WAGES_FROM ? 'code_on_wages' : 'bonus_act'),
+					wageBasis: v.bonus.wageBasis ?? (from >= CODE_ON_WAGES_FROM ? 'code' : 'basic_da'),
+					minDays: v.bonus.minDays ?? 30,
 				}
 			: null,
+		wageHeads: [...(v.wageHeads ?? CODE_WAGE_HEADS)],
+		pfUsesCodeWages: v.pfUsesCodeWages ?? false,
 	};
 }
 
@@ -437,9 +460,17 @@ export function toWrite(f: RulesForm): PayrollRulesWriteInput {
 						eligibleUpToPaise: paise(f.bonus.eligibleUpTo),
 						minimumPaise: paise(f.bonus.minimum),
 						provision: f.bonus.provision,
+						law: f.bonus.law,
+						wageBasis: f.bonus.wageBasis,
+						minDays: f.bonus.minDays,
 					},
 				}
 			: {}),
+		// BN-D3: written only when they differ from the Codes' list (what an absent list means) or PF is switched on.
+		...(sameHeads(f.wageHeads, CODE_WAGE_HEADS)
+			? {}
+			: { wageHeads: WAGE_HEAD_CHOICES.filter((h) => f.wageHeads.includes(h)) }),
+		...(f.pfUsesCodeWages ? { pfUsesCodeWages: true } : {}),
 	};
 }
 
@@ -633,6 +664,26 @@ export class PayrollRulesPage {
 
 	private patchTaxForm(change: (t: IncomeTaxForm) => IncomeTaxForm): void {
 		this.form.update((f) => (f?.incomeTax ? { ...f, incomeTax: change(f.incomeTax) } : f));
+	}
+
+	readonly wageHeadChoices = WAGE_HEAD_CHOICES;
+
+	/** BN-D3: a head in or out of the wages. */
+	toggleWageHead(head: WageHead): void {
+		this.form.update((f) =>
+			f
+				? {
+						...f,
+						wageHeads: f.wageHeads.includes(head)
+							? f.wageHeads.filter((h) => h !== head)
+							: [...f.wageHeads, head],
+					}
+				: f,
+		);
+	}
+
+	setPfUsesCodeWages(on: boolean): void {
+		this.form.update((f) => (f ? { ...f, pfUsesCodeWages: on } : f));
 	}
 
 	patchBonus(fields: Partial<NonNullable<RulesForm['bonus']>>): void {

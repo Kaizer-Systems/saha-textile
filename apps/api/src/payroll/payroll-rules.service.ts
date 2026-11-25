@@ -4,6 +4,7 @@ import { BadRequestException, ConflictException, Inject, Injectable } from '@nes
 import type { PayrollRulesVersion, PayrollRulesWrite } from '@saha-textile/contracts';
 import {
 	BONUS_2026,
+	bonusRulesOn,
 	INCOME_TAX_2026,
 	PAYROLL_RULES_2026,
 	PAYROLL_SCHEMES_2026,
@@ -73,8 +74,8 @@ export function rulesOf(v: PayrollRulesVersion): {
 		states: stateRulesOf(v),
 		// TX2: a version saved before income tax was part of the rules uses the built-in 2026-27 rules.
 		incomeTax: v.incomeTax ?? BUILT_IN_INCOME_TAX,
-		// BN1: likewise the built-in bonus figures.
-		bonus: v.bonus ?? BONUS_2026,
+		// BN1: likewise the built-in bonus figures; brief 26 BN-D2: the law and wage basis follow the version's date.
+		bonus: bonusRulesOn(v.bonus ?? BONUS_2026, v.from),
 		pay: {
 			from: v.from,
 			pfRatePct: v.pfRatePct,
@@ -86,6 +87,9 @@ export function rulesOf(v: PayrollRulesVersion): {
 			esiGrossLimitPaise: v.esiGrossLimitPaise,
 			ptSlabs: v.ptSlabs,
 			maxDeductionPct: v.maxDeductionPct,
+			// Brief 26 BN-D3: the heads counted as wages, and PF on them once switched on.
+			...(v.wageHeads ? { wageHeads: v.wageHeads } : {}),
+			...(v.pfUsesCodeWages ? { pfUsesCodeWages: true } : {}),
 		},
 		schemes: {
 			from: v.from,

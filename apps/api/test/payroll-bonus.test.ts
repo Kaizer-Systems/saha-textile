@@ -392,7 +392,8 @@ describe('the bonus routes and rules (BN1)', () => {
 	it('uses the built-in figures for a version saved before bonus was part of the rules', async () => {
 		const { bonus: _builtIn, ...withoutBonus } = BUILT_IN_PAYROLL_RULES;
 		const older = { ...withoutBonus, id: 'prs_2026_10', builtIn: false, from: '2026-10-01' } as PayrollRulesVersion;
-		expect(rulesOf(older).bonus).toBe(BONUS_2026);
+		// Brief 26 BN-D2: a copy with the law and wage basis set by the version's date (the Code, from October 2026).
+		expect(rulesOf(older).bonus).toEqual(BONUS_2026);
 		expect(rulesOf({ ...older, bonus: { ...BONUS_2026, ratePct: 20 } }).bonus.ratePct).toBe(20);
 		const versions = await new PayrollRulesService(
 			{ list: async () => [older] } as never,

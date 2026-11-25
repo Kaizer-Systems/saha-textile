@@ -21,6 +21,8 @@ import {
 	bonusDue,
 	bonusOn,
 	bonusWages,
+	CODE_WAGE_HEADS,
+	codeWages,
 	financialYearOf,
 	gratuityProvision,
 	monthPay,
@@ -576,6 +578,9 @@ export class PayrollService {
 				};
 			};
 			const thisMonth = figures(a.paidDays);
+			// Brief 26 BN2: the month's wages as the Code defines them, earned and for a full month.
+			const wageHeads = rules.wageHeads ?? CODE_WAGE_HEADS;
+			const earnedHeads = payslipHeads(structure, attendance.daysInMonth, a.paidDays, thisMonth.grossPaise);
 			const wages = bonusApplies
 				? bonusWages(
 						{
@@ -583,6 +588,8 @@ export class PayrollService {
 							fullBasicDaPaise: structure.basic + structure.da,
 							paidDays: a.paidDays,
 							daysInMonth: attendance.daysInMonth,
+							codeWagesPaise: codeWages(earnedHeads, wageHeads),
+							fullCodeWagesPaise: codeWages(structure, wageHeads),
 						},
 						bonus,
 					)

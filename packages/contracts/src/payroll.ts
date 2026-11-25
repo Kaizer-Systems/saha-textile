@@ -359,6 +359,10 @@ export const BonusRules = z.object({
 	minimumPaise: Paise,
 	/** Provided in each month's posting, or worked out only when the year's bonus is paid. */
 	provision: z.enum(['monthly', 'year_end']),
+	/** Brief 26 BN2: the law, the wage basis and the qualifying days; absent, they follow the version's date. */
+	law: z.enum(['code_on_wages', 'bonus_act']).optional(),
+	wageBasis: z.enum(['code', 'basic_da']).optional(),
+	minDays: z.number().int().min(1).max(365).optional(),
 });
 export type BonusRules = z.infer<typeof BonusRules>;
 
@@ -460,6 +464,15 @@ export const PayrollRulesWrite = z.object({
 	 */
 	/** TX2: income tax on salary; versions saved before it use the built-in 2026-27 rules. */
 	incomeTax: IncomeTaxRules.optional(),
+	/**
+	 * Brief 26 BN-D3: the pay heads counted as wages for bonus (the Codes' list when absent), and whether PF is worked on
+	 * them too (switched on after the CA confirms; basic and DA otherwise).
+	 */
+	wageHeads: z
+		.array(z.enum(['basic', 'da', 'hra', 'conveyance', 'special', 'other']))
+		.max(6)
+		.optional(),
+	pfUsesCodeWages: z.boolean().optional(),
 	/** BN1: bonus; versions saved before it use the built-in figures. */
 	bonus: BonusRules.optional(),
 	states: z

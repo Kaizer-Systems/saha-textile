@@ -65,6 +65,17 @@ ceiling for the days paid) and, provided monthly, posts Bonus to Bonus payable. 
 what was provided and what the Act asks; Pay bonus (`POST /admin/payroll/bonus/:year/pay`) pays it once from a bank,
 the provision coming off the payable and any difference to the year's bonus expense.
 
+All four Labour Codes took effect on 21 Nov 2025, and the Code on Wages 2019 (Chapter IV) replaced the Payment of
+Bonus Act. A version's bonus therefore also names its law (`law`), what bonus wages are (`wageBasis`: `code`, the
+Code's wages, or `basic_da`) and the days worked in the year to qualify (`minDays`, 30). A version that doesn't set
+them follows its date: the Code and its wages from 21 Nov 2025, the Act and basic and DA before.
+
+The Code's wages are the pay heads listed in `wageHeads` (basic, DA, the special allowance and other allowances when
+the version keeps no list; rent allowance and conveyance are left out), and when the heads left out come to more
+than half the pay, the excess counts too. Bonus uses that list. PF uses it only once `pfUsesCodeWages` is switched
+on, after the CA confirms (it can raise PF wages a good deal); until then PF stays on basic and DA, raised to half
+the pay as before.
+
 ## Per State
 
 Professional tax and the labour welfare fund are State laws, so each version keeps a set per State

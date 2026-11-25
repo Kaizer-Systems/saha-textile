@@ -149,14 +149,15 @@ const enter = (control: Element | null, value: string) => {
 describe('the bonus rules as a form and back (BN1)', () => {
 	it('shows money in rupees and writes it back in paise, only when the version has bonus rules', () => {
 		const form = toForm(WITH_BONUS, '2026-04-01');
-		expect(form.bonus).toEqual({
+		expect(form.bonus).toMatchObject({
 			ratePct: 20,
 			ceiling: 10_000,
 			eligibleUpTo: 21_000,
 			minimum: 100,
 			provision: 'monthly',
 		});
-		expect(toWrite(form).bonus).toEqual(WITH_BONUS.bonus);
+		// Brief 26 BN2: the law, the wage basis and the qualifying days are written too.
+		expect(toWrite(form).bonus).toMatchObject(WITH_BONUS.bonus ?? {});
 		const without = toForm(WITHOUT_BONUS, '2026-04-01');
 		expect(without.bonus).toBeNull();
 		expect('bonus' in toWrite(without)).toBe(false);
@@ -191,7 +192,7 @@ describe('the bonus section of the add-a-version pop-up (BN1)', () => {
 		enter(modal('#pr_bonus_min'), '150');
 		enter(modal('#pr_bonus_book'), 'year_end');
 		await redraw();
-		expect(page.form()?.bonus).toEqual({
+		expect(page.form()?.bonus).toMatchObject({
 			ratePct: 12,
 			ceiling: 8_000,
 			eligibleUpTo: 25_000,
@@ -200,7 +201,7 @@ describe('the bonus section of the add-a-version pop-up (BN1)', () => {
 		});
 		await page.save();
 		const [sent] = calls.addRules.mock.lastCall as unknown as [{ bonus: BonusRules }];
-		expect(sent.bonus).toEqual({
+		expect(sent.bonus).toMatchObject({
 			ratePct: 12,
 			wageCeilingPaise: 8_000_00,
 			eligibleUpToPaise: 25_000_00,

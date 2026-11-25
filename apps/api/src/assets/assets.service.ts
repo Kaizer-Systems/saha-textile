@@ -92,7 +92,8 @@ export class AssetsService {
 		this.check(write, write.costINR);
 		const by = principal?.userId ?? null;
 		const assetLedgerId = await this.ledgerUnderFixedAssets(
-			ASSET_LEDGER_NAMES[write.categoryKey] ?? write.categoryKey,
+			// check() let only a known category through, and every category has its ledger name.
+			ASSET_LEDGER_NAMES[write.categoryKey] as string,
 			by,
 		);
 		const id = `fa_${randomUUID()}`;

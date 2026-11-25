@@ -154,7 +154,10 @@ export class PayrollReturnsService {
 			uan: employee?.uan ?? '',
 			daysInMonth: days,
 			paidDays: row.paidDays,
-			earnings: SALARY_HEADS.filter((h) => (heads[h] ?? 0) > 0).map((h) => ({ head: h, paise: heads[h] ?? 0 })),
+			earnings: SALARY_HEADS.filter((h) => (heads[h] ?? 0) > 0).map((h) => ({
+				head: h,
+				paise: heads[h] as number,
+			})),
 			grossPaise: row.grossPaise,
 			deductions,
 			totalDeductionsPaise: total,
@@ -316,7 +319,7 @@ export class PayrollReturnsService {
 				['Employee', 'Employee share', 'Employer share'],
 				run.rows
 					.filter((r) => (r.lwfEmployeePaise ?? 0) > 0)
-					.map((r) => [r.name, whole(r.lwfEmployeePaise ?? 0), whole(r.lwfEmployerPaise ?? 0)]),
+					.map((r) => [r.name, whole(r.lwfEmployeePaise as number), whole(r.lwfEmployerPaise ?? 0)]),
 			),
 		};
 	}

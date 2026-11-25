@@ -234,8 +234,7 @@ export function runReport(
 		});
 	}
 
-	const totalOf = (key: string) =>
-		field(key).summable ? kept.reduce((sum, row) => sum + Number(row[key] ?? 0), 0) : null;
+	// Every summed column and every asked total is in `sumKeys`, so the totals row holds each total shown.
 	const totalsRow: Record<string, ReportValue> = {};
 	for (const key of sumKeys) totalsRow[key] = kept.reduce((sum, row) => sum + Number(row[key] ?? 0), 0);
 	return {
@@ -244,7 +243,9 @@ export function runReport(
 		totals: columns.map((key) => {
 			const derived = field(key).derived;
 			if (derived) return derived.value(totalsRow);
-			return spec.totals.includes(key) || (!spec.totals.length && field(key).summable) ? totalOf(key) : null;
+			return spec.totals.includes(key) || (!spec.totals.length && field(key).summable)
+				? (totalsRow[key] as number)
+				: null;
 		}),
 		count: out.length,
 		truncated: out.length > limit,

@@ -116,6 +116,9 @@ export class StatementsService {
 			return reportRows(layout.content, chart, { closing, opening }, null);
 		};
 		const [all, ...each] = await Promise.all([run([]), ...locations.map((l) => run([l.id]))]);
+		// Every run reads the same layout, so each location's statement has every row the whole one has.
+		const byKey = (statement: typeof all, key: string) =>
+			(statement.rows.find((r) => r.key === key) as (typeof all.rows)[number]).thisYearPaise;
 		return {
 			from: query.from,
 			to: query.to,
@@ -127,9 +130,7 @@ export class StatementsService {
 				label: row.label,
 				depth: row.depth,
 				side: row.side,
-				byLocation: Object.fromEntries(
-					locations.map((l, i) => [l.id, each[i]?.rows.find((r) => r.key === row.key)?.thisYearPaise ?? 0]),
-				),
+				byLocation: Object.fromEntries(locations.map((l, i) => [l.id, byKey(each[i] as typeof all, row.key)])),
 				totalPaise: row.thisYearPaise,
 			})),
 			problems: all.problems,

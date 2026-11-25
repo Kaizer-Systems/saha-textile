@@ -152,7 +152,8 @@ export class Gstr2bService {
 		try {
 			parsed = parseGstr2b(write.file);
 		} catch (error) {
-			throw refuse(error instanceof Error ? error.message : 'gstr2b_file_unreadable');
+			// parseGstr2b refuses a file only with an Error naming what it couldn't read.
+			throw refuse((error as Error).message);
 		}
 		if (parsed.gstin !== registration.gstin) throw refuse('gstr2b_other_gstin');
 		if (await this.locked(registration.id, parsed.month)) throw refuse('gstr2b_month_filed');

@@ -100,7 +100,8 @@ export class PayrollService {
 		if (whole && list.some((e) => e.aadhaar || e.bankAccount))
 			await this.audit.append({
 				id: `aud_${randomUUID()}`,
-				actorUserId: principal?.userId ?? null,
+				// Only someone signed in with accounts.lock sees the whole numbers.
+				actorUserId: (principal as AuthenticatedPrincipal).userId,
 				targetUserId: null,
 				audience: 'admin',
 				action: 'payroll.employee.view_full',
@@ -417,12 +418,8 @@ export class PayrollService {
 					{ ledger: { id: tds }, creditPaise: sum(rows, (r) => r.tdsPaise) },
 					{ ledger: { id: advance }, creditPaise: sum(rows, (r) => r.advancePaise) },
 				]
-					.filter(
-						(l) =>
-							((l as { debitPaise?: number }).debitPaise ??
-								(l as { creditPaise?: number }).creditPaise ??
-								0) > 0,
-					)
+					// Each line is a debit or a credit: a line of nothing is left out.
+					.filter((l) => ((l.debitPaise ?? l.creditPaise) as number) > 0)
 					.map((l) => ({ ...l, locationId })),
 			);
 			return this.transactions.withTransaction(async (context) => {

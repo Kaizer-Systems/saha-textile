@@ -73,7 +73,7 @@ export class BooksExportService {
 			return null;
 		};
 		const nameOf = (id: string) => ledgers.get(id)?.name ?? id;
-		const groupName = (id: string) => groups.get(ledgers.get(id)?.groupId ?? '')?.name ?? '';
+		const groupName = (groupId: string) => groups.get(groupId)?.name ?? '';
 		const inScope = (locationId: string) => !only.length || only.includes(locationId);
 		let file: BooksExportFile;
 		if (query.format === 'trial_balance_csv') {
@@ -86,7 +86,7 @@ export class BooksExportService {
 						.filter((l) => balances[l.id])
 						.map((l) => {
 							const b = balances[l.id] as number;
-							return [l.name, groupName(l.id), b > 0 ? rupees(b) : '', b < 0 ? rupees(-b) : ''];
+							return [l.name, groupName(l.groupId), b > 0 ? rupees(b) : '', b < 0 ? rupees(-b) : ''];
 						}),
 				),
 			};

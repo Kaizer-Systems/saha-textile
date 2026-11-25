@@ -19,6 +19,7 @@
 		"src/payroll/payroll-rules.ts",
 		"src/payroll/bonus.ts",
 		"src/payroll/leave.ts",
-		"src/payroll/attendance-days.ts"
+		"src/payroll/attendance-days.ts",
+		"src/payroll/salary-revision.ts"
 	]
 }

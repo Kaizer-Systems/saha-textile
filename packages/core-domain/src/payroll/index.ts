@@ -5,3 +5,4 @@ export * from './income-tax';
 export * from './bonus';
 export * from './leave';
 export * from './attendance-days';
+export * from './salary-revision';

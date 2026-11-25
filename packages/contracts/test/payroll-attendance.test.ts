@@ -7,6 +7,7 @@ import {
 	DayStatus,
 	Holiday,
 	LeaveAsk,
+	MyAttendance,
 	StatePayrollRules,
 	StoreShift,
 } from '../src/payroll';
@@ -245,5 +246,57 @@ describe('holidays and each store’s shift (brief 26 LV1, AT1, AT2)', () => {
 			'shift_ends_before_start',
 		);
 		accepted(StoreShift.safeParse({ ...shift, end: '10:01' }).success);
+	});
+});
+
+describe('My attendance (brief 26 AT1)', () => {
+	const mine = {
+		employeeId: 'emp_priya',
+		name: 'Priya Das',
+		locationId: 'loc_kolkata',
+		locationName: 'Kolkata shop',
+		today: '2026-11-26',
+		shift: { start: '10:00', end: '19:00' },
+		day: null,
+		present: 21.5,
+		leaveByType: { CL: 1 },
+		leave: [
+			{ key: 'EL', name: 'Earned leave', left: 12.5, halfDays: true, noticeDays: 7 },
+			{ key: 'CL', name: 'Casual leave', left: 0, halfDays: true, noticeDays: null },
+			{ key: 'ML', name: 'Maternity leave', left: null, halfDays: false, noticeDays: 30 },
+		],
+	};
+
+	it('shows the person, their store’s shift, today not yet marked, the month so far and the leave left by type', () => {
+		expect(MyAttendance.parse(mine)).toEqual(mine);
+		expect(MyAttendance.parse({ ...mine, leaveByType: {}, leave: [] })).toMatchObject({
+			leaveByType: {},
+			leave: [],
+		});
+	});
+
+	it('shows today’s day once marked', () => {
+		const marked = AttendanceDay.parse({
+			id: 'emp_priya_2026-11-26',
+			employeeId: 'emp_priya',
+			day: '2026-11-26',
+			locationId: 'loc_kolkata',
+			status: 'incomplete',
+			inAt: '2026-11-26T04:31:00.000Z',
+			markedBy: 'emp_priya',
+		});
+		expect(MyAttendance.parse({ ...mine, day: marked }).day).toEqual(marked);
+	});
+
+	it('refuses notice in part, a day not said, and a leave type without its left days said', () => {
+		const [earned] = mine.leave;
+		refused(MyAttendance.safeParse({ ...mine, leave: [{ ...earned, noticeDays: 1.5 }] }).success);
+		refused(MyAttendance.safeParse({ ...mine, leave: [{ ...earned, left: undefined }] }).success);
+		refused(MyAttendance.safeParse({ ...mine, leave: [{ ...earned, halfDays: 'yes' }] }).success);
+		refused(MyAttendance.safeParse({ ...mine, day: undefined }).success);
+		refused(MyAttendance.safeParse({ ...mine, today: '26-11-2026' }).success);
+		refused(MyAttendance.safeParse({ ...mine, shift: { start: '10:00' } }).success);
+		refused(MyAttendance.safeParse({ ...mine, leaveByType: { CL: 'one' } }).success);
+		refused(MyAttendance.safeParse({ ...mine, employeeId: '' }).success);
 	});
 });

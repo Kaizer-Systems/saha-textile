@@ -160,7 +160,12 @@ describe('Settings › Audit trail (AU1)', () => {
 			],
 			[shortDateTime('2026-11-25T06:00:00.000Z'), 'wl_system', 'login · login', '', '—'],
 		]);
-		expect([page.moduleOf(entry({ action: 'stock.adjust' })), page.pages()]).toEqual(['stock', 1]);
+		// An action without a module part is its own module.
+		expect([
+			page.moduleOf(entry({ action: 'stock.adjust' })),
+			page.moduleOf(entry({ action: 'login' })),
+			page.pages(),
+		]).toEqual(['stock', 'login', 1]);
 	});
 
 	it('narrows by module, action, person and India days, each change going back to the first page', async () => {

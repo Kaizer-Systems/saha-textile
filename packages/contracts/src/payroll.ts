@@ -181,6 +181,75 @@ export const AttendanceWrite = z.object({
 });
 export type AttendanceWrite = z.infer<typeof AttendanceWrite>;
 
+/* ------------------------------------------------------------------ brief 26 AT: attendance day by day */
+
+export const DayStatus = z.enum(['present', 'half', 'absent', 'leave', 'weekly_off', 'holiday', 'incomplete']);
+export type DayStatus = z.infer<typeof DayStatus>;
+
+/** AT1-AT3: what a change to a day sets: its status, the leave type of a leave day, the in and out times. */
+export const DayChange = z.object({
+	status: DayStatus,
+	leaveKey: z.string().trim().max(6).nullable().default(null),
+	inAt: IsoDateTime.nullable().default(null),
+	outAt: IsoDateTime.nullable().default(null),
+	reason: z.string().trim().min(3).max(300),
+});
+export type DayChange = z.infer<typeof DayChange>;
+
+/**
+ * AT1-AT3: one person's day. Marked by the person (in and out, the server's time) or set by someone with the right
+ * to; a manager's change waits as `pending` until someone with "Approve attendance changes" approves it.
+ */
+export const AttendanceDay = z.object({
+	id: z.string(),
+	employeeId: Id,
+	day: IsoDate,
+	locationId: Id,
+	status: DayStatus,
+	leaveKey: z.string().nullable().default(null),
+	inAt: IsoDateTime.nullable().default(null),
+	outAt: IsoDateTime.nullable().default(null),
+	lateMinutes: z.number().int().nonnegative().default(0),
+	markedBy: Id.nullable().default(null),
+	changedBy: Id.nullable().default(null),
+	reason: z.string().nullable().default(null),
+	pending: DayChange.extend({ askedBy: Id, askedAt: IsoDateTime }).nullable().default(null),
+	version: z.number().int().nonnegative().default(0),
+});
+export type AttendanceDay = z.infer<typeof AttendanceDay>;
+
+/** AT1: asking for leave from My attendance: the type, the days (inclusive), and a half day for a single day. */
+export const LeaveAsk = z
+	.object({
+		leaveKey: z.string().trim().min(1).max(6),
+		from: IsoDate,
+		to: IsoDate,
+		half: z.boolean().default(false),
+		reason: z.string().trim().max(300).default(''),
+	})
+	.refine((a) => a.from <= a.to, { message: 'leave_dates_backwards' })
+	.refine((a) => !a.half || a.from === a.to, { message: 'leave_half_one_day' });
+export type LeaveAsk = z.infer<typeof LeaveAsk>;
+
+/** AT2: a store's month: each person's days, and what the lock will count. */
+export const AttendanceMonthGrid = z.object({
+	month: YearMonth,
+	locationId: Id,
+	people: z.array(
+		z.object({
+			employeeId: Id,
+			name: z.string(),
+			days: z.array(AttendanceDay),
+			paidDays: z.number(),
+			leaveByType: z.record(z.string(), z.number()),
+			withoutPay: z.number(),
+			lateMarks: z.number().int(),
+		}),
+	),
+	lockedAt: IsoDateTime.nullable(),
+});
+export type AttendanceMonthGrid = z.infer<typeof AttendanceMonthGrid>;
+
 export const PayrollRunStatus = z.enum(['draft', 'approved', 'posted', 'paid']);
 export type PayrollRunStatus = z.infer<typeof PayrollRunStatus>;
 

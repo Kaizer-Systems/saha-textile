@@ -13,6 +13,7 @@ describe('the payroll routes', () => {
 			attendance: 'AttendancePage',
 			'my-attendance': 'MyAttendancePage',
 			increments: 'IncrementsPage',
+			'runs/:month/payslips/:employeeId/edit': 'PayslipEditPage',
 			runs: 'PayrollRunPage',
 			'runs/:month/payslips/:employeeId': 'PayslipPage',
 			structures: 'SalaryStructuresPage',

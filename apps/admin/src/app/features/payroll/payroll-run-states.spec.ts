@@ -133,7 +133,7 @@ describe('the payroll run’s States (ST1)', () => {
 	it('has no warning for an empty list, and spans the new column when there are no rows', async () => {
 		const { fixture } = await opened(run({ rows: [], statesMissing: [] }));
 		expect(el(fixture, '#run_states_missing')).toBeNull();
-		expect(el(fixture, 'tbody td[colspan]')?.getAttribute('colspan')).toBe('11');
+		expect(el(fixture, 'tbody td[colspan]')?.getAttribute('colspan')).toBe('13');
 		expect(el<HTMLButtonElement>(fixture, '#run_approve')?.disabled).toBe(true);
 	});
 });

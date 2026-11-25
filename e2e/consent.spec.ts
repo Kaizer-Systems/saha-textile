@@ -121,8 +121,12 @@ test.describe('Cookie box', () => {
 		const errors: string[] = [];
 		page.on('pageerror', (error) => errors.push(error.message));
 		const link = box(page).locator('.cookie-contain a');
+		// The box wakes when the browser is idle (layout.html: hydrate on idle), which a busy CI machine reaches late,
+		// sometimes after the network has gone quiet: tap only once it is awake.
+		const isAwake = () => page.locator('app-cookie').evaluate((host) => !host.hasAttribute('ngh'));
+		await expect.poll(isAwake, { timeout: 20_000 }).toBe(true);
 		// CI keeps no screenshots: say whether the box was awake when tapped, where the link points, and any error.
-		const awake = await page.locator('app-cookie').evaluate((host) => !host.hasAttribute('ngh'));
+		const awake = await isAwake();
 		const href = await link.getAttribute('href');
 		await link.click();
 		try {

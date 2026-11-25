@@ -73,8 +73,13 @@ describe('the lock page', () => {
 	});
 
 	it('unlocks with the password, waits for one, and says when it is refused', async () => {
-		const { c, api, session } = make({});
-		await vi.waitFor(() => expect(c.status.data()).toBeTruthy());
+		const { c, api, session, fixture } = make({});
+		// The page picks the password once the status has arrived and its effect has run, which a slow machine
+		// reaches later than the status itself.
+		await vi.waitFor(() => {
+			fixture.detectChanges();
+			expect(c.method()).toBe('password');
+		});
 		await c.submit({ preventDefault: vi.fn() } as unknown as Event);
 		expect(api.unlock).not.toHaveBeenCalled();
 		c.password.set('correct horse');

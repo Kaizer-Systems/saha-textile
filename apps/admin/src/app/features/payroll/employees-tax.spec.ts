@@ -279,7 +279,7 @@ describe('a new employee’s tax for this year (TX1)', () => {
 		page.setProof('s80c', true);
 		expect(page.declaration()).toEqual({
 			...newDeclaration(THIS_YEAR, 'new'),
-			proof: { rent: false, s80c: true, s80d: false, homeLoan: false },
+			proof: { rent: false, s80c: true, s80d: false, s126Parents: false, homeLoan: false },
 		});
 		expect(page.form().taxRegime).toBe('new');
 	});
@@ -294,32 +294,39 @@ describe('an employee on the old regime declares rent, 80C, 80D, a home loan and
 		expect(modal<HTMLSelectElement>('#emp_regime')?.value).toBe('old');
 		expect(modal<HTMLInputElement>('#emp_dob')?.value).toBe('1990-05-01');
 		expect(modal<HTMLInputElement>('#emp_chosen_on')?.value).toBe('2026-04-05');
-		expect(modal<HTMLInputElement>('#emp_metro')?.checked).toBe(true);
+		// Brief 26 TX5: a declaration saved before cities shows its "metro" yes as the city picker's own choice.
+		expect(modal<HTMLSelectElement>('#emp_rent_city')?.value).toBe('__metro_before');
 		expect(modal<HTMLInputElement>('#emp_rent')?.value).toBe('12000');
 		const rows = [...declarationRows()];
-		expect(rows).toHaveLength(6);
-		expect(rows.map((row) => row.querySelectorAll('input[type="checkbox"]').length)).toEqual([2, 1, 1, 1, 0, 0]);
+		// Rent, section 126's five rows (TX3), 80C, home loan, the earlier job's salary and TDS.
+		expect(rows).toHaveLength(10);
+		expect(rows.map((row) => row.querySelectorAll('input[type="checkbox"]').length)).toEqual([
+			1, 2, 0, 2, 0, 0, 1, 1, 0, 0,
+		]);
 		expect(modal<HTMLInputElement>('#emp_decl_s80c')?.value).toBe('150000');
-		expect(
-			rows.slice(0, 4).map((row) => (row.querySelector('td:last-child input') as HTMLInputElement).checked),
-		).toEqual([true, false, true, false]);
-		expect(page.amount('s80dINR')).toBe(25_000);
+		expect([page.proven('rent'), page.proven('s80c'), page.proven('s80d'), page.proven('homeLoan')]).toEqual([
+			true,
+			false,
+			true,
+			false,
+		]);
+		expect(page.healthAmount('s80dINR')).toBe(25_000);
 	});
 
 	it('changes rent, metro, each amount and each proof, never below nothing, and keeps last year’s as it was', async () => {
 		const { fixture, page, redraw } = await employees();
 		edit(fixture, 0).click();
 		await redraw();
-		modal<HTMLInputElement>('#emp_metro')?.click();
+		page.pickRentCity('Pune');
 		enter(modal('#emp_rent'), '15000');
-		(declarationRows()[0]?.querySelector('td:last-child input') as HTMLInputElement).click();
+		(declarationRows()[0]?.querySelector('td:nth-child(4) input') as HTMLInputElement).click();
 		enter(modal('#emp_decl_s80c'), '-5');
 		enter(modal('#emp_decl_home_loan'), '200000');
 		enter(modal('#emp_decl_previous_salary'), '90000');
-		(declarationRows()[1]?.querySelector('td:last-child input') as HTMLInputElement).click();
-		page.setAmount('s80dINR', 'lots' as unknown as number);
+		(modal('#emp_decl_s80c')?.closest('tr')?.querySelector('td:nth-child(4) input') as HTMLInputElement).click();
+		page.setHealthAmount('s80dINR', 'lots');
 		expect(page.declaration()).toMatchObject({
-			metroCity: false,
+			rentCity: 'Pune',
 			rentMonthlyINR: 15_000,
 			s80cINR: 0,
 			s80dINR: 0,

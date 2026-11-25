@@ -5,7 +5,9 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal, type NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 import { GST_STATES } from '@saha-textile/core-domain/company';
 import {
+	HEALTH_126_2026,
 	PT_YEAR_CAP_PAISE,
+	RENT_CITIES_2026,
 	ptStartingSetsFor,
 	ptYearMost,
 	type PtSlab,
@@ -226,13 +228,22 @@ export interface IncomeTaxForm {
 	limit80d: number;
 	limitHomeLoan: number;
 	proofFromMonth: number;
+	/** Brief 26 TX4: section 126's limits in rupees, the rounding, and the cities where rent counts at 50%. */
+	health: { self: number; selfSenior: number; parents: number; parentsSenior: number; checkup: number };
+	rounding: 'ten' | 'rupee';
+	rentCities: string[];
 }
+
+/** TX4: the rounding choices, the law's first (section 516). */
+export const ROUNDINGS = ['ten', 'rupee'] as const;
 
 export function taxToForm(t: IncomeTaxRules): IncomeTaxForm {
 	const slabs = (list: IncomeTaxRules['newSlabs']) =>
 		list.map((x) => ({ upTo: x.upToPaise === null ? null : inr(x.upToPaise), rate: x.ratePct }));
 	const tiers = (list: IncomeTaxRules['newSurcharge']) =>
 		list.map((x) => ({ over: inr(x.overPaise), rate: x.ratePct }));
+	// A version saved before section 126's groups starts from the built-in limits.
+	const h = t.health126 ?? HEALTH_126_2026;
 	return {
 		slabs: {
 			newSlabs: slabs(t.newSlabs),
@@ -251,6 +262,15 @@ export function taxToForm(t: IncomeTaxRules): IncomeTaxForm {
 		limit80d: inr(t.limit80dPaise),
 		limitHomeLoan: inr(t.limitHomeLoanPaise),
 		proofFromMonth: t.proofFromMonth,
+		health: {
+			self: inr(h.selfPaise),
+			selfSenior: inr(h.selfSeniorPaise),
+			parents: inr(h.parentsPaise),
+			parentsSenior: inr(h.parentsSeniorPaise),
+			checkup: inr(h.checkupPaise),
+		},
+		rounding: t.rounding ?? 'ten',
+		rentCities: [...(t.rentCities ?? RENT_CITIES_2026)],
 	};
 }
 
@@ -273,9 +293,19 @@ export function taxToWrite(f: IncomeTaxForm): IncomeTaxRules {
 		oldSurcharge: tiers(f.tiers.oldSurcharge),
 		cessPct: f.cessPct,
 		limit80cPaise: paise(f.limit80c),
-		limit80dPaise: paise(f.limit80d),
+		// The single 80D limit of versions before section 126 stays in step with the family's limit.
+		limit80dPaise: paise(f.health.self),
 		limitHomeLoanPaise: paise(f.limitHomeLoan),
 		proofFromMonth: f.proofFromMonth,
+		health126: {
+			selfPaise: paise(f.health.self),
+			selfSeniorPaise: paise(f.health.selfSenior),
+			parentsPaise: paise(f.health.parents),
+			parentsSeniorPaise: paise(f.health.parentsSenior),
+			checkupPaise: paise(f.health.checkup),
+		},
+		rounding: f.rounding,
+		rentCities: f.rentCities.map((c) => c.trim()).filter((c) => c.length >= 2),
 	};
 }
 
@@ -574,6 +604,8 @@ export class PayrollRulesPage {
 	readonly frequencies: PtFrequency[] = ['monthly', 'half_yearly', 'yearly', 'none'];
 	/** PT2: the actual-pay basis first, as the law reads (PT-D3). */
 	readonly bases: PtBasis[] = ['actual', 'projected'];
+	readonly roundings = ROUNDINGS;
+	readonly healthKeys = ['self', 'selfSenior', 'parents', 'parentsSenior', 'checkup'] as const;
 	readonly monthNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 	/** PT1: the slab lists a State shows: everyone's, and the women's when it keeps them. */
 	listsOf(st: StateForm): SlabList[] {
@@ -609,6 +641,28 @@ export class PayrollRulesPage {
 
 	patchTax(fields: Partial<Omit<IncomeTaxForm, 'slabs' | 'tiers'>>): void {
 		this.patchTaxForm((t) => ({ ...t, ...fields }));
+	}
+
+	/** TX4: one of section 126's limits. */
+	setHealth(key: keyof IncomeTaxForm['health'], value: number): void {
+		this.patchTaxForm((t) => ({ ...t, health: { ...t.health, [key]: value } }));
+	}
+
+	/** TX4: the city typed in "Add a city" joins the list once (any case), and the box empties. */
+	readonly cityToAdd = signal('');
+	addCity(): void {
+		const city = this.cityToAdd().trim();
+		if (city.length < 2) return;
+		this.patchTaxForm((t) =>
+			t.rentCities.some((c) => c.toLowerCase() === city.toLowerCase())
+				? t
+				: { ...t, rentCities: [...t.rentCities, city] },
+		);
+		this.cityToAdd.set('');
+	}
+
+	removeCity(index: number): void {
+		this.patchTaxForm((t) => ({ ...t, rentCities: t.rentCities.filter((_, i) => i !== index) }));
 	}
 
 	setTaxSlab(group: SlabGroup, index: number, patch: Partial<IncomeTaxForm['slabs'][SlabGroup][number]>): void {

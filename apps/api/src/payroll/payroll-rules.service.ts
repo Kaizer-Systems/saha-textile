@@ -39,6 +39,7 @@ export const BUILT_IN_INCOME_TAX: NonNullable<PayrollRulesVersion['incomeTax']> 
 	oldSlabs60To79: INCOME_TAX_2026.oldSlabs60To79.map((s) => ({ ...s })),
 	oldSlabs80Plus: INCOME_TAX_2026.oldSlabs80Plus.map((s) => ({ ...s })),
 	oldSurcharge: INCOME_TAX_2026.oldSurcharge.map((t) => ({ ...t })),
+	rentCities: [...(INCOME_TAX_2026.rentCities ?? [])],
 };
 
 /** The built-in starting version: the 2026 pay rules and schemes, until a person adds a later one (S1). */

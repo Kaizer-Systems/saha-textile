@@ -32,6 +32,7 @@ import {
 	pfEstablishmentCharges,
 	ptPeriodMonths,
 	ptPersonOf,
+	rentCityCounts,
 	resolveRole,
 	stateLwf,
 	statePt,
@@ -140,19 +141,35 @@ export function taxWorkingFor(input: {
 	const counts = (rupees: number, proven: boolean) => (proof && !proven ? 0 : paise(rupees));
 	const year12 = (pick: (m: MonthFigures) => number, ytd: number) =>
 		ytd + pick(input.thisMonth) + pick(input.fullMonth) * after;
+	const band = ageBand(input.employee.dateOfBirth, year);
+	// Brief 26 TX3: section 126's two groups; the family is senior by the employee's age or the spouse's as declared.
+	const parentsProof = !!declared?.proof.s126Parents;
+	const health = {
+		selfPaise: counts(declared?.s80dINR ?? 0, !!declared?.proof.s80d),
+		selfCheckupPaise: counts(declared?.s126SelfCheckupINR ?? 0, !!declared?.proof.s80d),
+		selfSenior: band !== 'below_60' || !!declared?.s126SpouseSenior,
+		parentsPaise: counts(declared?.s126ParentsINR ?? 0, parentsProof),
+		parentsCheckupPaise: counts(declared?.s126ParentsCheckupINR ?? 0, parentsProof),
+		parentsSenior: !!declared?.s126ParentsSenior,
+		seniorMedicalPaise: counts(declared?.s126SeniorMedicalINR ?? 0, parentsProof),
+	};
+	// TX5: the rent city against the version's list; a declaration saved before keeps its yes/no.
+	const metro =
+		declared?.rentCity === undefined ? !!declared?.metroCity : rentCityCounts(declared.rentCity, input.rules);
 	const working = taxForYear(
 		{
 			regime,
-			ageBand: ageBand(input.employee.dateOfBirth, year),
+			ageBand: band,
 			salaryPaise: year12((m) => m.grossPaise, input.ytd.grossPaise) + paise(declared?.previousSalaryINR ?? 0),
 			hraPaise: year12((m) => m.hraPaise, input.ytd.hraPaise),
 			basicDaPaise: year12((m) => m.basicDaPaise, input.ytd.basicDaPaise),
 			pfPaise: year12((m) => m.pfPaise, input.ytd.pfPaise),
 			professionalTaxPaise: year12((m) => m.ptPaise, input.ytd.ptPaise),
 			rentPaise: counts((declared?.rentMonthlyINR ?? 0) * 12, !!declared?.proof.rent),
-			metro: !!declared?.metroCity,
+			metro,
 			s80cPaise: counts(declared?.s80cINR ?? 0, !!declared?.proof.s80c),
 			s80dPaise: counts(declared?.s80dINR ?? 0, !!declared?.proof.s80d),
+			health,
 			homeLoanInterestPaise: counts(declared?.homeLoanInterestINR ?? 0, !!declared?.proof.homeLoan),
 		},
 		input.rules,

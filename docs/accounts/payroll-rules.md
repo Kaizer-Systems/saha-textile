@@ -41,6 +41,20 @@ month's TDS is the year's tax less what was deducted, spread over the months lef
 working (`tax`), and `GET /admin/payroll/employees/:id/income-tax/:month` shows the year both ways without switching
 the regime.
 
+Three parts of a version's income tax are newer, and a version without them uses the built-in figures:
+
+- **Health insurance, section 126 (was 80D)** (`health126`): the family's limit (self, spouse, children) and the
+  parents', each higher when someone in the group is 60 or over, and preventive check-ups within those, held to their
+  own cap across both groups. An employee declares the family's premium and check-ups, the parents' premium and
+  check-ups, whether the spouse or a parent is 60 or over (the employee's own age comes from the date of birth), and
+  an uninsured senior parent's medical bills; the parents' group has its own proof. A declaration saved before has
+  only the family's figure (`s80dINR`).
+- **Rounding** (`rounding`): taxable income and the tax to the nearest ₹10 (`ten`, section 516, the default) or to
+  the rupee.
+- **Rent cities** (`rentCities`): where rent counts at 50% of basic and DA, filled with the eight cities of the
+  Income-tax Rules 2026 and edited on the version. An employee's declaration names the city (`rentCity`, blank for
+  another city, 40%); one saved before keeps its yes/no (`metroCity`).
+
 ## Statutory bonus
 
 Each version holds the Payment of Bonus Act's figures too (`bonus`): the year's rate (8.33% to 20%), the most a month

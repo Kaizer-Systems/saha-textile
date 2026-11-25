@@ -11,5 +11,10 @@
 		"declaration": false,
 		"sourceMap": false
 	},
-	"files": ["src/payroll/pt-starting-sets.ts", "src/payroll/state-rules.ts"]
+	"files": [
+		"src/payroll/payroll-rules-entry.ts",
+		"src/payroll/pt-starting-sets.ts",
+		"src/payroll/state-rules.ts",
+		"src/payroll/income-tax.ts"
+	]
 }

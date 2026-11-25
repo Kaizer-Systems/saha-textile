@@ -35,9 +35,23 @@ export const TaxDeclaration = z.object({
 	rentMonthlyINR: Rupees.default(0),
 	/** Delhi, Mumbai, Kolkata or Chennai: half of basic and DA, elsewhere 40%, for the rent test. */
 	metroCity: z.boolean().default(false),
+	/**
+	 * Brief 26 TX5: the city the rent is paid in, from the version's list ('' for another city, 40%). A declaration
+	 * saved before has none and keeps `metroCity`.
+	 */
+	rentCity: z.string().trim().max(40).optional(),
 	/** Life insurance, ELSS, PPF and the like; the employee's own PF is added by itself. */
 	s80cINR: Rupees.default(0),
+	/** Section 126 (was 80D): health insurance for self, spouse and children (a declaration's single 80D line before). */
 	s80dINR: Rupees.default(0),
+	/** TX3: the self group's check-ups; whether the spouse is 60 or over (the employee's own age comes from the date of birth). */
+	s126SelfCheckupINR: Rupees.optional(),
+	s126SpouseSenior: z.boolean().optional(),
+	/** TX3: parents' health insurance and check-ups, whether a parent is 60 or over, and an uninsured senior's medical bills. */
+	s126ParentsINR: Rupees.optional(),
+	s126ParentsCheckupINR: Rupees.optional(),
+	s126ParentsSenior: z.boolean().optional(),
+	s126SeniorMedicalINR: Rupees.optional(),
 	homeLoanInterestINR: Rupees.default(0),
 	previousSalaryINR: Rupees.default(0),
 	previousTdsINR: Rupees.default(0),
@@ -46,6 +60,8 @@ export const TaxDeclaration = z.object({
 			rent: z.boolean().default(false),
 			s80c: z.boolean().default(false),
 			s80d: z.boolean().default(false),
+			/** TX3: proof for the parents' group. */
+			s126Parents: z.boolean().optional(),
 			homeLoan: z.boolean().default(false),
 		})
 		.default({ rent: false, s80c: false, s80d: false, homeLoan: false }),
@@ -314,6 +330,20 @@ export const IncomeTaxRules = z.object({
 	limitHomeLoanPaise: Paise,
 	/** From this calendar month (1 = January) only declarations with proof count. */
 	proofFromMonth: z.number().int().min(1).max(12),
+	/** Brief 26 TX4: section 126's limits; versions saved before use the built-in figures. */
+	health126: z
+		.object({
+			selfPaise: Paise,
+			selfSeniorPaise: Paise,
+			parentsPaise: Paise,
+			parentsSeniorPaise: Paise,
+			checkupPaise: Paise,
+		})
+		.optional(),
+	/** TX4: taxable income and tax to the nearest ₹10 (section 516) or the rupee; versions saved before: ₹10. */
+	rounding: z.enum(['ten', 'rupee']).optional(),
+	/** TX4: cities where rent counts at 50% of basic and DA; versions saved before use the 2026 Rules' eight. */
+	rentCities: z.array(z.string().trim().min(2).max(40)).max(40).optional(),
 });
 export type IncomeTaxRules = z.infer<typeof IncomeTaxRules>;
 

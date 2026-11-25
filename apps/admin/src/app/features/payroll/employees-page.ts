@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal, type NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
+import { HEALTH_126_2026, RENT_CITIES_2026, healthByGroup } from '@saha-textile/core-domain/payroll-rules';
 import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
@@ -15,6 +16,7 @@ import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
 import { currentMonth } from './attendance-page';
+import { inForce } from './payroll-rules-page';
 
 import type {
 	EmployeeView,
@@ -34,6 +36,13 @@ export function structureCheck(s: SalaryStructureWrite): { total: number; basicS
 }
 
 const istToday = (): string => new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10);
+
+/** TX5: the rent picker's stand-in for a declaration saved before cities, ticked "metro city". */
+export const METRO_BEFORE = '__metro_before';
+
+/** TX3: the section 126 amounts a declaration holds, in rupees a year. */
+export type HealthField =
+	's80dINR' | 's126SelfCheckupINR' | 's126ParentsINR' | 's126ParentsCheckupINR' | 's126SeniorMedicalINR';
 const blank = (): EmployeeWriteInput => ({
 	name: '',
 	code: '',
@@ -173,6 +182,43 @@ export class EmployeesPage {
 	readonly editing = signal<EmployeeView | null>(null);
 	/** TX1: this financial year, its declaration in the form, and the saved year worked both ways. */
 	readonly taxYear = yearOf(currentMonth());
+	readonly metroBefore = METRO_BEFORE;
+	/** TX3: section 126's rows, each group's proof and "Counts" spanning its rows. */
+	readonly healthRows = [
+		{ key: 'health_self', field: 's80dINR', group: 'self', proof: 's80d', groupStart: true, rows: 2 },
+		{
+			key: 'health_self_checkup',
+			field: 's126SelfCheckupINR',
+			group: 'self',
+			proof: 's80d',
+			groupStart: false,
+			rows: 0,
+		},
+		{
+			key: 'health_parents',
+			field: 's126ParentsINR',
+			group: 'parents',
+			proof: 's126Parents',
+			groupStart: true,
+			rows: 3,
+		},
+		{
+			key: 'health_parents_checkup',
+			field: 's126ParentsCheckupINR',
+			group: 'parents',
+			proof: 's126Parents',
+			groupStart: false,
+			rows: 0,
+		},
+		{
+			key: 'health_senior_medical',
+			field: 's126SeniorMedicalINR',
+			group: 'parents',
+			proof: 's126Parents',
+			groupStart: false,
+			rows: 0,
+		},
+	] as const;
 	/** Brief 26 PT3: the genders a State's PT may ask about (women's slabs). */
 	readonly genders = ['woman', 'man', 'other'] as const;
 	readonly taxRows = TAX_ROWS;
@@ -182,7 +228,6 @@ export class EmployeesPage {
 	/** The old regime's declarations after rent: what each is called, its amount field and its proof. */
 	readonly declared = [
 		{ key: 's80c', field: 's80cINR', proof: 's80c' },
-		{ key: 's80d', field: 's80dINR', proof: 's80d' },
 		{ key: 'home_loan', field: 'homeLoanInterestINR', proof: 'homeLoan' },
 		{ key: 'previous_salary', field: 'previousSalaryINR', proof: null },
 		{ key: 'previous_tds', field: 'previousTdsINR', proof: null },
@@ -204,6 +249,65 @@ export class EmployeesPage {
 	proven(key: keyof TaxDeclaration['proof']): boolean {
 		return !!this.declaration()?.proof[key];
 	}
+
+	/** Brief 26 TX3, TX5: the rules in force today, for the rent cities and section 126's limits. */
+	readonly rules = injectQuery(() => ({
+		queryKey: PAYROLL_KEYS.rules,
+		queryFn: () => firstValueFrom(this.gateway.rules()),
+	}));
+	private readonly taxRules = computed(() => inForce(this.rules.data() ?? [], istToday())?.incomeTax ?? null);
+	readonly rentCities = computed(() => this.taxRules()?.rentCities ?? RENT_CITIES_2026);
+
+	/** TX5: the rent city as picked; a declaration saved before shows its yes/no as "a metro city". */
+	readonly rentCityValue = computed(() => {
+		const d = this.declaration();
+		if (d?.rentCity !== undefined) return d.rentCity;
+		return d?.metroCity ? METRO_BEFORE : '';
+	});
+
+	pickRentCity(value: string): void {
+		if (value !== METRO_BEFORE) this.setDeclaration({ rentCity: value });
+	}
+
+	/** TX3: section 126's amounts on this year's declaration (rupees). */
+	healthAmount(field: HealthField): number {
+		return this.declaration()?.[field] ?? 0;
+	}
+
+	setHealthAmount(field: HealthField, value: unknown): void {
+		this.setDeclaration({ [field]: this.atLeastNothing(value) });
+	}
+
+	/** TX3: the family is senior by the employee's own age at the year's end, or the spouse's as ticked. */
+	readonly selfSeniorByAge = computed(() => {
+		const dob = this.form().dateOfBirth;
+		return (
+			!!dob &&
+			Number(this.taxYear.slice(0, 4)) + 1 - Number(dob.slice(0, 4)) - (dob.slice(5) > '04-01' ? 1 : 0) >= 60
+		);
+	});
+
+	/** TX3's "Counts": each group's deduction against its limit, worked out as the run does. */
+	readonly healthCounts = computed(() => {
+		const d = this.declaration();
+		const p = (rupee: number | undefined) => Math.round((rupee ?? 0) * 100);
+		const g = healthByGroup(
+			{
+				selfPaise: p(d?.s80dINR),
+				selfCheckupPaise: p(d?.s126SelfCheckupINR),
+				selfSenior: this.selfSeniorByAge() || !!d?.s126SpouseSenior,
+				parentsPaise: p(d?.s126ParentsINR),
+				parentsCheckupPaise: p(d?.s126ParentsCheckupINR),
+				parentsSenior: !!d?.s126ParentsSenior,
+				seniorMedicalPaise: p(d?.s126SeniorMedicalINR),
+			},
+			{ health126: this.taxRules()?.health126 ?? HEALTH_126_2026 },
+		);
+		return {
+			self: { counted: rupees(g.selfPaise), limit: rupees(g.selfLimitPaise) },
+			parents: { counted: rupees(g.parentsPaise), limit: rupees(g.parentsLimitPaise) },
+		};
+	});
 	readonly form = signal<EmployeeWriteInput>(blank());
 	readonly busy = signal(false);
 	private modal: NgbModalRef | null = null;
@@ -241,7 +345,13 @@ export class EmployeesPage {
 
 	setProof(key: keyof TaxDeclaration['proof'], value: boolean): void {
 		const p = this.declaration()?.proof;
-		const proof = { rent: !!p?.rent, s80c: !!p?.s80c, s80d: !!p?.s80d, homeLoan: !!p?.homeLoan };
+		const proof = {
+			rent: !!p?.rent,
+			s80c: !!p?.s80c,
+			s80d: !!p?.s80d,
+			s126Parents: !!p?.s126Parents,
+			homeLoan: !!p?.homeLoan,
+		};
 		this.setDeclaration({ proof: { ...proof, [key]: value } });
 	}
 

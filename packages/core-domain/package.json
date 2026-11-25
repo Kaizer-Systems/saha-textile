@@ -85,9 +85,9 @@
       "default": "./dist/bundle/index.js"
     },
     "./payroll-rules": {
-      "types": "./dist/payroll/pt-starting-sets.d.ts",
-      "import": "./dist/esm/payroll-rules/payroll/pt-starting-sets.js",
-      "default": "./dist/payroll/pt-starting-sets.js"
+      "types": "./dist/payroll/payroll-rules-entry.d.ts",
+      "import": "./dist/esm/payroll-rules/payroll/payroll-rules-entry.js",
+      "default": "./dist/payroll/payroll-rules-entry.js"
     }
   },
   "files": [

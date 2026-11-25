@@ -223,13 +223,14 @@ describe('income tax as a form and back (TX2)', () => {
 			limitHomeLoan: 2_00_000,
 			proofFromMonth: 1,
 		});
-		expect(taxToWrite(form)).toEqual(TAX);
+		// Brief 26 TX4: section 126's limits, the rounding and the cities come from the built-in set for a version without them.
+		expect(taxToWrite(form)).toMatchObject(TAX);
 	});
 
 	it('carries income tax through a version’s form only when the version has it', () => {
 		const withTax = toForm(WITH_TAX, '2026-04-01');
 		expect(withTax.incomeTax).toEqual(taxToForm(TAX));
-		expect(toWrite(withTax).incomeTax).toEqual(TAX);
+		expect(toWrite(withTax).incomeTax).toMatchObject(TAX);
 		const without = toForm(WITHOUT_TAX, '2026-04-01');
 		expect(without.incomeTax).toBeNull();
 		expect('incomeTax' in toWrite(without)).toBe(false);
@@ -259,7 +260,6 @@ describe('the income-tax section of the add-a-version pop-up (TX2)', () => {
 			['#pr_tax_old_rebate_max', '15000', 'oldRebateMax'],
 			['#pr_tax_cess', '5', 'cessPct'],
 			['#pr_tax_80c', '200000', 'limit80c'],
-			['#pr_tax_80d', '50000', 'limit80d'],
 			['#pr_tax_home', '300000', 'limitHomeLoan'],
 			['#pr_tax_proof', '12', 'proofFromMonth'],
 		];
@@ -338,7 +338,7 @@ describe('the income-tax section of the add-a-version pop-up (TX2)', () => {
 		await redraw();
 		await page.save();
 		const [sent] = calls.addRules.mock.lastCall as unknown as [{ incomeTax: IncomeTaxRules }];
-		expect(sent.incomeTax).toEqual({ ...TAX, cessPct: 5 });
+		expect(sent.incomeTax).toMatchObject({ ...TAX, cessPct: 5 });
 	});
 
 	it('has no income-tax section for a version without it, and every change is then left alone', async () => {

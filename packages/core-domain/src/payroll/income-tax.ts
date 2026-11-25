@@ -33,7 +33,42 @@ export interface IncomeTaxRules {
 	limit80dPaise: number;
 	limitHomeLoanPaise: number;
 	proofFromMonth: number;
+	/** Brief 26 TX4: section 126's limits (was 80D); a version without them uses the built-in figures. */
+	health126?: Health126Limits;
+	/** TX4: taxable income and tax rounded to the nearest ₹10 (section 516, the default) or to the rupee. */
+	rounding?: 'ten' | 'rupee';
+	/** TX4: cities where rent counts at 50% of basic and DA; a version without its own list uses the built-in one. */
+	rentCities?: readonly string[];
 }
+
+/** Section 126 (was 80D): each group's limit, the higher one when someone in it is 60 or over, and check-ups within. */
+export interface Health126Limits {
+	selfPaise: number;
+	selfSeniorPaise: number;
+	parentsPaise: number;
+	parentsSeniorPaise: number;
+	checkupPaise: number;
+}
+
+export const HEALTH_126_2026: Health126Limits = {
+	selfPaise: 25_000_00,
+	selfSeniorPaise: 50_000_00,
+	parentsPaise: 25_000_00,
+	parentsSeniorPaise: 50_000_00,
+	checkupPaise: 5_000_00,
+};
+
+/** Income-tax Rules 2026: rent counts at 50% in these eight cities from tax year 2026-27; 40% elsewhere. */
+export const RENT_CITIES_2026: readonly string[] = [
+	'Mumbai',
+	'Delhi',
+	'Kolkata',
+	'Chennai',
+	'Bengaluru',
+	'Hyderabad',
+	'Pune',
+	'Ahmedabad',
+];
 
 const lakh = (n: number) => n * 1_00_000_00;
 
@@ -85,7 +120,64 @@ export const INCOME_TAX_2026: IncomeTaxRules = {
 	limit80dPaise: 25_000_00,
 	limitHomeLoanPaise: 2_00_000_00,
 	proofFromMonth: 1,
+	health126: HEALTH_126_2026,
+	rounding: 'ten',
+	rentCities: RENT_CITIES_2026,
 };
+
+/** TX5: rent in a city on the version's list counts at 50%; any other city, or none named, at 40%. */
+export function rentCityCounts(city: string, rules: Pick<IncomeTaxRules, 'rentCities'>): boolean {
+	const name = city.trim().toLowerCase();
+	return !!name && (rules.rentCities ?? RENT_CITIES_2026).some((c) => c.trim().toLowerCase() === name);
+}
+
+/** TX3: what a person declares under section 126, a year (paise). */
+export interface HealthCover {
+	/** Premium for self, spouse and children, and their preventive check-ups. */
+	selfPaise: number;
+	selfCheckupPaise: number;
+	/** Someone in the self group is 60 or over (the employee by date of birth, or the spouse as declared). */
+	selfSenior: boolean;
+	parentsPaise: number;
+	parentsCheckupPaise: number;
+	parentsSenior: boolean;
+	/** Medical bills of a senior parent with no insurance, within the parents' limit. */
+	seniorMedicalPaise: number;
+}
+
+/** TX3: what each group of section 126 counts, against its limit (the employee's card shows both). */
+export interface HealthByGroup {
+	selfPaise: number;
+	selfLimitPaise: number;
+	parentsPaise: number;
+	parentsLimitPaise: number;
+}
+
+/**
+ * TX3: section 126's deduction by group. Each group is held to its limit (the higher one with a senior in it);
+ * preventive check-ups count within those limits and are held to their own cap across both groups, the self group's
+ * first; medical bills count only for senior parents.
+ */
+export function healthByGroup(h: HealthCover, rules: Pick<IncomeTaxRules, 'health126'>): HealthByGroup {
+	const l = rules.health126 ?? HEALTH_126_2026;
+	const selfCheckup = Math.min(h.selfCheckupPaise, l.checkupPaise);
+	const parentsCheckup = Math.min(h.parentsCheckupPaise, l.checkupPaise - selfCheckup);
+	const selfLimitPaise = h.selfSenior ? l.selfSeniorPaise : l.selfPaise;
+	const parentsLimitPaise = h.parentsSenior ? l.parentsSeniorPaise : l.parentsPaise;
+	const parentsClaimed = h.parentsPaise + parentsCheckup + (h.parentsSenior ? h.seniorMedicalPaise : 0);
+	return {
+		selfPaise: Math.min(h.selfPaise + selfCheckup, selfLimitPaise),
+		selfLimitPaise,
+		parentsPaise: Math.min(parentsClaimed, parentsLimitPaise),
+		parentsLimitPaise,
+	};
+}
+
+/** TX3: section 126's deduction, both groups together. */
+export function healthDeduction(h: HealthCover, rules: Pick<IncomeTaxRules, 'health126'>): number {
+	const g = healthByGroup(h, rules);
+	return g.selfPaise + g.parentsPaise;
+}
 
 export type AgeBand = 'below_60' | '60_to_79' | '80_plus';
 
@@ -163,7 +255,9 @@ export interface TaxYearInput {
 	rentPaise: number;
 	metro: boolean;
 	s80cPaise: number;
+	/** The single 80D figure of a declaration saved before section 126's groups; `health` replaces it. */
 	s80dPaise: number;
+	health?: HealthCover;
 	homeLoanInterestPaise: number;
 }
 
@@ -183,13 +277,16 @@ export interface TaxYearWorking {
 }
 
 const rupee = (paise: number) => Math.round(paise / 100) * 100;
+/** Section 516 (was 288A, 288B): to the nearest ₹10, ₹5 and over going up. */
+const ten = (paise: number) => Math.round(paise / 1_000) * 1_000;
 
 /**
  * A year's income tax on salary (TX1). New regime: salary less the standard deduction; the rebate takes the whole tax
  * up to its limit and, above it, never leaves more tax than the income over the limit. Old regime: salary less the
  * exempt rent allowance, the standard deduction, professional tax, and 80C (own PF included), 80D and home loan
- * interest within their limits; the rebate up to its amount when taxable income is within its limit. Then surcharge
- * with marginal relief, then cess. The tax is rounded to the rupee.
+ * interest within their limits (section 126's groups when declared that way); the rebate up to its amount when taxable
+ * income is within its limit. Then surcharge with marginal relief, then cess. Taxable income and the tax are rounded to
+ * the nearest ₹10 (section 516), or to the rupee when the version says so.
  */
 export function taxForYear(input: TaxYearInput, rules: IncomeTaxRules): TaxYearWorking {
 	const old = input.regime === 'old';
@@ -214,11 +311,12 @@ export function taxForYear(input: TaxYearInput, rules: IncomeTaxRules): TaxYearW
 	);
 	const deductions = old
 		? Math.min(input.pfPaise + input.s80cPaise, rules.limit80cPaise) +
-			Math.min(input.s80dPaise, rules.limit80dPaise) +
+			(input.health ? healthDeduction(input.health, rules) : Math.min(input.s80dPaise, rules.limit80dPaise)) +
 			Math.min(input.homeLoanInterestPaise, rules.limitHomeLoanPaise)
 		: 0;
 	const pt = old ? input.professionalTaxPaise : 0;
-	const taxable = rupee(Math.max(0, input.salaryPaise - hra - standard - pt - deductions));
+	const round = rules.rounding === 'rupee' ? rupee : ten;
+	const taxable = round(Math.max(0, input.salaryPaise - hra - standard - pt - deductions));
 	const before = slabTax(taxable, slabs);
 	const after = (income: number, tax: number): number => {
 		if (!old) return income <= rules.newRebateUpToPaise ? 0 : Math.min(tax, income - rules.newRebateUpToPaise);
@@ -241,7 +339,7 @@ export function taxForYear(input: TaxYearInput, rules: IncomeTaxRules): TaxYearW
 		rebatePaise: rupee(before - tax),
 		surchargePaise: rupee(surcharge),
 		cessPaise: rupee(cess),
-		taxPaise: rupee(tax + surcharge + cess),
+		taxPaise: round(tax + surcharge + cess),
 	};
 }
 

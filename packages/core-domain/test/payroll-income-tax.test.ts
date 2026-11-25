@@ -77,8 +77,8 @@ describe('the rebate, age bands and surcharge', () => {
 		const at = (salary: number, band: TaxYearInput['ageBand']) =>
 			taxForYear(input({ regime: 'old', ageBand: band, salaryPaise: rupees(salary) }), INCOME_TAX_2026).taxPaise;
 		expect(at(5_50_000, 'below_60')).toBe(0);
-		// No marginal relief in the old regime: a rupee over ₹5 lakh taxable loses the whole rebate.
-		expect(at(5_50_001, 'below_60')).toBe(rupees(13_000));
+		// No marginal relief in the old regime: ten rupees over ₹5 lakh taxable (it is rounded to ₹10) lose the whole rebate.
+		expect(at(5_50_010, 'below_60')).toBe(rupees(13_000));
 		expect(at(8_00_000, '60_to_79')).toBe(rupees(62_400));
 		expect(at(8_00_000, '80_plus')).toBe(rupees(52_000));
 	});
@@ -241,7 +241,8 @@ describe('a year’s working at its edges', () => {
 	it('wipes the new regime’s tax at exactly ₹12 lakh taxable and holds it to the income above just past it', () => {
 		const at = (taxable: number) => taxForYear(input({ salaryPaise: rupees(taxable + 75_000) }), INCOME_TAX_2026);
 		expect(at(12_00_000)).toMatchObject({ slabTaxPaise: rupees(60_000), rebatePaise: rupees(60_000), taxPaise: 0 });
-		expect(at(12_00_001)).toMatchObject({ rebatePaise: rupees(59_999), taxPaise: rupees(1) });
+		// Taxable income is rounded to ₹10 (section 516), so ₹10 over is the first step past the limit.
+		expect(at(12_00_010)).toMatchObject({ rebatePaise: rupees(59_992), taxPaise: rupees(10) });
 		// Past ₹12,70,588 the slab tax is the smaller: no relief left.
 		expect(at(13_00_000)).toMatchObject({ slabTaxPaise: rupees(75_000), rebatePaise: 0, taxPaise: rupees(78_000) });
 	});

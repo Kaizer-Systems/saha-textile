@@ -845,22 +845,6 @@
 				<div class="col-md-3">
 					<label
 						class="form-label-title"
-						for="pr_tax_80d"
-					>
-						{{ 'payroll_tax_f_80d' | transloco }}
-					</label>
-					<input
-						class="form-control"
-						id="pr_tax_80d"
-						type="number"
-						min="0"
-						[ngModel]="t.limit80d"
-						(ngModelChange)="patchTax({ limit80d: +$event })"
-					/>
-				</div>
-				<div class="col-md-3">
-					<label
-						class="form-label-title"
 						for="pr_tax_home"
 					>
 						{{ 'payroll_tax_f_home_loan' | transloco }}
@@ -889,6 +873,100 @@
 						[ngModel]="t.proofFromMonth"
 						(ngModelChange)="patchTax({ proofFromMonth: +$event })"
 					/>
+				</div>
+			</div>
+			<!-- Brief 26 TX4: section 126's limits (replacing the single 80D limit), the rounding, the rent cities. -->
+			<div class="row g-3 mt-1">
+				<div class="col-md-6">
+					<h6 class="small mb-1">{{ 'payroll_tax_126_title' | transloco }}</h6>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<tbody>
+								@for (k of healthKeys; track k) {
+								<tr>
+									<td>{{ 'payroll_tax_126_' + k | transloco }}</td>
+									<td>
+										<input
+											class="form-control"
+											type="number"
+											min="0"
+											[id]="'pr_tax_126_' + k"
+											[attr.aria-label]="'payroll_tax_126_' + k | transloco"
+											[ngModel]="t.health[k]"
+											(ngModelChange)="setHealth(k, +$event)"
+										/>
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					<label
+						class="form-label-title mt-2"
+						for="pr_tax_rounding"
+					>
+						{{ 'payroll_tax_rounding' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="pr_tax_rounding"
+						[ngModel]="t.rounding"
+						(ngModelChange)="patchTax({ rounding: $event })"
+					>
+						@for (r of roundings; track r) {
+						<option [value]="r">{{ 'payroll_tax_rounding_' + r | transloco }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-6">
+					<h6 class="small mb-1">{{ 'payroll_tax_cities_title' | transloco }}</h6>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<tbody>
+								@for (c of t.rentCities; track $index; let i = $index) {
+								<tr>
+									<td>{{ c }}</td>
+									<td>
+										<button
+											type="button"
+											class="btn btn-outline text-danger btn-sm"
+											[title]="'remove' | transloco"
+											[attr.aria-label]="'remove' | transloco"
+											(click)="removeCity(i)"
+										>
+											<i class="ri-delete-bin-line"></i>
+										</button>
+									</td>
+								</tr>
+								}
+								<tr>
+									<td>
+										<input
+											class="form-control"
+											id="pr_tax_city"
+											maxlength="40"
+											[placeholder]="'payroll_tax_city_add' | transloco"
+											[attr.aria-label]="'payroll_tax_city_add' | transloco"
+											[ngModel]="cityToAdd()"
+											(ngModelChange)="cityToAdd.set($event)"
+										/>
+									</td>
+									<td>
+										<button
+											type="button"
+											class="btn btn-sm btn-outline"
+											id="pr_tax_city_add"
+											[disabled]="cityToAdd().trim().length < 2"
+											(click)="addCity()"
+										>
+											{{ 'payroll_tax_city_add_btn' | transloco }}
+										</button>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<p class="help-text mt-1">{{ 'payroll_tax_cities_help' | transloco }}</p>
 				</div>
 			</div>
 			@for (g of slabGroups; track g) {

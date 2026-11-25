@@ -562,28 +562,30 @@
 						<tr>
 							<th>{{ 'payroll_decl_what' | transloco }}</th>
 							<th>{{ 'payroll_decl_amount' | transloco }}</th>
+							<th>{{ 'payroll_decl_senior' | transloco }}</th>
 							<th>{{ 'payroll_decl_proof' | transloco }}</th>
+							<th>{{ 'payroll_decl_counts' | transloco }}</th>
 						</tr>
 					</thead>
 					<tbody>
 						<tr>
 							<td>
 								{{ 'payroll_decl_rent' | transloco }}
-								<div class="form-check mt-1">
-									<input
-										class="form-check-input"
-										type="checkbox"
-										id="emp_metro"
-										[checked]="declaration()?.metroCity"
-										(change)="setDeclaration({ metroCity: $any($event.target).checked })"
-									/>
-									<label
-										class="form-check-label small"
-										for="emp_metro"
-									>
-										{{ 'payroll_decl_metro' | transloco }}
-									</label>
-								</div>
+								<!-- Brief 26 TX5: the city from the version's list, or another city (40%). -->
+								<select
+									class="form-select form-select-sm mt-1"
+									id="emp_rent_city"
+									[attr.aria-label]="'payroll_decl_rent_city' | transloco"
+									[ngModel]="rentCityValue()"
+									(ngModelChange)="pickRentCity($event)"
+								>
+									<option value="">{{ 'payroll_decl_rent_city_other' | transloco }}</option>
+									@for (c of rentCities(); track c) {
+									<option [value]="c">{{ c }}</option>
+									} @if (rentCityValue() === metroBefore) {
+									<option [value]="metroBefore">{{ 'payroll_decl_metro' | transloco }}</option>
+									}
+								</select>
 							</td>
 							<td>
 								<input
@@ -596,6 +598,7 @@
 									(ngModelChange)="setDeclaration({ rentMonthlyINR: atLeastNothing($event) })"
 								/>
 							</td>
+							<td></td>
 							<td>
 								<input
 									class="form-check-input"
@@ -605,8 +608,84 @@
 									(change)="setProof('rent', $any($event.target).checked)"
 								/>
 							</td>
+							<td></td>
 						</tr>
-						@for (d of declared; track d.key) {
+						<!-- Brief 26 TX3: section 126 in its two groups, each against its limit. -->
+						@for (h of healthRows; track h.field; let first = $first) {
+						<tr>
+							<td>{{ 'payroll_decl_' + h.key | transloco }}</td>
+							<td>
+								<input
+									class="form-control"
+									type="number"
+									min="0"
+									[id]="'emp_decl_' + h.key"
+									[attr.aria-label]="'payroll_decl_' + h.key | transloco"
+									[ngModel]="healthAmount(h.field)"
+									(ngModelChange)="setHealthAmount(h.field, $event)"
+								/>
+							</td>
+							<td>
+								@if (h.key === 'health_self') {
+								<small class="text-muted d-block">
+									{{ (selfSeniorByAge() ? 'payroll_decl_senior_by_age' :
+									'payroll_decl_senior_from_dob') | transloco }}
+								</small>
+								<div class="form-check">
+									<input
+										class="form-check-input"
+										type="checkbox"
+										id="emp_spouse_senior"
+										[checked]="!!declaration()?.s126SpouseSenior"
+										(change)="setDeclaration({ s126SpouseSenior: $any($event.target).checked })"
+									/>
+									<label
+										class="form-check-label small"
+										for="emp_spouse_senior"
+									>
+										{{ 'payroll_decl_spouse_senior' | transloco }}
+									</label>
+								</div>
+								} @if (h.key === 'health_parents') {
+								<div class="form-check">
+									<input
+										class="form-check-input"
+										type="checkbox"
+										id="emp_parents_senior"
+										[checked]="!!declaration()?.s126ParentsSenior"
+										(change)="setDeclaration({ s126ParentsSenior: $any($event.target).checked })"
+									/>
+									<label
+										class="form-check-label small"
+										for="emp_parents_senior"
+									>
+										{{ 'payroll_decl_parents_senior' | transloco }}
+									</label>
+								</div>
+								}
+							</td>
+							@if (h.groupStart) {
+							<td [attr.rowspan]="h.rows">
+								<input
+									class="form-check-input"
+									type="checkbox"
+									[id]="'emp_proof_' + h.proof"
+									[attr.aria-label]="'payroll_decl_proof' | transloco"
+									[checked]="proven(h.proof)"
+									(change)="setProof(h.proof, $any($event.target).checked)"
+								/>
+							</td>
+							<td
+								class="text-nowrap"
+								[attr.rowspan]="h.rows"
+								[id]="'emp_counts_' + h.group"
+							>
+								{{ 'payroll_decl_counts_of' | transloco: { counted: healthCounts()[h.group].counted,
+								limit: healthCounts()[h.group].limit } }}
+							</td>
+							}
+						</tr>
+						} @for (d of declared; track d.key) {
 						<tr>
 							<td>{{ 'payroll_decl_' + d.key | transloco }}</td>
 							<td>
@@ -620,6 +699,7 @@
 									(ngModelChange)="setAmount(d.field, $event)"
 								/>
 							</td>
+							<td></td>
 							<td>
 								@if (d.proof) {
 								<input
@@ -631,11 +711,13 @@
 								/>
 								}
 							</td>
+							<td></td>
 						</tr>
 						}
 					</tbody>
 				</table>
 			</div>
+			<p class="help-text mt-1">{{ 'payroll_decl_126_help' | transloco }}</p>
 			} @else {
 			<div class="row g-3 mt-1">
 				<div class="col-md-6">

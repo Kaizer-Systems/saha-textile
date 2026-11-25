@@ -1,6 +1,6 @@
 import { Reflector } from '@nestjs/core';
-import type { Employee, PayrollRow, PayrollRun } from '@saha-textile/contracts';
-import { ourBlocks, type DocumentBlock } from '@saha-textile/core-domain';
+import type { DocumentBlock, Employee, PayrollRow, PayrollRun } from '@saha-textile/contracts';
+import { ourBlocks } from '@saha-textile/core-domain';
 import { describe, expect, it, vi } from 'vitest';
 
 import { PERMISSIONS_KEY } from '../src/auth/session.guard';

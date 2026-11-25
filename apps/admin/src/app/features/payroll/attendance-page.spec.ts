@@ -1,6 +1,6 @@
 import { ApplicationRef, CUSTOM_ELEMENTS_SCHEMA, TemplateRef, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -119,6 +119,10 @@ interface Options {
 	permissions?: string[];
 	confirm?: boolean | 'dismissed';
 	gateway?: Record<string, unknown>;
+	/** The route the page was opened by (the worklist's Open), when not the router's own. */
+	route?: unknown;
+	/** The page with no template, so its day pop-up is never there to open. */
+	bare?: boolean;
 }
 
 async function attendance(options: Options = {}) {
@@ -149,6 +153,7 @@ async function attendance(options: Options = {}) {
 		providers: [
 			provideTanStackQuery(new QueryClient({ defaultOptions: { queries: { retry: false } } })),
 			provideRouter([]),
+			...(options.route === undefined ? [] : [{ provide: ActivatedRoute, useValue: options.route }]),
 			{ provide: AttendanceGateway, useValue: gateway },
 			{ provide: NotificationService, useValue: notifier },
 			{
@@ -188,6 +193,7 @@ async function attendance(options: Options = {}) {
 		remove: { imports: [ExportMenu] },
 		add: { schemas: [CUSTOM_ELEMENTS_SCHEMA] },
 	});
+	if (options.bare) TestBed.overrideComponent(AttendancePage, { set: { template: '' } });
 	const fixture = TestBed.createComponent(AttendancePage);
 	fixture.detectChanges();
 	// A month that never arrives keeps the page from going stable: wait a few turns instead.
@@ -617,5 +623,45 @@ describe('Payroll › Attendance (AT2, AT3)', () => {
 		});
 		await page.saveDay();
 		expect([gateway.change.mock.calls.length, notifier.showSuccess.mock.calls.length]).toEqual([1, 1]);
+	});
+
+	it('lands from the worklist on the month, the store and the day asked for, opening that day once', async () => {
+		const query = { month: '2026-10', locationId: 'loc_s', employeeId: 'emp_1', day: '2026-10-02' };
+		const { page, gateway, refs, settle } = await attendance({
+			route: { snapshot: { queryParamMap: convertToParamMap(query) } },
+		});
+		expect([page.month(), page.locationId()]).toEqual(['2026-10', 'loc_s']);
+		expect(gateway.grid).toHaveBeenCalledWith('2026-10', 'loc_s');
+		expect([page.form()?.person.employeeId, page.form()?.day, refs.length]).toEqual(['emp_1', '2026-10-02', 1]);
+		page.month.set('2026-11');
+		await settle();
+		expect(refs.length).toBe(1);
+	});
+
+	it('opens no day for someone not in the month, nor without both a person and a day', async () => {
+		const stranger = await attendance({
+			route: {
+				snapshot: { queryParamMap: convertToParamMap({ employeeId: 'emp_9', day: '2026-11-02' }) },
+			},
+		});
+		expect([stranger.page.form(), stranger.refs.length, stranger.page.locationId()]).toEqual([null, 0, 'loc_b']);
+		const noDay = await attendance({
+			route: { snapshot: { queryParamMap: convertToParamMap({ month: '2026-09', employeeId: 'emp_1' }) } },
+		});
+		expect([noDay.page.month(), noDay.page.form(), noDay.refs.length]).toEqual(['2026-09', null, 0]);
+		const bare = await attendance({
+			bare: true,
+			route: {
+				snapshot: { queryParamMap: convertToParamMap({ employeeId: 'emp_1', day: '2026-11-02' }) },
+			},
+		});
+		expect([bare.page.form(), bare.refs.length]).toEqual([null, 0]);
+	});
+
+	it('opens this month at the first store for a route with nothing asked', async () => {
+		for (const route of [{}, { snapshot: {} }]) {
+			const { page, refs } = await attendance({ route });
+			expect([page.month(), page.locationId(), refs.length]).toEqual(['2026-11', 'loc_b', 0]);
+		}
 	});
 });

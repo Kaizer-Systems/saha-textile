@@ -1,6 +1,6 @@
 import { ApplicationRef, TemplateRef, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -60,7 +60,7 @@ const person = (over: Record<string, unknown> = {}) =>
 		...over,
 	}) as unknown as EmployeeView;
 
-async function employees(permissions = ['accounts.index', 'accounts.edit']) {
+async function employees(permissions = ['accounts.index', 'accounts.edit'], route?: unknown, bare = false) {
 	TestBed.resetTestingModule();
 	document.body.querySelectorAll('.rev-test-modal').forEach((node) => node.remove());
 	const views: { detectChanges: () => void }[] = [];
@@ -77,6 +77,7 @@ async function employees(permissions = ['accounts.index', 'accounts.edit']) {
 		providers: [
 			provideTanStackQuery(new QueryClient({ defaultOptions: { queries: { retry: false } } })),
 			provideRouter([]),
+			...(route === undefined ? [] : [{ provide: ActivatedRoute, useValue: route }]),
 			{
 				provide: PayrollGateway,
 				useValue: { employees: vi.fn(() => of([person()])), rules: vi.fn(() => of([])) },
@@ -111,6 +112,7 @@ async function employees(permissions = ['accounts.index', 'accounts.edit']) {
 			},
 		],
 	});
+	if (bare) TestBed.overrideComponent(EmployeesPage, { set: { template: '' } });
 	const fixture = TestBed.createComponent(EmployeesPage);
 	fixture.detectChanges();
 	await settle(fixture);
@@ -170,5 +172,34 @@ describe('Revise pay and the skill level on Employees (SR2, SR4)', () => {
 		).toMatchObject({ templateId: 'tpl_shop', ctcYearINR: 300_000, skillLevel: 'semi_skilled' });
 		const plain = employeeWrite(person({ templateId: null, ctcYearINR: null, skillLevel: null }));
 		expect(['templateId' in plain, 'ctcYearINR' in plain, 'skillLevel' in plain]).toEqual([false, false, false]);
+	});
+
+	it('lands from the worklist on the person asked for, their form opened once the staff are read', async () => {
+		const { page, fixture } = await employees(undefined, {
+			snapshot: { queryParamMap: convertToParamMap({ employeeId: 'e1' }) },
+		});
+		expect(page.editing()?.id).toBe('e1');
+		expect(document.querySelectorAll('.rev-test-modal')).toHaveLength(1);
+		fixture.detectChanges();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.querySelectorAll('.rev-test-modal')).toHaveLength(1);
+	});
+
+	it('opens no form for someone not on the staff, nothing asked, or no form to open', async () => {
+		for (const route of [
+			{ snapshot: { queryParamMap: convertToParamMap({ employeeId: 'e9' }) } },
+			{ snapshot: { queryParamMap: convertToParamMap({}) } },
+			{ snapshot: {} },
+			{},
+		]) {
+			const { page } = await employees(undefined, route);
+			expect([page.editing(), document.querySelectorAll('.rev-test-modal').length]).toEqual([null, 0]);
+		}
+		const bare = await employees(
+			undefined,
+			{ snapshot: { queryParamMap: convertToParamMap({ employeeId: 'e1' }) } },
+			true,
+		);
+		expect(bare.page.editing()).toBeNull();
 	});
 });

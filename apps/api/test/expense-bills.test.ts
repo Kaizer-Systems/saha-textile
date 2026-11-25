@@ -117,6 +117,11 @@ function build(options: Options = {}) {
 		chart: async () => CHART,
 	};
 	const company = { listRegistrations: vi.fn(async () => REGISTRATIONS) };
+	const vouchers = {
+		insert: vi.fn(async (_voucher: unknown, _context: unknown) => undefined),
+		forDocument: vi.fn(async () => ['pv']),
+	};
+	const log = { append: vi.fn(async () => undefined) };
 	const numbers = { issue: vi.fn(async () => 'EB/26-27/000003') };
 	const transactions = {
 		withTransaction: vi.fn(async <T>(work: (context: unknown) => Promise<T>) => work({ session: 'tx' })),
@@ -129,8 +134,10 @@ function build(options: Options = {}) {
 		ledger as never,
 		numbers as never,
 		transactions as never,
+		vouchers as never,
+		log as never,
 	);
-	return { service, bills, ledger, numbers, transactions, company };
+	return { service, bills, ledger, numbers, transactions, company, vouchers, log };
 }
 
 describe('reading expense bills', () => {

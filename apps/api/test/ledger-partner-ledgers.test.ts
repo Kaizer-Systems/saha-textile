@@ -14,11 +14,11 @@ const GROUPS = [
 /** A partner id long enough that its role is cut at 60 characters. */
 const LONG_ID = `Partner-${'9'.repeat(60)}`;
 
-function build(profile: unknown) {
+function build(profile: unknown, groups: readonly unknown[] = GROUPS) {
 	const saved: { id: string; name: string; groupId: string; roles: string[] }[] = [];
 	const books = {
 		seedChart: async () => undefined,
-		chart: async () => ({ groups: GROUPS, ledgers: [...saved] }),
+		chart: async () => ({ groups, ledgers: [...saved] }),
 		saveLedger: vi.fn(async (ledger: (typeof saved)[number]) => void saved.push(ledger)),
 		saveGroup: async () => undefined,
 	};
@@ -91,6 +91,24 @@ describe('partners’ ledgers at set-up', () => {
 		});
 		await service.setUpBooks(null);
 		expect(made(saved)).toEqual([['Shreya Ghosh contribution', 'grp_capital_account', ['partner_capital_p1']]]);
+	});
+
+	it('makes the share of profit ledger Year close posts to, once the chart has the appropriation account', async () => {
+		const withAppropriation = [
+			...GROUPS,
+			{ id: 'grp_appropriation', systemKey: 'appropriation', nature: 'expense' },
+		];
+		const { service, saved } = build(
+			{ kind: 'llp', partnersCapital: 'fluctuating', partners: [{ id: 'p1', name: 'Shreya Ghosh' }] },
+			withAppropriation,
+		);
+		await service.setUpBooks('adm_owner');
+		expect(made(saved)).toEqual([
+			['Share of profit to partners', 'grp_appropriation', ['partners_profit_share']],
+			['Shreya Ghosh contribution', 'grp_capital_account', ['partner_capital_p1']],
+		]);
+		await service.setUpBooks('adm_owner');
+		expect(saved).toHaveLength(2);
 	});
 
 	it('makes nothing for a business with no profile yet, or one that has no partners', async () => {

@@ -14,7 +14,9 @@ describe('route tables', () => {
 	it.each(content.map((route) => [route.path, route] as const))(
 		'content route %s loads',
 		async (_path, route) => {
-			await expect((route as Loadable).loadChildren?.()).resolves.toBeDefined();
+			// A section loads its children; a single page (such as the worklist) loads its component.
+			const { loadChildren, loadComponent } = route as Loadable;
+			await expect((loadChildren ?? loadComponent)?.()).resolves.toBeDefined();
 		},
 		30_000,
 	);

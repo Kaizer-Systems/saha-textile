@@ -277,4 +277,29 @@ describe('Publish (PE1, PE3, PE4)', () => {
 		expect(notifier.showError).toHaveBeenCalledWith('payroll_problem_attendance_not_locked');
 		expect([notifier.showSuccess.mock.calls.length, page.busy()]).toEqual([0, false]);
 	});
+
+	it('offers Approve and Publish only to someone who may both lock and post, held while a payslip has a blocking check', async () => {
+		const lockOnly = await opened(run(), { permissions: ['accounts.index', 'accounts.lock'] });
+		expect([el(lockOnly.fixture, '#run_approve'), el(lockOnly.fixture, '#run_publish')]).toEqual([null, null]);
+		const postOnly = await opened(run(), { permissions: ['accounts.index', 'accounts.post'] });
+		expect([el(postOnly.fixture, '#run_approve'), el(postOnly.fixture, '#run_publish')]).toEqual([null, null]);
+		const checked = run({
+			rows: [
+				row('e1', { stateCode: '19', checks: [{ code: 'reason_needed', blocking: false, line: 'basic' }] }),
+				row('e2', { name: 'Rafiq Ali', stateCode: '19' }),
+			],
+		});
+		const warned = await opened(checked);
+		expect(warned.page.blocked(asRun(checked))).toBe(false);
+		expect(el<HTMLButtonElement>(warned.fixture, '#run_approve')?.disabled).toBe(false);
+		const held = run({
+			rows: [row('e1', { stateCode: '19', checks: [{ code: 'pf_below_law', blocking: true, line: 'pf' }] })],
+		});
+		const blocked = await opened(held);
+		expect(blocked.page.blocked(asRun(held))).toBe(true);
+		expect([
+			el<HTMLButtonElement>(blocked.fixture, '#run_approve')?.disabled,
+			el<HTMLButtonElement>(blocked.fixture, '#run_publish')?.disabled,
+		]).toEqual([true, true]);
+	});
 });

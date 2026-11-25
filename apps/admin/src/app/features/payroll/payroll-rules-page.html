@@ -944,6 +944,13 @@
 						>
 							{{ 'payroll_leave_try_result' | transloco: { days: tryCredit(), key: t.key } }}
 						</p>
+						<h6 class="mt-3">{{ 'payroll_leave_plain' | transloco }}</h6>
+						<p
+							class="mb-0"
+							id="pr_leave_plain"
+						>
+							{{ plainWords() }}
+						</p>
 					</div>
 				</div>
 			</div>

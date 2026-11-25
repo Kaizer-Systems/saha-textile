@@ -1000,6 +1000,41 @@ export class PayrollRulesPage {
 		else this.setRule({ taking: { ...r.taking, [key]: !r.taking[key] } });
 	}
 
+	/** LV2's In plain words: the rule shown said as sentences, in the reader's language. */
+	readonly plainWords = computed(() => {
+		const r = this.openRule();
+		if (!r) return '';
+		const t = (key: string, params?: Record<string, unknown>) => this.transloco.translate(`plain_${key}`, params);
+		const c = r.credit;
+		const parts = [
+			'fromJoining' in r.year
+				? t('year_joining')
+				: t('year_from', {
+						month: this.transloco.translate(`payroll_month_${r.year.startMonth}`),
+						months: r.year.months,
+					}),
+			c.kind === 'per_days_worked'
+				? t('credit_worked', { give: c.give, every: c.every })
+				: c.kind === 'none'
+					? t('credit_none')
+					: t(`credit_${c.kind}`, { days: c.days }),
+			...(r.waitDays ? [t('wait', { days: r.waitDays })] : []),
+			...(r.joiners === 'none' ? [] : [t(`joiners_${r.joiners}`)]),
+			r.validity.kind === 'never'
+				? t('never_lapses')
+				: r.carryMax === null
+					? t('carry_all')
+					: r.carryMax === 0
+						? t('carry_none')
+						: t('carry_max', { days: r.carryMax, above: t(`above_${r.aboveCap}`) }),
+			...(r.validity.kind === 'days' || r.validity.kind === 'months'
+				? [t(`valid_${r.validity.kind}`, { n: r.validity.n })]
+				: []),
+			...(r.encash.onLeaving ? [t('encash_leaving')] : []),
+		];
+		return parts.join(' ');
+	});
+
 	/** LV2's Try it: what the rule shown credits a joiner so far. */
 	readonly tryCredit = computed(() => {
 		const rule = this.openRule();

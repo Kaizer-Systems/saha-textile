@@ -54,4 +54,4 @@ export interface DocumentData {
 	>;
 }
 
-export type PayTableBlock = 'earnings' | 'deductions' | 'employerShare' | 'taxWorking' | 'leaveBalance';
+export type PayTableBlock = 'earnings' | 'deductions' | 'employerShare' | 'taxWorking' | 'leaveBalance' | 'revision';

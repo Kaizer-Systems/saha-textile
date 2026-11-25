@@ -29,6 +29,8 @@ export const DocumentKind = z.enum([
 	'journal',
 	/** Brief 25 PS1: a person's month of pay. */
 	'payslip',
+	/** Brief 26 SR2: the letter telling a person of their new salary. */
+	'revisionLetter',
 ]);
 export type DocumentKind = z.infer<typeof DocumentKind>;
 
@@ -69,6 +71,8 @@ export const DocumentBlockType = z.enum([
 	'employerShare',
 	'taxWorking',
 	'leaveBalance',
+	/** Brief 26 SR2: the revision letter's table, each head now and new. */
+	'revision',
 ]);
 export type DocumentBlockType = z.infer<typeof DocumentBlockType>;
 

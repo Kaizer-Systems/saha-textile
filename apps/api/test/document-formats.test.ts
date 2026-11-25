@@ -131,7 +131,7 @@ describe('document formats (bundle builder brief F)', () => {
 		});
 		const view = await svc.view();
 		expect(view.groups.map((g) => g.group)).toEqual(['sales', 'parcels', 'purchases', 'stock', 'payroll']);
-		expect(view.groups.map((g) => g.documents.length)).toEqual([6, 2, 5, 4, 1]);
+		expect(view.groups.map((g) => g.documents.length)).toEqual([6, 2, 5, 4, 2]);
 	});
 
 	it('previews unsaved blocks as HTML, refusing blocks the document can’t have', async () => {

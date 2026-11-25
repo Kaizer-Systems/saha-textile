@@ -1002,7 +1002,8 @@ describe('each store’s shift in the rules (brief 26 AT1)', () => {
 		const many = (n: number) => Array.from({ length: n }, (_, at) => ({ ...shift, locationId: `loc_${at}` }));
 		accepted(PayrollRulesWrite.safeParse({ ...rules, shifts: many(200) }).success);
 		refused(PayrollRulesWrite.safeParse({ ...rules, shifts: many(201) }).success);
-		refused(PayrollRulesWrite.safeParse({ ...rules, shifts: [{ ...shift, end: '09:00' }] }).success);
+		refused(PayrollRulesWrite.safeParse({ ...rules, shifts: [{ ...shift, end: '10:00' }] }).success);
+		accepted(PayrollRulesWrite.safeParse({ ...rules, shifts: [{ ...shift, end: '09:00' }] }).success);
 	});
 });
 

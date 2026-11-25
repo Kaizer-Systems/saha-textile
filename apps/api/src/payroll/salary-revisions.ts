@@ -5,14 +5,18 @@ import {
 	Body,
 	ConflictException,
 	Controller,
+	Get,
 	Inject,
 	Injectable,
 	NotFoundException,
+	Optional,
 	Param,
 	Post,
+	Res,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+	IsoDate,
 	SalaryRevisionInput,
 	type Employee,
 	type SalaryRevisionPreview,
@@ -44,6 +48,7 @@ import {
 	type SalaryTemplateRepository,
 	type WageHead,
 } from '@saha-textile/core-domain';
+import type { FastifyReply } from 'fastify';
 
 import { Principal } from '../auth/ownership';
 import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../auth/session.guard';
@@ -55,6 +60,9 @@ import {
 	PAYROLL_RUN_REPOSITORY,
 	SALARY_TEMPLATE_REPOSITORY,
 } from '../infra/tokens';
+import { DocumentFormatsService } from '../documents/document-formats.service';
+import { previewDocument } from '../documents/document-previews';
+import { revisionLetterData } from '../documents/revision-letter';
 import { accountsRefusal } from '../ledger/accounts-refusal';
 import { API_TAGS } from '../openapi-tags';
 import { PayrollRulesService } from './payroll-rules.service';
@@ -121,6 +129,9 @@ export class SalaryRevisionsService {
 		@Inject(PAYROLL_RUN_REPOSITORY) private readonly runs: Pick<PayrollRunRepository, 'list'>,
 		@Inject(LOCATION_REPOSITORY) private readonly locations: Pick<LocationRepository, 'list'>,
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: Pick<AuditLogRepository, 'append'>,
+		@Optional()
+		@Inject(DocumentFormatsService)
+		private readonly formats: Pick<DocumentFormatsService, 'seller' | 'renderActive'> | null = null,
 	) {}
 
 	private async employee(id: string): Promise<Employee> {
@@ -318,6 +329,33 @@ export class SalaryRevisionsService {
 		});
 		return saved;
 	}
+
+	/**
+	 * SR2: the revision letter for the version saved from a day, on the active "Revision letter" format (Settings ›
+	 * Document formats): each head a month before and after, and the CTC.
+	 */
+	async letterPdf(employeeId: string, from: string): Promise<{ fileName: string; data: Uint8Array }> {
+		const e = await this.employee(employeeId);
+		const history = e.salaryHistory ?? [];
+		const at = history.findIndex((v) => v.from === from);
+		const before = history[at - 1];
+		if (!this.formats || at < 1 || !before)
+			throw new NotFoundException(accountsRefusal('revision_letter_not_found'));
+		const version = history[at] as SalaryVersion;
+		const location = (await this.locations.list()).find((l) => l.id === e.locationId);
+		const data = revisionLetterData({
+			seller: await this.formats.seller(previewDocument('revisionLetter').seller),
+			employee: e,
+			locationName: location?.name ?? '',
+			before: before.structure,
+			version,
+			ctcYearBeforeINR: before.ctcYearINR,
+		});
+		return {
+			fileName: `revision-letter-${from}-${e.name.replace(/[^A-Za-z0-9]+/g, '-')}.pdf`,
+			data: await this.formats.renderActive('revisionLetter', data),
+		};
+	}
 }
 
 @ApiTags(API_TAGS.orders)
@@ -331,6 +369,25 @@ export class SalaryRevisionsController {
 	@ApiOperation({ operationId: 'payrollRevisionPreview', summary: 'Work out a pay revision (SR2)' })
 	preview(@Param('id') id: string, @Body(new ZodValidationPipe(SalaryRevisionInput)) body: SalaryRevisionInput) {
 		return this.revisions.preview(id, body);
+	}
+
+	@Get('letter/:from')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({
+		operationId: 'payrollRevisionLetter',
+		summary: 'The revision letter for a saved revision, as a PDF (SR2)',
+	})
+	async letter(
+		@Param('id') id: string,
+		@Param('from', new ZodValidationPipe(IsoDate)) from: string,
+		@Res() reply: FastifyReply,
+	) {
+		const file = await this.revisions.letterPdf(id, from);
+		void reply
+			.header('Content-Type', 'application/pdf')
+			.header('Content-Disposition', `attachment; filename="${file.fileName}"`)
+			.header('Cache-Control', 'no-store')
+			.send(Buffer.from(file.data));
 	}
 
 	@Post()

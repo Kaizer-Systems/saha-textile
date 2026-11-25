@@ -2,6 +2,7 @@ import { renderSVG } from 'uqr';
 import type { DocumentKind } from '@saha-textile/contracts';
 
 import { payslipData } from './payslip-print';
+import { revisionLetterData } from './revision-letter';
 import type { DocumentData, DocumentRow } from './document-data';
 
 /**
@@ -620,6 +621,21 @@ export function previewDocument(doc: DocumentKind): DocumentData {
 				totals: { totals: [{ label: 'Opening value', value: '₹76,340.00' }] },
 				signatures: { preparedBy: 'Accounts' },
 			};
+		case 'revisionLetter':
+			// Brief 26 SR2's example: Priya Test, revised by 8% from 1 December 2026.
+			return revisionLetterData({
+				seller: SELLER,
+				employee: { name: 'Priya Test', code: 'EMP-0007', designation: 'Sales', department: 'Store' },
+				locationName: 'Gariahat store',
+				before: { basic: 13_500, da: 1_350, hra: 5_400, conveyance: 1_600, special: 5_701, other: 0 },
+				version: {
+					from: '2026-12-01',
+					structure: { basic: 14_580, da: 1_458, hra: 5_832, conveyance: 1_600, special: 6_359, other: 0 },
+					ctcYearINR: 388_800,
+					acceptedAt: '2026-11-26T06:00:00.000Z',
+				},
+				ctcYearBeforeINR: 360_000,
+			});
 		case 'payslip':
 			// Brief 25 PS2's example: Priya Sen, November 2026.
 			return payslipData({

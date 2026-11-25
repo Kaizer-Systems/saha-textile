@@ -122,6 +122,13 @@ export class PayrollGateway {
 		return this.http.post<EmployeeView>(this.api(`employees/${encodeURIComponent(employeeId)}/revision`), input);
 	}
 
+	/** SR2: the revision letter for the revision saved from a day, on the active format. */
+	revisionLetterPdf(employeeId: string, from: string): Observable<Blob> {
+		return this.http.get(this.api(`employees/${encodeURIComponent(employeeId)}/revision/letter/${from}`), {
+			responseType: 'blob',
+		});
+	}
+
 	attendance(month: string): Observable<Attendance> {
 		return this.http.get<Attendance>(this.api(`attendance/${month}`));
 	}

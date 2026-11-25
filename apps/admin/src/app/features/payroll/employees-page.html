@@ -61,6 +61,18 @@
 						>
 							<i class="ri-line-chart-line"></i>
 						</button>
+						@if (lastRevision(e); as from) {
+						<button
+							*hasPermission="'accounts.index'"
+							type="button"
+							class="btn btn-sm ms-2 p-0"
+							[id]="'emp_letter_' + e.id"
+							[title]="'payroll_revision_letter' | transloco"
+							(click)="letter(e, from)"
+						>
+							<i class="ri-file-text-line"></i>
+						</button>
+						}
 					</td>
 				</tr>
 				} @empty {

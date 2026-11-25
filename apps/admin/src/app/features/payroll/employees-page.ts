@@ -18,7 +18,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { PAYROLL_KEYS, PayrollGateway } from '@core/accounts/payroll.gateway';
 import { LOCATION_KEYS, LocationsGateway } from '@core/locations/locations.gateway';
-import { apiProblem, shortDate } from '@core/purchasing/purchasing-format';
+import { apiProblem, saveBlob, shortDate } from '@core/purchasing/purchasing-format';
 import { NotificationService } from '@data-access/services/notification.service';
 import { rupees } from '@features/accounts/ledger-helpers';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
@@ -380,6 +380,24 @@ export class EmployeesPage {
 	revise(employee: EmployeeView): void {
 		const popup = this.modals.open(RevisePayPopup, { centered: true, size: 'xl' });
 		(popup.componentInstance as RevisePayPopup).start(employee);
+	}
+
+	/** SR2: the day of the person's latest revision, when they have one (the first salary has no letter). */
+	lastRevision(employee: EmployeeView): string | null {
+		const history = employee.salaryHistory ?? [];
+		return history.length > 1 ? (history.at(-1)?.from ?? null) : null;
+	}
+
+	/** SR2: download the letter of the person's latest revision. */
+	async letter(employee: EmployeeView, from: string): Promise<void> {
+		try {
+			saveBlob(
+				`revision-letter-${from}.pdf`,
+				await firstValueFrom(this.gateway.revisionLetterPdf(employee.id, from)),
+			);
+		} catch (error) {
+			this.notifier.showError(this.transloco.translate(`payroll_problem_${apiProblem(error, 'failed')}`));
+		}
 	}
 
 	open(template: TemplateRef<unknown>, employee: EmployeeView | null): void {

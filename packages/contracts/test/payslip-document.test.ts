@@ -33,15 +33,17 @@ describe('the payslip among the documents', () => {
 		});
 	});
 
-	it('has six blocks of its own beside the shared ones', () => {
-		expect(DocumentBlockType.options.slice(-6)).toEqual([
+	it('has six blocks of its own beside the shared ones, and the revision letter one more (brief 26 SR2)', () => {
+		expect(DocumentBlockType.options.slice(-7)).toEqual([
 			'attendance',
 			'earnings',
 			'deductions',
 			'employerShare',
 			'taxWorking',
 			'leaveBalance',
+			'revision',
 		]);
+		expect(DocumentKind.options.at(-1)).toBe('revisionLetter');
 		expect(DocumentBlock.parse({ id: 'earnings', type: 'earnings', fields: ['head', 'thisMonth'] })).toEqual({
 			id: 'earnings',
 			type: 'earnings',

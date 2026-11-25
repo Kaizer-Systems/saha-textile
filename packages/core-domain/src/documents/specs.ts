@@ -374,6 +374,27 @@ export const DOCUMENT_SPECS: Record<DocumentKind, CoreDocumentSpec> = {
 			footer,
 		],
 	},
+	/** Brief 26 SR2: the revision letter: who, from when, each head now and new, and the letter's own words. */
+	revisionLetter: {
+		doc: 'revisionLetter',
+		group: 'payroll',
+		gst: false,
+		blocks: [
+			block('brand', ['logo', 'shop'], { required: true }),
+			block('title', ['effectiveFrom', 'letterDate'], { locked: ['effectiveFrom'], required: true }),
+			block('facts', ['employeeName', 'employeeCode', 'designation', 'department', 'location'], {
+				locked: ['employeeName'],
+				required: true,
+			}),
+			text,
+			block('revision', ['head', 'before', 'after', 'change'], {
+				locked: ['head', 'after'],
+				required: true,
+			}),
+			block('signature', ['computerMade', 'signatory'], { ours: ['computerMade', 'signatory'] }),
+			block('footer', ['pageNumber', 'formatName']),
+		],
+	},
 	payslip: {
 		doc: 'payslip',
 		group: 'payroll',

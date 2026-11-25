@@ -249,11 +249,9 @@ describe('holidays and each store’s shift (brief 26 LV1, AT1, AT2)', () => {
 		refused(StoreShift.safeParse({ ...shift, locationId: '' }).success);
 	});
 
-	it('refuses a shift that ends at or before it starts', () => {
+	it('refuses a shift that ends when it starts, and keeps a night shift across midnight (brief 26 PN-D3)', () => {
 		expect(message(StoreShift.safeParse({ ...shift, end: '10:00' }))).toBe('shift_ends_before_start');
-		expect(message(StoreShift.safeParse({ ...shift, start: '22:00', end: '06:00' }))).toBe(
-			'shift_ends_before_start',
-		);
+		accepted(StoreShift.safeParse({ ...shift, start: '22:00', end: '06:00' }).success);
 		accepted(StoreShift.safeParse({ ...shift, end: '10:01' }).success);
 	});
 });

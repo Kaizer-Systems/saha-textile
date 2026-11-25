@@ -88,6 +88,7 @@ const PAY_TITLES: Record<PayTableBlock, string> = {
 	employerShare: 'Paid by the employer (not part of take-home)',
 	taxWorking: 'Income tax for the year',
 	leaveBalance: 'Leave',
+	revision: 'Your salary a month',
 };
 const PAY_COLUMNS: Record<string, string> = {
 	monthlyRate: 'Monthly rate',
@@ -95,6 +96,9 @@ const PAY_COLUMNS: Record<string, string> = {
 	yearToDate: 'Year to date',
 	value: '',
 	taken: 'This month',
+	before: 'Now',
+	after: 'From the date above',
+	change: 'Change',
 };
 const PAY_FIRST = new Set(['head', 'label', 'kind']);
 
@@ -423,6 +427,7 @@ function blockHtml(
 		case 'employerShare':
 		case 'taxWorking':
 		case 'leaveBalance':
+		case 'revision':
 			return payTableBlock(block as DocumentBlock & { type: PayTableBlock }, data);
 		case 'payment':
 		case 'note': {

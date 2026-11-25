@@ -26,11 +26,12 @@ describe('document formats (bundle builder brief F)', () => {
 		}
 	});
 
-	it('seeds ours for all 18 documents switched on, plus Compact and Counter receipt for the tax invoice and Compact for the payslip switched off', () => {
+	it('seeds ours for all 19 documents switched on (the revision letter last, brief 26 SR2), plus Compact and Counter receipt for the tax invoice and Compact for the payslip switched off', () => {
 		const seeds = seedDocumentFormats();
-		expect(seeds).toHaveLength(21);
+		expect(seeds).toHaveLength(22);
 		// Each seed is checked against the contract in apps/api/test/document-formats.test.ts.
-		expect(KINDS).toHaveLength(18);
+		expect(KINDS).toHaveLength(19);
+		expect(checkFormatBlocks('revisionLetter', ourBlocks('revisionLetter'))).toEqual([]);
 		for (const doc of KINDS) {
 			expect(seeds.filter((row) => row.doc === doc && row.active)).toHaveLength(1);
 		}

@@ -48,7 +48,9 @@ export class OrderStock {
 		@Inject(PRODUCT_VARIANT_REPOSITORY) private readonly variants: ProductVariantRepository,
 		@Inject(INVENTORY_COST_LAYER_REPOSITORY) private readonly layers: InventoryCostLayerRepository,
 		@Optional() @Inject(BUNDLE_STOCK) private readonly bundleStock: BundleStockService | null = null,
-		@Optional() private readonly routing: OrderRoutingService | null = null,
+		// Named outright: a `| null` type is recorded as Object, which Nest can't resolve, so routing never ran (found
+		// 25 Nov 2026 by the accounts run for each kind of business).
+		@Optional() @Inject(OrderRoutingService) private readonly routing: OrderRoutingService | null = null,
 		@Optional()
 		@Inject(LOCATION_REPOSITORY)
 		private readonly locations: Pick<LocationRepository, 'list'> | null = null,
@@ -61,10 +63,15 @@ export class OrderStock {
 	 * G2: a location whose GSTIN pays composition tax can't sell outside its State (s.10(2)(d)): checkout and Create
 	 * order are refused before anything is kept. The shop's words name the delivery, never GST.
 	 */
-	private async refuseOutsideComposition(order: Order, locationId: string | null, day: string): Promise<void> {
+	private async refuseOutsideComposition(
+		order: Order,
+		locationId: string | null,
+		day: string,
+		locations: Awaited<ReturnType<Pick<LocationRepository, 'list'>['list']>>,
+	): Promise<void> {
 		const delivery = order.addresses?.delivery;
-		if (!this.company || !this.locations || !locationId || !delivery) return;
-		const location = (await this.locations.list()).find((l) => l.id === locationId);
+		if (!this.company || !locationId || !delivery) return;
+		const location = locations.find((l) => l.id === locationId);
 		if (!location?.gstRegistrationId) return;
 		const registration = await this.company.getRegistration(location.gstRegistrationId);
 		if (!registration) return;
@@ -86,32 +93,40 @@ export class OrderStock {
 	 * manager. Read before the order's stock is kept, so the pieces are kept at that location.
 	 */
 	async route(order: Order): Promise<string | null> {
-		if (!this.routing || !this.locations) return null;
-		const [settings, locations] = await Promise.all([this.routing.get(), this.locations.list()]);
+		if (!this.locations) return null;
+		const locations = await this.locations.list();
+		const assign = this.routing ? await this.assign(order, locations, this.routing) : null;
+		await this.refuseOutsideComposition(
+			order,
+			assign ?? defaultStockLocation(locations),
+			istDay(order.createdAt ?? new Date()),
+			locations,
+		);
+		return assign;
+	}
+
+	/** M2: the location "assign by itself" picks for the order's stocked pieces, or null. */
+	private async assign(
+		order: Order,
+		locations: Awaited<ReturnType<Pick<LocationRepository, 'list'>['list']>>,
+		routing: OrderRoutingService,
+	): Promise<string | null> {
+		const settings = await routing.get();
 		const lines: { variantId: string; quantity: number }[] = [];
 		for (const line of order.lines) {
 			if (line.madeToOrder || line.role === 'bundle') continue;
 			lines.push({ variantId: await this.variantIdOf(line), quantity: line.quantity });
 		}
-		const assign = lines.length
-			? routeOrder(
-					{
-						lines,
-						stock: await this.stock.locationStock(lines.map((line) => line.variantId)),
-						shippingLocationIds: locations
-							.filter((l) => l.active && l.warehouse && l.shipsOnline)
-							.map((l) => l.id),
-						defaultLocationId: defaultStockLocation(locations),
-					},
-					settings,
-				).assign
-			: null;
-		await this.refuseOutsideComposition(
-			order,
-			assign ?? defaultStockLocation(locations),
-			istDay(order.createdAt ?? new Date()),
-		);
-		return assign;
+		if (!lines.length) return null;
+		return routeOrder(
+			{
+				lines,
+				stock: await this.stock.locationStock(lines.map((line) => line.variantId)),
+				shippingLocationIds: locations.filter((l) => l.active && l.warehouse && l.shipsOnline).map((l) => l.id),
+				defaultLocationId: defaultStockLocation(locations),
+			},
+			settings,
+		).assign;
 	}
 
 	reserve(

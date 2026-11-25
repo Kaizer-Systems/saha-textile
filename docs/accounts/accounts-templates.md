@@ -3,7 +3,7 @@ title: Accounts templates
 description: Charts of accounts, tax rule sets and report layouts kept as templates with a reference code and dated versions, unlocked by the kind of company; the company's books are installed from them.
 status: scaffolded
 audience: [backend, frontend, operator]
-last_verified: '2026-11-24'
+last_verified: '2026-11-25'
 search_keywords: accounts templates chart of accounts template reference code version shared exclusive locked kind of business proprietorship partnership LLP private limited one person company install starter CH-COMMON CH-PROP roles
 source_of_truth:
     - packages/contracts/src/accounts-templates.ts
@@ -78,6 +78,7 @@ The library ships these starter templates, each marked for CA review and listed 
 - each kind's chart gains its own items in a new version: a proprietorship's interest on capital and family loans; a firm's and an LLP's partners' drawings, loans from partners and an appropriation group with interest on capital and remuneration (an LLP also gains reserves and surplus); a company's securities premium, general reserve, dividend payable, tax provision and expense, deferred tax, directors' sitting fees and loans, and CSR;
 - `RS-TDS`: TDS sections, each under its 1961 number until 31 March 2026 and section 393 of the 2025 Act from 1 April 2026, with their rates and limits;
 - `RS-LIMITS`: the tax audit, cash payment, LLP audit, e-invoice and GST annual return limits;
+- `RS-DUE`: GST return due dates; version 2 adds IFF, PMT-06, CMP-08, GSTR-4 and GSTR-6 (see [GST returns](./gst-returns.md));
 - statements: `RP-NCE-PL` and `RP-NCE-BS-PROP` / `RP-NCE-BS-FIRM` (non-corporate), `RP-APPROP` (firms and LLPs), `RP-LLP-BS` and `RP-LLP-PL`, `RP-SCH3-BS` and `RP-SCH3-PL` (private limited and one person company).
 
 A library started earlier receives the new templates as they ship and the new chart versions as updates to install. Every starter passes the checks a person's publish would face (`templates-starter-packs.test.ts`).

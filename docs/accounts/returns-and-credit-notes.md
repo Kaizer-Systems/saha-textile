@@ -3,7 +3,7 @@ title: Returns and credit notes
 description: Returns checked piece by piece, credit notes taken from the invoice line, price adjustments, parcels brought back, Cancel and debit notes, Refund now, the edit log, one editor at a time, and the order's Documents card.
 status: implemented
 audience: [backend, frontend, operator]
-last_verified: '2026-11-24'
+last_verified: '2026-11-25'
 search_keywords: return credit note debit note price adjustment undelivered parcel refund s.34 deadline rule 53 restock damaged write off input tax s.17(5)(h) cancel super admin edit log document lock take over return note documents card
 source_of_truth:
     - packages/contracts/src/returns.ts

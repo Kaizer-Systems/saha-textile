@@ -3,7 +3,7 @@ title: General ledger
 description: The chart of accounts, vouchers and their lines, how documents post, month locks per part of the books, and document locks.
 status: implemented
 audience: [backend, frontend, operator]
-last_verified: '2026-11-24'
+last_verified: '2026-11-25'
 search_keywords: general ledger chart of accounts voucher journal receipt payment contra reversal period lock month close document lock idempotency paise where money lands bank account gateway clearing
 source_of_truth:
     - packages/contracts/src/ledger.ts
@@ -27,6 +27,8 @@ The first read of the chart seeds it from the [accounts templates](./accounts-te
 - the usual primary groups (capital, loans, current liabilities, fixed assets, current assets, sales, direct and indirect incomes and expenses, branches, suspense);
 - the ledgers the posting rules need, found by `systemKey` (output and input GST, stock in hand and in transit, customers, suppliers, gateway clearing, customer advances, cost of goods sold and so on);
 - the owners' accounts for the kind: Capital and Drawings for a proprietorship, partners' capital and current accounts for a firm or LLP, share capital and reserves for a company.
+
+Setting up a firm's or LLP's books also makes each partner's own ledgers from Settings › Company: "<name> capital" (an LLP's "<name> contribution") and, with fixed capital, "<name> current account", each playing its own role (`partner_capital_<id>`, `partner_current_<id>`).
 
 Ledgers with `handPosting: false` are control ledgers: only documents post to them, never a voucher typed by hand. They can be renamed but keep their group.
 
@@ -144,7 +146,7 @@ Each month has a state per part of the books (sales, purchases, stock, cash, ban
 
 **Lock a month** first lists what still needs doing in that month: draft vouchers dated in it, reversals due, stock counts still open and stock changes waiting for approval. Cash sheets, transfers, depreciation and payroll show as not in use until those features exist. A lock may go ahead anyway.
 
-**GSTR-3B.** The Periods screen shows whether each month's GSTR-3B is filed. Mark filed takes the ARN, the date and the portal's acknowledgement (`gstReturns`); from then on that month locks for that GSTIN in the parts the return covers (GSTR-1: sales; GSTR-3B: sales and purchases), and vouchers there are refused with `gst_filed`.
+**GSTR-3B.** The Periods screen shows whether each month's GSTR-3B is filed. Mark filed takes the ARN, the date and the portal's acknowledgement (`gstReturns`); from then on that month (a quarter's three months for a quarterly return) locks for that GSTIN in the parts the return covers (see [GST returns](./gst-returns.md#locks)), and vouchers there are refused with `gst_filed`.
 
 Reopening a month needs a super admin and a reason. Every change is written to the audit log with the state before and after.
 

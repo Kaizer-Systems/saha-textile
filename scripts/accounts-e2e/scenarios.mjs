@@ -7,10 +7,23 @@
 import { Admin } from './client.mjs';
 import { secondAdmin, setProductHsn, variantOf } from './stack.mjs';
 
+/**
+ * The kind of business the run sets up (owner, 25 Nov: every kind checked from opening to year close). A
+ * proprietorship, LLP and private limited file monthly; the partnership files quarterly (QRMP) and has an input service
+ * distributor in Maharashtra; the one person company is under composition.
+ */
+export const KIND = process.env.ACCOUNTS_E2E_KIND ?? 'proprietorship';
+const KINDS = ['proprietorship', 'partnership', 'llp', 'private_limited', 'private_limited_opc'];
+if (!KINDS.includes(KIND)) throw new Error(`ACCOUNTS_E2E_KIND must be one of ${KINDS.join(', ')}`);
+export const COMPOSITION = KIND === 'private_limited_opc';
+export const QRMP = KIND === 'partnership';
+const PARTNERS = KIND === 'partnership' || KIND === 'llp';
+const COMPANY = KIND === 'private_limited' || KIND === 'private_limited_opc';
+
 const ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-/** A valid GSTIN: state, the PAN, entity 1, Z, then the check character. */
-export function gstin(state, pan) {
-	const body = `${state}${pan}1Z`;
+/** A valid GSTIN: state, the PAN, the entity number (1 for the first registration in a State), Z, the check. */
+export function gstin(state, pan, entity = '1') {
+	const body = `${state}${pan}${entity}Z`;
 	let total = 0;
 	for (const [index, char] of [...body].entries()) {
 		const value = ALPHABET.indexOf(char) * ((index % 2) + 1);
@@ -19,7 +32,14 @@ export function gstin(state, pan) {
 	return body + ALPHABET[(36 - (total % 36)) % 36];
 }
 
-export const PAN = 'ABCPS1234K';
+/** The business's PAN: its fourth letter is the kind of holder (P person, F firm or LLP, C company). */
+export const PAN = {
+	proprietorship: 'ABCPS1234K',
+	partnership: 'ABCFS1234K',
+	llp: 'ABCFL1234K',
+	private_limited: 'ABCCS1234K',
+	private_limited_opc: 'ABCCO1234K',
+}[KIND];
 export const GSTIN = gstin('19', PAN);
 const run = Date.now().toString(36);
 export const key = (label) => `acc-e2e-${label}-${run}-${Math.random().toString(36).slice(2, 8)}`;
@@ -89,39 +109,447 @@ const sumBalances = (balances) => Object.values(balances).reduce((a, b) => a + b
 /** Shared between scenarios. */
 export const ctx = {};
 
+/**
+ * Hand figures, in paise, where composition differs: no input credit (each saree costs ₹3,150 with its GST), bills of
+ * supply without tax (the whole ₹4,680 is the sale), no sale to Mumbai, and CMP-08's ₹93.60 tax (1% of ₹9,360) paid.
+ */
+const F = COMPOSITION
+	? {
+			inputHalf: 0,
+			stockAug: 6_300_000,
+			unitCost: 315_000,
+			sale1Taxable: 9360,
+			sale1Tax: 0,
+			salesSep: -936_000,
+			outputSep: 0,
+			stockSep: 5_670_000,
+			cogsSep: 630_000,
+			sale3Number: 'TI/26-27/000002',
+			noteTaxable: 4680,
+			noteTax: 0,
+			salesNow: -1_404_000,
+			returnsNow: 468_000,
+			outputNow: 0,
+			cogsNow: 630_000,
+			stockNow: 5_670_000,
+			bankNow: 41_232_000,
+		}
+	: {
+			inputHalf: 150_000,
+			stockAug: 6_000_000,
+			unitCost: 300_000,
+			sale1Taxable: 8914.29,
+			sale1Tax: 44_571,
+			salesSep: -891_429,
+			outputSep: -44_571,
+			stockSep: 5_400_000,
+			cogsSep: 600_000,
+			sale3Number: 'TI/26-27/000003',
+			noteTaxable: 4457.14,
+			noteTax: 22_286,
+			salesNow: -1_782_857,
+			returnsNow: 445_714,
+			outputNow: -44_571,
+			cogsNow: 900_000,
+			stockNow: 5_100_000,
+			bankNow: 41_700_000,
+		};
+
 const balanceOf = (chart, balances, systemKey) => {
 	const ledger = chart.ledgers.find((l) => l.systemKey === systemKey || (l.roles ?? []).includes(systemKey));
 	return ledger ? (balances[ledger.id] ?? 0) : 0;
 };
 
+/** A sale shipped on a September day, after September's return is filed: refused (the month is locked). */
+async function lateSaleRefused(admin, check) {
+	const customer = await customerWith(admin, 'Late Test', {
+		fullName: 'Late Test',
+		line1: '1 Park Street',
+		city: 'Kolkata',
+		state: 'West Bengal',
+		subdivisionCode: 'WB',
+		postalCode: '700016',
+		countryCode: 'IN',
+		mobile: { countryCallingCode: '91', number: '9830011111' },
+	});
+	let refused = null;
+	try {
+		await sell(admin, {
+			customer,
+			quantity: 1,
+			payment: { method: 'upi', amountINR: 4680, reference: '402100000001', receivedOn: '2026-09-20' },
+			shippedOn: '2026-09-20',
+			deliveredOn: '2026-09-22',
+		});
+	} catch (error) {
+		refused = String(error.message);
+	}
+	check(
+		!!refused && /lock|filed|closed/.test(refused),
+		'A sale dated into filed September is refused',
+		(refused ?? 'accepted').slice(0, 200),
+	);
+}
+
+const prepareReturn = (admin, returnType, month, extra = {}) =>
+	admin.ok('POST', '/admin/accounts/gst/returns', {
+		gstRegistrationId: extra.gstRegistrationId ?? ctx.registrationId,
+		returnType,
+		month,
+		adjustments: [],
+		...extra,
+	});
+const approveReturn = async (admin, draft) => {
+	let next = draft;
+	for (const to of ['checked', 'approved'])
+		next = await admin.ok('POST', `/admin/accounts/gst/returns/${next.id}/step`, {
+			to,
+			version: next.version ?? 0,
+		});
+	return next;
+};
+const tableOf = (draft, name) => draft.summary.find((r) => r.table === name);
+
+/** QRMP (G1–G3): the calendar by quarter, the quarter's GSTR-1, IFF and PMT-06 in October, GSTR-3B for the quarter. */
+async function qrmpGst(admin, check) {
+	const calendar = await admin.ok('GET', '/admin/accounts/gst/returns/calendar', undefined, {
+		gstRegistrationId: ctx.registrationId,
+		chip: 'all',
+	});
+	const listed = new Set(calendar.rows.map((r) => `${r.returnType}:${r.period}`));
+	check(
+		listed.has('GSTR-1:2026-09') && listed.has('GSTR-3B:2026-09') && !listed.has('GSTR-1:2026-08'),
+		'Quarterly: GSTR-1 and GSTR-3B fall due for the quarter ending September, not for August',
+		[...listed].join(', '),
+	);
+	check(
+		listed.has('IFF:2026-10') && listed.has('PMT-06:2026-10') && !listed.has('PMT-06:2026-09'),
+		'IFF and PMT-06 fall due for October, a quarter’s first month, never for September',
+	);
+	const august = await admin.try('POST', '/admin/accounts/gst/returns', {
+		gstRegistrationId: ctx.registrationId,
+		returnType: 'GSTR-1',
+		month: '2026-08',
+		adjustments: [],
+	});
+	check(august.code === 'gst_return_quarter_end_only', 'A quarterly GSTR-1 for August is refused', august.code);
+	const quarter1 = await prepareReturn(admin, 'GSTR-1', '2026-09');
+	check(
+		tableOf(quarter1, '7')?.taxable === 8914.29 && tableOf(quarter1, '7')?.tax === 445.71,
+		'GSTR-1 for July–September, table 7: ₹8,914.29 taxable, ₹445.71 tax',
+		JSON.stringify(tableOf(quarter1, '7')),
+	);
+	const iff = await prepareReturn(admin, 'IFF', '2026-10');
+	check(
+		tableOf(iff, '4A')?.records === 0 && iff.problems.length === 0,
+		'IFF October: no B2B invoices to report (the Mumbai sale was to a person)',
+		JSON.stringify(iff.summary),
+	);
+	// PMT-06 October by self-assessment: the Mumbai sale's IGST ₹222.86, no credit yet: ₹223 deposited.
+	let pmt = await prepareReturn(admin, 'PMT-06', '2026-10', { pmt06Method: 'self_assessment' });
+	check(tableOf(pmt, 'pmt06_igst')?.tax === 223, 'PMT-06 October: ₹223 IGST to deposit', JSON.stringify(pmt.summary));
+	const fixedEarly = await prepareReturn(admin, 'PMT-06', '2026-11', { pmt06Method: 'fixed_sum' });
+	check(
+		fixedEarly.problems.some((p) => p.problem === 'pmt06_no_last_quarter'),
+		'PMT-06 by fixed sum waits for the last quarter’s GSTR-3B',
+		JSON.stringify(fixedEarly.problems),
+	);
+	pmt = await approveReturn(admin, pmt);
+	pmt = await admin.ok('POST', `/admin/accounts/gst/returns/${pmt.id}/set-off`, {
+		bankAccountId: ctx.bankId,
+		paidOn: '2026-11-20',
+		challan: 'CPIN26112000001',
+		version: pmt.version,
+	});
+	const chart = (ctx.chart = await admin.ok('GET', '/admin/accounts/chart'));
+	const now = await admin.ok('GET', '/admin/accounts/balances', undefined, { on: '2026-11-20' });
+	check(
+		balanceOf(chart, now, 'gst_cash_ledger') === 22_300,
+		'The deposit sits in the GST cash ledger: ₹223',
+		String(balanceOf(chart, now, 'gst_cash_ledger')),
+	);
+	check(!!pmt.challanVoucherId, 'The PMT-06 payment is posted once, from HDFC');
+	await approveReturn(admin, quarter1);
+	await admin.ok('POST', '/admin/accounts/gst-filings', {
+		gstRegistrationId: ctx.registrationId,
+		returnType: 'GSTR-1',
+		month: '2026-09',
+		arn: 'AA1910260012345',
+		filedOn: '2026-10-13',
+		acknowledgement: null,
+	});
+	await lateSaleRefused(admin, check);
+	const quarter3b = await prepareReturn(admin, 'GSTR-3B', '2026-09');
+	ctx.gstr3bSep = quarter3b;
+	const outward = quarter3b.summary.find((r) => /3\.?1.?a/i.test(r.table));
+	check(
+		outward?.taxable === 8914.29 && outward?.tax === 445.71,
+		'GSTR-3B for July–September 3.1(a): ₹8,914.29 taxable, ₹445.71 tax',
+		JSON.stringify(quarter3b.summary.slice(0, 3)),
+	);
+	const fixed = await prepareReturn(admin, 'PMT-06', '2026-11', { pmt06Method: 'fixed_sum' });
+	const deposit = fixed.summary.reduce((sum, row) => sum + row.tax, 0);
+	check(
+		fixed.problems.length === 0 && deposit > 0,
+		'PMT-06 November by fixed sum: 35% of the quarter’s cash, rounded up by head',
+		`${deposit} ${JSON.stringify(fixed.problems)}`,
+	);
+	return `quarterly returns checked`;
+}
+
+/** Composition (G2): CMP-08 by quarter, its tax booked and paid, the quarter locked, GSTR-4 waiting for the year. */
+async function compositionGst(admin, check) {
+	const calendar = await admin.ok('GET', '/admin/accounts/gst/returns/calendar', undefined, {
+		gstRegistrationId: ctx.registrationId,
+		chip: 'all',
+	});
+	const types = new Set(calendar.rows.map((r) => r.returnType));
+	check(
+		types.has('CMP-08') && !types.has('GSTR-1') && !types.has('GSTR-3B'),
+		'Composition: CMP-08 is due each quarter; no GSTR-1 or GSTR-3B',
+		[...types].join(', '),
+	);
+	const gstr1 = await admin.try('POST', '/admin/accounts/gst/returns', {
+		gstRegistrationId: ctx.registrationId,
+		returnType: 'GSTR-1',
+		month: '2026-09',
+		adjustments: [],
+	});
+	check(gstr1.code === 'gst_return_not_for_this_gstin', 'GSTR-1 is refused under composition', gstr1.code);
+	let cmp = await prepareReturn(admin, 'CMP-08', '2026-09');
+	// 1% of the quarter's ₹9,360: CGST ₹46.80 + SGST ₹46.80.
+	check(
+		tableOf(cmp, 'cmp_outward')?.taxable === 9360 && tableOf(cmp, 'cmp_total')?.tax === 93.6,
+		'CMP-08 July–September: ₹9,360 turnover, ₹93.60 tax',
+		JSON.stringify(cmp.summary),
+	);
+	cmp = await approveReturn(admin, cmp);
+	const paid = await admin.ok('POST', `/admin/accounts/gst/returns/${cmp.id}/set-off`, {
+		bankAccountId: ctx.bankId,
+		paidOn: '2026-10-15',
+		challan: 'CPIN26101500001',
+		version: cmp.version,
+	});
+	check(!!paid.expenseVoucherId && !!paid.challanVoucherId, 'CMP-08: the tax booked and the challan paid, once');
+	const chart = (ctx.chart = await admin.ok('GET', '/admin/accounts/chart'));
+	const sep = await admin.ok('GET', '/admin/accounts/balances', undefined, { on: '2026-09-30' });
+	check(
+		balanceOf(chart, sep, 'composition_tax') === 9_360 &&
+			balanceOf(chart, sep, 'composition_tax_payable') === -9_360,
+		'The quarter’s composition tax is an expense at 30 September, owed until paid',
+		`${balanceOf(chart, sep, 'composition_tax')} / ${balanceOf(chart, sep, 'composition_tax_payable')}`,
+	);
+	const oct = await admin.ok('GET', '/admin/accounts/balances', undefined, { on: '2026-10-31' });
+	check(balanceOf(chart, oct, 'composition_tax_payable') === 0, 'Paid on 15 October: nothing owed');
+	await admin.ok('POST', '/admin/accounts/gst-filings', {
+		gstRegistrationId: ctx.registrationId,
+		returnType: 'CMP-08',
+		month: '2026-09',
+		arn: 'AA1910260054321',
+		filedOn: '2026-10-15',
+		acknowledgement: null,
+	});
+	await lateSaleRefused(admin, check);
+	const year = await prepareReturn(admin, 'GSTR-4', '2027-03');
+	check(
+		year.problems.some((p) => p.problem === 'gstr4_quarters_missing' && p.document === '3'),
+		'GSTR-4 for 2026-27 waits for three more quarters of CMP-08',
+		JSON.stringify(year.problems),
+	);
+	check(
+		tableOf(year, 'gstr4_4a')?.taxable === 60000 && tableOf(year, 'gstr4_5')?.tax === 93.6,
+		'GSTR-4: ₹60,000 bought from a registered supplier; ₹93.60 paid with CMP-08',
+		JSON.stringify(year.summary),
+	);
+	return 'composition returns checked';
+}
+
+/** ISD (G7, AD8): a Maharashtra ISD shares a rent bill's credit with the GSTINs that had turnover, IGST to West Bengal. */
+const ISD_SCENARIO = {
+	name: 'ISD: a Maharashtra branch and an ISD from November; the ISD’s rent credit goes to West Bengal as IGST',
+	async run({ admin, check }) {
+		const terms = (kind) => ({ from: '2026-11-01', kind, scheme: 'monthly', lastYearTurnoverINR: 0 });
+		const branch = await admin.ok('POST', '/admin/company/registrations', {
+			gstin: gstin('27', PAN),
+			legalName: 'KR Marketing Test',
+			tradeName: 'Saha Textile Test',
+			terms: terms('regular'),
+			active: true,
+		});
+		const isdGstin = gstin('27', PAN, '2');
+		const isd = await admin.ok('POST', '/admin/company/registrations', {
+			gstin: isdGstin,
+			legalName: 'KR Marketing Test',
+			tradeName: 'Saha Textile Test',
+			terms: terms('isd'),
+			active: true,
+		});
+		const place = (name, shortCode, registrationId) =>
+			admin.ok('POST', '/admin/locations', {
+				courierPickup: false,
+				showOnStoresPage: false,
+				storeLocationId: null,
+				stateCode: '27',
+				phone: '',
+				openingHours: '',
+				shopsEstablishmentNo: '',
+				gstRegistrationId: registrationId,
+				invoiceIdentity: 'company',
+				numberSeries: 'gstin',
+				pettyCashFloatINR: 0,
+				active: true,
+				expectedUpdatedAt: null,
+				name,
+				shortCode,
+				warehouse: false,
+				store: false,
+				office: true,
+				shipsOnline: false,
+				address: '14 Nariman Point',
+				pin: '400021',
+				city: 'Mumbai',
+				counterCashBox: false,
+			});
+		await place('Mumbai branch', 'MUM', branch.id);
+		await place('Mumbai office (ISD)', 'ISD', isd.id);
+		// GSTR-6A for November: the office rent, ₹10,000 + CGST ₹900 + SGST ₹900 from a Mumbai landlord.
+		const sixA = {
+			gstin: isdGstin,
+			fp: '112026',
+			b2b: [
+				{
+					ctin: gstin('27', 'AAACM1234B'),
+					inv: [
+						{
+							inum: 'RENT-1126',
+							idt: '05-11-2026',
+							val: 11800,
+							itms: [
+								{ num: 1, itm_det: { txval: 10000, rt: 18, iamt: 0, camt: 900, samt: 900, csamt: 0 } },
+							],
+						},
+					],
+				},
+			],
+			cdn: [],
+		};
+		const none = await admin.try('POST', '/admin/accounts/gst/returns', {
+			gstRegistrationId: isd.id,
+			returnType: 'GSTR-6',
+			month: '2026-11',
+			adjustments: [],
+		});
+		check(none.code === 'gstr6a_needed', 'GSTR-6 asks for its GSTR-6A first', none.code);
+		let six = await prepareReturn(admin, 'GSTR-6', '2026-11', { gstRegistrationId: isd.id, inward6a: sixA });
+		check(
+			tableOf(six, 'gstr6_3')?.taxable === 10000 && tableOf(six, 'gstr6_3')?.tax === 1800,
+			'GSTR-6 table 3: ₹10,000 of rent, ₹1,800 credit received',
+			JSON.stringify(six.summary),
+		);
+		// Only West Bengal had turnover in July–September (the Mumbai branch starts in November): all of it there,
+		// and from Maharashtra to West Bengal the CGST and SGST go as IGST.
+		const share = six.isdShares?.[0];
+		check(
+			six.isdShares?.length === 1 &&
+				share?.gstin === GSTIN &&
+				share.credit.igst === 180_000 &&
+				share.from.cgst === 90_000,
+			'The credit goes to West Bengal: IGST ₹1,800 from the ISD’s CGST ₹900 and SGST ₹900',
+			JSON.stringify(six.isdShares),
+		);
+		six = await approveReturn(admin, six);
+		six = await admin.ok('POST', `/admin/accounts/gst/returns/${six.id}/distribute`, { version: six.version });
+		check(!!six.distributionVoucherId, 'The distribution is posted once');
+		const again = await admin.try('POST', `/admin/accounts/gst/returns/${six.id}/distribute`, {
+			version: six.version,
+		});
+		check(again.status === 400, 'Posting the distribution twice is refused', again.code);
+		const voucher = await admin.ok('GET', `/admin/accounts/vouchers/${six.distributionVoucherId}`);
+		const debit = (voucher.lines ?? []).reduce((sum, l) => sum + l.debitPaise, 0);
+		const credit = (voucher.lines ?? []).reduce((sum, l) => sum + l.creditPaise, 0);
+		check(
+			debit === 180_000 && credit === 180_000,
+			'The distribution journal balances at ₹1,800',
+			`${debit}/${credit}`,
+		);
+		return `ISD ${isdGstin}`;
+	},
+};
+
 export const scenarios = [
 	{
-		name: 'Company: a proprietorship in West Bengal, books from 1 April 2026',
+		name: `Company: a ${KIND.replace(/_/g, ' ')} in West Bengal, books from 1 April 2026`,
 		async run({ admin }) {
 			const current = await admin.ok('GET', '/admin/company');
+			const partner = (id, name, pan, capitalINR, profitSharePercent, dpin) => ({
+				id,
+				name,
+				pan,
+				working: true,
+				capitalINR,
+				profitSharePercent,
+				interestOnCapitalPercent: 12,
+				monthlyRemunerationINR: 0,
+				designated: KIND === 'llp',
+				dpin: KIND === 'llp' ? dpin : null,
+			});
 			await admin.ok('PUT', '/admin/company', {
 				profile: {
-					kind: 'proprietorship',
+					kind: KIND,
 					legalName: 'KR Marketing Test',
 					tradeName: 'Saha Textile Test',
 					pan: PAN,
 					tan: null,
-					cin: null,
-					llpin: null,
+					cin: COMPANY ? (COMPOSITION ? 'U52100WB2026OPC123456' : 'U52100WB2026PTC123456') : null,
+					llpin: KIND === 'llp' ? 'AAA-1234' : null,
 					udyam: null,
 					financialYearStartMonth: 4,
 					booksStartOn: '2026-04-01',
 					homeCurrency: 'INR',
-					proprietor: { name: 'Test Proprietor', pan: PAN, openingCapitalINR: 0 },
+					proprietor:
+						KIND === 'proprietorship' ? { name: 'Test Proprietor', pan: PAN, openingCapitalINR: 0 } : null,
 					otherBusinesses: [],
-					partners: [],
+					partners: PARTNERS
+						? [
+								partner('ptn_a', 'Arindam Test', 'ABCPA1234K', 300_000, 60, '01234567'),
+								partner('ptn_b', 'Rupa Test', 'ABCPR1234K', 200_000, 40, '07654321'),
+							]
+						: [],
 					partnersCapital: 'fixed_with_current',
-					directors: [],
-					shareholders: [],
-					authorisedCapitalINR: 0,
-					paidUpCapitalINR: 0,
+					directors: COMPANY
+						? [
+								{
+									id: 'dir_a',
+									name: 'Arindam Test',
+									din: '01234567',
+									since: '2026-04-01',
+									paidAs: 'none',
+								},
+								...(COMPOSITION
+									? []
+									: [
+											{
+												id: 'dir_b',
+												name: 'Rupa Test',
+												din: '07654321',
+												since: '2026-04-01',
+												paidAs: 'none',
+											},
+										]),
+							]
+						: [],
+					shareholders: COMPANY
+						? COMPOSITION
+							? [{ id: 'sh_a', name: 'Arindam Test', shares: 50_000 }]
+							: [
+									{ id: 'sh_a', name: 'Arindam Test', shares: 30_000 },
+									{ id: 'sh_b', name: 'Rupa Test', shares: 20_000 },
+								]
+						: [],
+					authorisedCapitalINR: COMPANY ? 10_00_000 : 0,
+					paidUpCapitalINR: COMPANY ? 5_00_000 : 0,
 					faceValueINR: 10,
-					nomineeName: null,
+					nomineeName: COMPOSITION ? 'Rupa Test' : null,
 					revision: current?.profile?.revision ?? 0,
 				},
 				expectedUpdatedAt: current?.profile?.updatedAt ?? null,
@@ -130,11 +558,17 @@ export const scenarios = [
 				gstin: GSTIN,
 				legalName: 'KR Marketing Test',
 				tradeName: 'Saha Textile Test',
-				terms: { from: '2026-04-01', kind: 'regular', scheme: 'monthly', lastYearTurnoverINR: 4_00_00_000 },
+				terms: {
+					from: '2026-04-01',
+					kind: COMPOSITION ? 'composition' : 'regular',
+					scheme: QRMP ? 'qrmp' : 'monthly',
+					compositionRatePercent: COMPOSITION ? 1 : null,
+					lastYearTurnoverINR: COMPOSITION ? 1_00_00_000 : 4_00_00_000,
+				},
 				active: true,
 			});
 			ctx.registrationId = registration.id;
-			return `GSTIN ${GSTIN}`;
+			return `GSTIN ${GSTIN} (${COMPOSITION ? 'composition' : QRMP ? 'quarterly, QRMP' : 'monthly'})`;
 		},
 	},
 	{
@@ -210,7 +644,7 @@ export const scenarios = [
 		},
 	},
 	{
-		name: 'Set up the books from the proprietorship templates',
+		name: `Set up the books from the ${KIND.replace(/_/g, ' ')} templates`,
 		async run({ admin, check }) {
 			await admin.ok('POST', '/admin/accounts/templates/set-up-books');
 			const chart = await admin.ok('GET', '/admin/accounts/chart');
@@ -224,10 +658,56 @@ export const scenarios = [
 				'input_cgst',
 				'debtors_control',
 				'creditors_control',
-				'capital',
 				'profit_and_loss',
+				...(KIND === 'proprietorship' ? ['capital', 'drawings'] : []),
+				...(COMPANY ? ['share_capital', 'general_reserve', 'provision_for_income_tax'] : []),
+				...(PARTNERS ? ['drawings', 'interest_on_partners_capital', 'partners_remuneration'] : []),
 			])
-				check(keys.has(k), `The chart has the ${k} ledger`);
+				check(
+					keys.has(k) || chart.ledgers.some((l) => (l.roles ?? []).includes(k)),
+					`The chart has the ${k} ledger`,
+				);
+			if (PARTNERS) {
+				const capital = KIND === 'llp' ? 'contribution' : 'capital';
+				for (const name of ['Arindam Test', 'Rupa Test']) {
+					check(
+						chart.ledgers.some((l) => l.name === `${name} ${capital}`),
+						`${name} has a ${capital} ledger`,
+					);
+					check(
+						chart.ledgers.some((l) => l.name === `${name} current account`),
+						`${name} has a current account`,
+					);
+				}
+			}
+			const opens = await admin.ok('GET', '/admin/accounts/templates/opens', undefined, { kind: KIND });
+			ctx.opens = opens;
+			const reports = (opens.reports ?? []).map((r) => r.code);
+			const wanted = {
+				proprietorship: ['RP-NCE-PL', 'RP-NCE-BS-PROP'],
+				partnership: ['RP-NCE-PL', 'RP-NCE-BS-FIRM', 'RP-APPROP'],
+				llp: ['RP-LLP-PL', 'RP-LLP-BS', 'RP-APPROP'],
+				private_limited: ['RP-SCH3-PL', 'RP-SCH3-BS'],
+				private_limited_opc: ['RP-SCH3-PL', 'RP-SCH3-BS'],
+			}[KIND];
+			check(
+				wanted.every((code) => reports.includes(code)),
+				`The ${KIND.replace(/_/g, ' ')}'s own statements open: ${wanted.join(', ')}`,
+				reports.join(', '),
+			);
+			check(
+				!reports.some((code) =>
+					({
+						proprietorship: /SCH3|LLP|FIRM|APPROP/,
+						partnership: /SCH3|LLP-/,
+						llp: /SCH3|NCE/,
+						private_limited: /NCE|LLP|APPROP|FIRM/,
+						private_limited_opc: /NCE|LLP|APPROP|FIRM/,
+					})[KIND].test(code),
+				),
+				'Other kinds’ statements stay locked',
+				reports.join(', '),
+			);
 			const again = await admin.try('POST', '/admin/accounts/templates/set-up-books');
 			check(again.status === 409, 'Setting the books up twice is refused', `status ${again.status}`);
 			return `${chart.groups.length} groups, ${chart.ledgers.length} ledgers`;
@@ -270,13 +750,30 @@ export const scenarios = [
 			const bankLedger = ctx.chart.ledgers.find((l) => l.id === bank.ledgerId);
 			ctx.bankLedgerId = bank.ledgerId;
 			const cash = ctx.chart.ledgers.find((l) => l.systemKey === 'cash');
-			const capital = ctx.chart.ledgers.find((l) => l.systemKey === 'capital');
-			// Opening, as at 31 March 2026: cash ₹20,000 and bank ₹4,80,000 against capital ₹5,00,000.
+			// The owners' ₹5,00,000: the proprietor's capital, the partners' capital or contribution (3:2), or share capital.
+			const owners = PARTNERS
+				? [
+						[
+							ctx.chart.ledgers.find(
+								(l) => l.name === `Arindam Test ${KIND === 'llp' ? 'contribution' : 'capital'}`,
+							),
+							300_000,
+						],
+						[
+							ctx.chart.ledgers.find(
+								(l) => l.name === `Rupa Test ${KIND === 'llp' ? 'contribution' : 'capital'}`,
+							),
+							200_000,
+						],
+					]
+				: [[ctx.chart.ledgers.find((l) => l.systemKey === (COMPANY ? 'share_capital' : 'capital')), 500_000]];
+			const capital = owners[0][0];
+			// Opening, as at 31 March 2026: cash ₹20,000 and bank ₹4,80,000 against the owners' ₹5,00,000.
 			const csv = [
 				'Ledger,Group,Debit,Credit',
 				`${cash.name},Cash-in-Hand,20000,`,
 				`"${bankLedger.name}",Bank Accounts,480000,`,
-				`${capital.name},Capital Account,,500000`,
+				...owners.map(([ledger, amount]) => `"${ledger.name}",Capital Account,,${amount}`),
 			].join('\n');
 			const input = {
 				source: 'template_csv',
@@ -298,7 +795,7 @@ export const scenarios = [
 			);
 			const unbalanced = await admin.try('POST', '/admin/accounts/import', {
 				...input,
-				text: csv.replace('500000', '499000'),
+				text: csv.replace('480000', '479000'),
 				locationId: ctx.storeId,
 			});
 			check(
@@ -316,8 +813,8 @@ export const scenarios = [
 				String(balances[bank.ledgerId]),
 			);
 			check(
-				(balances[capital.id] ?? 0) === -50_000_000,
-				'Capital opens at ₹5,00,000 Cr',
+				(balances[capital.id] ?? 0) === -owners[0][1] * 100,
+				`${capital.name} opens at ₹${owners[0][1].toLocaleString('en-IN')} Cr`,
 				String(balances[capital.id]),
 			);
 			const total = Object.values(balances).reduce((a, b) => a + b, 0);
@@ -399,13 +896,13 @@ export const scenarios = [
 				String(balanceOf(chart, aug, 'creditors_control')),
 			);
 			check(
-				balanceOf(chart, aug, 'input_cgst') === 150_000,
-				'Input CGST ₹1,500',
+				balanceOf(chart, aug, 'input_cgst') === F.inputHalf,
+				COMPOSITION ? 'No input CGST under composition' : 'Input CGST ₹1,500',
 				String(balanceOf(chart, aug, 'input_cgst')),
 			);
 			check(
-				balanceOf(chart, aug, 'input_sgst') === 150_000,
-				'Input SGST ₹1,500',
+				balanceOf(chart, aug, 'input_sgst') === F.inputHalf,
+				COMPOSITION ? 'No input SGST under composition' : 'Input SGST ₹1,500',
 				String(balanceOf(chart, aug, 'input_sgst')),
 			);
 			check(
@@ -414,8 +911,8 @@ export const scenarios = [
 				String(balanceOf(chart, aug, 'input_igst')),
 			);
 			check(
-				balanceOf(chart, aug, 'stock_in_hand') === 6_000_000,
-				'Stock in hand up ₹60,000 at cost',
+				balanceOf(chart, aug, 'stock_in_hand') === F.stockAug,
+				COMPOSITION ? 'Stock in hand ₹63,000: the GST stays in its cost' : 'Stock in hand up ₹60,000 at cost',
 				String(balanceOf(chart, aug, 'stock_in_hand')),
 			);
 			check(Object.values(aug).reduce((a, b) => a + b, 0) === 0, 'The trial balance at 31 August balances');
@@ -558,11 +1055,13 @@ export const scenarios = [
 				!invoice.interState && invoice.placeOfSupply === '19',
 				'Intra-state, place of supply West Bengal (19)',
 			);
-			// Tax included at 5%: taxable 9,360 ÷ 1.05 = ₹8,914.29, tax ₹445.71 split into CGST and SGST.
-			check(invoice.taxableINR === 8914.29, 'Taxable ₹8,914.29', String(invoice.taxableINR));
+			// Tax included at 5%: taxable 9,360 ÷ 1.05 = ₹8,914.29, tax ₹445.71 split into CGST and SGST. Under
+			// composition a bill of supply: the whole ₹9,360, no tax.
+			check(invoice.billOfSupply === COMPOSITION, COMPOSITION ? 'A bill of supply' : 'A tax invoice');
+			check(invoice.taxableINR === F.sale1Taxable, `Taxable ₹${F.sale1Taxable}`, String(invoice.taxableINR));
 			check(
-				Math.round((invoice.cgstINR + invoice.sgstINR) * 100) === 44_571,
-				'CGST + SGST ₹445.71',
+				Math.round((invoice.cgstINR + invoice.sgstINR) * 100) === F.sale1Tax,
+				COMPOSITION ? 'No tax charged' : 'CGST + SGST ₹445.71',
 				`${invoice.cgstINR} + ${invoice.sgstINR}`,
 			);
 			check(
@@ -574,22 +1073,22 @@ export const scenarios = [
 			const sep = await admin.ok('GET', '/admin/accounts/balances', undefined, { on: '2026-09-30' });
 			ctx.sep = sep;
 			check(
-				balanceOf(chart, sep, 'sales') === -891_429,
-				'Sales ₹8,914.29 Cr in September',
+				balanceOf(chart, sep, 'sales') === F.salesSep,
+				`Sales ₹${-F.salesSep / 100} Cr in September`,
 				String(balanceOf(chart, sep, 'sales')),
 			);
 			check(
-				balanceOf(chart, sep, 'output_cgst') + balanceOf(chart, sep, 'output_sgst') === -44_571,
-				'Output GST ₹445.71 Cr',
+				balanceOf(chart, sep, 'output_cgst') + balanceOf(chart, sep, 'output_sgst') === F.outputSep,
+				`Output GST ₹${-F.outputSep / 100} Cr`,
 			);
 			check(
-				balanceOf(chart, sep, 'cost_of_goods_sold') === 600_000,
-				'Cost of goods sold ₹6,000 (2 × ₹3,000)',
+				balanceOf(chart, sep, 'cost_of_goods_sold') === F.cogsSep,
+				`Cost of goods sold ₹${F.cogsSep / 100} (2 sarees)`,
 				String(balanceOf(chart, sep, 'cost_of_goods_sold')),
 			);
 			check(
-				balanceOf(chart, sep, 'stock_in_hand') === 5_400_000,
-				'Stock in hand ₹54,000 (18 left at ₹3,000)',
+				balanceOf(chart, sep, 'stock_in_hand') === F.stockSep,
+				`Stock in hand ₹${F.stockSep / 100} (18 left)`,
 				String(balanceOf(chart, sep, 'stock_in_hand')),
 			);
 			check(
@@ -618,6 +1117,42 @@ export const scenarios = [
 				countryCode: 'IN',
 				mobile: { countryCallingCode: '91', number: '9820012345' },
 			});
+			if (COMPOSITION) {
+				// G2: a composition seller can't sell outside West Bengal; the order is refused before anything is kept.
+				const refused = await admin.try('POST', '/admin/orders', {
+					cart: {
+						buyer: { kind: 'person', customerId: customer.id },
+						currency: 'INR',
+						lines: [{ productId: 'prd_1001', variationId: null, quantity: 1, addons: [] }],
+					},
+					delivery: { kind: 'saved', savedAddressId: customer.addressId },
+					billing: null,
+					indianInvoiceAddress: null,
+					couponCodes: [],
+					comment: null,
+					payment: {
+						method: 'manual',
+						payment: {
+							note: null,
+							proofMediaId: null,
+							collector: null,
+							collectedBy: null,
+							received: true,
+							method: 'bankTransfer',
+							amountINR: 4680,
+							reference: 'UTR20261002',
+							receivedOn: '2026-10-02',
+						},
+					},
+					idempotencyKey: key('o'),
+				});
+				check(
+					refused.status === 409 && JSON.stringify(refused.body).includes('delivery_outside_state'),
+					'Under composition, an order to Mumbai is refused (no sales outside the State)',
+					`${refused.status} ${JSON.stringify(refused.body).slice(0, 160)}`,
+				);
+				return 'refused under composition';
+			}
 			const { invoice } = await sell(admin, {
 				customer,
 				quantity: 1,
@@ -709,11 +1244,7 @@ export const scenarios = [
 				shippedOn: today,
 				deliveredOn: today,
 			});
-			check(
-				sale3.invoice.number === 'TI/26-27/000003',
-				'Sale 3 invoiced as TI/26-27/000003',
-				sale3.invoice.number,
-			);
+			check(sale3.invoice.number === F.sale3Number, `Sale 3 invoiced as ${F.sale3Number}`, sale3.invoice.number);
 			const order = await admin.ok('GET', `/admin/orders/${sale3.orderId}`);
 			const lineId = order.order.lines.find((l) => l.lineId && l.role !== 'bundle').lineId;
 			const back = await admin.ok('POST', `/admin/orders/${sale3.orderId}/returns`, {
@@ -736,10 +1267,10 @@ export const scenarios = [
 			const note = issued.creditNote ?? issued;
 			ctx.creditNote = note;
 			// One saree back: taxable ₹4,457.14, CGST + SGST ₹222.86.
-			check(note.taxableINR === 4457.14, 'Credit note taxable ₹4,457.14', String(note.taxableINR));
+			check(note.taxableINR === F.noteTaxable, `Credit note taxable ₹${F.noteTaxable}`, String(note.taxableINR));
 			check(
-				Math.round((note.cgstINR + note.sgstINR) * 100) === 22_286,
-				'Credit note CGST + SGST ₹222.86',
+				Math.round((note.cgstINR + note.sgstINR) * 100) === F.noteTax,
+				`Credit note CGST + SGST ₹${F.noteTax / 100}`,
 				`${note.cgstINR} + ${note.sgstINR}`,
 			);
 			await admin.ok('POST', `/admin/accounts/credit-notes/${noteId}/refund`, {
@@ -753,28 +1284,28 @@ export const scenarios = [
 			ctx.afterReturn = now;
 			// Three sales (₹8,914.29 + ₹4,457.14 + ₹4,457.14 taxable), one returned.
 			check(
-				balanceOf(chart, now, 'sales') === -1_782_857,
-				'Sales ₹17,828.57 Cr',
+				balanceOf(chart, now, 'sales') === F.salesNow,
+				`Sales ₹${-F.salesNow / 100} Cr`,
 				String(balanceOf(chart, now, 'sales')),
 			);
 			check(
-				balanceOf(chart, now, 'sales_returns') === 445_714,
-				'Sales returns ₹4,457.14 Dr',
+				balanceOf(chart, now, 'sales_returns') === F.returnsNow,
+				`Sales returns ₹${F.returnsNow / 100} Dr`,
 				String(balanceOf(chart, now, 'sales_returns')),
 			);
 			check(
-				balanceOf(chart, now, 'output_cgst') + balanceOf(chart, now, 'output_sgst') === -44_571,
-				'Output CGST + SGST back to ₹445.71 Cr (sale 3 and its return cancel)',
+				balanceOf(chart, now, 'output_cgst') + balanceOf(chart, now, 'output_sgst') === F.outputNow,
+				'Output CGST + SGST: sale 3 and its return cancel',
 				String(balanceOf(chart, now, 'output_cgst') + balanceOf(chart, now, 'output_sgst')),
 			);
 			check(
-				balanceOf(chart, now, 'cost_of_goods_sold') === 900_000,
-				'Cost of goods sold ₹9,000 (4 sold, 1 back)',
+				balanceOf(chart, now, 'cost_of_goods_sold') === F.cogsNow,
+				`Cost of goods sold ₹${F.cogsNow / 100}`,
 				String(balanceOf(chart, now, 'cost_of_goods_sold')),
 			);
 			check(
-				balanceOf(chart, now, 'stock_in_hand') === 5_100_000,
-				'Stock in hand ₹51,000 (17 sarees)',
+				balanceOf(chart, now, 'stock_in_hand') === F.stockNow,
+				`Stock in hand ₹${F.stockNow / 100}`,
 				String(balanceOf(chart, now, 'stock_in_hand')),
 			);
 			check(
@@ -783,8 +1314,8 @@ export const scenarios = [
 				String(balanceOf(chart, now, 'upi_card_clearing')),
 			);
 			check(
-				(now[ctx.bankLedgerId] ?? 0) === 41_700_000,
-				'HDFC ₹4,17,000 after the ₹4,680 refund',
+				(now[ctx.bankLedgerId] ?? 0) === F.bankNow,
+				`HDFC ₹${F.bankNow / 100} after the ₹4,680 refund`,
 				String(now[ctx.bankLedgerId]),
 			);
 			check(
@@ -796,8 +1327,14 @@ export const scenarios = [
 		},
 	},
 	{
-		name: 'GST returns: GSTR-1 September and October against the invoices, filed; September then locked; GSTR-3B',
+		name: COMPOSITION
+			? 'GST under composition: CMP-08 for July–September, booked, paid and filed; September locked; GSTR-4 waits'
+			: QRMP
+				? 'GST quarterly (QRMP): GSTR-1 for the quarter, IFF and PMT-06 in October, filed; September locked; GSTR-3B'
+				: 'GST returns: GSTR-1 September and October against the invoices, filed; September then locked; GSTR-3B',
 		async run({ admin, check }) {
+			if (QRMP) return qrmpGst(admin, check);
+			if (COMPOSITION) return compositionGst(admin, check);
 			const prepare = (returnType, month) =>
 				admin.ok('POST', '/admin/accounts/gst/returns', {
 					gstRegistrationId: ctx.registrationId,
@@ -885,6 +1422,7 @@ export const scenarios = [
 			return `3B rows ${sep3.summary.map((r) => r.table).join(',')}`;
 		},
 	},
+	...(QRMP ? [ISD_SCENARIO] : []),
 	{
 		name: 'Statements: profit and loss, balance sheet and ratios for the year to date, against hand figures',
 		async run({ admin, check }) {
@@ -895,28 +1433,28 @@ export const scenarios = [
 			});
 			const plText = JSON.stringify(pl);
 			check(pl.problems?.length === 0, 'The profit and loss layout has no problems', JSON.stringify(pl.problems));
+			// Composition: sales ₹9,360 net of the return, cost ₹6,300, CMP-08 tax ₹93.60: profit ₹2,966.40.
+			const profit = COMPOSITION ? 296_640 : 437_143;
 			check(
-				plText.includes('437143') || plText.includes('4371.43'),
-				'Profit for the year ₹4,371.43',
+				plText.includes(String(profit)) || plText.includes((profit / 100).toFixed(2)),
+				`Profit for the year ₹${(profit / 100).toFixed(2)}`,
 				plText.slice(0, 300),
 			);
 			const bs = await admin.ok('GET', '/admin/accounts/reports/statements/balanceSheet', undefined, {
 				asAt: today,
 			});
-			const bsText = JSON.stringify(bs);
 			check(bs.problems?.length === 0, 'The balance sheet layout has no problems', JSON.stringify(bs.problems));
 			// Assets: cash 20,000 + HDFC 4,17,000 + UPI clearing 18,720 (sales 1 and 3, and the refused late sale's
 			// ₹4,680 still held as the customer's advance) + stock 51,000 = ₹5,06,720. Funds and liabilities: capital
 			// 5,00,000 + profit 4,371.43 + advance 4,680 − GST 2,331.43 (input 3,000 net of output 668.57) = ₹5,06,720.
-			const total = (key) => bs.rows.find((r) => r.key === key)?.thisYearPaise;
+			// Composition: cash 20,000 + HDFC 4,12,226.40 (no Mumbai receipt; CMP-08 ₹93.60 paid) + UPI 18,720 + stock
+			// 56,700 (18 at ₹3,150) = ₹5,07,646.40 = capital 5,00,000 + profit 2,966.40 + advance 4,680. The partnership's
+			// PMT-06 deposit and the ISD's credit only move money between assets.
+			const totalPaise = COMPOSITION ? 50_764_640 : 50_672_000;
 			check(
-				total('funds_and_liabilities') === 50_672_000,
-				'Funds and liabilities ₹5,06,720',
-				String(total('funds_and_liabilities')),
-			);
-			check(
-				bs.rows.filter((r) => r.depth === 0).every((r) => r.thisYearPaise === 50_672_000),
-				'Both sides of the balance sheet ₹5,06,720',
+				bs.rows.filter((r) => r.depth === 0).length === 2 &&
+					bs.rows.filter((r) => r.depth === 0).every((r) => r.thisYearPaise === totalPaise),
+				`Both sides of the ${KIND.replace(/_/g, ' ')}'s balance sheet ₹${(totalPaise / 100).toFixed(2)}`,
 				bs.rows
 					.filter((r) => r.depth === 0)
 					.map((r) => `${r.key} ${r.thisYearPaise}`)
@@ -1101,7 +1639,10 @@ export const scenarios = [
 			});
 			const invoice = sale.invoice ?? sale;
 			check(
-				/TI\/26-27\/00000[4-9]/.test(invoice.number ?? invoice.invoiceNumber ?? ''),
+				// The next number after the shop's sales: no Mumbai sale under composition, so one earlier.
+				(COMPOSITION ? /TI\/26-27\/00000[3-9]/ : /TI\/26-27\/00000[4-9]/).test(
+					invoice.number ?? invoice.invoiceNumber ?? '',
+				),
 				'The counter sale is invoiced in the same series',
 				invoice.number ?? invoice.invoiceNumber,
 			);
@@ -1109,9 +1650,15 @@ export const scenarios = [
 				on: new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10),
 			});
 			const moved = (k) => balanceOf(ctx.chart, after, k) - balanceOf(ctx.chart, before, k);
-			check(moved('sales') === -445_714, 'Counter sale: sales ₹4,457.14 Cr', String(moved('sales')));
+			// A bill of supply under composition: the whole ₹4,680 is the sale.
+			const counterSales = COMPOSITION ? -468_000 : -445_714;
 			check(
-				moved('cost_of_goods_sold') === 300_000,
+				moved('sales') === counterSales,
+				`Counter sale: sales ₹${-counterSales / 100} Cr`,
+				String(moved('sales')),
+			);
+			check(
+				moved('cost_of_goods_sold') === F.unitCost,
 				'Counter sale: cost ₹3,000',
 				String(moved('cost_of_goods_sold')),
 			);
@@ -1152,9 +1699,12 @@ export const scenarios = [
 			const view = await admin.ok('GET', '/admin/accounts/year-close/2026-27');
 			check(view.checks.length === 10, 'Ten checks', String(view.checks.length));
 			const by = Object.fromEntries(view.checks.map((c) => [c.key, c]));
+			// Monthly: GSTR-1 and 3B × 12. QRMP: 4 quarters × 2, the Mumbai branch 5 months × 2 and the ISD's GSTR-6
+			// × 5 from November. Composition: CMP-08 × 4. One filed so far in each.
+			const due = COMPOSITION ? 4 : QRMP ? 23 : 24;
 			check(
-				by.gst.state === 'attention' && by.gst.count === 1,
-				'GST: 1 of 24 returns filed so far (GSTR-1 September)',
+				by.gst.state === 'attention' && by.gst.count === 1 && by.gst.of === due,
+				`GST: 1 of ${due} returns filed so far`,
 				`${by.gst.count} of ${by.gst.of}`,
 			);
 			check(by.depreciation.state === 'attention', 'Depreciation to March still due on the computer');

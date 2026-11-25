@@ -3,7 +3,7 @@ title: Bank accounts
 description: Current, savings, cash credit, overdraft and fixed deposit accounts as ledgers with the bank's details, the opening balance posted on its day, the number shown whole only to those who manage accounts, and statements imported line by line.
 status: implemented
 audience: [backend, frontend, operator]
-last_verified: '2026-11-24'
+last_verified: '2026-11-25'
 search_keywords: bank account ifsc current savings cash credit overdraft fixed deposit opening balance cheque book upi ledger masked number statement import csv layout columns bank lines reconcile matching rules suggested match accept link bank charges interest
 source_of_truth:
     - packages/contracts/src/bank.ts
@@ -72,13 +72,13 @@ Matching rules (BA10, `/accounts/banks/matching-rules`) lists the rules in order
 
 BA9 (`/accounts/banks/:id/brs`, from Reconcile) goes, as at a chosen day, from the balance in the books to the balance on the bank's statement. Reconciling starts at the account's first imported line; the steps are, each listing its items:
 
-| Step                                                          | Items                                                                                                                    |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Add: payments and cheques we issued, not yet through the bank | Entries on the account's ledger paying out, not held by a line accepted by that day                                      |
-| Less: entered by us, not yet in the bank                      | Entries paying in, not held by an accepted line                                                                          |
-| Add or less: in or out of the bank, not yet in our books      | Statement lines to the day not accepted, money in and money out                                                          |
-| Less: bank charges not yet entered                            | Lines the bank-charges rule would make an entry for                                                                      |
-| Difference already there when the statements start            | The first import's opening less the books before its first day (the account's opening voucher counts as the books' side) |
+| Step                                                                 | Items                                                                                                                    |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Add: payments and cheques we issued that the bank hasn't cleared     | Entries on the account's ledger paying out, not held by a line accepted by that day                                      |
+| Less: entered by us, still to reach the bank                         | Entries paying in, not held by an accepted line                                                                          |
+| Add or less: in or out of the bank, still to be entered in our books | Statement lines to the day not accepted, money in and money out                                                          |
+| Less: bank charges still to be entered                               | Lines the bank-charges rule would make an entry for                                                                      |
+| Difference already there when the statements start                   | The first import's opening less the books before its first day (the account's opening voucher counts as the books' side) |
 
 The result is checked against the statements' own balance (the first import's opening plus every line to the day): a tick when they agree, otherwise the difference to look into. PDF prints the page through the browser. `GET /admin/accounts/banks/:id/brs?asAt=` (`accounts.index`).
 
@@ -117,4 +117,4 @@ Accounts › Settlements (Q10, D27, `/accounts/settlements`) lists gateway payou
 
 Routes under `/admin/accounts/settlements`: `GET` (list with `unsettled`, `accounts.index`), `GET /:id`, `POST /preview` and `POST` (import, `accounts.edit`). Collection `settlements` (unique kind, provider and UTR).
 
-Settling receipts against bills follows in the same chunk.
+Settling receipts against bills uses the same settlements.

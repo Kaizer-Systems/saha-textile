@@ -3,7 +3,7 @@ title: Self-invoices and payment vouchers
 description: Reverse-charge supplies from unregistered suppliers (Rule 47A self-invoice within 30 days), payment vouchers for every payment to a supplier (Rule 52), the RS-RCM rule set they read, their postings and lists.
 status: implemented
 audience: [backend, frontend, operator]
-last_verified: '2026-11-24'
+last_verified: '2026-11-25'
 search_keywords: self-invoice reverse charge RCM rule 47A rule 52 payment voucher PV SI unregistered supplier shop rent GTA advocate RS-RCM SAC input GST reverse charge payable supplier payment
 source_of_truth:
     - packages/contracts/src/self-invoices.ts

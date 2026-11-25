@@ -3,7 +3,7 @@ title: Tax invoices
 description: Tax invoices issued when goods leave, numbered per GSTIN, with HSN and GST on every line, posted to the books, printed as the three Rule 48 copies, and registered as e-invoices.
 status: implemented
 audience: [backend, frontend, operator]
-last_verified: '2026-11-24'
+last_verified: '2026-11-25'
 search_keywords: tax invoice dispatch shipped GSTIN series HSN GST rate CGST SGST IGST place of supply rule 48 original duplicate triplicate e-invoice IRN e-way bill accounting tab checks
 source_of_truth:
     - packages/contracts/src/tax-invoice.ts
@@ -40,6 +40,10 @@ Numbers come from the `taxInvoice` series of Settings › Document numbering (`T
 The registration is the ships-from location's (Settings › Locations), or the one holding the shop's GSTIN when the location has none.
 
 ## Lines and tax
+
+A GSTIN under composition issues bills of supply instead: the invoice carries `billOfSupply`, no tax is taken out
+of the price, the print is titled "Bill of supply" with the composition declaration, and a delivery outside the
+GSTIN's State is refused (`invoice_problem:composition_inter_state`). See [GST returns](./gst-returns.md#composition).
 
 Shop prices include GST. For each line the taxable value is taken out of what the buyer paid at the line's rate: taxable = total ÷ (1 + rate), worked in paise.
 
@@ -92,7 +96,7 @@ The invoice posts one voucher in the same transaction (`invoicePosting`, idempot
 
 ## E-invoices
 
-E-documents are recorded against the invoice (`documentId` is the invoice's id). With a tested automatic e-invoice path, Generate sends the invoice as it is (`saleFromTaxInvoice`): the same number, date, lines and totals, with the delivery charge as one service line (SAC 996812). A duplicate (error 2150) fetches the existing IRN; a refusal is shown with its code; no answer opens the by-hand popup. See [E-invoice and e-way bill](../gst-edocs/overview.md).
+E-documents are recorded against the invoice (`documentId` is the invoice's id). With a tested automatic e-invoice path, Generate sends the invoice as it is (`saleFromTaxInvoice`): the same number, date, lines and totals, with the delivery charge as one service line (SAC 996812). An export carrying IGST goes as `EXPWP`, one without IGST (under a LUT) as `EXPWOP`. A duplicate (error 2150) fetches the existing IRN; a refusal is shown with its code; no answer opens the by-hand popup. See [E-invoice and e-way bill](../gst-edocs/overview.md).
 
 The automatic e-way bill needs Part B (transporter or vehicle) from the courier booking, which isn't connected; Generate e-way bill opens the by-hand popup and names the invoice to enter on the portal.
 

@@ -4,7 +4,7 @@ wide: true
 description: Suppliers, purchase orders, purchase entries, purchase returns, stock with held pieces and approvals, counts, opening stock, reports, the settings pages (purchases and shop details), the product and category form rules, and fabric sold by the metre in the admin, the API and the shop.
 status: implemented
 audience: [beginner, frontend, backend]
-last_verified: '2026-11-24'
+last_verified: '2026-11-25'
 source_of_truth:
     - packages/contracts/src/purchasing.ts
     - packages/contracts/src/shop-details.ts
@@ -112,6 +112,14 @@ Adjust stock takes pieces out, adds them, or holds and releases them. A write-of
 ## Stock counts: totals
 
 A count's Missing, Found and Net boxes (`StockCount.totals`), the counts in Approvals and the count's approval request (`countSummary`) keep pieces and fabric apart, since a piece and a tenth of a metre never add up: `missingPieces` and `missingTenths`, `foundPieces` and `foundTenths`, `netPieces` and `netTenths` (in the request, `missing` and `found` are pieces, beside `missingTenths` and `foundTenths`). The screens word them as before when only pieces differ ("4"), in metres when only fabric does ("1.5 m"), and side by side when both do ("4 pieces and 1.5 m"). Money is the one total across both. A count's page works its totals out again from its lines, so a count saved before the split reads correctly; its posting in the books goes line by line as an `SA/…` stock adjustment (see Stock adjustments).
+
+## Stock counts by location
+
+A count names where it is taken (`StockCount.locationId`, brief 25 SC1): its expected quantities are that location's
+stock, and only that location's movements while counting change them. "Every location" (`null`) works as counts did
+before, and counts made before read so. Accounts › Reports › CARO 3(ii)(a) filters and exports by location
+(`?locationId=`). The year-end check "stock counted this year" passes when every location that holds stock has a
+posted count this year, or a count of every location was posted.
 
 ## Opening stock
 

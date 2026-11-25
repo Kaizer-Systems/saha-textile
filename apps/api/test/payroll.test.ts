@@ -26,6 +26,8 @@ const employee = (id: string, name: string, each: number, over: Partial<Employee
 	esiNumber: '',
 	ptState: '19',
 	taxRegime: 'new',
+	dateOfBirth: null,
+	taxDeclarations: [],
 	bankAccount: '',
 	ifsc: '',
 	pfOn: true,
@@ -354,11 +356,25 @@ describe('the monthly run (S5)', () => {
 		expect(await service.getRun('2026-10')).toBeNull();
 	});
 
-	it('takes TDS each month under the new regime only, and recovers no more advance than is still due', async () => {
+	it('takes TDS by each person’s regime on the year (earlier pay, this month, the months left), and recovers no more advance than is still due', async () => {
 		const big = { basic: 150_000, da: 0, hra: 0, special: 50_000, conveyance: 0, other: 0 };
+		// Brief 25 TX1: ₹14 lakh paid (and ₹50,000 deducted) before these books, then ₹2 lakh a month to March.
+		const before = {
+			year: '2026-27',
+			regime: 'new' as const,
+			chosenOn: null,
+			rentMonthlyINR: 0,
+			metroCity: false,
+			s80cINR: 0,
+			s80dINR: 0,
+			homeLoanInterestINR: 0,
+			previousSalaryINR: 1_400_000,
+			previousTdsINR: 50_000,
+			proof: { rent: false, s80c: false, s80d: false, homeLoan: false },
+		};
 		const { service } = build({
 			employees: [
-				employee('emp_new', 'New regime', 0, { structure: big }),
+				employee('emp_new', 'New regime', 0, { structure: big, taxDeclarations: [before] }),
 				employee('emp_old', 'Old regime', 0, { structure: big, taxRegime: 'old' }),
 				employee('emp_owing', 'Owing a little', 9_000, { advanceDueINR: 300, advancePerMonthINR: 1_000 }),
 			],
@@ -372,8 +388,23 @@ describe('the monthly run (S5)', () => {
 		});
 		const run = await service.prepare('2026-11');
 		const of = (name: string) => run.rows.find((r) => r.name === name);
-		expect(of('New regime')?.tdsPaise).toBeGreaterThan(0);
-		expect(of('Old regime')?.tdsPaise).toBe(0);
+		// New: ₹24 lakh − ₹75,000 = ₹23,25,000 taxable → ₹2,81,250 + 4% cess = ₹2,92,500; less ₹50,000 over 5 months.
+		expect(of('New regime')?.tax).toMatchObject({
+			regime: 'new',
+			yearSalaryPaise: 2_400_000_00,
+			taxablePaise: 2_325_000_00,
+			yearTaxPaise: 292_500_00,
+			deductedBeforePaise: 50_000_00,
+			monthsLeft: 5,
+		});
+		expect(of('New regime')?.tdsPaise).toBe(48_500_00);
+		// Old: ₹10 lakh − ₹50,000 − PT ₹1,000 − own PF ₹9,000 (80C) = ₹9,40,000 → ₹1,00,500 + cess = ₹1,04,520; over 5.
+		expect(of('Old regime')?.tax).toMatchObject({
+			regime: 'old',
+			taxablePaise: 940_000_00,
+			yearTaxPaise: 104_520_00,
+		});
+		expect(of('Old regime')?.tdsPaise).toBe(20_904_00);
 		expect(of('Owing a little')?.advancePaise).toBe(30_000);
 	});
 

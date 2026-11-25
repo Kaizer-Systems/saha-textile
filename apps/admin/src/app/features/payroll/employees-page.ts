@@ -1,4 +1,4 @@
-import { Component, inject, signal, type TemplateRef } from '@angular/core';
+import { Component, computed, inject, signal, type TemplateRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
@@ -10,12 +10,19 @@ import { PAYROLL_KEYS, PayrollGateway } from '@core/accounts/payroll.gateway';
 import { LOCATION_KEYS, LocationsGateway } from '@core/locations/locations.gateway';
 import { apiProblem, shortDate } from '@core/purchasing/purchasing-format';
 import { NotificationService } from '@data-access/services/notification.service';
+import { rupees } from '@features/accounts/ledger-helpers';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
 import { currentMonth } from './attendance-page';
 
-import type { EmployeeView, EmployeeWriteInput, SalaryStructureWrite } from '@saha-textile/contracts';
+import type {
+	EmployeeView,
+	EmployeeWriteInput,
+	IncomeTaxView,
+	SalaryStructureWrite,
+	TaxDeclaration,
+} from '@saha-textile/contracts';
 
 export const STRUCTURE_HEADS = ['basic', 'da', 'hra', 'special', 'conveyance', 'other'] as const;
 
@@ -38,6 +45,8 @@ const blank = (): EmployeeWriteInput => ({
 	esiNumber: '',
 	ptState: '19',
 	taxRegime: 'new',
+	dateOfBirth: null,
+	taxDeclarations: [],
 	bankAccount: '',
 	ifsc: '',
 	pfOn: true,
@@ -46,6 +55,46 @@ const blank = (): EmployeeWriteInput => ({
 	advanceDueINR: 0,
 	advancePerMonthINR: 0,
 });
+
+/** The financial year a month falls in: `2027-01` → `2026-27`. */
+export function yearOf(month: string): string {
+	const y = Number(month.slice(0, 4));
+	const start = Number(month.slice(5, 7)) >= 4 ? y : y - 1;
+	return `${start}-${String((start + 1) % 100).padStart(2, '0')}`;
+}
+
+/** A year's declaration as a new one starts: nothing declared, the regime the person is on. */
+export function newDeclaration(year: string, regime: 'new' | 'old'): TaxDeclaration {
+	return {
+		year,
+		regime,
+		chosenOn: null,
+		rentMonthlyINR: 0,
+		metroCity: false,
+		s80cINR: 0,
+		s80dINR: 0,
+		homeLoanInterestINR: 0,
+		previousSalaryINR: 0,
+		previousTdsINR: 0,
+		proof: { rent: false, s80c: false, s80d: false, homeLoan: false },
+	};
+}
+
+/** TX1's comparison rows: each line of the working, old and new side by side. */
+export const TAX_ROWS = [
+	'salaryPaise',
+	'hraExemptPaise',
+	'standardDeductionPaise',
+	'deductionsPaise',
+	'professionalTaxPaise',
+	'taxablePaise',
+	'slabTaxPaise',
+	'rebatePaise',
+	'surchargePaise',
+	'cessPaise',
+	'taxPaise',
+	'monthlyPaise',
+] as const;
 
 /** The editable fields of an employee, as the form holds them. */
 export function employeeWrite(e: EmployeeView): EmployeeWriteInput {
@@ -62,6 +111,8 @@ export function employeeWrite(e: EmployeeView): EmployeeWriteInput {
 		esiNumber: e.esiNumber,
 		ptState: e.ptState,
 		taxRegime: e.taxRegime,
+		dateOfBirth: e.dateOfBirth,
+		taxDeclarations: e.taxDeclarations.map((d) => ({ ...d, proof: { ...d.proof } })),
 		bankAccount: e.bankAccount,
 		ifsc: e.ifsc,
 		pfOn: e.pfOn,
@@ -110,6 +161,32 @@ export class EmployeesPage {
 	readonly templateId = signal('');
 	readonly templatePay = signal(0);
 	readonly editing = signal<EmployeeView | null>(null);
+	/** TX1: this financial year, its declaration in the form, and the saved year worked both ways. */
+	readonly taxYear = yearOf(currentMonth());
+	readonly taxRows = TAX_ROWS;
+	readonly declaration = computed(() => this.form().taxDeclarations?.find((d) => d.year === this.taxYear) ?? null);
+	readonly taxView = signal<IncomeTaxView | null>(null);
+	readonly money = rupees;
+	/** The old regime's declarations after rent: what each is called, its amount field and its proof. */
+	readonly declared = [
+		{ key: 's80c', field: 's80cINR', proof: 's80c' },
+		{ key: 's80d', field: 's80dINR', proof: 's80d' },
+		{ key: 'home_loan', field: 'homeLoanInterestINR', proof: 'homeLoan' },
+		{ key: 'previous_salary', field: 'previousSalaryINR', proof: null },
+		{ key: 'previous_tds', field: 'previousTdsINR', proof: null },
+	] as const;
+
+	amount(field: (typeof this.declared)[number]['field']): number {
+		return this.declaration()?.[field] ?? 0;
+	}
+
+	setAmount(field: (typeof this.declared)[number]['field'], value: number): void {
+		this.setDeclaration({ [field]: Math.max(0, Number(value) || 0) });
+	}
+
+	proven(key: keyof TaxDeclaration['proof']): boolean {
+		return !!this.declaration()?.proof[key];
+	}
 	readonly form = signal<EmployeeWriteInput>(blank());
 	readonly busy = signal(false);
 	private modal: NgbModalRef | null = null;
@@ -124,10 +201,41 @@ export class EmployeesPage {
 
 	open(template: TemplateRef<unknown>, employee: EmployeeView | null): void {
 		this.editing.set(employee);
+		this.taxView.set(null);
 		if (employee) {
 			this.form.set(employeeWrite(employee));
 		} else this.form.set({ ...blank(), locationId: this.locations.data()?.find((l) => l.active)?.id ?? '' });
 		this.modal = this.modals.open(template, { centered: true, size: 'lg' });
+	}
+
+	/** Change this year's declaration, starting one from the person's regime when there is none. */
+	setDeclaration(fields: Partial<TaxDeclaration>): void {
+		this.form.update((f) => {
+			const all = f.taxDeclarations ?? [];
+			const now = all.find((d) => d.year === this.taxYear) ?? newDeclaration(this.taxYear, f.taxRegime ?? 'new');
+			const next = { ...now, ...fields };
+			return {
+				...f,
+				taxRegime: next.regime,
+				taxDeclarations: [...all.filter((d) => d.year !== this.taxYear), next],
+			};
+		});
+	}
+
+	setProof(key: keyof TaxDeclaration['proof'], value: boolean): void {
+		const p = this.declaration()?.proof;
+		const proof = { rent: !!p?.rent, s80c: !!p?.s80c, s80d: !!p?.s80d, homeLoan: !!p?.homeLoan };
+		this.setDeclaration({ proof: { ...proof, [key]: value } });
+	}
+
+	async workOut(): Promise<void> {
+		const editing = this.editing();
+		if (!editing) return;
+		try {
+			this.taxView.set(await firstValueFrom(this.gateway.incomeTax(editing.id, currentMonth())));
+		} catch (error) {
+			this.notifier.showError(this.transloco.translate(`payroll_problem_${apiProblem(error, 'failed')}`));
+		}
 	}
 
 	patch(fields: Partial<EmployeeWriteInput>): void {

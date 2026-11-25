@@ -23,6 +23,35 @@ export const SalaryStructureWrite = z.object({
 });
 export type SalaryStructureWrite = z.infer<typeof SalaryStructureWrite>;
 
+/**
+ * Brief 25 TX1: an employee's income-tax choice for one financial year and what they declare. Declarations count
+ * until the proof month in Payroll rules (January); from then only what has proof. Rupees a year unless named.
+ */
+export const TaxDeclaration = z.object({
+	/** The financial year, `2026-27`. */
+	year: z.string().regex(/^\d{4}-\d{2}$/),
+	regime: z.enum(['new', 'old']),
+	chosenOn: IsoDate.nullable().default(null),
+	rentMonthlyINR: Rupees.default(0),
+	/** Delhi, Mumbai, Kolkata or Chennai: half of basic and DA, elsewhere 40%, for the rent test. */
+	metroCity: z.boolean().default(false),
+	/** Life insurance, ELSS, PPF and the like; the employee's own PF is added by itself. */
+	s80cINR: Rupees.default(0),
+	s80dINR: Rupees.default(0),
+	homeLoanInterestINR: Rupees.default(0),
+	previousSalaryINR: Rupees.default(0),
+	previousTdsINR: Rupees.default(0),
+	proof: z
+		.object({
+			rent: z.boolean().default(false),
+			s80c: z.boolean().default(false),
+			s80d: z.boolean().default(false),
+			homeLoan: z.boolean().default(false),
+		})
+		.default({ rent: false, s80c: false, s80d: false, homeLoan: false }),
+});
+export type TaxDeclaration = z.infer<typeof TaxDeclaration>;
+
 export const EmployeeWrite = z.object({
 	name: z.string().trim().min(2).max(120),
 	code: z.string().trim().max(20).default(''),
@@ -48,7 +77,11 @@ export const EmployeeWrite = z.object({
 		.string()
 		.regex(/^\d{2}$/)
 		.default('19'),
+	/** The regime for a year without its own declaration (the new regime is the default from 2023-24). */
 	taxRegime: z.enum(['new', 'old']).default('new'),
+	/** For the old regime's age bands (60 and 80). */
+	dateOfBirth: IsoDate.nullable().default(null),
+	taxDeclarations: z.array(TaxDeclaration).max(20).default([]),
 	bankAccount: z.string().trim().max(20).default(''),
 	ifsc: z.string().trim().toUpperCase().max(11).default(''),
 	pfOn: z.boolean().default(true),
@@ -133,6 +166,18 @@ export const PayrollRow = z.object({
 	gratuityPaise: z.number().int().optional(),
 	/** S6: each head paid for the days worked, kept so a reprint never changes. */
 	headsPaise: z.record(z.string(), z.number().int()).optional(),
+	/** TX: the year's working behind this month's TDS, kept so a payslip shows what the run used. */
+	tax: z
+		.object({
+			regime: z.enum(['new', 'old']),
+			yearSalaryPaise: z.number().int(),
+			deductionsPaise: z.number().int(),
+			taxablePaise: z.number().int(),
+			yearTaxPaise: z.number().int(),
+			deductedBeforePaise: z.number().int(),
+			monthsLeft: z.number().int(),
+		})
+		.optional(),
 });
 export type PayrollRow = z.infer<typeof PayrollRow>;
 
@@ -203,6 +248,71 @@ export const StatePayrollRules = z
 	});
 export type StatePayrollRules = z.infer<typeof StatePayrollRules>;
 
+const TaxSlab = z.object({ upToPaise: Paise.nullable(), ratePct: Pct });
+const TaxSlabs = z
+	.array(TaxSlab)
+	.min(1)
+	.max(12)
+	.refine((slabs) => slabs.at(-1)?.upToPaise === null, { message: 'tax_last_slab_open' });
+const Surcharge = z.array(z.object({ overPaise: Paise, ratePct: Pct })).max(8);
+
+/**
+ * Brief 25 TX2: income tax on salary, both regimes, as a dated part of the rules (marked for the CA's review). Slabs
+ * are on taxable income; the rebate (87A) wipes the tax up to its limit (the new regime with marginal relief above).
+ */
+export const IncomeTaxRules = z.object({
+	newSlabs: TaxSlabs,
+	newStandardDeductionPaise: Paise,
+	newRebateUpToPaise: Paise,
+	newSurcharge: Surcharge,
+	oldSlabsBelow60: TaxSlabs,
+	oldSlabs60To79: TaxSlabs,
+	oldSlabs80Plus: TaxSlabs,
+	oldStandardDeductionPaise: Paise,
+	oldRebateUpToPaise: Paise,
+	oldRebateMaxPaise: Paise,
+	oldSurcharge: Surcharge,
+	cessPct: Pct,
+	limit80cPaise: Paise,
+	limit80dPaise: Paise,
+	limitHomeLoanPaise: Paise,
+	/** From this calendar month (1 = January) only declarations with proof count. */
+	proofFromMonth: z.number().int().min(1).max(12),
+});
+export type IncomeTaxRules = z.infer<typeof IncomeTaxRules>;
+
+/** TX1: one regime's working for a year (paise). */
+export const IncomeTaxWorking = z.object({
+	regime: z.enum(['new', 'old']),
+	salaryPaise: z.number().int(),
+	hraExemptPaise: z.number().int(),
+	standardDeductionPaise: z.number().int(),
+	/** Old regime: 80C (own PF included), 80D and home loan interest within their limits; professional tax. */
+	deductionsPaise: z.number().int(),
+	professionalTaxPaise: z.number().int(),
+	taxablePaise: z.number().int(),
+	slabTaxPaise: z.number().int(),
+	rebatePaise: z.number().int(),
+	surchargePaise: z.number().int(),
+	cessPaise: z.number().int(),
+	taxPaise: z.number().int(),
+	monthlyPaise: z.number().int(),
+});
+export type IncomeTaxWorking = z.infer<typeof IncomeTaxWorking>;
+
+/** TX1: the year worked both ways for one employee; the run deducts by `regime` only. */
+export const IncomeTaxView = z.object({
+	year: z.string(),
+	regime: z.enum(['new', 'old']),
+	ageBand: z.enum(['below_60', '60_to_79', '80_plus']),
+	declarationsCount: z.boolean(),
+	old: IncomeTaxWorking,
+	new: IncomeTaxWorking,
+	deductedPaise: z.number().int(),
+	monthsLeft: z.number().int(),
+});
+export type IncomeTaxView = z.infer<typeof IncomeTaxView>;
+
 /** S1: a dated version of the payroll rules; a month uses the version in force on its last day. */
 export const PayrollRulesWrite = z.object({
 	from: IsoDate,
@@ -241,6 +351,8 @@ export const PayrollRulesWrite = z.object({
 	 * Brief 25 ST1: professional tax and the labour welfare fund per State. Empty in versions saved before: the
 	 * company-wide figures above are then West Bengal's set.
 	 */
+	/** TX2: income tax on salary; versions saved before it use the built-in 2026-27 rules. */
+	incomeTax: IncomeTaxRules.optional(),
 	states: z
 		.array(StatePayrollRules)
 		.max(40)

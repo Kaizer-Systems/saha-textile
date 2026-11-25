@@ -8,16 +8,21 @@ import type {
 	EmployeeEdit,
 	EmployeeView,
 	EmployeeWrite,
+	IncomeTaxView,
 	PayrollRow,
 	PayrollRun,
 	PayrollStep,
 } from '@saha-textile/contracts';
 import {
+	ageBand,
+	financialYearOf,
 	gratuityProvision,
 	monthPay,
 	monthlyTds,
-	newRegimeTax,
+	monthsAfter,
 	payslipHeads,
+	proofDue,
+	taxForYear,
 	pfEstablishmentCharges,
 	resolveRole,
 	stateLwf,
@@ -26,6 +31,7 @@ import {
 	type AttendanceRepository,
 	type AuditLogRepository,
 	type EmployeeRepository,
+	type IncomeTaxRules,
 	type LocationRepository,
 	type PayrollRunRepository,
 	type TransactionManagerPort,
@@ -67,6 +73,90 @@ export const PAYROLL_LEDGERS = {
 	gratuity: { name: 'Gratuity', group: 'indirect_expenses' },
 	gratuityProvision: { name: 'Provision for gratuity', group: 'provisions' },
 } as const;
+
+/** One person's pay so far in the financial year, from the runs before this month (TX). */
+export interface YearToDate {
+	grossPaise: number;
+	tdsPaise: number;
+	pfPaise: number;
+	ptPaise: number;
+	hraPaise: number;
+	basicDaPaise: number;
+}
+
+export function yearToDate(runs: readonly PayrollRun[], employeeId: string): YearToDate {
+	const out: YearToDate = { grossPaise: 0, tdsPaise: 0, pfPaise: 0, ptPaise: 0, hraPaise: 0, basicDaPaise: 0 };
+	for (const row of runs.flatMap((r) => r.rows).filter((r) => r.employeeId === employeeId)) {
+		out.grossPaise += row.grossPaise;
+		out.tdsPaise += row.tdsPaise;
+		out.pfPaise += row.pfEmployeePaise;
+		out.ptPaise += row.ptPaise;
+		out.hraPaise += row.headsPaise?.['hra'] ?? 0;
+		out.basicDaPaise += (row.headsPaise?.['basic'] ?? 0) + (row.headsPaise?.['da'] ?? 0);
+	}
+	return out;
+}
+
+/** A month's pay figures the year's tax reads: gross, own PF, professional tax, HRA, basic and DA. */
+export interface MonthFigures {
+	grossPaise: number;
+	pfPaise: number;
+	ptPaise: number;
+	hraPaise: number;
+	basicDaPaise: number;
+}
+
+/**
+ * TX1: the year's tax for one person and this month's share. The year is what was paid in the earlier months, this
+ * month, and a full month for each month left (to March, or to the month they leave), with an earlier employer's
+ * salary and TDS from their declaration; declared deductions count until the proof month, then only those with proof.
+ * The month's TDS is the year's tax less what was deducted, spread over the months left with this one.
+ */
+export function taxWorkingFor(input: {
+	employee: Pick<Employee, 'taxRegime' | 'dateOfBirth' | 'taxDeclarations' | 'leftOn'>;
+	month: string;
+	ytd: YearToDate;
+	thisMonth: MonthFigures;
+	fullMonth: MonthFigures;
+	rules: IncomeTaxRules;
+	regime: 'new' | 'old' | null;
+}) {
+	const year = financialYearOf(input.month);
+	const declared = input.employee.taxDeclarations.find((d) => d.year === year) ?? null;
+	const regime = input.regime ?? declared?.regime ?? input.employee.taxRegime;
+	const after = monthsAfter(input.month, input.employee.leftOn);
+	const proof = proofDue(input.month, input.rules.proofFromMonth);
+	const counts = (rupees: number, proven: boolean) => (proof && !proven ? 0 : paise(rupees));
+	const year12 = (pick: (m: MonthFigures) => number, ytd: number) =>
+		ytd + pick(input.thisMonth) + pick(input.fullMonth) * after;
+	const working = taxForYear(
+		{
+			regime,
+			ageBand: ageBand(input.employee.dateOfBirth, year),
+			salaryPaise: year12((m) => m.grossPaise, input.ytd.grossPaise) + paise(declared?.previousSalaryINR ?? 0),
+			hraPaise: year12((m) => m.hraPaise, input.ytd.hraPaise),
+			basicDaPaise: year12((m) => m.basicDaPaise, input.ytd.basicDaPaise),
+			pfPaise: year12((m) => m.pfPaise, input.ytd.pfPaise),
+			professionalTaxPaise: year12((m) => m.ptPaise, input.ytd.ptPaise),
+			rentPaise: counts((declared?.rentMonthlyINR ?? 0) * 12, !!declared?.proof.rent),
+			metro: !!declared?.metroCity,
+			s80cPaise: counts(declared?.s80cINR ?? 0, !!declared?.proof.s80c),
+			s80dPaise: counts(declared?.s80dINR ?? 0, !!declared?.proof.s80d),
+			homeLoanInterestPaise: counts(declared?.homeLoanInterestINR ?? 0, !!declared?.proof.homeLoan),
+		},
+		input.rules,
+	);
+	const deductedBeforePaise = input.ytd.tdsPaise + paise(declared?.previousTdsINR ?? 0);
+	const monthsLeft = after + 1;
+	return {
+		regime,
+		working,
+		deductedBeforePaise,
+		monthsLeft,
+		declarationsCount: !proof,
+		monthPaise: monthlyTds(working.taxPaise, deductedBeforePaise, monthsLeft),
+	};
+}
 
 /** A total split across weights, whole rupees each, the remainder on the last share that has weight. */
 export function allocate(totalPaise: number, weights: readonly number[]): number[] {
@@ -231,6 +321,76 @@ export class PayrollService {
 		}
 	}
 
+	/** TX1: one person's year worked both ways, for this month (a full month's pay, the earlier runs so far). */
+	async incomeTax(employeeId: string, month: string): Promise<IncomeTaxView> {
+		const e = await this.employees.get(employeeId);
+		if (!e) throw new NotFoundException(accountsRefusal('employee_not_found'));
+		const { pay: rules, states, incomeTax } = await this.rules.forMonth(month);
+		const fyStart = `${financialYearOf(month).slice(0, 4)}-04`;
+		const earlier = (await this.runs.list()).filter((r) => r.month >= fyStart && r.month < month);
+		const stateOf = new Map((await this.locations.list()).map((l) => [l.id, l.stateCode]));
+		const stateRules = stateRulesFor(states, stateOf.get(e.locationId) ?? e.ptState);
+		const structure = {
+			basic: paise(e.structure.basic),
+			da: paise(e.structure.da),
+			hra: paise(e.structure.hra),
+			special: paise(e.structure.special),
+			conveyance: paise(e.structure.conveyance),
+			other: paise(e.structure.other),
+		};
+		const days = daysIn(month);
+		const p = monthPay({
+			structure,
+			daysInMonth: days,
+			paidDays: days,
+			pfOn: e.pfOn,
+			esiOn: e.esiOn,
+			advanceDuePaise: 0,
+			tdsPaise: 0,
+			rules,
+			ptFor: (gross) => (stateRules ? statePt(month, gross, stateRules) : 0),
+		});
+		const full: MonthFigures = {
+			grossPaise: p.grossPaise,
+			pfPaise: p.pfEmployeePaise,
+			ptPaise: p.ptPaise,
+			hraPaise: structure.hra,
+			basicDaPaise: structure.basic + structure.da,
+		};
+		const both = (regime: 'new' | 'old') => {
+			const t = taxWorkingFor({
+				employee: e,
+				month,
+				ytd: yearToDate(earlier, e.id),
+				thisMonth: full,
+				fullMonth: full,
+				rules: incomeTax,
+				regime,
+			});
+			return { ...t, view: { ...t.working, monthlyPaise: t.monthPaise } };
+		};
+		const chosen = taxWorkingFor({
+			employee: e,
+			month,
+			ytd: yearToDate(earlier, e.id),
+			thisMonth: full,
+			fullMonth: full,
+			rules: incomeTax,
+			regime: null,
+		});
+		const old = both('old');
+		return {
+			year: financialYearOf(month),
+			regime: chosen.regime,
+			ageBand: ageBand(e.dateOfBirth, financialYearOf(month)),
+			declarationsCount: chosen.declarationsCount,
+			old: old.view,
+			new: both('new').view,
+			deductedPaise: old.deductedBeforePaise,
+			monthsLeft: old.monthsLeft,
+		};
+	}
+
 	listRuns(): Promise<PayrollRun[]> {
 		return this.runs.list();
 	}
@@ -246,7 +406,10 @@ export class PayrollService {
 		const attendance = await this.attendance.get(month);
 		if (!attendance?.lockedAt) throw refuse('payroll_attendance_not_locked');
 		const people = new Map((await this.employees.list()).map((e) => [e.id, e]));
-		const { pay: rules, schemes, states } = await this.rules.forMonth(month);
+		const { pay: rules, schemes, states, incomeTax } = await this.rules.forMonth(month);
+		// TX: the year so far, from the runs of the financial year before this month.
+		const fyStart = `${financialYearOf(month).slice(0, 4)}-04`;
+		const earlier = (await this.runs.list()).filter((r) => r.month >= fyStart && r.month < month);
 		// ST2: a person's State is their work location's; one not found keeps the State saved on the person.
 		const stateOf = new Map((await this.locations.list()).map((l) => [l.id, l.stateCode]));
 		const missing = new Set<string>();
@@ -263,22 +426,39 @@ export class PayrollService {
 				conveyance: paise(e.structure.conveyance),
 				other: paise(e.structure.other),
 			};
-			const yearly = Object.values(structure).reduce((s, v) => s + v, 0) * 12;
-			const tds = e.taxRegime === 'new' ? monthlyTds(newRegimeTax(yearly), 0, 12) : 0;
 			const stateCode = stateOf.get(e.locationId) ?? e.ptState;
 			const stateRules = stateRulesFor(states, stateCode);
 			if (!stateRules) missing.add(stateCode);
-			const pay = monthPay({
+			const base = {
 				structure,
 				daysInMonth: attendance.daysInMonth,
-				paidDays: a.paidDays,
 				pfOn: e.pfOn,
 				esiOn: e.esiOn,
 				advanceDuePaise: Math.min(paise(e.advancePerMonthINR), paise(e.advanceDueINR)),
-				tdsPaise: tds,
 				rules,
-				ptFor: (gross) => (stateRules ? statePt(month, gross, stateRules) : 0),
+				ptFor: (gross: number) => (stateRules ? statePt(month, gross, stateRules) : 0),
+			};
+			const figures = (paidDays: number): MonthFigures => {
+				const p = monthPay({ ...base, paidDays, tdsPaise: 0 });
+				const h = payslipHeads(structure, attendance.daysInMonth, paidDays, p.grossPaise);
+				return {
+					grossPaise: p.grossPaise,
+					pfPaise: p.pfEmployeePaise,
+					ptPaise: p.ptPaise,
+					hraPaise: h.hra,
+					basicDaPaise: h.basic + h.da,
+				};
+			};
+			const tax = taxWorkingFor({
+				employee: e,
+				month,
+				ytd: yearToDate(earlier, e.id),
+				thisMonth: figures(a.paidDays),
+				fullMonth: figures(attendance.daysInMonth),
+				rules: incomeTax,
+				regime: null,
 			});
+			const pay = monthPay({ ...base, paidDays: a.paidDays, tdsPaise: tax.monthPaise });
 			const lwf = stateRules
 				? stateLwf(month, pay.grossPaise, stateRules)
 				: { employeePaise: 0, employerPaise: 0 };
@@ -295,6 +475,19 @@ export class PayrollService {
 					lwfEmployerPaise: lwf.employerPaise,
 					gratuityPaise: gratuityProvision(structure, gratuityApplies, schemes),
 					headsPaise: payslipHeads(structure, attendance.daysInMonth, a.paidDays, pay.grossPaise),
+					tax: {
+						regime: tax.regime,
+						yearSalaryPaise: tax.working.salaryPaise,
+						deductionsPaise:
+							tax.working.hraExemptPaise +
+							tax.working.standardDeductionPaise +
+							tax.working.deductionsPaise +
+							tax.working.professionalTaxPaise,
+						taxablePaise: tax.working.taxablePaise,
+						yearTaxPaise: tax.working.taxPaise,
+						deductedBeforePaise: tax.deductedBeforePaise,
+						monthsLeft: tax.monthsLeft,
+					},
 				},
 			];
 		});

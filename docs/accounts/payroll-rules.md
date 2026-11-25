@@ -24,6 +24,23 @@ PF and EPS (rates and wage ceiling), ESI (rates and gross limit), EPF administra
 headcounts at which PF, ESI, bonus and gratuity apply, the gratuity working, the most that may be deducted from a
 month's pay, and the PF and ESI due days.
 
+## Income tax on salary
+
+Each version holds the income-tax rules too (`incomeTax`; a version saved before uses the built-in 2026-27 rules):
+the new regime's slabs, standard deduction and the 87A limit (no tax up to it; above it never more tax than the
+income over it), the old regime's slabs for below 60, 60 to 79 and 80 and over, its standard deduction and rebate,
+cess, surcharge steps for each regime (with marginal relief), the 80C, 80D and home loan interest limits, and the
+month from which only declarations with proof count.
+
+Each employee is on the new regime unless their declaration for the year chooses the old one (Payroll › Employees ›
+Income tax). The run works out the year: what the earlier runs of the year paid, this month, and a full month for
+each month left (to March, or to the month they leave), with any salary and TDS from before these books or an
+earlier employer. Under the old regime it takes off the exempt rent allowance (the least of the three tests), the
+standard deduction, professional tax, and 80C (own PF included), 80D and home loan interest within their limits. The
+month's TDS is the year's tax less what was deducted, spread over the months left with this one. The row keeps the
+working (`tax`), and `GET /admin/payroll/employees/:id/income-tax/:month` shows the year both ways without switching
+the regime.
+
 ## Per State
 
 Professional tax and the labour welfare fund are State laws, so each version keeps a set per State

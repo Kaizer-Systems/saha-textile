@@ -49,6 +49,8 @@ const employee = (id: string, over: Record<string, unknown> = {}) => ({
 	esiNumber: '',
 	ptState: '19',
 	taxRegime: 'new',
+	dateOfBirth: null,
+	taxDeclarations: [],
 	bankAccount: 'XXXXXX7788',
 	ifsc: 'HDFC0001234',
 	pfOn: true,
@@ -239,7 +241,10 @@ describe('adding and changing an employee', () => {
 		enter(modal('#emp_adv'), '3000');
 		enter(modal('#emp_adv_month'), '500');
 		const pay = [...document.querySelectorAll('.emp-test-modal input[type="number"]')].filter(
-			(input) => !['emp_adv', 'emp_adv_month'].includes(input.id),
+			// The pay heads: not the advance, nor the income-tax figures (TX1).
+			(input) =>
+				!['emp_adv', 'emp_adv_month', 'emp_prev_salary', 'emp_prev_tds', 'emp_rent'].includes(input.id) &&
+				!input.id.startsWith('emp_decl_'),
 		);
 		expect(pay).toHaveLength(6);
 		enter(pay[0], '8000');

@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal, type NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
+import { GST_STATES } from '@saha-textile/core-domain/company';
 import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
@@ -12,9 +13,8 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
-import { GST_STATES } from '@saha-textile/core-domain/company';
-
 import type {
+	IncomeTaxRules,
 	PayrollRulesVersion,
 	PayrollRulesWriteInput,
 	PtFrequency,
@@ -103,6 +103,78 @@ export function stateName(code: string): string {
 	return GST_STATES.find((s) => s.code === code)?.name ?? code;
 }
 
+export type SlabGroup = 'newSlabs' | 'oldSlabsBelow60' | 'oldSlabs60To79' | 'oldSlabs80Plus';
+export type TierGroup = 'newSurcharge' | 'oldSurcharge';
+export const SLAB_GROUPS: SlabGroup[] = ['newSlabs', 'oldSlabsBelow60', 'oldSlabs60To79', 'oldSlabs80Plus'];
+export const TIER_GROUPS: TierGroup[] = ['newSurcharge', 'oldSurcharge'];
+
+/** TX2: income tax in the form, money in rupees; a slab with an empty "up to" is the open top slab. */
+export interface IncomeTaxForm {
+	slabs: Record<SlabGroup, { upTo: number | null; rate: number }[]>;
+	tiers: Record<TierGroup, { over: number; rate: number }[]>;
+	newStandard: number;
+	newRebateUpTo: number;
+	oldStandard: number;
+	oldRebateUpTo: number;
+	oldRebateMax: number;
+	cessPct: number;
+	limit80c: number;
+	limit80d: number;
+	limitHomeLoan: number;
+	proofFromMonth: number;
+}
+
+export function taxToForm(t: IncomeTaxRules): IncomeTaxForm {
+	const slabs = (list: IncomeTaxRules['newSlabs']) =>
+		list.map((x) => ({ upTo: x.upToPaise === null ? null : inr(x.upToPaise), rate: x.ratePct }));
+	const tiers = (list: IncomeTaxRules['newSurcharge']) =>
+		list.map((x) => ({ over: inr(x.overPaise), rate: x.ratePct }));
+	return {
+		slabs: {
+			newSlabs: slabs(t.newSlabs),
+			oldSlabsBelow60: slabs(t.oldSlabsBelow60),
+			oldSlabs60To79: slabs(t.oldSlabs60To79),
+			oldSlabs80Plus: slabs(t.oldSlabs80Plus),
+		},
+		tiers: { newSurcharge: tiers(t.newSurcharge), oldSurcharge: tiers(t.oldSurcharge) },
+		newStandard: inr(t.newStandardDeductionPaise),
+		newRebateUpTo: inr(t.newRebateUpToPaise),
+		oldStandard: inr(t.oldStandardDeductionPaise),
+		oldRebateUpTo: inr(t.oldRebateUpToPaise),
+		oldRebateMax: inr(t.oldRebateMaxPaise),
+		cessPct: t.cessPct,
+		limit80c: inr(t.limit80cPaise),
+		limit80d: inr(t.limit80dPaise),
+		limitHomeLoan: inr(t.limitHomeLoanPaise),
+		proofFromMonth: t.proofFromMonth,
+	};
+}
+
+export function taxToWrite(f: IncomeTaxForm): IncomeTaxRules {
+	const slabs = (list: IncomeTaxForm['slabs']['newSlabs']) =>
+		list.map((x) => ({ upToPaise: x.upTo === null ? null : paise(x.upTo), ratePct: x.rate }));
+	const tiers = (list: IncomeTaxForm['tiers']['newSurcharge']) =>
+		list.map((x) => ({ overPaise: paise(x.over), ratePct: x.rate }));
+	return {
+		newSlabs: slabs(f.slabs.newSlabs),
+		newStandardDeductionPaise: paise(f.newStandard),
+		newRebateUpToPaise: paise(f.newRebateUpTo),
+		newSurcharge: tiers(f.tiers.newSurcharge),
+		oldSlabsBelow60: slabs(f.slabs.oldSlabsBelow60),
+		oldSlabs60To79: slabs(f.slabs.oldSlabs60To79),
+		oldSlabs80Plus: slabs(f.slabs.oldSlabs80Plus),
+		oldStandardDeductionPaise: paise(f.oldStandard),
+		oldRebateUpToPaise: paise(f.oldRebateUpTo),
+		oldRebateMaxPaise: paise(f.oldRebateMax),
+		oldSurcharge: tiers(f.tiers.oldSurcharge),
+		cessPct: f.cessPct,
+		limit80cPaise: paise(f.limit80c),
+		limit80dPaise: paise(f.limit80d),
+		limitHomeLoanPaise: paise(f.limitHomeLoan),
+		proofFromMonth: f.proofFromMonth,
+	};
+}
+
 /** The version form, money in rupees; slabs with an empty "up to" are the open top slab. */
 export interface RulesForm {
 	from: string;
@@ -135,6 +207,8 @@ export interface RulesForm {
 	lwfDueDay: number;
 	/** ST1: each State's professional tax and welfare fund. */
 	states: StateForm[];
+	/** TX2: income tax on salary (null only for a version the screens got without it). */
+	incomeTax: IncomeTaxForm | null;
 }
 
 export function toForm(v: PayrollRulesVersion, from: string): RulesForm {
@@ -168,6 +242,7 @@ export function toForm(v: PayrollRulesVersion, from: string): RulesForm {
 		ptDueDay: v.ptDueDay,
 		lwfDueDay: v.lwfDueDay,
 		states: statesOf(v).map(stateToForm),
+		incomeTax: v.incomeTax ? taxToForm(v.incomeTax) : null,
 	};
 }
 
@@ -202,6 +277,7 @@ export function toWrite(f: RulesForm): PayrollRulesWriteInput {
 		ptDueDay: f.ptDueDay,
 		lwfDueDay: f.lwfDueDay,
 		states: f.states.map(stateToWrite),
+		...(f.incomeTax ? { incomeTax: taxToWrite(f.incomeTax) } : {}),
 	};
 }
 
@@ -284,7 +360,18 @@ export function ruleRows(
 				n: num(v.gratuityHeadcount),
 			},
 		},
-		{ key: 'tds', from: null, values: {} },
+		v.incomeTax
+			? {
+					key: 'tds',
+					from: v.from,
+					values: {
+						std: num(inr(v.incomeTax.newStandardDeductionPaise)),
+						rebate: num(inr(v.incomeTax.newRebateUpToPaise)),
+						oldStd: num(inr(v.incomeTax.oldStandardDeductionPaise)),
+						cess: num(v.incomeTax.cessPct),
+					},
+				}
+			: { key: 'tds', from: null, values: {} },
 		{ key: 'min_wages', from: null, values: {} },
 	];
 }
@@ -343,6 +430,60 @@ export class PayrollRulesPage {
 	readonly stateChoices = GST_STATES.filter((s) => !s.retired);
 	readonly picked = computed(() => this.form()?.states[this.stateAt()] ?? null);
 	readonly frequencies: PtFrequency[] = ['monthly', 'half_yearly', 'yearly', 'none'];
+
+	/** TX2: the income-tax slab tables and surcharge tiers in the form. */
+	readonly slabGroups = SLAB_GROUPS;
+	readonly tierGroups = TIER_GROUPS;
+
+	private patchTaxForm(change: (t: IncomeTaxForm) => IncomeTaxForm): void {
+		this.form.update((f) => (f?.incomeTax ? { ...f, incomeTax: change(f.incomeTax) } : f));
+	}
+
+	patchTax(fields: Partial<Omit<IncomeTaxForm, 'slabs' | 'tiers'>>): void {
+		this.patchTaxForm((t) => ({ ...t, ...fields }));
+	}
+
+	setTaxSlab(group: SlabGroup, index: number, patch: Partial<IncomeTaxForm['slabs'][SlabGroup][number]>): void {
+		this.patchTaxForm((t) => ({
+			...t,
+			slabs: { ...t.slabs, [group]: t.slabs[group].map((x, i) => (i === index ? { ...x, ...patch } : x)) },
+		}));
+	}
+
+	addTaxSlab(group: SlabGroup): void {
+		this.patchTaxForm((t) => ({
+			...t,
+			slabs: {
+				...t.slabs,
+				[group]: [...t.slabs[group].slice(0, -1), { upTo: 0, rate: 0 }, ...t.slabs[group].slice(-1)],
+			},
+		}));
+	}
+
+	removeTaxSlab(group: SlabGroup, index: number): void {
+		this.patchTaxForm((t) => ({
+			...t,
+			slabs: { ...t.slabs, [group]: t.slabs[group].filter((_, i) => i !== index) },
+		}));
+	}
+
+	setTier(group: TierGroup, index: number, patch: Partial<IncomeTaxForm['tiers'][TierGroup][number]>): void {
+		this.patchTaxForm((t) => ({
+			...t,
+			tiers: { ...t.tiers, [group]: t.tiers[group].map((x, i) => (i === index ? { ...x, ...patch } : x)) },
+		}));
+	}
+
+	addTier(group: TierGroup): void {
+		this.patchTaxForm((t) => ({ ...t, tiers: { ...t.tiers, [group]: [...t.tiers[group], { over: 0, rate: 0 }] } }));
+	}
+
+	removeTier(group: TierGroup, index: number): void {
+		this.patchTaxForm((t) => ({
+			...t,
+			tiers: { ...t.tiers, [group]: t.tiers[group].filter((_, i) => i !== index) },
+		}));
+	}
 
 	hasState(code: string): boolean {
 		return !!this.form()?.states.some((s) => s.stateCode === code);

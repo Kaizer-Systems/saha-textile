@@ -587,7 +587,289 @@
 			>
 				{{ 'payroll_state_remove' | transloco: { state: stateName(st.stateCode) } }}
 			</button>
-			} }
+			} } @if (f.incomeTax; as t) {
+			<h6 class="mt-4">{{ 'payroll_tax_rules_title' | transloco }}</h6>
+			<div class="row g-3">
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_new_std"
+					>
+						{{ 'payroll_tax_f_new_standard' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_new_std"
+						type="number"
+						min="0"
+						[ngModel]="t.newStandard"
+						(ngModelChange)="patchTax({ newStandard: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_new_rebate"
+					>
+						{{ 'payroll_tax_f_new_rebate' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_new_rebate"
+						type="number"
+						min="0"
+						[ngModel]="t.newRebateUpTo"
+						(ngModelChange)="patchTax({ newRebateUpTo: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_old_std"
+					>
+						{{ 'payroll_tax_f_old_standard' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_old_std"
+						type="number"
+						min="0"
+						[ngModel]="t.oldStandard"
+						(ngModelChange)="patchTax({ oldStandard: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_old_rebate"
+					>
+						{{ 'payroll_tax_f_old_rebate_up_to' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_old_rebate"
+						type="number"
+						min="0"
+						[ngModel]="t.oldRebateUpTo"
+						(ngModelChange)="patchTax({ oldRebateUpTo: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_old_rebate_max"
+					>
+						{{ 'payroll_tax_f_old_rebate_max' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_old_rebate_max"
+						type="number"
+						min="0"
+						[ngModel]="t.oldRebateMax"
+						(ngModelChange)="patchTax({ oldRebateMax: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_cess"
+					>
+						{{ 'payroll_tax_f_cess' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_cess"
+						type="number"
+						min="0"
+						[ngModel]="t.cessPct"
+						(ngModelChange)="patchTax({ cessPct: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_80c"
+					>
+						{{ 'payroll_tax_f_80c' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_80c"
+						type="number"
+						min="0"
+						[ngModel]="t.limit80c"
+						(ngModelChange)="patchTax({ limit80c: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_80d"
+					>
+						{{ 'payroll_tax_f_80d' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_80d"
+						type="number"
+						min="0"
+						[ngModel]="t.limit80d"
+						(ngModelChange)="patchTax({ limit80d: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_home"
+					>
+						{{ 'payroll_tax_f_home_loan' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_home"
+						type="number"
+						min="0"
+						[ngModel]="t.limitHomeLoan"
+						(ngModelChange)="patchTax({ limitHomeLoan: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_proof"
+					>
+						{{ 'payroll_tax_f_proof_month' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_proof"
+						type="number"
+						min="0"
+						[ngModel]="t.proofFromMonth"
+						(ngModelChange)="patchTax({ proofFromMonth: +$event })"
+					/>
+				</div>
+			</div>
+			@for (g of slabGroups; track g) {
+			<h6 class="small mt-3 mb-1">{{ 'payroll_tax_slabs_' + g | transloco }}</h6>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'payroll_tax_f_up_to' | transloco }}</th>
+							<th>{{ 'payroll_tax_f_rate' | transloco }}</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (x of t.slabs[g]; track $index; let i = $index) {
+						<tr>
+							<td>
+								@if (x.upTo === null) { {{ 'payroll_f_pt_above' | transloco }} } @else {
+								<input
+									class="form-control"
+									type="number"
+									[attr.aria-label]="'payroll_tax_f_up_to' | transloco"
+									[ngModel]="x.upTo"
+									(ngModelChange)="setTaxSlab(g, i, { upTo: +$event })"
+								/>
+								}
+							</td>
+							<td>
+								<input
+									class="form-control"
+									type="number"
+									[attr.aria-label]="'payroll_tax_f_rate' | transloco"
+									[ngModel]="x.rate"
+									(ngModelChange)="setTaxSlab(g, i, { rate: +$event })"
+								/>
+							</td>
+							<td>
+								@if (x.upTo !== null) {
+								<button
+									type="button"
+									class="btn btn-outline text-danger btn-sm"
+									[title]="'remove' | transloco"
+									[attr.aria-label]="'remove' | transloco"
+									(click)="removeTaxSlab(g, i)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</button>
+								}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<button
+				type="button"
+				class="btn btn-sm btn-outline mt-1"
+				(click)="addTaxSlab(g)"
+			>
+				<i class="ri-add-line"></i>
+				{{ 'payroll_pt_add_slab' | transloco }}
+			</button>
+			} @for (g of tierGroups; track g) {
+			<h6 class="small mt-3 mb-1">{{ 'payroll_tax_tiers_' + g | transloco }}</h6>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'payroll_tax_f_over' | transloco }}</th>
+							<th>{{ 'payroll_tax_f_rate' | transloco }}</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (x of t.tiers[g]; track $index; let i = $index) {
+						<tr>
+							<td>
+								<input
+									class="form-control"
+									type="number"
+									[attr.aria-label]="'payroll_tax_f_over' | transloco"
+									[ngModel]="x.over"
+									(ngModelChange)="setTier(g, i, { over: +$event })"
+								/>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									type="number"
+									[attr.aria-label]="'payroll_tax_f_rate' | transloco"
+									[ngModel]="x.rate"
+									(ngModelChange)="setTier(g, i, { rate: +$event })"
+								/>
+							</td>
+							<td>
+								<button
+									type="button"
+									class="btn btn-outline text-danger btn-sm"
+									[title]="'remove' | transloco"
+									[attr.aria-label]="'remove' | transloco"
+									(click)="removeTier(g, i)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</button>
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<button
+				type="button"
+				class="btn btn-sm btn-outline mt-1"
+				(click)="addTier(g)"
+			>
+				<i class="ri-add-line"></i>
+				{{ 'payroll_tax_add_tier' | transloco }}
+			</button>
+			}
+			<small class="text-muted d-block mt-2">{{ 'payroll_tax_rules_note' | transloco }}</small>
+			}
 			<h6 class="mt-4">{{ 'payroll_rule_bonus' | transloco }} · {{ 'payroll_rule_gratuity' | transloco }}</h6>
 			<div class="row g-3">
 				<div class="col-md-3">

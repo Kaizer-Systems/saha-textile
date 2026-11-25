@@ -10,6 +10,7 @@ import type {
 	AttendanceWrite,
 	EmployeeView,
 	EmployeeWriteInput,
+	IncomeTaxView,
 	PayrollRulesVersion,
 	PayrollRulesWriteInput,
 	PayrollRun,
@@ -93,6 +94,11 @@ export class PayrollGateway {
 
 	addRules(write: PayrollRulesWriteInput): Observable<PayrollRulesVersion> {
 		return this.http.post<PayrollRulesVersion>(this.api('rules'), write);
+	}
+
+	/** TX1: an employee's year of income tax worked both ways, as saved. */
+	incomeTax(employeeId: string, month: string): Observable<IncomeTaxView> {
+		return this.http.get<IncomeTaxView>(this.api(`employees/${employeeId}/income-tax/${month}`));
 	}
 
 	schemes(month: string): Observable<SchemeLine[]> {

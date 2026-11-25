@@ -35,6 +35,8 @@ const TEN = Array.from({ length: 10 }, (_, i) => ({
 	esiNumber: '',
 	ptState: '19',
 	taxRegime: 'new',
+	dateOfBirth: null,
+	taxDeclarations: [],
 	bankAccount: '',
 	ifsc: '',
 	pfOn: true,

@@ -40,6 +40,17 @@ export class PayrollController {
 		return this.payroll.updateEmployee(id, body);
 	}
 
+	@Get('employees/:id/income-tax/:month')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({
+		operationId: 'payrollIncomeTax',
+		summary: 'An employee’s year of income tax worked both ways (TX1)',
+	})
+	incomeTax(@Param('id') id: string, @Param('month', new ZodValidationPipe(YearMonth)) month: string) {
+		return this.payroll.incomeTax(id, month);
+	}
+
 	@Get('attendance/:month')
 	@Header('Cache-Control', 'no-store')
 	@RequirePermissions('accounts.index')

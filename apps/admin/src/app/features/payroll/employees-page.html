@@ -300,8 +300,8 @@
 					<select
 						class="form-select"
 						id="emp_regime"
-						[ngModel]="f.taxRegime"
-						(ngModelChange)="patch({ taxRegime: $event })"
+						[ngModel]="declaration()?.regime ?? f.taxRegime"
+						(ngModelChange)="setDeclaration({ regime: $event })"
 					>
 						<option value="new">{{ 'payroll_regime_new' | transloco }}</option>
 						<option value="old">{{ 'payroll_regime_old' | transloco }}</option>
@@ -434,6 +434,193 @@
 					/>
 				</div>
 			</div>
+			<h6 class="mt-4 mb-2">{{ 'payroll_tax_title' | transloco: { year: taxYear } }}</h6>
+			<div class="row g-3">
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="emp_dob"
+					>
+						{{ 'payroll_dob' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="emp_dob"
+						type="date"
+						[ngModel]="f.dateOfBirth"
+						(ngModelChange)="patch({ dateOfBirth: $event || null })"
+					/>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="emp_chosen_on"
+					>
+						{{ 'payroll_tax_chosen_on' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="emp_chosen_on"
+						type="date"
+						[ngModel]="declaration()?.chosenOn"
+						(ngModelChange)="setDeclaration({ chosenOn: $event || null })"
+					/>
+				</div>
+			</div>
+			@if ((declaration()?.regime ?? f.taxRegime) === 'old') {
+			<div class="table-responsive datatable-wrapper border-table mt-3">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'payroll_decl_what' | transloco }}</th>
+							<th>{{ 'payroll_decl_amount' | transloco }}</th>
+							<th>{{ 'payroll_decl_proof' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td>
+								{{ 'payroll_decl_rent' | transloco }}
+								<div class="form-check mt-1">
+									<input
+										class="form-check-input"
+										type="checkbox"
+										id="emp_metro"
+										[checked]="declaration()?.metroCity"
+										(change)="setDeclaration({ metroCity: $any($event.target).checked })"
+									/>
+									<label
+										class="form-check-label small"
+										for="emp_metro"
+									>
+										{{ 'payroll_decl_metro' | transloco }}
+									</label>
+								</div>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									id="emp_rent"
+									type="number"
+									min="0"
+									[attr.aria-label]="'payroll_decl_rent' | transloco"
+									[ngModel]="declaration()?.rentMonthlyINR ?? 0"
+									(ngModelChange)="setDeclaration({ rentMonthlyINR: +$event })"
+								/>
+							</td>
+							<td>
+								<input
+									class="form-check-input"
+									type="checkbox"
+									[attr.aria-label]="'payroll_decl_proof' | transloco"
+									[checked]="proven('rent')"
+									(change)="setProof('rent', $any($event.target).checked)"
+								/>
+							</td>
+						</tr>
+						@for (d of declared; track d.key) {
+						<tr>
+							<td>{{ 'payroll_decl_' + d.key | transloco }}</td>
+							<td>
+								<input
+									class="form-control"
+									type="number"
+									min="0"
+									[id]="'emp_decl_' + d.key"
+									[attr.aria-label]="'payroll_decl_' + d.key | transloco"
+									[ngModel]="amount(d.field)"
+									(ngModelChange)="setAmount(d.field, $event)"
+								/>
+							</td>
+							<td>
+								@if (d.proof) {
+								<input
+									class="form-check-input"
+									type="checkbox"
+									[attr.aria-label]="'payroll_decl_proof' | transloco"
+									[checked]="proven(d.proof)"
+									(change)="setProof(d.proof, $any($event.target).checked)"
+								/>
+								}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			} @else {
+			<div class="row g-3 mt-1">
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="emp_prev_salary"
+					>
+						{{ 'payroll_decl_previous_salary' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="emp_prev_salary"
+						type="number"
+						min="0"
+						[ngModel]="declaration()?.previousSalaryINR ?? 0"
+						(ngModelChange)="setDeclaration({ previousSalaryINR: +$event })"
+					/>
+				</div>
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="emp_prev_tds"
+					>
+						{{ 'payroll_decl_previous_tds' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="emp_prev_tds"
+						type="number"
+						min="0"
+						[ngModel]="declaration()?.previousTdsINR ?? 0"
+						(ngModelChange)="setDeclaration({ previousTdsINR: +$event })"
+					/>
+				</div>
+			</div>
+			} @if (editing()) {
+			<button
+				type="button"
+				class="btn btn-sm btn-outline mt-3"
+				id="emp_tax_compare"
+				(click)="workOut()"
+			>
+				{{ 'payroll_tax_compare' | transloco }}
+			</button>
+			} @if (taxView(); as t) {
+			<div class="table-responsive datatable-wrapper border-table mt-2">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>
+								{{ 'payroll_tax_compare_title' | transloco: { age: ('payroll_age_' + t.ageBand |
+								transloco) } }}
+							</th>
+							<th class="text-end">{{ 'payroll_regime_old' | transloco }}</th>
+							<th class="text-end">{{ 'payroll_regime_new' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of taxRows; track row) {
+						<tr [class.fw-bold]="row === 'taxPaise' || row === 'monthlyPaise'">
+							<td>{{ 'payroll_tax_row_' + row | transloco }}</td>
+							<td class="text-end">{{ money(t.old[row]) }}</td>
+							<td class="text-end">{{ money(t.new[row]) }}</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<small class="text-muted d-block mt-1">
+				{{ (t.declarationsCount ? 'payroll_tax_note' : 'payroll_tax_note_proof') | transloco: { regime:
+				('payroll_regime_' + t.regime | transloco) } }}
+			</small>
+			}
 			<small class="text-muted d-block mt-2">{{ 'payroll_pii_note' | transloco }}</small>
 		</div>
 		<div class="modal-footer">

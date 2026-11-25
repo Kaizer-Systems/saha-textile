@@ -3,10 +3,12 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common';
 import type { PayrollRulesVersion, PayrollRulesWrite } from '@saha-textile/contracts';
 import {
+	INCOME_TAX_2026,
 	PAYROLL_RULES_2026,
 	PAYROLL_SCHEMES_2026,
 	stateRulesOf,
 	type AuditLogRepository,
+	type IncomeTaxRules,
 	type PayrollRules,
 	type PayrollRulesRepository,
 	type PayrollRunRepository,
@@ -24,6 +26,17 @@ const monthEnd = (month: string) => {
 	return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
 };
 
+/** The built-in 2026-27 income-tax rules as a version holds them (TX2). */
+export const BUILT_IN_INCOME_TAX: NonNullable<PayrollRulesVersion['incomeTax']> = {
+	...INCOME_TAX_2026,
+	newSlabs: INCOME_TAX_2026.newSlabs.map((s) => ({ ...s })),
+	newSurcharge: INCOME_TAX_2026.newSurcharge.map((t) => ({ ...t })),
+	oldSlabsBelow60: INCOME_TAX_2026.oldSlabsBelow60.map((s) => ({ ...s })),
+	oldSlabs60To79: INCOME_TAX_2026.oldSlabs60To79.map((s) => ({ ...s })),
+	oldSlabs80Plus: INCOME_TAX_2026.oldSlabs80Plus.map((s) => ({ ...s })),
+	oldSurcharge: INCOME_TAX_2026.oldSurcharge.map((t) => ({ ...t })),
+};
+
 /** The built-in starting version: the 2026 pay rules and schemes, until a person adds a later one (S1). */
 export const BUILT_IN_PAYROLL_RULES: PayrollRulesVersion = {
 	...PAYROLL_RULES_2026,
@@ -31,6 +44,7 @@ export const BUILT_IN_PAYROLL_RULES: PayrollRulesVersion = {
 	ptSlabs: [...PAYROLL_RULES_2026.ptSlabs],
 	lwfMonths: [...PAYROLL_SCHEMES_2026.lwfMonths],
 	states: [],
+	incomeTax: BUILT_IN_INCOME_TAX,
 	from: PAYROLL_RULES_2026.from,
 	note: '',
 	id: 'prs_built_in',
@@ -44,11 +58,14 @@ export function rulesOf(v: PayrollRulesVersion): {
 	pay: PayrollRules;
 	schemes: PayrollSchemes;
 	states: StateRules[];
+	incomeTax: IncomeTaxRules;
 	from: string;
 } {
 	return {
 		from: v.from,
 		states: stateRulesOf(v),
+		// TX2: a version saved before income tax was part of the rules uses the built-in 2026-27 rules.
+		incomeTax: v.incomeTax ?? BUILT_IN_INCOME_TAX,
 		pay: {
 			from: v.from,
 			pfRatePct: v.pfRatePct,
@@ -100,7 +117,10 @@ export class PayrollRulesService {
 	/** Every version, oldest first, the built-in one included. */
 	async list(): Promise<PayrollRulesVersion[]> {
 		const stored = await this.store.list();
-		return [BUILT_IN_PAYROLL_RULES, ...stored].sort((a, b) => a.from.localeCompare(b.from));
+		// TX2: a version saved before income tax was part of the rules shows (and uses) the built-in rules.
+		return [BUILT_IN_PAYROLL_RULES, ...stored]
+			.map((v) => ({ ...v, incomeTax: v.incomeTax ?? BUILT_IN_INCOME_TAX }))
+			.sort((a, b) => a.from.localeCompare(b.from));
 	}
 
 	/** The rules in force on a month's last day (the built-in version for months before it too). */

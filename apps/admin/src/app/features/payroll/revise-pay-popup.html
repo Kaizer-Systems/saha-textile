@@ -163,7 +163,11 @@
 		</div>
 		<div class="col-lg-7">
 			<h6 class="mb-2">{{ 'rev_breakup' | transloco }}</h6>
-			<div class="table-responsive">
+			<!-- A breakup kept from before what is typed now can be worked out is shown dimmed. -->
+			<div
+				class="table-responsive"
+				[class.opacity-50]="preview.isPlaceholderData() || !ready()"
+			>
 				<table class="all-package theme-table no-footer table">
 					<thead>
 						<tr>
@@ -299,7 +303,7 @@
 		type="button"
 		class="btn btn-theme"
 		id="rev_accept"
-		[disabled]="busy() || !p || preview.isFetching() || blocking() || reason().trim().length < 3"
+		[disabled]="busy() || !p || !ready() || preview.isFetching() || preview.isPlaceholderData() || blocking() || reason().trim().length < 3"
 		(click)="accept()"
 	>
 		{{ 'rev_accept' | transloco }}

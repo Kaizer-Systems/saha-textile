@@ -17,6 +17,8 @@ import { API_TAGS } from '../openapi-tags';
 import { escapeHtml as e } from '../purchasing/purchase-order-document';
 
 type Cell = string | number | null;
+/** A byte-order mark: Excel reads a UTF-8 CSV's Bengali names only with it. */
+const BOM = String.fromCharCode(0xfeff);
 
 const money = (value: number) =>
 	`₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -44,7 +46,7 @@ export function exportCsv(request: ExportRequest): string {
 	const row = (r: Record<string, Cell>) => request.columns.map((c) => r[c.key] ?? '');
 	const lines = request.rows.map(row);
 	if (request.totals) lines.push(row(request.totals));
-	return `﻿${csvText(
+	return `${BOM}${csvText(
 		request.columns.map((c) => c.label),
 		lines,
 	)}`;

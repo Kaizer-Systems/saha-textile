@@ -55,7 +55,7 @@ interface MacMeta {
 	workspaces: { name: string; measuredAt: string }[];
 }
 
-/** How many runs stay read at once (a run is about 25 MB of reports). */
+/** How many runs stay read at once (a run is about 25 MB of reports, about 130 MB once parsed). */
 const KEEP = 3;
 const ok = <T>(data: T): VendorAnswer<T> => ({ state: 'ok', readAt: new Date().toISOString(), data });
 const failed = (err: unknown): VendorAnswer<never> => ({
@@ -235,7 +235,11 @@ export class CoverageService {
 			const names = [...files.keys()];
 			return assemble(
 				meta,
-				names.filter((n) => n.endsWith('/coverage-final.json')).map((n) => json(n)),
+				// One workspace's report parsed at a time, so a run's reports are never all in memory twice.
+				eachParsed(
+					names.filter((n) => n.endsWith('/coverage-final.json')),
+					json,
+				),
 				names
 					.filter((n) => n.endsWith('/tests.json'))
 					.map((n) => [n.split('/')[0] as string, json(n)] as const),
@@ -342,10 +346,15 @@ function blankLines(file: IstanbulFile, changed: readonly number[]): string[] {
 	return new Array<string>(last).fill('');
 }
 
+/** Each named report, parsed only when the one before it is done with. */
+export function* eachParsed(names: string[], parse: (name: string) => unknown): Generator<unknown> {
+	for (const name of names) yield parse(name);
+}
+
 /** Reports to one run: line data by repository path with its counts, and all test files together. */
 export function assemble(
 	meta: CoverageMeta,
-	finals: unknown[],
+	finals: Iterable<unknown>,
 	tests: (readonly [string, unknown])[],
 	paths: string[],
 	truncated: boolean,

@@ -21,7 +21,7 @@ build reads about 15 kB of context and takes well under a minute when only the c
 
 | Part                                             | Where                                                          | Notes                                                                                              |
 | ------------------------------------------------ | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Console container `saha-textile-release-console` | `127.0.0.1:4400`                                               | App and API in one process; read-only file system, no capabilities, 256 MB memory cap              |
+| Console container `saha-textile-release-console` | `127.0.0.1:4400`                                               | App and API in one process; read-only file system, no capabilities, 1 GB memory cap (768 MB heap)  |
 | Database                                         | volume `saha_textile_release_console_data`, `/data/console.db` | Projects, key links, PIN and password hashes, audit trail, stats history, run history              |
 | Mac helper                                       | `127.0.0.1:4419`, `scripts/release-console/runner.mjs`         | Reads the Mac and Docker, container logs, starts the stack and `pnpm pipeline:local`; nothing else |
 

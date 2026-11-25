@@ -85,10 +85,20 @@ test('the PIN is typed straight into the six boxes; a wrong one is refused; Lock
 	page,
 }) => {
 	await unlock(page);
+	// Locked on a page inside the console, unlocking opens that page again.
+	await page.goto('/console/audit');
+	await expect(page).toHaveURL(/\/console\/audit$/);
 	await page.getByRole('button', { name: /Lock/ }).first().click();
 	await expect(page.getByText(/Enter your 6-digit console PIN/)).toBeVisible();
 	await page.keyboard.type('000000');
 	await expect(page.getByText(/Wrong PIN/i)).toBeVisible();
+	await page.keyboard.type(PIN);
+	await expect(page).toHaveURL(/\/console\/audit$/);
+	// A locked tab that asks for a page goes back to that page after the PIN too.
+	await page.getByRole('button', { name: /Lock/ }).first().click();
+	await expect(page.getByText(/Enter your 6-digit console PIN/)).toBeVisible();
+	await page.goto('/console/projects');
+	await expect(page.getByText(/Enter your 6-digit console PIN/)).toBeVisible();
 	await page.keyboard.type(PIN);
 	await expect(page.getByRole('heading', { name: 'All projects' })).toBeVisible();
 });

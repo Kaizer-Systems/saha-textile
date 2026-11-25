@@ -18,6 +18,9 @@ services:
       CONSOLE_RUNNER_URL: http://host.docker.internal:${CONSOLE_RUNNER_PORT:-4419}
       CONSOLE_RUNNER_TOKEN_FILE: /run/secrets/runner-token
       CONSOLE_STACK_PREFIX: saha-textile
+      # Coverage keeps up to three CI runs read (about 130 MB each once parsed) beside the API itself;
+      # 256 MB ran out of memory on the second run (25 Nov). The heap stays under the container's limit.
+      NODE_OPTIONS: --max-old-space-size=768
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     volumes:
@@ -31,7 +34,7 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    mem_limit: 256m
+    mem_limit: 1g
     cpus: 1.0
     logging:
       driver: local

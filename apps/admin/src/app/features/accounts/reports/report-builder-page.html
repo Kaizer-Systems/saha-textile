@@ -20,16 +20,11 @@
 				{{ 'delete' | transloco }}
 			</button>
 			}
-			<button
-				type="button"
-				class="btn btn-outline"
-				id="report_excel"
+			<app-export-menu
+				id="report_export"
 				[disabled]="busy() || !columns().length"
-				(click)="download()"
-			>
-				<i class="ri-file-excel-2-line"></i>
-				{{ 'gstr9_excel' | transloco }}
-			</button>
+				[source]="exportSource"
+			/>
 			<button
 				type="button"
 				class="btn btn-theme"

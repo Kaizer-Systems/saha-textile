@@ -270,7 +270,7 @@ describe('starting a new report', () => {
 		expect([page.columns(), page.fields()]).toEqual([[], []]);
 		expect(calls.run).not.toHaveBeenCalled();
 		expect((el(fixture, '#report_save') as HTMLButtonElement).disabled).toBe(true);
-		expect((el(fixture, '#report_excel') as HTMLButtonElement).disabled).toBe(true);
+		expect((el(fixture, '#report_export button') as HTMLButtonElement).disabled).toBe(true);
 		page.setDataset('invoiceLines');
 		page.addFilter();
 		expect([page.columns(), page.filters()]).toEqual([[], []]);
@@ -608,7 +608,9 @@ describe('a new report’s first columns, filled once', () => {
 describe('downloading the whole report', () => {
 	it('runs every row and saves a spreadsheet named after the report, or “report”', async () => {
 		const { fixture, page, calls } = await builder();
-		(el(fixture, '#report_excel') as HTMLButtonElement).click();
+		// EX1: the Export menu runs the report through the same code; the CSV still writes it.
+		expect((await page.exportSource())?.area).toBe('accounts');
+		await page.download();
 		await settle(fixture);
 		const { from, to } = page.range();
 		expect(calls.run).toHaveBeenLastCalledWith({ spec: page.spec(), from, to, preview: false });

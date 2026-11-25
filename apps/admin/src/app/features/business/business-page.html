@@ -372,15 +372,11 @@
 							<i class="ri-add-line me-1"></i>
 							{{ 'biz_record_receipt' | transloco }}
 						</button>
-						<button
-							type="button"
-							class="btn btn-outline"
+						<app-export-menu
+							id="biz_statement_export"
 							[disabled]="!receivable.data()"
-							(click)="exportStatement()"
-						>
-							<i class="ri-download-2-line me-1"></i>
-							{{ 'biz_export_statement' | transloco }}
-						</button>
+							[source]="statementSource"
+						/>
 						@if (b.roles.supplier) {
 						<button
 							*hasPermission="'business.settle'"

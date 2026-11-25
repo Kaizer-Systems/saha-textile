@@ -256,6 +256,36 @@ export class BusinessPage {
 		if (await popup.result.catch(() => null)) await this.refresh('biz_standing_saved');
 	}
 
+	/** EX1: the business's statement for the Export menu, the same columns as its CSV. */
+	readonly statementSource = (): ExportSource | null => {
+		const business = this.business();
+		const statement = this.receivable.data();
+		if (!business || !statement) return null;
+		const name = business.tradeName || business.legalName;
+		return {
+			fileName: `${name.replace(/[^\w-]+/g, '-')}-statement`,
+			title: name,
+			header: [
+				'biz_col_date',
+				'biz_col_document',
+				'biz_col_debit',
+				'biz_col_credit',
+				'biz_col_balance',
+				'biz_col_due',
+			].map((key) => this.transloco.translate(key)),
+			rows: statement.rows.map((row) => [
+				row.at.slice(0, 10),
+				row.documentNumber ?? row.kind,
+				row.amountINR > 0 ? row.amountINR : null,
+				row.amountINR < 0 ? -row.amountINR : null,
+				row.balanceINR,
+				row.dueOn ?? null,
+			]),
+			kinds: { 2: 'money', 3: 'money', 4: 'money' },
+			area: 'accounts',
+		};
+	};
+
 	exportStatement(): void {
 		const business = this.business();
 		const statement = this.receivable.data();

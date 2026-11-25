@@ -14,6 +14,7 @@ import { apiProblem, downloadCsv, shortDate } from '@core/purchasing/purchasing-
 import { NotificationService } from '@data-access/services/notification.service';
 import { rupees } from '@features/accounts/ledger-helpers';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { ExportMenu, type CsvWriter, type ExportSource } from '@shared/ui/export-menu/export-menu';
 import {
 	ACCOUNTS_PRESETS,
 	PeriodPicker,
@@ -77,7 +78,7 @@ export function tableCsv(
  */
 @Component({
 	selector: 'app-report-builder-page',
-	imports: [PageWrapper, TranslocoModule, FormsModule, PeriodPicker],
+	imports: [PageWrapper, TranslocoModule, FormsModule, PeriodPicker, ExportMenu],
 	templateUrl: './report-builder-page.html',
 })
 export class ReportBuilderPage {
@@ -311,15 +312,30 @@ export class ReportBuilderPage {
 		}
 	}
 
+	/** EX1: the whole report for the Export menu, run by the same code as its CSV. */
+	readonly exportSource = async (): Promise<ExportSource | null> => {
+		let out: ExportSource | null = null;
+		await this.download((fileName, header, rows) => {
+			out = {
+				fileName,
+				title: this.name() || this.transloco.translate('reports_title'),
+				header,
+				rows,
+				area: 'accounts',
+			};
+		});
+		return out;
+	};
+
 	/** Runs the whole report (up to 5,000 rows) and saves it as a spreadsheet file. */
-	async download(): Promise<void> {
+	async download(save: CsvWriter = downloadCsv): Promise<void> {
 		this.busy.set(true);
 		try {
 			const table = await firstValueFrom(
 				this.gateway.run({ spec: this.spec(), ...this.range(), preview: false }),
 			);
 			const { header, rows } = tableCsv(table, (key) => this.label(key));
-			downloadCsv(`${this.name() || 'report'}_${this.range().from}_${this.range().to}.csv`, header, rows);
+			save(`${this.name() || 'report'}_${this.range().from}_${this.range().to}.csv`, header, rows);
 		} catch (error) {
 			this.notifier.showError(
 				this.transloco.translate(`report_problem_${apiProblem(error, 'failed').split(':')[0]}`),

@@ -100,7 +100,6 @@ export function exportRequest(source: ExportSource, format: ExportFormat): Expor
 				type="button"
 				class="btn btn-outline"
 				ngbDropdownToggle
-				[id]="id()"
 				[disabled]="busy() || disabled()"
 			>
 				<i class="ri-download-2-line"></i>

@@ -12,6 +12,7 @@ import { LOCATION_KEYS, LocationsGateway } from '@core/locations/locations.gatew
 import { downloadCsv, shortDate } from '@core/purchasing/purchasing-format';
 import { rupees } from '@features/accounts/ledger-helpers';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { ExportMenu, type ExportSource } from '@shared/ui/export-menu/export-menu';
 
 import type { FinancialStatement, StatementKind } from '@saha-textile/contracts';
 
@@ -46,7 +47,7 @@ const istToday = (): string => new Date(Date.now() + 5.5 * 3_600_000).toISOStrin
  */
 @Component({
 	selector: 'app-statement-page',
-	imports: [PageWrapper, TranslocoModule, FormsModule],
+	imports: [PageWrapper, TranslocoModule, FormsModule, ExportMenu],
 	templateUrl: './statement-page.html',
 })
 export class StatementPage {
@@ -82,6 +83,17 @@ export class StatementPage {
 
 	print(): void {
 		window.print();
+	}
+
+	/** EX1: the statement's lines for the Export menu (CSV and Excel; its own PDF prints the statement layout). */
+	exportSource(s: FinancialStatement): () => ExportSource {
+		return () => {
+			const { header, rows } = statementCsv(s);
+			const name = this.transloco.translate(
+				`report_${this.kind() === 'balanceSheet' ? 'balance_sheet' : 'profit_loss'}`,
+			);
+			return { fileName: `${name}-${s.asAt}`, title: name, header, rows, area: 'accounts' };
+		};
 	}
 
 	download(s: FinancialStatement): void {

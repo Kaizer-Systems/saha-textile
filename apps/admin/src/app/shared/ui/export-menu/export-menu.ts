@@ -91,7 +91,7 @@ export function exportRequest(source: ExportSource, format: ExportFormat): Expor
 				{{ 'export_menu' | transloco }}
 			</button>
 			<div ngbDropdownMenu>
-				@for (f of formats; track f) {
+				@for (f of formats(); track f) {
 					<button
 						ngbDropdownItem
 						type="button"
@@ -114,7 +114,8 @@ export class ExportMenu {
 	readonly source = input.required<() => ExportSource | null | Promise<ExportSource | null>>();
 	readonly id = input('export_menu');
 	readonly disabled = input(false);
-	readonly formats: ExportFormat[] = ['csv', 'xlsx', 'pdf'];
+	/** The formats offered; a statement with its own printed layout leaves PDF to that. */
+	readonly formats = input<ExportFormat[]>(['csv', 'xlsx', 'pdf']);
 	readonly busy = signal(false);
 
 	async run(format: ExportFormat): Promise<void> {

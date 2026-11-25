@@ -380,12 +380,21 @@ describe('the statement page (U2)', () => {
 		(el(fixture, '#statement_pdf') as HTMLButtonElement).click();
 		expect(print).toHaveBeenCalled();
 		print.mockRestore();
-		(el(fixture, '#statement_excel') as HTMLButtonElement).click();
+		// EX1: CSV and Excel through the Export menu; the statement's own PDF stays.
+		expect(el(fixture, '#statement_export')).not.toBeNull();
+		expect(
+			fixture.componentInstance.exportSource(fixture.componentInstance.statement.data() as never)(),
+		).toMatchObject({
+			fileName: 'Balance sheet-2026-11-24',
+			title: 'Balance sheet',
+			area: 'accounts',
+		});
+		fixture.componentInstance.download(fixture.componentInstance.statement.data() as never);
 		expect(vi.mocked(downloadCsv).mock.lastCall?.[0]).toBe('Balance sheet_2026-11-24.csv');
 
 		const pl = open({ statement: vi.fn(() => of(statement())) });
 		await settle(pl.fixture);
-		(el(pl.fixture, '#statement_excel') as HTMLButtonElement).click();
+		pl.fixture.componentInstance.download(pl.fixture.componentInstance.statement.data() as never);
 		expect(vi.mocked(downloadCsv).mock.lastCall?.slice(0, 2)).toEqual([
 			'report_profit_loss_2027-03-31.csv',
 			['', '2027-03-31', '2026-03-31'],

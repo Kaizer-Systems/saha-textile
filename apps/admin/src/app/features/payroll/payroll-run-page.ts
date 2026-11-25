@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
@@ -12,6 +13,7 @@ import { LOCATION_KEYS, LocationsGateway } from '@core/locations/locations.gatew
 import { apiProblem, saveBlob, shortDate } from '@core/purchasing/purchasing-format';
 import { NotificationService } from '@data-access/services/notification.service';
 import { rupees } from '@features/accounts/ledger-helpers';
+import { askConfirm, askYesNo } from '@features/purchasing/shared/popups';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
@@ -79,6 +81,7 @@ export class PayrollRunPage {
 	private readonly transloco = inject(TranslocoService);
 	private readonly notifier = inject(NotificationService);
 	private readonly queries = inject(QueryClient);
+	private readonly modals = inject(NgbModal);
 
 	readonly steps = PAYROLL_STEPS;
 	readonly icon = payrollStepIcon;
@@ -173,6 +176,90 @@ export class PayrollRunPage {
 			this.notifier.showError(this.transloco.translate(`payroll_problem_${apiProblem(error, 'failed')}`));
 		} finally {
 			this.busy.set(false);
+		}
+	}
+
+	/**
+	 * Brief 26 PE3: each changed line of the edited payslips, by the rules and now: "Priya Test · Basic: ₹6,960.00 →
+	 * ₹7,200.00", added lines, and the net.
+	 */
+	changes(run: PayrollRun): string[] {
+		const t = (key: string) => this.transloco.translate(key);
+		return run.rows.flatMap((r) => {
+			const b = r.byRules;
+			if (!r.edits || !b) return [];
+			const line = (label: string, before: number, after: number) =>
+				before === after ? [] : [`${r.name} · ${label}: ${this.money(before)} → ${this.money(after)}`];
+			const heads = [...new Set([...Object.keys(b.headsPaise), ...Object.keys(r.headsPaise ?? {})])];
+			return [
+				...heads.flatMap((h) => line(t(`payroll_head_${h}`), b.headsPaise[h] ?? 0, r.headsPaise?.[h] ?? 0)),
+				...r.edits.added.map(
+					(a) => `${r.name} · ${a.name} (${t(`pe_kind_${a.kind}`)}): ${this.money(a.paise)}`,
+				),
+				...line(t('pe_deduction_pf'), b.pfEmployeePaise, r.pfEmployeePaise),
+				...line(t('pe_deduction_esi'), b.esiEmployeePaise, r.esiEmployeePaise),
+				...line(t('pe_deduction_pt'), b.ptPaise, r.ptPaise),
+				...line(t('pe_deduction_tds'), b.tdsPaise, r.tdsPaise),
+				...line(t('pe_deduction_advance'), b.advancePaise, r.advancePaise),
+				...line(t('pe_net'), b.netPaise, r.netPaise),
+			];
+		});
+	}
+
+	/**
+	 * Brief 26 PE1, PE3, PE4: Publish = Approve and Post together. With edited payslips, first what changed (Cancel
+	 * goes back with nothing changed), then whether to keep the new figures as the salary from next month (No posts
+	 * as edited; Yes posts and keeps them).
+	 */
+	async publish(run: PayrollRun): Promise<void> {
+		const edited = run.rows.filter((r) => r.edits);
+		if (
+			edited.length &&
+			!(await askConfirm(this.modals, {
+				icon: 'ri-file-list-3-line',
+				title: 'pe_publish_title',
+				body: 'pe_publish_body',
+				params: { n: edited.length },
+				yes: 'pe_ok',
+				items: this.changes(run),
+			}))
+		)
+			return;
+		const keep = edited.length
+			? await askYesNo(this.modals, {
+					icon: 'ri-save-line',
+					title: 'pe_keep_title',
+					body: 'pe_keep_body',
+					yes: 'yes',
+					no: 'no',
+					items: edited.map((r) => r.name),
+				})
+			: false;
+		if (keep === null) return;
+		this.busy.set(true);
+		try {
+			const approved = await firstValueFrom(
+				this.gateway.step(this.month(), { to: 'approved', version: run.version }),
+			);
+			await firstValueFrom(this.gateway.step(this.month(), { to: 'posted', version: approved.version }));
+			if (keep) {
+				const results = await firstValueFrom(
+					this.gateway.keepFigures(
+						this.month(),
+						edited.map((r) => r.employeeId),
+					),
+				);
+				for (const f of results.filter((x) => !x.ok))
+					this.notifier.showError(
+						`${run.rows.find((r) => r.employeeId === f.employeeId)?.name ?? f.employeeId}: ${this.transloco.translate(`payroll_problem_${f.problem ?? 'failed'}`)}`,
+					);
+			}
+			this.notifier.showSuccess(this.transloco.translate('pe_published'));
+		} catch (error) {
+			this.notifier.showError(this.transloco.translate(`payroll_problem_${apiProblem(error, 'failed')}`));
+		} finally {
+			this.busy.set(false);
+			await this.queries.invalidateQueries({ queryKey: PAYROLL_KEYS.all });
 		}
 	}
 

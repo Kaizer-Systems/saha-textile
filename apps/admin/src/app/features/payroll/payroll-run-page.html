@@ -59,6 +59,17 @@
 			>
 				{{ 'payroll_approve' | transloco }}
 			</button>
+			<!-- Brief 26 PE1: Publish = Approve and Post together, with the pop-ups of PE3 and PE4 for edited payslips. -->
+			<button
+				*hasPermission="'accounts.lock'"
+				type="button"
+				class="btn btn-theme"
+				id="run_publish"
+				[disabled]="busy() || !r.rows.length || !!r.statesMissing?.length"
+				(click)="publish(r)"
+			>
+				{{ 'pe_publish' | transloco }}
+			</button>
 			} @case ('approved') {
 			<button
 				*hasPermission="'accounts.post'"

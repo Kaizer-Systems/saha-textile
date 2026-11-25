@@ -78,6 +78,17 @@ export class PayrollGateway {
 		return this.http.put<PayrollRun>(this.api(`runs/${month}/rows/${encodeURIComponent(employeeId)}/edits`), edits);
 	}
 
+	/** Brief 26 PE4: a published run's edited figures kept as the salary from next month. */
+	keepFigures(
+		month: string,
+		employeeIds: string[],
+	): Observable<{ employeeId: string; ok: boolean; problem: string | null }[]> {
+		return this.http.post<{ employeeId: string; ok: boolean; problem: string | null }[]>(
+			this.api(`runs/${month}/keep-figures`),
+			{ employeeIds },
+		);
+	}
+
 	/** Brief 26 SR3: increment plans saved by name, and a cycle's rows worked out and accepted. */
 	incrementPlans(): Observable<IncrementPlan[]> {
 		return this.http.get<IncrementPlan[]>(this.api('increment-plans'));

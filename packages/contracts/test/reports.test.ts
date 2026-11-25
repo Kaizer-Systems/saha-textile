@@ -97,15 +97,16 @@ describe('the financial statements', () => {
 });
 
 describe('the custom report builder', () => {
-	it('reports on ledger lines, invoice lines or invoices, in five kinds of field', () => {
-		expect(ReportDataset.options).toEqual(['ledgerLines', 'invoiceLines', 'invoices']);
+	it('reports on ledger lines, invoice lines, invoices or the audit trail, in five kinds of field', () => {
+		expect(ReportDataset.options).toEqual(['ledgerLines', 'invoiceLines', 'invoices', 'auditLines']);
 		expect(ReportFieldType.options).toEqual(['text', 'number', 'money', 'date', 'percent']);
 		const field = { key: 'taxable', type: 'money', summable: true };
 		expect(ReportFieldInfo.parse(field)).toEqual(field);
 		refused(ReportFieldInfo.safeParse({ ...field, type: 'boolean' }).success);
-		const catalogue = { ledgerLines: [field], invoiceLines: [], invoices: [field] };
+		const catalogue = { ledgerLines: [field], invoiceLines: [], invoices: [field], auditLines: [] };
 		expect(ReportCatalogue.parse(catalogue)).toEqual(catalogue);
 		refused(ReportCatalogue.safeParse({ ledgerLines: [], invoices: [] }).success);
+		refused(ReportCatalogue.safeParse({ ledgerLines: [], invoiceLines: [], invoices: [] }).success);
 	});
 
 	it('filters a field by an operation and up to 50 values of up to 80 letters', () => {

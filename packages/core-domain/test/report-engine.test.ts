@@ -440,3 +440,86 @@ describe('totals and the limit', () => {
 		});
 	});
 });
+
+describe('the audit trail as a kind of data (brief 26 AU2)', () => {
+	const shape = REPORT_DATASETS.auditLines.map((f) => `${f.key}:${f.type}${f.summable ? '+' : ''}`);
+
+	it('offers one row per field changed, with the size of a numeric change and the changes added up', () => {
+		expect(shape).toEqual([
+			'date:date',
+			'month:text',
+			'time:text',
+			'weekday:text',
+			'who:text',
+			'module:text',
+			'action:text',
+			'record:text',
+			'field:text',
+			'before:text',
+			'after:text',
+			'changePercent:percent',
+			'reason:text',
+			'changes:number+',
+		]);
+	});
+
+	const line = (over: Record<string, string | number | null>): ReportRow => ({
+		date: '2026-11-26',
+		month: '2026-11',
+		time: '10:15',
+		weekday: 'Thursday',
+		who: 'Sudip Ghosh',
+		module: 'payroll',
+		action: 'payroll.payslip.edit',
+		record: 'PS/26-27/000124',
+		field: 'tds',
+		before: '1200',
+		after: '0',
+		changePercent: -100,
+		reason: 'Declaration came late',
+		changes: 1,
+		...over,
+	});
+	const lines = [
+		line({}),
+		line({ field: 'special', before: '5200', after: '6000', changePercent: 15.38, reason: '' }),
+		line({
+			module: 'accounts',
+			action: 'accounts.voucher.post',
+			record: 'JV/26-27/000031',
+			field: null,
+			changePercent: null,
+		}),
+	];
+
+	it('counts the changes by module, and refuses to add up the % of a change', () => {
+		const table = runReport(
+			'auditLines',
+			lines,
+			spec({ columns: ['module', 'changes'], groupBy: ['module'] }),
+			100,
+		);
+		expect(table.rows).toEqual([
+			['accounts', 1],
+			['payroll', 2],
+		]);
+		expect(table.totals).toEqual([null, 3]);
+		expect(specProblems('auditLines', spec({ columns: ['field'], totals: ['changePercent'] }))).toEqual([
+			'report_total_not_summable:changePercent',
+		]);
+		expect(specProblems('auditLines', spec({ columns: ['voucher'] }))).toEqual(['report_field_unknown:voucher']);
+	});
+
+	it('finds the changes to one field', () => {
+		const table = runReport(
+			'auditLines',
+			lines,
+			spec({
+				columns: ['record', 'field', 'before', 'after'],
+				filters: [{ field: 'field', op: 'is', values: ['tds'] }],
+			}),
+			100,
+		);
+		expect(table.rows).toEqual([['PS/26-27/000124', 'tds', '1200', '0']]);
+	});
+});

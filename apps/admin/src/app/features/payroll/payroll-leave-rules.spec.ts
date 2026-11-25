@@ -99,6 +99,7 @@ const version = (states: StatePayrollRules[]) =>
 
 async function editing() {
 	TestBed.resetTestingModule();
+	const notifier = { showSuccess: vi.fn(), showError: vi.fn() };
 	document.body.querySelectorAll('.lv-test-modal').forEach((node) => node.remove());
 	const views: EmbeddedViewRef<unknown>[] = [];
 	TestBed.configureTestingModule({
@@ -120,7 +121,7 @@ async function editing() {
 					addRules: vi.fn(),
 				},
 			},
-			{ provide: NotificationService, useValue: { showSuccess: vi.fn(), showError: vi.fn() } },
+			{ provide: NotificationService, useValue: notifier },
 			{ provide: AuthStore, useValue: { permissions: signal(['accounts.index', 'accounts.lock']) } },
 			{
 				provide: NgbModal,
@@ -151,7 +152,7 @@ async function editing() {
 		views[0]?.detectChanges();
 	};
 	await redraw();
-	return { page: fixture.componentInstance, redraw };
+	return { page: fixture.componentInstance, redraw, notifier };
 }
 
 const modal = <T extends HTMLElement = HTMLElement>(selector: string) =>
@@ -245,7 +246,7 @@ describe('leave in a State’s set (LV1, LV2)', () => {
 	});
 
 	it('names, codes, pays and switches off a type, the open one following its new code', async () => {
-		const { page, redraw } = await editing();
+		const { page, redraw, notifier } = await editing();
 		page.stateAt.set(1);
 		page.stateSection.set('leave');
 		await redraw();
@@ -258,6 +259,11 @@ describe('leave in a State’s set (LV1, LV2)', () => {
 		expect([leaveKeys(page), page.leaveOpen()]).toEqual([['PL2', 'FL'], 'FL']);
 		page.setLeaveType('FL', { key: 'FL' });
 		expect(page.leaveOpen()).toBe('FL');
+		expect(notifier.showError).not.toHaveBeenCalled();
+		// A code another type of the State has is refused, and nothing changes.
+		await enter(redraw, modal('#pr_leave_key_FL'), 'pl2');
+		expect(notifier.showError).toHaveBeenCalledWith('payroll_leave_key_taken');
+		expect([leaveKeys(page), page.leaveOpen()]).toEqual([['PL2', 'FL'], 'FL']);
 		await enter(redraw, typeRow('FL').querySelector('select'), 'half');
 		const active = typeRow('FL').querySelector('input[type="checkbox"]') as HTMLInputElement;
 		expect(active.checked).toBe(false);
@@ -298,10 +304,12 @@ describe('leave in a State’s set (LV1, LV2)', () => {
 	});
 
 	it('changes nothing without a State picked or a type open', async () => {
-		const { page } = await editing();
+		const { page, notifier } = await editing();
 		page.stateAt.set(9);
 		page.startLeave();
 		page.addLeaveType();
+		page.setLeaveType('T3', { key: 'T9' });
+		expect(notifier.showError).not.toHaveBeenCalled();
 		page.setRule({ rounding: 'whole' });
 		page.addRuleCondition();
 		page.removeRule(0);
@@ -396,6 +404,14 @@ describe('leave in a State’s set (LV1, LV2)', () => {
 		expect(page.openRule()?.validity).toEqual({ kind: 'days', n: 45 });
 		page.setValidity('days', page.openRule());
 		expect(page.openRule()?.validity).toEqual({ kind: 'days', n: 45 });
+		// A count is kept only while its unit stays: days to months starts at 12, months to days at 90.
+		await enter(redraw, modal('#pr_leave_valid'), 'months');
+		expect(page.openRule()?.validity).toEqual({ kind: 'months', n: 12 });
+		await enter(redraw, number(), '30');
+		page.setValidity('months', page.openRule());
+		expect(page.openRule()?.validity).toEqual({ kind: 'months', n: 30 });
+		await enter(redraw, modal('#pr_leave_valid'), 'days');
+		expect(page.openRule()?.validity).toEqual({ kind: 'days', n: 90 });
 		await enter(redraw, modal('#pr_leave_valid'), 'never');
 		expect([page.openRule()?.validity, number()]).toEqual([{ kind: 'never' }, null]);
 		await enter(redraw, modal('#pr_leave_valid'), 'months');

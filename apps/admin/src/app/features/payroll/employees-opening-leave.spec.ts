@@ -14,7 +14,7 @@ import { LocationsGateway } from '@core/locations/locations.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 
-import { EmployeesPage, asCoreLeaveType } from './employees-page';
+import { EmployeesPage, asCoreLeaveType, employeeWrite } from './employees-page';
 
 import type { EmployeeView } from '@saha-textile/contracts';
 
@@ -87,12 +87,12 @@ const person = (over: Record<string, unknown> = {}) =>
 		...over,
 	}) as unknown as EmployeeView;
 
-async function employees(options: { rules?: unknown; locations?: unknown } = {}) {
+async function employees(options: { rules?: unknown; locations?: unknown; staff?: EmployeeView[] } = {}) {
 	TestBed.resetTestingModule();
 	document.body.querySelectorAll('.eol-test-modal').forEach((node) => node.remove());
 	const views: { detectChanges: () => void }[] = [];
 	const gateway = {
-		employees: vi.fn(() => of([person()])),
+		employees: vi.fn(() => of(options.staff ?? [person()])),
 		rules: vi.fn(() => (options.rules === null ? NEVER : of(options.rules ?? [VERSION]))),
 		createEmployee: vi.fn(() => of({})),
 		updateEmployee: vi.fn(() => of({})),
@@ -174,6 +174,7 @@ describe('leave on the day a person is added (OB1, OB2)', () => {
 			{
 				key: 'EL',
 				name: 'Earned leave',
+				asOf: '2026-11-26',
 				yearStart: '2026-04-01',
 				carriedOpen: true,
 				lapses: false,
@@ -187,6 +188,7 @@ describe('leave on the day a person is added (OB1, OB2)', () => {
 			{
 				key: 'CL',
 				name: 'Casual leave',
+				asOf: '2026-11-26',
 				yearStart: '2026-04-01',
 				carriedOpen: false,
 				lapses: true,
@@ -264,18 +266,65 @@ describe('leave on the day a person is added (OB1, OB2)', () => {
 		const { page } = await employees();
 		page.form.set({ ...page.form(), locationId: 'l1', joinedOn: '2026-08-12' });
 		page.setOpening('EL', 'taken', 1);
-		expect(page.form().openingLeave?.[0]).toMatchObject({ carried: null, credited: 0 });
+		expect(page.form().openingLeave?.[0]).toMatchObject({ carried: null, credited: 0, creditedWorkedOut: 0 });
 		page.patch({ joinedOn: '2025-06-01' });
-		// The credit kept with the typed figure stays as it was, shown against the new worked-out one.
+		// The credit left as worked out follows the new joining date.
 		expect(page.openingRows()[0]).toMatchObject({
 			carriedOpen: true,
 			carried: 0,
-			credited: 0,
+			credited: 10.5,
 			workedOut: 10.5,
-			changed: true,
+			changed: false,
 			taken: 1,
-			balance: -1,
+			balance: 9.5,
 		});
+	});
+
+	it('keeps a typed credit when the joining date moves, shown against the new worked-out one', async () => {
+		const { page } = await employees();
+		page.form.set({ ...page.form(), locationId: 'l1', joinedOn: '2026-08-12' });
+		page.setOpening('CL', 'credited', 3);
+		page.patch({ joinedOn: '2025-06-01' });
+		expect(page.openingRows()[1]).toMatchObject({ credited: 3, workedOut: 10, changed: true, balance: 3 });
+	});
+
+	it('copies the approximate joining mark and the saved opening leave into the form, and leaves them out when unset', () => {
+		const saved = [{ typeKey: 'EL', asOf: '2026-05-10', carried: 4, credited: 6, creditedWorkedOut: 0, taken: 1 }];
+		const written = employeeWrite(person({ joinedOnApproximate: true, openingLeave: saved }));
+		expect([written.joinedOnApproximate, written.openingLeave]).toEqual([true, saved]);
+		expect(written.openingLeave?.[0]).not.toBe(saved[0]);
+		for (const plain of [person(), person({ joinedOnApproximate: false, openingLeave: [] })]) {
+			const form = employeeWrite(plain);
+			expect(['joinedOnApproximate' in form, 'openingLeave' in form]).toEqual([false, false]);
+		}
+	});
+
+	it('edits a person’s opening leave as on the day they were added, and saves it as on that day', async () => {
+		const saved = [
+			{ typeKey: 'CL', asOf: '2026-05-10', carried: null, credited: 10, creditedWorkedOut: 10, taken: 2 },
+			{ typeKey: 'EL', asOf: '2026-05-10', carried: 4, credited: 6, creditedWorkedOut: 0, taken: 1 },
+		];
+		const { fixture, page, redraw, gateway } = await employees({
+			staff: [person({ joinedOnApproximate: true, openingLeave: saved })],
+		});
+		edit(fixture).click();
+		await redraw();
+		expect(modal('#emp_joined_approx')?.checked).toBe(true);
+		expect(
+			page.openingRows().map((r) => [r.key, r.asOf, r.carried, r.credited, r.workedOut, r.taken, r.balance]),
+		).toEqual([
+			['EL', '2026-05-10', 4, 6, 0, 1, 9],
+			['CL', '2026-05-10', null, 10, 10, 2, 8],
+		]);
+		page.setOpening('CL', 'taken', 3);
+		expect(page.form().openingLeave?.at(-1)?.asOf).toBe('2026-05-10');
+		await page.save();
+		const updated = gateway.updateEmployee.mock.lastCall as unknown as [string, Record<string, unknown>];
+		expect(updated[1]).toMatchObject({ joinedOnApproximate: true, version: 3 });
+		expect(updated[1]['openingLeave']).toEqual([
+			{ typeKey: 'EL', asOf: '2026-05-10', carried: 4, credited: 6, creditedWorkedOut: 0, taken: 1 },
+			{ typeKey: 'CL', asOf: '2026-05-10', carried: null, credited: 10, creditedWorkedOut: 10, taken: 3 },
+		]);
 	});
 
 	it('draws the table: carried forward boxes or why there are none, the changed credit and its way back', async () => {

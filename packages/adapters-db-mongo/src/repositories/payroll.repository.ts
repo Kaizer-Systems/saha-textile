@@ -2,6 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
 import {
 	Attendance,
+	AttendanceDay,
 	Employee,
 	PayrollAdvance,
 	PayrollRulesVersion,
@@ -9,6 +10,7 @@ import {
 	SalaryTemplate,
 } from '@saha-textile/contracts';
 import type {
+	AttendanceDayRepository,
 	AttendanceRepository,
 	EmployeeRepository,
 	PayrollAdvanceRepository,
@@ -21,6 +23,7 @@ import type {
 } from '@saha-textile/core-domain';
 
 import {
+	AttendanceDayModel,
 	EmployeeModel,
 	PayrollAdvanceModel,
 	PayrollAttendanceModel,
@@ -112,6 +115,53 @@ export class MongoEmployeeRepository implements EmployeeRepository {
 }
 
 /** A month's attendance in MongoDB (`payrollAttendance`, one document per month). */
+/** Brief 26 AT: attendance day by day. */
+export class MongoAttendanceDayRepository implements AttendanceDayRepository {
+	private static read(doc: AggregateDoc): AttendanceDay {
+		const { _id, ...rest } = doc;
+		return AttendanceDay.parse({ ...rest, id: _id });
+	}
+
+	async get(employeeId: string, day: string): Promise<AttendanceDay | null> {
+		const doc = await AttendanceDayModel.findById(`${employeeId}_${day}`).lean<AggregateDoc>().exec();
+		return doc ? MongoAttendanceDayRepository.read(doc) : null;
+	}
+
+	async month(
+		month: string,
+		filter: { employeeIds?: readonly string[]; locationId?: string },
+	): Promise<AttendanceDay[]> {
+		const query: Record<string, unknown> = { day: { $gte: `${month}-01`, $lte: `${month}-31` } };
+		if (filter.employeeIds) query['employeeId'] = { $in: [...filter.employeeIds] };
+		if (filter.locationId) query['locationId'] = filter.locationId;
+		const docs = await AttendanceDayModel.find(query).sort({ day: 1 }).lean<AggregateDoc[]>().exec();
+		return docs.map((d) => MongoAttendanceDayRepository.read(d));
+	}
+
+	async pending(locationIds: readonly string[] | null): Promise<AttendanceDay[]> {
+		const query: Record<string, unknown> = { pending: { $ne: null } };
+		if (locationIds) query['locationId'] = { $in: [...locationIds] };
+		const docs = await AttendanceDayModel.find(query).sort({ day: 1 }).lean<AggregateDoc[]>().exec();
+		return docs.map((d) => MongoAttendanceDayRepository.read(d));
+	}
+
+	async save(day: AttendanceDay, expectedVersion: number | null): Promise<AttendanceDay> {
+		const { id, ...rest } = day;
+		if (expectedVersion === null) {
+			await AttendanceDayModel.create({ _id: id, ...rest, version: 0 }).catch((error: { code?: number }) => {
+				throw error.code === 11000 ? new Error('attendance_day_changed', { cause: error }) : error;
+			});
+			return { ...day, version: 0 };
+		}
+		const result = await AttendanceDayModel.updateOne(
+			{ _id: id, version: expectedVersion },
+			{ $set: { ...rest, version: expectedVersion + 1 } },
+		).exec();
+		if (!result.matchedCount) throw new Error('attendance_day_changed');
+		return { ...day, version: expectedVersion + 1 };
+	}
+}
+
 export class MongoAttendanceRepository implements AttendanceRepository {
 	async get(month: string): Promise<Attendance | null> {
 		const doc = await PayrollAttendanceModel.findById(month).lean<AggregateDoc>().exec();

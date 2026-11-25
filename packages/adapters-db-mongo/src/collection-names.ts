@@ -181,6 +181,7 @@ export const COLLECTION_NAMES = {
 	/** Payroll (accounts brief S): employees with sealed personal numbers, attendance, runs. */
 	Employee: 'employees',
 	PayrollAttendance: 'payrollAttendance',
+	AttendanceDay: 'attendanceDays',
 	PayrollRun: 'payrollRuns',
 	/** Dated payroll rule versions (S1), salary structure templates (S4), returns marked filed (S7), advances (S9). */
 	PayrollRules: 'payrollRules',
@@ -367,6 +368,7 @@ export const GRAPH_RECONCILIATION_OWED = [
 	'yearCloses',
 	'booksImports',
 	'expenseBills',
+	'attendanceDays',
 ] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */

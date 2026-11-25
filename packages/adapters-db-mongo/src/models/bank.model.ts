@@ -136,6 +136,14 @@ export const PayrollAttendanceModel = reuse(
 		{ ...loose, collection: COLLECTION_NAMES.PayrollAttendance },
 	),
 );
+/** Brief 26 AT: one person's day, keyed `${employeeId}_${day}`; read by person and month, or store and month. */
+const AttendanceDaySchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true } },
+	{ ...loose, collection: COLLECTION_NAMES.AttendanceDay },
+);
+AttendanceDaySchema.index({ employeeId: 1, day: 1 });
+AttendanceDaySchema.index({ locationId: 1, day: 1 });
+export const AttendanceDayModel = reuse('AttendanceDay', AttendanceDaySchema);
 /** S5: one run a month; the unique month keeps two people preparing the same month at once from making two runs. */
 const PayrollRunSchema = new Schema<AggregateDoc>(
 	{ _id: { type: String, required: true }, month: String },

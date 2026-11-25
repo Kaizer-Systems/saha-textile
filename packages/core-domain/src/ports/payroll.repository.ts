@@ -1,5 +1,6 @@
 import type {
 	Attendance,
+	AttendanceDay,
 	Employee,
 	PayrollAdvance,
 	PayrollRulesVersion,
@@ -27,6 +28,16 @@ export interface AttendanceRepository {
 	get(month: string): Promise<Attendance | null>;
 	/** A first save (null) or over the version read; refused with `attendance_changed`. */
 	save(attendance: Attendance, expectedVersion: number | null): Promise<Attendance>;
+}
+
+/** Brief 26 AT: attendance day by day; a day is saved over the version read, refused with `attendance_day_changed`. */
+export interface AttendanceDayRepository {
+	get(employeeId: string, day: string): Promise<AttendanceDay | null>;
+	/** The days of a month (`2026-11`), for some people or a store. */
+	month(month: string, filter: { employeeIds?: readonly string[]; locationId?: string }): Promise<AttendanceDay[]>;
+	/** Days waiting on an approval, for some stores (all when none named). */
+	pending(locationIds: readonly string[] | null): Promise<AttendanceDay[]>;
+	save(day: AttendanceDay, expectedVersion: number | null): Promise<AttendanceDay>;
 }
 
 /** Payroll runs (S5), one per month. */

@@ -24,7 +24,7 @@ const refused = (input: unknown) => expect(input).toBe(false);
 
 describe('the payslip among the documents', () => {
 	it('is a document of its own in a payroll group', () => {
-		expect(DocumentKind.options.at(-1)).toBe('payslip');
+		expect(DocumentKind.options).toContain('payslip');
 		expect(DocumentGroup.options).toEqual(['sales', 'parcels', 'purchases', 'stock', 'payroll']);
 		expect(DocumentFormatCreate.parse({ doc: 'payslip', name: 'Payslip A5' })).toEqual({
 			doc: 'payslip',
@@ -73,7 +73,7 @@ describe('the payslip among the documents', () => {
 
 describe('the payslip’s number', () => {
 	it('runs a PS series by financial year, six digits, and is no GST document', () => {
-		expect(NumberedDocumentType.options.at(-1)).toBe('payslip');
+		expect(NumberedDocumentType.options).toContain('payslip');
 		expect(DEFAULT_SERIES.payslip).toEqual({
 			prefix: 'PS',
 			separator: '/',

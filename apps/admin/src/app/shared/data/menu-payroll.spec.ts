@@ -24,4 +24,14 @@ describe('the Payroll menu', () => {
 		expect(child('/payroll/attendance')?.permission).toEqual(['attendance.index']);
 		expect(child('/payroll/employees')?.permission).toEqual(['accounts.index']);
 	});
+
+	it('opens Increments for someone who may edit the books', () => {
+		expect(child('/payroll/increments')).toMatchObject({
+			parent_id: 27,
+			title: 'payroll_increments',
+			type: 'link',
+			level: 2,
+			permission: ['accounts.edit'],
+		});
+	});
 });

@@ -237,6 +237,9 @@ describe('minimum wages in the add-a-version pop-up (SR4)', () => {
 			levels: { unskilled: 10_500, semi_skilled: 0, skilled: 0, highly_skilled: null },
 		});
 		await redraw();
+		// A cleared date keeps the one before.
+		await enter(redraw, modal('#pr_wages_from_0'), '');
+		expect(page.picked()?.minimumWages[0]?.from).toBe('2026-10-01');
 		await enter(redraw, modal('#pr_wages_unskilled_0'), '');
 		expect(page.picked()?.minimumWages[0]?.levels.unskilled).toBeNull();
 		// The other set is left as it was.

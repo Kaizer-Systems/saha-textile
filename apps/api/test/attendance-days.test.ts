@@ -569,7 +569,7 @@ describe('My attendance and asking for leave (AT1)', () => {
 		});
 		// EL: 15.5 carried from 2025-26 and 10.5 worked this year; CL: 10 less 2; SL: 3.5 + 14 carried, 14 less a half.
 		expect(Object.fromEntries(me.leave.map((l) => [l.key, l.left]))).toEqual({
-			EL: 26,
+			EL: 29.5,
 			CL: 8,
 			SL: 31,
 			ML: null,

@@ -237,6 +237,8 @@ export const WEST_BENGAL_LEAVE: readonly LeaveType[] = [
 		active: true,
 		rules: [
 			yearRule({
+				// The OSH Code (s.32) counts annual leave by calendar year: days worked in one year earn leave in the next.
+				year: { startMonth: 1, months: 12 },
 				credit: { kind: 'per_days_worked', every: 20, give: 1 },
 				waitDays: 180,
 				joiners: 'none',

@@ -85,8 +85,8 @@ describe('leave credited so far (OB1, OB2)', () => {
 	it('gives earned leave by the days worked, only past the wait', () => {
 		expect(creditSoFar(rule(EL), { joinedOn: '2009-04-01', asOf: '2026-11-30', daysWorked: 210 })).toBe(10.5);
 		expect(creditSoFar(rule(EL), { joinedOn: '2026-08-12', asOf: '2026-11-30', daysWorked: 96 })).toBe(0);
-		// No attendance yet: six worked days in each week since the year began (244 days → 209).
-		expect(creditSoFar(rule(EL), { joinedOn: '2009-04-01', asOf: '2026-11-30' })).toBe(10.5);
+		// No attendance yet: six worked days in each week since the calendar year began (334 days → 286).
+		expect(creditSoFar(rule(EL), { joinedOn: '2009-04-01', asOf: '2026-11-30' })).toBe(14.5);
 	});
 
 	it('credits a monthly type for each month so far, and nothing for leave taken on request or none', () => {

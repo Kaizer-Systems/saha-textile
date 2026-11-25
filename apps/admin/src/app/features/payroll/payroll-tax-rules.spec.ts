@@ -359,3 +359,99 @@ describe('the income-tax section of the add-a-version pop-up (TX2)', () => {
 		expect(closed.page.form()).toBeNull();
 	});
 });
+
+describe('section 126’s limits, the rounding and the rent cities (brief 26 TX4)', () => {
+	const custom = {
+		...TAX,
+		health126: {
+			selfPaise: 30_000_00,
+			selfSeniorPaise: 60_000_00,
+			parentsPaise: 30_000_00,
+			parentsSeniorPaise: 60_000_00,
+			checkupPaise: 6_000_00,
+		},
+		rounding: 'rupee',
+		rentCities: ['Mumbai', 'Kochi'],
+	} as IncomeTaxRules;
+
+	it('reads a version’s own limits, rounding and cities, or the built-in ones for a version without them', () => {
+		expect(taxToForm(custom)).toMatchObject({
+			health: { self: 30_000, selfSenior: 60_000, parents: 30_000, parentsSenior: 60_000, checkup: 6_000 },
+			rounding: 'rupee',
+			rentCities: ['Mumbai', 'Kochi'],
+		});
+		const built = taxToForm(TAX);
+		expect(built.health).toEqual({
+			self: 25_000,
+			selfSenior: 50_000,
+			parents: 25_000,
+			parentsSenior: 50_000,
+			checkup: 5_000,
+		});
+		expect(built.rounding).toBe('ten');
+		expect(built.rentCities).toHaveLength(8);
+	});
+
+	it('writes them back in paise, the cities trimmed with a one-letter one dropped, and 80D following the family’s limit', () => {
+		const form = { ...taxToForm(custom), rentCities: [' Kochi ', 'X', 'Surat'] };
+		expect(taxToWrite(form)).toMatchObject({
+			health126: custom.health126,
+			rounding: 'rupee',
+			rentCities: ['Kochi', 'Surat'],
+			limit80dPaise: 30_000_00,
+		});
+	});
+
+	it('changes each limit and the rounding in the pop-up', async () => {
+		const { page, redraw } = await editing();
+		const keys = ['self', 'selfSenior', 'parents', 'parentsSenior', 'checkup'] as const;
+		for (const [i, key] of keys.entries()) enter(modal(`#pr_tax_126_${key}`), String(10_000 + i));
+		const rounding = modal<HTMLSelectElement>('#pr_tax_rounding') as HTMLSelectElement;
+		rounding.value = 'rupee';
+		rounding.dispatchEvent(new Event('change'));
+		await redraw();
+		expect(page.form()?.incomeTax?.health).toEqual({
+			self: 10_000,
+			selfSenior: 10_001,
+			parents: 10_002,
+			parentsSenior: 10_003,
+			checkup: 10_004,
+		});
+		expect(page.form()?.incomeTax?.rounding).toBe('rupee');
+	});
+
+	it('adds a city of two letters or more once in any case, empties the box, and removes a city', async () => {
+		const { page, redraw } = await editing();
+		const cities = () => page.form()?.incomeTax?.rentCities;
+		const add = () => modal<HTMLButtonElement>('#pr_tax_city_add') as HTMLButtonElement;
+		enter(modal('#pr_tax_city'), ' K ');
+		await redraw();
+		expect(add().disabled).toBe(true);
+		page.addCity();
+		expect([cities()?.length, page.cityToAdd()]).toEqual([8, ' K ']);
+		enter(modal('#pr_tax_city'), '  Kochi ');
+		await redraw();
+		add().click();
+		await redraw();
+		expect([cities()?.at(-1), page.cityToAdd()]).toEqual(['Kochi', '']);
+		enter(modal('#pr_tax_city'), 'mumbai');
+		await redraw();
+		add().click();
+		await redraw();
+		expect([cities()?.length, page.cityToAdd()]).toEqual([9, '']);
+		const rows = [...(modal('#pr_tax_city')?.closest('tbody')?.querySelectorAll('tr') ?? [])];
+		(rows[0]?.querySelector('button') as HTMLButtonElement).click();
+		await redraw();
+		expect(cities()).not.toContain('Mumbai');
+		expect(cities()).toHaveLength(8);
+	});
+
+	it('leaves the limits and cities alone for a version without income tax', async () => {
+		const { page } = await editing(WITHOUT_TAX);
+		page.setHealth('self', 1);
+		page.cityToAdd.set('Kochi');
+		page.addCity();
+		page.removeCity(0);
+		expect(page.form()?.incomeTax).toBeNull();
+	});
+});

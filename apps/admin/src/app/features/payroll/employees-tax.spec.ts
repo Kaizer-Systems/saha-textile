@@ -418,3 +418,111 @@ describe('figures never below nothing on the tax declaration (TX1)', () => {
 		expect(page.declaration()).toMatchObject({ previousSalaryINR: 0, previousTdsINR: 0 });
 	});
 });
+
+describe('rent cities and section 126 on the tax declaration (brief 26 TX3, TX5)', () => {
+	const rulesWith = (incomeTax: Record<string, unknown> | undefined) =>
+		vi.fn(() => of([{ id: 'v9', from: '2025-04-01', incomeTax }]));
+	const OWN_LIMITS = {
+		selfPaise: 30_000_00,
+		selfSeniorPaise: 60_000_00,
+		parentsPaise: 30_000_00,
+		parentsSeniorPaise: 60_000_00,
+		checkupPaise: 6_000_00,
+	};
+	const endYear = () => Number(THIS_YEAR.slice(0, 4)) + 1;
+
+	it('offers the cities of the rules in force, or the built-in ones, and keeps an older yes as “a metro city”', async () => {
+		const { fixture, page, redraw } = await employees({ rules: rulesWith({ rentCities: ['Kochi', 'Surat'] }) });
+		edit(fixture, 0).click();
+		await redraw();
+		expect(page.rentCities()).toEqual(['Kochi', 'Surat']);
+		expect([...(modal<HTMLSelectElement>('#emp_rent_city')?.options ?? [])].map((o) => o.value)).toEqual([
+			'',
+			'Kochi',
+			'Surat',
+			'__metro_before',
+		]);
+		page.pickRentCity('__metro_before');
+		expect(page.declaration()?.rentCity).toBeUndefined();
+		page.pickRentCity('Kochi');
+		await redraw();
+		expect([page.rentCityValue(), page.declaration()?.rentCity]).toEqual(['Kochi', 'Kochi']);
+		expect([...(modal<HTMLSelectElement>('#emp_rent_city')?.options ?? [])].map((o) => o.value)).not.toContain(
+			'__metro_before',
+		);
+		const builtIn = await employees({ rules: rulesWith(undefined) });
+		expect(builtIn.page.rentCities()).toHaveLength(8);
+		builtIn.page.form.set({ ...builtIn.page.form(), taxRegime: 'old' });
+		expect(builtIn.page.rentCityValue()).toBe('');
+	});
+
+	it('takes each section 126 amount, never below nothing, and whether the spouse or the parents are 60 or more', async () => {
+		const { fixture, page, redraw } = await employees();
+		edit(fixture, 0).click();
+		await redraw();
+		enter(modal('#emp_decl_health_self_checkup'), '3000');
+		enter(modal('#emp_decl_health_parents'), '-1');
+		enter(modal('#emp_decl_health_parents_checkup'), '4000');
+		enter(modal('#emp_decl_health_senior_medical'), '9000');
+		expect([
+			page.healthAmount('s126SelfCheckupINR'),
+			page.healthAmount('s126ParentsINR'),
+			page.healthAmount('s126ParentsCheckupINR'),
+			page.healthAmount('s126SeniorMedicalINR'),
+		]).toEqual([3_000, 0, 4_000, 9_000]);
+		modal<HTMLInputElement>('#emp_spouse_senior')?.click();
+		modal<HTMLInputElement>('#emp_parents_senior')?.click();
+		expect([page.declaration()?.s126SpouseSenior, page.declaration()?.s126ParentsSenior]).toEqual([true, true]);
+		page.setProof('s126Parents', true);
+		page.setProof('rent', false);
+		expect(page.declaration()?.proof).toMatchObject({ s126Parents: true, rent: false });
+	});
+
+	it('counts each group against its limit, from the rules in force or the built-in ones, older by the spouse’s tick', async () => {
+		const own = await employees({ rules: rulesWith({ health126: OWN_LIMITS }) });
+		edit(own.fixture, 0).click();
+		await own.redraw();
+		own.page.setHealthAmount('s80dINR', 40_000);
+		own.page.setHealthAmount('s126SelfCheckupINR', 3_000);
+		expect(own.page.healthCounts().self).toEqual({ counted: rupees(30_000_00), limit: rupees(30_000_00) });
+		own.page.setDeclaration({ s126SpouseSenior: true });
+		expect(own.page.healthCounts().self).toEqual({ counted: rupees(43_000_00), limit: rupees(60_000_00) });
+		await own.redraw();
+		expect(modal('#emp_counts_self')?.textContent).toContain('payroll_decl_counts_of');
+		const builtIn = await employees();
+		edit(builtIn.fixture, 0).click();
+		await builtIn.redraw();
+		expect(builtIn.page.healthCounts().parents.limit).toBe(rupees(25_000_00));
+	});
+
+	it('counts the family as 60 or more by the date of birth at the year’s end, a 1 April birthday a year older', async () => {
+		const { fixture, page, redraw } = await employees();
+		edit(fixture, 0).click();
+		await redraw();
+		const wording = () => modal('#emp_spouse_senior')?.closest('td')?.querySelector('small')?.textContent?.trim();
+		expect([page.selfSeniorByAge(), wording()]).toEqual([false, 'payroll_decl_senior_from_dob']);
+		page.patch({ dateOfBirth: `${endYear() - 60}-04-01` });
+		await redraw();
+		expect([page.selfSeniorByAge(), wording()]).toEqual([true, 'payroll_decl_senior_by_age']);
+		page.patch({ dateOfBirth: `${endYear() - 60}-04-02` });
+		expect(page.selfSeniorByAge()).toBe(false);
+		page.patch({ dateOfBirth: null });
+		expect(page.selfSeniorByAge()).toBe(false);
+	});
+
+	it('draws each group’s proof and counts once, across its rows, with the other rows’ cells left empty', async () => {
+		const { fixture, redraw } = await employees();
+		edit(fixture, 0).click();
+		await redraw();
+		expect([
+			modal('#emp_proof_s80d')?.closest('td')?.getAttribute('rowspan'),
+			modal('#emp_proof_s126Parents')?.closest('td')?.getAttribute('rowspan'),
+			modal('#emp_counts_self')?.getAttribute('rowspan'),
+			modal('#emp_counts_parents')?.getAttribute('rowspan'),
+		]).toEqual(['2', '3', '2', '3']);
+		const checkupRow = modal('#emp_decl_health_self_checkup')?.closest('tr') as HTMLElement;
+		expect(checkupRow.querySelectorAll('td')).toHaveLength(3);
+		const rentRow = modal('#emp_rent')?.closest('tr') as HTMLElement;
+		expect([...rentRow.querySelectorAll('td')].map((td) => td.children.length)).toEqual([1, 1, 0, 1, 0]);
+	});
+});

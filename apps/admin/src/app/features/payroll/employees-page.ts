@@ -384,8 +384,8 @@ export class EmployeesPage {
 
 	/** SR2: the day of the person's latest revision, when they have one (the first salary has no letter). */
 	lastRevision(employee: EmployeeView): string | null {
-		const history = employee.salaryHistory ?? [];
-		return history.length > 1 ? (history.at(-1)?.from ?? null) : null;
+		const [, ...later] = employee.salaryHistory ?? [];
+		return later.at(-1)?.from ?? null;
 	}
 
 	/** SR2: download the letter of the person's latest revision. */

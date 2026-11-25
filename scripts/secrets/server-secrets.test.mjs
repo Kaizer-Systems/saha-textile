@@ -37,6 +37,7 @@ test('a blank server project gets its own secrets and the server settings, and t
 		'JWT_REFRESH_SECRET',
 		'MAILBOX_TOKEN_KEY',
 		'MONGODB_PASSWORD',
+		'PAYROLL_PII_KEY',
 		'REDIS_PASSWORD',
 	]);
 	assert.ok(report.set.includes('DEPLOY_ENV') && report.set.includes('MONGODB_USERNAME'));
@@ -112,7 +113,7 @@ test('a project with its own values is left alone; a setting that is not the ser
 	folders.api.set('MONGODB_DB_NAME', `${MARK}other`);
 	const { changes, report } = planServerSecrets({ tier: 'production', folders, local: empty(), inventory, generate });
 	assert.deepEqual(changes, []);
-	assert.equal(report.kept.length, 11);
+	assert.equal(report.kept.length, 12);
 	assert.deepEqual(report.differs, ['MONGODB_DB_NAME (expected saha_textile_prod)']);
 	assert.deepEqual(report.backup, [...inventory.backup].sort());
 	assert.ok(!formatServerPlan(report, { project: 'p', written: false }).includes(MARK));

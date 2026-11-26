@@ -639,3 +639,27 @@ describe('downloading the whole report', () => {
 		expect(page.busy()).toBe(false);
 	});
 });
+
+describe('a starting audit report (brief 26 AU2)', () => {
+	it('is never changed: saving it makes the person’s own copy and opens it, or names the refusal', async () => {
+		const starting = { ...SAVED, id: 'rpt_audit_logins', createdBy: null };
+		const { page, calls, navigate, notifier } = await builder(
+			{ one: vi.fn(() => of(starting)) },
+			{ id: 'rpt_audit_logins' },
+		);
+		await page.save();
+		expect(calls.update).not.toHaveBeenCalled();
+		expect(calls.create).toHaveBeenCalledWith(expect.not.objectContaining({ version: expect.anything() }));
+		expect(navigate).toHaveBeenCalledWith(['/accounts/reports/saved', 'rep9']);
+		expect(notifier.showSuccess).toHaveBeenCalledWith('report_saved');
+		calls.create.mockReturnValueOnce(throwError(() => refusal('report_audit_not_allowed')));
+		await page.save();
+		expect(notifier.showError).toHaveBeenCalledWith('report_problem_report_audit_not_allowed');
+		const builtIn = await builder(
+			{ update: vi.fn(() => throwError(() => refusal('report_definition_built_in'))) },
+			{ id: 'rep1' },
+		);
+		await builtIn.page.save();
+		expect(builtIn.notifier.showError).toHaveBeenCalledWith('report_problem_report_definition_built_in');
+	});
+});

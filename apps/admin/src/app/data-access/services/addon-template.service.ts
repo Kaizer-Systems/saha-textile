@@ -1,10 +1,11 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import type { AddonTemplateWrite } from '@saha-textile/contracts';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../../public/environments/environment';
+
+import type { AddonTemplateWrite } from '@saha-textile/contracts';
 
 export type AddonTemplateRow = AddonTemplateWrite;
 

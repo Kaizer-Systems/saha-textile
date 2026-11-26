@@ -7,6 +7,7 @@
 		<h3>
 			<a
 				href="javascript:void(0)"
+				role="button"
 				class="text-title"
 			>
 				<i class="ri-close-fill"></i>
@@ -18,7 +19,7 @@
 	<div class="filter-category">
 		<app-collection-filter [filter]="filter()" />
 	</div>
-	@if (attributeService.skeletonLoader) {
+	@if (loading()) {
 	<app-skeleton-collection-sidebar />
 	} @else {
 	<div
@@ -55,8 +56,7 @@
 				</div>
 			</div>
 		</div>
-		}
-		@if (!filter()!['store_slug']) { @for (key of facetKeys(); track key) {
+		} @if (!filter()!['store_slug']) { @for (key of facetKeys(); track key) {
 		<div
 			class="accordion-item"
 			ngbAccordionItem

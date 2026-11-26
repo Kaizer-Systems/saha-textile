@@ -23,6 +23,8 @@ import {
 } from './auth-gateway';
 import { CsrfTokens } from './csrf-tokens';
 
+import type { SessionNoticeResponse } from '@saha-textile/contracts';
+
 /**
  * The single place storefront authentication route paths exist in this application.
  *
@@ -46,6 +48,7 @@ const ROUTES = {
 	oauthConnect: '/auth/storefront/oauth/connect',
 	oauthDisconnect: '/auth/storefront/oauth/disconnect',
 	loginMethods: '/auth/storefront/login-methods',
+	sessionNotice: '/auth/storefront/session-notice',
 	stepUpRequest: '/auth/storefront/step-up/request',
 	passwordLogin: '/auth/storefront/login/password',
 	otpRequest: '/auth/storefront/login/email-otp/request',
@@ -214,6 +217,14 @@ export class HttpStorefrontAuthGateway extends StorefrontAuthGateway {
 
 	override loginMethods(): Observable<LoginMethodsView> {
 		return this.http.get<LoginMethodsView>(this.url(ROUTES.loginMethods));
+	}
+
+	override sessionNotice(): Observable<string | null> {
+		return this.http.get<SessionNoticeResponse>(this.url(ROUTES.sessionNotice)).pipe(
+			map((response) => response.signedOutAt),
+			// A quiet question: any failure just leaves the line out.
+			catchError(() => of(null)),
+		);
 	}
 
 	override requestStepUp(channel: 'email' | 'sms'): Observable<void> {

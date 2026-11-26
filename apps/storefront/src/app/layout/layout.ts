@@ -7,22 +7,28 @@ import { LoadingBarModule } from '@ngx-loading-bar/core';
 import { Observable } from 'rxjs';
 
 import { applyBrandHead } from '@core/brand/brand-head';
+import { ThemeModeStore } from '@core/brand/theme-mode';
+import { ShopEvents } from '@core/events/shop-events';
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { AccountStore } from '@core/state/account.store';
 import { AuthStore } from '@core/state/auth.store';
 import { SiteConfigStore } from '@core/state/site-config.store';
-import { injectBrandQuery } from '@data-access/queries/brand.queries';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
+import { injectBrandQuery } from '@data-access/queries/brand.queries';
 import { SiteConfigService } from '@data-access/services/site-config.service';
 import { Footer } from '@layout/footer/footer';
 import { Header } from '@layout/header/header';
 import { BackToTop } from '@shared/ui/back-to-top/back-to-top';
 import { Cookie } from '@shared/ui/cookie/cookie';
 import { Loader } from '@shared/ui/loader/loader';
+import { EventModal } from '@shared/ui/modal/event-modal/event-modal';
 import { NewsletterModal } from '@shared/ui/modal/newsletter-modal/newsletter-modal';
 import { RecentPurchasePopup } from '@shared/ui/recent-purchase-popup/recent-purchase-popup';
 import { StickyCart } from '@shared/ui/sticky-cart/sticky-cart';
 import { StickyCompare } from '@shared/ui/sticky-compare/sticky-compare';
+
+/** The shop's built-in icon (the manifest's fallback too): never another brand's picture. */
+const DEFAULT_SHARE_IMAGE = 'assets/images/app-icon-512.png';
 
 @Component({
 	selector: 'app-layout',
@@ -38,6 +44,7 @@ import { StickyCompare } from '@shared/ui/sticky-compare/sticky-compare';
 		StickyCart,
 		StickyCompare,
 		BackToTop,
+		EventModal,
 		NewsletterModal,
 		Cookie,
 		AsyncPipe,
@@ -63,11 +70,19 @@ export class Layout {
 	private readonly brand = injectBrandQuery();
 	private readonly page = inject<Document>(DOCUMENT);
 	private readonly seo = inject(LocaleSeo);
+	private readonly shopEvents = inject(ShopEvents);
+	private readonly themeMode = inject(ThemeModeStore);
 
 	constructor() {
+		// Published launch and sale events: the top bar, the phone strip and the event popup.
+		this.shopEvents.load();
 		effect(() => {
 			const brand = this.brand.data();
-			if (brand) applyBrandHead(this.page, brand, this.seo.absoluteUrl('/'));
+			if (!brand) return;
+			applyBrandHead(this.page, brand, this.seo.absoluteUrl('/'), this.themeMode.fixedMode());
+			// Pages shared without their own picture show the Brand Kit's link preview picture, or
+			// the built-in app icon while the Brand Kit has neither that nor a logo.
+			this.seo.setDefaultImage(brand.shareImage ?? DEFAULT_SHARE_IMAGE);
 		});
 		this.isBrowser = isPlatformBrowser(this.platformId);
 		this.siteConfigService.preloader.set(true);

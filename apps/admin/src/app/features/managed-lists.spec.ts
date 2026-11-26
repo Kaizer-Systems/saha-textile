@@ -1,6 +1,7 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { signal, type Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -13,19 +14,21 @@ import { AdminRolesGateway } from '@core/admin-roles/admin-roles.gateway';
 import { AdminUsersGateway } from '@core/admin-users/admin-users.gateway';
 import { ReviewsGateway } from '@core/media/reviews.gateway';
 import { AddonTemplateService } from '@data-access/services/addon-template.service';
+import { BlogService } from '@data-access/services/blog.service';
 import { FaqService } from '@data-access/services/faq.service';
-import { ProductService } from '@data-access/services/product.service';
 import { NotificationService } from '@data-access/services/notification.service';
+import { ProductDraftService } from '@data-access/services/product-draft.service';
+import { ProductService } from '@data-access/services/product.service';
 import { RedirectService } from '@data-access/services/redirect.service';
 
 import { AddonTemplate } from './addon-template/addon-template';
+import { Blog } from './blog/blog';
 import { Customer } from './customer/customer';
 import { Faq } from './faq/faq';
 import { Product } from './product/product';
 import { Redirect } from './redirect/redirect';
 import { Review } from './review/review';
 import { Role } from './role/role';
-import { Stores } from './store/stores';
 import { Tag } from './tag/tag';
 import { AdminUsers } from './user/user';
 
@@ -56,13 +59,13 @@ vi.mock('@data-access/queries/admin-customers.queries', () => ({
 	injectAdminCustomersQuery: (p: () => unknown, v: () => unknown) => query(p, v),
 }));
 vi.mock('@data-access/queries/admin-users.queries', () => ({ injectAdminUsersQuery: (p: () => unknown) => query(p) }));
+vi.mock('@data-access/queries/blog.queries', () => ({ injectBlogsQuery: (p: () => unknown) => query(p) }));
 vi.mock('@data-access/queries/faq.queries', () => ({ injectFaqsQuery: (p: () => unknown) => query(p) }));
 vi.mock('@data-access/queries/product.queries', () => ({ injectCatalogProductsQuery: (p: () => unknown) => query(p) }));
 vi.mock('@data-access/queries/review.queries', () => ({
 	injectModerationReviewsQuery: (p: () => unknown) => query(p),
 }));
 vi.mock('@data-access/queries/role.queries', () => ({ injectRolesQuery: (p: () => unknown) => query(p) }));
-vi.mock('@data-access/queries/store.queries', () => ({ injectStoresQuery: (p: () => unknown) => query(p) }));
 vi.mock('@data-access/queries/tag.queries', () => ({ injectTagsQuery: (p: () => unknown) => query(p) }));
 
 const render = <T>(type: Type<T>, providers: unknown[] = [], url = '/list', template = '') => {
@@ -198,7 +201,7 @@ describe('Admin users list', () => {
 
 describe('Role list', () => {
 	const setup = () => {
-		const gateway = { remove: vi.fn(() => of(undefined)) };
+		const gateway = { remove: vi.fn((_id: string) => of(undefined)) };
 		return { ...render(Role, [{ provide: AdminRolesGateway, useValue: gateway }]), gateway };
 	};
 
@@ -250,12 +253,25 @@ describe('Role list', () => {
 });
 
 describe('Tag list', () => {
+	const tagSetup = (save = () => of({ id: 't' }) as never) => {
+		const blogs = { saveTerm: vi.fn(save), deleteTerm: vi.fn(() => of(undefined)) };
+		const toasts = { showError: vi.fn(), showSuccess: vi.fn() };
+		const providers = [
+			{ provide: BlogService, useValue: blogs },
+			{ provide: QueryClient, useValue: client },
+			{ provide: NotificationService, useValue: toasts },
+			{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+		];
+		return { blogs, toasts, ...render(Tag, providers) };
+	};
+	const blogTag = { id: 'btag_1', slug: 'silk', name: { en: 'Silk' }, description: {}, status: 'draft' };
+
 	it('fills the table and opens the right edit screen', () => {
-		const { fixture, page, router } = render(Tag);
-		expect(page.tableConfig.total).toBe(0);
+		const { fixture, page, router } = tagSetup();
+		expect(page.tableConfig().total).toBe(0);
 		data.set({ data: [{ id: 1 }], total: 1 });
 		TestBed.tick();
-		expect(page.tableConfig.total).toBe(1);
+		expect(page.tableConfig().total).toBe(1);
 		page.onTableChange({ page: 1 });
 		page.onActionClicked({ actionToPerform: 'edit', data: { id: 1 } } as never);
 		expect(router.navigateByUrl).toHaveBeenLastCalledWith('/tag/edit/1');
@@ -269,41 +285,192 @@ describe('Tag list', () => {
 			page.onActionClicked({ actionToPerform, data: {} } as never);
 		}
 	});
+
+	it('switches, deletes and bulk-deletes blog tags through the blog API', () => {
+		const { fixture, page, blogs } = tagSetup();
+		fixture.componentRef.setInput('tagType', 'post');
+		page.onActionClicked({ actionToPerform: 'status', data: { id: 'btag_1', status: 1, blog: blogTag } } as never);
+		expect(blogs.saveTerm).toHaveBeenCalledWith('tags', 'btag_1', {
+			name: { en: 'Silk' },
+			description: {},
+			slug: 'silk',
+			status: 'live',
+		});
+		page.onActionClicked({ actionToPerform: 'delete', data: { id: 'btag_1', blog: blogTag } } as never);
+		page.onActionClicked({ actionToPerform: 'deleteAll', data: ['btag_2'] } as never);
+		expect(blogs.deleteTerm).toHaveBeenCalledWith('tags', 'btag_1');
+		expect(blogs.deleteTerm).toHaveBeenCalledWith('tags', 'btag_2');
+		expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['tags'] });
+	});
+
+	it('names what a blog tag needs when its switch is refused', () => {
+		const refusal = new HttpErrorResponse({
+			status: 400,
+			error: { error: { issues: [{ path: ['name', 'bn'], code: 'go_live_blocked', message: 'x' }] } },
+		});
+		const { fixture, page, toasts } = tagSetup(() => throwError(() => refusal) as never);
+		fixture.componentRef.setInput('tagType', 'post');
+		page.onActionClicked({ actionToPerform: 'status', data: { id: 'btag_1', status: 1, blog: blogTag } } as never);
+		expect(toasts.showError).toHaveBeenCalledWith('blog_go_live_blocked বাংলা: blog_gap_name');
+		page.onActionClicked({ actionToPerform: 'status', data: { id: 'btag_1', status: 0 } } as never);
+		expect(toasts.showError).toHaveBeenCalledTimes(1);
+	});
 });
 
-describe('Stores list', () => {
-	it('names the vendor on each row and opens a row', () => {
-		const { page, router } = render(Stores);
-		expect(page.tableConfig.data).toEqual([]);
-		data.set({ data: [{ id: 1, vendor: { name: 'Asha' } }], total: 1 });
+describe('Blog list', () => {
+	const blogSetup = () => {
+		const blogs = {
+			goLive: vi.fn((_id: string) => of({ live: true, gaps: [] })),
+			setStatus: vi.fn((_id: string, status: string) =>
+				of(
+					status === 'live'
+						? { live: false, gaps: [{ field: 'title', locale: 'bn' }] }
+						: { live: false, gaps: [] },
+				),
+			),
+			deletePost: vi.fn(() => of(undefined)),
+		};
+		const toasts = { showError: vi.fn(), showSuccess: vi.fn() };
+		const providers = [
+			{ provide: BlogService, useValue: blogs },
+			{ provide: QueryClient, useValue: client },
+			{ provide: NotificationService, useValue: toasts },
+			{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+		];
+		return { blogs, toasts, ...render(Blog, providers) };
+	};
+
+	it('fills the table from the query and opens a post', () => {
+		const { page, router } = blogSetup();
+		expect(page.tableConfig()).toMatchObject({ data: [], total: 0 });
+		data.set({ data: [{ id: 'blg_1' }], total: 1 });
 		TestBed.tick();
-		expect(page.tableConfig.data).toMatchObject([{ vendor_name: 'Asha' }]);
-		data.set({});
+		expect(page.tableConfig()).toMatchObject({ data: [{ id: 'blg_1' }], total: 1 });
+		page.onTableChange({ page: 2 });
+		page.onActionClicked({ actionToPerform: 'edit', data: { id: 'blg_1' } } as never);
+		expect(router.navigateByUrl).toHaveBeenCalledWith('/blog/edit/blg_1');
+		page.onActionClicked({ actionToPerform: 'other', data: {} } as never);
+	});
+
+	it('goes live, takes down and deletes through the API with the blog words', () => {
+		const { page, blogs, toasts } = blogSetup();
+		page.onActionClicked({ actionToPerform: 'go_live', data: { id: 'blg_1' } } as never);
+		expect(toasts.showSuccess).toHaveBeenCalledWith('blog_go_live_done');
+		page.onActionClicked({ actionToPerform: 'status', data: { id: 'blg_1', status: 1 } } as never);
+		expect(toasts.showError).toHaveBeenCalledWith('blog_go_live_blocked বাংলা: blog_gap_title');
+		page.onActionClicked({ actionToPerform: 'status', data: { id: 'blg_1', status: 0 } } as never);
+		expect(blogs.setStatus).toHaveBeenLastCalledWith('blg_1', 'draft');
+		expect(toasts.showSuccess).toHaveBeenCalledWith('blog_taken_down');
+		page.onActionClicked({ actionToPerform: 'delete', data: { id: 'blg_1' } } as never);
+		page.onActionClicked({ actionToPerform: 'deleteAll', data: ['blg_2'] } as never);
+		expect(blogs.deletePost).toHaveBeenCalledWith('blg_2');
+		expect(toasts.showSuccess).toHaveBeenCalledWith('blog_deleted');
+	});
+
+	it('puts every ticked post live, skips live ones and names what stops the rest', () => {
+		const { page, blogs, toasts } = blogSetup();
+		data.set({
+			data: [
+				{ id: 'a', title: 'Ready', status: '0' },
+				{ id: 'b', title: 'Already live', status: '1' },
+				{ id: 'c', title: 'Missing Bengali', status: '0' },
+				{ id: 'd', title: 'Broken', status: '0' },
+				{ id: 'e', title: 'Not ticked', status: '0' },
+			],
+			total: 5,
+		});
 		TestBed.tick();
-		expect(page.tableConfig.data).toEqual([]);
-		page.onTableChange({ page: 1 });
-		page.onActionClicked({ actionToPerform: 'edit', data: { id: 1 } } as never);
-		expect(router.navigateByUrl).toHaveBeenCalledWith('/store/edit/1');
-		for (const actionToPerform of ['is_approved', 'delete', 'deleteAll', 'other']) {
-			page.onActionClicked({ actionToPerform, data: {} } as never);
-		}
+		blogs.goLive.mockImplementation(((id: string) =>
+			id === 'a'
+				? of({ live: true, gaps: [] })
+				: id === 'c'
+					? of({ live: false, gaps: [{ field: 'content', locale: 'bn' }] })
+					: throwError(() => new Error('no'))) as never);
+		page.onActionClicked({ actionToPerform: 'bulk_go_live', data: ['a', 'b', 'c', 'd'] } as never);
+		expect(blogs.goLive.mock.calls.map(([id]) => id)).toEqual(['a', 'c', 'd']);
+		expect(toasts.showSuccess).toHaveBeenCalledWith('blog_bulk_live');
+		expect(toasts.showError).toHaveBeenCalledWith('Missing Bengali: বাংলা: blog_gap_content');
+		expect(toasts.showError).toHaveBeenCalledWith('Broken: blog_rejected');
+		expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['blogs'] });
+	});
+
+	it('takes every ticked live post off the shop and leaves drafts alone', () => {
+		const { page, blogs, toasts } = blogSetup();
+		data.set({
+			data: [
+				{ id: 'a', title: 'Live', status: '1' },
+				{ id: 'b', title: 'Draft', status: '0' },
+				{ id: 'c', title: 'Live too', status: '1' },
+			],
+			total: 3,
+		});
+		TestBed.tick();
+		blogs.setStatus.mockImplementation(((id: string) =>
+			id === 'c' ? throwError(() => new Error('no')) : of({ live: false, gaps: [] })) as never);
+		page.onActionClicked({ actionToPerform: 'bulk_take_down', data: ['a', 'b', 'c'] } as never);
+		expect(blogs.setStatus.mock.calls).toEqual([
+			['a', 'draft'],
+			['c', 'draft'],
+		]);
+		expect(toasts.showSuccess).toHaveBeenCalledWith('blog_bulk_taken_down');
+		expect(toasts.showError).toHaveBeenCalledWith('blog_rejected');
+	});
+
+	it('says when a delete is refused', () => {
+		const { page, blogs, toasts } = blogSetup();
+		blogs.deletePost.mockReturnValueOnce(throwError(() => new Error('no')) as never);
+		page.onActionClicked({ actionToPerform: 'delete', data: { id: 'blg_1' } } as never);
+		expect(toasts.showError).toHaveBeenCalledWith('blog_rejected');
 	});
 });
 
 const productDeps = () => [
 	{ provide: ProductService, useValue: { goLive: vi.fn() } },
 	{ provide: NotificationService, useValue: { showSuccess: vi.fn(), showError: vi.fn() } },
-	{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+	{
+		provide: TranslocoService,
+		useValue: { translate: (key: string) => key, langChanges$: of('en'), getActiveLang: () => 'en' },
+	},
+	{
+		provide: ProductDraftService,
+		useValue: {
+			list: vi.fn(() =>
+				of({
+					items: [
+						{ kind: 'edit', productId: 'p2' },
+						{ kind: 'new', productId: null },
+					],
+					mine: 2,
+				}),
+			),
+		},
+	},
 ];
 
 describe('Product list', () => {
+	it('remembers the rows on screen for Save and next when opening one', () => {
+		const { page, router } = render(Product, productDeps());
+		data.set({
+			items: [
+				{ id: 'p1', stock: 1 },
+				{ id: 'p2', stock: 0 },
+			],
+			total: 2,
+		});
+		TestBed.tick();
+		page.edit({ id: 'p1' } as never);
+		expect(router.navigateByUrl).toHaveBeenCalledWith('/product/edit/p1');
+		expect(JSON.parse(sessionStorage.getItem('st_admin_product_queue') ?? '[]')).toEqual(['p1', 'p2']);
+		sessionStorage.clear();
+	});
+
 	it('passes only a text search on to the catalogue', () => {
 		const { page } = render(Product, productDeps());
 		const params = lastParams;
 		page.onTableChange({ search: 'silk', page: 2, paginate: 30 });
-		expect(params?.()).toEqual({ search: 'silk', page: 2, pageSize: 30 });
+		expect(params?.()).toEqual({ search: 'silk', page: 2, pageSize: 30, missing: null });
 		page.onTableChange({ search: 5 });
-		expect(params?.()).toEqual({ search: undefined, page: 1, pageSize: 15 });
+		expect(params?.()).toEqual({ search: undefined, page: 1, pageSize: 15, missing: null });
 	});
 
 	it('maps the catalogue rows', () => {
@@ -335,10 +502,24 @@ describe('Product list', () => {
 			total: 2,
 		});
 		TestBed.tick();
-		expect(page.tableConfig().data![0]).toMatchObject({ product_thumbnail: { original_url: 'u' }, status: 1 });
+		expect(page.tableConfig().data![0]).toMatchObject({
+			product_thumbnail: { original_url: 'u' },
+			status: 'live',
+			status_switch: '1',
+			status_label: 'product_state_live',
+		});
 		expect(page.tableConfig().data![0]?.stock).toContain('in stock');
-		expect(page.tableConfig().data![1]).toMatchObject({ product_thumbnail: null, status: 0 });
+		// Q4 = A: a product never live reads "Not live yet"; your draft of changes shows as a chip.
+		expect(page.tableConfig().data![1]).toMatchObject({
+			product_thumbnail: null,
+			status_switch: '0',
+			status_label: 'product_state_not_live_yet',
+		});
+		expect(page.tableConfig().data![1]?.name).toContain('product_draft_of_changes');
 		expect(page.tableConfig().data![1]?.stock).toContain('out of stock');
+		// Q3 = B: no Approve or Store column.
+		expect(page.tableConfig().columns?.map((column) => column.dataField)).not.toContain('store_name');
+		expect(page.tableConfig().columns?.map((column) => column.dataField)).not.toContain('is_approved');
 	});
 
 	it('opens a row, and passes the table state to the query', () => {
@@ -347,7 +528,7 @@ describe('Product list', () => {
 		TestBed.tick();
 		page.onActionClicked({ actionToPerform: 'edit', data: { id: 'p1' } } as never);
 		expect(router.navigateByUrl).toHaveBeenCalledWith('/product/edit/p1');
-		for (const actionToPerform of ['is_approved', 'status', 'delete', 'deleteAll', 'duplicate', 'other']) {
+		for (const actionToPerform of ['other', undefined]) {
 			page.onActionClicked({ actionToPerform, data: {} } as never);
 		}
 	});
@@ -362,9 +543,19 @@ describe('FAQ list', () => {
 	it('fills the table', () => {
 		const { page } = setup();
 		expect(page.tableConfig().total).toBe(0);
-		data.set({ data: [{ id: 1 }], total: 1 });
+		data.set({
+			data: [
+				{ id: 1, status: true },
+				{ id: 2, status: false },
+			],
+			total: 2,
+		});
 		TestBed.tick();
-		expect(page.tableConfig().total).toBe(1);
+		expect(page.tableConfig().total).toBe(2);
+		expect(page.tableConfig().data?.map((row) => (row as unknown as { status: string }).status)).toEqual([
+			'1',
+			'0',
+		]);
 		page.onTableChange({ page: 1 });
 	});
 
@@ -372,12 +563,14 @@ describe('FAQ list', () => {
 		const { page, router, service } = setup();
 		page.onActionClicked({ actionToPerform: 'edit', data: { id: 1 } } as never);
 		expect(router.navigateByUrl).toHaveBeenCalledWith('/faq/edit/1');
-		page.onActionClicked({ actionToPerform: 'status', data: { id: 1, status: true } } as never);
+		page.onActionClicked({ actionToPerform: 'status', data: { id: 1, status: 0 } } as never);
 		expect(service.save).toHaveBeenCalledWith({ id: 1, status: false });
+		page.onActionClicked({ actionToPerform: 'status', data: { id: 1, status: 1 } } as never);
+		expect(service.save).toHaveBeenLastCalledWith({ id: 1, status: true });
 		page.onActionClicked({ actionToPerform: 'delete', data: { faqId: 'f1' } } as never);
 		expect(service.remove).toHaveBeenCalledWith('f1');
 		page.onActionClicked({ actionToPerform: 'other', data: {} } as never);
-		expect(refetch).toHaveBeenCalledTimes(2);
+		expect(refetch).toHaveBeenCalledTimes(3);
 	});
 
 	it('deletes the chosen rows together', () => {
@@ -427,15 +620,24 @@ describe('Review moderation', () => {
 		expect(page.tableConfig().total).toBe(0);
 		data.set({
 			items: [
-				{ ...row([{ thumbUrl: 't' }]), productName: 'Red', customerName: 'Asha' },
+				{
+					...row([{ thumbUrl: 't' }], { title: 'Lovely', body: 'Soft drape' }),
+					productName: 'Red',
+					customerName: 'Asha',
+				},
 				row([{ thumbUrl: null }]),
 				row([]),
 			],
 			total: 3,
 		});
 		TestBed.tick();
-		const rows = page.tableConfig().data as Record<string, unknown>[];
-		expect(rows[0]).toMatchObject({ consumer_name: 'Asha', product_name: 'Red', photo_count: 1 });
+		const rows = page.tableConfig().data as unknown as Record<string, unknown>[];
+		expect(rows[0]).toMatchObject({
+			consumer_name: 'Asha',
+			product_name: 'Red',
+			review: 'Lovely — Soft drape',
+			photo_count: 1,
+		});
 		expect(rows[1]).toMatchObject({ product_review_image: null, consumer_name: 'u1', product_name: 'p1' });
 		expect(rows[2]).toMatchObject({ product_review_image: null });
 		page.onTableChange({ page: 1 });
@@ -486,8 +688,37 @@ describe('Redirects', () => {
 			remove: vi.fn(() => of(undefined)),
 			save: vi.fn(() => of({})),
 		};
-		return { ...render(Redirect, [{ provide: RedirectService, useValue: api }], url), api };
+		// The page reads `?source=` from its route (the Release Console's Add redirect link).
+		const [path = '', query = ''] = url.split('?');
+		const route = {
+			snapshot: {
+				queryParamMap: convertToParamMap(Object.fromEntries(new URLSearchParams(query))),
+				url: path
+					.split('/')
+					.filter(Boolean)
+					.slice(1)
+					.map((segment) => ({ path: segment })),
+			},
+		};
+		return {
+			...render(
+				Redirect,
+				[
+					{ provide: RedirectService, useValue: api },
+					{ provide: ActivatedRoute, useValue: route },
+				],
+				url,
+			),
+			api,
+		};
 	};
+
+	it('starts a new redirect from the path the Release Console sends', () => {
+		expect(setup('/redirect/create?source=/missing/page').page.form.getRawValue().sourcePath).toBe('/missing/page');
+		// Only a path, and only on the create screen.
+		expect(setup('/redirect/create?source=https://x.test/a').page.form.getRawValue().sourcePath).toBe('');
+		expect(setup('/redirect?source=/missing/page').page.form.getRawValue().sourcePath).toBe('');
+	});
 
 	it('loads the list and knows its mode', () => {
 		const { page } = setup();
@@ -564,11 +795,11 @@ describe('Redirects', () => {
 });
 
 describe('Add-on templates', () => {
-	const chest = { code: 'chest', label: { en: 'Chest', fr: 'Poitrine' }, unit: 'in', min: 24, max: 50, step: 0.5 };
+	const chest = { code: 'chest', label: { en: 'Chest', bn: 'বুক' }, unit: 'in', min: 24, max: 50, step: 0.5 };
 	const rows = [
 		{
 			code: 'fall',
-			label: { en: 'Fall', fr: 'Pli' },
+			label: { en: 'Fall', bn: 'ভাঁজ' },
 			priceINR: 100,
 			fields: [chest],
 			sizeGuide: [{ size: 'M', values: { chest: 36 } }],
@@ -595,7 +826,7 @@ describe('Add-on templates', () => {
 		const { page } = setup('/addon-template/edit/fall?x=1');
 		expect(page.form.getRawValue()).toMatchObject({ code: 'fall', label: 'Fall', priceINR: 100 });
 		expect(page.measures()).toEqual([chest]);
-		expect(page.gaps()).toEqual({ en: [], fr: [] });
+		expect(page.gaps()).toEqual({ en: [], bn: [] });
 		expect(setup('/addon-template/edit/none').page.form.getRawValue().code).toBe('');
 		expect(setup('/addon-template/create').page.formOnly()).toBe(true);
 	});
@@ -608,7 +839,7 @@ describe('Add-on templates', () => {
 
 	it('edits fields in the language on screen, and counts what is missing', () => {
 		const { page } = setup('/addon-template/create');
-		expect(page.gaps()).toEqual({ en: [], fr: [] });
+		expect(page.gaps()).toEqual({ en: [], bn: [] });
 		expect(page.onSourceLanguage).toBe(true);
 		page.addField();
 		page.addField();
@@ -620,11 +851,11 @@ describe('Add-on templates', () => {
 		expect(page.measures()[0]).toMatchObject({ label: { en: 'Waist' }, unit: 'cm', min: 22, max: null });
 		expect(page.guide(page.measures()[0] as never)).toBe('Waist');
 		expect(page.guide(page.measures()[1] as never)).toBe('');
-		page.switchLanguage('fr');
+		page.switchLanguage('bn');
 		expect(page.onSourceLanguage).toBe(false);
-		page.setLabel(0, page.measures()[0] as never, 'Taille');
-		expect(page.measures()[0]?.label).toEqual({ en: 'Waist', fr: 'Taille' });
-		expect(page.gaps()['fr']?.length).toBe(2);
+		page.setLabel(0, page.measures()[0] as never, 'কোমর');
+		expect(page.measures()[0]?.label).toEqual({ en: 'Waist', bn: 'কোমর' });
+		expect(page.gaps()['bn']?.length).toBe(2);
 		page.removeField(1);
 		expect(page.measures()).toHaveLength(1);
 	});
@@ -651,7 +882,7 @@ describe('Add-on templates', () => {
 
 	it('needs an English name and a code, then saves and returns to the list', () => {
 		const { page, api, router } = setup('/measurement/create');
-		page.switchLanguage('fr');
+		page.switchLanguage('bn');
 		page.save();
 		expect(page.onSourceLanguage).toBe(true);
 		expect(page.form.controls.label.errors).toEqual({ required: true });
@@ -707,9 +938,9 @@ describe('Add-on templates', () => {
 		input.id = 'field_0';
 		document.body.appendChild(input);
 		page.setLabel(0, page.measures()[0] as never, 'Chest');
-		page.openLanguageGap({ key: 'field_0', locale: 'fr' });
+		page.openLanguageGap({ key: 'field_0', locale: 'bn' });
 		vi.runAllTimers();
-		expect(page.text.locale()).toBe('fr');
+		expect(page.text.locale()).toBe('bn');
 		expect(document.activeElement).toBe(input);
 		input.remove();
 		vi.useRealTimers();

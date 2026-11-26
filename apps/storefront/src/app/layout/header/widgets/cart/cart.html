@@ -1,3 +1,5 @@
+<!-- The metre unit in the reader's language, for the length boxes' change handlers. -->
+@let metreUnit = 'unit_m' | transloco;
 <!-- Cart Style Basic -->
 @if (style() === 'basic') {
 <app-button
@@ -5,13 +7,14 @@
 	[class]="'btn p-0 position-relative header-wishlist'"
 	[spinner]="false"
 	[id]="'cart_sidebar_btn'"
+	[ariaLabel]="'cart' | transloco"
 	(click)="cartStyle === 'cart_sidebar' && cartToggle(true)"
 >
 	<i class="ri-shopping-cart-line"></i>
 	@if ((cartItem$ | async)?.length) {
 	<span class="position-absolute translate-middle badge start-100 top-0">
 		{{ (cartItem$ | async)?.length }}
-		<span class="visually-hidden">{{ 'unread_messages' | transloco }}</span>
+		<span class="visually-hidden">{{ 'items' | transloco }}</span>
 	</span>
 	}
 </app-button>
@@ -21,6 +24,7 @@
 @if (style() === 'classic') {
 <a
 	href="javascript:void(0)"
+	role="button"
 	class="header-icon swap-icon"
 	(click)="cartStyle === 'cart_sidebar' && cartToggle(true)"
 >
@@ -41,6 +45,8 @@
 		<h4>{{ 'shopping_cart' | transloco }}</h4>
 		<a
 			href="javascript:void(0)"
+			role="button"
+			[attr.aria-label]="'close' | transloco"
 			(click)="cartToggle(false)"
 		>
 			<i class="ri-close-line"></i>
@@ -79,11 +85,12 @@
 	</div>
 	} @if ((cartItem$ | async)?.length) {
 	<ul class="cart-list">
-		@for (item of cartItem$ | async; track item.id) {
+		@for (item of cartItem$ | async; track item.id) { @let rows = childRows(item); @let counts = childCounts(item);
 		<li class="product-box-contain">
 			<div class="drop-cart">
 				<a
 					href="javascript:void(0)"
+					role="button"
 					class="drop-image"
 				>
 					<img
@@ -97,11 +104,28 @@
 					/>
 				</a>
 				<div class="drop-contain">
-					<a href="javascript:void(0)">
+					<a
+						href="javascript:void(0)"
+						role="button"
+					>
+						@if (item.set_heading) {
+						<!-- A long set name shortens itself so the Set chip always shows (E04). -->
+						<h5 class="d-flex align-items-center gap-1">
+							<span class="text-truncate">{{ item.product.name }}</span>
+							<span class="st-piece-chip is-set mt-0 flex-shrink-0">
+								{{ 'cart_set_chip' | transloco }}
+							</span>
+						</h5>
+						} @else {
 						<h5>{{ item?.product?.name }}</h5>
+						}
 					</a>
+					@if (isMetre(item)) {
+					<!-- M10: the line reads "2.5 m × ₹180.00". -->
+					<h6>{{ qtyText(item, 'unit_m' | transloco) }} × {{ unitPrice(item) | currencySymbol }}</h6>
+					} @else {
 					<h6>{{ unitPrice(item) | currencySymbol }}</h6>
-					@if (item.line_config) {
+					} @if (item.line_config) {
 					<app-cart-line-config [config]="item.line_config" />
 					} @else if (item?.variation) {
 					<h5 class="gram">{{ item?.variation?.selected_variation }}</h5>
@@ -112,26 +136,42 @@
 								[class]="'btn qty-left-minus'"
 								[id]="'add-to-cart'+item.product.id"
 								[spinner]="false"
-								(click)="updateQuantity(item, -1)"
+								(click)="step(item, -1)"
 							>
-								@if (item.quantity > 1) {
+								@if (!minusDeletes(item)) {
 								<i class="ri-subtract-line"></i>
-								} @if (item.quantity <= 1) {
+								} @else {
 								<i class="ri-delete-bin-line"></i>
 								}
 							</app-button>
+							@if (isMetre(item)) {
+							<input
+								#miniLength
+								class="form-control input-number qty-input"
+								type="text"
+								inputmode="decimal"
+								name="quantity"
+								style="min-width: 64px"
+								[value]="qtyText(item, 'unit_m' | transloco)"
+								[attr.aria-label]="'length' | transloco"
+								(change)="typeLength(item, miniLength, metreUnit)"
+							/>
+							} @else {
 							<input
 								class="form-control input-number qty-input"
 								type="number"
 								name="quantity"
 								[value]="item?.quantity"
 								readonly
+								[attr.aria-label]="'quantity' | transloco"
 							/>
+							}
 							<app-button
 								[class]="'btn qty-left-minus'"
 								[id]="'qty-left-minus'+item.product.id"
 								[spinner]="false"
-								(click)="updateQuantity(item, 1)"
+								(click)="step(item, 1)"
+								[ariaLabel]="'increase_quantity' | transloco"
 							>
 								<i class="ri-add-line"></i>
 							</app-button>
@@ -144,15 +184,18 @@
 								[class]="'delete-button'"
 								[id]="'cart_item_edit_btn'+item.product.id"
 								[spinner]="false"
-								(click)="configModal.openModal(item)"
+								(click)="edit(item)"
 							>
 								<i class="ri-pencil-line"></i>
 							</app-button>
+							<!-- The options popup loads when a line is first edited, so its code stays out of every page's
+							     first load. -->
+							@if (editing()?.id === item.id) { @defer (on immediate) {
 							<app-product-config-modal
 								#configModal
 								[product]="item.product"
 							/>
-							}
+							} } }
 							<app-button
 								[class]="'delete-button close_button'"
 								[id]="'cart_item_delete_btn'+item.product.id"
@@ -166,7 +209,50 @@
 				</div>
 			</div>
 		</li>
-		}
+		<!-- Beneath the line (E04): a set's count, opening to what it holds; a product's free items in one row. -->
+		@if (item.set_heading && counts.folded) {
+		<li class="st-mini-child">
+			<div class="d-flex justify-content-between gap-2">
+				<span>
+					{{ (counts.pieces === 1 ? 'cart_set_pieces_one' : 'cart_set_pieces') | transloco: { count:
+					counts.pieces } }}@if (counts.extras) { {{ 'cart_set_extras' | transloco: { count: counts.extras }
+					}} } @if (counts.free) { · {{ (counts.free === 1 ? 'cart_set_free_one' : 'cart_set_free') |
+					transloco: { count: counts.free } }} }
+				</span>
+				<a
+					class="text-content text-nowrap"
+					href="javascript:void(0)"
+					role="button"
+					[attr.aria-expanded]="isOpen(item)"
+					(click)="toggle(item)"
+				>
+					{{ (isOpen(item) ? 'cart_mini_hide' : 'cart_mini_show') | transloco }}
+					<i [class]="isOpen(item) ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'"></i>
+				</a>
+			</div>
+			@if (isOpen(item)) {
+			<ul>
+				@for (row of rows; track row.child.key) {
+				<li [class.is-depth-2]="row.depth === 2">
+					@if (row.child.role === 'free') {
+					<span class="st-piece-chip is-free">{{ 'free' | transloco }}</span>
+					} @else if (row.child.role === 'extra') {
+					<span class="st-piece-chip">{{ 'cart_extra' | transloco }}</span>
+					} @if (row.number) { {{ row.number }}. } {{ row.child.title }}
+				</li>
+				}
+			</ul>
+			}
+		</li>
+		} @else if (counts.free) {
+		<li class="st-mini-child is-free d-flex justify-content-between gap-2">
+			<span>
+				<span class="st-piece-chip is-free">{{ 'free' | transloco }}</span>
+				{{ freeNames(item) }}
+			</span>
+			<b class="text-success">{{ 'free' | transloco }}</b>
+		</li>
+		} }
 	</ul>
 	} @if (!(cartItem$ | async)?.length) {
 	<div class="empty-cart-box">

@@ -3,6 +3,69 @@
 	[formGroup]="form"
 	(ngSubmit)="submit()"
 >
+	<!-- Save as draft (brief § 7): Bootstrap's own alerts, as the missing-language notice and the Inbox use. -->
+	@if (draft(); as open) { @if (open.kind === 'edit') {
+	<div
+		class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2"
+		id="product_draft_banner"
+		role="status"
+	>
+		<span>
+			<strong>{{ 'draft_of_changes' | transloco }}</strong>
+			· {{ 'draft_started' | transloco: { when: (open.createdAt | date: 'd MMM, h:mm a') } }} · {{
+			'draft_fields_changed' | transloco: { count: changes().size } }}
+			<span class="d-block">{{ 'draft_shop_unchanged' | transloco }}</span>
+		</span>
+		<button
+			type="button"
+			class="btn btn-outline btn-sm"
+			id="product_draft_discard"
+			(click)="discardDraft()"
+		>
+			{{ 'draft_discard' | transloco }}
+		</button>
+	</div>
+	} @else {
+	<p
+		class="help-text"
+		id="product_draft_saved"
+	>
+		{{ 'draft_label' | transloco }} · {{ 'draft_last_saved' | transloco: { when: (open.savedAt | date: 'h:mm a') }
+		}}
+	</p>
+	} } @else if (waitingDraft(); as waiting) {
+	<div
+		class="alert alert-info d-flex align-items-center justify-content-between flex-wrap gap-2"
+		id="product_draft_waiting"
+		role="status"
+	>
+		@if (waiting.mine) {
+		<span>
+			{{ 'draft_you_have' | transloco: { when: (waiting.updatedAt | date: 'd MMM, h:mm a'), count: waiting.changed
+			} }}
+		</span>
+		<span class="d-flex gap-2">
+			<button
+				type="button"
+				class="btn btn-outline btn-sm"
+				(click)="discardDraft()"
+			>
+				{{ 'draft_discard' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme btn-sm"
+				id="product_draft_continue"
+				(click)="continueDraft()"
+			>
+				{{ 'draft_continue' | transloco }}
+			</button>
+		</span>
+		} @else {
+		<span>{{ 'draft_someone_has' | transloco: { when: (waiting.updatedAt | date: 'd MMM') } }}</span>
+		}
+	</div>
+	}
 	<app-language-switch
 		[locales]="locales"
 		[active]="fields.locale()"
@@ -27,7 +90,12 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-settings-line"></i>
-							{{ 'general' | transloco }}
+							{{ 'general' | transloco }} @if (changedTabs().has('general')) {
+							<span
+								class="bg-warning rounded-circle ms-auto p-1"
+								[title]="'draft_tab_changed' | transloco"
+							></span>
+							}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -50,7 +118,8 @@
 									/>
 									@if (fields.source('name'); as guide) {
 									<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
-									} @if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
+									} @if (form.controls['name'].touched && form.controls['name'].errors?.['required'])
+									{
 									<div class="invalid-feedback">{{ 'name_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
@@ -104,7 +173,12 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-stack-line"></i>
-							{{ 'bundle' | transloco }}
+							{{ 'bundle' | transloco }} @if (changedTabs().has('bundle')) {
+							<span
+								class="bg-warning rounded-circle ms-auto p-1"
+								[title]="'draft_tab_changed' | transloco"
+							></span>
+							}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -112,9 +186,10 @@
 								tab="bundle"
 							>
 								<app-product-bundle
-									[(value)]="bundle"
-									[products]="bundleProducts()"
-									[locale]="fields.locale()"
+									[productId]="catalogProduct?.id ?? null"
+									[name]="form.controls['name'].value ?? ''"
+									[busy]="openingBuilder()"
+									(open)="openBuilder()"
 								/>
 							</div>
 						</ng-template>
@@ -127,7 +202,12 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-file-list-line"></i>
-							{{ 'inventory' | transloco }}
+							{{ 'inventory' | transloco }} @if (changedTabs().has('inventory')) {
+							<span
+								class="bg-warning rounded-circle ms-auto p-1"
+								[title]="'draft_tab_changed' | transloco"
+							></span>
+							}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -154,7 +234,158 @@
 									<div class="invalid-feedback">{{ 'type_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
-								@if (showsLengths()) {
+								@if (form.controls['type'].value !== 'bundle') {
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'sold_by'"
+									[for]="'sold_by'"
+								>
+									<select
+										class="form-select"
+										id="sold_by"
+										[disabled]="soldByLocked()"
+										(change)="setSoldBy($any($event.target).value)"
+									>
+										<option
+											value="piece"
+											[selected]="soldBy() === 'piece'"
+										>
+											{{ 'sold_by_piece' | transloco }}
+										</option>
+										<option
+											value="metre"
+											[selected]="soldBy() === 'metre'"
+										>
+											{{ 'sold_by_metre' | transloco }}
+										</option>
+									</select>
+									<p class="help-text">
+										{{ (soldByLocked() ? 'sold_by_locked_help' : 'sold_by_help') | transloco }}
+									</p>
+								</app-form-fields>
+								} @if (soldBy() === 'metre' && form.controls['type'].value !== 'bundle') {
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'shortest_cut'"
+									[for]="'shortest_cut'"
+									[required]="true"
+								>
+									<div class="input-group">
+										<input
+											class="form-control"
+											id="shortest_cut"
+											inputmode="decimal"
+											[class.is-invalid]="metreError() === 'metre_cut_invalid'"
+											[value]="metreCut()"
+											(input)="metreCut.set($any($event.target).value)"
+										/>
+										<span class="input-group-text">{{ 'unit_m' | transloco }}</span>
+									</div>
+									<p class="help-text">{{ 'shortest_cut_help' | transloco }}</p>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'quick_lengths'"
+									[for]="'quick_length_0'"
+								>
+									<div class="d-flex align-items-center flex-wrap gap-2">
+										@for (row of quickLengths(); track $index; let i = $index) {
+										<div
+											class="input-group"
+											style="width: 290px"
+										>
+											<input
+												class="form-control"
+												inputmode="decimal"
+												[id]="'quick_length_' + i"
+												[attr.aria-label]="'quick_length_metres' | transloco"
+												[value]="row.length"
+												(input)="setQuickLength(i, 'length', $any($event.target).value)"
+											/>
+											<span class="input-group-text">{{ 'unit_m' | transloco }}</span>
+											<input
+												class="form-control"
+												maxlength="24"
+												[attr.aria-label]="'quick_length_label' | transloco"
+												[placeholder]="row.label['en'] ?? ''"
+												[value]="row.label[fields.locale()] ?? ''"
+												(input)="setQuickLength(i, 'label', $any($event.target).value)"
+											/>
+											<button
+												type="button"
+												class="btn btn-outline"
+												[title]="'remove_quick_length' | transloco"
+												[attr.aria-label]="'remove_quick_length' | transloco"
+												(click)="removeQuickLength(i)"
+											>
+												<i class="ri-close-line"></i>
+											</button>
+										</div>
+										} @if (quickLengths().length < 4) {
+										<button
+											class="btn btn-outline btn-sm"
+											type="button"
+											id="add_quick_length"
+											(click)="addQuickLength()"
+										>
+											<i class="ri-add-line"></i>
+											{{ 'add' | transloco }}
+										</button>
+										}
+									</div>
+									<p class="help-text">{{ 'quick_lengths_help' | transloco }}</p>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'cloth_width'"
+									[for]="'cloth_width'"
+								>
+									<div class="input-group">
+										<input
+											class="form-control"
+											id="cloth_width"
+											inputmode="decimal"
+											[class.is-invalid]="metreError() === 'metre_width_invalid'"
+											[value]="metreWidth()"
+											(input)="metreWidth.set($any($event.target).value)"
+										/>
+										<span class="input-group-text">{{ 'unit_in' | transloco }}</span>
+									</div>
+									<p class="help-text">{{ 'cloth_width_help' | transloco }}</p>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'weight_per_metre'"
+									[for]="'weight_per_metre'"
+									[required]="true"
+								>
+									<div class="input-group">
+										<input
+											class="form-control"
+											id="weight_per_metre"
+											inputmode="numeric"
+											[class.is-invalid]="metreError() === 'metre_weight_invalid'"
+											[value]="metreWeight()"
+											(input)="metreWeight.set($any($event.target).value)"
+										/>
+										<span class="input-group-text">{{ 'unit_g' | transloco }}</span>
+									</div>
+									<p class="help-text">{{ 'weight_per_metre_help' | transloco }}</p>
+								</app-form-fields>
+								@if (metreError(); as problem) {
+								<div
+									class="alert alert-warning"
+									role="alert"
+									id="metre_error"
+								>
+									{{ problem | transloco }}
+								</div>
+								} } @if (showsLengths()) {
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
@@ -247,7 +478,87 @@
 									<div class="invalid-feedback">{{ 'sku_is_required' | transloco}}</div>
 									}
 								</app-form-fields>
-								@if (form.controls['type'].value === 'simple' && !catalogProduct) {
+								@if (form.controls['type'].value !== 'bundle') {
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'stock'"
+									[for]="'stock_figures'"
+								>
+									@if (catalogProduct) {
+									<div
+										class="d-flex align-items-center flex-wrap gap-3"
+										id="stock_figures"
+									>
+										<span>
+											<strong>{{ qty(totals().onHand) }}</strong>
+											{{ 'fig_on_hand' | transloco }}
+										</span>
+										<span class="text-muted">·</span>
+										<span>{{ qty(totals().held) }} {{ 'fig_held' | transloco }}</span>
+										<span class="text-muted">·</span>
+										<span>
+											<strong>{{ qty(totals().free) }}</strong>
+											{{ 'fig_free_to_sell' | transloco }}
+										</span>
+										@if (catalogProduct.variants.length === 1) {
+										<span class="d-flex ms-auto flex-wrap gap-2">
+											<a
+												class="btn btn-outline btn-sm"
+												target="_blank"
+												*hasPermission="'stock.index'"
+												[routerLink]="['/stock/items', catalogProduct.variants[0]?.id]"
+											>
+												<i class="ri-history-line me-1"></i>
+												{{ 'stock_history' | transloco }}
+											</a>
+											<button
+												type="button"
+												class="btn btn-outline btn-sm"
+												*hasPermission="'stock.adjust'"
+												(click)="adjustStock(catalogProduct.variants[0]?.id ?? '')"
+											>
+												<i class="ri-equalizer-line me-1"></i>
+												{{ 'adjust' | transloco }}
+											</button>
+											<a
+												class="btn btn-theme btn-sm"
+												target="_blank"
+												*hasPermission="'purchase.create'"
+												[routerLink]="['/purchase-entries', 'create']"
+												[queryParams]="{ variant: catalogProduct.variants[0]?.id }"
+											>
+												<i class="ri-inbox-archive-line me-1"></i>
+												{{ 'receive_stock' | transloco }}
+											</a>
+										</span>
+										}
+									</div>
+									<p class="help-text">
+										{{ (catalogProduct.variants.length === 1 ? 'stock_moves_help' :
+										'stock_moves_help_variants') | transloco }}
+									</p>
+									} @else {
+									<p class="mb-0">{{ 'stock_after_save' | transloco }}</p>
+									}
+								</app-form-fields>
+								@if (catalogProduct) {
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'stock_status'"
+									[for]="'stock_status_shown'"
+								>
+									<input
+										class="form-control"
+										id="stock_status_shown"
+										type="text"
+										readonly
+										[value]="stockStatus() | transloco"
+									/>
+									<p class="help-text">{{ 'stock_status_help' | transloco }}</p>
+								</app-form-fields>
+								} } @if (typedStockBox && form.controls['type'].value === 'simple' && !catalogProduct) {
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
@@ -276,9 +587,7 @@
 									[required]="true"
 								>
 									<div class="input-group">
-										<span class="input-group-text">
-											₹
-										</span>
+										<span class="input-group-text">₹</span>
 										<input
 											class="form-control"
 											id="price"
@@ -375,6 +684,7 @@
 												readonly
 											/>
 											<button
+												[title]="'pick_date' | transloco"
 												class="btn btn-outline-secondary"
 												(click)="datepicker.toggle()"
 												type="button"
@@ -405,6 +715,7 @@
 												readonly
 											/>
 											<button
+												[title]="'pick_date' | transloco"
 												class="btn btn-outline-secondary"
 												(click)="datepicker.toggle()"
 												type="button"
@@ -422,6 +733,9 @@
 								<app-option-groups
 									[(groups)]="optionGroups"
 									[(templateCode)]="addonTemplateCode"
+									[(tiles)]="tiles"
+									[photos]="swatchPhotos()"
+									[versions]="images().versions ?? {}"
 									[templates]="addonTemplates()"
 									[savedAxes]="savedAxes()"
 									[definitions]="definitions()"
@@ -458,12 +772,20 @@
 											[label]="'low_stock_threshold'"
 											[for]="'low_stock_threshold'"
 										>
-											<input
-												class="form-control"
-												id="low_stock_threshold"
-												type="number"
-												formControlName="low_stock_threshold"
-											/>
+											<div class="input-group">
+												<input
+													class="form-control"
+													id="low_stock_threshold"
+													type="number"
+													min="0"
+													[attr.step]="soldBy() === 'metre' ? 0.1 : 1"
+													formControlName="low_stock_threshold"
+												/>
+												@if (soldBy() === 'metre') {
+												<span class="input-group-text">{{ 'unit_m' | transloco }}</span>
+												}
+											</div>
+											<p class="help-text">{{ 'low_stock_level_help' | transloco }}</p>
 										</app-form-fields>
 										<app-form-fields
 											[labelClass]="'form-label-title col-sm-3 mb-0'"
@@ -576,9 +898,7 @@
 																	[for]="'mrp'+i"
 																>
 																	<div class="input-group">
-																		<span class="input-group-text">
-																			₹
-																		</span>
+																		<span class="input-group-text">₹</span>
 																		<input
 																			class="form-control"
 																			[id]="'mrp'+i"
@@ -596,9 +916,7 @@
 																	[required]="true"
 																>
 																	<div class="input-group">
-																		<span class="input-group-text">
-																			₹
-																		</span>
+																		<span class="input-group-text">₹</span>
 																		<input
 																			class="form-control"
 																			[id]="'price'+i"
@@ -640,6 +958,67 @@
 																	</div>
 																	}
 																</app-form-fields>
+																@if (variantFigures(variation.get('id')?.value); as
+																figures) {
+																<app-form-fields
+																	[labelClass]="'form-label-title col-sm-3 mb-0'"
+																	[gridClass]="'col-sm-9'"
+																	[label]="'stock'"
+																	[for]="'stock_figures'+i"
+																>
+																	<div
+																		class="d-flex align-items-center flex-wrap gap-3"
+																		[id]="'stock_figures'+i"
+																	>
+																		<span>
+																			<strong>{{ qty(figures.onHand) }}</strong>
+																			{{ 'fig_on_hand' | transloco }}
+																		</span>
+																		<span class="text-muted">·</span>
+																		<span>
+																			{{ qty(figures.held) }} {{ 'fig_held' |
+																			transloco }}
+																		</span>
+																		<span class="text-muted">·</span>
+																		<span>
+																			<strong>{{ qty(figures.free) }}</strong>
+																			{{ 'fig_free_to_sell' | transloco }}
+																		</span>
+																		<span class="d-flex ms-auto flex-wrap gap-2">
+																			<a
+																				class="btn btn-outline btn-sm"
+																				target="_blank"
+																				*hasPermission="'stock.index'"
+																				[routerLink]="['/stock/items', variation.get('id')?.value]"
+																			>
+																				<i class="ri-history-line me-1"></i>
+																				{{ 'stock_history' | transloco }}
+																			</a>
+																			<button
+																				type="button"
+																				class="btn btn-outline btn-sm"
+																				*hasPermission="'stock.adjust'"
+																				(click)="adjustStock(variation.get('id')?.value)"
+																			>
+																				<i class="ri-equalizer-line me-1"></i>
+																				{{ 'adjust' | transloco }}
+																			</button>
+																			<a
+																				class="btn btn-theme btn-sm"
+																				target="_blank"
+																				*hasPermission="'purchase.create'"
+																				[routerLink]="['/purchase-entries', 'create']"
+																				[queryParams]="{ variant: variation.get('id')?.value }"
+																			>
+																				<i
+																					class="ri-inbox-archive-line me-1"
+																				></i>
+																				{{ 'receive_stock' | transloco }}
+																			</a>
+																		</span>
+																	</div>
+																</app-form-fields>
+																} @if (typedStockBox) {
 																<app-form-fields
 																	[labelClass]="'form-label-title col-sm-3 mb-0'"
 																	[gridClass]="'col-sm-9'"
@@ -660,6 +1039,7 @@
 																	</div>
 																	}
 																</app-form-fields>
+																}
 																<app-form-fields
 																	[labelClass]="'form-label-title col-sm-3 mb-0'"
 																	[gridClass]="'col-sm-9'"
@@ -766,8 +1146,9 @@
 																	[for]="'variation_image_id'+i"
 																>
 																	<app-image-upload
+																		[pickTitle]="'fm_pick_title_variant'"
 																		[multipleImage]="false"
-																		[image]="variation.get('variation_image')?.value"
+																		[image]="pictureTile(variantImages().get(variation.get('id')?.value))"
 																		(selectedFiles)="selectVariationImage($event, i)"
 																	/>
 																</app-form-fields>
@@ -787,12 +1168,18 @@
 					</li>
 					<li
 						ngbNavItem="setup"
+						[class.d-none]="isBundle()"
 						id="setup"
 						[class.is-invalid]="tabError === 'setup'"
 					>
 						<a ngbNavLink>
 							<i class="ri-tools-line"></i>
-							{{ 'setup' | transloco }}
+							{{ 'setup' | transloco }} @if (changedTabs().has('setup')) {
+							<span
+								class="bg-warning rounded-circle ms-auto p-1"
+								[title]="'draft_tab_changed' | transloco"
+							></span>
+							}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -832,30 +1219,90 @@
 									form.controls['categories'].errors?.['required']) {
 									<div class="invalid-feedback">{{ 'categories_is_required' | transloco }}</div>
 									}
+									<p class="help-text">{{ 'main_category_help' | transloco }}</p>
 								</app-form-fields>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
-									[label]="'random_related_product'"
-									[for]="'is_random_related_products'"
+									[label]="'hsn'"
+									[for]="'hsn_code'"
 									[required]="false"
 								>
+									<input
+										class="form-control"
+										id="hsn_code"
+										type="text"
+										inputmode="numeric"
+										maxlength="8"
+										formControlName="hsn_code"
+										[class.border-warning]="!!hsnChangedFrom()"
+										[class.is-invalid]="form.controls['hsn_code'].invalid"
+									/>
+									@if (form.controls['hsn_code'].invalid) {
+									<div class="invalid-feedback d-block">{{ 'hsn_digits' | transloco }}</div>
+									} @if (mainCategory(); as main) { @if (main.hsnCode &&
+									form.controls['hsn_code'].value === main.hsnCode) {
+									<p class="help-text">
+										{{ 'hsn_from_category' | transloco: { category: main.name, code: main.hsnCode }
+										}}@if (hsnChangedFrom(); as from) { {{ 'hsn_changed_from' | transloco: { code:
+										from } }} }
+									</p>
+									} @else if (main.hsnCode) {
+									<p class="help-text">
+										{{ 'hsn_own_code' | transloco: { category: main.name, code: main.hsnCode } }}@if
+										(hsnChangedFrom(); as from) { {{ 'hsn_changed_from' | transloco: { code: from }
+										}} }
+									</p>
+									} }
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'can_be_returned'"
+									[for]="'can_be_returned'"
+								>
+									<!-- H2 (owner 2026-11-18): the theme's switch, moved from the Status tab. It shows what applies:
+									     the main category's answer until staff flip it, then this product's own (null = follow). -->
+									@let main = mainCategory();
 									<div class="form-check form-switch ps-0">
 										<label class="switch">
 											<input
 												type="checkbox"
-												id="is_random_related_products"
-												formControlName="is_random_related_products"
+												id="can_be_returned"
+												[checked]="returnableNow()"
+												(change)="setReturnable($any($event.target).checked)"
 											/>
 											<span class="switch-state"></span>
 										</label>
-										<p class="help-text">
-											{{ '*Enabling this option allows the backend to randomly select 6 products
-											for display.' }}
+										<p
+											class="help-text"
+											id="can_be_returned_note"
+										>
+											<!-- One span: the theme lays the switch's note out as a row, so the link sits under the words. -->
+											<span>
+												@if (returnableChoice() === '') { @if (main) { {{ (main.returnable ?
+												'returnable_follows_yes' : 'returnable_follows_no') | transloco: {
+												category: main.name } }} } @else { {{ 'returnable_follows_none' |
+												transloco }} } } @else { @if (main) { {{ (main.returnable ?
+												'returnable_set_cat_yes' : 'returnable_set_cat_no') | transloco: {
+												category: main.name } }} } @else { {{ 'returnable_set_none' | transloco
+												}} }
+												<br />
+												<a
+													href="javascript:void(0)"
+													class="theme-color text-decoration-underline fw-semibold"
+													id="returnable_follow_again"
+													(click)="returnableChoice.set('')"
+												>
+													{{ main ? ('returnable_follow_again' | transloco: { category:
+													main.name }) : ('returnable_follow_again_none' | transloco) }}
+												</a>
+												}
+											</span>
 										</p>
 									</div>
 								</app-form-fields>
-								@if (!form.get('is_random_related_products')?.value) {
+
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
@@ -891,9 +1338,7 @@
 										</ng-template>
 									</select2>
 									}
-									<p class="help-text">
-										{{ '*Choose a maximum of 6 products for effective related products display.' }}
-									</p>
+									<p class="help-text">{{ 'related_products_help' | transloco }}</p>
 								</app-form-fields>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
@@ -912,7 +1357,6 @@
 									/>
 									}
 								</app-form-fields>
-								}
 
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
@@ -953,17 +1397,191 @@
 										{{ '*Choose a maximum of 3 products for effective cross-selling display.' }}
 									</p>
 								</app-form-fields>
+
+								<!-- Free with this product (brief P8.0–P8.8): the same search multi-select; hidden products can be picked. -->
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'free_with_this_product'"
+									[for]="'free_with_products'"
+									[required]="false"
+								>
+									@if(isBrowser) {
+									<select2
+										class="custom-select"
+										[data]="freeWithData()"
+										[placeholder]="'select_product' | transloco"
+										formControlName="free_with_products"
+										noResultMessage="{{ 'no_data_found' | transloco }}"
+										[customSearchEnabled]="true"
+										(close)="productDropdown($event)"
+										(search)="searchProduct($event)"
+										[multiple]="true"
+									/>
+									} @let freeCount = (form.controls['free_with_products'].value ?? []).length; @if
+									(freeCount === 1) {
+									<div class="d-flex mt-2 gap-3">
+										<label class="form-check">
+											<input
+												class="form-check-input"
+												type="radio"
+												[value]="true"
+												formControlName="free_required"
+											/>
+											{{ 'free_always_gets' | transloco }}
+										</label>
+										<label class="form-check">
+											<input
+												class="form-check-input"
+												type="radio"
+												[value]="false"
+												formControlName="free_required"
+											/>
+											{{ 'free_may_take' | transloco }}
+										</label>
+									</div>
+									} @else if (freeCount > 1) {
+									<!-- Two or more items: what the shopper gets (P8.3–P8.8). -->
+									<div class="card mt-2">
+										<div class="card-body row g-2 align-items-end">
+											<div class="col-md-5">
+												<label class="form-label-title">
+													{{ 'free_shopper_gets' | transloco }}
+												</label>
+												<select
+													class="form-select"
+													formControlName="free_take"
+												>
+													<option value="all">{{ 'free_take_all' | transloco }}</option>
+													<option value="exactly">
+														{{ 'free_take_exactly' | transloco }}
+													</option>
+													<option value="upto">{{ 'free_take_upto' | transloco }}</option>
+													<option value="between">
+														{{ 'free_take_between' | transloco }}
+													</option>
+												</select>
+											</div>
+											@if (form.controls['free_take'].value === 'between') {
+											<div class="col-md-2">
+												<label class="form-label-title">
+													{{ 'free_at_least' | transloco }}
+												</label>
+												<input
+													class="form-control"
+													type="number"
+													min="0"
+													[max]="freeCount"
+													formControlName="free_from"
+												/>
+											</div>
+											} @if (form.controls['free_take'].value !== 'all') {
+											<div class="col-md-2">
+												<label class="form-label-title">
+													{{ 'free_how_many' | transloco }}
+												</label>
+												<input
+													class="form-control"
+													type="number"
+													min="1"
+													[max]="freeCount"
+													formControlName="free_count"
+												/>
+											</div>
+											}
+											<div class="col-md-3 form-check form-switch ps-0">
+												<label class="switch">
+													<input
+														type="checkbox"
+														formControlName="free_required"
+													/>
+													<span class="switch-state"></span>
+												</label>
+												<span class="ms-1">{{ 'free_required' | transloco }}</span>
+											</div>
+										</div>
+									</div>
+									} @if (freeCount > 0) {
+									<!-- P8.1: each free item's quantity and its size or colour, as in the bundle builder's item table. -->
+									<div class="table-responsive mt-2">
+										<table class="all-package theme-table no-footer table">
+											<thead>
+												<tr>
+													<th>{{ 'product' | transloco }}</th>
+													<th>{{ 'quantity' | transloco }}</th>
+													<th>{{ 'bundle_item_size' | transloco }}</th>
+												</tr>
+											</thead>
+											<tbody>
+												@for (freeId of form.controls['free_with_products'].value ?? []; track
+												freeId) { @let freeInfo = freeItemInfo().get(freeId); @let freeSet =
+												freeSetting(freeId);
+												<tr>
+													<td>
+														{{ freeInfo?.title ?? freeId }}
+														<small class="help-text d-block">{{ freeInfo?.sku }}</small>
+													</td>
+													<td>
+														<input
+															class="form-control form-control-sm"
+															type="number"
+															min="1"
+															max="20"
+															style="width: 80px"
+															[value]="freeSet.quantity"
+															[attr.aria-label]="'quantity' | transloco"
+															(change)="setFreeQuantity(freeId, $any($event.target).value)"
+														/>
+													</td>
+													<td>
+														@if (freeInfo?.variants?.length) {
+														<select
+															class="form-select form-select-sm"
+															[attr.aria-label]="'bundle_item_size' | transloco"
+															(change)="setFreeVariant(freeId, $any($event.target).value)"
+														>
+															<option
+																value=""
+																[selected]="freeSet.variantId === null"
+															>
+																{{ 'bundle_shopper_chooses' | transloco }}
+															</option>
+															@for (v of freeInfo?.variants ?? []; track v.id) {
+															<option
+																[value]="v.id"
+																[selected]="v.id === freeSet.variantId"
+															>
+																{{ v.label }}
+															</option>
+															}
+														</select>
+														} @else { — }
+													</td>
+												</tr>
+												}
+											</tbody>
+										</table>
+									</div>
+									}
+									<p class="help-text">{{ 'free_with_help' | transloco }}</p>
+								</app-form-fields>
 							</div>
 						</ng-template>
 					</li>
 					<li
 						ngbNavItem="images"
+						[class.d-none]="isBundle()"
 						id="images"
 						[class.is-invalid]="tabError === 'images'"
 					>
 						<a ngbNavLink>
 							<i class="ri-image-line"></i>
-							{{ 'images' | transloco }}
+							{{ 'images' | transloco }} @if (changedTabs().has('images')) {
+							<span
+								class="bg-warning rounded-circle ms-auto p-1"
+								[title]="'draft_tab_changed' | transloco"
+							></span>
+							}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -980,26 +1598,29 @@
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
-									[label]="'product_video'"
-									[for]="'youtube_video_id'"
+									[label]="'product_videos'"
+									[for]="'product_video_input'"
 									[required]="false"
 								>
-									<app-youtube-video-field
-										[id]="'youtube_video_id'"
-										[control]="$any(form.controls['youtube_video_id'])"
-									/>
+									<app-youtube-videos-field [control]="$any(form.controls['videos'])" />
 								</app-form-fields>
 							</div>
 						</ng-template>
 					</li>
 					<li
 						ngbNavItem="seo"
+						[class.d-none]="isBundle()"
 						id="seo"
 						[class.is-invalid]="tabError === 'seo'"
 					>
 						<a ngbNavLink>
 							<i class="ri-earth-line"></i>
-							{{ 'seo' | transloco }}
+							{{ 'seo' | transloco }} @if (changedTabs().has('seo')) {
+							<span
+								class="bg-warning rounded-circle ms-auto p-1"
+								[title]="'draft_tab_changed' | transloco"
+							></span>
+							}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -1068,8 +1689,10 @@
 									[required]="false"
 								>
 									<app-image-upload
+										[profile]="null"
+										[pickTitle]="'fm_pick_title_share'"
 										[multipleImage]="false"
-										[image]="product?.product_meta_image"
+										[image]="pictureTile(images().shareImage)"
 										(selectedFiles)="selectMetaImage($event)"
 									/>
 								</app-form-fields>
@@ -1077,13 +1700,46 @@
 						</ng-template>
 					</li>
 					<li
+						ngbNavItem="faq"
+						[class.d-none]="isBundle()"
+						id="faq"
+						[class.is-invalid]="tabError === 'faq'"
+					>
+						<a ngbNavLink>
+							<i class="ri-question-answer-line"></i>
+							{{ 'faqs' | transloco }} @if (changedTabs().has('faq')) {
+							<span
+								class="bg-warning rounded-circle ms-auto p-1"
+								[title]="'draft_tab_changed' | transloco"
+							></span>
+							}
+						</a>
+						<ng-template ngbNavContent>
+							<div
+								class="tab"
+								tab="faq"
+							>
+								<app-product-faq
+									[(value)]="faq"
+									[locale]="fields.locale()"
+								/>
+							</div>
+						</ng-template>
+					</li>
+					<li
 						ngbNavItem="shipping"
+						[class.d-none]="isBundle()"
 						id="shipping"
 						[class.is-invalid]="tabError === 'shipping'"
 					>
 						<a ngbNavLink>
 							<i class="ri-truck-line"></i>
-							{{ 'shipping_&_tax' | transloco }}
+							{{ 'shipping_&_tax' | transloco }} @if (changedTabs().has('shipping')) {
+							<span
+								class="bg-warning rounded-circle ms-auto p-1"
+								[title]="'draft_tab_changed' | transloco"
+							></span>
+							}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -1107,6 +1763,7 @@
 											<span class="switch-state"></span>
 										</label>
 									</div>
+									<p class="help-text">{{ 'ship_free_shipping_help' | transloco }}</p>
 								</app-form-fields>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
@@ -1130,61 +1787,145 @@
 									<div class="invalid-feedback">{{ 'tax_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
+								<h5 class="mt-4 mb-3">{{ 'ship_product_charges' | transloco }}</h5>
+								@for (kind of chargeKinds; track kind) { @let own = ownCharges()[kind]; @let inherited =
+								inheritedCharge(kind);
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
-									[label]="'length_cm'"
+									[label]="'ship_charge_' + kind"
+									[for]="'ship_follow_' + kind"
+									[required]="false"
+								>
+									<div class="d-flex align-items-center flex-wrap gap-3">
+										<div class="form-check form-switch ps-0">
+											<label class="switch">
+												<input
+													type="checkbox"
+													[id]="'ship_follow_' + kind"
+													[checked]="own === null"
+													(change)="followCategoryCharge(kind, $any($event.target).checked)"
+												/>
+												<span class="switch-state"></span>
+											</label>
+										</div>
+										@if (own === null) {
+										<span class="small">
+											{{ (inherited.fromCategory !== null ? 'ship_use_category_value' :
+											inherited.amountINR !== null ? 'ship_use_shop_default' :
+											'ship_use_shop_value') | transloco: { category: inherited.fromCategory ?? ''
+											} }}
+										</span>
+										@if (inherited.amountINR !== null) {
+										<span class="text-muted">{{ rupees(inherited.amountINR) }}</span>
+										} } @else {
+										<span class="small">{{ 'ship_own_value' | transloco }}</span>
+										<div
+											class="input-group flex-nowrap"
+											style="width: 150px"
+										>
+											<span class="input-group-text">₹</span>
+											<input
+												class="form-control"
+												type="number"
+												min="0"
+												step="1"
+												[attr.aria-label]="'ship_charge_' + kind | transloco"
+												[value]="own"
+												(input)="setOwnCharge(kind, $any($event.target).value)"
+											/>
+										</div>
+										}
+									</div>
+								</app-form-fields>
+								}
+								<h5 class="mt-4 mb-3">{{ 'ship_weight_and_box' | transloco }}</h5>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'weight'"
+									[for]="'ship_weight'"
+									[required]="false"
+								>
+									<div
+										class="input-group flex-nowrap"
+										style="width: 200px"
+									>
+										<input
+											class="form-control"
+											id="ship_weight"
+											type="number"
+											min="0"
+											formControlName="weight"
+										/>
+										<span class="input-group-text">g</span>
+									</div>
+									<p class="help-text">{{ 'ship_weight_also_inventory' | transloco }}</p>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'ship_box_lwh'"
 									[for]="'length_cm'"
 									[required]="false"
 								>
-									<input
-										class="form-control"
-										id="length_cm"
-										type="number"
-										formControlName="length_cm"
-									/>
+									<div class="d-flex align-items-center flex-wrap gap-2">
+										@for (side of ['length_cm', 'width_cm', 'height_cm']; track side; let last =
+										$last) {
+										<input
+											class="form-control"
+											style="width: 90px"
+											type="number"
+											min="0"
+											[id]="side"
+											[formControlName]="side"
+											[attr.aria-label]="side | transloco"
+										/>
+										@if (!last) {
+										<span>×</span>
+										} }
+										<span>cm</span>
+										@if (shippingWeights(); as weights) { @if (weights.volumetric !== null) {
+										<span
+											class="small text-muted ms-2"
+											id="ship_weights"
+										>
+											{{ 'ship_weights_line' | transloco: { volumetric:
+											weights.volumetric.toLocaleString('en-IN'), chargeable: (weights.chargeable
+											?? 0).toLocaleString('en-IN') } }}
+										</span>
+										} }
+									</div>
 								</app-form-fields>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
-									[label]="'width_cm'"
-									[for]="'width_cm'"
+									[label]="'ship_product_rules'"
 									[required]="false"
 								>
-									<input
-										class="form-control"
-										id="width_cm"
-										type="number"
-										formControlName="width_cm"
-									/>
-								</app-form-fields>
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
-									[label]="'height_cm'"
-									[for]="'height_cm'"
-									[required]="false"
-								>
-									<input
-										class="form-control"
-										id="height_cm"
-										type="number"
-										formControlName="height_cm"
-									/>
-								</app-form-fields>
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
-									[label]="'hsn'"
-									[for]="'hsn_code'"
-									[required]="false"
-								>
-									<input
-										class="form-control"
-										id="hsn_code"
-										type="text"
-										formControlName="hsn_code"
-									/>
+									@if (zoneExceptions().length) {
+									<div class="d-flex flex-column gap-1 pt-1">
+										@for (item of zoneExceptions(); track item.zone) {
+										<span>
+											{{ 'ship_zone_' + item.zone | transloco }}:
+											<span [class.text-danger]="item.choice.kind === 'cantShip'">
+												{{ exceptionLabel(item.choice) }}
+											</span>
+											({{ 'ship_exception_tag' | transloco }}) ·
+											<a [routerLink]="['/shipping/where-rules-apply']">
+												{{ 'ship_change' | transloco }}
+											</a>
+										</span>
+										}
+									</div>
+									} @else {
+									<span class="pt-1">
+										{{ 'ship_product_rules_text' | transloco }}
+										<a [routerLink]="['/shipping/where-rules-apply']">
+											{{ 'ship_where_rules_apply' | transloco }}
+										</a>
+									</span>
+									}
 								</app-form-fields>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
@@ -1202,10 +1943,10 @@
 									/>
 									@if (fields.source('estimated_delivery_text')) {
 									<p class="help-text mb-0">
-										{{ 'english_guide' | transloco: { text: fields.source('estimated_delivery_text') } }}
+										{{ 'english_guide' | transloco: { text: fields.source('estimated_delivery_text')
+										} }}
 									</p>
-									}
-									@if (form.controls['estimated_delivery_text'].errors?.['leadTimeRequired']) {
+									} @if (form.controls['estimated_delivery_text'].errors?.['leadTimeRequired']) {
 									<div class="invalid-feedback">{{ 'lead_time_is_required' | transloco }}</div>
 									}
 									<p class="help-text">
@@ -1237,18 +1978,44 @@
 					</li>
 					<li
 						ngbNavItem="status"
+						[class.d-none]="isBundle()"
 						id="status"
 						[class.is-invalid]="tabError === 'status'"
 					>
 						<a ngbNavLink>
 							<i class="ri-checkbox-circle-line"></i>
-							{{ 'status' | transloco }}
+							{{ 'status' | transloco }} @if (changedTabs().has('status')) {
+							<span
+								class="bg-warning rounded-circle ms-auto p-1"
+								[title]="'draft_tab_changed' | transloco"
+							></span>
+							}
 						</a>
 						<ng-template ngbNavContent>
 							<div
 								class="tab"
 								tab="status"
 							>
+								<!-- Show on shop (brief P9, D5): live and stocked, but kept off the shop when off. -->
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'show_on_shop'"
+									[for]="'product_show_on_shop'"
+									[required]="false"
+								>
+									<div class="form-check form-switch ps-0">
+										<label class="switch">
+											<input
+												type="checkbox"
+												id="product_show_on_shop"
+												formControlName="show_on_shop"
+											/>
+											<span class="switch-state"></span>
+										</label>
+										<p class="help-text">{{ 'show_on_shop_help' | transloco }}</p>
+									</div>
+								</app-form-fields>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
@@ -1380,31 +2147,10 @@
 										</p>
 									</div>
 								</app-form-fields>
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
-									[label]="'return'"
-									[for]="'return'"
-									[required]="false"
-								>
-									<div class="form-check form-switch ps-0">
-										<label class="switch">
-											<input
-												type="checkbox"
-												id="return"
-												formControlName="is_return"
-											/>
-											<span class="switch-state"></span>
-										</label>
-										<p class="help-text">
-											{{ '*Enable to make the product eligible for returns.' }}
-										</p>
-									</div>
-								</app-form-fields>
 								@if (goLiveGaps().length) {
 								<div class="alert alert-danger">
 									<strong>{{ 'go_live_blocked' | transloco }}</strong>
-									<ul class="mb-0 mt-2">
+									<ul class="mt-2 mb-0">
 										@for (gap of goLiveGaps(); track $index; let index = $index) {
 										<li>
 											<a
@@ -1417,7 +2163,8 @@
 										}
 									</ul>
 								</div>
-								} @if (catalogProduct && catalogProduct.status !== 'live' && catalogProduct.status !== 'discontinued') {
+								} @if (catalogProduct && catalogProduct.status !== 'live' && catalogProduct.status !==
+								'discontinued') {
 								<button
 									type="button"
 									id="go_live_btn"
@@ -1476,8 +2223,28 @@
 				<div [ngbNavOutlet]="nav"></div>
 			</div>
 		</div>
-		<app-button [id]="'product_btn'">
-			{{ (type() === 'create' ? 'save_product' : 'update_product') | transloco }}
-		</app-button>
+		<div class="d-flex justify-content-end flex-wrap gap-2">
+			@if (type() !== 'create' && nextProductId()) {
+			<app-button
+				[id]="'product_next_btn'"
+				[class]="'btn btn-secondary'"
+				[type]="'button'"
+				(click)="saveAndNext()"
+			>
+				{{ 'save_and_next' | transloco }}
+			</app-button>
+			}
+			<app-button
+				[id]="'product_draft_btn'"
+				[class]="'btn btn-secondary'"
+				[type]="'button'"
+				(click)="saveDraft()"
+			>
+				{{ 'save_as_draft' | transloco }}
+			</app-button>
+			<app-button [id]="'product_btn'">
+				{{ (type() === 'create' ? 'save_product' : 'update_product') | transloco }}
+			</app-button>
+		</div>
 	</div>
 </form>

@@ -3,7 +3,7 @@ title: Razorpay
 description: A possible later INR gateway.
 status: deferred
 audience: [backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-21'
 search_keywords: Razorpay INR gateway successor DEC-INR-GATEWAY-TIMING
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts
@@ -25,6 +25,6 @@ No Razorpay documentation is included.
 
 ## 2. Endpoints we use
 
-None. No Razorpay adapter exists, and the shared contract enum `PaymentGateway` has no Razorpay value. A Razorpay adapter would implement the same `PaymentGatewayPort` methods, `createPayment` and `verifyCallback`.
+None. No Razorpay adapter exists, and the shared contract enum `PaymentGateway` has no Razorpay value. A Razorpay adapter would implement the same `PaymentGatewayPort` calls that the CCAvenue adapter implements, and `decidePaymentResult` would judge its answers unchanged.
 
 Return to [Payments](/payments).

@@ -1,3 +1,61 @@
+@if (tiles(); as tile) {
+<section class="dashboard-tiles">
+	<div class="container-fluid">
+		<div class="row g-3 mb-3">
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'ord_tile_needs_attention' | transloco }}</h6>
+						<h3>{{ tile.needsAttention }}</h3>
+						<p class="small text-muted mb-0">
+							{{ attentionLine() ?? ('ord_tile_needs_attention_sub' | transloco) }}
+						</p>
+					</div>
+					<div class="icon-box">
+						<i class="ri-error-warning-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'ord_tile_awaiting_payment' | transloco }}</h6>
+						<h3>{{ tile.awaitingPayment }}</h3>
+						<p class="small text-muted mb-0">{{ 'ord_tile_awaiting_payment_sub' | transloco }}</p>
+					</div>
+					<div class="icon-box">
+						<i class="ri-time-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'ord_tile_to_pack' | transloco }}</h6>
+						<h3>{{ tile.toPack }}</h3>
+						<p class="small text-muted mb-0">{{ 'ord_tile_to_pack_sub' | transloco }}</p>
+					</div>
+					<div class="icon-box">
+						<i class="ri-inbox-archive-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'ord_tile_shipped' | transloco }}</h6>
+						<h3>{{ tile.shippedNotDelivered }}</h3>
+						<p class="small text-muted mb-0">{{ 'ord_tile_shipped_sub' | transloco }}</p>
+					</div>
+					<div class="icon-box">
+						<i class="ri-truck-line"></i>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+}
 <app-page-wrapper
 	[gridClass]="'col-sm-12'"
 	[title]="'orders'"
@@ -15,10 +73,74 @@
 		</a>
 	</div>
 	<app-table
-		[tableConfig]="tableConfig"
+		[tableConfig]="tableConfig()"
 		[dateRange]="true"
+		[searchPlaceholder]="'ord_search_placeholder'"
 		(tableChanged)="onTableChange($event)"
 		(rowClicked)="view($event)"
-		(action)="onActionClicked($event)"
-	/>
+		(action)="onAction($event)"
+	>
+		<div
+			tableFilters
+			class="d-flex align-items-center flex-wrap gap-2"
+		>
+			@for (item of filters; track item.key) {
+			<button
+				type="button"
+				class="align-items-center btn btn-sm d-flex"
+				[class.btn-theme]="filter() === item.key"
+				[class.btn-outline]="filter() !== item.key"
+				[attr.aria-pressed]="filter() === item.key"
+				(click)="setFilter(item.key)"
+			>
+				{{ item.label | transloco }} @if (counts()[item.key] !== undefined) { ({{ counts()[item.key] }}) }
+			</button>
+			}
+			<select
+				class="form-select form-select-sm w-auto"
+				[attr.aria-label]="'ord_any_payment' | transloco"
+				[ngModel]="payment()"
+				(ngModelChange)="setPayment($event)"
+			>
+				<option value="">{{ 'ord_any_payment' | transloco }}</option>
+				@for (status of paymentChoices; track status) {
+				<option [value]="status">{{ 'ord_pay_' + status | transloco }}</option>
+				}
+			</select>
+			<select
+				class="form-select form-select-sm w-auto"
+				[attr.aria-label]="'ord_all_buyers' | transloco"
+				[ngModel]="buyerKind()"
+				(ngModelChange)="setBuyerKind($event)"
+			>
+				<option value="">{{ 'ord_all_buyers' | transloco }}</option>
+				<option value="person">{{ 'ord_buyers_people' | transloco }}</option>
+				<option value="business">{{ 'ord_buyers_businesses' | transloco }}</option>
+			</select>
+			<select
+				class="form-select form-select-sm w-auto"
+				[attr.aria-label]="'ord_shop_and_admin' | transloco"
+				[ngModel]="channel()"
+				(ngModelChange)="setChannel($event)"
+			>
+				<option value="">{{ 'ord_shop_and_admin' | transloco }}</option>
+				<option value="shop">{{ 'ord_from_shop' | transloco }}</option>
+				<option value="admin">{{ 'ord_from_admin' | transloco }}</option>
+			</select>
+		</div>
+		@if (searchLine(); as line) {
+		<p
+			tableNote
+			class="small text-muted mb-2"
+		>
+			<i class="ri-search-line"></i>
+			{{ line }}
+		</p>
+		}
+	</app-table>
+	<!-- ol03, ol04, oo01: what the list is showing, under the table. -->
+	<p class="help-text mt-2 mb-0">
+		{{ (filter() === 'needsAttention' ? 'ord_list_help_attention' : filter() === 'open' ? 'ord_list_help_open' :
+		'ord_list_help_search') | transloco }}
+	</p>
 </app-page-wrapper>

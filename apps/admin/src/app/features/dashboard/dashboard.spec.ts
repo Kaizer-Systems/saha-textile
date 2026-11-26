@@ -2,6 +2,7 @@ import { PLATFORM_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 
+import { TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -11,13 +12,22 @@ import { Dashboard } from './dashboard';
 
 const blogs = signal<unknown>(undefined);
 const statistics = signal<unknown>(undefined);
-const revenue = signal<unknown>(undefined);
-const orders = signal<unknown>(undefined);
-const products = signal<unknown>(undefined);
-const reviews = signal<unknown>(undefined);
+const commission = signal<unknown>(undefined);
 const categories = signal<unknown>(undefined);
 const stores = signal<unknown>(undefined);
+const revenue = signal<unknown>(undefined);
+const monthly = signal<unknown>(undefined);
+const orders = signal<unknown>(undefined);
+const recent = signal<unknown>(undefined);
+const customers = signal<unknown>(undefined);
+const top = signal<unknown>(undefined);
+const stock = signal<unknown>(undefined);
+const reviews = signal<unknown>(undefined);
 const fetching = signal(false);
+const asked = vi.hoisted(() => ({
+	enabled: {} as Record<string, () => boolean>,
+	inputs: {} as Record<string, () => unknown>,
+}));
 const apex = vi.hoisted(() => ({ created: [] as unknown[][], render: vi.fn(), updateOptions: vi.fn() }));
 
 vi.mock('apexcharts', () => ({
@@ -30,52 +40,91 @@ vi.mock('apexcharts', () => ({
 	},
 }));
 vi.mock('@data-access/queries/blog.queries', () => ({
-	injectBlogsQuery: (p: () => unknown) => (p(), { data: blogs }),
+	injectBlogsQuery: (p: () => unknown, enabled: () => boolean) => (
+		p(),
+		(asked.enabled['blogs'] = enabled),
+		{ data: blogs }
+	),
 }));
-vi.mock('@data-access/queries/dashboard.queries', () => ({
-	injectStatisticsQuery: () => ({ data: statistics }),
-	injectRevenueChartQuery: () => ({ data: revenue }),
-}));
-vi.mock('@data-access/queries/order.queries', () => ({
-	injectOrdersQuery: (p: () => unknown) => (p(), { data: orders }),
-}));
-vi.mock('@data-access/queries/product.queries', () => ({
-	injectProductsQuery: (p: () => unknown) => (p(), { data: products, isFetching: fetching }),
-}));
-vi.mock('@data-access/queries/review.queries', () => ({
-	injectReviewsQuery: (p: () => unknown) => (p(), { data: reviews }),
-}));
+vi.mock('@data-access/queries/dashboard.queries', () => {
+	const plain = (name: string, data: () => unknown) => (enabled: () => boolean) => {
+		asked.enabled[name] = enabled;
+		return { data: data(), isFetching: fetching };
+	};
+	const withInput = (name: string, data: () => unknown) => (input: () => unknown, enabled: () => boolean) => {
+		asked.enabled[name] = enabled;
+		asked.inputs[name] = input;
+		return { data: data(), isFetching: fetching };
+	};
+	return {
+		injectStatisticsQuery: () => ({ data: statistics }),
+		injectRevenueChartQuery: () => ({ data: commission }),
+		injectDashboardRevenueQuery: withInput('revenue', () => revenue),
+		injectDashboardOrdersQuery: withInput('orders', () => orders),
+		injectDashboardTopProductsQuery: withInput('top', () => top),
+		injectDashboardStockQuery: withInput('stock', () => stock),
+		injectDashboardMonthlyRevenueQuery: plain('monthly', () => monthly),
+		injectDashboardRecentOrdersQuery: plain('recent', () => recent),
+		injectDashboardCustomersQuery: plain('customers', () => customers),
+		injectDashboardReviewsQuery: plain('reviews', () => reviews),
+	};
+});
 vi.mock('@data-access/queries/category.queries', () => ({
-	injectCategoriesQuery: (p: () => unknown) => (p(), { data: categories }),
+	injectCategoriesQuery: (p: () => unknown, enabled: () => boolean) => (
+		p(),
+		(asked.enabled['categories'] = enabled),
+		{ data: categories }
+	),
 }));
-vi.mock('@data-access/queries/store.queries', () => ({
-	injectStoresQuery: (p: () => unknown) => (p(), { data: stores, isFetching: fetching }),
+vi.mock('@core/stores/store-location.gateway', () => ({
+	injectStoreLocationsQuery: (enabled: () => boolean) => (
+		(asked.enabled['stores'] = enabled),
+		{ data: stores, isFetching: fetching }
+	),
 }));
 
-const render = (platform = 'browser') => {
+const render = ({ platform = 'browser', permissions = [] as string[], template = '<div #chart></div>' } = {}) => {
 	const router = { navigateByUrl: vi.fn() };
-	const user = signal<unknown>(null);
+	const held = signal<string[]>(permissions);
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: Router, useValue: router },
-			{ provide: AuthStore, useValue: { user } },
+			{ provide: AuthStore, useValue: { permissions: held } },
 			{ provide: PLATFORM_ID, useValue: platform },
+			{
+				provide: TranslocoService,
+				useValue: { getActiveLang: () => 'bn', translate: (key: string) => `t:${key}` },
+			},
 		],
 	});
-	TestBed.overrideComponent(Dashboard, { set: { imports: [], template: '<div #chart></div>' } });
+	TestBed.overrideComponent(Dashboard, { set: { imports: [], template } });
 	const fixture = TestBed.createComponent(Dashboard);
 	fixture.detectChanges();
 	TestBed.tick();
-	return { fixture, page: fixture.componentInstance, router, user };
+	return { fixture, page: fixture.componentInstance, router, held };
 };
 const settle = async () => {
 	await new Promise((done) => setTimeout(done, 0));
 };
-const chart = { revenues: [1], commissions: [2], months: ['Jan'] };
+const months = { months: [{ month: '2026-10', revenueINR: 900 }] };
 
 afterEach(() => {
-	for (const value of [blogs, statistics, revenue, orders, products, reviews, categories, stores])
+	for (const value of [
+		blogs,
+		statistics,
+		commission,
+		categories,
+		stores,
+		revenue,
+		monthly,
+		orders,
+		recent,
+		customers,
+		top,
+		stock,
+		reviews,
+	])
 		value.set(undefined);
 	fetching.set(false);
 	apex.created.length = 0;
@@ -84,55 +133,128 @@ afterEach(() => {
 	document.body.classList.remove('loader-none');
 });
 
+describe('Dashboard permissions', () => {
+	const QUERIES = [
+		['revenue', 'dashboard.revenue'],
+		['monthly', 'dashboard.revenue'],
+		['orders', 'dashboard.orders'],
+		['recent', 'dashboard.orders'],
+		['customers', 'dashboard.customers'],
+		['top', 'dashboard.top_products'],
+		['stock', 'dashboard.stock'],
+		['reviews', 'dashboard.reviews'],
+		['categories', 'category.index'],
+		['blogs', 'blog.index'],
+	] as const;
+
+	it.each(QUERIES)('%s asks for its data only with %s', (name, code) => {
+		render({ permissions: [code] });
+		expect(asked.enabled[name]?.()).toBe(true);
+		render({ permissions: ['order.index', 'product.index', 'review.index', 'customer.index'] });
+		expect(asked.enabled[name]?.()).toBe(false);
+	});
+
+	it('says so when nothing is granted', () => {
+		const { page, held } = render();
+		expect(page.hasAnyWidget()).toBe(false);
+		held.set(['blog.index']);
+		expect(page.hasAnyWidget()).toBe(true);
+	});
+});
+
 describe('Dashboard data', () => {
 	it('starts empty', async () => {
 		const { page } = render();
 		expect(page.blogs()).toEqual([]);
-		expect(page.orderTableConfig.data).toEqual([]);
-		expect(page.productStockTableConfig.data).toEqual([]);
-		expect(page.sellerTableConfig.data).toEqual([]);
-		expect(await firstValueFrom(page.topProduct$)).toEqual([]);
+		expect(page.revenue()).toBeUndefined();
+		expect(page.orderCount()).toBeUndefined();
+		expect(page.customerCount()).toBeUndefined();
+		expect(page.topProducts()).toEqual([]);
+		expect(page.reviews()).toEqual([]);
+		expect(page.orderTableConfig().data).toEqual([]);
+		expect(page.productStockTableConfig().data).toEqual([]);
+		expect(page.activeStores()).toBe(0);
 		expect(await firstValueFrom(page.category$)).toEqual([]);
-		expect(page.isVendor()).toBe(false);
 	});
 
-	it('knows a vendor', () => {
-		const { page, user } = render();
-		user.set({ role: 'vendor' });
-		expect(page.isVendor()).toBe(true);
-	});
-
-	it('decorates the orders, products and sellers', () => {
+	it('reads the tiles', () => {
 		const { page } = render();
-		orders.set({
-			data: [
-				{ order_number: 7, payment_status: 'PENDING', consumer: { name: 'Asha' } },
-				{ order_number: 8, consumer: { name: 'Bina' } },
+		revenue.set({ revenueINR: 37000 });
+		orders.set({ orders: 5 });
+		customers.set({ customers: 78 });
+		expect(page.revenue()).toBe(37000);
+		expect(page.orderCount()).toBe(5);
+		expect(page.customerCount()).toBe(78);
+	});
+
+	it('gives each tile its own period', () => {
+		const { page } = render();
+		expect(asked.inputs['revenue']?.()).toEqual({ period: 'last_12_months' });
+		page.revenuePeriod.set({ period: 'last_month' });
+		expect(asked.inputs['revenue']?.()).toEqual({ period: 'last_month' });
+		expect(asked.inputs['orders']?.()).toEqual({ period: 'last_12_months' });
+	});
+
+	it('lays out the recent orders, with a guest as a dash and the orders list’s status pill', () => {
+		const { page } = render();
+		const order = { id: 'o', orderNumber: 'N1', placedAt: 'd', totalINR: 10, status: 'awaiting_payment' };
+		recent.set({
+			items: [
+				{ ...order, customerName: 'Asha' },
+				{ ...order, customerName: null },
 			],
-			total: 2,
 		});
-		products.set({
-			data: [{ stock_status: 'out_of_stock' }, {}],
-			total: 2,
+		TestBed.tick();
+		expect(page.orderTableConfig().total).toBe(2);
+		expect(page.orderTableConfig().data[0]).toMatchObject({
+			order_number: 'N1',
+			order_id: '<span class="fw-bolder">#N1</span>',
+			consumer_name: 'Asha',
+			total: 10,
+			order_payment_status: '<div class="status-pending"><span>t:ord_status_awaiting_payment</span></div>',
 		});
-		stores.set({ data: [{ id: 1 }], total: 1 });
+		expect(page.orderTableConfig().data[1]).toMatchObject({ consumer_name: '-' });
+	});
+
+	it('lays out the stock report in the admin language', () => {
+		const { page } = render();
+		const row = { productId: 'p', sku: 'S', quantity: 0, state: 'out_of_stock' };
+		stock.set({
+			items: [
+				{ ...row, title: { en: 'Silk', bn: 'সিল্ক' }, thumbnailUrl: 'i.png' },
+				{ ...row, title: { en: 'Silk' }, thumbnailUrl: null },
+			],
+		});
+		TestBed.tick();
+		expect(page.productStockTableConfig().total).toBe(2);
+		expect(page.productStockTableConfig().data[0]).toMatchObject({
+			id: 'p',
+			name: 'সিল্ক (S)',
+			product_thumbnail: { original_url: 'i.png' },
+			stock: '<div class="status-out_of_stock"><span>t:out_of_stock</span></div>',
+		});
+		expect(page.productStockTableConfig().data[1]).toMatchObject({ name: 'Silk (S)', product_thumbnail: null });
+	});
+
+	// A mutated object never reached the table when no other widget redrew the page.
+	it('hands the tables a new config when rows arrive, keeping what the table cleared', () => {
+		const { page } = render();
+		const before = page.productStockTableConfig();
+		before.rowActions = [];
+		stock.set({ items: [] });
+		TestBed.tick();
+		expect(page.productStockTableConfig()).not.toBe(before);
+		expect(page.productStockTableConfig().rowActions).toEqual([]);
+	});
+
+	it('counts the active stores and keeps the demo blog widget working', () => {
+		const { page } = render();
+		stores.set([{ store: { active: true } }, { store: { active: false } }, { store: { active: true } }]);
 		blogs.set({ data: [{ id: 1 }] });
 		TestBed.tick();
-		expect(page.orderTableConfig.data[0]).toMatchObject({ order_id: '<span class="fw-bolder">#7</span>' });
-		expect(page.orderTableConfig.data[1]).toMatchObject({ order_payment_status: '-' });
-		expect(page.productStockTableConfig.data[0]).toMatchObject({
-			stock: '<div class="status-out_of_stock"><span>out of stock</span></div>',
-		});
-		expect(page.productStockTableConfig.data[1]).toMatchObject({ stock: '-' });
-		expect(page.sellerTableConfig.total).toBe(1);
+		expect(page.activeStores()).toBe(2);
 		expect(page.blogs()).toHaveLength(1);
-	});
-
-	it('copes with answers that have no rows', () => {
-		const { page } = render();
-		stores.set({ total: 0 });
-		TestBed.tick();
-		expect(page.sellerTableConfig.data).toBeUndefined();
+		expect(asked.enabled['stores']?.()).toBe(false);
 	});
 
 	it('lists the categories, with a fallback image', async () => {
@@ -150,95 +272,96 @@ describe('Dashboard data', () => {
 		]);
 	});
 
-	it('keeps seven top products', async () => {
-		const { page } = render();
-		products.set({ data: Array.from({ length: 9 }, (_, id) => ({ id })), total: 9 });
-		TestBed.tick();
-		expect(await firstValueFrom(page.topProduct$)).toHaveLength(7);
-	});
-
 	it('mirrors the fetch state', () => {
 		const { page } = render();
 		fetching.set(true);
 		TestBed.tick();
-		expect(page.topSellerLoader).toBe(true);
-		expect(page.topProductLoader).toBe(true);
-		expect(page.productStockLoader).toBe(true);
+		expect(page.topProductLoader()).toBe(true);
+		expect(page.productStockLoader()).toBe(true);
 	});
 });
 
 describe('Dashboard chart', () => {
-	it('draws once the view and data are ready, then updates it', async () => {
+	it('draws real revenue, then updates it', async () => {
 		const { page } = render();
-		revenue.set(chart);
+		monthly.set(months);
 		TestBed.tick();
 		await settle();
-		expect(page.chartOptions.series).toHaveLength(2);
+		expect(page.chartOptions.series?.[0]).toMatchObject({ name: 'Revenue', data: [900] });
 		expect(apex.created).toHaveLength(1);
 		expect(apex.render).toHaveBeenCalledOnce();
-		revenue.set({ ...chart, months: ['Feb'] });
+		monthly.set({ months: [{ month: '2026-11', revenueINR: 5 }] });
 		TestBed.tick();
 		expect(apex.updateOptions).toHaveBeenCalledOnce();
 	});
 
+	it('labels months in the admin language', async () => {
+		const { page } = render();
+		monthly.set(months);
+		TestBed.tick();
+		await settle();
+		// Bengali month name, English digits (BN-3).
+		expect(page.chartOptions.xaxis?.categories).toEqual(["অক্টোঃ '26"]);
+	});
+
+	it('keeps the demo commission line, cut to the months shown', async () => {
+		const { page } = render();
+		commission.set({ commissions: [30, 60, 90] });
+		monthly.set(months);
+		TestBed.tick();
+		await settle();
+		expect(page.chartOptions.series?.[1]).toMatchObject({ data: [30] });
+	});
+
 	it('draws nothing on the server', async () => {
-		render('server');
-		revenue.set(chart);
+		render({ platform: 'server' });
+		monthly.set(months);
 		TestBed.tick();
 		await settle();
 		expect(apex.created).toEqual([]);
 	});
 
-	it('waits for the view when the data arrives first', async () => {
-		revenue.set(chart);
+	it('draws nothing while the chart is hidden', async () => {
+		render({ template: '' });
+		monthly.set(months);
+		TestBed.tick();
+		await settle();
+		expect(apex.created).toEqual([]);
+	});
+
+	it('waits for the element when the data arrives first', async () => {
+		monthly.set(months);
 		const { page } = render();
 		await settle();
 		expect(page.chartOptions).toBeDefined();
 		expect(apex.created).toHaveLength(1);
+	});
+
+	it('draws nothing without data', async () => {
+		render();
+		await settle();
+		expect(apex.created).toEqual([]);
 	});
 });
 
 describe('Dashboard actions', () => {
 	const pick = (value: unknown) => ({ value }) as never;
 
-	it('filters the top products', () => {
+	it('filters the top products, defaulting to this year', () => {
 		const { page } = render();
 		page.filterTopProduct(pick('today'));
+		expect(asked.inputs['top']?.()).toEqual({ period: 'today' });
 		page.filterTopProduct(pick(''));
+		expect(asked.inputs['top']?.()).toEqual({ period: 'this_year' });
 		expect(document.body.classList.contains('loader-none')).toBe(true);
-	});
-
-	it('pins the order and product table sizes', () => {
-		const { page } = render();
-		const orderParams: Record<string, unknown> = {};
-		page.onOrderTableChange(orderParams);
-		expect(orderParams['paginate']).toBe(7);
-		page.onOrderTableChange();
-		const productParams: Record<string, unknown> = {};
-		page.onProductTableChange(productParams);
-		expect(productParams).toMatchObject({ paginate: 8, field: 'quantity', sort: 'asc' });
-		page.onProductTableChange();
 	});
 
 	it('filters the stock table by category', () => {
 		const { page } = render();
 		page.filterProduct(pick(3));
-		expect(page.productStockLoader).toBe(true);
+		expect(asked.inputs['stock']?.()).toBe('3');
 		page.filterProduct(pick(''));
-	});
-
-	it('fills in the seller defaults only when needed', () => {
-		const { page } = render();
-		const bare: Record<string, unknown> = {};
-		page.onSellerTableChange(bare);
-		expect(bare).toMatchObject({ paginate: 6, top_vendor: 1, filter_by: 'this_year' });
-		const chosen: Record<string, unknown> = { filter_by: 'today' };
-		page.onSellerTableChange(chosen);
-		expect(chosen).toEqual({ filter_by: 'today' });
-		page.onSellerTableChange();
-		page.filterSeller(pick('today'));
-		page.filterSeller(pick(''));
-		expect(page.topSellerLoader).toBe(true);
+		expect(asked.inputs['stock']?.()).toBeUndefined();
 	});
 
 	it('opens an order or a product, and nothing else', () => {

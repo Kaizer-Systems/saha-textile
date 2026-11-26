@@ -1,7 +1,7 @@
 import { Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { ITag } from '@data-access/interfaces/tag.interface';
+import { ApiBlogTerm } from '@data-access/interfaces/blog.interface';
 
 @Component({
 	selector: 'app-blog-tag',
@@ -10,7 +10,7 @@ import { ITag } from '@data-access/interfaces/tag.interface';
 	imports: [RouterLink],
 })
 export class BlogTag {
-	readonly tags = input<ITag[]>();
+	readonly tags = input<ApiBlogTerm[]>();
 
 	constructor() {}
 }

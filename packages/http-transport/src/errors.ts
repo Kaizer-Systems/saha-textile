@@ -55,7 +55,8 @@ export type AuthRefusalReason =
 	| 'session_revoked'
 	| 'permissions_changed'
 	| 'account_inactive'
-	| 'csrf_rejected';
+	| 'csrf_rejected'
+	| 'session_locked';
 
 const AUTH_REFUSAL_REASONS: readonly string[] = [
 	'session_missing',
@@ -64,6 +65,7 @@ const AUTH_REFUSAL_REASONS: readonly string[] = [
 	'permissions_changed',
 	'account_inactive',
 	'csrf_rejected',
+	'session_locked',
 ];
 
 /** One field-level validation problem, flattened for transport. */

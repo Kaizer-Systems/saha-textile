@@ -1,12 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import type {
-	GoLiveResult,
-	ProductBundle,
-	ProductBundleWrite,
-	ProductCreate,
-} from '@saha-textile/contracts';
 import { Observable } from 'rxjs';
 
 import {
@@ -20,6 +14,19 @@ import { IProductModel } from '@data-access/interfaces/product.interface';
 
 import { environment } from '../../../../public/environments/environment';
 
+import type {
+	GoLiveResult,
+	ProductBulkResult,
+	ProductBundle,
+	ProductBundleWrite,
+	ProductCreate,
+	ProductSaleResult,
+	ProductSaleWrite,
+} from '@saha-textile/contracts';
+
+/** The product list's bulk actions, by their API path (product bulk actions brief, 2026-11-19). */
+export type ProductBulkAction = 'go-live' | 'take-off' | 'discontinue' | 'duplicate' | 'delete';
+
 @Injectable({
 	providedIn: 'root',
 })
@@ -31,9 +38,15 @@ export class ProductService {
 	}
 
 	/** The catalogue as the API holds it, every status, for the product list and its pickers. */
-	getCatalogProducts(query: { search?: string; page?: number; pageSize?: number }): Observable<CatalogProductList> {
+	getCatalogProducts(query: {
+		search?: string;
+		page?: number;
+		pageSize?: number;
+		missing?: string | null;
+	}): Observable<CatalogProductList> {
 		const params: Record<string, string> = {};
 		if (query.search) params['search'] = query.search;
+		if (query.missing) params['missing'] = query.missing;
 		if (query.page) params['page'] = String(query.page);
 		if (query.pageSize) params['pageSize'] = String(query.pageSize);
 		return this.http.get<CatalogProductList>(`${environment.apiUrl}/admin/catalog/products`, { params });
@@ -81,6 +94,25 @@ export class ProductService {
 			`${environment.apiUrl}/admin/catalog/products/${encodeURIComponent(idOrSlug)}/bundle`,
 			body,
 		);
+	}
+
+	/** One bulk action for up to 200 products; `dryRun` says what would happen and changes nothing. */
+	bulk(
+		action: ProductBulkAction,
+		ids: readonly string[],
+		dryRun: boolean,
+		replacementPath: string | null = null,
+	): Observable<ProductBulkResult> {
+		return this.http.post<ProductBulkResult>(`${environment.apiUrl}/admin/catalog/products/bulk/${action}`, {
+			ids,
+			dryRun,
+			...(action === 'discontinue' ? { replacementPath } : {}),
+		});
+	}
+
+	/** Put on sale: products join a sale that has not ended, or a new draft sale. */
+	addToSale(body: ProductSaleWrite): Observable<ProductSaleResult> {
+		return this.http.post<ProductSaleResult>(`${environment.apiUrl}/admin/events/sale-products`, body);
 	}
 
 	discontinueCatalogProduct(idOrSlug: string, replacementPath: string | null) {

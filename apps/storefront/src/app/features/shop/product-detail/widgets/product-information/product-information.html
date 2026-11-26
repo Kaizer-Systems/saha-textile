@@ -1,6 +1,6 @@
 <div class="pickup-box">
 	<div class="product-title">
-		<h4>{{ 'product_information' | transloco }}</h4>
+		<h2 class="h4">{{ 'product_information' | transloco }}</h2>
 	</div>
 	<div class="product-info">
 		<ul class="product-info-list product-info-list-2">
@@ -10,11 +10,22 @@
 			<li>{{ 'saree_length' | transloco }}: {{ metres(length) }}</li>
 			} @if (product()?.blouse_piece_m; as piece) {
 			<li>{{ 'blouse_piece' | transloco }}: {{ metres(piece) }}</li>
-			} @if (product()?.sku) {
-			<li>{{ 'weight' | transloco }}: {{ product()?.weight }} {{ 'gms' | transloco }}</li>
-			} @if (variation()?.stock_status ?? product()?.stock_status; as stockStatus) {
+			} @if (product()?.weight; as weight) {
+			<li>{{ 'weight' | transloco }}: {{ weight }} {{ 'gms' | transloco }}</li>
+			} @if (product()?.sold_by === 'metre') {
+			<li>{{ 'sold_by_unit' | transloco }}: {{ 'sold_by_metre' | transloco }}</li>
+			@if (product()?.metre_rule; as rule) {
+			<li>{{ 'shortest_cut' | transloco }}: {{ tenths(rule.shortestCutTenths) }}</li>
+			@if (rule.widthInches) {
+			<li>{{ 'cloth_width' | transloco }}: {{ rule.widthInches }} {{ 'unit_in' | transloco }}</li>
+			} } } @if (variation()?.stock_status ?? product()?.stock_status; as stockStatus) {
 			<li>{{ 'stock_status' | transloco }}: {{ stockStatus | titleCase }}</li>
-			} @if ((variation()?.quantity ?? product()?.quantity ?? 0) > 0) {
+			} @if ((variation()?.quantity ?? product()?.quantity ?? 0) > 0 && product()?.sold_by === 'metre') {
+			<li>
+				{{ 'in_stock_length' | transloco: { length: tenths(variation()?.quantity ?? product()?.quantity ?? 0) }
+				}}
+			</li>
+			} @else if ((variation()?.quantity ?? product()?.quantity ?? 0) > 0) {
 			<li>
 				{{ 'quantity' | transloco }}: {{ variation()?.quantity ?? product()?.quantity }} {{ 'items_left' |
 				transloco }}

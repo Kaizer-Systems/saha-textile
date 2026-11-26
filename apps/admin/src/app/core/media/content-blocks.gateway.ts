@@ -5,12 +5,14 @@ import { Observable, map } from 'rxjs';
 
 import { runtimeConfig } from '@core/config/runtime-config';
 
+import type { YouTubeFeedStatus, YouTubeSettings, YouTubeSettingsUpdate } from '@saha-textile/contracts';
+
 /** Home hero arrangements (`HomeHeroLayout`). */
 export type HeroLayout = 'hero_full' | 'hero_main_side' | 'hero_main_stack' | 'hero_center_sides';
 
 /** Slots each layout renders, in reading order (`HERO_LAYOUT_SLOTS`). */
 export const HERO_LAYOUT_SLOTS: Record<HeroLayout, string[]> = {
-	hero_full: ['main'],
+	hero_full: ['main', 'slide_2', 'slide_3'],
 	hero_main_side: ['main', 'side'],
 	hero_main_stack: ['main', 'side_top', 'side_bottom'],
 	hero_center_sides: ['left', 'main', 'right'],
@@ -22,11 +24,13 @@ export type Localized = Record<string, string>;
 export interface ContentBlockInput {
 	ownerType: 'home' | 'global';
 	ownerId: null;
-	position: 'hero' | 'newsletter_popup';
+	position: 'hero' | 'promo_wide' | 'newsletter_popup';
 	slot: string;
 	images: { desktop: string; tablet: string | null; phone: string | null };
 	containsText: boolean;
 	localeImages: Record<string, { desktop: string; tablet: string | null; phone: string | null }>;
+	/** The version each picture shows, by photo id (R4-1; media step 4d). */
+	imageVersions?: Record<string, string>;
 	heading: Localized;
 	subheading: Localized;
 	ctaLabel: Localized;
@@ -81,6 +85,10 @@ export interface YouTubeValidation {
 	videoId: string;
 	title: string;
 	thumbnailUrl: string;
+	/** Worked out by the API from YouTube's data; admin never picks it. */
+	kind: 'video' | 'short';
+	durationSeconds: number;
+	publishedAt: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -89,5 +97,23 @@ export class YouTubeGateway {
 
 	validate(input: string): Observable<YouTubeValidation> {
 		return this.http.post<YouTubeValidation>(`${runtimeConfig.apiUrl}/admin/youtube/validate`, { input });
+	}
+
+	settings(): Observable<YouTubeSettings> {
+		return this.http.get<YouTubeSettings>(`${runtimeConfig.apiUrl}/admin/youtube/settings`);
+	}
+
+	saveSettings(update: YouTubeSettingsUpdate): Observable<YouTubeSettings> {
+		return this.http.put<YouTubeSettings>(`${runtimeConfig.apiUrl}/admin/youtube/settings`, update);
+	}
+
+	/** When the cache was last filled, how much it holds, and the last refresh error. */
+	status(): Observable<YouTubeFeedStatus> {
+		return this.http.get<YouTubeFeedStatus>(`${runtimeConfig.apiUrl}/admin/youtube/status`);
+	}
+
+	/** Queues the daily refresh to run now. */
+	refresh(): Observable<void> {
+		return this.http.post<void>(`${runtimeConfig.apiUrl}/admin/youtube/refresh`, {});
 	}
 }

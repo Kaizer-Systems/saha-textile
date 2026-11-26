@@ -1,12 +1,8 @@
 import { IAttachment } from './attachment.interface';
-import { IPaginateModel } from './core.interface';
 import { IProduct } from './product.interface';
 import { IStores } from './store.interface';
 import { IUser } from './user.interface';
 
-export interface IReviewModel extends IPaginateModel {
-	data: IReview[];
-}
 export interface IReview {
 	id: number;
 	consumer: IUser;

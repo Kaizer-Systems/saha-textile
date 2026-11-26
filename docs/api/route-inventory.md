@@ -4,7 +4,7 @@ wide: true
 description: Every API route with its access rule.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-16'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/openapi.ts
@@ -22,6 +22,11 @@ source_of_truth:
     - apps/api/src/currency
     - apps/api/src/promotions
     - apps/api/src/media
+    - apps/api/src/blog
+    - apps/api/src/events
+    - apps/api/src/stores
+    - apps/api/src/mailboxes
+    - apps/api/src/wishlist
     - packages/adapters-db-mongo/src/models/auth-session.model.ts
     - packages/adapters-db-mongo/src/models/auth-challenge.model.ts
     - packages/adapters-db-mongo/src/models/auth-token.model.ts
@@ -159,6 +164,14 @@ Every route below requires an admin session and the named permission. Effective 
 | `DELETE` | `/admin/users/:userId/roles/:roleId` | `admin_user_role.revoke` | Revoke a role; refused for the last administrator (audited)              |
 | `PATCH`  | `/admin/users/:userId/status`        | `admin_user.update`      | Enable or disable an account; disabling revokes every session (audited)  |
 | `GET`    | `/admin/audit-logs`                  | `audit.index`            | Read the admin audit trail (newest first, filterable, bounded page size) |
+| `GET`    | `/admin/dashboard/revenue`           | `dashboard.revenue`      | Revenue for one period (Total Revenue tile)                              |
+| `GET`    | `/admin/dashboard/revenue/monthly`   | `dashboard.revenue`      | Revenue by month for the last 12 months                                  |
+| `GET`    | `/admin/dashboard/orders`            | `dashboard.orders`       | Paid order count for one period (Total Orders tile)                      |
+| `GET`    | `/admin/dashboard/orders/recent`     | `dashboard.orders`       | The 5 newest orders in any status                                        |
+| `GET`    | `/admin/dashboard/customers`         | `dashboard.customers`    | Customer count, leaving out deleted accounts                             |
+| `GET`    | `/admin/dashboard/top-products`      | `dashboard.top_products` | The 4 best sellers for one period                                        |
+| `GET`    | `/admin/dashboard/stock`             | `dashboard.stock`        | The 8 live variants with the lowest stock, optionally by category        |
+| `GET`    | `/admin/dashboard/reviews`           | `dashboard.reviews`      | The 4 newest reviews in any moderation state                             |
 | `GET`    | `/admin/permissions`                 | `permission.index`       | The full permission registry                                             |
 | `GET`    | `/admin/roles`                       | `role.index`             | List every role definition                                               |
 | `GET`    | `/admin/roles/:id`                   | `role.index`             | Get one role definition                                                  |
@@ -187,6 +200,33 @@ The command generates a password, prints it once, stores only its Argon2 hash an
 
 These routes manage non-secret settings. The MSG91 key stays in the API environment.
 
+## Admin communications routes
+
+| Method | Route                   | Access          | Purpose                                                                                    |
+| ------ | ----------------------- | --------------- | ------------------------------------------------------------------------------------------ |
+| `GET`  | `/admin/communications` | `setting.index` | Every approved message with its email, SMS and WhatsApp switches                           |
+| `PUT`  | `/admin/communications` | `setting.edit`  | Switch one message on or off for one channel (password for a cell with a warning; audited) |
+
+See [Communications](../admin/communications.md) for the rules.
+
+## Admin language routes
+
+Settings › Languages. Every signed-in admin reads the working list; everything else needs `language.manage`. Every change is audited and answers the whole page.
+
+| Method   | Route                                  | Access            | Purpose                                                                |
+| -------- | -------------------------------------- | ----------------- | ---------------------------------------------------------------------- |
+| `GET`    | `/admin/languages`                     | Admin session     | Every added language with its Admin and Shop state, English first      |
+| `GET`    | `/admin/languages/settings`            | `language.manage` | The page: to-do totals, stored text, addresses, what the release ships |
+| `GET`    | `/admin/languages/reminders`           | `language.manage` | Deleted languages whose stored text the bell reminds about             |
+| `GET`    | `/admin/languages/:code/todo`          | `language.manage` | What is still empty in one language, by area                           |
+| `GET`    | `/admin/languages/:code/missing/:area` | `language.manage` | The items one list shows when filtered to what is missing              |
+| `POST`   | `/admin/languages`                     | `language.manage` | Add a language this release ships, as a draft                          |
+| `PUT`    | `/admin/languages/:code/admin`         | `language.manage` | Let staff use the admin in it, or stop                                 |
+| `PUT`    | `/admin/languages/:code/shop`          | `language.manage` | Show it on the shop once nothing is left, or take it off (301)         |
+| `DELETE` | `/admin/languages/:code`               | `language.manage` | Remove it from every list once the shop does not show it; text kept    |
+| `POST`   | `/admin/languages/:code/keep`          | `language.manage` | Keep a deleted language's text; the reminder waits 30 days             |
+| `POST`   | `/admin/languages/:code/erase`         | `language.manage` | Erase a deleted language's stored text after its name is typed         |
+
 ## Admin customer routes
 
 | Method   | Route                                               | Access             | Purpose                                                                                               |
@@ -210,80 +250,456 @@ A restore returns the customer to the previous status. It does not re-attach pro
 
 ## Admin catalogue routes
 
-| Method   | Route                                           | Access                      | Purpose                                                           |
-| -------- | ----------------------------------------------- | --------------------------- | ----------------------------------------------------------------- |
-| `GET`    | `/admin/catalog/addon-templates`                | `product.index`             | List add-on templates                                             |
-| `POST`   | `/admin/catalog/addon-templates`                | `product.edit`              | Save an add-on template option                                    |
-| `DELETE` | `/admin/catalog/addon-templates/:code`          | `product.edit`              | Remove an add-on template option                                  |
-| `GET`    | `/admin/catalog/products`                       | `product.index`             | List products for the admin, every status                         |
-| `GET`    | `/admin/catalog/products/replacement-targets`   | `product.edit`              | Live products and collections a discontinued product may point to |
-| `GET`    | `/admin/catalog/products/:idOrSlug`             | `product.index`             | Read one product and its variants for the admin form              |
-| `POST`   | `/admin/catalog/products/:idOrSlug/discontinue` | `product.edit`              | Discontinue a product and write its redirect                      |
-| `POST`   | `/admin/catalog/products/:idOrSlug`             | `product.edit`              | Save the product form fields                                      |
-| `GET`    | `/admin/catalog/redirects`                      | `product.index`             | List redirect rows                                                |
-| `POST`   | `/admin/catalog/redirects`                      | `product.edit`              | Save a redirect, collapsing any chain                             |
-| `DELETE` | `/admin/catalog/redirects`                      | `product.edit`              | Remove one redirect row                                           |
-| `GET`    | `/admin/catalog/faq`                            | `faq.index`                 | List FAQ entries                                                  |
-| `DELETE` | `/admin/catalog/faq/:id`                        | `faq.destroy`               | Remove an FAQ entry                                               |
-| `POST`   | `/admin/catalog/faq`                            | `faq.edit`                  | Save an FAQ entry                                                 |
-| `GET`    | `/admin/catalog/questions`                      | `question_and_answer.index` | List shopper questions                                            |
-| `POST`   | `/admin/catalog/questions/:id/answer`           | `question_and_answer.edit`  | Answer a question and email the shopper                           |
+| Method   | Route                                           | Access                        | Purpose                                                                            |
+| -------- | ----------------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------- |
+| `GET`    | `/admin/catalog/addon-templates`                | `product.index`               | List add-on templates                                                              |
+| `POST`   | `/admin/catalog/addon-templates`                | `product.edit`                | Save an add-on template option                                                     |
+| `DELETE` | `/admin/catalog/addon-templates/:code`          | `product.edit`                | Remove an add-on template option                                                   |
+| `GET`    | `/admin/catalog/categories`                     | `category.index`              | Every category with its address and product count                                  |
+| `POST`   | `/admin/catalog/categories`                     | `category.create`             | Add a category                                                                     |
+| `POST`   | `/admin/catalog/categories/:id`                 | `category.edit`               | Save a category; a move or rename writes its redirects                             |
+| `DELETE` | `/admin/catalog/categories/:id`                 | `category.destroy`            | Delete an empty category                                                           |
+| `GET`    | `/admin/catalog/categories/:id/hsn-impact`      | `category.edit`               | Products whose HSN would follow a changed category HSN, and those with their own   |
+| `GET`    | `/admin/catalog/attributes`                     | `attribute.index`             | Every attribute and its values                                                     |
+| `POST`   | `/admin/catalog/attributes`                     | `attribute.edit`              | Add or save an attribute                                                           |
+| `DELETE` | `/admin/catalog/attributes/:code`               | `attribute.destroy`           | Delete an attribute no product uses                                                |
+| `GET`    | `/admin/catalog/products`                       | `product.index`               | List products for the admin, every status                                          |
+| `GET`    | `/admin/catalog/products/replacement-targets`   | `product.edit`                | Live products and collections a discontinued product may point to                  |
+| `POST`   | `/admin/catalog/products`                       | `product.create`              | Add a product; it starts disabled                                                  |
+| `POST`   | `/admin/catalog/products/:idOrSlug/go-live`     | `product.edit`                | Put a product on sale, or list what stops it; the form and the list both call this |
+| `GET`    | `/admin/catalog/products/:idOrSlug/bundle`      | `product.index`               | Read a bundle product's groups                                                     |
+| `POST`   | `/admin/catalog/products/:idOrSlug/bundle`      | `product.edit`                | Save a bundle product's groups                                                     |
+| `GET`    | `/admin/catalog/products/:idOrSlug`             | `product.index`               | Read one product and its variants for the admin form                               |
+| `POST`   | `/admin/catalog/products/:idOrSlug/discontinue` | `product.edit`                | Discontinue a product and write its redirect                                       |
+| `POST`   | `/admin/catalog/products/:idOrSlug`             | `product.edit`                | Save the product form fields                                                       |
+| `GET`    | `/admin/catalog/redirects`                      | `product.index`               | List redirect rows                                                                 |
+| `POST`   | `/admin/catalog/redirects`                      | `product.edit`                | Save a redirect, collapsing any chain                                              |
+| `DELETE` | `/admin/catalog/redirects`                      | `product.edit`                | Remove one redirect row                                                            |
+| `GET`    | `/admin/catalog/faq`                            | `faq.index`                   | List FAQ entries                                                                   |
+| `DELETE` | `/admin/catalog/faq/:id`                        | `faq.destroy`                 | Remove an FAQ entry                                                                |
+| `POST`   | `/admin/catalog/faq`                            | `faq.edit`                    | Save an FAQ entry                                                                  |
+| `GET`    | `/admin/catalog/questions`                      | `question_and_answer.index`   | List shopper questions                                                             |
+| `POST`   | `/admin/catalog/questions/:id/answer`           | `question_and_answer.edit`    | Answer a question and email the shopper                                            |
+| `POST`   | `/admin/catalog/questions/:id/reject`           | `question_and_answer.edit`    | Reject a question so it never shows                                                |
+| `DELETE` | `/admin/catalog/questions/:id`                  | `question_and_answer.destroy` | Delete a question                                                                  |
+| `GET`    | `/admin/search-terms`                           | `search_term.index`           | List search words, any status                                                      |
+| `GET`    | `/admin/search-terms/:id`                       | `search_term.index`           | One search word with its tagged products                                           |
+| `POST`   | `/admin/search-terms`                           | `search_term.create`          | Add a search word                                                                  |
+| `POST`   | `/admin/search-terms/:id`                       | `search_term.edit`            | Save a search word; Live needs every language and a tag                            |
+| `POST`   | `/admin/search-terms/status`                    | `search_term.edit`            | Bulk Go Live or Take off shop                                                      |
+| `DELETE` | `/admin/search-terms/:id`                       | `search_term.destroy`         | Delete a search word                                                               |
+| `GET`    | `/admin/storefront-settings/search`             | `theme_option.index`          | Which categories show first in search                                              |
+| `PUT`    | `/admin/storefront-settings/search`             | `theme_option.edit`           | Save Search; the shop re-indexes in the background                                 |
+| `GET`    | `/admin/storefront-settings/share`              | `theme_option.index`          | The share menu's apps and Story words; the X handle comes from the Brand Kit       |
+| `PUT`    | `/admin/storefront-settings/share`              | `theme_option.edit`           | Save Sharing; the X handle is written to the Brand Kit's X profile                 |
 
 Admin catalogue reads answer `no-store`.
 
 ## Admin media and content routes
 
-| Method   | Route                                 | Access               | Purpose                                                                      |
-| -------- | ------------------------------------- | -------------------- | ---------------------------------------------------------------------------- |
-| `GET`    | `/admin/content-blocks`               | `theme_option.index` | Banners by owner and position                                                |
-| `PUT`    | `/admin/content-blocks`               | `theme_option.edit`  | Create or replace the banner at its position and slot                        |
-| `DELETE` | `/admin/content-blocks/:key`          | `theme_option.edit`  | Remove a banner                                                              |
-| `GET`    | `/admin/settings/brand`               | `setting.index`      | The Brand Kit settings                                      |
-| `PUT`    | `/admin/settings/brand`               | `setting.edit`       | Set the shop name, logo and seal                            |
-| `GET`    | `/admin/settings/home-hero`           | `theme_option.index` | The selected home hero layout                                                |
-| `PUT`    | `/admin/settings/home-hero`           | `theme_option.edit`  | Select the home hero layout                                                  |
-| `POST`   | `/admin/youtube/validate`             | `product.edit`       | Normalise a pasted YouTube link and confirm the video                        |
-| `GET`    | `/admin/youtube/settings`             | `setting.index`      | YouTube rail settings                                                        |
-| `PUT`    | `/admin/youtube/settings`             | `setting.edit`       | Edit the rail: handle, display count, placements                             |
-| `GET`    | `/admin/media`                        | `attachment.index`   | Media library page with previews, usage counts and stale roles               |
-| `GET`    | `/admin/media/roles`                  | `attachment.index`   | The image size ladder                                                        |
-| `PUT`    | `/admin/media/roles/:key`             | `setting.edit`       | Edit a role; changed widths mark old derivatives stale                       |
-| `POST`   | `/admin/media/presign`                | `attachment.create`  | Start an upload: policy check, then a presigned PUT for the private original |
-| `POST`   | `/admin/media/:assetId/finalize`      | `attachment.create`  | The upload finished; queue processing                                        |
-| `GET`    | `/admin/media/:assetId/status`        | `attachment.index`   | Processing state of an upload                                                |
-| `GET`    | `/admin/media/:assetId`               | `attachment.index`   | One library item                                                             |
-| `PATCH`  | `/admin/media/:assetId`               | `attachment.edit`    | Edit slug, alt, title and caption; a new slug queues a reprocess             |
-| `POST`   | `/admin/media/:assetId/reprocess`     | `attachment.edit`    | Regenerate every role from the retained original                             |
-| `DELETE` | `/admin/media/:assetId`               | `attachment.destroy` | Soft-delete an unused image; GC removes files after 30 days                  |
-| `GET`    | `/admin/reviews`                      | `review.index`       | Reviews with photo previews (signed while private)                           |
-| `POST`   | `/admin/reviews/:reviewId/moderation` | `review.edit`        | Approve or reject a review and its photos                                    |
+| Method   | Route                                 | Access               | Purpose                                                                                                                       |
+| -------- | ------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/admin/content-blocks`               | `theme_option.index` | Banners by owner and position                                                                                                 |
+| `PUT`    | `/admin/content-blocks`               | `theme_option.edit`  | Create or replace the banner at its position and slot                                                                         |
+| `DELETE` | `/admin/content-blocks/:key`          | `theme_option.edit`  | Remove a banner                                                                                                               |
+| `GET`    | `/admin/settings/brand`               | `setting.index`      | The Brand Kit settings                                                                                                        |
+| `PUT`    | `/admin/settings/brand`               | `setting.edit`       | Save logo sets, link preview picture, profiles, store links and colours                                                       |
+| `POST`   | `/admin/settings/brand/app-link`      | `setting.edit`       | Check that a Google Play or App Store address belongs to a real app                                                           |
+| `GET`    | `/admin/settings/home-hero`           | `theme_option.index` | The selected home hero layout                                                                                                 |
+| `PUT`    | `/admin/settings/home-hero`           | `theme_option.edit`  | Select the home hero layout                                                                                                   |
+| `POST`   | `/admin/youtube/validate`             | `product.edit`       | Normalise a pasted YouTube link and confirm the video                                                                         |
+| `GET`    | `/admin/youtube/settings`             | `setting.index`      | YouTube rail settings                                                                                                         |
+| `PUT`    | `/admin/youtube/settings`             | `setting.edit`       | Edit the rail: handle, display count, placements                                                                              |
+| `GET`    | `/admin/media`                        | `attachment.index`   | Media library page with previews, usage counts and stale roles                                                                |
+| `GET`    | `/admin/media/roles`                  | `attachment.index`   | The image size ladder                                                                                                         |
+| `PUT`    | `/admin/media/roles/:key`             | `setting.edit`       | Edit a role; new widths apply to files made afterwards                                                                        |
+| `GET`    | `/admin/media/profiles`               | `attachment.index`   | Image profiles, built-in first, each with how many photos hold a version of it                                                |
+| `GET`    | `/admin/media/profiles/:key`          | `attachment.index`   | One image profile with its photo count                                                                                        |
+| `GET`    | `/admin/media/profiles/:key/refresh`  | `setting.edit`       | Bring older versions up to date (F02): photos and versions made with earlier settings, bytes, runs under way                  |
+| `POST`   | `/admin/media/profiles/:key/refresh`  | `setting.edit`       | Start it: each photo remade like a Replace on its own original, busy photos left for later (step 3e)                          |
+| `POST`   | `/admin/media/profiles`               | `setting.edit`       | Add an image profile; its key is made from the name                                                                           |
+| `PUT`    | `/admin/media/profiles/:key`          | `setting.edit`       | Edit or switch an image profile on or off; applies to versions made afterwards                                                |
+| `DELETE` | `/admin/media/profiles/:key`          | `setting.edit`       | Delete an image profile no photo uses; built-in profiles are never deleted                                                    |
+| `POST`   | `/admin/media/presign`                | `attachment.create`  | Start an upload: policy and storage checks, then a presigned PUT for the private original                                     |
+| `POST`   | `/admin/media/:assetId/finalize`      | `attachment.create`  | The upload finished; queue processing                                                                                         |
+| `GET`    | `/admin/media/:assetId/status`        | `attachment.index`   | Processing state of an upload                                                                                                 |
+| `GET`    | `/admin/media/:assetId`               | `attachment.index`   | One library item                                                                                                              |
+| `PATCH`  | `/admin/media/:assetId`               | `attachment.edit`    | Edit slug, alt, title and caption; a new slug on a photo with versions runs like a Replace (step 3d), else queues a reprocess |
+| `POST`   | `/admin/media/:assetId/reprocess`     | `attachment.edit`    | Regenerate every role from the retained original                                                                              |
+| `DELETE` | `/admin/media/:assetId`               | `attachment.destroy` | Soft-delete an unused image; GC removes files after 30 days                                                                   |
+| `GET`    | `/admin/reviews`                      | `review.index`       | Reviews with photo previews (signed while private)                                                                            |
+| `POST`   | `/admin/reviews/:reviewId/moderation` | `review.edit`        | Approve or reject a review and its photos                                                                                     |
+
+## Admin Media page routes
+
+The Media page works as a file manager. Every route below is under `/admin/media/library` and needs an admin session.
+
+| Method   | Route                            | Access               | Purpose                                                                                                               |
+| -------- | -------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/`                              | `attachment.index`   | A folder, a search, a category, Recent, Favourites or Trash                                                           |
+| `GET`    | `/tree`                          | `attachment.index`   | Every folder not in Trash, for the folder tree                                                                        |
+| `GET`    | `/activity`                      | `attachment.index`   | Who did what on the Media page, newest first; `?entityId=` lists one file's or folder's trail                         |
+| `GET`    | `/files/:id/details`             | `attachment.index`   | One file: facts, folder, uploader, where used, its versions with their files, per-photo pictures                      |
+| `POST`   | `/files/:id/versions`            | `attachment.edit`    | Reprocess one photo: add versions (a profile and a fill each), never twice; storage check first                       |
+| `DELETE` | `/files/:id/versions/:versionId` | `attachment.edit`    | Remove a version the website does not show, with its files; never the last one                                        |
+| `POST`   | `/versions`                      | `attachment.edit`    | The same versions for up to 200 photos; a fill is “As is” where a photo already fits                                  |
+| `POST`   | `/versions/status`               | `attachment.index`   | How many of these photos still have versions being made, for the tray                                                 |
+| `POST`   | `/files/:id/replace`             | `attachment.edit`    | Replace a photo: the new one is checked against every version, then uploads beside the old one                        |
+| `POST`   | `/files/:id/replace/finish`      | `attachment.edit`    | The new photo is uploaded: its versions are remade, then it takes the old one's place everywhere                      |
+| `GET`    | `/files/:id/replace`             | `attachment.index`   | Where a Replace has got, for its three steps                                                                          |
+| `DELETE` | `/files/:id/replace`             | `attachment.edit`    | Stop a Replace still uploading, or clear one that failed                                                              |
+| `PUT`    | `/files/:id/focal`               | `attachment.edit`    | Set the point every crop keeps; the photo's Crop versions are remade around it                                        |
+| `GET`    | `/nightly-check`                 | `attachment.index`   | The nightly Spaces check: used photos with files gone, and files no record knows (R5-5)                               |
+| `GET`    | `/clean-up`                      | `attachment.index`   | Clean up: files not used for 90 days, the 50 largest, later copies of the same file; never used ones or backups (A44) |
+| `GET`    | `/email-pictures`                | `attachment.index`   | Clean up › Email pictures: email pictures whose photo was deleted or replaced, kept for good (A50)                    |
+| `POST`   | `/email-pictures/delete`         | `attachment.destroy` | Delete chosen email pictures for good after the warning (A51); recorded ones only, audited                            |
+| `POST`   | `/zips/plan`                     | `attachment.index`   | What a .zip of the chosen folders and files would hold (name, files, bytes), for the storage check                    |
+| `POST`   | `/zips`                          | `attachment.index`   | Start a .zip under the storage check's hold; the worker writes it into Spaces; kept 24 hours (A30)                    |
+| `GET`    | `/zips`                          | `attachment.index`   | Your own .zip files of the last day, newest first, with real progress (A48)                                           |
+| `GET`    | `/zips/:id`                      | `attachment.index`   | One of your .zip files; another admin's answers 404                                                                   |
+| `POST`   | `/zips/:id/cancel`               | `attachment.index`   | Stop a .zip being made; nothing is kept                                                                               |
+| `GET`    | `/zips/:id/link`                 | `attachment.index`   | A five-minute link that saves the ready .zip under its name (A30B); 410 before it is ready or after its 24 hours      |
+| `POST`   | `/folders`                       | `attachment.create`  | A new folder; a taken name gets “(1)”                                                                                 |
+| `PATCH`  | `/folders/:id`                   | `attachment.edit`    | Rename a folder; file addresses never change                                                                          |
+| `PATCH`  | `/files/:id`                     | `attachment.edit`    | Rename a file; its extension and website address stay                                                                 |
+| `POST`   | `/move`                          | `attachment.edit`    | Move files and folders; never a folder into itself                                                                    |
+| `POST`   | `/trash/check`                   | `attachment.destroy` | Before Trash: the chosen images the website uses, folders included; nothing moves                                     |
+| `POST`   | `/trash`                         | `attachment.destroy` | Move to Trash; images the website uses stay, named with where they are used                                           |
+| `POST`   | `/restore`                       | `attachment.edit`    | Restore from Trash to the old folder, or to My files                                                                  |
+| `POST`   | `/delete-forever`                | `attachment.destroy` | Delete what is in Trash for good; stored files go through a queued job                                                |
+| `POST`   | `/undo/:undoId`                  | `attachment.edit`    | Undo your last move, rename or Trash, once                                                                            |
+| `PUT`    | `/favourites`                    | `attachment.edit`    | Star or unstar a folder or a file for yourself                                                                        |
+| `POST`   | `/duplicates`                    | `attachment.create`  | Before an upload: the same bytes in Media, or the same name                                                           |
+| `POST`   | `/files/presign`                 | `attachment.create`  | Start an upload: a plain file, or a photo with the versions to make; held against the plan                            |
+| `POST`   | `/files/:id/finalize`            | `attachment.create`  | The plain file is uploaded and ready                                                                                  |
+| `POST`   | `/files/:id/cancel`              | `attachment.create`  | Drop your own unfinished upload: its record, any stored bytes and its hold                                            |
+| `POST`   | `/files/:id/multipart`           | `attachment.create`  | Start a big upload (100 MB and over) in parts                                                                         |
+| `POST`   | `/files/:id/parts`               | `attachment.create`  | Signed addresses for the next parts, an hour each                                                                     |
+| `GET`    | `/files/:id/parts`               | `attachment.create`  | The parts already in Spaces, so a cut-off upload carries on                                                           |
+| `PUT`    | `/files/:id/visibility`          | `attachment.edit`    | Public gives a plain file a permanent address; private takes it away                                                  |
+| `GET`    | `/files/:id/address`             | `attachment.index`   | Preview (`as=view`) or Download (`as=save`): the original for five minutes                                            |
+| `GET`    | `/files/:id/links`               | `attachment.index`   | A file's share links, and its public address or website picture                                                       |
+| `POST`   | `/files/:id/links`               | `attachment.edit`    | Make a share link; its code is in this answer only                                                                    |
+| `PATCH`  | `/links/:linkId`                 | `attachment.edit`    | Stop a link for good, or give a live link a new end                                                                   |
+| `GET`    | `/storage`                       | `attachment.index`   | The storage bar and its details                                                                                       |
+| `POST`   | `/storage/check`                 | `attachment.create`  | Before work that adds stored data: go and hold the bytes, ask, or refuse                                              |
+| `DELETE` | `/storage/holds/:holdId`         | `attachment.create`  | End your own storage hold early                                                                                       |
+| `PUT`    | `/storage/settings`              | `attachment.edit`    | Super admins only: whether other admins may use on-demand storage                                                     |
+
+Rules the routes apply:
+
+- **Trash.** Items stay 30 days, then the worker's nightly `trash-purge` job deletes them for good. An image the website uses cannot go to Trash, and a folder holding one stays with everything in it. The Media page asks `/trash/check` first whenever a folder or a used image is chosen, and lists them before anything moves.
+- **Plain-file uploads.** Photos (image types other than camera RAW) are refused with `photo_needs_profiles` until image profiles exist; every other file uploads private, named in its folder with “(1)” when the name is taken. The duplicate check takes files without a SHA-256 (too big to hash in a browser) and checks their names only.
+- **Big uploads.** Files from 100 MB go in 16 MB parts; finalize and cancel take the upload id to join or drop the parts. Only the admin's own unfinished upload takes parts. Uploads still unfinished a day after they started are removed each night (the worker's `upload-sweep`).
+- **Preview and Download.** The address points at the original in Spaces and works for five minutes. Download saves it under its Media name, adding the stored file's extension when the name has none; Preview lets the browser show what it can. Nothing is stored, so the storage check is not asked.
+- **Share links.** A link lasts 1 hour, 1 day, 7 days, 30 days, until a date, or never. It opens for anyone or for signed-in admins only, and may have a password (anyone links only). Codes are 22 random characters, stored only as a SHA-256 hash. A link stops for good when it is stopped by hand or when its file goes to Trash; restoring the file does not restart it.
+- **Public files.** Only plain files are made public or private here. A public file has a permanent address, so links are made only for private files. Making a file private queues a CDN purge.
+- **Storage.** The plan is 250 GiB, counted in GiB like the bill. Running work holds its bytes for one hour or until it finishes, so two uploads near the limit cannot both pass. Past the plan, a super admin (a holder of the system Administrator role) is asked once per operation; other admins are refused unless a super admin allowed them, and then they are asked too.
+
+## Admin legal pages routes
+
+| Method  | Route                | Access       | Purpose                                                                                    |
+| ------- | -------------------- | ------------ | ------------------------------------------------------------------------------------------ |
+| `GET`   | `/admin/pages`       | `page.index` | The four legal pages with what each language still misses (P1)                             |
+| `GET`   | `/admin/pages/:slug` | `page.index` | One legal page for its form (P3)                                                           |
+| `PATCH` | `/admin/pages/:slug` | `page.edit`  | Save a legal page: Title and Content in every shop language; cleaned; earlier version kept |
+
+## Admin Page Builder routes
+
+| Method   | Route                                               | Access                                    | Purpose                                                                                                                           |
+| -------- | --------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/admin/page-builder/pages`                         | `theme_option.index`                      | The pages the builder arranges, with what shows now and the next switch (P1)                                                      |
+| `GET`    | `/admin/page-builder/pages/:type`                   | `theme_option.index`                      | One page: its schedule and its layouts with their status (A1)                                                                     |
+| `POST`   | `/admin/page-builder/pages/:type/layouts`           | `theme_option.edit`                       | New layout: blank or a copy of another layout (A2)                                                                                |
+| `PUT`    | `/admin/page-builder/pages/:type/settings`          | `theme_option.edit`                       | A page's own settings (P3); refused with `400 page_settings_incomplete` until every shop language has them                        |
+| `GET`    | `/admin/page-builder/coming-up`                     | `theme_option.index`                      | Every scheduled switch still ahead, on every page, soonest first (SG-17)                                                          |
+| `POST`   | `/admin/page-builder/layouts/:id/preview-code`      | `theme_option.index`                      | A code for the shop's /__preview address, used once within a minute (step 6)                                                      |
+| `POST`   | `/storefront/preview/exchange`                      | public (the shop's server)                | Swap a preview code for an hour-long session; a used or expired code is 404                                                       |
+| `GET`    | `/storefront/preview/layout`                        | public, with a session token              | A draft as the shop draws it; never cached, `noindex`                                                                             |
+| `POST`   | `/admin/page-builder/layouts/:id/lock`              | `theme_option.edit`                       | Take or keep the editing lock (heartbeat every 30 s; free after 2 minutes without one)                                            |
+| `DELETE` | `/admin/page-builder/layouts/:id/lock`              | `theme_option.edit`                       | Free the lock the asking admin holds                                                                                              |
+| `GET`    | `/admin/page-builder/blocks`                        | `theme_option.index`                      | Saved blocks, with how many layouts link each (P7)                                                                                |
+| `GET`    | `/admin/page-builder/layouts/:id/go-live`           | `theme_option.index`                      | What Go Live would change, its checks and speed budget, and whether this admin may go live (E1, P6)                               |
+| `POST`   | `/admin/page-builder/layouts/:id/go-live`           | `page_builder.go_live`                    | Go live now, at a time, or by itself once pictures are ready (E2, E5); `400 go_live_refused` lists what holds it                  |
+| `GET`    | `/admin/page-builder/layouts/:id/history`           | `theme_option.index`                      | A layout's saved revisions, newest first, with the one showing (E3, Q12)                                                          |
+| `POST`   | `/admin/page-builder/layouts/:id/bring-back`        | `theme_option.edit`                       | A saved revision becomes the draft again, as a new revision (E3)                                                                  |
+| `POST`   | `/admin/page-builder/layouts/:id/review-request`    | `theme_option.edit`                       | Ask the owner and super admins to review a draft (SG-18)                                                                          |
+| `DELETE` | `/admin/page-builder/layouts/:id/review-request`    | `page_builder.go_live`                    | Close a review without going live (SG-18)                                                                                         |
+| `POST`   | `/admin/page-builder/pages/:type/cancel-switch`     | `page_builder.go_live`                    | Take a switch still to come off the schedule (A1)                                                                                 |
+| `DELETE` | `/admin/page-builder/pages/:type/waiting/:layoutId` | `page_builder.go_live`                    | Take off a Go Live waiting for pictures (E5)                                                                                      |
+| `POST`   | `/admin/page-builder/pages/:type/put-back`          | `page_builder.go_live`                    | Bring back the layout that showed before the one showing now (SG-15)                                                              |
+| `PUT`    | `/admin/page-builder/pages/:type/safe-mode`         | `page_builder.go_live, super admin`       | Put the page on the shop's fixed code, or back on its layouts (SG-15)                                                             |
+| `GET`    | `/admin/page-builder/alerts`                        | `theme_option.index`                      | The bell's Page Builder lines: reviews asked (for those who may go live) and the nightly check (SG-12, SG-18)                     |
+| `GET`    | `/admin/page-builder/layouts/:id/export`            | `theme_option.index`                      | A layout (its draft) as a file for another environment (SG-22)                                                                    |
+| `POST`   | `/admin/page-builder/pages/:type/import`            | `theme_option.edit`                       | A layout file from another environment becomes a new layout of this page; `400 import_other_page` for another page's file (SG-22) |
+| `GET`    | `/admin/page-builder/pages/:type/sales`             | `theme_option.index`, `dashboard.revenue` | Paid orders while each layout showed, newest first (SG-23)                                                                        |
+| `POST`   | `/admin/page-builder/blocks`                        | `theme_option.edit`                       | Save a section as a block                                                                                                         |
+| `PUT`    | `/admin/page-builder/blocks/:id`                    | `theme_option.edit`                       | Change a block; linked layouts take it at their next Go Live                                                                      |
+| `DELETE` | `/admin/page-builder/blocks/:id`                    | `theme_option.edit`                       | Delete a block no layout links; refused with `409 block_in_use`                                                                   |
+| `GET`    | `/admin/page-builder/layouts/:id`                   | `theme_option.index`                      | A layout open in the builder, with what holds its Go Live                                                                         |
+| `PUT`    | `/admin/page-builder/layouts/:id/draft`             | `theme_option.edit`                       | Save the draft; refused with `409 layout_moved_on` over a newer revision                                                          |
+| `PATCH`  | `/admin/page-builder/layouts/:id`                   | `theme_option.edit`                       | Rename a layout (the name is seen by admins only)                                                                                 |
+
+## Admin blog routes
+
+| Method   | Route                           | Access             | Purpose                                                |
+| -------- | ------------------------------- | ------------------ | ------------------------------------------------------ |
+| `GET`    | `/admin/blog/posts`             | `blog.index`       | Every post, any status                                 |
+| `GET`    | `/admin/blog/posts/:id`         | `blog.index`       | One post with every language, for the form             |
+| `POST`   | `/admin/blog/posts`             | `blog.create`      | Add a post; it starts as a draft                       |
+| `POST`   | `/admin/blog/posts/:id/go-live` | `blog.edit`        | Publish a post, or list what stops it                  |
+| `POST`   | `/admin/blog/posts/:id/status`  | `blog.edit`        | The list's switch: Go Live, or take the post down      |
+| `POST`   | `/admin/blog/posts/:id`         | `blog.edit`        | Save the post form                                     |
+| `DELETE` | `/admin/blog/posts/:id`         | `blog.destroy`     | Delete a post; a published one leaves its address gone |
+| `GET`    | `/admin/blog/categories`        | `category.index`   | Every blog category                                    |
+| `POST`   | `/admin/blog/categories`        | `category.create`  | Add a blog category                                    |
+| `POST`   | `/admin/blog/categories/:id`    | `category.edit`    | Save a blog category                                   |
+| `DELETE` | `/admin/blog/categories/:id`    | `category.destroy` | Delete a blog category and take it off every post      |
+| `GET`    | `/admin/blog/tags`              | `tag.index`        | Every blog tag                                         |
+| `POST`   | `/admin/blog/tags`              | `tag.create`       | Add a blog tag                                         |
+| `POST`   | `/admin/blog/tags/:id`          | `tag.edit`         | Save a blog tag                                        |
+| `DELETE` | `/admin/blog/tags/:id`          | `tag.destroy`      | Delete a blog tag and take it off every post           |
+
+## Admin event routes
+
+| Method   | Route                                         | Access          | Purpose                                                   |
+| -------- | --------------------------------------------- | --------------- | --------------------------------------------------------- |
+| `GET`    | `/admin/events`                               | `event.index`   | Every launch and sale event, any state                    |
+| `GET`    | `/admin/events/category-products/:categoryId` | `event.index`   | A category's products and SKU prices                      |
+| `GET`    | `/admin/events/:id`                           | `event.index`   | One event for the form                                    |
+| `GET`    | `/admin/events/:id/review`                    | `event.index`   | Items, final prices, what stops Publish, and the reach    |
+| `POST`   | `/admin/events`                               | `event.create`  | Add a launch or a sale; it starts as a draft              |
+| `POST`   | `/admin/events/:id/publish`                   | `event.publish` | Arm the event and send its message, or list what stops it |
+| `POST`   | `/admin/events/:id/unpublish`                 | `event.publish` | Back to draft before the start                            |
+| `POST`   | `/admin/events/:id/cancel`                    | `event.cancel`  | Cancel for good; a running sale's prices go back at once  |
+| `POST`   | `/admin/events/:id/end-now`                   | `event.cancel`  | End a running sale now and keep its record                |
+| `POST`   | `/admin/events/:id/test-message`              | `event.edit`    | Send the event message to the signed-in admin             |
+| `POST`   | `/admin/events/:id/preview`                   | `event.index`   | A 30-minute link that opens the event popup on the shop   |
+| `POST`   | `/admin/events/:id`                           | `event.edit`    | Save the event form                                       |
+| `DELETE` | `/admin/events/:id`                           | `event.destroy` | Delete a draft                                            |
+
+## Admin store routes
+
+| Method   | Route                               | Access          | Purpose                                              |
+| -------- | ----------------------------------- | --------------- | ---------------------------------------------------- |
+| `GET`    | `/admin/store-locations`            | `setting.index` | Every store in display order, active or not          |
+| `GET`    | `/admin/store-locations/:id`        | `setting.index` | One store with every language, for the form          |
+| `POST`   | `/admin/store-locations`            | `setting.edit`  | Add a store; it goes last in the order               |
+| `POST`   | `/admin/store-locations/order`      | `setting.edit`  | Save the order dragged in the list                   |
+| `POST`   | `/admin/store-locations/:id/active` | `setting.edit`  | Show or hide the store on Contact Us                 |
+| `POST`   | `/admin/store-locations/:id`        | `setting.edit`  | Save the store form                                  |
+| `DELETE` | `/admin/store-locations/:id`        | `setting.edit`  | Delete a store; its photos stay in the media library |
+
+## Admin shipping routes
+
+| Method   | Route                                    | Access             | Purpose                                                                  |
+| -------- | ---------------------------------------- | ------------------ | ------------------------------------------------------------------------ |
+| `GET`    | `/admin/shipping/overview`               | `shipping.index`   | Zone settings, rule sets, exception count and the checks                 |
+| `POST`   | `/admin/shipping/settings`               | `shipping.edit`    | Save how each zone is priced and the path for orders sent abroad         |
+| `GET`    | `/admin/shipping/rule-sets`              | `shipping.index`   | Every rule set, pre-made and own, with where each is used                |
+| `POST`   | `/admin/shipping/rule-sets`              | `shipping.create`  | Start a rule set: blank, or a copy of another                            |
+| `POST`   | `/admin/shipping/try`                    | `shipping.index`   | Price rule blocks on real products without saving anything               |
+| `GET`    | `/admin/shipping/rule-sets/:id`          | `shipping.index`   | One rule set with its versions, where it is used and its checks          |
+| `POST`   | `/admin/shipping/rule-sets/:id`          | `shipping.edit`    | Save the working copy; the active version keeps pricing checkout         |
+| `POST`   | `/admin/shipping/rule-sets/:id/activate` | `shipping.edit`    | Make the saved working copy the new active version                       |
+| `DELETE` | `/admin/shipping/rule-sets/:id`          | `shipping.destroy` | Delete an own rule set that is not used anywhere (`?revision=` required) |
+| `GET`    | `/admin/shipping/exceptions`             | `shipping.index`   | Category and product exceptions, per zone                                |
+| `POST`   | `/admin/shipping/exceptions`             | `shipping.create`  | Add a category or product exception                                      |
+| `POST`   | `/admin/shipping/exceptions/:id`         | `shipping.edit`    | Change an exception                                                      |
+| `DELETE` | `/admin/shipping/exceptions/:id`         | `shipping.destroy` | Remove an exception; the site-wide choice applies again                  |
+
+Every write names the revision it started from; a stale write answers `409` with who changed it and when. Pre-made rule sets answer `403` to a save, an activation or a delete.
+
+## Admin mailbox and inbox routes
+
+Every `/admin/mailboxes` route except the callback also needs a super admin (the system Administrator role).
+
+| Method   | Route                                                                   | Access           | Purpose                                                                              |
+| -------- | ----------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------ |
+| `GET`    | `/admin/mailboxes`                                                      | `mailbox.manage` | Connected mailboxes, people counts, Contact Us mailbox, features needing a reconnect |
+| `POST`   | `/admin/mailboxes/connect`                                              | `mailbox.manage` | Google's sign-in address for connecting a mailbox                                    |
+| `GET`    | `/admin/mailboxes/oauth/callback`                                       | Public           | Google's answer; single-use state; returns to the admin's Mailboxes page             |
+| `GET`    | `/admin/mailboxes/people`                                               | `mailbox.manage` | Admin users to add to an access list, searched across every page                     |
+| `PUT`    | `/admin/mailboxes/contact-target`                                       | `mailbox.manage` | Choose where Contact Us messages go                                                  |
+| `GET`    | `/admin/mailboxes/:id/access`                                           | `mailbox.manage` | Who may use one mailbox, with rights, names and the list's version                   |
+| `PUT`    | `/admin/mailboxes/:id/access`                                           | `mailbox.manage` | Replace one mailbox's access list from the version read; 409 if it changed           |
+| `POST`   | `/admin/mailboxes/:id/refresh`                                          | `mailbox.manage` | Re-read the mailbox's send-as addresses from Gmail                                   |
+| `POST`   | `/admin/mailboxes/:id/disconnect`                                       | `mailbox.manage` | Stop the mailbox here, then withdraw access at Google                                |
+| `POST`   | `/admin/mailboxes/:id/withdraw-again`                                   | `mailbox.manage` | Ask Google again when it did not confirm a withdrawal                                |
+| `GET`    | `/admin/inbox`                                                          | `mailbox.use`    | The mailboxes the operator may open, with rights and unread counts                   |
+| `GET`    | `/admin/inbox/all/threads`                                              | Read (each)      | The newest Inbox conversations of every readable mailbox, each naming its mailbox    |
+| `GET`    | `/admin/inbox/:mailboxId/threads`                                       | Read             | One folder, label or category of a mailbox, a page at a time                         |
+| `GET`    | `/admin/inbox/:mailboxId/threads/:threadId`                             | Read             | A whole conversation, cleaned for display                                            |
+| `GET`    | `/admin/inbox/:mailboxId/messages/:messageId/attachments/:attachmentId` | Read             | One attachment, always as a download                                                 |
+| `POST`   | `/admin/inbox/:mailboxId/messages/read`                                 | Read             | Mark exactly these messages read or unread                                           |
+| `GET`    | `/admin/inbox/:mailboxId/labels`                                        | Read             | The mailbox's Gmail labels and the categories it uses                                |
+| `POST`   | `/admin/inbox/:mailboxId/labels`                                        | Labels           | Create a label                                                                       |
+| `PATCH`  | `/admin/inbox/:mailboxId/labels/:labelId`                               | Labels           | Rename a label                                                                       |
+| `DELETE` | `/admin/inbox/:mailboxId/labels/:labelId`                               | Labels           | Delete a label; its conversations keep their mail                                    |
+| `POST`   | `/admin/inbox/:mailboxId/send`                                          | Send             | Reply, forward or write; the message waits ten seconds in Drafts so it can be undone |
+| `GET`    | `/admin/inbox/:mailboxId/outbox/:outboxId`                              | Send             | Whether a message the operator sent has gone; the sender only                        |
+| `POST`   | `/admin/inbox/:mailboxId/outbox/:outboxId/cancel`                       | Send             | Undo Send: keep the message in Drafts; 409 once it is on its way                     |
+| `GET`    | `/admin/inbox/:mailboxId/settings`                                      | Settings         | The mailbox's filters, vacation reply and main signature, read live from Gmail       |
+| `POST`   | `/admin/inbox/:mailboxId/settings/filters`                              | Settings         | Add a filter, or replace one (new first, then the old deleted); never forwarding     |
+| `DELETE` | `/admin/inbox/:mailboxId/settings/filters/:filterId`                    | Settings         | Delete a filter that does not forward                                                |
+| `PUT`    | `/admin/inbox/:mailboxId/settings/vacation`                             | Settings         | Turn the vacation reply on or off, or change it                                      |
+| `PUT`    | `/admin/inbox/:mailboxId/settings/signature`                            | Settings         | Change the main address's signature; refused when it has pictures                    |
+| `GET`    | `/admin/inbox/:mailboxId/saved-replies`                                 | Send             | This mailbox's shared saved replies, then the operator's own                         |
+| `POST`   | `/admin/inbox/:mailboxId/saved-replies`                                 | Send / Settings  | Add a personal reply, or a shared one with the Settings right                        |
+| `PATCH`  | `/admin/inbox/:mailboxId/saved-replies/:replyId`                        | Send / Settings  | Change one's own reply, or this mailbox's shared one with the Settings right         |
+| `DELETE` | `/admin/inbox/:mailboxId/saved-replies/:replyId`                        | Send / Settings  | Delete one's own reply, or this mailbox's shared one with the Settings right         |
+| `GET`    | `/admin/inbox/:mailboxId/drafts`                                        | Send             | The mailbox's Gmail drafts, newest first, a page at a time                           |
+| `GET`    | `/admin/inbox/:mailboxId/drafts/:draftId`                               | Send             | One draft, to carry on writing it                                                    |
+| `POST`   | `/admin/inbox/:mailboxId/drafts`                                        | Send             | Save the compose box as a new Gmail draft                                            |
+| `PUT`    | `/admin/inbox/:mailboxId/drafts/:draftId`                               | Send             | Save over a draft from the version read; 412 if someone saved since                  |
+| `DELETE` | `/admin/inbox/:mailboxId/drafts/:draftId`                               | Send             | Discard a draft; refused while it is being sent                                      |
+| `POST`   | `/admin/inbox/:mailboxId/threads/:threadId/modify`                      | By action        | Read state, archive, move, spam, star, important, labels, Bin or restore             |
+| `POST`   | `/admin/inbox/:mailboxId/bulk`                                          | By action        | One action on chosen or matching conversations, each reported done or failed         |
+| `GET`    | `/admin/inbox/:mailboxId/bin`                                           | Delete forever   | What Empty Bin would delete, counted by Gmail now                                    |
+| `POST`   | `/admin/inbox/:mailboxId/bin/empty`                                     | Delete forever   | Delete everything in the Bin for good                                                |
+
+The Gmail token stays on the server. `mailbox.use` opens only the mailboxes whose access list names the operator, and each route also checks the named per-mailbox right. Deleting for good acts only on what Gmail says is in the Bin at that moment.
+
+## Admin purchases and stock routes
+
+Suppliers, purchase orders, purchase entries, purchase returns, stock, counts, opening stock, reports and the two settings pages (Purchases and stock, Shop details). Cost and value fields are left out of every answer for an operator without `stock.cost`. The rules behind each route are in [Purchases and stock](/admin/purchases-and-stock).
+
+| Method   | Route                                                      | Access                                        | Purpose                                                                      |
+| -------- | ---------------------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------- |
+| `GET`    | `/admin/purchases/items/search`                            | `purchase.index`                              | Find by SKU, name, barcode or the supplier's own code                        |
+| `GET`    | `/admin/purchases/items/by-variants`                       | `purchase.index`                              | Item details for lines that arrive as variant ids (receiving an order)       |
+| `GET`    | `/admin/purchases/items/products/:productId/variants`      | `purchase.index`                              | Every colour or size of a product, for the variant grid                      |
+| `POST`   | `/admin/purchases/items/import`                            | `purchase.create`                             | Match a supplier spreadsheet's rows; only clean rows are ready               |
+| `GET`    | `/admin/purchases/items/draft-product-defaults`            | `purchase.create`, `product.create`           | Next SKU, HSN and returnability a draft product would get                    |
+| `POST`   | `/admin/purchases/items/draft-product`                     | `purchase.create`, `product.create`           | Make a draft product for a new design on the bill                            |
+| `GET`    | `/admin/purchases/entries`                                 | `purchase.index`                              | Entries with stock and payment status, and the tiles                         |
+| `GET`    | `/admin/purchases/entries/:id`                             | `purchase.index`                              | One entry; cost and margin only with stock.cost                              |
+| `POST`   | `/admin/purchases/entries`                                 | `purchase.create`                             | Save a new draft; the same bill twice is refused                             |
+| `PUT`    | `/admin/purchases/entries/:id`                             | `purchase.create`                             | Save a draft; a stale copy is refused with who changed it                    |
+| `DELETE` | `/admin/purchases/entries/:id`                             | `purchase.create`                             | Delete a draft (a posted entry is voided instead)                            |
+| `POST`   | `/admin/purchases/entries/:id/goods-check`                 | `purchase.check`                              | Good, damaged and missing per line                                           |
+| `GET`    | `/admin/purchases/entries/:id/post-preview`                | `purchase.post`                               | What posting will change, and the warnings to accept                         |
+| `POST`   | `/admin/purchases/entries/:id/post`                        | `purchase.post`                               | Post to stock; the same request key never posts twice                        |
+| `POST`   | `/admin/purchases/entries/:id/void`                        | `purchase.void`                               | Void while nothing from it has moved on                                      |
+| `GET`    | `/admin/purchases/entries/:id/payments`                    | `purchase.index`                              | Payments recorded against the entry                                          |
+| `POST`   | `/admin/purchases/entries/:id/payments`                    | `purchase.payment`                            | Record a full or part payment                                                |
+| `POST`   | `/admin/purchases/entries/:id/payments/:paymentId/reverse` | `purchase.payment`                            | Reverse a payment with a reason                                              |
+| `GET`    | `/admin/purchases/entries/:id/activity`                    | `purchase.index`                              | The audit trail in sentences (p10b)                                          |
+| `GET`    | `/admin/purchase-orders`                                   | `purchase_order.index`                        | Orders with late badges and filter counts                                    |
+| `GET`    | `/admin/purchase-orders/items/search`                      | `purchase_order.create`                       | Find by SKU, name, barcode or the supplier's own code                        |
+| `GET`    | `/admin/purchase-orders/:id`                               | `purchase_order.index`                        | One order: ordered, received and still to come                               |
+| `GET`    | `/admin/purchase-orders/:id/activity`                      | `purchase_order.index`                        | The audit trail in sentences                                                 |
+| `GET`    | `/admin/purchase-orders/:id/receive-draft`                 | `purchase.create`                             | A purchase entry filled with what is still to come                           |
+| `GET`    | `/admin/purchase-orders/:id/pdf`                           | `purchase_order.index`                        | The order as a PDF (vendor invoice template)                                 |
+| `POST`   | `/admin/purchase-orders`                                   | `purchase_order.create`                       | A new draft order with its number                                            |
+| `PUT`    | `/admin/purchase-orders/:id`                               | `purchase_order.create`                       | Change a draft order                                                         |
+| `DELETE` | `/admin/purchase-orders/:id`                               | `purchase_order.create`                       | Delete a draft order                                                         |
+| `POST`   | `/admin/purchase-orders/:id/copy`                          | `purchase_order.create`                       | Copy as a new draft                                                          |
+| `POST`   | `/admin/purchase-orders/:id/send`                          | `purchase_order.send`                         | Email with the PDF, or mark sent after a download                            |
+| `POST`   | `/admin/purchase-orders/:id/close`                         | `purchase_order.cancel`                       | Close with what is short                                                     |
+| `POST`   | `/admin/purchase-orders/:id/cancel`                        | `purchase_order.cancel`                       | Cancel before anything is received                                           |
+| `GET`    | `/admin/purchase-returns`                                  | `purchase_return.index`                       | Returns and debit notes, drafts made by the goods check included             |
+| `GET`    | `/admin/purchase-returns/returnable`                       | `purchase_return.index`                       | Per entry line: received, returned before, free to return and why            |
+| `GET`    | `/admin/purchase-returns/for-entry/:entryId`               | `purchase_return.index`                       | A purchase entry's returns (its Returns tab)                                 |
+| `GET`    | `/admin/purchase-returns/:id`                              | `purchase_return.index`                       | One return                                                                   |
+| `GET`    | `/admin/purchase-returns/:id/activity`                     | `purchase_return.index`                       | The audit trail in sentences                                                 |
+| `POST`   | `/admin/purchase-returns`                                  | `purchase_return.create`                      | A return draft from a posted entry; quantities are capped                    |
+| `PUT`    | `/admin/purchase-returns/:id`                              | `purchase_return.create`                      | Change a draft return                                                        |
+| `DELETE` | `/admin/purchase-returns/:id`                              | `purchase_return.create`                      | Delete a draft return                                                        |
+| `POST`   | `/admin/purchase-returns/:id/send`                         | `purchase_return.send`                        | Number the debit note, take goods out of stock; never twice                  |
+| `POST`   | `/admin/purchase-returns/:id/settle`                       | `purchase_return.settle`                      | Credit note, refund, later bill or written off; part settlements stay open   |
+| `GET`    | `/admin/purchases/entries/:id/receipt-pdf`                 | `purchase.index`                              | The goods receipt: what was counted, good, damaged, missing                  |
+| `GET`    | `/admin/purchase-returns/:id/debit-note-pdf`               | `purchase_return.index`                       | The debit note of a sent return                                              |
+| `GET`    | `/admin/purchase-returns/:id/challan-pdf`                  | `purchase_return.index`                       | The delivery challan of goods sent back                                      |
+| `POST`   | `/admin/purchases/labels/pdf`                              | `purchase.index`                              | Barcode labels on A4 sheets, many items per sheet                            |
+| `GET`    | `/admin/stock`                                             | `stock.index`                                 | All stock with tiles; value only with stock.cost                             |
+| `GET`    | `/admin/stock/alerts`                                      | Staff or admin session                        | The bell: approvals waiting, my decisions, late orders, bills near the limit |
+| `POST`   | `/admin/stock/alerts/seen`                                 | Staff or admin session                        | Mark decisions on my own requests as seen                                    |
+| `GET`    | `/admin/stock/held`                                        | `stock.index`                                 | Held pieces by reason, overdue past the reminder                             |
+| `GET`    | `/admin/stock/items/:variantId`                            | `stock.index`                                 | Stock history and cost layers of one item                                    |
+| `GET`    | `/admin/stock/items/:variantId/holds`                      | `stock.index`                                 | Open holds on one item                                                       |
+| `POST`   | `/admin/stock/adjustments/preview`                         | `stock.index`                                 | What a change would do, whether it waits for approval, and why not           |
+| `POST`   | `/admin/stock/adjustments`                                 | `stock.adjust`                                | Write off or add: applies for approvers, else a request                      |
+| `POST`   | `/admin/stock/holds`                                       | `stock.hold`                                  | Move to held or release; never needs approval                                |
+| `GET`    | `/admin/stock/approvals`                                   | `stock.approve`                               | Write-offs and count differences waiting, approved or rejected               |
+| `POST`   | `/admin/stock/approvals/:id/approve`                       | `stock.approve`                               | Approve; nobody decides their own request                                    |
+| `POST`   | `/admin/stock/approvals/:id/reject`                        | `stock.approve`                               | Reject with a reason the requester sees                                      |
+| `GET`    | `/admin/stock-counts`                                      | `stock_count.count`                           | Counting, to review, waiting for approval, posted                            |
+| `GET`    | `/admin/stock-counts/:id`                                  | `stock_count.count`                           | One count; a blind count hides expected figures from counters                |
+| `POST`   | `/admin/stock-counts`                                      | `stock_count.create`                          | Start a count; the shop keeps selling                                        |
+| `POST`   | `/admin/stock-counts/:id/entries`                          | `stock_count.count`                           | Counted figures from one phone or screen                                     |
+| `POST`   | `/admin/stock-counts/:id/finish`                           | `stock_count.post`                            | Counting done; the count goes to review                                      |
+| `POST`   | `/admin/stock-counts/:id/recount`                          | `stock_count.post`                            | Send differing lines back to the counters                                    |
+| `POST`   | `/admin/stock-counts/:id/post`                             | `stock_count.post`                            | Post the differences, or send them for approval                              |
+| `GET`    | `/admin/opening-stock`                                     | `stock.opening`                               | Posted opening-stock loads                                                   |
+| `POST`   | `/admin/opening-stock/check`                               | `stock.opening`                               | Ready, cost missing, unknown SKU, already has stock                          |
+| `POST`   | `/admin/opening-stock`                                     | `stock.opening`                               | Post when every row is ready; once per SKU                                   |
+| `GET`    | `/admin/stock-reports/reorder`                             | `stock_report.index`                          | What to reorder and from whom                                                |
+| `POST`   | `/admin/stock-reports/reorder/orders`                      | `stock_report.index`, `purchase_order.create` | Ticked lines become one draft order per supplier                             |
+| `GET`    | `/admin/stock-reports/ageing`                              | `stock_report.index`                          | Value in age bands, oldest first                                             |
+| `GET`    | `/admin/stock-reports/valuation`                           | `stock_report.index`, `stock.cost`            | Stock value at cost on any day                                               |
+| `GET`    | `/admin/stock-reports/purchase-register`                   | `stock_report.index`, `purchase.index`        | Posted bills for the CA                                                      |
+| `GET`    | `/admin/stock-reports/movements`                           | `stock_report.index`                          | Every stock movement, filtered                                               |
+| `GET`    | `/admin/stock-reports/unpaid-bills`                        | `stock_report.index`, `purchase.index`        | Unpaid bills, oldest first, near the 180-day rule                            |
+| `GET`    | `/admin/settings/inventory`                                | `setting.index`                               | Purchases and stock settings                                                 |
+| `POST`   | `/admin/settings/inventory`                                | `setting.edit`                                | Save; every change is audited                                                |
+| `GET`    | `/admin/settings/shop-details`                             | `setting.index`                               | The shop's name, GSTIN and address on documents                              |
+| `GET`    | `/admin/settings/shop-details/impact`                      | `shop_details.edit`                           | What a new GSTIN changes: State and suppliers                                |
+| `PUT`    | `/admin/settings/shop-details`                             | `setting.index`                               | Save; every change is audited with old and new values                        |
+| `GET`    | `/admin/suppliers`                                         | `supplier.index`                              | Suppliers with what is owed, filters All / Owed money / Inactive             |
+| `GET`    | `/admin/suppliers/states`                                  | `supplier.index`                              | GST State codes and names, for the supplier form                             |
+| `GET`    | `/admin/suppliers/gstin-check`                             | `supplier.index`                              | Check digit, State, PAN, and suppliers already using it                      |
+| `GET`    | `/admin/suppliers/:id`                                     | `supplier.index`                              | One supplier for the form                                                    |
+| `GET`    | `/admin/suppliers/:id/summary`                             | `supplier.index`                              | Supplier page tiles and statement                                            |
+| `GET`    | `/admin/suppliers/:id/activity`                            | `supplier.index`                              | The audit trail in sentences                                                 |
+| `POST`   | `/admin/suppliers`                                         | `supplier.create`                             | Add a supplier; the same GSTIN twice is refused                              |
+| `PUT`    | `/admin/suppliers/:id`                                     | `supplier.edit`                               | Change a supplier; posted bills keep their tax                               |
+| `POST`   | `/admin/suppliers/:id/item-codes`                          | `supplier.edit`                               | Link one of the supplier's own codes to a variant                            |
+| `DELETE` | `/admin/suppliers/:id`                                     | `supplier.destroy`                            | Soft delete; refused while it has entries or orders                          |
+
+The bell's two routes need only an operator session: each operator reads and clears their own lines. A save from Shop details reaches the server with `setting.index` so that a refusal for lacking `shop_details.edit` is written to the audit log.
 
 ## Public catalogue routes
 
-| Method | Route                                      | Access             | Purpose                                                      |
-| ------ | ------------------------------------------ | ------------------ | ------------------------------------------------------------ |
-| `GET`  | `/catalog/search`                          | Public             | Typeahead and search                                         |
-| `GET`  | `/catalog/categories`                      | Public             | Get the full category taxonomy tree                          |
-| `GET`  | `/catalog/categories/:slug`                | Public             | Get a single category by slug                                |
-| `GET`  | `/catalog/faq`                             | Public             | Live FAQ entries for one page                                |
-| `GET`  | `/catalog/questions`                       | Public             | Answered questions for one product                           |
-| `POST` | `/catalog/questions`                       | Public             | Ask a product question                                       |
-| `GET`  | `/catalog/products`                        | Public             | List live products with filtering and pagination             |
-| `GET`  | `/catalog/products/legacy-redirects`       | Public             | Redirect rows for the storefront resolver                    |
-| `GET`  | `/catalog/products/:idOrSlug/relations`    | Public             | Saved related, upsell, cross-sell, and bought-together cards |
-| `GET`  | `/catalog/products/:idOrSlug/gallery`      | Public             | Gallery frames for quick view and the product page           |
-| `GET`  | `/catalog/products/:idOrSlug/view`         | Public             | Card and product-page read model for one live product        |
-| `GET`  | `/catalog/products/:idOrSlug`              | Public             | Get a single product by id or slug                           |
-| `POST` | `/catalog/products/:idOrSlug/stock-alerts` | Storefront session | Ask to be told when a variant can be bought                  |
-| `GET`  | `/catalog/home`                            | Public             | Homepage rails                                               |
-| `GET`  | `/catalog/placements`                      | Public             | Category listing by placement path                           |
-| `GET`  | `/catalog/cards`                           | Public             | Live cards for a personal slug list                          |
-| `GET`  | `/catalog/recent-purchases`                | Public             | Real sales from the last day, without buyer data             |
-| `GET`  | `/catalog/seo-route`                       | Public             | Head data for one public address                             |
-| `GET`  | `/catalog/sitemap`                         | Public             | Indexable addresses for the sitemap                          |
-| `GET`  | `/catalog/live-paths`                      | Public             | Live product slugs and category paths                        |
+| Method | Route                                      | Access             | Purpose                                                                        |
+| ------ | ------------------------------------------ | ------------------ | ------------------------------------------------------------------------------ |
+| `GET`  | `/catalog/search`                          | Public             | Typeahead and search results, one page at a time                               |
+| `POST` | `/catalog/search/clicks`                   | Public             | Count a product opened from search results                                     |
+| `GET`  | `/catalog/search/trending`                 | Public             | Products most opened from search lately, or bestsellers                        |
+| `GET`  | `/catalog/categories`                      | Public             | Get the full category taxonomy tree                                            |
+| `GET`  | `/catalog/categories/:slug`                | Public             | Get a single category by slug                                                  |
+| `GET`  | `/catalog/categories/menu`                 | Public             | The shop menu, in the language asked for                                       |
+| `GET`  | `/catalog/faq`                             | Public             | Live FAQ entries for one page                                                  |
+| `GET`  | `/catalog/questions`                       | Public             | Answered questions for one product                                             |
+| `POST` | `/catalog/questions`                       | Public             | Ask a product question                                                         |
+| `GET`  | `/catalog/products`                        | Public             | List live products with filtering and pagination                               |
+| `GET`  | `/catalog/products/legacy-redirects`       | Public             | Redirect rows for the storefront resolver                                      |
+| `GET`  | `/catalog/products/:idOrSlug/relations`    | Public             | Saved related, upsell, cross-sell, and bought-together cards                   |
+| `GET`  | `/catalog/products/:idOrSlug/trending`     | Public             | Trending in the product's categories, topped up with bestsellers               |
+| `GET`  | `/catalog/products/:idOrSlug/gallery`      | Public             | Gallery frames for quick view and the product page                             |
+| `GET`  | `/catalog/products/:idOrSlug/view`         | Public             | Card and product-page read model for one live product                          |
+| `GET`  | `/catalog/products/:idOrSlug`              | Public             | Get a single product by id or slug                                             |
+| `POST` | `/catalog/products/:idOrSlug/stock-alerts` | Storefront session | Ask to be told when a variant can be bought                                    |
+| `GET`  | `/catalog/home`                            | Public             | Homepage rails                                                                 |
+| `GET`  | `/catalog/placements`                      | Public             | Category listing by placement path                                             |
+| `GET`  | `/catalog/cards`                           | Public             | Live cards for a personal slug list                                            |
+| `GET`  | `/catalog/recent-purchases`                | Public             | Real sales from the last day, without buyer data                               |
+| `GET`  | `/catalog/seo-route`                       | Public             | Head data for one public address                                               |
+| `GET`  | `/catalog/sitemap`                         | Public             | Indexable addresses for the sitemap                                            |
+| `GET`  | `/catalog/live-paths`                      | Public             | Live product slugs and category paths                                          |
+| `GET`  | `/catalog/share-settings`                  | Public             | The share menu's shop-wide choices                                             |
+| `GET`  | `/catalog/code/:code`                      | Public             | The product slug behind a short `/p/<code>` address                            |
+| `GET`  | `/catalog/reviews`                         | Public             | A product's approved reviews and rating summary                                |
+| `GET`  | `/catalog/blog/posts`                      | Public             | Live posts, sticky first then newest, one page at a time                       |
+| `GET`  | `/catalog/blog/posts/:slug`                | Public             | One live post by its address                                                   |
+| `GET`  | `/catalog/pages/:slug`                     | Public             | One legal page in one language, English where it is empty                      |
+| `GET`  | `/catalog/blog/categories`                 | Public             | Blog categories that hold a live post                                          |
+| `GET`  | `/catalog/blog/tags`                       | Public             | Blog tags that hold a live post                                                |
+| `GET`  | `/catalog/events`                          | Public             | Published launch and sale events, with the server clock                        |
+| `GET`  | `/catalog/events/preview`                  | Public             | One event's popup through the admin's 30-minute preview link, published or not |
+| `GET`  | `/catalog/store-locations`                 | Public             | Active stores in display order, in one language                                |
 
-Listing, product and home reads are cacheable for 60 seconds with `stale-while-revalidate=300`, and carry an ETag. `GET /catalog/cards`, `GET /catalog/search` and the legacy redirect list are `no-store`.
+Listing, product and home reads are cacheable for 60 seconds with `stale-while-revalidate=300`, and carry an ETag. `GET /catalog/cards`, `GET /catalog/search` and the legacy redirect list are `no-store`. `GET /catalog/search/trending` is cacheable for five minutes.
 
 ### Public visibility rule
 
@@ -291,18 +707,38 @@ The server enforces public visibility, not the caller. Public repository calls d
 
 ## Storefront media and review routes
 
-| Method | Route                                          | Access             | Purpose                                                     |
-| ------ | ---------------------------------------------- | ------------------ | ----------------------------------------------------------- |
-| `GET`  | `/media/upload-rules`                          | Public             | Size, type and count limits for uploads                     |
-| `GET`  | `/storefront/banners`                          | Public             | A page's live banners, resolved for the locale              |
-| `GET`  | `/storefront/brand`                            | Public            | The shop's name, logo, seal and icons |
-| `GET`  | `/storefront/youtube/rail`                     | Public             | Cached latest channel videos for a placement                |
-| `POST` | `/storefront/reviews/photos/presign`           | Storefront session | Start a review photo upload (verified buyers only)          |
-| `POST` | `/storefront/reviews/photos/:assetId/finalize` | Storefront session | The photo upload finished; queue processing                 |
-| `GET`  | `/storefront/reviews/photos/:assetId/status`   | Storefront session | Processing state of a review photo                          |
-| `POST` | `/storefront/reviews`                          | Storefront session | Submit a review with up to five photos; held for moderation |
+| Method  | Route                                          | Access                | Purpose                                                                                        |
+| ------- | ---------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------- |
+| `GET`   | `/media/upload-rules`                          | Public                | Size, type and count limits for uploads                                                        |
+| `GET`   | `/storefront/banners`                          | Public                | A page's live banners, resolved for the locale                                                 |
+| `GET`   | `/storefront/pages/:type/layout`               | Public                | A page's live Page Builder layout for one language; cached until its next change, at most 60 s |
+| `GET`   | `/storefront/brand`                            | Public                | Logo sets, icons, link preview picture, profiles, store links and colours                      |
+| `GET`   | `/storefront/languages`                        | Public                | The shop's languages, the admin's own languages, and the 301s to English                       |
+| `GET`   | `/share/:code`                                 | Public (rate-limited) | Check a Media share link; an admin session opens admins-only links                             |
+| `POST`  | `/share/:code`                                 | Public (rate-limited) | Open a password link; wrong passwords are limited per link and address                         |
+| `GET`   | `/storefront/youtube/rail`                     | Public                | Cached latest channel videos for a placement                                                   |
+| `POST`  | `/storefront/reviews/photos/presign`           | Storefront session    | Start a review photo upload (verified buyers only)                                             |
+| `POST`  | `/storefront/reviews/photos/:assetId/finalize` | Storefront session    | The photo upload finished; queue processing                                                    |
+| `GET`   | `/storefront/reviews/photos/:assetId/status`   | Storefront session    | Processing state of a review photo                                                             |
+| `GET`   | `/storefront/reviews/mine`                     | Storefront session    | Whether you can review a product, are waiting for delivery, or your review                     |
+| `POST`  | `/storefront/reviews`                          | Storefront session    | Submit a review with up to five photos; held for moderation                                    |
+| `PATCH` | `/storefront/reviews/:reviewId`                | Storefront session    | Edit your review; it waits for approval again                                                  |
 
 Uploads go directly to Spaces through a presigned PUT. The API does not proxy image bytes. Review photos stay private until a moderator approves them.
+
+A share link that opens answers with a Spaces address valid for five minutes, which names the download after the file. Every dead end (an unknown, stopped or expired code, or a file in Trash) answers `expired`. Answers carry `Cache-Control: no-store`, `X-Robots-Tag: noindex, nofollow` and `Referrer-Policy: no-referrer`.
+
+## Storefront wishlist and contact routes
+
+| Method   | Route                             | Access             | Purpose                                             |
+| -------- | --------------------------------- | ------------------ | --------------------------------------------------- |
+| `GET`    | `/storefront/wishlist`            | Storefront session | Your saved product ids, and cards for those on sale |
+| `POST`   | `/storefront/wishlist`            | Storefront session | Save a product; saving it again changes nothing     |
+| `POST`   | `/storefront/wishlist/merge`      | Storefront session | Move the guest list into the account on sign-in     |
+| `DELETE` | `/storefront/wishlist/:productId` | Storefront session | Remove a saved product                              |
+| `POST`   | `/storefront/contact-messages`    | Public             | Send a Contact Us message to the shop's mailbox     |
+
+The wishlist has no customer id in any route; the session names the owner. Wishlist writes and Contact Us messages are rate-limited.
 
 ## Currency and promotion routes
 
@@ -317,15 +753,17 @@ These routes support price display. They do not produce a checkout total.
 
 ## Cart routes
 
-| Method   | Route                     | Access | Purpose                            |
-| -------- | ------------------------- | ------ | ---------------------------------- |
-| `POST`   | `/cart`                   | Public | Create a new (guest or user) cart  |
-| `GET`    | `/cart/:id`               | Public | Get a cart by id                   |
-| `POST`   | `/cart/:id/lines`         | Public | Add a line to a cart               |
-| `PATCH`  | `/cart/:id/lines/:lineId` | Public | Update the quantity of a cart line |
-| `DELETE` | `/cart/:id/lines/:lineId` | Public | Remove a line from a cart          |
+| Method   | Route                         | Access | Purpose                                            |
+| -------- | ----------------------------- | ------ | -------------------------------------------------- |
+| `GET`    | `/cart/current`               | Public | The shopper's cart, priced from the live catalogue |
+| `POST`   | `/cart/current/lines`         | Public | Add a line, starting a cart when there is none     |
+| `PATCH`  | `/cart/current/lines/:lineId` | Public | Change a line quantity or its choices              |
+| `DELETE` | `/cart/current/lines/:lineId` | Public | Remove a line                                      |
+| `GET`    | `/cart/:id`                   | Public | Read a cart by id, for its owner or support staff  |
 
 Cart routes are reachable without an account. Ownership is still enforced: a signed-in customer owns a cart through the session, and a guest owns one through the hashed `st_guest` cookie. A mismatch returns 404.
+
+The browser sends choices, never prices. Every read re-prices each line from the live product, and a write is refused when the choice is unavailable or the stock is short. Cart writes are rate-limited.
 
 ## Order routes
 
@@ -365,9 +803,8 @@ Consent changes are append-only: each change adds a `consentEvents` row. Export 
 
 - No route takes a payment, books a shipment or processes a refund or return.
 - `POST /orders` has no idempotency key, stock reservation or quote. A retried request can create a second order.
-- `/cart` lines are not validated against product, price or stock.
 - Export and erasure requests are acknowledged but not executed.
-- Health readiness checks MongoDB only.
+- Health readiness answers 503 when MongoDB or Redis is down. Search is reported but not required, because the shop lists from MongoDB without it.
 
 ## Adding a route
 

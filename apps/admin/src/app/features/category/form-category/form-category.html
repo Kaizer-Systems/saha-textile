@@ -34,7 +34,7 @@
 		<app-form-fields
 			[label]="'url_slug' | transloco"
 			[for]="'slug'"
-			[required]="true"
+			[required]="!isBlog()"
 		>
 			<input
 				class="form-control"
@@ -42,7 +42,7 @@
 				type="text"
 				formControlName="slug"
 			/>
-			<p class="help-text">{{ 'category_slug_help' | transloco }}</p>
+			<p class="help-text">{{ (isBlog() ? 'blog_term_slug_help' : 'category_slug_help') | transloco }}</p>
 			@if (form.controls['slug'].errors?.['pattern']) {
 			<div class="invalid-feedback d-block">{{ 'url_slug_invalid' | transloco }}</div>
 			}
@@ -62,6 +62,7 @@
 			<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
 			}
 		</app-form-fields>
+		@if (!isBlog()) {
 		<app-form-fields
 			[label]="'select_parent' | transloco "
 			[for]="'category'"
@@ -90,11 +91,167 @@
 			<p class="help-text">{{ 'also_appears_under_help' | transloco }}</p>
 		</app-form-fields>
 		<app-form-fields
+			[label]="'hsn' | transloco"
+			[for]="'category_hsn'"
+			[required]="false"
+		>
+			<input
+				class="form-control"
+				id="category_hsn"
+				type="text"
+				inputmode="numeric"
+				maxlength="8"
+				formControlName="hsn_code"
+				[class.is-invalid]="form.controls['hsn_code'].invalid"
+			/>
+			@if (form.controls['hsn_code'].invalid) {
+			<div class="invalid-feedback d-block">{{ 'hsn_digits' | transloco }}</div>
+			}
+			<p class="help-text">{{ 'category_hsn_help' | transloco }}</p>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'can_be_returned' | transloco"
+			[for]="'category_returnable'"
+			[required]="false"
+		>
+			<select
+				class="form-select"
+				id="category_returnable"
+				formControlName="returnable"
+			>
+				<option value="yes">{{ 'yes' | transloco }}</option>
+				<option value="no">{{ 'no' | transloco }}</option>
+			</select>
+			<p class="help-text">{{ 'category_returnable_help' | transloco }}</p>
+		</app-form-fields>
+		<h5 class="mt-4 mb-3">{{ 'shipping' | transloco }}</h5>
+		@for (field of [['ship_domestic', 'ship_cat_charge_domestic'], ['ship_first', 'ship_charge_internationalFirst'],
+		['ship_further', 'ship_charge_internationalFurther']]; track field[0]; let first = $first) {
+		<app-form-fields
+			[label]="field[1] | transloco"
+			[for]="'category_' + field[0]"
+			[required]="false"
+		>
+			<div
+				class="input-group flex-nowrap"
+				style="width: 150px"
+			>
+				<span class="input-group-text">₹</span>
+				<input
+					class="form-control"
+					type="number"
+					min="0"
+					step="1"
+					[id]="'category_' + field[0]"
+					[formControlName]="field[0]"
+					[placeholder]="(hasParent() ? 'ship_inherit' : 'ship_inherit_shop') | transloco"
+				/>
+			</div>
+			@if (first) {
+			<p class="help-text">{{ 'ship_category_charge_help' | transloco }}</p>
+			}
+		</app-form-fields>
+		}
+		<app-form-fields
+			[label]="'ship_default_weight' | transloco"
+			[for]="'category_ship_weight'"
+			[required]="false"
+		>
+			<div
+				class="input-group flex-nowrap"
+				style="width: 200px"
+			>
+				<input
+					class="form-control"
+					type="number"
+					min="0"
+					id="category_ship_weight"
+					formControlName="ship_weight"
+					[placeholder]="hasParent() ? ('ship_inherit' | transloco) : ''"
+				/>
+				<span class="input-group-text">g</span>
+			</div>
+			<p class="help-text">{{ 'ship_default_weight_help' | transloco }}</p>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'ship_default_box' | transloco"
+			[for]="'category_ship_length'"
+			[required]="false"
+		>
+			<div class="d-flex align-items-center gap-2">
+				@for (side of ['ship_length', 'ship_width', 'ship_height']; track side; let last = $last) {
+				<input
+					class="form-control"
+					style="width: 90px"
+					type="number"
+					min="0"
+					[id]="'category_' + side"
+					[formControlName]="side"
+					[attr.aria-label]="side | transloco"
+				/>
+				@if (!last) {
+				<span>×</span>
+				} }
+				<span>cm</span>
+			</div>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'ship_category_rules' | transloco"
+			[required]="false"
+		>
+			@if (zoneExceptions().length) {
+			<div class="d-flex flex-column gap-1 pt-1">
+				@for (item of zoneExceptions(); track item.zone) {
+				<span>
+					{{ 'ship_zone_' + item.zone | transloco }}:
+					<span [class.text-danger]="item.cantShip">{{ item.label }}</span>
+					({{ 'ship_exception_tag' | transloco }}) ·
+					<a [routerLink]="['/shipping/where-rules-apply']">{{ 'ship_change' | transloco }}</a>
+				</span>
+				}
+			</div>
+			} @else {
+			<span class="pt-1">
+				{{ 'ship_same_as_site_wide' | transloco }} ·
+				<a [routerLink]="['/shipping/where-rules-apply']">{{ 'ship_add_exception' | transloco }}</a>
+			</span>
+			}
+		</app-form-fields>
+		@if (shippingUsage(); as usage) {
+		<div
+			class="alert alert-info d-flex align-items-start gap-2"
+			role="note"
+			id="category_shipping_usage"
+		>
+			<i
+				class="ri-git-branch-line mt-1"
+				aria-hidden="true"
+			></i>
+			<!-- Kept as written: the formatter would move the colon off the bold count and show a space before it. -->
+			<!-- prettier-ignore -->
+			<div>
+				{{ 'ship_used_by' | transloco }}
+				<b>{{ 'ship_used_by_count' | transloco: { n: usage.products } }}</b>:
+				{{ 'ship_used_by_rest' | transloco: { inherit: usage.products - usage.ownCharges, own: usage.ownCharges } }}
+			</div>
+		</div>
+		} @if (id) {
+		<div
+			class="alert alert-info d-flex align-items-start gap-2"
+			role="note"
+		>
+			<i class="ri-information-line mt-1"></i>
+			<div>{{ 'category_hsn_note' | transloco }}</div>
+		</div>
+		}
+		<app-form-fields
 			[label]="'image' | transloco "
 			[for]="'image'"
 			[required]="false"
 		>
 			<app-image-upload
+				[profile]="'category_3x4'"
+				[pickTitle]="'fm_pick_title_category_image'"
 				[multipleImage]="false"
 				[image]="category?.category_image"
 				(selectedFiles)="selectCategoryImage($event)"
@@ -106,6 +263,8 @@
 			[required]="false"
 		>
 			<app-image-upload
+				[profile]="'square_1x1'"
+				[pickTitle]="'fm_pick_title_category_icon'"
 				[multipleImage]="false"
 				[image]="category?.category_icon"
 				(selectedFiles)="selectCategoryIcon($event)"
@@ -141,6 +300,7 @@
 			<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
 			}
 		</app-form-fields>
+		}
 		<app-form-fields
 			[label]="'status' | transloco "
 			[for]="'status'"
@@ -156,6 +316,9 @@
 					<span class="switch-state"></span>
 				</label>
 			</div>
+			@if (isBlog()) {
+			<p class="help-text">{{ 'blog_term_status_help' | transloco }}</p>
+			}
 		</app-form-fields>
 		<app-button [id]="'category_btn'">
 			{{ (type() === 'create' ? 'save_category' : 'update_category') | transloco }}

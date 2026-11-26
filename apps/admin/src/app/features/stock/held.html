@@ -1,0 +1,120 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'held_stock'"
+>
+	<div class="d-flex mb-3 flex-wrap gap-2">
+		<button
+			type="button"
+			class="align-items-center btn btn-sm d-flex"
+			[class.btn-theme]="reason() === null"
+			[class.btn-outline]="reason() !== null"
+			(click)="setReason(null)"
+		>
+			{{ 'filter_all' | transloco }}@if (query.data()?.counts?.['all']; as n) { {{ n }} }
+		</button>
+		@for (item of reasons; track item) {
+		<button
+			type="button"
+			class="align-items-center btn btn-sm d-flex"
+			[class.btn-theme]="reason() === item"
+			[class.btn-outline]="reason() !== item"
+			(click)="setReason(item)"
+		>
+			{{ 'hold_reason_' + item | transloco }}@if (query.data()?.counts?.[item]; as n) { {{ n }} }
+		</button>
+		}
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th style="width: 280px">{{ 'item' | transloco }}</th>
+					<th class="text-end">{{ 'held' | transloco }}</th>
+					<th>{{ 'hold_why' | transloco }}</th>
+					<th>{{ 'since' | transloco }}</th>
+					<th>{{ 'by' | transloco }}</th>
+					<th>{{ 'note' | transloco }}</th>
+					<th style="width: 330px"></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (hold of query.data()?.items ?? []; track hold.id) {
+				<tr [class.table-warning]="hold.overdue">
+					<td>
+						<a [routerLink]="['/stock', 'items', hold.variantId]">
+							<h6 class="mb-0">{{ hold.title }}</h6>
+						</a>
+						<small class="text-muted">
+							{{ hold.sku }}@if (hold.optionsLabel) { · {{ hold.optionsLabel }} }
+						</small>
+					</td>
+					<td class="text-end text-nowrap">{{ hold.quantity | stockQty: hold.soldBy }}</td>
+					<td>
+						<div [class]="'status-' + pill(hold.reason)">
+							<span>{{ 'hold_reason_' + hold.reason | transloco }}</span>
+						</div>
+					</td>
+					<td>{{ hold.since | shortDate }}</td>
+					<td>{{ hold.byName ?? '—' }}</td>
+					<td>
+						{{ hold.note }}@if (hold.overdue) {
+						<div class="small text-warning">
+							{{ 'held_past_reminder' | transloco: { days: query.data()?.reminderDays } }}
+						</div>
+						}
+					</td>
+					<td>
+						<div class="d-flex flex-wrap gap-1">
+							<button
+								*hasPermission="'stock.hold'"
+								type="button"
+								class="btn btn-outline btn-sm"
+								(click)="act(hold, 'release')"
+							>
+								{{ 'release' | transloco }}
+							</button>
+							@if (hold.reason === 'waiting_for_supplier' || hold.reason === 'quality_check') {
+							<button
+								*hasPermission="'purchase_return.create'"
+								type="button"
+								class="btn btn-outline btn-sm"
+								(click)="returnToSupplier(hold)"
+							>
+								{{ 'return_to_supplier' | transloco }}
+							</button>
+							}
+							<button
+								*hasPermission="['stock.adjust', 'stock.approve']"
+								type="button"
+								class="btn btn-outline btn-sm"
+								(click)="act(hold, 'remove')"
+							>
+								{{ 'write_off' | transloco }}
+							</button>
+						</div>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td colspan="7">
+						<div class="no-data-added">
+							<h4>{{ 'nothing_held' | transloco }}</h4>
+						</div>
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if ((query.data()?.total ?? 0) > pageSize) {
+	<nav class="custom-pagination">
+		<app-pagination
+			[total]="query.data()?.total ?? 0"
+			[currentPage]="page()"
+			[pageSize]="pageSize"
+			(setPage)="page.set($event)"
+		/>
+	</nav>
+	}
+	<p class="small text-muted mt-3 mb-0">{{ 'held_note' | transloco }}</p>
+</app-page-wrapper>

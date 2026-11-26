@@ -73,11 +73,52 @@ const SpacesConfigSchema = z
 		configured: Boolean(spaces.key && spaces.secret && spaces.bucket),
 	}));
 
+/**
+ * CCAvenue, the INR gateway behind `PaymentGatewayPort`.
+ *
+ * Unconfigured is a normal state: the API boots and a payment call answers "not configured".
+ * Half-configured is a typo and refuses to boot, naming the variables and never a value. The
+ * hosts default to the test system, so a forgotten variable can never reach the live gateway.
+ * The adapter applies the stricter rules for each value when it is built.
+ */
+const CcavenueConfigSchema = z
+	.object({
+		merchantId: z.string().min(1).optional(),
+		accessCode: z.string().min(1).optional(),
+		workingKey: z.string().min(1).optional(),
+		returnUrl: z.string().min(1).optional(),
+		baseUrl: AbsoluteUrl.default('https://test.ccavenue.com'),
+		apiUrl: AbsoluteUrl.default('https://apitest.ccavenue.com'),
+	})
+	.superRefine((ccavenue, ctx) => {
+		const required = [
+			['CCAVENUE_MERCHANT_ID', ccavenue.merchantId],
+			['CCAVENUE_ACCESS_CODE', ccavenue.accessCode],
+			['CCAVENUE_WORKING_KEY', ccavenue.workingKey],
+			['CCAVENUE_RETURN_URL', ccavenue.returnUrl],
+		] as const;
+		const missing = required.filter(([, value]) => !value).map(([name]) => name);
+		if (missing.length > 0 && missing.length < required.length) {
+			ctx.addIssue({
+				code: 'custom',
+				message:
+					`CCAvenue is partially configured — missing ${missing.join(', ')}. ` +
+					'Set all four of them, or none.',
+			});
+		}
+	})
+	.transform(({ merchantId, accessCode, workingKey, returnUrl, baseUrl, apiUrl }) =>
+		merchantId && accessCode && workingKey && returnUrl
+			? { configured: true as const, merchantId, accessCode, workingKey, returnUrl, baseUrl, apiUrl }
+			: { configured: false as const, baseUrl, apiUrl },
+	);
+
 /** Runtime configuration, validated once at boot from process.env. */
 const ConfigSchema = z.object({
 	nodeEnv: z.enum(['development', 'test', 'production']).default('development'),
 	/**
-	 * Where this process runs — `local`, `staging` or `production` (`DEPLOY_ENV`). Optional, and
+	 * Where this process runs — `local`, `development` (a development server), `staging` or
+	 * `production` (`DEPLOY_ENV`). Optional, and
 	 * its absence is NOT leniency: with `NODE_ENV=production` an unset value is treated as a
 	 * deployment, so the hardening rules in `deployment-hardening.ts` apply unless the operator
 	 * says `DEPLOY_ENV=local` (the mode-3 Docker stack does).
@@ -99,12 +140,23 @@ const ConfigSchema = z.object({
 	clientIpHeader: z.string().optional(),
 	/** Pino level for request/application logs. `silent` is used by tests. */
 	logLevel: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+	/**
+	 * `json`: one JSON line per event (deployed containers, read by the console's agent).
+	 * `pretty`: Nest's coloured lines for a terminal. Unset means `json` in production.
+	 */
+	logFormat: z.enum(['json', 'pretty']).optional(),
 	rateLimitMax: z.coerce.number().int().positive().default(100),
 	rateLimitWindow: z.string().default('1 minute'),
 	// Transitional bearer JWT until Chunk D moves auth to httpOnly cookie sessions.
 	jwt: z.object({
 		accessSecret: z.string().min(1),
 		refreshSecret: z.string().min(1),
+		/**
+		 * The keys before the last planned change, accepted for 30 days so nobody is signed out
+		 * (Release Path brief, 2026-11-23); blank after a leak. New tokens always use the current key.
+		 */
+		accessSecretPrevious: z.string().min(1).optional(),
+		refreshSecretPrevious: z.string().min(1).optional(),
 		accessTtl: z.string().default('15m'),
 		refreshTtl: z.string().default('30d'),
 	}),
@@ -126,6 +178,10 @@ const ConfigSchema = z.object({
 		signupName: z.string().default('st_signup'),
 		csrfHeader: z.string().default('x-csrf-token'),
 		csrfSecret: z.string().optional(),
+		/** The CSRF key before the last planned change, still matched for 30 days (`TokenHasher`). */
+		csrfSecretPrevious: z.string().optional(),
+		/** When everyone was signed out after a key leak; the sign-in pages say so for 30 days. */
+		sessionsResetAt: z.string().datetime().optional(),
 		/**
 		 * Whether session cookies carry `Secure` (and so may use the `__Host-` prefix).
 		 *
@@ -159,7 +215,15 @@ const ConfigSchema = z.object({
 		provider: z.enum(['console', 'msg91']).default('console'),
 		msg91AuthKey: z.string().optional(),
 		msg91SenderId: z.string().optional(),
-		msg91EmailFrom: z.string().default('no-reply@sahatextile.com'),
+		// One From address per group on Settings › Communications (owner decision round
+		// 2026-11-20). All four are Google Workspace aliases of wecare@sahatextile.com, so a reply to
+		// any of them reaches customer care. MSG91 must have the address's domain verified.
+		msg91EmailFrom: z.object({
+			account: z.email().default('no-reply@sahatextile.com'),
+			orders: z.email().default('orders@sahatextile.com'),
+			shop: z.email().default('notifications@sahatextile.com'),
+			marketing: z.email().default('newsletter@sahatextile.com'),
+		}),
 		msg91EmailDomain: z.string().optional(),
 		msg91WhatsappNumber: z.string().optional(),
 		emailFallbackProvider: z.enum(['disabled', 'resend', 'ses', 'smtp']).default('disabled'),
@@ -213,6 +277,38 @@ const ConfigSchema = z.object({
 			.default('products'),
 	}),
 	spaces: SpacesConfigSchema,
+	payments: z.object({
+		ccavenue: CcavenueConfigSchema,
+		/**
+		 * PayPal (orders brief; owner 2026-11-20: PAYPAL_ENV sandbox for dev and staging, live for
+		 * production). Read as given; `parsePayPalConfig` decides at startup whether PayPal is on, and a
+		 * mismatch with DEPLOY_ENV leaves it off. Never logged.
+		 */
+		paypal: z
+			.object({
+				clientId: z.string().min(1).optional(),
+				clientSecret: z.string().min(1).optional(),
+				env: z.string().min(1).optional(),
+				webhookId: z.string().min(1).optional(),
+			})
+			.default({}),
+	}),
+	/** The daily exchange-rate fetch (shipping rules brief fx01): the open tier needs no key. Never logged. */
+	fx: z.object({ exchangeRateApiKey: z.string().min(1).optional() }).default({}),
+	/**
+	 * Country, State, phone and PIN data (owner, 2026-11-20: kept in Spaces). Read from this
+	 * environment's bucket under `geo/`; `dataDir` (GEO_DATA_DIR) reads a local folder written by
+	 * scripts/geo/build.mjs instead, for work without Spaces.
+	 */
+	geo: z.object({ dataDir: z.string().min(1).optional() }).default({}),
+	/**
+	 * The Release Console's read-only `/ops` address (approved manifest brief, screens 3 and 8).
+	 * `token` (OPS_TOKEN) is the bearer key the console sends; blank means `/ops` answers 404.
+	 * `msg91ReceiptToken` (MSG91_RECEIPT_TOKEN) is the secret in MSG91's delivery-receipt address,
+	 * sent as its `token` query value so every log shows it as `{{token}}`; blank turns that address
+	 * off. Both are never logged.
+	 */
+	ops: z.object({ token: z.string().min(1).optional(), msg91ReceiptToken: z.string().min(1).optional() }).default({}),
 	/**
 	 * Redis, used solely as the BullMQ broker for media derivative and transcode jobs.
 	 *
@@ -220,6 +316,20 @@ const ConfigSchema = z.object({
 	 * nothing here is on the request path. Defaults point at a local instance because the
 	 * queue is infrastructure the API expects to find beside it, not an optional provider.
 	 */
+	/**
+	 * Business documents as PDF (owner decision 2026-11-17): headless Chromium in the worker.
+	 * Locally the installed Chrome (`PDF_CHROMIUM_CHANNEL=chrome`); in the image Alpine's own
+	 * Chromium (`PDF_CHROMIUM_EXECUTABLE`), sandbox off as containers require.
+	 */
+	documents: z.object({
+		chromiumChannel: z.string().optional(),
+		chromiumExecutable: z.string().optional(),
+		noSandbox: z
+			.enum(['true', 'false'])
+			.default('false')
+			.transform((value) => value === 'true'),
+		renderTimeoutMs: z.coerce.number().int().min(2_000).max(120_000).default(30_000),
+	}),
 	redis: z.object({
 		host: z.string().min(1).default('127.0.0.1'),
 		port: z.coerce.number().int().positive().default(6379),
@@ -245,7 +355,7 @@ const ConfigSchema = z.object({
 	 */
 	locales: z
 		.string()
-		.default('en,fr')
+		.default('en,bn')
 		.transform((value) =>
 			value
 				.split(',')
@@ -254,6 +364,97 @@ const ConfigSchema = z.object({
 		)
 		.pipe(z.array(z.string().regex(/^[a-z]{2,3}(?:-[A-Z]{2})?$/)).min(1))
 		.refine((locales) => locales.includes('en'), { message: 'ACTIVE_LOCALES must include en' }),
+	/**
+	 * Gmail mailboxes in the admin (owner log § page headings, deep trails and Gmail on Google
+	 * Cloud, 2026-11-09). The client comes from a second, free Google Cloud project with Internal
+	 * consent; no Pub/Sub and no billing. All-or-nothing like the payment and storage pairs:
+	 * without every value the mailbox screens answer "not set up" and Contact Us messages wait
+	 * in `contactMessages` instead of being lost.
+	 *
+	 * - `tokenKey`: 32 random bytes, base64 (`openssl rand -base64 32`). It encrypts the stored
+	 *   refresh tokens; changing it means reconnecting every mailbox.
+	 * - `redirectUri`: the API's `/admin/mailboxes/oauth/callback`, registered on the client.
+	 * - `adminUrl`: where the browser returns after Google's sign-in.
+	 */
+	mail: z
+		.object({
+			googleClientId: z.string().min(1).optional(),
+			googleClientSecret: z.string().min(1).optional(),
+			redirectUri: z.string().url().optional(),
+			tokenKey: z
+				.string()
+				.optional()
+				.refine((value) => value === undefined || Buffer.from(value, 'base64').length === 32, {
+					message: 'MAILBOX_TOKEN_KEY must be 32 bytes, base64',
+				}),
+			/** The mailbox key before the last planned change: stored tokens are moved to the new key when read. */
+			tokenKeyPrevious: z
+				.string()
+				.optional()
+				.refine((value) => value === undefined || Buffer.from(value, 'base64').length === 32, {
+					message: 'MAILBOX_TOKEN_KEY_PREVIOUS must be 32 bytes, base64',
+				}),
+			adminUrl: z.string().url().optional(),
+			domain: z.string().min(3).default('sahatextile.com'),
+		})
+		.superRefine((mail, ctx) => {
+			if (mail.tokenKeyPrevious && !mail.tokenKey) {
+				ctx.addIssue({
+					code: 'custom',
+					message: 'MAILBOX_TOKEN_KEY_PREVIOUS goes only with MAILBOX_TOKEN_KEY.',
+					path: ['tokenKeyPrevious'],
+				});
+			}
+			const set = [mail.googleClientId, mail.googleClientSecret, mail.redirectUri, mail.tokenKey, mail.adminUrl];
+			if (set.some(Boolean) && !set.every(Boolean)) {
+				ctx.addIssue({
+					code: 'custom',
+					message:
+						'Set GOOGLE_MAIL_CLIENT_ID, GOOGLE_MAIL_CLIENT_SECRET, GOOGLE_MAIL_REDIRECT_URI, MAILBOX_TOKEN_KEY and ADMIN_APP_URL together, or none.',
+					path: ['googleClientId'],
+				});
+			}
+		}),
+	/**
+	 * E-invoice and e-way bill (accounts brief addendum 2). `keysKey` (`EDOC_KEYS_KEY`, 32 bytes base64) seals the
+	 * automatic paths' keys in `edocKeys` (AES-256-GCM). Optional: without it the by-hand path still works and the
+	 * settings page says automatic paths need the server key first.
+	 */
+	edocs: z
+		.object({
+			keysKey: z
+				.string()
+				.optional()
+				.refine((value) => value === undefined || Buffer.from(value, 'base64').length === 32, {
+					message: 'EDOC_KEYS_KEY must be 32 bytes, base64',
+				}),
+			/** The key before the last planned change: keys sealed with it are sealed again under the new one when read. */
+			keysKeyPrevious: z
+				.string()
+				.optional()
+				.refine((value) => value === undefined || Buffer.from(value, 'base64').length === 32, {
+					message: 'EDOC_KEYS_KEY_PREVIOUS must be 32 bytes, base64',
+				}),
+		})
+		.refine((edocs) => !edocs.keysKeyPrevious || !!edocs.keysKey, {
+			message: 'EDOC_KEYS_KEY_PREVIOUS goes only with EDOC_KEYS_KEY.',
+			path: ['keysKeyPrevious'],
+		})
+		.default({}),
+	/**
+	 * Payroll (accounts brief S, decision D29). `piiKey` (`PAYROLL_PII_KEY`, 32 bytes base64) seals employees' Aadhaar and
+	 * bank account numbers (AES-256-GCM). Optional: without it those two can't be saved; the rest of payroll works.
+	 */
+	payroll: z
+		.object({
+			piiKey: z
+				.string()
+				.optional()
+				.refine((value) => value === undefined || Buffer.from(value, 'base64').length === 32, {
+					message: 'PAYROLL_PII_KEY must be 32 bytes, base64',
+				}),
+		})
+		.default({}),
 	media: z
 		.object({
 			workerConcurrency: z.coerce.number().int().min(1).max(8).default(2),
@@ -261,6 +462,8 @@ const ConfigSchema = z.object({
 			cloudflareZoneId: z.string().min(1).optional(),
 			cloudflarePurgeToken: z.string().min(1).optional(),
 			youtubeApiKey: z.string().min(1).optional(),
+			/** The shop's own address (`SHOP_ORIGIN`), which the worker asks for pages just after a Page Builder switch (FX-8). */
+			shopOrigin: AbsoluteUrl.optional(),
 		})
 		.superRefine((media, ctx) => {
 			if (!media.cloudflareZoneId !== !media.cloudflarePurgeToken) {
@@ -320,6 +523,7 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 		trustProxy: env.TRUST_PROXY,
 		clientIpHeader: env.CLIENT_IP_HEADER || undefined,
 		logLevel: env.LOG_LEVEL || undefined,
+		logFormat: env.LOG_FORMAT || undefined,
 		rateLimitMax: env.RATE_LIMIT_MAX,
 		rateLimitWindow: env.RATE_LIMIT_WINDOW,
 		jwt: {
@@ -327,6 +531,8 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 			// (`deployment-hardening.ts` reads the raw env, so these never satisfy it).
 			accessSecret: env.JWT_ACCESS_SECRET || 'dev-access-secret-change-me',
 			refreshSecret: env.JWT_REFRESH_SECRET || 'dev-refresh-secret-change-me',
+			accessSecretPrevious: env.JWT_ACCESS_SECRET_PREVIOUS || undefined,
+			refreshSecretPrevious: env.JWT_REFRESH_SECRET_PREVIOUS || undefined,
 			accessTtl: env.JWT_ACCESS_TTL,
 			refreshTtl: env.JWT_REFRESH_TTL,
 		},
@@ -339,6 +545,8 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 			signupName: env.SIGNUP_COOKIE_NAME,
 			csrfHeader: env.CSRF_HEADER_NAME,
 			csrfSecret: env.CSRF_SECRET || undefined,
+			csrfSecretPrevious: env.CSRF_SECRET_PREVIOUS || undefined,
+			sessionsResetAt: env.SESSIONS_RESET_AT || undefined,
 			secure: env.COOKIE_SECURE,
 		},
 		tls: {
@@ -349,7 +557,12 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 			provider: env.NOTIFICATION_PROVIDER || undefined,
 			msg91AuthKey: env.MSG91_AUTH_KEY || undefined,
 			msg91SenderId: env.MSG91_SENDER_ID || undefined,
-			msg91EmailFrom: env.MSG91_EMAIL_FROM,
+			msg91EmailFrom: {
+				account: env.MSG91_EMAIL_FROM_ACCOUNT || undefined,
+				orders: env.MSG91_EMAIL_FROM_ORDERS || undefined,
+				shop: env.MSG91_EMAIL_FROM_SHOP || undefined,
+				marketing: env.MSG91_EMAIL_FROM_MARKETING || undefined,
+			},
 			msg91EmailDomain: env.MSG91_EMAIL_DOMAIN || undefined,
 			msg91WhatsappNumber: env.MSG91_WHATSAPP_NUMBER || undefined,
 			emailFallbackProvider: env.EMAIL_FALLBACK_PROVIDER || undefined,
@@ -379,6 +592,31 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 			endpoint: env.SPACES_ENDPOINT || undefined,
 			cdnUrl: env.SPACES_CDN_URL || undefined,
 		},
+		payments: {
+			ccavenue: {
+				merchantId: env.CCAVENUE_MERCHANT_ID || undefined,
+				accessCode: env.CCAVENUE_ACCESS_CODE || undefined,
+				workingKey: env.CCAVENUE_WORKING_KEY || undefined,
+				returnUrl: env.CCAVENUE_RETURN_URL || undefined,
+				baseUrl: env.CCAVENUE_BASE_URL || undefined,
+				apiUrl: env.CCAVENUE_API_URL || undefined,
+			},
+			paypal: {
+				clientId: env.PAYPAL_CLIENT_ID || undefined,
+				clientSecret: env.PAYPAL_CLIENT_SECRET || undefined,
+				env: env.PAYPAL_ENV || undefined,
+				webhookId: env.PAYPAL_WEBHOOK_ID || undefined,
+			},
+		},
+		fx: { exchangeRateApiKey: env.EXCHANGERATE_API_KEY || undefined },
+		geo: { dataDir: env.GEO_DATA_DIR || undefined },
+		ops: { token: env.OPS_TOKEN || undefined, msg91ReceiptToken: env.MSG91_RECEIPT_TOKEN || undefined },
+		documents: {
+			chromiumChannel: env.PDF_CHROMIUM_CHANNEL || undefined,
+			chromiumExecutable: env.PDF_CHROMIUM_EXECUTABLE || undefined,
+			noSandbox: env.PDF_CHROMIUM_NO_SANDBOX || undefined,
+			renderTimeoutMs: env.PDF_RENDER_TIMEOUT_MS || undefined,
+		},
 		redis: {
 			host: env.REDIS_HOST || undefined,
 			port: env.REDIS_PORT || undefined,
@@ -386,12 +624,24 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 			db: env.REDIS_DB || undefined,
 		},
 		locales: env.ACTIVE_LOCALES || undefined,
+		mail: {
+			googleClientId: env.GOOGLE_MAIL_CLIENT_ID || undefined,
+			googleClientSecret: env.GOOGLE_MAIL_CLIENT_SECRET || undefined,
+			redirectUri: env.GOOGLE_MAIL_REDIRECT_URI || undefined,
+			tokenKey: env.MAILBOX_TOKEN_KEY || undefined,
+			tokenKeyPrevious: env.MAILBOX_TOKEN_KEY_PREVIOUS || undefined,
+			adminUrl: env.ADMIN_APP_URL || undefined,
+			domain: env.MAILBOX_DOMAIN || undefined,
+		},
+		edocs: { keysKey: env.EDOC_KEYS_KEY || undefined, keysKeyPrevious: env.EDOC_KEYS_KEY_PREVIOUS || undefined },
+		payroll: { piiKey: env.PAYROLL_PII_KEY || undefined },
 		media: {
 			workerConcurrency: env.MEDIA_WORKER_CONCURRENCY || undefined,
 			gcLive: env.MEDIA_GC_LIVE || undefined,
 			cloudflareZoneId: env.CLOUDFLARE_ZONE_ID || undefined,
 			cloudflarePurgeToken: env.CLOUDFLARE_PURGE_TOKEN || undefined,
 			youtubeApiKey: env.YOUTUBE_API_KEY || undefined,
+			shopOrigin: env.SHOP_ORIGIN || undefined,
 		},
 	});
 }

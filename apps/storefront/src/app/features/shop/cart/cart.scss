@@ -40,11 +40,11 @@
 		}
 
 		tr.product-box-contain {
-			border: 1px solid #ececec;
+			border: 1px solid var(--st-border-line);
 			border-radius: 8px;
 			padding: 14px;
 			margin-bottom: 14px;
-			background-color: #fff;
+			background-color: var(--st-surface);
 		}
 
 		td {
@@ -85,6 +85,39 @@
 			.table-title {
 				display: none;
 			}
+		}
+	}
+}
+
+// Cart option A (accounts brief section G, owner-approved 2026-11-23): on laptops the theme's five
+// columns overflow at 1440px and pushed the Action column off the edge. The row's own Edit /
+// Add to wishlist / Remove links now sit under its name, styled like the theme's `.save` and
+// `.remove` links; the Action cell stays for phones and tablets (the card view above).
+@media (min-width: 992px) {
+	// With the Action column gone, the theme's per-cell minimum widths still made the table ~40px
+	// wider than its box at 1440px; the columns size to their content instead.
+	.cart-section .cart-table .table tbody tr td {
+		min-width: 0;
+	}
+
+	.cart-section .cart-table .st-line-actions {
+		flex-wrap: wrap;
+		gap: 4px 18px;
+		margin-top: 6px;
+
+		a {
+			font-weight: 400;
+			font-size: 15px;
+			white-space: nowrap;
+			text-decoration: underline;
+
+			&:hover {
+				color: var(--theme-color);
+			}
+		}
+
+		.st-line-remove {
+			color: var(--st-danger-text);
 		}
 	}
 }

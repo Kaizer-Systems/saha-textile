@@ -1,16 +1,24 @@
 /**
  * Words for the local showcase catalogue. The category tree is the menu of sahatextile.com, and
- * the weave, motif and garment names are the ones the trade uses. French is best effort, for
- * review like any other French (`DEC-TRANSLATION-QUALITY`).
+ * the weave, motif and garment names are the ones the trade uses. The Bengali follows the glossary
+ * in the owner decision round "Bengali replaces French" (2026-11-08) and is read by the owner like
+ * every other Bengali string (`DEC-TRANSLATION-QUALITY`).
  */
+
+import { MOTIFS_BN } from './showcase-catalogue-motifs-bn';
 
 export interface Words {
 	[locale: string]: string;
 	en: string;
-	fr: string;
+	bn: string;
 }
 
-const same = (name: string): Words => ({ en: name, fr: name });
+/** A motif name with its Bengali; a name missing from the table stops the build. */
+const motif = (name: string): Words => {
+	const bn = MOTIFS_BN[name];
+	if (!bn) throw new Error(`No Bengali for the motif "${name}"`);
+	return { en: name, bn };
+};
 
 export interface ColourWord extends Words {
 	/** The filter colour this shade belongs to. */
@@ -18,30 +26,30 @@ export interface ColourWord extends Words {
 }
 
 export const COLOURS: readonly ColourWord[] = [
-	{ en: 'Ruby Red', fr: 'rouge rubis', family: 'Red' },
-	{ en: 'Sindoor Red', fr: 'rouge sindoor', family: 'Red' },
-	{ en: 'Rani Pink', fr: 'rose rani', family: 'Pink' },
-	{ en: 'Onion Pink', fr: 'rose oignon', family: 'Pink' },
-	{ en: 'Peacock Blue', fr: 'bleu paon', family: 'Blue' },
-	{ en: 'Midnight Blue', fr: 'bleu nuit', family: 'Blue' },
-	{ en: 'Royal Blue', fr: 'bleu roi', family: 'Blue' },
-	{ en: 'Bottle Green', fr: 'vert bouteille', family: 'Green' },
-	{ en: 'Mehendi Green', fr: 'vert henné', family: 'Green' },
-	{ en: 'Parrot Green', fr: 'vert perroquet', family: 'Green' },
-	{ en: 'Sea Green', fr: 'vert d’eau', family: 'Teal' },
-	{ en: 'Teal', fr: 'sarcelle', family: 'Teal' },
-	{ en: 'Mustard Yellow', fr: 'jaune moutarde', family: 'Mustard' },
-	{ en: 'Turmeric Yellow', fr: 'jaune curcuma', family: 'Mustard' },
-	{ en: 'Burnt Orange', fr: 'orange brûlé', family: 'Rust' },
-	{ en: 'Rust', fr: 'rouille', family: 'Rust' },
-	{ en: 'Wine', fr: 'lie-de-vin', family: 'Wine' },
-	{ en: 'Maroon', fr: 'bordeaux', family: 'Maroon' },
-	{ en: 'Magenta', fr: 'magenta', family: 'Magenta' },
-	{ en: 'Lavender', fr: 'lavande', family: 'Lavender' },
-	{ en: 'Ivory', fr: 'ivoire', family: 'Ivory' },
-	{ en: 'Off White', fr: 'blanc cassé', family: 'Ivory' },
-	{ en: 'Charcoal Black', fr: 'noir charbon', family: 'Black' },
-	{ en: 'Antique Gold', fr: 'or antique', family: 'Gold' },
+	{ en: 'Ruby Red', bn: 'রুবি লাল', family: 'Red' },
+	{ en: 'Sindoor Red', bn: 'সিঁদুরে লাল', family: 'Red' },
+	{ en: 'Rani Pink', bn: 'রানি গোলাপি', family: 'Pink' },
+	{ en: 'Onion Pink', bn: 'পেঁয়াজি গোলাপি', family: 'Pink' },
+	{ en: 'Peacock Blue', bn: 'ময়ূরকণ্ঠী নীল', family: 'Blue' },
+	{ en: 'Midnight Blue', bn: 'গাঢ় নীল', family: 'Blue' },
+	{ en: 'Royal Blue', bn: 'রয়্যাল ব্লু', family: 'Blue' },
+	{ en: 'Bottle Green', bn: 'বোতল সবুজ', family: 'Green' },
+	{ en: 'Mehendi Green', bn: 'মেহেন্দি সবুজ', family: 'Green' },
+	{ en: 'Parrot Green', bn: 'টিয়া সবুজ', family: 'Green' },
+	{ en: 'Sea Green', bn: 'সি গ্রিন', family: 'Teal' },
+	{ en: 'Teal', bn: 'টিল', family: 'Teal' },
+	{ en: 'Mustard Yellow', bn: 'সর্ষে হলুদ', family: 'Mustard' },
+	{ en: 'Turmeric Yellow', bn: 'কাঁচা হলুদ', family: 'Mustard' },
+	{ en: 'Burnt Orange', bn: 'পোড়া কমলা', family: 'Rust' },
+	{ en: 'Rust', bn: 'মরচে রং', family: 'Rust' },
+	{ en: 'Wine', bn: 'ওয়াইন', family: 'Wine' },
+	{ en: 'Maroon', bn: 'মেরুন', family: 'Maroon' },
+	{ en: 'Magenta', bn: 'ম্যাজেন্টা', family: 'Magenta' },
+	{ en: 'Lavender', bn: 'ল্যাভেন্ডার', family: 'Lavender' },
+	{ en: 'Ivory', bn: 'আইভরি', family: 'Ivory' },
+	{ en: 'Off White', bn: 'অফ হোয়াইট', family: 'Ivory' },
+	{ en: 'Charcoal Black', bn: 'কয়লা কালো', family: 'Black' },
+	{ en: 'Antique Gold', bn: 'অ্যান্টিক গোল্ড', family: 'Gold' },
 ];
 
 /** Filter colours, with the swatch each shows. */
@@ -77,7 +85,7 @@ export interface Family {
 	tailored?: boolean;
 }
 
-const list = (names: string): Words[] => names.split(', ').map(same);
+const list = (names: string): Words[] => names.split(', ').map(motif);
 
 export const FAMILIES: Readonly<Record<string, Family>> = {
 	banarasi: {
@@ -93,7 +101,7 @@ export const FAMILIES: Readonly<Record<string, Family>> = {
 		weightGrams: 780,
 		story: {
 			en: 'Handwoven in Varanasi on a pit loom, with real zari and a rich pallu.',
-			fr: 'Tissé à la main à Varanasi sur métier à fosse, avec un vrai zari et un pallu riche.',
+			bn: 'বারাণসীর তাঁতে হাতে বোনা, আসল জরি আর জমকালো আঁচল।',
 		},
 		tailored: true,
 	},
@@ -110,7 +118,7 @@ export const FAMILIES: Readonly<Record<string, Family>> = {
 		weightGrams: 820,
 		story: {
 			en: 'Woven in Tamil Nadu from mulberry silk, with the heavy border the region is known for.',
-			fr: 'Tissé au Tamil Nadu en soie de mûrier, avec la bordure lourde qui fait la réputation de la région.',
+			bn: 'তামিলনাড়ুর মালবেরি সিল্কে বোনা, সঙ্গে সেই ভারী পাড় যার জন্য এই অঞ্চলের নাম।',
 		},
 		tailored: true,
 	},
@@ -127,7 +135,7 @@ export const FAMILIES: Readonly<Record<string, Family>> = {
 		weightGrams: 700,
 		story: {
 			en: 'From Telangana: a light cotton body joined to a silk border and pallu by hand.',
-			fr: 'Du Telangana : un corps de coton léger assemblé à la main à une bordure et un pallu en soie.',
+			bn: 'তেলেঙ্গানার শাড়ি: হালকা সুতির জমির সঙ্গে হাতে জোড়া সিল্কের পাড় আর আঁচল।',
 		},
 		tailored: true,
 	},
@@ -144,7 +152,7 @@ export const FAMILIES: Readonly<Record<string, Family>> = {
 		weightGrams: 760,
 		story: {
 			en: 'Tapestry woven in Yeola, Maharashtra, so the pallu reads the same on both sides.',
-			fr: 'Tissé en tapisserie à Yeola, au Maharashtra : le pallu se lit de la même façon des deux côtés.',
+			bn: 'মহারাষ্ট্রের ইয়েওলায় ট্যাপেস্ট্রি বুননে তৈরি, তাই আঁচল দুই দিক থেকেই একই রকম দেখায়।',
 		},
 		tailored: true,
 	},
@@ -161,7 +169,7 @@ export const FAMILIES: Readonly<Record<string, Family>> = {
 		weightGrams: 680,
 		story: {
 			en: 'Pure silk with a soft fall, finished by hand and checked piece by piece in Kolkata.',
-			fr: 'Pure soie au tombé souple, finie à la main et vérifiée pièce par pièce à Calcutta.',
+			bn: 'নরম ঝুলের খাঁটি সিল্ক, কলকাতায় হাতে ফিনিশ করে প্রতিটি পিস আলাদা করে দেখে নেওয়া।',
 		},
 		tailored: true,
 	},
@@ -178,7 +186,7 @@ export const FAMILIES: Readonly<Record<string, Family>> = {
 		weightGrams: 640,
 		story: {
 			en: 'Each yarn is resist-dyed before weaving, so the pattern appears with a soft, feathered edge.',
-			fr: 'Chaque fil est teint en réserve avant le tissage : le motif apparaît avec un bord doux et plumeux.',
+			bn: 'বোনার আগেই সুতো বেঁধে রং করা হয়, তাই নকশার কিনারা নরম, পালকের মতো।',
 		},
 	},
 	jamdani: {
@@ -194,7 +202,7 @@ export const FAMILIES: Readonly<Record<string, Family>> = {
 		weightGrams: 420,
 		story: {
 			en: 'Discontinuous weft work done by hand, a craft listed by UNESCO, on a fine and airy ground.',
-			fr: 'Travail de trame discontinue fait à la main, un savoir-faire inscrit à l’UNESCO, sur un fond fin et aérien.',
+			bn: 'মিহি, হালকা জমিতে হাতে তোলা নকশা; ইউনেস্কোর স্বীকৃতি পাওয়া বুননশিল্প।',
 		},
 	},
 	bengal: {
@@ -210,7 +218,7 @@ export const FAMILIES: Readonly<Record<string, Family>> = {
 		weightGrams: 480,
 		story: {
 			en: 'Woven by Bengal handloom clusters, crisp to wear and easy through a long humid day.',
-			fr: 'Tissé par les ateliers du Bengale, net à porter et agréable pendant une longue journée humide.',
+			bn: 'বাংলার তাঁতিদের হাতে বোনা; পরলে টানটান, গরম আর ভ্যাপসা লম্বা দিনেও আরামের।',
 		},
 	},
 	jaipur: {
@@ -226,7 +234,7 @@ export const FAMILIES: Readonly<Record<string, Family>> = {
 		weightGrams: 450,
 		story: {
 			en: 'Hand block printed in Rajasthan, so small changes from piece to piece are part of the work.',
-			fr: 'Imprimé à la main au bloc au Rajasthan : les petites différences d’une pièce à l’autre font partie du travail.',
+			bn: 'রাজস্থানে হাতে ব্লক প্রিন্ট করা, তাই প্রতিটি পিসে ছোটখাটো তফাত এই কাজেরই অংশ।',
 		},
 	},
 	organic: {
@@ -242,7 +250,7 @@ export const FAMILIES: Readonly<Record<string, Family>> = {
 		weightGrams: 430,
 		story: {
 			en: 'Organically grown cotton coloured with plant dyes, gentle on skin and light to carry.',
-			fr: 'Coton biologique teint aux plantes, doux pour la peau et léger à porter.',
+			bn: 'অর্গানিক সুতি, গাছের রঙে রাঙানো; ত্বকে নরম, পরতে হালকা।',
 		},
 	},
 	south: {
@@ -258,7 +266,7 @@ export const FAMILIES: Readonly<Record<string, Family>> = {
 		weightGrams: 520,
 		story: {
 			en: 'Firm South Indian handloom cotton with a contrast border, made for everyday drape.',
-			fr: 'Coton tissé main du sud de l’Inde, ferme, à bordure contrastée, fait pour le drapé de tous les jours.',
+			bn: 'দক্ষিণ ভারতের মজবুত তাঁতের সুতি, বিপরীত রঙের পাড়, রোজকার পরার জন্য।',
 		},
 	},
 	kalamkari: {
@@ -274,7 +282,7 @@ export const FAMILIES: Readonly<Record<string, Family>> = {
 		weightGrams: 470,
 		story: {
 			en: 'Pen-drawn or block printed in Andhra Pradesh with natural dyes and traditional scenes.',
-			fr: 'Dessiné au calame ou imprimé au bloc en Andhra Pradesh, avec des teintures naturelles et des scènes traditionnelles.',
+			bn: 'অন্ধ্রপ্রদেশে কলমে আঁকা বা ব্লক প্রিন্ট করা, প্রাকৃতিক রং আর চিরাচরিত দৃশ্য।',
 		},
 	},
 	semi: {
@@ -290,7 +298,7 @@ export const FAMILIES: Readonly<Record<string, Family>> = {
 		weightGrams: 560,
 		story: {
 			en: 'A silk blend with the look of pure silk at a kinder price, and easy to look after.',
-			fr: 'Un mélange de soie à l’allure de la soie pure, à un prix plus doux et facile à entretenir.',
+			bn: 'দেখতে খাঁটি সিল্কের মতো, দামে সাশ্রয়ী, যত্ন নেওয়াও সহজ।',
 		},
 	},
 	party: {
@@ -306,7 +314,7 @@ export const FAMILIES: Readonly<Record<string, Family>> = {
 		weightGrams: 610,
 		story: {
 			en: 'Hand finished embellishment on a fluid base, made to catch the light in the evening.',
-			fr: 'Ornements finis à la main sur un tissu fluide, pour accrocher la lumière le soir.',
+			bn: 'হালকা, ঝুলে পড়া কাপড়ে হাতে করা কারুকাজ, সন্ধের আলোয় ঝলমল করার জন্য।',
 		},
 	},
 	budget: {
@@ -322,7 +330,7 @@ export const FAMILIES: Readonly<Record<string, Family>> = {
 		weightGrams: 430,
 		story: {
 			en: 'An easy everyday piece at a gentle price, light to drape and quick to wash.',
-			fr: 'Une pièce simple de tous les jours à prix doux, légère à draper et rapide à laver.',
+			bn: 'রোজ পরার সহজ শাড়ি, সাশ্রয়ী দামে; হালকা, পরতে সহজ, ধুতেও ঝামেলা নেই।',
 		},
 	},
 	printed: {
@@ -338,7 +346,7 @@ export const FAMILIES: Readonly<Record<string, Family>> = {
 		weightGrams: 460,
 		story: {
 			en: 'Printed in fine detail, with colour that stays clear after careful washing.',
-			fr: 'Imprimé dans le détail, avec une couleur qui reste nette après un lavage soigné.',
+			bn: 'সূক্ষ্ম প্রিন্ট; যত্ন করে ধুলে রং থাকে উজ্জ্বল।',
 		},
 	},
 	suits: {
@@ -354,7 +362,7 @@ export const FAMILIES: Readonly<Record<string, Family>> = {
 		weightGrams: 520,
 		story: {
 			en: 'A full set with top, bottom and dupatta, cut generously so a tailor can fit it to you.',
-			fr: 'Un ensemble complet avec haut, bas et dupatta, coupé large pour qu’un tailleur l’ajuste à vous.',
+			bn: 'টপ, বটম আর ওড়না নিয়ে পুরো সেট, যথেষ্ট কাপড় রেখে কাটা, যাতে দর্জি আপনার মাপে বানাতে পারেন।',
 		},
 	},
 };
@@ -371,21 +379,31 @@ export interface Leaf {
 	fabric?: string;
 }
 
-const leaves = (group: string, family: string, rows: ReadonlyArray<[string, string, number?, Partial<Leaf>?]>): Leaf[] =>
-	rows.map(([slug, name, count, extra]) => ({ path: `${group}/${slug}`, name, family, count: count ?? 12, ...extra }));
+const leaves = (
+	group: string,
+	family: string,
+	rows: ReadonlyArray<[string, string, number?, Partial<Leaf>?]>,
+): Leaf[] =>
+	rows.map(([slug, name, count, extra]) => ({
+		path: `${group}/${slug}`,
+		name,
+		family,
+		count: count ?? 12,
+		...extra,
+	}));
 
 /** The garments a dress material comes as, so one category shows the range a shop carries. */
 export const GARMENTS: readonly Words[] = [
-	{ en: 'Salwar Suit', fr: 'Salwar Suit' },
-	{ en: 'Anarkali Suit', fr: 'Ensemble Anarkali' },
-	{ en: 'Churidar Suit', fr: 'Ensemble Churidar' },
-	{ en: 'Patiala Suit', fr: 'Ensemble Patiala' },
-	{ en: 'Palazzo Suit', fr: 'Ensemble Palazzo' },
-	{ en: 'Sharara Suit', fr: 'Ensemble Sharara' },
-	{ en: 'Straight Cut Suit', fr: 'Ensemble coupe droite' },
-	{ en: 'Unstitched Suit Material', fr: 'Tissu d’ensemble non cousu' },
-	{ en: 'Kurta Dupatta Set', fr: 'Ensemble Kurta et Dupatta' },
-	{ en: 'Dress Material', fr: 'Tissu pour robe' },
+	{ en: 'Salwar Suit', bn: 'সালোয়ার স্যুট' },
+	{ en: 'Anarkali Suit', bn: 'আনারকলি স্যুট' },
+	{ en: 'Churidar Suit', bn: 'চুড়িদার স্যুট' },
+	{ en: 'Patiala Suit', bn: 'পাতিয়ালা স্যুট' },
+	{ en: 'Palazzo Suit', bn: 'পালাজো স্যুট' },
+	{ en: 'Sharara Suit', bn: 'শারারা স্যুট' },
+	{ en: 'Straight Cut Suit', bn: 'স্ট্রেট কাট স্যুট' },
+	{ en: 'Unstitched Suit Material', bn: 'সেলাই ছাড়া স্যুটের কাপড়' },
+	{ en: 'Kurta Dupatta Set', bn: 'কুর্তা-ওড়না সেট' },
+	{ en: 'Dress Material', bn: 'ড্রেস মেটেরিয়াল' },
 ];
 
 /** The category tree of the live site's menu, with the same spelling where it was right. */
@@ -400,11 +418,13 @@ export const LEAVES: readonly Leaf[] = [
 	...leaves('sarees/pure-silk', 'silk', [
 		['khaddi', 'Khaddi'],
 		['shehnai-collection', 'Shehnai Collection'],
-		['georgette', 'Georgette', 12, { noun: { en: 'Pure Georgette Saree', fr: 'Sari en georgette pure' } }],
+		['georgette', 'Georgette', 12, { noun: { en: 'Pure Georgette Saree', bn: 'খাঁটি জর্জেট শাড়ি' } }],
 	]),
 	...leaves('sarees/pure-silk', 'banarasi', [['wedding-banarasi', 'Wedding Banarasi', 14]]),
 	...leaves('sarees/pure-silk', 'kanchipuram', [['arni', 'Arni']]),
-	...leaves('sarees/pure-silk', 'ikkat', [['ikkat', 'Ikkat', 12, { noun: { en: 'Ikkat Silk Saree', fr: 'Sari Ikkat en soie' } }]]),
+	...leaves('sarees/pure-silk', 'ikkat', [
+		['ikkat', 'Ikkat', 12, { noun: { en: 'Ikkat Silk Saree', bn: 'ইক্কত সিল্ক শাড়ি' } }],
+	]),
 	...leaves('sarees/jamdani', 'jamdani', [
 		['traditional-jamdani', 'Traditional Jamdani'],
 		['muslin-jamdani', 'Muslin Jamdani'],
@@ -435,49 +455,89 @@ export const LEAVES: readonly Leaf[] = [
 	...leaves('sarees/party-wear', 'party', [
 		['organza', 'Organza', 12, { fabric: 'Organza' }],
 		['net', 'Net', 12, { fabric: 'Net' }],
-		['georgette', 'Georgette', 12, { noun: { en: 'Party Georgette Saree', fr: 'Sari de soirée en georgette' } }],
+		['georgette', 'Georgette', 12, { noun: { en: 'Party Georgette Saree', bn: 'পার্টি জর্জেট শাড়ি' } }],
 		['chiffon', 'Chiffon', 12, { fabric: 'Chiffon' }],
 		[
 			'sarees-with-ready-blouse',
 			'Sarees with Ready Blouse',
 			12,
-			{ noun: { en: 'Saree with Ready Blouse', fr: 'Sari avec blouse prête' } },
+			{ noun: { en: 'Saree with Ready Blouse', bn: 'রেডিমেড ব্লাউজ সহ শাড়ি' } },
 		],
-		['embroidered', 'Embroidered', 12, { noun: { en: 'Embroidered Party Saree', fr: 'Sari de soirée brodé' } }],
-		['stone-work', 'Stone Work', 12, { noun: { en: 'Stone Work Saree', fr: 'Sari à pierres' } }],
+		[
+			'embroidered',
+			'Embroidered',
+			12,
+			{ noun: { en: 'Embroidered Party Saree', bn: 'এমব্রয়ডারি করা পার্টি শাড়ি' } },
+		],
+		['stone-work', 'Stone Work', 12, { noun: { en: 'Stone Work Saree', bn: 'স্টোনের কাজের শাড়ি' } }],
 		['tissue', 'Tissue', 12, { fabric: 'Tissue' }],
-		['sequins', 'Sequins', 12, { noun: { en: 'Sequin Saree', fr: 'Sari à sequins' } }],
+		['sequins', 'Sequins', 12, { noun: { en: 'Sequin Saree', bn: 'চুমকির কাজের শাড়ি' } }],
 	]),
 	...leaves('sarees/budget-range', 'budget', [
 		['chanderi', 'Chanderi'],
 		['supernet', 'Supernet'],
 		['printed-chiffon', 'Printed Chiffon', 12, { fabric: 'Chiffon' }],
-		['red-and-white', 'Red & White', 12, { noun: { en: 'Red & White Bengal Saree', fr: 'Sari bengali rouge et blanc' } }],
-		['embroidered-sarees', 'Embroidered Sarees', 12, { noun: { en: 'Embroidered Saree', fr: 'Sari brodé' } }],
-		['printed-silks', 'Printed Silks', 12, { noun: { en: 'Printed Silk Saree', fr: 'Sari en soie imprimée' } }],
+		['red-and-white', 'Red & White', 12, { noun: { en: 'Red & White Bengal Saree', bn: 'লাল-সাদা বাংলার শাড়ি' } }],
+		[
+			'embroidered-sarees',
+			'Embroidered Sarees',
+			12,
+			{ noun: { en: 'Embroidered Saree', bn: 'এমব্রয়ডারি করা শাড়ি' } },
+		],
+		['printed-silks', 'Printed Silks', 12, { noun: { en: 'Printed Silk Saree', bn: 'প্রিন্টেড সিল্ক শাড়ি' } }],
 		['silk-kota', 'Silk Kota'],
 		['printed-kalamkari', 'Printed Kalamkari'],
 	]),
 	...leaves('sarees/printed', 'printed', [
-		['pure-silk', 'Pure Silk', 12, { noun: { en: 'Printed Pure Silk Saree', fr: 'Sari imprimé en pure soie' } }],
-		['tussar', 'Tussar', 12, { noun: { en: 'Printed Tussar Silk Saree', fr: 'Sari imprimé en soie Tussar' }, fabric: 'Tussar' }],
-		['chiffon', 'Chiffon', 12, { noun: { en: 'Printed Chiffon Saree', fr: 'Sari imprimé en mousseline' }, fabric: 'Chiffon' }],
-		['crepe', 'Crepe', 12, { noun: { en: 'Printed Crepe Saree', fr: 'Sari imprimé en crêpe' }, fabric: 'Crepe' }],
+		['pure-silk', 'Pure Silk', 12, { noun: { en: 'Printed Pure Silk Saree', bn: 'প্রিন্টেড খাঁটি সিল্ক শাড়ি' } }],
+		[
+			'tussar',
+			'Tussar',
+			12,
+			{ noun: { en: 'Printed Tussar Silk Saree', bn: 'প্রিন্টেড তসর সিল্ক শাড়ি' }, fabric: 'Tussar' },
+		],
+		[
+			'chiffon',
+			'Chiffon',
+			12,
+			{ noun: { en: 'Printed Chiffon Saree', bn: 'প্রিন্টেড শিফন শাড়ি' }, fabric: 'Chiffon' },
+		],
+		['crepe', 'Crepe', 12, { noun: { en: 'Printed Crepe Saree', bn: 'প্রিন্টেড ক্রেপ শাড়ি' }, fabric: 'Crepe' }],
 		['printed-tussar', 'Printed Tussar', 12, { fabric: 'Tussar' }],
-		['kalamkari', 'Kalamkari', 12, { noun: { en: 'Kalamkari Print Saree', fr: 'Sari imprimé Kalamkari' } }],
+		['kalamkari', 'Kalamkari', 12, { noun: { en: 'Kalamkari Print Saree', bn: 'কলমকারি প্রিন্ট শাড়ি' } }],
 		['naksha-e-mughal', 'Naksha-e-Mughal'],
-		['kora', 'Kora', 12, { noun: { en: 'Printed Kora Saree', fr: 'Sari Kora imprimé' } }],
-		['organza', 'Organza', 12, { noun: { en: 'Printed Organza Saree', fr: 'Sari imprimé en organza' }, fabric: 'Organza' }],
-		['banarasi', 'Banarasi', 12, { noun: { en: 'Printed Banarasi Saree', fr: 'Sari Banarasi imprimé' } }],
-		['tissue-banarasi', 'Tissue Banarasi', 12, { noun: { en: 'Printed Tissue Banarasi Saree', fr: 'Sari Banarasi imprimé en tissu lamé' }, fabric: 'Tissue' }],
+		['kora', 'Kora', 12, { noun: { en: 'Printed Kora Saree', bn: 'প্রিন্টেড কোরা শাড়ি' } }],
+		[
+			'organza',
+			'Organza',
+			12,
+			{ noun: { en: 'Printed Organza Saree', bn: 'প্রিন্টেড অর্গাঞ্জা শাড়ি' }, fabric: 'Organza' },
+		],
+		['banarasi', 'Banarasi', 12, { noun: { en: 'Printed Banarasi Saree', bn: 'প্রিন্টেড বেনারসি শাড়ি' } }],
+		[
+			'tissue-banarasi',
+			'Tissue Banarasi',
+			12,
+			{ noun: { en: 'Printed Tissue Banarasi Saree', bn: 'প্রিন্টেড টিস্যু বেনারসি শাড়ি' }, fabric: 'Tissue' },
+		],
 	]),
 	...leaves('dress-materials', 'suits', [
-		['cotton-chikankari', 'Cotton Chikankari', 40, { noun: { en: 'Cotton Chikankari', fr: 'Chikankari en coton' } }],
-		['georgette-chikankari', 'Georgette Chikankari', 40, { noun: { en: 'Georgette Chikankari', fr: 'Chikankari en georgette' }, fabric: 'Georgette' }],
-		['printed', 'Printed', 40, { noun: { en: 'Printed Cotton', fr: 'Coton imprimé' } }],
-		['banarasi', 'Banarasi', 40, { noun: { en: 'Banarasi Silk', fr: 'Soie Banarasi' }, fabric: 'Silk' }],
-		['embroidered', 'Embroidered', 40, { noun: { en: 'Embroidered', fr: 'Brodé' }, fabric: 'Georgette' }],
-		['party-wear-suits', 'Party Wear Suits', 40, { noun: { en: 'Party Wear', fr: 'De soirée' }, fabric: 'Georgette' }],
+		['cotton-chikankari', 'Cotton Chikankari', 40, { noun: { en: 'Cotton Chikankari', bn: 'সুতির চিকনকারি' } }],
+		[
+			'georgette-chikankari',
+			'Georgette Chikankari',
+			40,
+			{ noun: { en: 'Georgette Chikankari', bn: 'জর্জেট চিকনকারি' }, fabric: 'Georgette' },
+		],
+		['printed', 'Printed', 40, { noun: { en: 'Printed Cotton', bn: 'প্রিন্টেড সুতি' } }],
+		['banarasi', 'Banarasi', 40, { noun: { en: 'Banarasi Silk', bn: 'বেনারসি সিল্ক' }, fabric: 'Silk' }],
+		['embroidered', 'Embroidered', 40, { noun: { en: 'Embroidered', bn: 'এমব্রয়ডারি করা' }, fabric: 'Georgette' }],
+		[
+			'party-wear-suits',
+			'Party Wear Suits',
+			40,
+			{ noun: { en: 'Party Wear', bn: 'পার্টি ওয়্যার' }, fabric: 'Georgette' },
+		],
 	]),
 ];
 
@@ -503,3 +563,49 @@ export const SECOND_PLACEMENTS: ReadonlyArray<{ path: string; alsoUnder: string 
 
 export const SIZES = ['S', 'M', 'L', 'XL', 'XXL'] as const;
 export const BLOUSE_SIZES = ['34', '36', '38', '40', '42'] as const;
+
+/**
+ * Filter values the title already states. A shopper who filters by Work, Pattern or Fabric and sees
+ * a "Meenakari Jangla" saree under Zari stops trusting the filter, so a word in the title wins over
+ * the family's default. The first matching rule wins; a title with no rule keeps the fallback.
+ */
+const WORK_RULES: ReadonlyArray<readonly [RegExp, string]> = [
+	[/Meenakari/i, 'Meenakari'],
+	[/Sequin|Cutdana|Crystal/i, 'Sequins'],
+	[/Stone|Pearl/i, 'Stone'],
+	[
+		/Mukaish|Gota Patti|Mirror|Chikan|Phulkari|Aari|Resham|Thread|Shadow Work|Kantha|Zardosi|Embroider|Phanda/i,
+		'Embroidered',
+	],
+	[/Kalamkari|Ajrakh|Bagru|Dabu|Bandhani|Print/i, 'Print'],
+	[/Zari|Kadhua|Kadwa|Rangkat|Jangla|Ashrafi|Korvai|Brocade|Tanchoi|Shikargah/i, 'Zari'],
+];
+
+const PATTERN_RULES: ReadonlyArray<readonly [RegExp, string]> = [
+	[/Stripe/i, 'Striped'],
+	[/Check/i, 'Checks'],
+	[/Floral|Rose|Lotus|Flower/i, 'Floral'],
+	[/Ikk?at|Geometric|Chevron|Diamond/i, 'Geometric'],
+	[/\bPlain\b/i, 'Plain'],
+];
+
+/** "Semi Organza" is a blend, so only a fabric named without "Semi" counts. */
+const FABRICS = ['Georgette', 'Organza', 'Tissue', 'Linen', 'Crepe', 'Chiffon', 'Net', 'Cotton', 'Tussar'] as const;
+
+const firstRule = (rules: ReadonlyArray<readonly [RegExp, string]>, title: string): string | undefined =>
+	rules.find(([pattern]) => pattern.test(title))?.[1];
+
+export function workFor(title: string, fallback: string): string {
+	return firstRule(WORK_RULES, title) ?? fallback;
+}
+
+export function patternFor(title: string, fallback: string): string {
+	return firstRule(PATTERN_RULES, title) ?? fallback;
+}
+
+/** The one fabric the title names; none, or two (a "Cotton Silk"), keeps the fallback. */
+export function fabricFor(title: string, fallback: string): string {
+	const named = FABRICS.filter((fabric) => new RegExp(`(?<!Semi )\\b${fabric}\\b`, 'i').test(title));
+	const silk = /(?<!Semi )\bSilk\b/i.test(title) && named.length > 0;
+	return named.length === 1 && !silk ? (named[0] as string) : fallback;
+}

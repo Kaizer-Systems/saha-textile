@@ -1,0 +1,536 @@
+<div class="modal-header">
+	<h2 id="fm_details_title">{{ (isImage() ? 'fm_image_details' : 'fm_file_details') | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+@if (savingSlow()) {
+<!-- A49: a save taking longer than 0.3 s shows the thin bar under the header. -->
+<div
+	class="progress fm-thin"
+	id="fm_text_saving"
+>
+	<div
+		class="progress-bar progress-bar-striped progress-bar-animated"
+		style="width: 100%"
+	></div>
+</div>
+}
+<div
+	class="modal-body"
+	id="fm_details"
+>
+	@if (error()) {
+	<div class="alert alert-danger">{{ 'fm_action_failed' | transloco }}</div>
+	} @if (details(); as file) {
+	<div class="row g-4">
+		<div class="col-md-4">
+			<h6 class="text-break mb-2">{{ file.name }}</h6>
+			@if (preview(); as url) {
+			<img
+				[src]="url"
+				class="img-fluid rounded border"
+				alt=""
+			/>
+			}
+			<table class="table-sm small mt-3 table">
+				<tbody>
+					@if (file.slug) {
+					<tr id="fm_details_web_name">
+						<td class="text-muted">{{ 'fm_web_name' | transloco }}</td>
+						<td>
+							<span class="text-break">{{ file.slug }}</span>
+							·
+							<a
+								href="javascript:void(0)"
+								id="fm_details_web_name_change"
+								(click)="changeWebName()"
+							>
+								{{ 'fm_web_name_change' | transloco }}
+							</a>
+						</td>
+					</tr>
+					}
+					<tr>
+						<td class="text-muted">{{ 'fm_size' | transloco }}</td>
+						<td>
+							{{ file.bytes | fileSize }} @if (file.width && file.height) { · {{ file.width }} × {{
+							file.height }} }
+						</td>
+					</tr>
+					<tr>
+						<td class="text-muted">{{ 'fm_folder' | transloco }}</td>
+						<td>
+							{{ file.folderPath.length ? file.folderPath.join(' › ') : ('fm_my_files' | transloco) }}
+						</td>
+					</tr>
+					<tr>
+						<td class="text-muted">{{ 'fm_uploaded' | transloco }}</td>
+						<td>
+							@if (file.uploadedAt) { {{ file.uploadedAt | date: 'd MMM y' }} } @if (file.uploadedBy) { ·
+							{{ file.uploadedBy }} }
+						</td>
+					</tr>
+					<tr>
+						<td class="text-muted">{{ 'fm_used_on' | transloco }}</td>
+						<td id="fm_details_used_on">
+							@if (!file.usedOn.length) { — } @else if (showAllUses() || file.usedOn.length <= USES_SHOWN)
+							{
+							<div [class.fm-uses]="file.usedOn.length > USES_SHOWN">{{ file.usedOn.join(', ') }}</div>
+							} @else { {{ file.usedOn.slice(0, USES_SHOWN).join(', ') }} ·
+							<a
+								href="javascript:void(0)"
+								id="fm_details_used_more"
+								(click)="showAllUses.set(true)"
+							>
+								{{ 'fm_used_on_more' | transloco: { count: file.usedOn.length - USES_SHOWN } }}
+							</a>
+							}
+						</td>
+					</tr>
+					<!-- Swatch cuts (brief P11): a cut names its photo; a photo lists its cuts and where each is used. -->
+					@if (file.cutFrom; as from) {
+					<tr>
+						<td class="text-muted">{{ 'swatch' | transloco }}</td>
+						<td id="fm_details_cut_from">{{ 'fm_cut_from' | transloco: { name: from.photoName } }}</td>
+					</tr>
+					} @if (file.cuts?.length) {
+					<tr>
+						<td class="text-muted">{{ 'fm_cuts' | transloco }}</td>
+						<td id="fm_details_cuts">
+							@for (cut of file.cuts; track cut.id) {
+							<div class="d-flex align-items-center mb-1 gap-2">
+								@if (cut.thumbnail) {
+								<img
+									[src]="cut.thumbnail"
+									alt=""
+									width="32"
+									height="32"
+									style="object-fit: cover; border-radius: 4px"
+								/>
+								}
+								<span>{{ cut.name }}</span>
+								<span class="fm-meta">
+									{{ cut.usedOn ? ('fm_cut_used_on' | transloco: { count: cut.usedOn }) :
+									('fm_cut_unused' | transloco) }}
+								</span>
+							</div>
+							}
+						</td>
+					</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+		<div class="col-md-8">
+			<ul class="nav nav-tabs mb-3">
+				@if (isImage()) {
+				<li class="nav-item">
+					<button
+						type="button"
+						class="nav-link"
+						id="fm_details_tab_text"
+						[class.active]="tab() === 'text'"
+						(click)="tab.set('text')"
+					>
+						{{ 'fm_text' | transloco }}
+					</button>
+				</li>
+				<li class="nav-item">
+					<button
+						type="button"
+						class="nav-link"
+						id="fm_details_tab_versions"
+						[class.active]="tab() === 'versions'"
+						(click)="tab.set('versions')"
+					>
+						{{ 'fm_versions' | transloco }}
+					</button>
+				</li>
+				}
+				<li class="nav-item">
+					<button
+						type="button"
+						class="nav-link"
+						id="fm_details_tab_activity"
+						[class.active]="tab() === 'activity'"
+						(click)="tab.set('activity')"
+					>
+						{{ 'fm_activity' | transloco }}
+					</button>
+				</li>
+			</ul>
+			@if (tab() === 'text' && isImage()) {
+			<!-- A42: saved on the photo itself; every page that shows it uses this text unless it sets its own. -->
+			<p class="text-muted small">{{ 'fm_text_intro' | transloco }}</p>
+			<app-language-switch
+				[locales]="locales"
+				[active]="locale()"
+				[gaps]="textGaps()"
+				(changed)="locale.set($event)"
+			/>
+			<div
+				class="theme-form theme-form-2 mega-form"
+				id="fm_text_form"
+			>
+				<app-form-fields
+					labelClass="form-label-title col-sm-3 mb-0"
+					gridClass="col-sm-9"
+					[label]="'fm_text_alt'"
+					[for]="'fm_text_alt'"
+				>
+					<input
+						class="form-control"
+						id="fm_text_alt"
+						maxlength="250"
+						[disabled]="savingSlow()"
+						[value]="alt()[locale()] ?? ''"
+						(input)="setText('alt', $any($event.target).value)"
+					/>
+					<p class="help-text">{{ 'fm_text_alt_help' | transloco }}</p>
+				</app-form-fields>
+				<app-form-fields
+					labelClass="form-label-title col-sm-3 mb-0"
+					gridClass="col-sm-9"
+					[label]="'fm_text_caption'"
+					[for]="'fm_text_caption'"
+				>
+					<textarea
+						class="form-control"
+						id="fm_text_caption"
+						rows="2"
+						maxlength="500"
+						[disabled]="savingSlow()"
+						[attr.placeholder]="'fm_optional' | transloco"
+						[value]="caption()[locale()] ?? ''"
+						(input)="setText('caption', $any($event.target).value)"
+					></textarea>
+					<p class="help-text">{{ 'fm_text_caption_help' | transloco }}</p>
+				</app-form-fields>
+			</div>
+			<div class="d-flex justify-content-end gap-2">
+				<button
+					type="button"
+					class="btn btn-theme"
+					id="fm_text_save"
+					[class.disabled]="saving()"
+					[attr.aria-disabled]="saving()"
+					(click)="saveText()"
+				>
+					{{ (savingSlow() ? 'fm_saving' : 'save') | transloco }}
+				</button>
+			</div>
+			} @else if (tab() === 'versions' && isImage()) {
+			<div
+				class="theme-tree-box fm-sizes fm-scroll"
+				id="fm_versions_tree"
+			>
+				<ul
+					class="tree-main-ul"
+					style="padding-top: 6px"
+				>
+					<li>
+						<div class="fm-vnode">
+							<i class="tree-icon folder-icon"></i>
+							<span>
+								<strong>{{ 'fm_original' | transloco }}</strong>
+								<span class="fm-meta">
+									· {{ 'fm_original_meta' | transloco }} · {{ file.bytes | fileSize }}
+								</span>
+							</span>
+						</div>
+						<ul>
+							@for (version of file.versions; track version.id) {
+							<li [attr.data-version]="version.id">
+								<div class="fm-vnode">
+									<button
+										type="button"
+										class="btn border-0 p-0"
+										[title]="(open().has(version.id) ? 'fm_close_level' : 'fm_open_level') | transloco"
+										[attr.aria-expanded]="open().has(version.id)"
+										(click)="toggle(version.id)"
+									>
+										<i
+											[class]="'fm-caret ' + (open().has(version.id) ? 'ri-arrow-down-s-line' : 'ri-arrow-right-s-line')"
+										></i>
+									</button>
+									<i class="tree-icon file-icon"></i>
+									<span>
+										<strong>{{ versionName(version) }}</strong>
+										<span class="fm-meta">
+											· {{ 'fm_sizes_count' | plural: sizeCount(version) }} · {{ version.bytes |
+											fileSize }}
+										</span>
+										@if (version.state === 'making') {
+										<span class="badge bg-warning text-dark ms-1">
+											{{ 'fm_making_versions' | transloco }}
+										</span>
+										} @else if (version.state === 'failed') {
+										<span class="badge bg-danger ms-1">{{ 'fm_failed' | transloco }}</span>
+										} @else if (inUse(version)) {
+										<span class="badge bg-success ms-1">
+											{{ 'fm_on_pages' | plural: file.usedOn.length }}
+										</span>
+										} @else {
+										<span class="text-muted small ms-1">{{ 'fm_not_used' | transloco }}</span>
+										}
+									</span>
+									@if (version.fill === 'crop' || canRemove(version)) {
+									<span class="d-flex gap-1">
+										@if (version.fill === 'crop' && version.state === 'ready') {
+										<button
+											type="button"
+											class="btn btn-outline btn-sm"
+											[attr.data-focal]="version.id"
+											(click)="act('focal')"
+										>
+											{{ 'fm_focal_button' | transloco }}
+										</button>
+										} @if (canRemove(version)) {
+										<button
+											type="button"
+											class="btn btn-outline btn-sm"
+											[attr.data-remove]="version.id"
+											(click)="remove(version)"
+										>
+											{{ 'fm_remove_version' | transloco }}
+										</button>
+										}
+									</span>
+									}
+								</div>
+								@if (open().has(version.id)) {
+								<ul>
+									@for (family of version.families; track family.role) {
+									<li>
+										<div class="fm-vnode">
+											<button
+												type="button"
+												class="btn border-0 p-0"
+												[title]="(open().has(version.id + '|' + family.role) ? 'fm_close_level' : 'fm_open_level') | transloco"
+												[attr.aria-expanded]="open().has(version.id + '|' + family.role)"
+												(click)="toggle(version.id + '|' + family.role)"
+											>
+												<i
+													[class]="'fm-caret ' + (open().has(version.id + '|' + family.role) ? 'ri-arrow-down-s-line' : 'ri-arrow-right-s-line')"
+												></i>
+											</button>
+											<span>
+												{{ familyName(family) }}
+												<span class="fm-meta">{{ widths(family) }} px</span>
+											</span>
+										</div>
+										@if (open().has(version.id + '|' + family.role)) {
+										<ul>
+											@for (entry of family.files; track entry.url) {
+											<li>
+												<div class="fm-vnode">
+													<span>
+														{{ entry.width }} × {{ entry.height }} · {{ entry.bytes |
+														fileSize }}
+														<span class="fm-meta">{{ fileLabel(entry.url) }}</span>
+													</span>
+													<span class="fm-file-actions">
+														<button
+															type="button"
+															class="btn border-0 p-0"
+															[title]="'fm_copy_address' | transloco"
+															(click)="copy(entry.url)"
+														>
+															<i class="ri-file-copy-line"></i>
+														</button>
+														<a
+															[href]="entry.url"
+															target="_blank"
+															rel="noopener"
+															[title]="'fm_open' | transloco"
+														>
+															<i class="ri-external-link-line"></i>
+														</a>
+													</span>
+												</div>
+											</li>
+											}
+										</ul>
+										}
+									</li>
+									}
+								</ul>
+								}
+							</li>
+							} @if (file.perPhoto.length) {
+							<li>
+								<div class="fm-vnode">
+									<i class="tree-icon file-icon"></i>
+									<span class="text-muted">
+										<strong>{{ 'fm_sharing_pictures' | transloco }}</strong>
+										<span class="fm-meta">· {{ 'fm_sharing_pictures_meta' | transloco }}</span>
+									</span>
+								</div>
+							</li>
+							}
+						</ul>
+					</li>
+				</ul>
+			</div>
+			<div class="d-flex mt-3 gap-2">
+				<button
+					type="button"
+					class="btn btn-outline btn-sm d-flex align-items-center gap-1"
+					id="fm_details_add_versions"
+					(click)="act('add_versions')"
+				>
+					<i class="ri-add-line"></i>
+					{{ 'fm_add_versions' | transloco }}
+				</button>
+				<button
+					type="button"
+					class="btn btn-outline btn-sm d-flex align-items-center gap-1"
+					(click)="act('download')"
+				>
+					<i class="ri-download-2-line"></i>
+					{{ 'fm_download_original' | transloco }}
+				</button>
+				<button
+					type="button"
+					class="btn btn-outline btn-sm d-flex align-items-center gap-1"
+					(click)="act('share')"
+				>
+					<i class="ri-share-line"></i>
+					{{ 'fm_share' | transloco }}
+				</button>
+			</div>
+			<p class="help-text mt-2 mb-0">{{ 'fm_versions_help' | transloco }}</p>
+			} @else {
+			<ul
+				class="fm-activity"
+				id="fm_item_activity"
+			>
+				@for (row of activity(); track $index) {
+				<li>
+					<i class="ri-history-line"></i>
+					<div>
+						{{ activityText(row) }}
+						<small>{{ row.createdAt | date: 'd MMM y, HH:mm' }}</small>
+					</div>
+				</li>
+				} @empty {
+				<li class="text-muted">{{ 'fm_no_activity' | transloco }}</li>
+				}
+			</ul>
+			<p class="help-text mt-2 mb-0">{{ 'fm_activity_help' | transloco }}</p>
+			}
+		</div>
+	</div>
+	}
+</div>
+
+<ng-template
+	#fmRemoveVersion
+	let-confirm
+>
+	<div
+		class="modal-body"
+		id="fm_remove_version"
+	>
+		<i class="ri-delete-bin-line icon-box"></i>
+		<h5
+			class="modal-title"
+			id="fm_rv_title"
+		>
+			{{ 'fm_rv_title' | transloco }}
+		</h5>
+		@if (removing(); as version) {
+		<p>
+			<strong>{{ versionName(version) }}</strong>
+		</p>
+		<p>{{ 'fm_rv_body' | transloco: { bytes: (version.bytes | fileSize) } }}</p>
+		}
+		<div class="button-box">
+			<button
+				type="button"
+				class="btn-md fw-bold btn btn-secondary"
+				(click)="confirm.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn-md fw-bold btn btn-danger"
+				id="fm_rv_yes"
+				(click)="confirm.close('yes')"
+			>
+				{{ 'fm_remove_version' | transloco }}
+			</button>
+		</div>
+	</div>
+</ng-template>
+
+<ng-template
+	#fmWebName
+	let-modal
+>
+	<div class="modal-header">
+		<h2 id="fm_web_name_title">{{ 'fm_web_name' | transloco }}</h2>
+		<button
+			type="button"
+			class="btn btn-close"
+			[title]="'close' | transloco"
+			(click)="modal.dismiss()"
+		>
+			<i class="ri-close-line"></i>
+		</button>
+	</div>
+	<div class="modal-body">
+		<div class="theme-form">
+			<p class="mb-2">{{ details()?.name }}</p>
+			<label
+				class="form-label-title mb-2"
+				for="fm_web_name_input"
+			>
+				{{ 'fm_web_name' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="fm_web_name_input"
+				maxlength="120"
+				[value]="webName()"
+				[class.is-invalid]="!webNameValid()"
+				(input)="webName.set($any($event.target).value.trim())"
+			/>
+			@if (!webNameValid()) {
+			<div class="invalid-feedback d-block">{{ 'file_name_invalid' | transloco }}</div>
+			}
+			<p class="help-text mt-2">{{ 'file_name_help' | transloco }}</p>
+			@if (webName() !== details()?.slug) {
+			<p class="help-text text-danger">{{ 'file_name_rename_warning' | transloco }}</p>
+			}
+		</div>
+	</div>
+	<div class="modal-footer">
+		<div class="left-part"></div>
+		<div class="right-part d-flex gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="fm_web_name_save"
+				[disabled]="!webNameValid() || webName() === details()?.slug"
+				(click)="modal.close(webName())"
+			>
+				{{ 'save' | transloco }}
+			</button>
+		</div>
+	</div>
+</ng-template>

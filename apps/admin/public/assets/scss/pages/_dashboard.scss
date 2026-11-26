@@ -28,7 +28,11 @@
 			}
 		}
 		h6 {
-			color: rgba($content-color, 0.8);
+			color: var(--admin-ink-2);
+		}
+		// The period link sits on the tile's pale tint, where even the deeper teal falls short (R6-3).
+		.txt-primary {
+			color: var(--theme-ink-on-tint) !important;
 		}
 		h3 {
 			color: $title-color;
@@ -53,12 +57,12 @@
 		> div {
 			&:first-child {
 				.card-tiles {
-					background: rgba(#0da487, 0.1);
+					background: color-mix(in srgb, var(--theme-color) 10%, transparent);
 					&:after {
-						background-color: #0da487;
+						background-color: var(--theme-color);
 					}
 					.icon-box {
-						background: #0da487;
+						background: var(--theme-color);
 					}
 				}
 			}
@@ -213,8 +217,9 @@
 			object-fit: cover;
 		}
 	}
+	// The labels and the sale date use the deeper grey that reaches AA in both modes (R6-3).
 	h6 {
-		color: rgba($theme-body-font-color, 0.7);
+		color: var(--admin-ink-2);
 	}
 
 	h5 {
@@ -244,7 +249,7 @@
 			letter-spacing: 0.01em;
 		}
 		h6 {
-			color: rgba($content-color, 0.7);
+			color: var(--admin-ink-2);
 		}
 	}
 }

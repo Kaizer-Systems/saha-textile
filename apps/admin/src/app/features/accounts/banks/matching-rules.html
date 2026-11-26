@@ -1,0 +1,176 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'accounts_banks'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">{{ 'bank_match_rules' | transloco }}</h5>
+			<small class="text-muted">{{ 'bank_rules_sub' | transloco }}</small>
+		</div>
+		<button
+			*hasPermission="'accounts.edit'"
+			type="button"
+			class="btn btn-theme"
+			id="bank_rule_add"
+			(click)="add()"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'bank_rule_add' | transloco }}
+		</button>
+	</div>
+	@if (editing(); as rule) {
+	<div class="card mb-3">
+		<div class="card-body theme-form theme-form-2">
+			<div class="row g-3">
+				<div class="col-md-5">
+					<label
+						class="form-label-title"
+						for="bank_rule_words"
+					>
+						{{ 'bank_rule_words' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="bank_rule_words"
+						[ngModel]="wordsText()"
+						(ngModelChange)="wordsText.set($event)"
+					/>
+					<small class="text-muted">{{ 'bank_rule_words_help' | transloco }}</small>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="bank_rule_then"
+					>
+						{{ 'bank_rules_col_then' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="bank_rule_then"
+						[disabled]="!!rule.id && rule.id.startsWith('rule_')"
+						[ngModel]="rule.then"
+						(ngModelChange)="set('then', $event)"
+					>
+						@for (t of thens; track t) {
+						<option [value]="t">
+							{{ 'bank_rule_then_' + t | transloco: { rate: rule.gstPercent ?? 0 } }}
+						</option>
+						}
+					</select>
+				</div>
+				@if (rule.then === 'bank_charge') {
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="bank_rule_gst"
+					>
+						{{ 'bank_rule_gst' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="bank_rule_gst"
+						type="number"
+						min="0"
+						max="28"
+						[ngModel]="rule.gstPercent"
+						(ngModelChange)="set('gstPercent', +$event)"
+					/>
+				</div>
+				}
+				<div class="col-12">
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="bank_rule_only_in"
+							[checked]="rule.onlyIn"
+							(change)="set('onlyIn', !rule.onlyIn)"
+						/>
+						<label
+							class="form-check-label"
+							for="bank_rule_only_in"
+						>
+							{{ 'bank_rule_only_in' | transloco }}
+						</label>
+					</div>
+				</div>
+			</div>
+			<div class="d-flex mt-3 gap-2">
+				<button
+					type="button"
+					class="btn btn-outline"
+					(click)="cancel()"
+				>
+					{{ 'cancel' | transloco }}
+				</button>
+				<button
+					type="button"
+					class="btn btn-theme"
+					id="bank_rule_save"
+					[disabled]="busy()"
+					(click)="save()"
+				>
+					{{ 'save' | transloco }}
+				</button>
+			</div>
+		</div>
+	</div>
+	}
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'bank_rules_col_when' | transloco }}</th>
+					<th>{{ 'bank_rules_col_then' | transloco }}</th>
+					<th>{{ 'bank_rules_col_result' | transloco }}</th>
+					<th>{{ 'bank_rules_col_on' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (rule of rules.data() ?? []; track rule.id) {
+				<tr>
+					<td>{{ whenText(rule) }}</td>
+					<td>{{ thenText(rule) }}</td>
+					<td>{{ resultText(rule) }}</td>
+					<td>
+						<div class="form-check form-switch mb-0 ps-0">
+							<label class="switch">
+								<input
+									type="checkbox"
+									[id]="'bank_rule_on_' + rule.id"
+									[attr.aria-label]="('bank_rules_col_on' | transloco) + ': ' + whenText(rule)"
+									[checked]="rule.on"
+									[disabled]="busy()"
+									(change)="toggle(rule)"
+								/>
+								<span class="switch-state"></span>
+							</label>
+						</div>
+					</td>
+					<td>
+						@if (rule.when === 'words') {
+						<button
+							*hasPermission="'accounts.edit'"
+							type="button"
+							class="btn btn-sm btn-outline"
+							[id]="'bank_rule_edit_' + rule.id"
+							(click)="edit(rule)"
+						>
+							{{ 'bank_rule_edit' | transloco }}
+						</button>
+						}
+					</td>
+				</tr>
+				}
+				<tr>
+					<td>{{ 'bank_rule_anything_else' | transloco }}</td>
+					<td>{{ 'bank_rule_then_leave' | transloco }}</td>
+					<td>{{ 'bank_rule_result_none' | transloco }}</td>
+					<td>✓</td>
+					<td></td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</app-page-wrapper>

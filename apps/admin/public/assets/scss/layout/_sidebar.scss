@@ -254,11 +254,16 @@
 				}
 			}
 
+			app-search {
+				min-width: 0;
+			}
+
 			.search-full {
 				position: relative;
 				z-index: 1;
 				height: auto;
 				width: 600px;
+				max-width: 100%;
 				transition: all 0.3s ease;
 
 				@media (max-width: 1600px) {
@@ -429,7 +434,7 @@
 						height: 25px;
 						top: 30px;
 						display: none;
-						color: $dark-gray;
+						color: var(--admin-muted);
 						cursor: pointer;
 					}
 
@@ -543,7 +548,7 @@
 										&.active {
 											a {
 												span {
-													color: var(--theme-color);
+													color: var(--theme-ink);
 													font-weight: 600;
 												}
 											}
@@ -557,11 +562,18 @@
 
 								.dropdown-toggle {
 									gap: calc(0px + (8 - 0) * ((100vw - 320px) / (1920 - 320)));
+									// Admin Quick Add brief: the language button's p-0 loses to the later .btn
+									// padding (this admin's utilities are not !important), which left 30 px a side.
+									padding: 0;
 								}
 
 								.media-body {
 									margin-left: 15px;
 									align-items: center;
+									// Admin Quick Add brief: a long sign-in name ends in "…" (full name on hover)
+									// instead of running past the screen edge.
+									max-width: 150px;
+									min-width: 0;
 
 									[dir='rtl'] & {
 										margin-left: 0;
@@ -618,6 +630,14 @@
 							margin-right: 0;
 						}
 
+						// Admin Quick Add brief: the search icon shows only up to 762 px (_responsive.scss);
+						// above that its empty slot no longer leaves a gap before the language menu.
+						&:has(> .header-search) {
+							@media (min-width: 763px) {
+								display: none;
+							}
+						}
+
 						.badge {
 							position: absolute;
 							right: -5px;
@@ -626,7 +646,9 @@
 							font-size: 11px;
 							font-weight: 700;
 							font-family: $public-sans;
-							background-color: #ff7272;
+							// A deeper red so the white count reaches AA (4.83 : 1; #ff7272 was 2.66 : 1, R6-3).
+							background-color: var(--admin-alert);
+							color: $white;
 						}
 
 						span {
@@ -699,7 +721,7 @@
 
 							button {
 								background-color: $transparent-color;
-								color: $primary-color;
+								color: tc-ink($primary-color);
 								border: none;
 
 								&:focus {
@@ -768,7 +790,7 @@
 					li {
 						&:first-child {
 							padding: calc(14px + (20 - 14) * ((100vw - 320px) / (1920 - 320)));
-							background-color: $primary-color;
+							background-color: tc($primary-color);
 							color: $white;
 							font-weight: 600 !important;
 
@@ -980,6 +1002,14 @@
 					max-width: 240px;
 					top: 57px;
 					right: -12px;
+					// Admin Quick Add brief: the hover animation's left: 0 beat right: -12px, so a wide
+					// menu grew off the right edge; it now opens from the right, inside the screen.
+					left: auto;
+
+					[dir='rtl'] & {
+						right: auto;
+						left: -12px;
+					}
 					padding: 15px 10px;
 					font-size: 14px;
 					width: max-content;
@@ -990,7 +1020,7 @@
 						&:hover {
 							a {
 								span {
-									color: var(--theme-color);
+									color: var(--theme-ink);
 									transition: color 0.3s ease;
 								}
 
@@ -1100,7 +1130,7 @@
 					}
 
 					a {
-						color: var(--theme-color);
+						color: var(--theme-ink);
 
 						svg {
 							width: 16px;
@@ -1283,12 +1313,12 @@
 												transition: all 0.3s ease;
 
 												&.active {
-													background-color: lighten($primary-color, 22%);
+													background-color: tc-shade($primary-color, 22%);
 													transition: all 0.3s ease;
 
 													svg,
 													span {
-														color: var(--theme-color);
+														color: var(--theme-ink);
 														transition: all 0.3s ease;
 													}
 												}
@@ -1341,7 +1371,7 @@
 														}
 
 														&:hover {
-															color: var(--theme-color);
+															color: var(--theme-ink);
 															letter-spacing: 1.5px;
 															transition: all 0.3s ease;
 
@@ -1406,12 +1436,12 @@
 																	transition: all 0.3s ease;
 
 																	&:hover {
-																		color: var(--theme-color);
+																		color: var(--theme-ink);
 																		letter-spacing: 1.5px;
 																		transition: all 0.3s ease;
 
 																		&:after {
-																			color: var(--theme-color);
+																			color: var(--theme-ink);
 																			transition: all 0.3s ease;
 																		}
 																	}
@@ -1516,7 +1546,7 @@
 		.card {
 			border-radius: 30px;
 			overflow: hidden;
-			box-shadow: 0 0 20px rgba($primary-color, 0.1);
+			box-shadow: 0 0 20px tc-alpha($primary-color, 0.1);
 		}
 	}
 
@@ -1539,7 +1569,7 @@
 		}
 
 		h6 {
-			color: var(--theme-color);
+			color: var(--theme-ink);
 			margin-bottom: 5px;
 			letter-spacing: 0.8px;
 		}
@@ -1603,7 +1633,7 @@
 				text-align: left;
 				transition: all 0.5s ease;
 				box-shadow: 0 0 21px 0 rgba($semi-dark, 0.1);
-				background: linear-gradient(-45deg, #0da487, #009289, #ffa53b);
+				background: $sidebar-gradient;
 				background-size: 400% 400%;
 				animation: gradient 15s ease infinite;
 				overflow: hidden;
@@ -2231,7 +2261,7 @@
 									.link-section {
 										&:hover {
 											h5 {
-												color: var(--theme-color) !important;
+												color: var(--theme-ink) !important;
 												transition: all 0.3s ease;
 
 												&:after {
@@ -2287,7 +2317,7 @@
 														}
 
 														&.active {
-															color: var(--theme-color);
+															color: var(--theme-ink);
 														}
 													}
 												}
@@ -2493,7 +2523,7 @@
 										}
 
 										&.active {
-											color: var(--theme-color);
+											color: var(--theme-ink);
 										}
 									}
 								}
@@ -2650,13 +2680,13 @@
 								}
 
 								&.active {
-									background: rgba($primary-color, 0.1);
-									color: $primary-color;
+									background: tc-alpha($primary-color, 0.1);
+									color: tc-ink($primary-color);
 									border-radius: 20px;
 									margin: 0 10px;
 
 									span {
-										color: $primary-color;
+										color: tc-ink($primary-color);
 									}
 
 									~ .sidebar-submenu,
@@ -2705,8 +2735,8 @@
 										}
 
 										&.active {
-											background-color: rgba($primary-color, 0.1);
-											color: $primary-color;
+											background-color: tc-alpha($primary-color, 0.1);
+											color: tc-ink($primary-color);
 											transition: all 0.3s ease;
 										}
 									}
@@ -3107,7 +3137,7 @@
 	// modern css
 	&.modern-type {
 		.ecommerce-widget {
-			border: 1px solid lighten($primary-color, 22%) !important;
+			border: 1px solid tc-shade($primary-color, 22%) !important;
 		}
 
 		.theme-form input[type='text'],
@@ -3130,15 +3160,15 @@
 		}
 
 		.file-sidebar .pricing-plan {
-			border: 1px solid lighten($primary-color, 22%) !important;
+			border: 1px solid tc-shade($primary-color, 22%) !important;
 		}
 
 		.alert-primary {
-			color: $primary-color;
+			color: tc-ink($primary-color);
 		}
 
 		.project-box {
-			background-color: lighten($primary-color, 22%);
+			background-color: tc-shade($primary-color, 22%);
 		}
 
 		.nav-tabs .nav-link.active {
@@ -3146,7 +3176,7 @@
 		}
 
 		.activity-timeline .media .activity-line {
-			background-color: lighten($primary-color, 22%);
+			background-color: tc-shade($primary-color, 22%);
 		}
 
 		.simplebar-mask {
@@ -3461,7 +3491,7 @@
 			margin: 0 -15px;
 
 			h5 {
-				color: var(--theme-color);
+				color: var(--theme-ink);
 			}
 
 			svg {

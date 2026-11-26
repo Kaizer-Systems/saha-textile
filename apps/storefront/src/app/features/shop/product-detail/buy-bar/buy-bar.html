@@ -1,0 +1,210 @@
+<div
+	class="sticky-bottom-cart st-buy-bar"
+	[class.is-soldout]="host().soldOut()"
+	[class.is-metre]="!!host().rule()"
+>
+	<div class="container-fluid-lg">
+		<div class="st-bar">
+			<div class="st-bar-summary">
+				<img
+					class="st-bar-photo"
+					[src]="photo()"
+					alt=""
+					width="42"
+					height="56"
+					loading="lazy"
+				/>
+				<div class="st-bar-text">
+					<p class="st-bar-name">{{ host().product().name }}</p>
+					@if (axes().length) {
+					<!-- The chosen options as chips; each opens its list above it (brief P4). -->
+					<div class="st-bar-chips">
+						@for (axis of axes(); track axis.name) {
+						<button
+							type="button"
+							class="st-bar-chip"
+							[ngbPopover]="choices"
+							#chip="ngbPopover"
+							placement="top-start top auto"
+							autoClose="outside"
+							popoverClass="st-bar-pop"
+							[attr.aria-label]="axis.name"
+						>
+							{{ axis.pick?.value ?? axis.name }}
+							<i
+								class="ri-arrow-down-s-line"
+								aria-hidden="true"
+							></i>
+						</button>
+						<ng-template #choices>
+							<ul class="st-bar-list">
+								@for (choice of axis.values; track choice.value.id) {
+								<li>
+									<button
+										type="button"
+										class="st-bar-choice"
+										[class.is-on]="choice.chosen"
+										[class.is-off]="choice.soldOut"
+										[disabled]="choice.soldOut"
+										(click)="choose(choice, chip)"
+									>
+										@if (axis.colour) {
+										<span
+											class="st-look-dot"
+											[style.background-color]="choice.value.hex_color || null"
+										></span>
+										} @else {
+										<span
+											class="st-radio"
+											[class.is-on]="choice.chosen"
+											aria-hidden="true"
+										></span>
+										}
+										<span class="st-bar-choice-name">{{ choice.value.value }}</span>
+										<span class="st-bar-choice-stock">
+											@if (choice.soldOut) { {{ 'out_of_stock' | transloco }} } @else if
+											(choice.quantity <= lowStock) { {{ 'only_count_left' | transloco: { count:
+											choice.quantity } }} } @else { {{ 'in_stock_count_left' | transloco: {
+											count: choice.quantity } }} }
+										</span>
+									</button>
+								</li>
+								}
+							</ul>
+						</ng-template>
+						}
+					</div>
+					} @if (host().addonView(); as addon) {
+					<!-- The add-on (brief P4): the chosen design with a pencil, and its measurements' state. -->
+					<div class="st-bar-chips">
+						@for (chip of addon.chips; track chip.group) {
+						<button
+							type="button"
+							class="st-bar-chip"
+							[attr.aria-label]="'choose_design' | transloco"
+							(click)="host().openAddon('designs')"
+						>
+							{{ chip.group }}: {{ chip.term }}
+							<i
+								class="ri-pencil-line"
+								aria-hidden="true"
+							></i>
+						</button>
+						} @if (addon.needs) {
+						<span
+							class="st-stock"
+							[class.is-low]="!addon.measured"
+						>
+							{{ (addon.measured ? 'measurements_added_long' : 'measurements_needed') | transloco }}
+						</span>
+						}
+					</div>
+					} @if (host().setView(); as set) {
+					<!-- A set (brief P4): what it is and whether its choices are complete. -->
+					<div class="st-bar-chips">
+						<span class="st-bar-set">
+							{{ (set.pieces === 1 ? 'set_pieces_one' : 'set_pieces') | transloco: { count: set.pieces }
+							}}
+						</span>
+						<span
+							class="st-stock"
+							[class.is-low]="!set.ready"
+						>
+							{{ (set.ready ? 'set_ready' : 'set_choices_needed') | transloco }}
+						</span>
+					</div>
+					}
+					<p class="st-bar-price">
+						<span class="theme-color">
+							{{ (host().summary()?.unitPrice ?? host().displayPrice()) | currencySymbol }}
+						</span>
+						@if (host().discount()) {
+						<del>{{ host().comparePrice() | currencySymbol }}</del>
+						<span class="st-bar-off">{{ host().discount() }}% {{ 'off' | transloco }}</span>
+						}
+					</p>
+				</div>
+			</div>
+			<!-- The page's own button row, reused: quantity (or length), Add to cart, Buy now. -->
+			<div class="st-bar-actions st-cta-row">
+				<div class="cart_qty qty-box product-qty">
+					<div class="input-group">
+						<app-button
+							[class]="'btn qty-left-minus'"
+							[id]="'bar-qty-minus'"
+							[spinner]="false"
+							(click)="host().updateQuantity(-1)"
+							[ariaLabel]="'decrease_quantity' | transloco"
+						>
+							<i class="ri-subtract-fill"></i>
+						</app-button>
+						<input
+							class="form-control input-number qty-input"
+							type="text"
+							readonly
+							[value]="host().rule() ? host().lengthOf(host().length()) : host().productQty"
+							[attr.aria-label]="(host().rule() ? 'length' : 'quantity') | transloco"
+						/>
+						<app-button
+							[class]="'btn qty-left-minus'"
+							[id]="'bar-qty-plus'"
+							[spinner]="false"
+							(click)="host().updateQuantity(1)"
+							[ariaLabel]="'increase_quantity' | transloco"
+						>
+							<i class="ri-add-line"></i>
+						</app-button>
+					</div>
+				</div>
+				@if (host().soldOut()) {
+				<app-button
+					[id]="'bar-notify'"
+					[class]="'btn btn-md border-theme-color'"
+					[spinner]="false"
+					(click)="host().notify()"
+				>
+					{{ 'notify_me' | transloco }}
+				</app-button>
+				} @else { @if (host().setView()) {
+				<app-button
+					[id]="'bar-configure-set'"
+					[class]="'btn btn-md border-theme-color'"
+					[spinner]="false"
+					(click)="host().openSet()"
+				>
+					{{ 'configure_set' | transloco }}
+				</app-button>
+				} @if (host().addonView()) {
+				<app-button
+					[id]="'bar-edit-addon'"
+					[class]="'btn btn-md border-theme-color'"
+					[spinner]="false"
+					(click)="host().openAddon('all')"
+				>
+					{{ 'edit_addon' | transloco }}
+				</app-button>
+				}
+				<app-button
+					[id]="'bar-add'"
+					[class]="'btn btn-md border-theme-color'"
+					[disabled]="!host().purchasable()"
+					(click)="host().purchasable() && host().addToCart()"
+				>
+					<i class="ri-shopping-cart-line me-1"></i>
+					{{ 'add_to_cart' | transloco }}
+				</app-button>
+				@if (!host().addonView() && !host().setView()) {
+				<app-button
+					[id]="'bar-buy'"
+					[class]="'btn btn-md bg-theme'"
+					[disabled]="!host().purchasable()"
+					(click)="host().purchasable() && host().buyNow()"
+				>
+					<i class="ri-flashlight-fill me-1"></i>
+					{{ 'buy_now' | transloco }}
+				</app-button>
+				} }
+			</div>
+		</div>
+	</div>
+</div>

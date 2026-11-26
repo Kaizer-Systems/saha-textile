@@ -1,0 +1,316 @@
+@if (format(); as f) {
+<div class="docf-top d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+	<nav
+		class="docf-crumbs"
+		aria-label="breadcrumb"
+	>
+		<a [routerLink]="['/setting']">{{ 'settings' | transloco }}</a>
+		<span>›</span>
+		<a [routerLink]="['/setting/document-formats']">{{ 'docf_title' | transloco }}</a>
+		<span>›</span>
+		<strong>{{ 'docf_doc_' + f.doc | transloco }} · {{ name() }}</strong>
+	</nav>
+	<div class="d-flex align-items-center gap-2">
+		<span
+			class="text-muted small"
+			id="docf_state"
+		>
+			{{ (dirty() ? 'docf_draft' : 'docf_saved') | transloco }}
+		</span>
+		<button
+			type="button"
+			class="btn btn-outline"
+			id="docf_preview_pdf"
+			(click)="previewPdf()"
+		>
+			{{ 'docf_preview_pdf' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="docf_save"
+			[disabled]="!dirty() || saving() || !name().trim()"
+			(click)="save()"
+		>
+			{{ 'docf_save' | transloco }}
+		</button>
+	</div>
+</div>
+@if (problems().length) {
+<div
+	class="alert alert-warning"
+	role="alert"
+>
+	@for (problem of problems(); track $index) {
+	<div>{{ problem }}</div>
+	}
+</div>
+}
+<div class="row g-3">
+	<div class="col-xl-3 col-lg-4">
+		<div class="card">
+			<div class="card-body">
+				<h5 class="mb-1">{{ 'docf_blocks_for' | transloco: { doc: ('docf_doc_' + f.doc | transloco) } }}</h5>
+				<p class="text-muted small fst-italic">
+					{{ 'docf_blocks_help' | transloco: { doc: ('docf_doc_' + f.doc | transloco) } }}
+				</p>
+				<ul
+					class="docf-blocks"
+					cdkDropList
+					(cdkDropListDropped)="drop($event)"
+				>
+					@for (block of blocks(); track block.id) {
+					<li
+						class="docf-block"
+						cdkDrag
+						[class.is-on]="selectedId() === block.id"
+						[class.is-hidden]="block.hidden"
+						[attr.data-block]="block.id"
+						(click)="selectedId.set(selectedId() === block.id ? null : block.id)"
+					>
+						<i
+							class="ri-draggable docf-grip"
+							cdkDragHandle
+							[title]="'docf_drag' | transloco"
+						></i>
+						<span class="docf-block-name">{{ label(block) }}</span>
+						@if (block.type === 'text') {
+						<button
+							type="button"
+							class="docf-icon"
+							[title]="'docf_remove_text' | transloco"
+							[attr.aria-label]="'docf_remove_text' | transloco"
+							(click)="removeText(block, $event)"
+						>
+							<i class="ri-delete-bin-line"></i>
+						</button>
+						} @if (required(block)) {
+						<span
+							class="docf-icon"
+							[title]="'docf_needed' | transloco"
+							[attr.aria-label]="'docf_needed' | transloco"
+						>
+							<i class="ri-lock-line"></i>
+						</span>
+						} @else {
+						<button
+							type="button"
+							class="docf-icon"
+							[title]="(block.hidden ? 'docf_show' : 'docf_hide') | transloco"
+							[attr.aria-label]="(block.hidden ? 'docf_show' : 'docf_hide') | transloco"
+							(click)="toggleHidden(block, $event)"
+						>
+							<i [class]="block.hidden ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+						</button>
+						}
+					</li>
+					}
+				</ul>
+				<button
+					type="button"
+					class="btn btn-outline btn-sm mt-2"
+					id="docf_add_text"
+					(click)="addText()"
+				>
+					<i class="ri-add-line"></i>
+					{{ 'docf_add_text' | transloco }}
+				</button>
+				@if (missing().length) {
+				<h6 class="text-muted small text-uppercase mt-3 mb-1">{{ 'docf_more_blocks' | transloco }}</h6>
+				<div class="d-flex flex-wrap gap-1">
+					@for (row of missing(); track row.type) {
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						(click)="addBlock(row)"
+					>
+						<i class="ri-add-line"></i>
+						{{ 'docf_block_' + row.type | transloco }}
+					</button>
+					}
+				</div>
+				}
+			</div>
+		</div>
+	</div>
+	<div class="col-xl-6 col-lg-8">
+		<div class="card">
+			<div class="card-body docf-stage">
+				@if (preview(); as html) {
+				<div
+					class="docf-page"
+					[attr.data-paper]="paper()"
+				>
+					<iframe
+						class="docf-frame"
+						sandbox=""
+						[title]="'docf_preview_frame' | transloco"
+						[srcdoc]="html"
+					></iframe>
+				</div>
+				} @else if (!previewError()) {
+				<p class="text-muted m-4">{{ 'please_wait' | transloco }}...</p>
+				}
+			</div>
+		</div>
+	</div>
+	<div class="col-xl-3 col-lg-12">
+		<div class="card">
+			<div class="card-body">
+				@if (selected(); as block) { @let spec = selectedSpec();
+				<h5 class="mb-2">{{ label(block) }}</h5>
+				@if (block.type === 'text') {
+				<label
+					class="form-label"
+					for="docf_text_heading"
+				>
+					{{ 'docf_text_heading' | transloco }}
+				</label>
+				<input
+					class="form-control mb-2"
+					id="docf_text_heading"
+					maxlength="80"
+					[ngModel]="block.heading"
+					(ngModelChange)="setText('heading', $event)"
+				/>
+				<label
+					class="form-label"
+					for="docf_text_words"
+				>
+					{{ 'docf_text_words' | transloco }}
+				</label>
+				<textarea
+					class="form-control"
+					id="docf_text_words"
+					rows="5"
+					maxlength="2000"
+					[ngModel]="block.text"
+					(ngModelChange)="setText('text', $event)"
+				></textarea>
+				} @else if (spec && spec.fields.length) {
+				<h6 class="mt-2">{{ (block.type === 'table' ? 'docf_columns' : 'docf_shows') | transloco }}</h6>
+				@for (field of spec.fields; track field) {
+				<div class="form-check">
+					<input
+						class="form-check-input"
+						type="checkbox"
+						[id]="'docf_f_' + field"
+						[checked]="block.fields.includes(field)"
+						[disabled]="locked(field)"
+						(change)="toggleField(field, $any($event.target).checked)"
+					/>
+					<label
+						class="form-check-label"
+						[for]="'docf_f_' + field"
+					>
+						{{ 'docf_field_' + field | transloco }}
+					</label>
+				</div>
+				} } @else {
+				<p class="text-muted small">{{ 'docf_nothing_to_choose' | transloco }}</p>
+				} @if (block.type === 'table' && treeDoc()) {
+				<h6 class="mt-3">{{ 'docf_sets' | transloco }}</h6>
+				<div class="form-check">
+					<input
+						class="form-check-input"
+						type="checkbox"
+						id="docf_set_heading"
+						checked
+						disabled
+					/>
+					<label
+						class="form-check-label"
+						for="docf_set_heading"
+					>
+						{{ 'docf_set_heading' | transloco }}
+					</label>
+				</div>
+				<div class="form-check">
+					<input
+						class="form-check-input"
+						type="checkbox"
+						id="docf_set_pieces"
+						checked
+						disabled
+					/>
+					<label
+						class="form-check-label"
+						for="docf_set_pieces"
+					>
+						{{ 'docf_set_pieces' | transloco }}
+					</label>
+				</div>
+				<h6 class="mt-3">{{ 'docf_text_sizes' | transloco }}</h6>
+				@for (kind of sizeKinds; track kind) {
+				<div class="d-flex align-items-center justify-content-between mb-2 gap-2">
+					<label
+						class="mb-0"
+						[for]="'docf_size_' + kind"
+					>
+						{{ 'docf_size_' + kind | transloco }}
+					</label>
+					<select
+						class="form-select form-select-sm w-auto"
+						[id]="'docf_size_' + kind"
+						[ngModel]="block.sizes[kind] ?? ''"
+						(ngModelChange)="setSize(kind, $event)"
+					>
+						<option value="">{{ 'docf_size_paper' | transloco }}</option>
+						@for (size of sizes[kind]; track size) {
+						<option [value]="size">{{ size }} pt</option>
+						}
+					</select>
+				</div>
+				} } @if (spec?.lockedFields?.length || spec?.required) {
+				<p class="text-muted small fst-italic mt-3 mb-0">{{ 'docf_law_note' | transloco }}</p>
+				} } @else {
+				<h5 class="mb-2">{{ 'docf_format_settings' | transloco }}</h5>
+				<label
+					class="form-label"
+					for="docf_name"
+				>
+					{{ 'docf_layout_name' | transloco }}
+				</label>
+				<input
+					class="form-control mb-2"
+					id="docf_name"
+					maxlength="60"
+					[ngModel]="name()"
+					(ngModelChange)="setName($event)"
+				/>
+				<label
+					class="form-label"
+					for="docf_about"
+				>
+					{{ 'docf_col_about' | transloco }}
+				</label>
+				<input
+					class="form-control mb-2"
+					id="docf_about"
+					maxlength="120"
+					[ngModel]="about()"
+					(ngModelChange)="setAbout($event)"
+				/>
+				<label
+					class="form-label"
+					for="docf_paper"
+				>
+					{{ 'docf_col_paper' | transloco }}
+				</label>
+				<select
+					class="form-select mb-2"
+					id="docf_paper"
+					[ngModel]="paper()"
+					(ngModelChange)="setPaper($event)"
+				>
+					@for (option of papers; track option) {
+					<option [value]="option">{{ 'docf_paper_' + option | transloco }}</option>
+					}
+				</select>
+				<p class="text-muted small mb-0">{{ 'docf_pick_block' | transloco }}</p>
+				}
+			</div>
+		</div>
+	</div>
+</div>
+}

@@ -924,7 +924,7 @@ header {
 							span {
 								@include pseudowh($width: 18px, $height: 18px);
 								@include flex_common;
-								background-color: #ff7272;
+								background-color: #c62828; // was #ff7272, 2.7 : 1 with white (shop change, 2026-11-10)
 								font-size: 12px;
 								padding: 0;
 								border-radius: 2px;
@@ -2374,7 +2374,9 @@ header {
 
 				span {
 					display: block;
-					color: rgba($white, 0.8);
+					// Full white: 80 % white on the shop blue was 3.9 : 1, under the 4.5 : 1 small text needs; white is 5.1 : 1
+					// (accessibility decision D2, 17 Nov 2026).
+					color: $white;
 				}
 			}
 		}

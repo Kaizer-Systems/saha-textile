@@ -1,8 +1,11 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 
+import { TranslocoService } from '@jsverse/transloco';
 import { readApiErrorMessage } from '@saha-textile/http-transport';
+
+import { booksWords } from '@core/accounts/books-refusal';
 
 /**
  * Turns a failed request into a sentence worth showing someone.
@@ -18,6 +21,7 @@ import { readApiErrorMessage } from '@saha-textile/http-transport';
 })
 export class ErrorService {
 	private readonly platformId = inject<Object>(PLATFORM_ID);
+	private readonly transloco = inject(TranslocoService, { optional: true });
 
 	getClientErrorMessage(error: unknown): string {
 		// `navigator` does not exist during SSR, so it is reached only in a browser.
@@ -25,7 +29,11 @@ export class ErrorService {
 			return 'No internet connection.';
 		}
 
-		return readApiErrorMessage(error) ?? 'Something went wrong. Please try again.';
+		const message = readApiErrorMessage(error);
+		if (!message) return 'Something went wrong. Please try again.';
+		// A step the books refused carries a code, shown in words (Postings and Convert brief AP2).
+		const transloco = this.transloco;
+		return transloco ? booksWords(message, (key, params) => transloco.translate(key, params)) : message;
 	}
 
 	getServerErrorMessage(error: HttpErrorResponse): string {

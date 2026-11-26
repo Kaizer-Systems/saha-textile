@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Inject, Injectable, Logger, NotFoundException, type OnApplicationBootstrap } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException, Optional, type OnApplicationBootstrap } from '@nestjs/common';
 import { HttpStatus } from '@nestjs/common';
 import type {
 	AuditLog,
@@ -21,10 +21,14 @@ import {
 	type AuditLogRepository,
 	MEDIA_INGEST_POLICY,
 	type MediaAssetRepository,
+	type MediaBrowseRepository,
+	type MediaFolderRepository,
 	type MediaJobQueuePort,
 	type MediaRoleRepository,
 	type StoragePort,
 	checkIngest,
+	cleanMediaName,
+	freeName,
 	reconcileSeededRoles,
 	mediaSlug,
 	originalStorageKey,
@@ -33,10 +37,14 @@ import {
 } from '@saha-textile/core-domain';
 
 import { mediaRefusal } from './media-refusal';
-import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { MediaReplaceService } from './media-replace.service';
+import { MediaStorageService } from './media-storage.service';
+import { LanguageStore } from '../languages/language-store';
 import {
 	AUDIT_LOG_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
+	MEDIA_BROWSE_REPOSITORY,
+	MEDIA_FOLDER_REPOSITORY,
 	MEDIA_JOB_QUEUE,
 	MEDIA_ROLE_REPOSITORY,
 	STORAGE_PORT,
@@ -50,7 +58,7 @@ type IngestRefusalCode = NonNullable<ReturnType<typeof checkIngest>['refusal']>[
 const REFUSAL_MESSAGES: Record<IngestRefusalCode, string> = {
 	type_not_accepted: 'Upload a JPEG or PNG image.',
 	too_large: 'The file is larger than 25 MB.',
-	too_many_pixels: 'The image is larger than 8000 px on its long edge or 50 megapixels.',
+	too_many_pixels: 'The image is larger than 8192 px on its long edge or 50 megapixels.',
 	below_minimum: 'Product and category photos need at least 1600 px on the short edge.',
 };
 
@@ -71,7 +79,12 @@ export class MediaService implements OnApplicationBootstrap {
 		@Inject(STORAGE_PORT) private readonly storage: StoragePort,
 		@Inject(MEDIA_JOB_QUEUE) private readonly queue: MediaJobQueuePort,
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository,
-		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly languages: LanguageStore,
+		@Inject(MEDIA_BROWSE_REPOSITORY) private readonly browse: MediaBrowseRepository,
+		@Inject(MEDIA_FOLDER_REPOSITORY) private readonly folders: MediaFolderRepository,
+		private readonly storageCheck: MediaStorageService,
+		/** A photo with versions gets a new web file name through the Replace machinery (R5-6); absent in scripts. */
+		@Optional() private readonly renamer?: MediaReplaceService,
 	) {}
 
 	/**
@@ -125,6 +138,11 @@ export class MediaService implements OnApplicationBootstrap {
 		}
 
 		const id = `med_${randomUUID()}`;
+		const place = await this.mediaPagePlace(request);
+		// Every admin upload passes the storage check (R4-7); a customer's review photo does not.
+		if (uploader.type === 'admin') {
+			await this.storageCheck.admit(uploader.id, request.byteSize, request.reservationId, `res_${id}`);
+		}
 		const storageKey = originalStorageKey(id, request.contentType);
 		const asset: MediaAsset = {
 			id,
@@ -152,6 +170,7 @@ export class MediaService implements OnApplicationBootstrap {
 			status: 'draft',
 			uploadedBy: uploader,
 			deletedAt: null,
+			...place,
 		};
 		await this.assets.create(asset);
 
@@ -177,8 +196,44 @@ export class MediaService implements OnApplicationBootstrap {
 		if (asset.processing.state === 'awaiting_upload') {
 			await this.assets.update({ ...asset, processing: { ...asset.processing, state: 'queued' } });
 			await this.queue.enqueue({ type: 'process', assetId });
+			if (uploader.type === 'admin') await this.storageCheck.release(`res_${assetId}`);
 		}
 		return this.status(uploader, assetId);
+	}
+
+	/**
+	 * An upload from the Media page names its folder: the photo gets its Media name there (“(1)”
+	 * when taken) and its SHA-256 for the duplicate check (S6). Other screens' uploads stay in My files.
+	 */
+	private async mediaPagePlace(
+		request: Pick<MediaPresignRequest, 'folderId' | 'fileName' | 'sha256'>,
+	): Promise<Partial<MediaAsset>> {
+		if (request.folderId === undefined) return {};
+		if (request.folderId) {
+			const folder = await this.folders.findById(request.folderId);
+			if (!folder || folder.trashedAt) {
+				throw mediaRefusal(
+					HttpStatus.UNPROCESSABLE_ENTITY,
+					'target_in_trash',
+					'That folder is gone or in Trash.',
+				);
+			}
+		}
+		const cleaned = cleanMediaName(request.fileName);
+		if (!cleaned.ok) {
+			throw mediaRefusal(
+				HttpStatus.UNPROCESSABLE_ENTITY,
+				'bad_name',
+				'This file name cannot be used. Rename it and try again.',
+			);
+		}
+		return {
+			folderId: request.folderId,
+			displayName: freeName(cleaned.name, await this.browse.namesIn(request.folderId)),
+			sha256: request.sha256 ?? null,
+			trashedAt: null,
+			trashedFrom: null,
+		};
 	}
 
 	async status(uploader: MediaUploader, assetId: string): Promise<MediaUploadStatus> {
@@ -209,13 +264,18 @@ export class MediaService implements OnApplicationBootstrap {
 		return this.libraryItem(await this.requireAsset(assetId), await this.roleVersions());
 	}
 
-	/** SEO identity edits. A new slug renames every derivative, so it queues a reprocess. */
+	/**
+	 * SEO identity edits. A new slug renames every file: on a photo with versions it runs like a Replace (R5-6: new
+	 * files under the new name, pages switch together, old files kept 7 days, the name changes with the files);
+	 * refused before anything is saved while that photo is busy. Older assets queue a reprocess as before.
+	 */
 	async updateText(actorId: string, assetId: string, update: MediaAssetTextUpdate): Promise<MediaLibraryItem> {
 		const asset = await this.requireAsset(assetId);
 		const slugChanged = update.slug !== undefined && update.slug !== asset.slug;
+		const renames = slugChanged && !!this.renamer?.renames(asset);
 		const next: MediaAsset = {
 			...asset,
-			slug: update.slug ?? asset.slug,
+			slug: renames ? asset.slug : (update.slug ?? asset.slug),
 			text: {
 				alt: update.alt ?? asset.text.alt,
 				title: update.title ?? asset.text.title,
@@ -223,7 +283,9 @@ export class MediaService implements OnApplicationBootstrap {
 			},
 		};
 		await this.assets.update(next);
-		if (slugChanged && asset.processing.state === 'ready') {
+		if (renames && update.slug && this.renamer) {
+			await this.renamer.rename(actorId, assetId, update.slug);
+		} else if (slugChanged && asset.processing.state === 'ready') {
 			await this.queue.enqueue({ type: 'reprocess', assetId, reason: 'slug' });
 		}
 		await this.record(actorId, 'media.asset.text.update', assetId, { slugChanged });
@@ -374,6 +436,6 @@ export class MediaService implements OnApplicationBootstrap {
 
 	/** For tests and health: the active locale list. */
 	get activeLocales(): string[] {
-		return this.config.locales;
+		return this.languages.shop();
 	}
 }

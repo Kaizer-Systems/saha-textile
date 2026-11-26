@@ -1,4 +1,5 @@
 import {
+	HttpContext,
 	HttpErrorResponse,
 	HttpEvent,
 	HttpEventType,
@@ -6,9 +7,7 @@ import {
 	HttpInterceptor,
 	HttpRequest,
 } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
-
-import { Observable, catchError, firstValueFrom, from, switchMap, tap, throwError } from 'rxjs';
+import { inject, Injectable, Injector } from '@angular/core';
 
 import {
 	CSRF_HEADER_NAME,
@@ -20,12 +19,17 @@ import {
 	readRefusalReason,
 	withBrowserLock,
 } from '@saha-textile/http-transport';
+import { Observable, catchError, firstValueFrom, from, switchMap, tap, throwError } from 'rxjs';
 
 import { AdminAuthGateway } from '@core/auth/auth-gateway';
 import { CsrfTokens } from '@core/auth/csrf-tokens';
+import { IdleLockService } from '@core/auth/idle-lock.service';
 import { SESSION_REFRESH_LOCK } from '@core/auth/session-refresh-lock';
 import { AuthStore } from '@core/state/auth.store';
+import { UnsavedChanges } from '@core/unsaved/unsaved-changes';
 import { NotificationService } from '@data-access/services/notification.service';
+
+import { CSRF_REPLAY } from './global-error-handler.interceptor';
 
 /**
  * Session transport for admin API calls.
@@ -97,6 +101,13 @@ import { NotificationService } from '@data-access/services/notification.service'
  * missing or mismatched — which is precisely the recoverable case. A missing session answers
  * 401 and must not be retried.
  */
+/** A copy of the request's context marked as the CSRF replay; the first attempt's context is left as it was. */
+function replayContext(context: HttpContext): HttpContext {
+	const copy = new HttpContext();
+	for (const token of context.keys()) copy.set(token, context.get(token));
+	return copy.set(CSRF_REPLAY, true);
+}
+
 function isCsrfRefusal(error: unknown): boolean {
 	return error instanceof HttpErrorResponse && isForbidden({ status: error.status });
 }
@@ -107,6 +118,8 @@ export class AuthInterceptor implements HttpInterceptor {
 	private notificationService = inject(NotificationService);
 	private gateway = inject(AdminAuthGateway);
 	private csrfTokens = inject(CsrfTokens);
+	/** Read lazily: the lock service itself makes calls through this interceptor. */
+	private injector = inject(Injector);
 
 	/**
 	 * Held on the interceptor because it is a singleton: one coordinator per application is
@@ -121,9 +134,19 @@ export class AuthInterceptor implements HttpInterceptor {
 	/** `mayRecoverCsrf` is false on the replay, so a refused token is retried exactly once. */
 	private send<T>(req: HttpRequest<T>, next: HttpHandler, mayRecoverCsrf: boolean): Observable<HttpEvent<T>> {
 		const isCredentialCall = this.gateway.isCredentialEndpoint(req.url);
+		const startedAt = Date.now();
 
 		return next.handle(this.prepare(req)).pipe(
 			tap((event) => {
+				// A change request that came back fine is a save: forms edited before it was sent
+				// stop counting as unsaved work. Sign-in, lock and presence calls change no form.
+				if (
+					event.type === HttpEventType.Response &&
+					isUnsafeMethod(req.method) &&
+					!req.url.includes('/auth/')
+				) {
+					this.injector.get(UnsavedChanges).markSaved(startedAt);
+				}
 				// Proof that a session now exists makes any earlier "session is gone" verdict
 				// obsolete. Deliberately narrower than `isCredentialEndpoint`: logout and
 				// password reset succeed by ENDING a session, and un-latching on those would
@@ -135,7 +158,19 @@ export class AuthInterceptor implements HttpInterceptor {
 				if (mayRecoverCsrf && readRefusalReason(error.error) === 'csrf_rejected') {
 					return this.reacquireCsrfAndReplay(req, next, error);
 				}
+				// The 15-minute lock is up on the server. Not a lost session and not a rotation case:
+				// show the lock, hold this call until the PIN or password, then send it again. The
+				// guard refused before any handler ran, so sending it again cannot repeat a change.
+				if (error.status === 401 && readRefusalReason(error.error) === 'session_locked') {
+					const lock = this.injector.get(IdleLockService);
+					lock.lockFromServer();
+					return from(lock.whenUnlocked()).pipe(switchMap(() => this.send(req, next, mayRecoverCsrf)));
+				}
 				if (error.status !== 401) return throwError(() => error);
+
+				// A PIN or password refused on the lock: the session lives on behind the lock, and the
+				// form behind it must survive a typo. The store asks the server whether it lives.
+				if (this.gateway.isPresenceProofEndpoint(req.url)) return throwError(() => error);
 
 				if (isCredentialCall || !this.canAttemptRefresh()) {
 					this.onSessionLost();
@@ -181,7 +216,8 @@ export class AuthInterceptor implements HttpInterceptor {
 	): Observable<HttpEvent<T>> {
 		return from(this.csrfTokens.acquire(() => firstValueFrom(this.gateway.ensureCsrfToken()))).pipe(
 			catchError(() => throwError(() => original)),
-			switchMap(() => this.send(req, next, false)),
+			// Marked so the error toast stays quiet for the first refusal and speaks for this one.
+			switchMap(() => this.send(req.clone({ context: replayContext(req.context) }), next, false)),
 		);
 	}
 

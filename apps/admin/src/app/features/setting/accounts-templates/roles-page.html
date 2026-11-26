@@ -1,0 +1,56 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'ar_title'"
+>
+	<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+		<span [class]="problems() ? 'text-danger' : 'text-success'">
+			{{ (problems() ? 'ar_some_missing' : 'ar_all_mapped') | transloco: { count: problems() } }}
+		</span>
+		<a routerLink="/setting/accounts-templates">{{ 'tb_back' | transloco }}</a>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'ar_role' | transloco }}</th>
+					<th>{{ 'ar_used_by' | transloco }}</th>
+					<th>{{ 'ar_ledger' | transloco }}</th>
+					<th>{{ 'ar_from_template' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of roles.data() ?? []; track row.key) {
+				<tr>
+					<td class="text-start text-nowrap"><code>{{ row.key }}</code></td>
+					<td class="text-start">{{ usedBy(row) }}</td>
+					<td class="text-start">
+						@if (canEdit() && row.target === 'ledger') {
+						<select
+							class="form-select form-select-sm"
+							[id]="'ar_' + row.key"
+							[disabled]="busy()"
+							[value]="row.holderId ?? ''"
+							(change)="point(row, $any($event.target).value)"
+						>
+							<option value="">{{ 'ar_choose' | transloco }}</option>
+							@for (l of choices(); track l.id) {
+							<option
+								[value]="l.id"
+								[selected]="l.id === row.holderId"
+							>
+								{{ l.name }}
+							</option>
+							}
+						</select>
+						} @else { {{ row.holderName ?? '—' }} } @if (row.problem) {
+						<span class="badge bg-danger ms-1">{{ 'ar_problem_' + row.problem | transloco }}</span>
+						}
+					</td>
+					<td class="text-nowrap">{{ row.fromTemplate ?? '—' }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<p class="help-text mt-2">{{ 'ar_help' | transloco }}</p>
+</app-page-wrapper>

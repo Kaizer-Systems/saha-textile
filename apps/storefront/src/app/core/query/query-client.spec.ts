@@ -21,6 +21,10 @@ afterEach(() => vi.useRealTimers());
 describe('isPublicQuery', () => {
 	it('allows catalogue data and refuses everything else', () => {
 		expect(isPublicQuery(['catalog', 'home'])).toBe(true);
+		expect(isPublicQuery(['store-locations', 'en'])).toBe(true);
+		expect(isPublicQuery(['brand'])).toBe(true);
+		// The Page Builder layout: the browser draws what the server drew, never the fixed page first.
+		expect(isPublicQuery(['page-layout', 'home', 'en'])).toBe(true);
 		expect(isPublicQuery(['orders'])).toBe(false);
 		expect(isPublicQuery([1])).toBe(false);
 	});
@@ -32,6 +36,7 @@ describe('isPublicRequest', () => {
 	it('allows public reads', () => {
 		expect(isPublicRequest(request('https://api.test/catalog/home'))).toBe(true);
 		expect(isPublicRequest(request('/assets/i18n/en.json'))).toBe(true);
+		expect(isPublicRequest(request('https://api.test/storefront/pages/home/layout?locale=bn'))).toBe(true);
 	});
 
 	it('refuses credentialed and private requests', () => {

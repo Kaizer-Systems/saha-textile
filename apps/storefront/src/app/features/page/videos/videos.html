@@ -1,0 +1,254 @@
+<app-breadcrumb [breadcrumb]="breadcrumb()" />
+<section class="blog-section section-b-space">
+	<div class="container-fluid-lg">
+		@if (empty()) {
+		<app-no-data
+			[class]="'no-data-added collection-no-data'"
+			[image]="'assets/svg/no-product.svg'"
+			[text]="'videos_empty' | transloco"
+			[description]="'videos_empty_description' | transloco"
+		/>
+		<div class="text-center">
+			<a
+				class="btn theme-bg-color mt-3 text-white"
+				[href]="channelUrl() + '?sub_confirmation=1'"
+				target="_blank"
+				rel="noopener"
+			>
+				<i class="ri-youtube-fill me-2"></i>
+				{{ 'subscribe_on_youtube' | transloco }}
+			</a>
+		</div>
+		} @else {
+		<div class="row g-4">
+			<div class="col-xxl-9 col-xl-8 col-lg-7 order-lg-2">
+				<!-- The switch is the product page's tab bar (nav-tabs custom-nav). Both panes stay in the
+				     page source for search engines; the switch only shows one. -->
+				<div
+					class="product-section-box mt-0"
+					id="videos-switcher"
+				>
+					<ul
+						class="nav nav-tabs custom-nav"
+						role="tablist"
+					>
+						<li
+							class="nav-item"
+							role="presentation"
+						>
+							<a
+								class="nav-link"
+								role="tab"
+								tabindex="0"
+								href="javascript:void(0)"
+								[class.active]="tab() === 'videos'"
+								[attr.aria-selected]="tab() === 'videos'"
+								(click)="setTab('videos')"
+								(keydown.enter)="setTab('videos')"
+							>
+								<i class="ri-play-circle-line me-1"></i>
+								{{ 'videos_tab_videos' | transloco: { count: videos().length } }}
+							</a>
+						</li>
+						@if (shorts().length) {
+						<li
+							class="nav-item"
+							role="presentation"
+						>
+							<a
+								class="nav-link"
+								role="tab"
+								tabindex="0"
+								href="javascript:void(0)"
+								[class.active]="tab() === 'shorts'"
+								[attr.aria-selected]="tab() === 'shorts'"
+								(click)="setTab('shorts')"
+								(keydown.enter)="setTab('shorts')"
+							>
+								<i class="ri-smartphone-line me-1"></i>
+								{{ 'videos_tab_shorts' | transloco: { count: shorts().length } }}
+							</a>
+						</li>
+						}
+					</ul>
+					<div class="tab-content custom-tab">
+						<div
+							class="tab-pane"
+							role="tabpanel"
+							[class.active]="tab() === 'videos' || !shorts().length"
+						>
+							@if (current(); as video) {
+							<app-video-poster
+								[video]="video"
+								[priority]="true"
+							/>
+							<app-title
+								[title]="video.title"
+								[style]="'simple'"
+								[class]="'mt-3'"
+							>
+								<a
+									class="btn btn-animation btn-sm"
+									[href]="link(video)"
+									target="_blank"
+									rel="noopener"
+								>
+									<i class="ri-youtube-fill me-2"></i>
+									{{ 'watch_on_youtube' | transloco }}
+								</a>
+							</app-title>
+							}
+							<app-title
+								[title]="'latest_videos' | transloco"
+								[style]="'simple'"
+								[class]="'mt-4'"
+							/>
+							<div class="row g-4">
+								@for (video of videos(); track video.videoId) {
+								<div class="col-xxl-4 col-sm-6">
+									<app-video-card
+										[video]="video"
+										[nowPlaying]="video.videoId === current()?.videoId"
+										(picked)="pick($event)"
+									/>
+								</div>
+								}
+							</div>
+						</div>
+						@if (shorts().length) {
+						<div
+							class="tab-pane"
+							role="tabpanel"
+							[class.active]="tab() === 'shorts'"
+						>
+							<app-title
+								[title]="'shorts' | transloco"
+								[style]="'simple'"
+							>
+								<a
+									class="btn btn-animation btn-sm"
+									[href]="channelUrl() + '/shorts'"
+									target="_blank"
+									rel="noopener"
+								>
+									<i class="ri-youtube-fill me-2"></i>
+									{{ 'all_shorts' | transloco }}
+								</a>
+							</app-title>
+							<div class="row g-3">
+								@for (short of shorts(); track short.videoId) {
+								<div class="col-xxl-3 col-md-4 col-6">
+									<app-short-card
+										[video]="short"
+										(picked)="shortsModal.open(shorts(), $event)"
+									/>
+								</div>
+								}
+							</div>
+						</div>
+						}
+					</div>
+				</div>
+				<div class="mt-4 text-center">
+					<a
+						class="btn btn-animation"
+						[href]="channelUrl()"
+						target="_blank"
+						rel="noopener"
+					>
+						<i class="ri-youtube-fill me-2"></i>
+						{{ 'see_all_on_youtube' | transloco }}
+					</a>
+				</div>
+			</div>
+
+			<div class="col-xxl-3 col-xl-4 col-lg-5 order-lg-1">
+				<div class="left-sidebar-box">
+					@if (upNext().length) {
+					<div
+						class="accordion left-accordion-box"
+						ngbAccordion
+					>
+						<div
+							class="accordion-item"
+							ngbAccordionItem
+							[collapsed]="false"
+						>
+							<h2
+								class="accordion-header"
+								ngbAccordionHeader
+							>
+								<button
+									class="accordion-button"
+									type="button"
+									ngbAccordionButton
+								>
+									{{ 'up_next' | transloco }}
+								</button>
+							</h2>
+							<div
+								class="accordion-collapse collapse"
+								ngbAccordionCollapse
+							>
+								<div
+									class="accordion-body pt-0"
+									ngbAccordionBody
+								>
+									<ng-template>
+										<div class="recent-post-box">
+											@for (video of upNext(); track video.videoId) {
+											<div class="recent-box">
+												<a
+													class="recent-image"
+													[href]="link(video)"
+													(click)="pick(video, $event)"
+												>
+													<img
+														class="img-fluid object-fit-cover"
+														[src]="cardPoster(video)"
+														[alt]="video.title"
+														lang="en"
+														loading="lazy"
+													/>
+												</a>
+												<div class="recent-detail">
+													<a
+														[href]="link(video)"
+														(click)="pick(video, $event)"
+													>
+														<h3
+															class="h5 recent-name"
+															lang="en"
+														>
+															{{ video.title }}
+														</h3>
+													</a>
+													@if (video.publishedAt; as published) {
+													<p class="h6">{{ published | shopDate }}</p>
+													}
+												</div>
+											</div>
+											}
+										</div>
+									</ng-template>
+								</div>
+							</div>
+						</div>
+					</div>
+					}
+					<a
+						class="btn theme-bg-color mt-3 w-100 text-white"
+						[href]="channelUrl() + '?sub_confirmation=1'"
+						target="_blank"
+						rel="noopener"
+					>
+						<i class="ri-youtube-fill me-2"></i>
+						{{ 'subscribe_on_youtube' | transloco }}
+					</a>
+				</div>
+			</div>
+		</div>
+		}
+	</div>
+</section>
+<app-shorts-modal #shortsModal />

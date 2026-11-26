@@ -54,4 +54,37 @@ export class UnconfiguredStorageAdapter implements StoragePort {
 	createSignedUploadUrl(): Promise<SignedUpload> {
 		return Promise.reject(new Error(UnconfiguredStorageAdapter.MESSAGE));
 	}
+
+	startMultipartUpload(): Promise<{ uploadId: string }> {
+		return Promise.reject(new Error(UnconfiguredStorageAdapter.MESSAGE));
+	}
+
+	createSignedPartUrl(): Promise<string> {
+		return Promise.reject(new Error(UnconfiguredStorageAdapter.MESSAGE));
+	}
+
+	listUploadedParts(): Promise<{ partNumber: number; etag: string; size: number }[]> {
+		return Promise.reject(new Error(UnconfiguredStorageAdapter.MESSAGE));
+	}
+
+	completeMultipartUpload(): Promise<void> {
+		return Promise.reject(new Error(UnconfiguredStorageAdapter.MESSAGE));
+	}
+
+	abortMultipartUpload(): Promise<void> {
+		return Promise.reject(new Error(UnconfiguredStorageAdapter.MESSAGE));
+	}
+
+	// eslint-disable-next-line require-yield -- nothing is stored, so nothing is listed
+	async *listKeys(): AsyncIterable<{ key: string; bytes: number }> {
+		throw new Error(UnconfiguredStorageAdapter.MESSAGE);
+	}
+
+	readStream(): AsyncIterable<Uint8Array> {
+		throw new Error(UnconfiguredStorageAdapter.MESSAGE);
+	}
+
+	uploadStream(): Promise<{ bytes: number }> {
+		return Promise.reject(new Error(UnconfiguredStorageAdapter.MESSAGE));
+	}
 }

@@ -1,12 +1,8 @@
-import { HttpErrorResponse, HttpRequest, HttpResponse } from '@angular/common/http';
-import { ErrorHandler, PLATFORM_ID } from '@angular/core';
+import { HttpRequest } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 
 import { firstValueFrom, of, throwError, TimeoutError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
-
-import { ErrorService } from '@data-access/services/error.service';
-import { NotificationService } from '@data-access/services/notification.service';
 
 import { ACTIVE_LOCALE } from '@core/i18n/active-locale';
 
@@ -49,7 +45,7 @@ describe('CatalogLocaleInterceptor', () => {
 	const run = (request: HttpRequest<unknown>) => {
 		TestBed.resetTestingModule();
 		TestBed.configureTestingModule({
-			providers: [CatalogLocaleInterceptor, { provide: ACTIVE_LOCALE, useValue: 'fr' }],
+			providers: [CatalogLocaleInterceptor, { provide: ACTIVE_LOCALE, useValue: 'bn' }],
 		});
 		const next = { handle: vi.fn((seen: HttpRequest<unknown>) => of(seen as never)) };
 		TestBed.inject(CatalogLocaleInterceptor).intercept(request, next as never);
@@ -58,10 +54,21 @@ describe('CatalogLocaleInterceptor', () => {
 
 	it('names the language on catalogue reads and cart calls', () => {
 		environment.apiUrl = 'https://api.test';
-		expect(run(new HttpRequest('GET', 'https://api.test/catalog/home')).params.get('locale')).toBe('fr');
-		expect(run(new HttpRequest('GET', 'https://api.test/cart/current')).params.get('locale')).toBe('fr');
-		expect(run(new HttpRequest('POST', 'https://api.test/cart/current/lines', {})).params.get('locale')).toBe('fr');
+		expect(run(new HttpRequest('GET', 'https://api.test/catalog/home')).params.get('locale')).toBe('bn');
+		expect(run(new HttpRequest('GET', 'https://api.test/cart/current')).params.get('locale')).toBe('bn');
+		expect(run(new HttpRequest('POST', 'https://api.test/cart/current/lines', {})).params.get('locale')).toBe('bn');
 		expect(run(new HttpRequest('GET', 'https://api.test/account')).params.has('locale')).toBe(false);
 		expect(run(new HttpRequest('POST', 'https://api.test/catalog/x', {})).params.has('locale')).toBe(false);
+	});
+
+	it('names the language when an account is created or an order placed, so both record it', () => {
+		environment.apiUrl = 'https://api.test';
+		const finalise = new HttpRequest('POST', 'https://api.test/auth/storefront/signup/finalise', {});
+		expect(run(finalise).params.get('locale')).toBe('bn');
+		expect(run(new HttpRequest('POST', 'https://api.test/orders', {})).params.get('locale')).toBe('bn');
+		expect(run(new HttpRequest('GET', 'https://api.test/orders')).params.has('locale')).toBe(false);
+		expect(run(new HttpRequest('POST', 'https://api.test/catalog/search/clicks', {})).params.get('locale')).toBe(
+			'bn',
+		);
 	});
 });

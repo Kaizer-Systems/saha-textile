@@ -33,6 +33,17 @@ export class AdminTaxonomyController {
 		return this.taxonomy.saveCategory(null, body, principal?.userId ?? null);
 	}
 
+	@Get('categories/:id/hsn-impact')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('category.edit')
+	@ApiOperation({
+		operationId: 'categoryHsnImpact',
+		summary: 'Products that follow the category HSN, and those with their own (F03)',
+	})
+	hsnImpact(@Param('id') id: string) {
+		return this.taxonomy.hsnImpact(id);
+	}
+
 	@Post('categories/:id')
 	@HttpCode(200)
 	@RequirePermissions('category.edit')

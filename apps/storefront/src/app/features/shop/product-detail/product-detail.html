@@ -9,10 +9,11 @@
 		<div class="row">
 			<div class="col-xxl-9 col-xl-8 col-lg-7">
 				<div class="row g-4">
-					<!-- Gallery needs browser-only carousel/zoom libs; a static image is
-					     server-rendered as a crawlable fallback. -->
+					<!-- The gallery is drawn by the server too (its zoom lens and carousel are server-safe), so hydration keeps
+					     the same picture: no second download, no later paint, nothing below it moves (shop speed round 4).
+					     The static stand-in below is no longer reached; it stays until the end-of-project clean-up (SP1). -->
 					<div class="col-xl-6">
-						@if (isBrowser) {
+						@if (galleryOnServer || isBrowser) {
 						<app-product-gallery
 							[product]="product"
 							[variation]="selectedVariation()"
@@ -21,7 +22,12 @@
 						<div class="product-left-box">
 							<img
 								class="img-fluid"
+								fetchpriority="high"
 								[src]="product.product_thumbnail?.original_url || 'assets/images/product.png'"
+								[attr.srcset]="leadSrcset()"
+								sizes="(max-width: 1199px) 100vw, 40vw"
+								[attr.width]="product.product_thumbnail?.image?.width"
+								[attr.height]="product.product_thumbnail?.image?.height"
 								[alt]="product.name"
 							/>
 						</div>
@@ -46,10 +52,6 @@
 								[product]="product"
 								[option]="(siteConfig$ | async)!"
 							/>
-							<app-product-social-share
-								[product]="product"
-								[option]="siteConfig$ | async"
-							/>
 						</div>
 					</div>
 
@@ -62,11 +64,30 @@
 					<div class="col-12">
 						<app-product-details-tabs [product]="product" />
 					</div>
+
+					<!-- FAQ when switched on for the product: theme title and the FAQ page's accordion,
+					     every answer in the page source. -->
+					@if (product.faq?.length) {
+					<div class="col-12">
+						<div class="faq-box-contain">
+							<div class="title">
+								<h2>{{ 'frequently_asked_questions' | transloco }}</h2>
+							</div>
+							<app-faq-accordion [items]="product.faq ?? []" />
+						</div>
+					</div>
+					}
 				</div>
 			</div>
 
 			<div class="col-xxl-3 col-xl-4 col-lg-5 d-none d-lg-block">
-				<app-product-details-sidebar [product]="product" />
+				<app-product-details-sidebar
+					[product]="product"
+					[setPrice]="buyBox()?.summary()?.unitPrice ?? null"
+					[quantity]="buyBox()?.productQty ?? 1"
+					[setPicks]="buyBox()?.setPicks() ?? null"
+					[setExtras]="buyBox()?.setExtras() ?? null"
+				/>
 			</div>
 		</div>
 	</div>
@@ -75,7 +96,8 @@
 <!-- You May Also Like — saved related cards, loaded once the rail scrolls into view -->
 @if (alsoLike().length) {
 <section class="product-list-section section-b-space">
-	@defer (on viewport) {
+	<!-- Rendered on the server (its links are in the page source), hydrated when scrolled to. -->
+	@defer (on viewport; hydrate on viewport) {
 	<app-you-may-also-like [products]="alsoLike()" />
 	} @placeholder {
 	<div class="container-fluid-lg"></div>
@@ -87,8 +109,10 @@
 <app-product-blogs [product]="product" />
 
 <!-- Sticky Cart Box -->
-<app-sticky-checkout [product]="product" />
-} @else if (loading()) {
+<!-- The buy bar (brief P4): the buy box's own choices and buttons, fixed to the bottom when the page shows it. -->
+@if (buyBox(); as box) {
+<app-buy-bar [host]="box" />
+} } @else if (loading()) {
 <!-- min-vh-100 holds the footer below the fold, so it does not jump when the product lands. -->
 <section
 	class="product-section min-vh-100"

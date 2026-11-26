@@ -404,41 +404,63 @@ describe('pageToProduct measurements and bundles', () => {
 		{ code: 'hip', label: 'Hip', unit: 'cm' as const, min: null, max: null, step: null },
 	];
 	const measurements = { templateCode: 't', priceINR: 100, fields, sizeGuide: [] };
+	const item = (key: string, selling: number, over: Record<string, unknown> = {}) => ({
+		key,
+		productId: key,
+		slug: key,
+		title: key.toUpperCase(),
+		sku: key.toUpperCase(),
+		image: null,
+		mrpINR: null,
+		sellingINR: selling,
+		saleINR: null,
+		priceInSetINR: selling,
+		todayINR: selling,
+		quantity: 1,
+		soldBy: 'piece' as const,
+		inStock: true,
+		available: 3,
+		variantId: null,
+		variantLabel: null,
+		variants: [],
+		freeWith: null,
+		...over,
+	});
 	const bundle = (overrides: Record<string, unknown> = {}) =>
 		({
-			bundleType: 'fixed_kit',
-			pricePolicy: 'sum_components',
+			heading: 'choose',
 			priceINR: 500,
-			groups: [
+			separatelyINR: 700,
+			saveINR: 200,
+			fromPrice: true,
+			lowINR: 500,
+			highINR: 600,
+			levels: [
 				{
 					code: 'set',
 					label: 'Set',
-					minSelections: 1,
-					maxSelections: 1,
-					components: [
-						{
-							productId: 'a',
-							slug: 'a',
-							title: 'A',
-							sku: 'A',
-							sellingINR: 100,
-							quantity: 1,
-							required: true,
-							inStock: true,
-						},
-						{
-							productId: 'b',
-							slug: 'b',
-							title: 'B',
-							sku: 'B',
-							sellingINR: 200,
-							quantity: 2,
-							required: false,
-							inStock: false,
-						},
-					],
+					take: 1,
+					choice: true,
+					priceMode: 'difference',
+					items: [item('a', 100), item('b', 200, { quantity: 2, inStock: false })],
 				},
 			],
+			extras: [item('pc', 0, { mrpINR: 450, todayINR: 450 })],
+			pricing: {
+				base: { kind: 'fixed', input: 'setPrice' },
+				inputs: [],
+				methodRules: [],
+				methodCombine: 'all',
+				params: { setPrice: 500 },
+				rules: [],
+				combine: 'all',
+				capAtSeparately: false,
+				roundTo: 'one',
+				eventSale: [],
+			},
+			stock: { setsPossible: 3, state: 'in_stock', soldOutPieces: [], soldOutChoices: ['b'] },
+			buyable: true,
+			saleWindow: null,
 			...overrides,
 		}) as ApiProductPage['bundle'];
 
@@ -472,12 +494,12 @@ describe('pageToProduct measurements and bundles', () => {
 		expect(product.bundle?.measurement_fields).toHaveLength(2);
 	});
 
-	it('maps a bundle, with fallbacks for unknown kinds', () => {
+	it('maps a set: levels, extras, stock and the rules it is priced with', () => {
 		const selected = { sku: 'SET', sellingINR: 1, mrpINR: null, quantity: 1, buyable: true };
 		const product = pageToProduct(
 			page({
 				selected,
-				bundle: bundle({ bundleType: 'other', pricePolicy: 'other' }),
+				bundle: bundle(),
 				optionGroups: [
 					group({ code: 'pick', role: 'bundle_component_option', displayStyle: 'unknown' }),
 					group({
@@ -491,24 +513,67 @@ describe('pageToProduct measurements and bundles', () => {
 		);
 		expect(product.bundle).toMatchObject({
 			sku: 'SET',
-			bundle_type: 'fixed-kit',
-			price_policy: 'fixed-bundle-price',
+			heading: 'choose',
 			bundle_price: 500,
+			from_price: true,
+			buyable: true,
 		});
-		expect(product.bundle?.components.map((row) => row.stock_status)).toEqual(['in_stock', 'out_of_stock']);
+		expect(product.bundle?.levels[0]?.items.map((row) => [row.key, row.in_stock, row.quantity])).toEqual([
+			['a', true, 1],
+			['b', false, 2],
+		]);
+		expect(product.bundle?.extras[0]).toMatchObject({ key: 'pc', price_in_set: 0, mrp: 450 });
+		expect(product.bundle?.stock).toEqual({
+			sets_possible: 3,
+			state: 'in_stock',
+			sold_out_pieces: [],
+			sold_out_choices: ['b'],
+		});
+		expect(product.bundle?.pricing.params).toEqual({ setPrice: 500 });
 		expect(product.bundle?.option_groups?.[0]).toMatchObject({ style: 'rectangle', default_term_code: undefined });
 		expect(product.bundle?.option_groups?.[1]).toMatchObject({ style: 'radio', default_term_code: 's' });
 		expect(product.bundle).not.toHaveProperty('measurement_fields');
 	});
 
-	it('names a bundle by its slug with no selection, and maps known kinds', () => {
-		const product = pageToProduct(
-			page({ bundle: bundle({ bundleType: 'optional_addons', pricePolicy: 'discounted_components' }) }),
-		);
-		expect(product.bundle).toMatchObject({
-			sku: 'red',
-			bundle_type: 'optional-addons',
-			price_policy: 'discounted-components',
+	it('names a set by its slug with no selection, and maps free items on its pieces and on products', () => {
+		const free = {
+			take: 'exactly',
+			count: 1,
+			from: null,
+			required: true,
+			given: false,
+			min: 1,
+			max: 1,
+			noneOrExactly: false,
+			items: [
+				{
+					productId: 'pc',
+					title: 'Petticoat',
+					image: null,
+					mrpINR: 450,
+					sellingINR: 450,
+					quantity: 1,
+					inStock: true,
+					variantId: null,
+					variantLabel: null,
+					variants: [{ id: 'v1', label: 'M', inStock: true }],
+				},
+			],
+		};
+		const set = pageToProduct(page({ bundle: bundle({ extras: [item('x', 10, { freeWith: free })] }) }));
+		expect(set.bundle?.sku).toBe('red');
+		expect(set.bundle?.extras[0]?.free_with).toMatchObject({
+			take: 'exactly',
+			min: 1,
+			max: 1,
+			none_or_exactly: false,
 		});
+		expect(set.bundle?.extras[0]?.free_with?.items[0]).toMatchObject({
+			product_id: 'pc',
+			variants: [{ id: 'v1', label: 'M', in_stock: true }],
+		});
+		const product = pageToProduct(page({ freeWith: free as never }));
+		expect(product.free_with?.items[0]?.name).toBe('Petticoat');
+		expect(pageToProduct(page()).free_with).toBeUndefined();
 	});
 });

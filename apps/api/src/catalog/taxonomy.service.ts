@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Optional, NotFoundException } from '@nestjs/common';
 import {
 	AdminCategoryRow,
 	AttributeDefinition,
@@ -8,6 +8,7 @@ import {
 	CategoryPlacement,
 	type AdminAttributeWrite,
 	type AdminCategoryWrite,
+	type CategoryHsnImpact,
 	type Product,
 } from '@saha-textile/contracts';
 import type {
@@ -17,6 +18,7 @@ import type {
 	ProductRepository,
 } from '@saha-textile/core-domain';
 
+import { SearchVocabularyService } from './search-vocabulary.service';
 import { CatalogPublicService } from './catalog-public.service';
 import { CatalogService } from './catalog.service';
 import {
@@ -34,6 +36,26 @@ function imageChange(key: 'bannerImage' | 'iconImage', id: string | null | undef
 	return { [key]: kept };
 }
 
+/**
+ * A category's pictures and the version each shows (R4-1; media step 4d): a picture left out is kept with its
+ * version; only the category's own pictures keep one.
+ */
+function categoryMedia(body: AdminCategoryWrite, existing: Category | null): NonNullable<Category['media']> {
+	const media = {
+		...existing?.media,
+		...imageChange('bannerImage', body.imageId, existing),
+		...imageChange('iconImage', body.iconId, existing),
+	};
+	const own = [media.bannerImage, media.iconImage].filter((id): id is string => !!id);
+	const versions = Object.fromEntries(
+		Object.entries({ ...existing?.media?.versions, ...body.imageVersions }).filter(([assetId]) =>
+			own.includes(assetId),
+		),
+	);
+	const { versions: _old, ...rest } = media;
+	return Object.keys(versions).length ? { ...rest, versions } : rest;
+}
+
 /** Categories and attributes: the helpers the product form picks from. */
 @Injectable()
 export class TaxonomyService {
@@ -44,12 +66,16 @@ export class TaxonomyService {
 		@Inject(ATTRIBUTE_DEFINITION_REPOSITORY) private readonly attributes: AttributeDefinitionRepository,
 		@Inject(PRODUCT_REPOSITORY) private readonly products: ProductRepository,
 		private readonly publicCatalog: CatalogPublicService,
+		@Optional() @Inject(SearchVocabularyService) private readonly vocabulary: SearchVocabularyService | null = null,
 	) {}
 
 	async listCategories(): Promise<AdminCategoryRow[]> {
 		const categories = await this.categories.tree();
 		const images = await this.publicCatalog.categoryImages(
-			categories.flatMap((category) => [category.media?.bannerImage ?? [], category.media?.iconImage ?? []].flat()),
+			categories.flatMap((category) =>
+				[category.media?.bannerImage ?? [], category.media?.iconImage ?? []].flat(),
+			),
+			Object.assign({}, ...categories.map((category) => category.media?.versions ?? {})),
 		);
 		return Promise.all(categories.map((category) => this.categoryRow(category, images)));
 	}
@@ -82,10 +108,39 @@ export class TaxonomyService {
 			productCount: total,
 			image: shown(category.media?.bannerImage),
 			icon: shown(category.media?.iconImage),
+			imageVersions: category.media?.versions ?? {},
+			hsnCode: category.hsnCode ?? null,
+			returnable: category.returnable,
+			shipping: category.shipping ?? null,
 		});
 	}
 
+	/**
+	 * F03: products whose main category this is follow its HSN when theirs is the category's
+	 * code or empty; any other code is the product's own and stays.
+	 */
+	async hsnImpact(id: string): Promise<CategoryHsnImpact> {
+		const category = await this.categories.findById(id);
+		if (!category) throw new NotFoundException(`Category not found: ${id}`);
+		const products = await this.products.listByMainCategory(id);
+		const follows = (code: string | null) => code === null || code === (category.hsnCode ?? null);
+		return {
+			categoryHsn: category.hsnCode ?? null,
+			using: products.filter((product) => follows(product.hsnCode)).length,
+			own: products
+				.filter((product) => !follows(product.hsnCode))
+				.map((product) => ({
+					id: product.id,
+					sku: product.sku,
+					title: product.title.en,
+					hsnCode: product.hsnCode ?? '',
+				})),
+		};
+	}
+
 	async saveCategory(id: string | null, body: AdminCategoryWrite, actorUserId: string | null) {
+		// A search word or "show first" category reaches the categories under it through the tree.
+		this.vocabulary?.invalidate();
 		if (!body.name['en']?.trim()) throw new BadRequestException('A category needs an English name');
 		const existing = id ? await this.categories.findById(id) : null;
 		if (id && !existing) throw new NotFoundException(`Category not found: ${id}`);
@@ -110,20 +165,36 @@ export class TaxonomyService {
 			displayOrder: body.displayOrder ?? existing?.displayOrder ?? 0,
 			description: body.description,
 			seo: { title: body.seoTitle, description: body.seoDescription },
-			media: {
-				...existing?.media,
-				...imageChange('bannerImage', body.imageId, existing),
-				...imageChange('iconImage', body.iconId, existing),
-			},
+			media: categoryMedia(body, existing),
+			hsnCode: body.hsnCode === undefined ? (existing?.hsnCode ?? null) : body.hsnCode,
+			returnable: body.returnable ?? existing?.returnable ?? true,
+			shipping: body.shipping === undefined ? existing?.shipping : body.shipping,
 		});
+		const oldHsn = existing?.hsnCode ?? null;
+		const hsnChanged = Boolean(existing) && category.hsnCode !== oldHsn;
+		const followers =
+			hsnChanged && body.updateProductsHsn
+				? (await this.products.listByMainCategory(categoryId)).filter(
+						(product) => product.hsnCode === null || product.hsnCode === oldHsn,
+					)
+				: [];
 		const current = await this.placements.findCanonical(categoryId);
 		const oldPaths = current ? await this.subtreePaths(current.id) : new Map<string, string>();
 		await this.catalog.inTransaction(async () => {
 			await this.categories.save(category);
 			await this.syncPlacements(category, existing, body.alsoUnder);
+			for (const product of followers) await this.products.save({ ...product, hsnCode: category.hsnCode });
 		});
 		await this.forwardMovedPaths(category, oldPaths);
-		await this.catalog.record(actorUserId, 'catalog.category.save', categoryId, { slug: body.slug });
+		await this.catalog.record(actorUserId, 'catalog.category.save', categoryId, {
+			slug: body.slug,
+			...(hsnChanged
+				? { hsnFrom: oldHsn, hsnTo: category.hsnCode, productsUpdated: followers.map((product) => product.sku) }
+				: {}),
+			...(existing && existing.returnable !== category.returnable
+				? { returnableFrom: existing.returnable, returnableTo: category.returnable }
+				: {}),
+		});
 		return { id: categoryId };
 	}
 
@@ -200,6 +271,7 @@ export class TaxonomyService {
 	}
 
 	async deleteCategory(id: string, actorUserId: string | null) {
+		this.vocabulary?.invalidate();
 		const row = await this.categories.findById(id);
 		if (!row) throw new NotFoundException(`Category not found: ${id}`);
 		if ((await this.categories.listChildren(id)).length) {
@@ -234,6 +306,11 @@ export class TaxonomyService {
 		);
 		await this.copyToProducts(saved);
 		await this.catalog.record(actorUserId, 'catalog.attribute.save', saved.id, { code: saved.code });
+		// A default picture replaced by a new cut or another picture: the old cut goes once nothing uses it.
+		await this.catalog.dropLeftBehindSwatches(
+			(existing?.terms ?? []).map((term) => term.swatchAssetId),
+			saved.terms.map((term) => term.swatchAssetId),
+		);
 		return saved;
 	}
 
@@ -250,7 +327,10 @@ export class TaxonomyService {
 					? {
 							...group,
 							label: definition.label,
-							terms: group.terms.map((term) => ({ ...term, label: terms.get(term.code)?.label ?? term.label })),
+							terms: group.terms.map((term) => ({
+								...term,
+								label: terms.get(term.code)?.label ?? term.label,
+							})),
 						}
 					: group,
 			);
@@ -273,7 +353,9 @@ export class TaxonomyService {
 	private async usedTerms(code: string): Promise<Set<string>> {
 		const groups = (await this.productsUsing(code)).flatMap((product) => product.optionGroups);
 		return new Set(
-			groups.filter((group) => group.attributeCode === code).flatMap((group) => group.terms.map((term) => term.code)),
+			groups
+				.filter((group) => group.attributeCode === code)
+				.flatMap((group) => group.terms.map((term) => term.code)),
 		);
 	}
 

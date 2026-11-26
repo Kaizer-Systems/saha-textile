@@ -1,0 +1,218 @@
+import { Body, Controller, Get, HttpCode, Param, Post, Req } from '@nestjs/common';
+import {
+	type ServerDeployView,
+	BRANCH_PICKED_TARGETS,
+	type ServerTarget,
+	type VendorAnswer,
+	reviewServerDeploySchema,
+	serverTargetOf,
+	startServerDeploySchema,
+} from '@saha-textile/release-console-contracts';
+
+import { ProjectsService } from './projects.service.js';
+import { parseBody } from '../common/parse.js';
+import { LockService } from '../lock/lock.service.js';
+import { sessionOf } from '../lock/session.guard.js';
+import { HelperError } from '../runner/runner-client.js';
+import { ConsoleStore } from '../store/console-store.js';
+import { reviewServerDeploy, serverDeployView, startServerDeploy } from '../vendors/github-deploys.js';
+import { VendorError } from '../vendors/http.js';
+
+type Req = Parameters<typeof sessionOf>[0];
+
+/** Why an environment's server deploy cannot be read or started, in words the screen shows. */
+class NotReady extends Error {}
+
+/**
+ * Ship › Live deploy for an environment that runs on a server (owner, 20 Nov): the console starts
+ * GitHub's deploy.yml with the PIN, follows its jobs and steps, and approves or rejects the deploy
+ * job's wait on its GitHub environment with the PIN. Environments on this computer run the local
+ * pipeline instead (LocalController).
+ */
+@Controller('api/projects/:p/repos/:r/server-deploy/:env')
+export class ServerDeployController {
+	constructor(
+		private readonly projects: ProjectsService,
+		private readonly lock: LockService,
+		private readonly store: ConsoleStore,
+	) {}
+
+	private async context(p: string, r: string, env: string) {
+		const { project, repo } = this.projects.repository(p, r);
+		const e = repo.environments.find((x) => x.name === env);
+		if (!e) throw new NotReady(`${repo.name} has no environment ${env}.`);
+		if (e.cloudId === null) throw new NotReady(`${e.label} runs on this computer, so it runs the local pipeline.`);
+		if (repo.sourceCode.vendor !== 'github')
+			throw new NotReady(
+				'Server deploys run through GitHub Actions today; this repository is on another vendor.',
+			);
+		const target: ServerTarget | null = serverTargetOf(e.name);
+		if (!target)
+			throw new NotReady(
+				`${e.label} runs on a server, but its name says neither development, staging nor production, so deploy.yml has no GitHub environment for it.`,
+			);
+		const ref = project.keys.find((k) => k.id === repo.sourceCode.keyId);
+		const key = ref ? await this.projects.valueOf(ref) : null;
+		if (!key)
+			throw new NotReady('GitHub is not connected for this repository. Add its key on the Connections screen.');
+		return { project, repo, env: e, target, key };
+	}
+
+	@Get()
+	async view(
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Param('env') env: string,
+	): Promise<VendorAnswer<ServerDeployView>> {
+		try {
+			const c = await this.context(p, r, env);
+			const data = await serverDeployView(
+				c.repo.sourceCode.repository,
+				c.env.name,
+				c.target,
+				c.key,
+				undefined,
+				c.env.branch || undefined,
+			);
+			this.settleRotation(p, r, env, data);
+			return { state: 'ok', readAt: new Date().toISOString(), data };
+		} catch (err) {
+			if (err instanceof NotReady) return { state: 'not-connected', message: err.message };
+			if (err instanceof VendorError) return { state: 'error', message: err.message };
+			throw err;
+		}
+	}
+
+	/** Starts deploy.yml for this environment after the PIN; the deploy job then waits for approval. */
+	@Post()
+	@HttpCode(202)
+	async start(
+		@Req() req: Req,
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Param('env') env: string,
+		@Body() body: unknown,
+	): Promise<{ ok: true }> {
+		const { pin, allowBlank, confirm, branch, rotate, restartDatabase, action, tag } = parseBody(
+			startServerDeploySchema,
+			body,
+		);
+		const c = await this.ready(p, r, env);
+		if (c.target === 'production' && allowBlank.length && confirm !== 'production')
+			throw new HelperError('Type production to deploy production with blank values.', 409);
+		// Rotation asks for the environment's name typed (Release Path brief Q6); production asks it for every change.
+		if ((rotate || (c.target === 'production' && (action === 'rollback' || tag))) && confirm?.trim() !== c.env.name)
+			throw new HelperError(`Type ${c.env.name} to confirm.`, 409);
+		if (tag && !tag.startsWith(`${c.target}-`))
+			throw new HelperError(`${tag} is not a release of ${c.target}.`, 409);
+		// Staging and production run their own branch; only a development server takes one per run.
+		if (branch && !BRANCH_PICKED_TARGETS.includes(c.target))
+			throw new NotReady(`${c.env.label} deploys its own branch; change it in Project settings › Repositories.`);
+		this.lock.confirm(
+			sessionOf(req),
+			pin,
+			action === 'rollback' ? `roll back ${c.env.name}` : `deploy ${c.env.name}${rotate ? ' with rotation' : ''}`,
+		);
+		await this.vendor(() =>
+			startServerDeploy(
+				c.repo.sourceCode.repository,
+				c.target,
+				c.key,
+				undefined,
+				branch || c.env.branch || undefined,
+				allowBlank,
+				{ rotate, restartDatabase, action, tag },
+			),
+		);
+		if (rotate)
+			this.projects.setRotation(p, r, env, {
+				...this.projects.rotation(p, r, env),
+				requestedAt: new Date().toISOString(),
+			});
+		const what =
+			action === 'rollback'
+				? 'roll back to the previous release'
+				: tag
+					? `deploy the older version ${tag}`
+					: `deploy${rotate ? ` with rotation${restartDatabase ? ' and a database restart' : ''}` : ''}`;
+		this.store.audit(
+			c.project.id,
+			action === 'rollback' ? 'server-rollback-started' : 'server-deploy-started',
+			`${c.repo.name} · ${c.env.label} → GitHub environment ${c.target} · ${what}${allowBlank.length ? ` · allowed blank: ${allowBlank.join(', ')}` : ''}`,
+		);
+		return { ok: true };
+	}
+
+	/** Approves or rejects the deploy job waiting on this environment, after the PIN. */
+	@Post('review')
+	@HttpCode(200)
+	async review(
+		@Req() req: Req,
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Param('env') env: string,
+		@Body() body: unknown,
+	): Promise<{ ok: true }> {
+		const { pin, runId, approve } = parseBody(reviewServerDeploySchema, body);
+		const c = await this.ready(p, r, env);
+		this.lock.confirm(sessionOf(req), pin, `${approve ? 'approve' : 'reject'} the ${c.env.name} deploy`);
+		const view = await this.vendor(() =>
+			serverDeployView(
+				c.repo.sourceCode.repository,
+				c.env.name,
+				c.target,
+				c.key,
+				undefined,
+				c.env.branch || undefined,
+			),
+		);
+		if (view.run?.id !== runId || !view.run.waiting.length)
+			throw new HelperError('That run is not waiting for an approval any more.', 409);
+		const waiting = view.run.waiting;
+		await this.vendor(() => reviewServerDeploy(c.repo.sourceCode.repository, runId, waiting, approve, c.key));
+		this.store.audit(
+			c.project.id,
+			approve ? 'server-deploy-approved' : 'server-deploy-rejected',
+			`${c.repo.name} · ${c.env.label} · run ${runId}`,
+		);
+		return { ok: true };
+	}
+
+	/**
+	 * A successful deploy started with rotation after the values were changed applies them: the
+	 * record of values waiting for a deploy with rotation is cleared (the Infisical chat, 23 Nov).
+	 */
+	private settleRotation(p: string, r: string, env: string, view: ServerDeployView): void {
+		const state = this.projects.rotation(p, r, env);
+		const run = view.run;
+		if (!state.requestedAt || !run || run.status !== 'completed') return;
+		if (Date.parse(run.createdAt) < Date.parse(state.requestedAt) - 120_000) return;
+		this.projects.setRotation(
+			p,
+			r,
+			env,
+			run.conclusion === 'success'
+				? { ...state, pending: [], pendingAt: null, requestedAt: null }
+				: { ...state, requestedAt: null },
+		);
+	}
+
+	private async ready(p: string, r: string, env: string) {
+		try {
+			return await this.context(p, r, env);
+		} catch (err) {
+			if (err instanceof NotReady) throw new HelperError(err.message, 409);
+			throw err;
+		}
+	}
+
+	private async vendor<T>(call: () => Promise<T>): Promise<T> {
+		try {
+			return await call();
+		} catch (err) {
+			if (err instanceof VendorError)
+				throw new HelperError(err.message, err.status >= 400 && err.status < 600 ? err.status : 502);
+			throw err;
+		}
+	}
+}

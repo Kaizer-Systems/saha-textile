@@ -272,6 +272,8 @@ describe('AdminInviteService edges', () => {
 			{
 				normalizeEmail: (value: string) => value,
 				hash: (value: string) => value,
+				findByHash: (value: string, lookup: (hash: string) => unknown) => lookup(value),
+				hashMatches: (value: string, stored: string | null) => value === stored,
 				hashPassword: async (value: string) => value,
 			} as never,
 			invites as never,
@@ -307,7 +309,11 @@ describe('OAuthService edges', () => {
 			loadConfig({ ...secrets, ...env }) as never,
 			{ consume: vi.fn(async () => state) } as never,
 			identities as never,
-			{ hash: (value: string) => `h:${value}` } as never,
+			{
+				hash: (value: string) => `h:${value}`,
+				findByHash: (value: string, lookup: (hash: string) => unknown) => lookup(`h:${value}`),
+				hashMatches: (value: string, stored: string | null) => `h:${value}` === stored,
+			} as never,
 		);
 		return { service, identities };
 	};

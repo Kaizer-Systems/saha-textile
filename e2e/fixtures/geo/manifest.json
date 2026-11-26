@@ -1,0 +1,28 @@
+{
+	"schema": 1,
+	"version": "00f75d1b05edc4f7",
+	"counts": {
+		"countries": 2,
+		"withSubdivisions": 2,
+		"pins": 1
+	},
+	"sources": {},
+	"files": {
+		"countries.json": {
+			"sha256": "dd0388c240850891e6456090a7f3c4ba646a7a6f51256dad388cd7efdb4e72a4",
+			"bytes": 537
+		},
+		"pins/700.json": {
+			"sha256": "9ca278057253e5b7d713fd35e57f555a66db8d1cb2d974d8440e5715eb78ac3c",
+			"bytes": 116
+		},
+		"subdivisions/GB.json": {
+			"sha256": "0198380d628dccd821f1bd51fe5537ba4b8c8b05f25130124ebe826b5e26d31e",
+			"bytes": 70
+		},
+		"subdivisions/IN.json": {
+			"sha256": "9b2274dc63561994a5275923a519812556ce41f986c68f2e1f4a7808aa66c9b7",
+			"bytes": 74
+		}
+	}
+}

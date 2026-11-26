@@ -11,7 +11,7 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 
 **Status:** Sole owner-question inbox. Nothing in this file is locked until the owner answers it and the answer is recorded in `owner-decisions-log.mdx`.
 
-**Last reconciled:** 2026-11-03
+**Last reconciled:** 2026-11-20
 
 ## How this file works
 
@@ -28,6 +28,8 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
    inside an entry, those points are locked in `owner-decisions-log.mdx`, are not open, and must
    not be re-asked or re-decided; only the remainder of that entry is still a question. The
    outstanding question set issued on 2026-08-21 is `tax-compliance-questionnaire-round-2.mdx`.
+   The accounts starter templates (charts by kind, TDS sections, limits, statements) go to the CA as
+   `tax-compliance-questionnaire-round-3.mdx` (2026-11-24, accounts templates AT-D6).
 
 ## Open-decision index
 
@@ -37,16 +39,16 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 | `DEC-TAX-HSN`               | Tax classes, GST slabs, and HSN granularity — **partly settled 2026-08-21**                          | Catalog, checkout, invoices, accounting       |
 | `DEC-SHIPPING`              | Launch shipping-rate policy — **partly settled 2026-08-21**                                          | Checkout, Shiprocket seam, promotions         |
 | `DEC-RETURNS`               | Return/refund policy — **partly settled 2026-08-21**                                                 | Orders, returns, refunds, customer support    |
-| `DEC-PROMO-STACK`           | Promotion and coupon stacking                                                                        | Pricing engine, checkout                      |
-| `DEC-STOCK-RESERVE`         | Stock reservation timing and TTL                                                                     | Inventory, checkout, payment recovery         |
 | `DEC-ORDER-SNAPSHOT`        | Immutable order-line snapshot fields — **partly settled 2026-08-21**                                 | Orders, invoices, analytics, support          |
-| `DEC-ADDRESS`               | Address model and checkout phone requirements — **partly settled 2026-08-21**                        | Accounts, checkout, shipping                  |
 | `DEC-CUSTOMER-CREDIT`       | Ledger, store credit, wallet, and points scope — **partly settled 2026-08-21**                       | Customers, refunds, checkout                  |
 | `DEC-SCOPE-GAPS`            | Missing business flows and launch scope                                                              | Whole product                                 |
-| `DEC-PAYPAL-FX`             | Treatment of PayPal FX-conversion markup                                                             | Foreign-currency pricing and margin           |
-| `DEC-INR-GATEWAY-TIMING`    | Timing of CCAvenue-to-Razorpay succession                                                            | Payment adapter delivery and operations       |
-| `DEC-SECRETS-DELIVERY`      | How running containers receive secrets                                                               | Deploy scripts, API boot                      |
 | `DEC-PORTAL-PRIVATE-ACCESS` | Developer-portal identity policy and origin-protection mechanism                                     | Portal deployment, Cloudflare, service access |
+| `DEC-PERF-TRIM`             | Which unused styles, icons and font weights to remove once development is finished                   | Storefront speed, theme, design system        |
+| `DEC-SHORTS-PRODUCT-LINK`   | Whether a Short's on-screen episode code links it to a product, and how                              | Shorts popup, product page, admin             |
+| `DEC-TRACING-SERVERS`       | Whether to switch on OpenTelemetry tracing on staging and production                                 | Server memory, Release Console traces         |
+| `DEC-PWA-OFFLINE`           | What the installed shop does offline, and the footer's app-store badges                              | Service worker, cart, footer                  |
+| `DEC-DISPLAY-FONT`          | Where, if anywhere, the shop uses the Russo One display font                                         | Storefront typography, Brand Kit              |
+| `DEC-METRE-SCRAP`           | What happens when a fabric cut would leave less than the shortest cut on the roll                    | Shop product page, cart, stock write-offs     |
 
 ---
 
@@ -98,19 +100,14 @@ format string in configuration. Round-2 items `B6.1`–`B6.6`.
 
 ### Owner answer
 
-Choice:
+2026-11-20 (orders brief approval, recorded in `owner-decisions-log.mdx`): the brief's table is accepted for
+every document except the order number — parcel/shipment, return, payment request, tax invoice, credit note,
+debit note, receipt, refund voucher, delivery challan, payment voucher, self-invoice, purchase order, purchase
+entry, purchase return note, journal, stock adjustment and stock count, e-way bill, e-invoice IRN, courier
+AWB, gateway and bank references. Gapless allocation in the posting save; cancelled documents keep their
+number.
 
-Order format:
-
-Tax-invoice format:
-
-Purchase-invoice format:
-
-Credit/return-note format:
-
-Gapless/cancellation policy:
-
-Notes:
+**Order number answered 2026-11-20 (OD18 Final):** `ST-YYMM-NNNNNN` (IST year and month, then six random digits), never restarting; see `owner-decisions-log.mdx`.
 
 ---
 
@@ -151,8 +148,8 @@ re-ask these:
 - Resolved HSN, rate, taxable base and tax amount are snapshotted on the order line.
 
 **Still open here:** the actual HSN codes and GST rates per category, whether the per-piece value
-threshold for apparel applies and on which value it is tested, and whether the category-default
-plus product/variant-override model is acceptable to the CA as a control. Round-2 items `B2.1`–`B2.8`.
+threshold for apparel applies and on which value it is tested, and who signs off a new product's
+HSN. Round-2 items `B2.1`–`B2.6` and `B2.8` (the category-default model is the owner's, 2026-11-15).
 
 **Architectural warning for anyone building before this closes:** if the rate turns on per-piece
 value, `taxClass → rate` is the wrong model and it must be `taxClass + unit value → rate`. Write
@@ -161,7 +158,9 @@ Tax-inclusive pricing also makes the threshold test circular near the boundary (
 
 ### Owner answer
 
-Choice:
+Choice: **Option A** (owner, 2026-11-15): HSN set on the category when it is created, inherited
+by the product form, overridable per product; a category change on edit refills the HSN and
+warns the admin to check it. Codes, rates and the threshold still wait on the CA.
 
 HSN required at product or variant level:
 
@@ -202,7 +201,8 @@ Domestic zone-plus-weight tiers with a free-shipping threshold and a Shiprocket 
 
 - A delivery charge for delivering the goods sold forms part of the value of supply under Section 15(2); transport, packing and insurance form a composite supply with the goods as principal supply. Locked in `owner-decisions-log.mdx`.
 
-**Still open here:** the commercial rate policy below, plus whether the displayed shipping fee is
+**Settled 2026-11-19:** the commercial rate policy (rule builder and the Saha Textile rule set;
+owner log § 2026-11-19), so the options below are history. **Still open here:** whether the displayed shipping fee is
 itself tax-inclusive and how one delivery charge apportions across a cart holding more than one
 GST rate. Round-2 items `C2.1`–`C2.7`.
 
@@ -269,93 +269,12 @@ Choice:
 
 Return window:
 
-Non-returnable products/services:
+Non-returnable products/services: category default with product override (owner, 2026-11-15);
+not returnable: made-to-measure/customised, altered, innerwear and petticoats.
 
 Refund destinations:
 
 Restocking rule:
-
-Notes:
-
----
-
-## 05. `DEC-PROMO-STACK` — Promotion and coupon stacking
-
-### Decision needed
-
-Define how sale prices, automatic promotions, and coupons combine.
-
-### Recommended route
-
-Allow one coupon per order. Automatic promotions stack only when explicitly configured. Exclude sale/clearance items by default.
-
-### Options
-
-#### Option A — One coupon plus controlled automatic stacking (recommended)
-
-- Pros: flexible but bounded.
-- Cons: needs priority, eligibility, and explanation rules.
-
-#### Option B — No stacking
-
-- Pros: safest and simplest.
-- Cons: limits campaign flexibility.
-
-#### Option C — Multiple coupons and promotions
-
-- Pros: maximum campaign flexibility.
-- Cons: high discount-leak and testing risk.
-
-### Owner answer
-
-Choice:
-
-Coupons on sale items:
-
-Automatic promotions may stack:
-
-Per-user limits:
-
-Notes:
-
----
-
-## 06. `DEC-STOCK-RESERVE` — Stock reservation timing
-
-### Decision needed
-
-Choose when inventory is reserved and when it is permanently decremented.
-
-### Recommended route
-
-Do not reserve on add-to-cart. Create a short checkout reservation and finalize inventory only at the locked order/payment transition.
-
-### Options
-
-#### Option A — Reserve at checkout start (recommended)
-
-- Pros: protects serious buyers without letting long-lived carts lock stock.
-- Cons: requires TTL release and payment-failure recovery.
-
-#### Option B — Decrement only at order/payment
-
-- Pros: simpler.
-- Cons: higher last-item oversell risk.
-
-#### Option C — Reserve on add-to-cart
-
-- Pros: strongest cart-holder protection.
-- Cons: abandoned guest carts block stock.
-
-### Owner answer
-
-Choice:
-
-Reservation TTL:
-
-Extension rule:
-
-Final decrement transition:
 
 Notes:
 
@@ -403,67 +322,15 @@ These snapshot fields are now mandatory regardless of which option is chosen, an
 
 ### Owner answer
 
-Choice:
+Choice: **Option A, the rich bounded snapshot** (owner, 2026-11-15; recorded in the owner log).
+Refunds and returns are separate records pointing at order lines; the order is never edited.
+Only additions or removals to the field list remain open.
 
 Fields to add:
 
 Fields to remove:
 
 Notes:
-
----
-
-## 09. `DEC-ADDRESS` — Addresses and checkout phone
-
-### Decision needed
-
-Choose saved-address behavior and whether phone is mandatory for shipping.
-
-### Recommended route
-
-Multiple addresses per user, default shipping/billing flags, billing-same-as-shipping by default, and required shipping phone at checkout.
-
-### Options
-
-#### Option A — Multiple addresses with required shipping phone (recommended)
-
-- Pros: normal repeat-customer and courier experience.
-- Cons: more validation/default-state logic.
-
-#### Option B — One saved address
-
-- Pros: simpler.
-- Cons: poor repeat-order and billing flexibility.
-
-#### Option C — Fully separate billing/shipping workflow
-
-- Pros: most complete.
-- Cons: more checkout friction.
-
-### Settled by CA confirmation (2026-08-21) — no longer open
-
-- The address model must carry billing State and PIN separately from shipping State and PIN, and an optional GSTIN, because place of supply is determined from the recipient address recorded on the invoice rather than from the shipping PIN. Locked in `owner-decisions-log.mdx`.
-
-**Still open here:** the saved-address behaviour below, and — bearing directly on the
-billing-same-as-shipping default — which of the two addresses fills the recipient role when the
-States differ. Do not finalise that default before round-2 item `B1.1` is answered.
-
-### Owner answer
-
-Choice:
-
-Phone required:
-
-Alternate phone:
-
-Billing same as shipping by default:
-
-Address validation provider/manual:
-
-Notes: the 2026-08-12 account-separation lock (D9) added an optional `label` on the typed
-`Address` contract for named saved addresses. It did **not** answer checkout phone
-requirement, billing-same-as-shipping default, or address validation provider — those
-remain open here.
 
 ---
 
@@ -574,136 +441,6 @@ Notes:
 
 ---
 
-## 20. `DEC-PAYPAL-FX` — PayPal FX-conversion markup
-
-### Decision needed
-
-Choose whether foreign-currency prices gross up only PayPal transaction fees or also cover PayPal’s additional currency-conversion markup.
-
-### Recommended route
-
-Make the policy versioned and admin-configurable per currency, with a calculator preview. Start with transaction percentage plus fixed fee; add a separately visible FX-protection percentage only when settlement evidence confirms it.
-
-### Options
-
-#### Option A — Configurable transaction and FX protection (recommended)
-
-- Pros: transparent, adaptable, and margin-safe.
-- Cons: more configuration and disclosure discipline.
-
-#### Option B — Gross up transaction fees only
-
-- Pros: simpler prices.
-- Cons: Saha Textile absorbs conversion spread.
-
-#### Option C — Absorb all PayPal/FX costs
-
-- Pros: lowest displayed foreign price.
-- Cons: uncertain foreign-order margin.
-
-### Owner answer
-
-Choice:
-
-Default FX-protection percentage:
-
-Per-currency overrides:
-
-Customer-facing disclosure:
-
-Notes:
-
----
-
-## 21. `DEC-INR-GATEWAY-TIMING` — INR gateway succession
-
-### Decision needed
-
-Choose when the operational preference changes from CCAvenue to Razorpay. The application remains vendor-neutral through `PaymentGatewayPort` regardless.
-
-### Recommended route
-
-Ship the port and stub first. Bind whichever approved sandbox/live credentials are available for launch. Treat a later switch as an adapter plus DI/config change.
-
-### Options
-
-#### Option A — CCAvenue launch, Razorpay later (recommended if CCAvenue credentials arrive first)
-
-- Pros: follows the current operational preference.
-- Cons: requires a later migration/acceptance pass.
-
-#### Option B — Razorpay before launch
-
-- Pros: avoids post-launch provider migration.
-- Cons: depends on timely onboarding and credentials.
-
-#### Option C — Build both before launch
-
-- Pros: immediate operational fallback.
-- Cons: doubles provider verification and webhook work.
-
-### Owner answer
-
-Choice:
-
-Launch INR adapter:
-
-Trigger/date for successor:
-
-Build both before launch:
-
-Notes:
-
----
-
-## 22. `DEC-SECRETS-DELIVERY` — How running containers receive secrets
-
-### Decision needed
-
-Choose how staging and production containers get their secrets. Secrets stay out of images and
-the browser in every option.
-
-### Why this matters
-
-It sets the deploy scripts, whether the API needs a file-based secret loader, and whether another
-service can stop the shop starting.
-
-### Recommended route
-
-GitHub encrypted secrets written at deploy to root-only files, mounted read-only into each
-container.
-
-### Options
-
-#### Option A — GitHub and mounted files (recommended)
-
-- Pros: $0; nothing new that can stop startup; values stay out of `docker inspect`.
-- Cons: needs a small API boot loader; GitHub cannot show a value again, so the owner keeps a master copy.
-
-#### Option B — GitHub and an env file
-
-- Pros: $0 and no code change.
-- Cons: values sit in plain text in Docker's container config and show in `docker inspect`.
-
-#### Option C — A secrets service (Doppler, Infisical or Bitwarden)
-
-- Pros: one central place and easier rotation; each free tier covers local, staging and production.
-- Cons: fetched at startup, an outage can stop the shop returning after a reboot, and a login token
-  must live on the droplet. Having the deploy job fetch and write the mounted files avoids both.
-- Cons: free tiers offer little or no audit history.
-
-### Status note (2026-11-06)
-
-The owner compared these and will decide later. This gate blocks the deploy scripts only.
-
-### Owner answer
-
-Choice:
-
-Notes:
-
----
-
 ## 24. `DEC-PORTAL-PRIVATE-ACCESS` — Developer-portal private-access design
 
 ### Decision needed
@@ -745,6 +482,10 @@ tokens for CI or machine readers.
 - Pros: works with a conventional origin topology.
 - Cons: more origin hardening and bypass testing; mistakes can expose static assets.
 
+### Status note (2026-11-08)
+
+The owner chose to keep the portal local for now. This stays open until hosting is wanted.
+
 ### Status note (2026-08-13)
 
 Still **unanswered / pending**. This gate blocks **developer-portal deployment**
@@ -769,3 +510,212 @@ Service-token consumers:
 Origin-bypass test target:
 
 Notes:
+
+---
+
+## 25. `DEC-PERF-TRIM` — Removing unused styles, icons and font weights
+
+### Decision needed
+
+After development is finished, decide which unused theme and Bootstrap style rules, icon-font icons and font weights the storefront stops shipping. Until the owner asks for a specific removal in their own words, nothing is removed (owner rule, 2026-11-10).
+
+### Why this matters
+
+Measured on 2026-11-09 with a production build behind Brotli: the global stylesheet is about 0.98 MB (about 120 KB compressed) and every page must download it before it can draw, which is the largest cost on phones (main image at 6 to 9.4 s). The Remix Icon font is about 141 KB while about 100 icons are used. The text fonts are 18 Public Sans styles (100 to 900, upright and italic) plus two Bengali weights; since 2026-11-10 they are served from the shop's own address, so only faces a page uses are downloaded.
+
+### Work that does not remove anything (can go first)
+
+- Split the global stylesheet by where rules are used: a small shared base, route-level styles that load with each page type, and component styles that Angular's server render already puts only on pages that use them. The same rules move; none are deleted.
+- Build-generated critical CSS for the first screen, with the full stylesheets still loaded as cached files without blocking the first paint.
+- Serve fonts and the icon font from our own origin with preload, so no second site is contacted. Done for the text fonts on 2026-11-10 (`scripts/self-host-fonts.mjs`); the icon font was already served by the shop.
+
+### Candidates for removal (each needs the owner's written go-ahead)
+
+- Theme and Bootstrap rules no page uses, found by coverage over every route and state.
+- Icon-font glyphs no template uses, or a move from the icon font to SVG icons.
+- Font weights and italics no style uses.
+
+### Owner answer
+
+Removals approved (owner's own words, with date):
+
+- 2026-11-10, the storefront's `swiper/css` import beside `swiper-bundle.css`: "for the swiper, you're saying that keep it out, it's pure duplication because it is already present in a separate file in a separate way. So fine". Every rule of `swiper.css` is in `swiper-bundle.css`, which still loads, so no style is lost.
+
+Notes: the 2026-11-10 removal audit restored the theme's dark mode (now its own stylesheet, linked only in dark mode), the Russo One font (self-hosted) and the `.exit-modal` selector.
+
+---
+
+## 26. `DEC-SHORTS-PRODUCT-LINK` — Linking Shorts to products by episode code
+
+### Decision needed
+
+The channel's Shorts each show one saree with a code and a price burned into the picture (for example `EP679-S6D, Rs.6995 offer price Rs.5245` and a WhatsApp number). Decide whether a Short should link to that saree's product page ("Shop this saree" in the Shorts popup and on its card), and how the link is made. The owner will ask the business owner (2026-11-10).
+
+### Why this matters
+
+The code is part of the video's pixels; the site cannot read it. Without a link, a viewer who likes the saree only has the on-screen WhatsApp number, which takes the sale off the site. The on-screen price is fixed when the Short is made and goes stale when the site price changes.
+
+### Options
+
+1. **Paste the Short into that product's video list** (recommended in the brief). The product's existing video field already accepts Shorts; when a Short is linked to exactly one product, the popup shows "Shop this saree" and the card shows the product name. No new admin field.
+2. **An episode-code field on products.** Admin types the code (for example `EP679-S6D`); the daily refresh matches it against Short titles and links them automatically. Depends on the channel always putting the code in the title.
+3. **No link.** Shorts stay a channel showcase.
+
+### Owner answer
+
+Answer (owner's own words, with date):
+
+Notes: built so far without any product link; adding option 1 or 2 later changes no page layout.
+
+---
+
+## 27. `DEC-TRACING-SERVERS` — Tracing on staging and production
+
+### Decision needed
+
+Whether to run a tracing container on the staging and production servers, and so turn on
+request tracing there, and which tool it is. The local stack gets it first, with the Release Console's tracing screens
+(owner's approval of 20 Nov 2026); on 20 Nov nothing was switched on anywhere yet.
+
+### Why this matters
+
+Tracing shows the time of every database, search and outside call inside one request. Without it,
+staging and production still have request ids in every log line, but no timing chart. The two
+containers take server memory, CPU and disk.
+
+The first design used two containers: the OpenTelemetry Collector to receive and sample, and
+Jaeger to store for 7 days. Jaeger 2.x already includes tail sampling, so the collector is not
+needed for our use.
+
+Measured on 2026-11-10 on the owner's Mac (Docker, about 6,000 spans a second for 75 seconds per
+candidate; details and figures in the Safe Releases Brief, version 7, Q17):
+
+| Candidate                            | Idle   | Peak    | Disk after |
+| ------------------------------------ | ------ | ------- | ---------- |
+| Collector + Jaeger, sampling a tenth | 79 MB  | 694 MB  | 53 MB      |
+| Jaeger alone, sampling a tenth       | 36 MB  | 506 MB  | 28 MB      |
+| Jaeger alone, keeping all            | 34 MB  | 2088 MB | 223 MB     |
+| VictoriaTraces 0.13, keeping all     | 8 MB   | 183 MB  | 25 MB      |
+| OpenObserve 1.1.2, keeping all       | 249 MB | 804 MB  | 137 MB     |
+| Grafana Tempo 3.1.1, keeping all     | 99 MB  | 580 MB  | 98 MB      |
+
+Recommendation: one VictoriaTraces container with a 7-day retention and a disk cap. Its search
+API uses Jaeger's format, so Jaeger alone stays a configuration-only fallback. Whichever is chosen
+goes under a Compose profile switched on by one GitHub environment variable; the deploy then sets
+`OTEL_EXPORTER_OTLP_ENDPOINT` on the apps.
+
+### What happens first
+
+Asked by the owner on 2026-11-10: at the end of the Release Console build, measure memory, CPU
+and disk on the local stack under heavy load with the real shop traffic, translate the figures to
+the Ubuntu droplet, then check in with the owner before switching anything on. The synthetic
+bench above was done early, at the owner's request, to choose the tool.
+
+### Owner answer
+
+Answer (owner's own words, with date):
+
+Notes:
+
+---
+
+## 28. `DEC-PWA-OFFLINE` — What the installed shop does offline
+
+### Decision needed
+
+The storefront installs as an app, but its service worker caches nothing, so with no network the
+browser shows its own offline page. The owner said on 2026-11-07 that offline work comes later, in
+the installable-app chat, and only when asked. Decide, when that work starts:
+
+1. **Pages.** Which pages open offline: none, the pages a shopper has already visited, or the
+   whole catalogue (category and product pages, refreshed in the background).
+2. **Photos.** Whether product photos are kept on the device, and how much space they may take
+   (for example the last 200 photos, or 50 MB, oldest removed first).
+3. **Cart.** Whether "Add to cart" works offline. If it does, the change waits on the device and
+   is sent when the network returns; the server then re-prices it, and a line whose stock or
+   price has changed needs a rule (drop it, or keep it and show the new price).
+4. **Updates.** Once the worker keeps files, whether a new release takes over at the next visit
+   (the safe default) or at once, which can mix two builds' files on one open page.
+5. **App-store badges.** The footer's Google Play and App Store badges show whenever the shop
+   settings hold store links, and the local data has demo links. There is no store app. Keep the
+   badges for a future store app, remove them, or let them open Get the App.
+
+### Why this matters
+
+Offline pages make the app feel instant on a weak connection. Kept photos use the shopper's
+storage. An offline cart can promise a price or stock the server then refuses. Badges that lead
+to a store page with no shop app send shoppers away from the site.
+
+### Fixed whatever is chosen
+
+Nothing that belongs to one person or changes often is ever kept: API answers about accounts,
+sessions, cart, checkout or orders; signed media addresses; `/config.json`.
+
+### Owner answer
+
+Answer (owner's own words, with date):
+
+Notes: nothing offline is built; the worker has no `fetch` listener (`apps/storefront/src/service-worker/sw.ts`). The badges are the theme's and stay until the owner says otherwise.
+
+---
+
+## 29. `DEC-DISPLAY-FONT` — Where the shop uses the Russo One display font
+
+### Decision needed
+
+The theme names one display font, Russo One, in a single class (`.text-russo`) that no page uses. It is served from the shop's own address since 2026-11-10, so it costs nothing until a page uses it. Decide where, if anywhere, it appears. The owner asked for this to be taken up later in its own piece of work (2026-11-10).
+
+### Why this matters
+
+- Russo One has one weight, no italic, and Latin and Cyrillic letters only. On Bengali pages any Bengali word set in it falls back to Noto Sans Bengali, so one line mixes two styles. Digits are the exception: Bengali pages use English digits.
+- Its wide, squared letters read as sporty or technical, which sits apart from a saree house's heritage look. It is hard to read in sentences and long capital-letter lines.
+- A font has no direct effect on search ranking. Indirectly, a large headline in a late-arriving font can delay the largest paint or shift text when it swaps in; used small and self-hosted, the effect is negligible. A headline in a font is live, indexable, translatable text, unlike words baked into a banner image.
+
+### Options
+
+1. **Numbers only** (recommended in the 2026-11-10 restore brief). Large sale figures and countdown digits, for example in the event popup and the phone strip. Identical in English and Bengali.
+2. **Not used.** The class stays available; a display font that suits the brand and covers Bengali is chosen with the Brand Kit.
+3. **Headings or banners.** Wider use, with the Bengali fallback above.
+
+Not recommended in any option: body text, menus, buttons, product names, or use across the whole site.
+
+### Owner answer
+
+Answer (owner's own words, with date):
+
+Notes: the restore brief with samples is at https://claude.ai/artifact/CQCfTaL7ERzi9GfoK1EUeq.
+
+---
+
+## 30. `DEC-METRE-SCRAP` — A fabric cut that would leave a scrap
+
+### Decision needed
+
+Fabric sold by the metre has a shortest cut per product (1.0 m by default). When a shopper asks
+for a length that would leave less than that on the roll, decide what the shop does. Example:
+4.5 m left, the shopper asks for 4.0 m, and 0.5 m would remain, which nobody could then buy.
+
+Held for discussion by the owner on 2026-11-18 (purchases decisions brief, M3). The same question
+is O1 in `tax-compliance-questionnaire-round-2.mdx` for the business owner.
+
+### Options
+
+1. **Offer "Take all 4.5 m" or keep 4.0 m** (shop brief M05, recommended in the brief). The shopper
+   decides; scraps often sell. Some scraps remain for staff to hold or write off.
+2. **Refuse the cut; offer only "Take all".** No scraps ever; shoppers who wanted exactly 4.0 m may
+   leave.
+3. **Allow any leftover silently** (what the shop does today). Nothing more to build; unsellable
+   scraps pile up.
+
+### Why this matters
+
+Scraps either sell as remnants or end as write-offs at cost. Refusing cuts loses sales; allowing
+them silently grows held and written-off stock.
+
+### Owner answer
+
+Answer (owner's own words, with date):
+
+Notes: the leftover box was drawn as M05 in the fabric-by-the-metre brief
+(https://claude.ai/artifact/QrQRbrvj3d9DzLxFXnLzX8). Today the cart cuts what is asked; the
+leftover stays in stock for staff to hold or write off.

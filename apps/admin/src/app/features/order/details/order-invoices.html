@@ -1,0 +1,82 @@
+@for (invoice of invoices.data() ?? []; track invoice.id) {
+<div class="card">
+	<div class="card-body">
+		<div class="title-header">
+			<div class="d-flex align-items-center flex-wrap gap-2">
+				<h5>{{ 'inv_title' | transloco: { number: invoice.number } }}</h5>
+				<span class="text-muted">
+					{{ (invoice.shipmentId ? 'inv_issued_at_dispatch' : 'inv_issued_waiting') | transloco: { date:
+					day(invoice.date) } }}
+				</span>
+				<div
+					class="d-inline-block"
+					[class.status-success]="invoice.status === 'issued'"
+					[class.status-danger]="invoice.status === 'cancelled'"
+				>
+					<span>{{ 'inv_status_' + invoice.status | transloco }}</span>
+				</div>
+				@if (invoice.ratesPendingCa) {
+				<div class="d-inline-block status-pending">
+					<span>{{ 'inv_rates_wait' | transloco }}</span>
+				</div>
+				}
+			</div>
+		</div>
+		<div class="d-flex flex-wrap gap-2">
+			@for (action of ['print', 'download']; track action) {
+			<div
+				ngbDropdown
+				class="d-inline-block"
+				placement="bottom-start"
+			>
+				<button
+					type="button"
+					class="btn btn-outline btn-sm"
+					ngbDropdownToggle
+					[id]="'inv_' + action + '_' + invoice.id"
+					[disabled]="!!busy()"
+				>
+					<i [class]="action === 'print' ? 'ri-printer-line' : 'ri-download-2-line'"></i>
+					{{ 'inv_' + action | transloco }}
+				</button>
+				<div ngbDropdownMenu>
+					@for (p of prints; track p.copy) {
+					<button
+						ngbDropdownItem
+						type="button"
+						class="d-flex justify-content-between gap-3"
+						[id]="'inv_' + action + '_' + p.copy"
+						(click)="print(invoice, p.copy, action === 'download')"
+					>
+						<span>{{ p.label | transloco }}</span>
+						@if (p.hint) {
+						<small class="text-muted">{{ p.hint | transloco }}</small>
+						}
+					</button>
+					}
+				</div>
+			</div>
+			}
+			<button
+				type="button"
+				class="btn btn-outline btn-sm"
+				disabled
+				[title]="'inv_email_later' | transloco"
+			>
+				<i class="ri-mail-send-line"></i>
+				{{ 'inv_email_buyer' | transloco }}
+			</button>
+			@if (canSeeBooks()) {
+			<a
+				class="btn btn-outline btn-sm"
+				[id]="'inv_open_' + invoice.id"
+				[routerLink]="['/accounts/invoices', invoice.id]"
+			>
+				<i class="ri-book-2-line"></i>
+				{{ 'inv_tab_accounting' | transloco }}
+			</a>
+			}
+		</div>
+	</div>
+</div>
+}

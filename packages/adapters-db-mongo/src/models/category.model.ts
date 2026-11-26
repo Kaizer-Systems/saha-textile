@@ -10,6 +10,17 @@ export interface CategoryDoc {
 	depth: number;
 	isBannerCollection: boolean;
 	displayOrder: number;
+	hsnCode?: string | null;
+	returnable?: boolean;
+	shipping?: {
+		domesticINR: number | null;
+		internationalFirstINR: number | null;
+		internationalFurtherINR: number | null;
+		weightGrams: number | null;
+		lengthCm: number | null;
+		widthCm: number | null;
+		heightCm: number | null;
+	} | null;
 	description?: Record<string, string>;
 	seo?: Record<string, unknown>;
 	media?: Record<string, unknown>;
@@ -28,6 +39,23 @@ const CategorySchema = new Schema<CategoryDoc>(
 		depth: { type: Number, default: 0 },
 		isBannerCollection: { type: Boolean, default: false },
 		displayOrder: { type: Number, default: 0 },
+		hsnCode: { type: String, default: null },
+		returnable: { type: Boolean, default: true },
+		shipping: {
+			type: new Schema(
+				{
+					domesticINR: { type: Number, default: null },
+					internationalFirstINR: { type: Number, default: null },
+					internationalFurtherINR: { type: Number, default: null },
+					weightGrams: { type: Number, default: null },
+					lengthCm: { type: Number, default: null },
+					widthCm: { type: Number, default: null },
+					heightCm: { type: Number, default: null },
+				},
+				{ _id: false },
+			),
+			default: null,
+		},
 		description: { type: Schema.Types.Mixed, default: {} },
 		seo: { type: Schema.Types.Mixed },
 		media: { type: Schema.Types.Mixed },

@@ -12,6 +12,7 @@ import {
 	provideClientHydration,
 	withEventReplay,
 	withHttpTransferCacheOptions,
+	withIncrementalHydration,
 } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { withInMemoryScrolling } from '@angular/router';
@@ -28,23 +29,25 @@ import { CartEffects } from '@core/state/cart/cart.effects';
 import { CART_FEATURE_KEY } from '@core/state/cart/cart.models';
 import { cartPersistenceMetaReducer } from '@core/state/cart/cart.persistence';
 import { cartReducer } from '@core/state/cart/cart.reducer';
-import { COMPARE_FEATURE_KEY, CompareEffects, compareReducer } from '@core/state/compare/compare.store';
-import { WISHLIST_FEATURE_KEY, WishlistEffects, wishlistReducer } from '@core/state/wishlist/wishlist.store';
 import { ErrorService } from '@data-access/services/error.service';
 import { NotificationService } from '@data-access/services/notification.service';
 
+import { provideCarouselInert } from './core/a11y/carousel-inert';
 import { StorefrontAuthGateway } from './core/auth/auth-gateway';
 import { HttpStorefrontAuthGateway } from './core/auth/http-auth.gateway';
 import { provideSessionBootstrap } from './core/auth/session-bootstrap';
 import { provideRuntimeConfig } from './core/config/runtime-config';
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from './core/i18n/locale';
+import { DEFAULT_LOCALE } from './core/i18n/locale';
 import { provideLocaleRouting } from './core/i18n/locale-routing';
 import { TranslocoHttpLoader } from './core/i18n/transloco-loader';
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 import { CatalogLocaleInterceptor } from './core/interceptors/catalog-locale.interceptor';
+import { ClientBuildInterceptor } from './core/interceptors/client-build.interceptor';
 import { GlobalErrorHandlerInterceptor } from './core/interceptors/global-error-handler.interceptor';
 import { LoaderInterceptor } from './core/interceptors/loader.interceptor';
+import { provideAppUpdate } from './core/pwa/app-update';
 import { QUERY_CLIENT, isPublicRequest } from './core/query/query-client';
+import { provideInstallApp } from './shared/ui/modal/install-help-modal/install-app';
 
 export const appConfig: ApplicationConfig = {
 	providers: [
@@ -64,12 +67,14 @@ export const appConfig: ApplicationConfig = {
 		// Analog file-based routing (pages under src/app/pages). `/` is the custom
 		// home (pages/index.page.ts → features/home). Replaces the old
 		// provideRouter + app.routes.ts / feature *.routes.ts config.
-		// Every route is served under its locale (`/en/…`, `/fr/…`) as the router's base —
+		// Every route is served under its locale (`/en/…`, `/bn/…`) as the router's base —
 		// see provideLocaleRouting; the pages themselves stay locale-free.
 		provideFileRouter(
+			// Scrolling after navigation is ScrollMemory's job (core/navigation/scroll-memory.ts): the
+			// router's own waits for a stable app, which this shop with its timers may never reach.
 			withInMemoryScrolling({
-				anchorScrolling: 'enabled',
-				scrollPositionRestoration: 'enabled',
+				anchorScrolling: 'disabled',
+				scrollPositionRestoration: 'disabled',
 			}),
 		),
 		{
@@ -80,6 +85,11 @@ export const appConfig: ApplicationConfig = {
 		{
 			provide: HTTP_INTERCEPTORS,
 			useClass: CatalogLocaleInterceptor,
+			multi: true,
+		},
+		{
+			provide: HTTP_INTERCEPTORS,
+			useClass: ClientBuildInterceptor,
 			multi: true,
 		},
 		{
@@ -104,7 +114,8 @@ export const appConfig: ApplicationConfig = {
 		provideLocaleRouting(),
 		provideTransloco({
 			config: {
-				availableLangs: [...SUPPORTED_LOCALES],
+				// English until the API's list arrives; `provideLocaleRouting` sets the rest.
+				availableLangs: [DEFAULT_LOCALE],
 				defaultLang: DEFAULT_LOCALE,
 				fallbackLang: DEFAULT_LOCALE,
 				reRenderOnLangChange: true,
@@ -117,16 +128,23 @@ export const appConfig: ApplicationConfig = {
 		// optimistic updates, so it moves here rather than to TanStack/SignalStore.
 		provideStore(),
 		provideState(CART_FEATURE_KEY, cartReducer, { metaReducers: [cartPersistenceMetaReducer] }),
-		provideState(WISHLIST_FEATURE_KEY, wishlistReducer),
-		provideState(COMPARE_FEATURE_KEY, compareReducer),
-		provideEffects(CartEffects, WishlistEffects, CompareEffects),
+		provideEffects(CartEffects),
 		// TanStack Query — server-state (lists/details/dropdowns) migrated off NGXS
 		// feature states, one feature at a time (queries in data-access/queries/).
 		provideTanStackQuery(QUERY_CLIENT),
 		// The browser adopts the server's DOM instead of re-rendering it. Only public GETs
 		// are replayed from the server; clicks made before hydration are replayed too.
-		provideClientHydration(withHttpTransferCacheOptions({ filter: isPublicRequest }), withEventReplay()),
+		provideClientHydration(
+			withHttpTransferCacheOptions({ filter: isPublicRequest }),
+			withEventReplay(),
+			// `@defer (hydrate …)` blocks render on the server and wake up later, so a below-the-fold
+			// rail's links are in the page source without loading its code up front.
+			withIncrementalHydration(),
+		),
 		provideZoneChangeDetection({ eventCoalescing: true }),
+		provideAppUpdate(),
+		provideCarouselInert(),
+		provideInstallApp(),
 		provideToastr({
 			positionClass: 'toast-top-center',
 			preventDuplicates: true,

@@ -1,0 +1,172 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'ret_kind_return'"
+>
+	@if (entry.data(); as r) {
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">
+				{{ 'ret_page_title' | transloco: { number: r.number } }}
+				<div class="d-inline-block status-pending ms-2">
+					<span>{{ 'ret_status_' + r.status | transloco }}</span>
+				</div>
+			</h5>
+			<small class="text-muted">
+				<a [routerLink]="['/order/details', r.orderId]">{{ r.orderNumber }}</a>
+				· {{ 'ret_reason_' + r.reason | transloco }}
+			</small>
+		</div>
+		<button
+			type="button"
+			class="btn btn-outline"
+			id="ret_print_note"
+			[disabled]="busy()"
+			(click)="printNote()"
+		>
+			<i class="ri-printer-line"></i>
+			{{ 'ret_print_note' | transloco }}
+		</button>
+	</div>
+	<div class="row g-3">
+		<div class="col-xl-8">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'ret_where' | transloco }}</h5>
+					</div>
+					<div class="d-flex flex-wrap gap-2">
+						@for (s of steps; track s) {
+						<div class="rounded border px-3 py-2">
+							<i
+								[class]="reached(r, s) ? 'ri-checkbox-circle-line text-success' : 'ri-checkbox-blank-circle-line text-muted'"
+							></i>
+							<b class="ms-1">{{ 'ret_status_' + s | transloco }}</b>
+							<small class="text-muted d-block">{{ reached(r, s) ?? '' }}</small>
+						</div>
+						}
+					</div>
+					@if (r.status === 'asked' || r.status === 'pickup_booked') {
+					<div class="d-flex mt-3 gap-2">
+						@if (r.status === 'asked' && r.how === 'pickup') {
+						<button
+							type="button"
+							class="btn btn-outline btn-sm"
+							id="ret_step_pickup"
+							[disabled]="busy()"
+							(click)="step('pickup_booked')"
+						>
+							{{ 'ret_mark_pickup' | transloco }}
+						</button>
+						}
+						<button
+							type="button"
+							class="btn btn-theme btn-sm"
+							id="ret_step_received"
+							[disabled]="busy()"
+							(click)="step('received')"
+						>
+							{{ 'ret_mark_received' | transloco }}
+						</button>
+					</div>
+					}
+				</div>
+			</div>
+			@if (checkable()) {
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'ret_check_title' | transloco }}</h5>
+					</div>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th class="text-start">{{ 'inv_item' | transloco }}</th>
+									<th>{{ 'inv_qty' | transloco }}</th>
+									<th>{{ 'ret_what_happens' | transloco }}</th>
+									<th>{{ 'ret_note' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (line of r.lines; track line.lineId) {
+								<tr>
+									<td class="text-start">
+										{{ line.title }}
+										<small class="text-muted d-block">{{ line.sku }}</small>
+									</td>
+									<td>{{ line.quantity | stockQty: (line.unit === 'MTR' ? 'metre' : 'piece') }}</td>
+									<td>
+										<select
+											class="form-select form-select-sm"
+											[attr.aria-label]="('ret_what_happens' | transloco) + ': ' + line.title"
+											[ngModel]="choice(line.lineId, line).outcome"
+											(ngModelChange)="setChoice(line.lineId, line, { outcome: $event })"
+										>
+											@for (o of outcomes; track o) {
+											<option [value]="o">{{ 'ret_outcome_' + o | transloco }}</option>
+											}
+										</select>
+									</td>
+									<td>
+										<input
+											class="form-control form-control-sm"
+											maxlength="300"
+											[attr.aria-label]="('ret_note' | transloco) + ': ' + line.title"
+											[ngModel]="choice(line.lineId, line).note"
+											(ngModelChange)="setChoice(line.lineId, line, { note: $event })"
+										/>
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					<div class="d-flex justify-content-end mt-3 gap-2">
+						<button
+							type="button"
+							class="btn btn-outline"
+							id="ret_save_check"
+							[disabled]="busy()"
+							(click)="saveCheck(r)"
+						>
+							{{ 'ret_save_check' | transloco }}
+						</button>
+						<button
+							type="button"
+							class="btn btn-theme"
+							id="ret_make_cn"
+							[disabled]="busy()"
+							(click)="makeCreditNote(r)"
+						>
+							<i class="ri-file-text-line"></i>
+							{{ 'ret_make_cn' | transloco }}
+						</button>
+					</div>
+				</div>
+			</div>
+			} @if (r.creditNoteId) {
+			<p class="mt-2">
+				<a [routerLink]="['/accounts/credit-notes', r.creditNoteId]">{{ 'ret_open_cn' | transloco }}</a>
+			</p>
+			}
+		</div>
+		<div class="col-xl-4">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'ret_three_choices' | transloco }}</h5>
+					</div>
+					<ul class="list-unstyled mb-0">
+						@for (o of outcomes; track o) {
+						<li class="border-bottom py-2">
+							<b>{{ 'ret_outcome_' + o | transloco }}</b>
+							<small class="text-muted d-block">{{ 'ret_outcome_' + o + '_help' | transloco }}</small>
+						</li>
+						}
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+	}
+</app-page-wrapper>

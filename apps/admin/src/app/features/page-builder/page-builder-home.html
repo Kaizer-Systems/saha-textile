@@ -1,0 +1,361 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'pb_page_' + pageType"
+>
+	<button
+		button
+		type="button"
+		class="btn btn-outline d-flex align-items-center me-2 gap-1"
+		id="pb_import"
+		(click)="importFile.click()"
+	>
+		<i
+			class="ri-upload-2-line"
+			aria-hidden="true"
+		></i>
+		{{ 'pb_import' | transloco }}
+	</button>
+	<input
+		#importFile
+		class="d-none"
+		type="file"
+		id="pb_import_file"
+		accept=".json,application/json"
+		[attr.aria-label]="'pb_import' | transloco"
+		(change)="importLayout(importFile)"
+	/>
+	<button
+		button
+		type="button"
+		class="btn btn-theme d-flex align-items-center gap-1"
+		id="pb_new_layout"
+		(click)="newLayout(null)"
+	>
+		<i
+			class="ri-add-line"
+			aria-hidden="true"
+		></i>
+		{{ 'pb_new_layout' | transloco }}
+	</button>
+
+	<p class="pb-crumb">
+		<a routerLink="/page-builder">{{ 'page_builder' | transloco }}</a>
+		› {{ 'pb_page_' + pageType | transloco }}
+	</p>
+	<div class="fm-note mb-4">
+		<i
+			class="ri-information-line"
+			aria-hidden="true"
+		></i>
+		<div>
+			<strong>{{ 'pb_one_layout_title' | transloco }}</strong>
+			{{ 'pb_one_layout' | transloco }}
+		</div>
+	</div>
+
+	<div class="row g-4 mb-4">
+		<div class="col-xxl-8 col-12">
+			@if (page()?.safeMode; as safe) {
+			<div
+				class="alert alert-warning"
+				id="pb_safe_mode_on"
+			>
+				{{ 'pb_safe_mode_on' | transloco: { name: safe.byName ?? '—', when: (safe.at | date: 'd MMM y, h:mm a' :
+				'+0530') } }}
+			</div>
+			}
+			<div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+				<h6 class="mb-0">{{ 'pb_when_title' | transloco }}</h6>
+				@if (canGoLive()) {
+				<div class="d-flex flex-wrap gap-2">
+					@if (page()?.putBack; as back) {
+					<button
+						type="button"
+						class="btn btn-sm btn-outline"
+						id="pb_put_back"
+						(click)="ask('put_back')"
+					>
+						{{ 'pb_put_back' | transloco: { name: back.layoutName } }}
+					</button>
+					}
+					<button
+						type="button"
+						class="btn btn-sm btn-outline"
+						id="pb_safe_mode"
+						(click)="ask(page()?.safeMode ? 'safe_off' : 'safe_on')"
+					>
+						{{ (page()?.safeMode ? 'pb_safe_mode_end' : 'pb_safe_mode_start') | transloco }}
+					</button>
+				</div>
+				}
+			</div>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table
+					class="all-package theme-table no-footer fm-table mb-0 table"
+					id="pb_when"
+				>
+					<thead>
+						<tr>
+							<th>{{ 'pb_col_from' | transloco }}</th>
+							<th>{{ 'pb_col_layout' | transloco }}</th>
+							<th>{{ 'pb_col_status' | transloco }}</th>
+							@if (canGoLive()) {
+							<th>
+								<span class="visually-hidden">{{ 'actions' | transloco }}</span>
+							</th>
+							}
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of when(); track $index) {
+						<tr>
+							<td>
+								@if (row.status === 'live') { {{ 'pb_now_since' | transloco: { when: (row.from | date:
+								'd MMM y' : '+0530') } }} } @else if (row.status === 'waiting' && !row.from) { {{
+								'pb_when_ready' | transloco }} } @else { {{ row.from | date: 'd MMM y, h:mm a' : '+0530'
+								}} }
+							</td>
+							<td>
+								@if (row.back) { {{ 'pb_back_to' | transloco }} }
+								<strong>{{ row.name }}</strong>
+							</td>
+							<td>
+								<span [class]="statusClass[row.status]">
+									{{ 'pb_status_' + row.status | transloco }}
+								</span>
+							</td>
+							@if (canGoLive()) {
+							<td class="text-end">
+								@if (row.cancel; as cancel) {
+								<button
+									type="button"
+									class="btn btn-sm btn-link p-0"
+									[title]="'pb_cancel_switch' | transloco"
+									[attr.aria-label]="'pb_cancel_switch' | transloco"
+									[attr.data-cancel]="cancel.revisionId"
+									(click)="ask('cancel_switch', cancel)"
+								>
+									<i
+										class="ri-close-circle-line"
+										aria-hidden="true"
+									></i>
+								</button>
+								} @if (row.waitingLayoutId; as id) {
+								<button
+									type="button"
+									class="btn btn-sm btn-link p-0"
+									[title]="'pb_cancel_waiting' | transloco"
+									[attr.aria-label]="'pb_cancel_waiting' | transloco"
+									[attr.data-cancel-waiting]="id"
+									(click)="ask('cancel_waiting', id)"
+								>
+									<i
+										class="ri-close-circle-line"
+										aria-hidden="true"
+									></i>
+								</button>
+								}
+							</td>
+							}
+						</tr>
+						} @empty {
+						<tr>
+							<td [attr.colspan]="canGoLive() ? 4 : 3">{{ 'pb_showing_fixed' | transloco }}</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+		<div class="col-xxl-4 col-12">
+			<h6 class="mb-2">{{ 'pb_page_settings' | transloco }}</h6>
+			<ul
+				class="list-unstyled d-grid mb-0 gap-1"
+				id="pb_settings_summary"
+			>
+				<li class="fm-ok">
+					<i
+						class="ri-checkbox-circle-line"
+						aria-hidden="true"
+					></i>
+					<span>{{ 'pb_settings_address' | transloco: { address: '/en/ · /bn/' } }}</span>
+				</li>
+				@for (gap of settingsTodo(); track gap.locale) {
+				<li class="fm-warn">
+					<i
+						class="ri-error-warning-line"
+						aria-hidden="true"
+					></i>
+					<span>{{ 'pb_settings_todo' | transloco: { language: gap.language, count: gap.count } }}</span>
+				</li>
+				} @empty {
+				<li class="fm-ok">
+					<i
+						class="ri-checkbox-circle-line"
+						aria-hidden="true"
+					></i>
+					<span>{{ 'pb_settings_done' | transloco }}</span>
+				</li>
+				}
+			</ul>
+			<p class="help-text mt-2 mb-2">{{ 'pb_settings_help' | transloco }}</p>
+			<a
+				class="btn btn-sm btn-outline"
+				id="pb_settings_open"
+				[routerLink]="['/page-builder', pageType, 'settings']"
+			>
+				{{ 'pb_settings_edit' | transloco }}
+			</a>
+		</div>
+	</div>
+
+	<h5 class="mb-3">{{ 'pb_your_layouts' | transloco }}</h5>
+	<div
+		class="row row-cols-xxl-4 row-cols-xl-4 row-cols-lg-3 row-cols-md-2 row-cols-1 g-4 layout-selection-sec"
+		id="pb_layouts"
+	>
+		@for (row of page()?.layouts ?? []; track row.layout.id) {
+		<div [attr.data-layout]="row.layout.id">
+			<div
+				class="theme-card"
+				[class.active]="row.status === 'live'"
+			>
+				<div class="library-box pb-lib">
+					<app-pb-thumb [outline]="row.outline" />
+				</div>
+				<div class="content-sec pb-content">
+					<h5 class="mb-0">{{ row.layout.name }}</h5>
+					<span [class]="statusClass[row.status]">{{ 'pb_status_' + row.status | transloco }}</span>
+					@if (row.layout.reviewRequest) {
+					<span
+						class="fm-chip"
+						[attr.data-review]="row.layout.id"
+					>
+						{{ 'pb_review_chip' | transloco }}
+					</span>
+					}
+					<span class="pb-card-actions">
+						<a
+							[routerLink]="['/page-builder', pageType, 'layouts', row.layout.id]"
+							[title]="'edit' | transloco"
+							[attr.aria-label]="'edit' | transloco"
+							[attr.data-edit]="row.layout.id"
+						>
+							<i
+								class="ri-pencil-line"
+								aria-hidden="true"
+							></i>
+						</a>
+						<a
+							href="javascript:void(0)"
+							role="button"
+							[title]="'pb_duplicate' | transloco"
+							[attr.aria-label]="'pb_duplicate' | transloco"
+							(click)="duplicate(row)"
+						>
+							<i
+								class="ri-file-copy-line"
+								aria-hidden="true"
+							></i>
+						</a>
+						<a
+							href="javascript:void(0)"
+							role="button"
+							[title]="'pb_export' | transloco"
+							[attr.aria-label]="'pb_export' | transloco"
+							[attr.data-export]="row.layout.id"
+							(click)="exportLayout(row)"
+						>
+							<i
+								class="ri-download-2-line"
+								aria-hidden="true"
+							></i>
+						</a>
+					</span>
+					<span class="pb-when">
+						@switch (row.status) { @case ('live') { {{ 'pb_when_live' | transloco: { when: (row.from | date:
+						'd MMM y' : '+0530') } }} } @case ('scheduled') { {{ 'pb_when_scheduled' | transloco: { when:
+						(row.from | date: 'd MMM y, h:mm a' : '+0530') } }} } @case ('ended') { {{ 'pb_when_ended' |
+						transloco: { from: (row.from | date: 'd MMM y' : '+0530'), until: (row.until | date: 'd MMM y' :
+						'+0530') } }} } @default { {{ 'pb_when_draft' | transloco: { when: (row.layout.updatedAt | date:
+						'd MMM y' : '+0530'), name: row.updatedByName ?? '—' } }} } }
+					</span>
+				</div>
+			</div>
+		</div>
+		}
+	</div>
+
+	@if (canSeeSales()) {
+	<h5 class="mt-5 mb-3">{{ 'pb_sales_title' | transloco }}</h5>
+	<p class="help-text">{{ 'pb_sales_help' | transloco }}</p>
+	<div class="table-responsive datatable-wrapper border-table mb-4">
+		<table
+			class="all-package theme-table no-footer fm-table mb-0 table"
+			id="pb_sales"
+		>
+			<thead>
+				<tr>
+					<th>{{ 'pb_col_layout' | transloco }}</th>
+					<th>{{ 'pb_col_from' | transloco }}</th>
+					<th>{{ 'pb_col_until' | transloco }}</th>
+					<th class="text-end">{{ 'pb_col_orders' | transloco }}</th>
+					<th class="text-end">{{ 'pb_col_total' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of sales() ?? []; track $index) {
+				<tr>
+					<td>{{ row.layoutName }}</td>
+					<td>{{ row.from | date: 'd MMM y, h:mm a' : '+0530' }}</td>
+					<td>
+						@if (row.until) { {{ row.until | date: 'd MMM y, h:mm a' : '+0530' }} } @else { {{
+						'pb_sales_now' | transloco }} }
+					</td>
+					<td class="text-end">{{ row.orders }}</td>
+					<td class="text-end">₹{{ row.totalINR | number: '1.0-0' : 'en-IN' }}</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td colspan="5">{{ 'pb_sales_none' | transloco }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	} @if (page()?.templates?.length) {
+	<h5 class="mt-5 mb-3">{{ 'pb_templates_for' | transloco: { page: ('pb_page_' + pageType | transloco) } }}</h5>
+	<div
+		class="row row-cols-xxl-4 row-cols-xl-4 row-cols-lg-3 row-cols-md-2 row-cols-1 g-4 layout-selection-sec"
+		id="pb_templates"
+	>
+		@for (item of page()?.templates ?? []; track item.key) {
+		<div [attr.data-template]="item.key">
+			<div class="theme-card">
+				<div class="library-box pb-lib">
+					<app-pb-thumb [outline]="item.outline" />
+				</div>
+				<div class="content-sec pb-content">
+					<h5 class="mb-0">{{ 'pb_template_' + item.key | transloco }}</h5>
+					<span class="pb-card-actions">
+						<button
+							type="button"
+							class="btn btn-sm btn-outline"
+							(click)="newLayout(item.key)"
+						>
+							{{ 'pb_use_this' | transloco }}
+						</button>
+					</span>
+					<span class="pb-when">{{ 'pb_template_' + item.key + '_help' | transloco }}</span>
+				</div>
+			</div>
+		</div>
+		}
+	</div>
+	}
+</app-page-wrapper>
+
+<app-confirmation-modal
+	#confirmationModal
+	(confirmed)="confirmed($event)"
+/>

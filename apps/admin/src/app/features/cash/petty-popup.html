@@ -1,0 +1,267 @@
+<div class="modal-header">
+	<h5 class="mb-0">{{ 'cash_petty_title' | transloco: { box: box()?.name ?? '' } }}</h5>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	></button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	<div class="row g-3">
+		<div class="col-md-6">
+			<label
+				class="form-label-title"
+				for="petty_head"
+			>
+				{{ 'cash_expense_head' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="petty_head"
+				[ngModel]="head()"
+				(ngModelChange)="head.set($event)"
+			>
+				<option value="">—</option>
+				@for (h of heads(); track h.id) {
+				<option [value]="h.id">{{ h.name }}</option>
+				}
+			</select>
+			<small class="text-muted">
+				{{ heads().map((h) => h.name).join(' · ') }} {{ 'cash_heads_editable' | transloco }}
+			</small>
+		</div>
+		<div class="col-md-3">
+			<label
+				class="form-label-title"
+				for="petty_amount"
+			>
+				{{ 'amount' | transloco }}
+			</label>
+			<div class="input-group">
+				<span class="input-group-text">₹</span>
+				<input
+					class="form-control"
+					id="petty_amount"
+					inputmode="decimal"
+					[ngModel]="amount()"
+					(ngModelChange)="amount.set($event)"
+				/>
+			</div>
+		</div>
+		<div class="col-md-3">
+			<label
+				class="form-label-title"
+				for="petty_paid_to"
+			>
+				{{ 'cash_paid_to' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="petty_paid_to"
+				maxlength="120"
+				[ngModel]="paidTo()"
+				(ngModelChange)="paidTo.set($event)"
+			/>
+		</div>
+		<div class="col-md-6">
+			<label
+				class="form-label-title"
+				for="petty_what_for"
+			>
+				{{ 'cash_what_for' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="petty_what_for"
+				maxlength="300"
+				[ngModel]="whatFor()"
+				(ngModelChange)="whatFor.set($event)"
+			/>
+		</div>
+		<div class="col-md-6">
+			<span class="form-label-title d-block">{{ 'cash_bill_or_photo' | transloco }}</span>
+			@if (checks.data()?.billNeeded) { @if (bill(); as b) {
+			<div class="d-flex align-items-center gap-2">
+				<span class="text-truncate">{{ b.name }}</span>
+				<button
+					type="button"
+					class="btn btn-sm btn-outline"
+					[title]="'remove' | transloco"
+					(click)="bill.set(null)"
+				>
+					<i class="ri-close-line"></i>
+				</button>
+			</div>
+			} @else {
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="petty_pick_bill"
+				(click)="pickBill()"
+			>
+				<i class="ri-attachment-2"></i>
+				{{ 'cash_pick_bill' | transloco }}
+			</button>
+			} } @else {
+			<input
+				class="form-control"
+				disabled
+				[value]="'cash_bill_not_needed' | transloco: { amount: inr(checks.data()?.billOverPaise ?? 0) }"
+			/>
+			}
+		</div>
+		<div class="col-12">
+			<label class="switch me-2 mb-0 align-middle">
+				<input
+					type="checkbox"
+					id="petty_gst"
+					[checked]="gstOn()"
+					(change)="gstOn.set($any($event.target).checked)"
+				/>
+				<span class="switch-state"></span>
+			</label>
+			<span>{{ 'cash_gst_bill' | transloco }}</span>
+			<small class="d-block text-muted">{{ 'cash_gst_bill_hint' | transloco }}</small>
+		</div>
+		@if (gstOn()) {
+		<div class="col-md-4">
+			<label
+				class="form-label-title"
+				for="petty_gstin"
+			>
+				{{ 'cash_supplier_gstin' | transloco }}
+			</label>
+			<input
+				class="form-control text-uppercase"
+				id="petty_gstin"
+				maxlength="15"
+				[ngModel]="gstin()"
+				(ngModelChange)="gstin.set($event)"
+			/>
+		</div>
+		<div class="col-md-4">
+			<label
+				class="form-label-title"
+				for="petty_supplier"
+			>
+				{{ 'cash_supplier_name' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="petty_supplier"
+				maxlength="120"
+				[ngModel]="supplier()"
+				(ngModelChange)="supplier.set($event)"
+			/>
+		</div>
+		<div class="col-md-4">
+			<label
+				class="form-label-title"
+				for="petty_rate"
+			>
+				{{ 'cash_gst_rate' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="petty_rate"
+				[ngModel]="rate()"
+				(ngModelChange)="rate.set(+$event)"
+			>
+				@for (r of rates; track r) {
+				<option [value]="r">{{ r }}%</option>
+				}
+			</select>
+		</div>
+		<div class="col-md-4">
+			<label
+				class="form-label-title"
+				for="petty_bill_number"
+			>
+				{{ 'cash_bill_number' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="petty_bill_number"
+				maxlength="16"
+				[ngModel]="billNumber()"
+				(ngModelChange)="billNumber.set($event)"
+			/>
+		</div>
+		<div class="col-md-4">
+			<label
+				class="form-label-title"
+				for="petty_bill_date"
+			>
+				{{ 'cash_bill_date' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="petty_bill_date"
+				type="date"
+				[ngModel]="billDate()"
+				(ngModelChange)="billDate.set($event)"
+			/>
+		</div>
+		}
+		<div class="col-12">
+			@if (checks.data(); as c) {
+			<ul class="list-unstyled small mb-0">
+				<li class="d-flex align-items-start border-bottom gap-2 py-2">
+					<i
+						[class]="c.withinLimit ? 'ri-checkbox-circle-line text-success' : 'ri-close-circle-line text-danger'"
+					></i>
+					<div class="flex-grow-1">
+						<b>
+							{{ 'cash_check_limit' | transloco: { limit: c.limitPaise === null ? '—' : inr(c.limitPaise)
+							} }}
+						</b>
+						<span class="d-block text-muted">{{ 'cash_check_limit_body' | transloco }}</span>
+					</div>
+					<span class="text-nowrap">
+						{{ 'cash_check_today' | transloco: { amount: inr(c.paidTodayPaise + (paise() ?? 0)) } }}
+					</span>
+				</li>
+				<li class="d-flex align-items-start border-bottom gap-2 py-2">
+					<i
+						[class]="c.sheetOpen ? 'ri-checkbox-circle-line text-success' : 'ri-close-circle-line text-danger'"
+					></i>
+					<div>
+						<b>{{ 'cash_check_sheet' | transloco }}</b>
+						<span class="d-block text-muted">
+							{{ box()?.name }}@if (c.openedAt) { · {{ 'cash_opened_at' | transloco: { time:
+							time(c.openedAt) } }} }
+						</span>
+					</div>
+				</li>
+			</ul>
+			}
+		</div>
+	</div>
+	@if (problem(); as p) {
+	<div
+		class="alert alert-danger mt-3 mb-0"
+		id="petty_problem"
+	>
+		{{ p.key | transloco: p.params }}
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<button
+		type="button"
+		class="btn btn-outline"
+		(click)="modal.dismiss()"
+	>
+		{{ 'cancel' | transloco }}
+	</button>
+	<button
+		type="button"
+		class="btn btn-theme"
+		id="petty_pay"
+		[disabled]="!ready() || busy()"
+		(click)="pay()"
+	>
+		{{ 'cash_pay_from_box' | transloco }}
+	</button>
+</div>

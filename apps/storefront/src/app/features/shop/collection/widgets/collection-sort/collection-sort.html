@@ -2,7 +2,11 @@
 	@if (filter()!['layout'] !== 'collection_offcanvas_filter' && filter()!['layout'] !== 'collection_no_sidebar') {
 	<div class="filter-button-group mt-0">
 		<div class="filter-button d-inline-block d-lg-none">
-			<a (click)="openFilter(true)">
+			<a
+				href="javascript:void(0)"
+				role="button"
+				(click)="openFilter(true)"
+			>
 				<i class="ri-filter-2-fill"></i>
 				{{ 'filter_menu' | transloco }}
 			</a>
@@ -14,6 +18,7 @@
 			@if (filter() && filter()!['layout'] === 'collection_offcanvas_filter') {
 			<a
 				href="javascript:void(0)"
+				role="button"
 				class="filter-offcanvas-title"
 				(click)="openOffCanvasMenu()"
 			>
@@ -21,12 +26,18 @@
 				{{ 'filter_menu' | transloco }}
 			</a>
 			}
-			<h5 class="text-content">{{ 'sort_by'| transloco}} :</h5>
+			<p
+				class="h5 text-content"
+				id="collection-sort-label"
+			>
+				{{ 'sort_by'| transloco}} :
+			</p>
 			@if(isBrowser) {
 			<div class="dropdown">
 				<select2
 					class="custom-select"
 					[displaySearchStatus]="'hidden'"
+					ariaLabelledby="collection-sort-label"
 					[placeholder]="'sort' | transloco"
 					[value]="filter()!['sortBy']"
 					[data]="sortOptions()"
@@ -43,6 +54,7 @@
 				>
 					<a
 						href="javascript:void(0)"
+						role="button"
 						(click)="grid('collection_3_grid')"
 					>
 						<img
@@ -57,6 +69,7 @@
 				>
 					<a
 						href="javascript:void(0)"
+						role="button"
 						(click)="grid('collection_4_grid')"
 					>
 						<img
@@ -77,6 +90,7 @@
 				>
 					<a
 						href="javascript:void(0)"
+						role="button"
 						(click)="grid('collection_5_grid')"
 					>
 						<img
@@ -97,6 +111,7 @@
 				>
 					<a
 						href="javascript:void(0)"
+						role="button"
 						(click)="grid('collection_list_view')"
 					>
 						<img

@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 
 import { Inject, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import {
@@ -20,6 +20,8 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { cookieNames, csrfCookieOptions, requestCookieAudience, sessionCookieOptions } from '../common/cookies';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { recentSessionReset } from './session-notice';
+import { TokenHasher } from './token-hasher';
 import { labelFromUserAgent, shouldBackfillDeviceLabel } from './device-label';
 import type { AuthenticatedPrincipal } from './session.guard';
 import {
@@ -57,6 +59,27 @@ export interface LiveSessionExpectation {
  * Soft-lock = presence proof; this idle TTL = hard kill.
  */
 export const ADMIN_IDLE_TTL_SECONDS = 60 * 60;
+
+/**
+ * The admin's 15-minute lock, held by the server (owner, 2026-11-20: a reload must not skip it).
+ *
+ * The admin app sends an activity signal at most once a minute while the operator types, clicks or
+ * scrolls, and locks itself after 15 minutes without one. The server treats a session as locked
+ * when the lock was set, or when no activity has come for 15 minutes plus a short grace (the
+ * signal's own one-minute step and clock drift), so a closed tab, a sleeping laptop or a reload
+ * comes back to the lock too. Only the PIN or password clears it.
+ */
+export const ADMIN_LOCK_AFTER_SECONDS = 15 * 60;
+export const ADMIN_LOCK_GRACE_SECONDS = 2 * 60;
+
+/** Whether an admin session is behind the lock at `nowMs`. Storefront sessions never are. */
+export function isAdminSessionLocked(session: AuthSession, nowMs: number = Date.now()): boolean {
+	if (session.audience !== 'admin') return false;
+	if (session.lockedAt) return true;
+	const lastActive = Date.parse(session.lastActiveAt ?? session.lastSeenAt ?? session.createdAt);
+	if (!Number.isFinite(lastActive)) return false;
+	return nowMs - lastActive > (ADMIN_LOCK_AFTER_SECONDS + ADMIN_LOCK_GRACE_SECONDS) * 1000;
+}
 export const STOREFRONT_IDLE_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 /**
@@ -109,15 +132,24 @@ export class SessionService {
 	 * so no slow KDF is needed — there is nothing to brute force.
 	 */
 	hashOpaqueToken(value: string): string {
-		return createHmac('sha256', this.tokenPepper()).update(value).digest('hex');
+		return this.tokens.hash(value);
 	}
 
 	private hash(value: string): string {
 		return this.hashOpaqueToken(value);
 	}
 
-	private tokenPepper(): string {
-		return this.config.cookies.csrfSecret ?? this.config.jwt.refreshSecret;
+	private tokenHasher?: TokenHasher;
+
+	/** The current token key, and the previous one for 30 days after a planned change. */
+	private get tokens(): TokenHasher {
+		return (this.tokenHasher ??= new TokenHasher(this.config));
+	}
+
+	/** The session a refresh token belongs to, under the current or the previous token key. */
+	private async sessionByRefreshToken(presented: string): Promise<{ session: AuthSession; hash: string } | null> {
+		const hit = await this.tokens.find(presented, (hash) => this.sessions.findByRefreshTokenHash(hash));
+		return hit ? { session: hit.found, hash: hit.hash } : null;
 	}
 
 	/** 256 bits of CSPRNG entropy — refresh tokens are opaque, never JWTs. */
@@ -140,6 +172,34 @@ export class SessionService {
 		if (expected?.userId && session.userId !== expected.userId) return false;
 		if (expected?.audience && session.audience !== expected.audience) return false;
 		return true;
+	}
+
+	/**
+	 * The idle expiry a rotation writes. For an admin session it counts from the operator's last
+	 * real activity, not from the refresh: a locked tab that keeps its cookies fresh in the
+	 * background must still be signed out an hour after anyone last used it.
+	 */
+	private nextIdleExpiry(current: AuthSession, nowMs: number): string {
+		const fromNow = nowMs + idleTtlSeconds(current.audience, current.persistent) * 1000;
+		if (current.audience !== 'admin' || !current.lastActiveAt) return new Date(fromNow).toISOString();
+		const fromActivity = Date.parse(current.lastActiveAt) + ADMIN_IDLE_TTL_SECONDS * 1000;
+		return new Date(Math.min(fromNow, Number.isFinite(fromActivity) ? fromActivity : fromNow)).toISOString();
+	}
+
+	/** Puts the admin lock up for this session (idempotent: an earlier lock time is kept). */
+	async lockAdminSession(session: AuthSession): Promise<void> {
+		if (session.lockedAt) return;
+		await this.sessions.setLock(session.id, new Date().toISOString());
+	}
+
+	/** Clears the lock after the PIN or password, and counts the proof as activity. */
+	async unlockAdminSession(sessionId: string): Promise<void> {
+		await this.sessions.setLock(sessionId, null, new Date().toISOString());
+	}
+
+	/** The operator is present (the admin's activity signal). */
+	async markAdminActive(sessionId: string): Promise<void> {
+		await this.sessions.markActive(sessionId, new Date().toISOString());
 	}
 
 	async findLiveById(sessionId: string, expected?: LiveSessionExpectation): Promise<AuthSession | null> {
@@ -174,7 +234,7 @@ export class SessionService {
 
 		const refresh = this.readCookie(request, names.refresh);
 		if (!refresh) return null;
-		const session = await this.sessions.findByRefreshTokenHash(this.hash(refresh));
+		const session = (await this.sessionByRefreshToken(refresh))?.session ?? null;
 		return this.isLiveSession(session) ? session : null;
 	}
 
@@ -266,6 +326,9 @@ export class SessionService {
 			absoluteExpiresAt: new Date(nowMs + ABSOLUTE_TTL_SECONDS[input.audience] * 1000).toISOString(),
 			revokedAt: null,
 			revokeReason: null,
+			// Signing in is presence: an admin session starts active and unlocked.
+			lastActiveAt: input.audience === 'admin' ? new Date(nowMs).toISOString() : null,
+			lockedAt: null,
 		};
 
 		await this.sessions.create(session);
@@ -310,7 +373,9 @@ export class SessionService {
 		const presented = this.readCookie(request, cookieNames(this.config, requestCookieAudience(request)).refresh);
 		if (!presented) return false;
 
-		const compromised = await this.sessions.findByPreviousRefreshTokenHash(this.hash(presented));
+		const compromised =
+			(await this.tokens.find(presented, (hash) => this.sessions.findByPreviousRefreshTokenHash(hash)))?.found ??
+			null;
 		if (!compromised) return false;
 
 		const revoked = await this.sessions.revokeFamily(
@@ -334,8 +399,6 @@ export class SessionService {
 		const presented = this.readCookie(input.request, names.refresh);
 		if (!presented) throw new UnauthorizedException('No refresh token');
 
-		const presentedHash = this.hash(presented);
-
 		// Normally already handled by `RefreshReuseGuard` before CSRF ran. Kept here so the
 		// use case is safe on its own terms: a caller that reaches this method by another
 		// path must not be able to rotate with a token that was already replaced.
@@ -343,7 +406,11 @@ export class SessionService {
 			throw new UnauthorizedException('Session revoked');
 		}
 
-		const current = await this.sessions.findByRefreshTokenHash(presentedHash);
+		// Found under the current or the previous token key; the rotation below stores the new
+		// token under the current key, which moves a session off the previous key on its next refresh.
+		const hit = await this.sessionByRefreshToken(presented);
+		const current = hit?.session;
+		const presentedHash = hit?.hash ?? this.hash(presented);
 		if (!current || current.revokedAt || current.audience !== input.audience) {
 			this.clearCookies(input.reply);
 			throw new UnauthorizedException('Invalid session');
@@ -367,7 +434,7 @@ export class SessionService {
 			nextCsrfSecretHash: this.hash(csrfToken),
 			// Carries the original choice forward: rotating must never quietly upgrade a
 			// browser-session login into a remembered one.
-			expiresAt: new Date(nowMs + idleTtlSeconds(current.audience, current.persistent) * 1000).toISOString(),
+			expiresAt: this.nextIdleExpiry(current, nowMs),
 			lastSeenAt: new Date(nowMs).toISOString(),
 		});
 
@@ -416,7 +483,7 @@ export class SessionService {
 	async revoke(request: FastifyRequest, reply: FastifyReply, reason: SessionRevokeReason = 'logout'): Promise<void> {
 		const presented = this.readCookie(request, cookieNames(this.config, requestCookieAudience(request)).refresh);
 		if (presented) {
-			const session = await this.sessions.findByRefreshTokenHash(this.hash(presented));
+			const session = (await this.sessionByRefreshToken(presented))?.session;
 			if (session) await this.sessions.revoke(session.id, reason, new Date().toISOString());
 		} else {
 			// Access-only logout: still revoke the sid so the access JWT dies immediately.
@@ -532,14 +599,24 @@ export class SessionService {
 	 * stored secret hash closes that.
 	 */
 	verifyCsrfForSession(session: Pick<AuthSession, 'csrfSecretHash'>, presentedToken: string): boolean {
-		const expected = Buffer.from(session.csrfSecretHash, 'utf8');
-		const actual = Buffer.from(this.hash(presentedToken), 'utf8');
-		return expected.length === actual.length && timingSafeEqual(expected, actual);
+		return this.tokens.matches(presentedToken, session.csrfSecretHash);
+	}
+
+	/**
+	 * The day everyone was signed out after a key leak, when this browser still holds a session that
+	 * no longer matches and it happened within 30 days; otherwise null. The sign-in pages show it.
+	 */
+	async signedOutNotice(request: FastifyRequest): Promise<string | null> {
+		const day = recentSessionReset(this.config.cookies.sessionsResetAt);
+		if (!day) return null;
+		const presented = this.readCookie(request, cookieNames(this.config, requestCookieAudience(request)).refresh);
+		if (!presented) return null;
+		return (await this.sessionByRefreshToken(presented)) ? null : day;
 	}
 
 	async findByRefreshCookie(request: FastifyRequest): Promise<AuthSession | null> {
 		const presented = this.readCookie(request, cookieNames(this.config, requestCookieAudience(request)).refresh);
-		return presented ? this.sessions.findByRefreshTokenHash(this.hash(presented)) : null;
+		return presented ? ((await this.sessionByRefreshToken(presented))?.session ?? null) : null;
 	}
 
 	private async sessionUserForAudience(userId: string, audience: SessionAudience): Promise<SessionUser | null> {

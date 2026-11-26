@@ -22,6 +22,15 @@ export const API_TAGS = {
 	privacy: 'privacy',
 	media: 'media',
 	reviews: 'reviews',
+	blog: 'blog',
+	events: 'events',
+	stores: 'stores',
+	mailboxes: 'mailboxes',
+	wishlist: 'wishlist',
+	languages: 'languages',
+	purchases: 'purchases',
+	stock: 'stock',
+	shipping: 'shipping',
 } as const;
 
 export type ApiTag = (typeof API_TAGS)[keyof typeof API_TAGS];
@@ -57,5 +66,50 @@ export const API_TAG_DESCRIPTIONS: ReadonlyArray<{ name: ApiTag; description: st
 	{
 		name: API_TAGS.reviews,
 		description: 'Verified-buyer reviews with photos, and their moderation. Photos stay private until approved.',
+	},
+	{
+		name: API_TAGS.blog,
+		description:
+			'Blog posts, categories and tags. The shop reads live posts in one language; the admin writes every language and goes live only when all are complete.',
+	},
+	{
+		name: API_TAGS.events,
+		description:
+			'Launch and sale events. The shop reads published events with the server clock for its countdowns; the admin prepares, reviews, publishes and cancels them. Sale prices are laid over shop reads while a sale runs.',
+	},
+	{
+		name: API_TAGS.stores,
+		description:
+			"The shop's physical stores. Contact Us reads active stores in one language; the super admin writes every language under Settings › Stores.",
+	},
+	{
+		name: API_TAGS.mailboxes,
+		description:
+			'Gmail mailboxes in the admin and the Contact Us form. The super admin connects mailboxes and decides who may read or send; the Inbox reads mail live from Gmail; Contact Us messages are stored, then placed in the chosen mailbox.',
+	},
+	{
+		name: API_TAGS.wishlist,
+		description:
+			"A signed-in customer's saved products. The customer comes from the session; a guest's list stays in a session cookie and merges in on sign-in.",
+	},
+	{
+		name: API_TAGS.languages,
+		description:
+			'The active languages, English first: the one list the admin and the shop both read. No authentication.',
+	},
+	{
+		name: API_TAGS.purchases,
+		description:
+			'Suppliers, purchase orders, purchase entries (supplier bills taken into stock), payments and purchase returns with debit notes. Admin only; every write is audited as a sentence.',
+	},
+	{
+		name: API_TAGS.stock,
+		description:
+			'Stock on hand, held and free to sell; history, cost layers (FIFO), adjustments with approval, holds, counts, opening stock, reorder list and reports. Cost and value fields are left out for anyone without stock.cost.',
+	},
+	{
+		name: API_TAGS.shipping,
+		description:
+			'Shipping rule sets built in the admin rule builder, their versions and saved test carts, Try it on real products, where rule sets apply (site-wide per zone, category and product exceptions), and the zone settings. Admin only; every write names its revision and is audited.',
 	},
 ];

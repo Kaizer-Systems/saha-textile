@@ -1,0 +1,294 @@
+@let current = group(); @for (item of current.items; track item.id; let i = $index, first = $first) { @if (item.kind ===
+'group') {
+<div class="srb-line">
+	<span class="srb-kw if">{{ (first ? (top() ? 'ship_kw_if' : 'ship_kw_group') : joinLabel()) | transloco }}</span>
+</div>
+<div class="srb-step">
+	<div class="srb-step-head">
+		<span class="srb-kw">{{ 'ship_kw_group' | transloco }}</span>
+		<h6 class="small text-muted">
+			{{ (asGroup(item).join === 'all' ? 'ship_group_all' : 'ship_group_any') | transloco }}
+		</h6>
+		@if (!readOnly()) {
+		<span class="d-flex ms-auto gap-2">
+			<a
+				href="javascript:void(0)"
+				[title]="'ship_remove_group' | transloco"
+				[attr.aria-label]="'ship_remove_group' | transloco"
+				(click)="replace(i, null)"
+			>
+				<i class="ri-delete-bin-line"></i>
+			</a>
+		</span>
+		}
+	</div>
+	<app-srb-group
+		[group]="asGroup(item)"
+		[readOnly]="readOnly()"
+		[lineFacts]="lineFacts()"
+		[errorIds]="errorIds()"
+		[categories]="categories()"
+		[top]="false"
+		(groupChange)="replace(i, $event)"
+	/>
+</div>
+} @else { @let condition = asCondition(item); @let kind = shape(condition);
+<div
+	class="srb-line"
+	[attr.data-block-id]="condition.id"
+>
+	<span class="srb-kw if">{{ (first ? (top() ? 'ship_kw_if' : 'ship_kw_group') : joinLabel()) | transloco }}</span>
+	<div
+		ngbDropdown
+		container="body"
+		#fieldMenu="ngbDropdown"
+	>
+		<button
+			type="button"
+			class="form-select text-start"
+			ngbDropdownAnchor
+			[class.srb-err]="errorIds().has(condition.id) && !condition.field"
+			[attr.aria-label]="'ship_condition_fact' | transloco"
+			[disabled]="readOnly()"
+			(click)="fieldMenu.toggle()"
+		>
+			@if (condition.field) { {{ 'ship_fg_' + groupOf(condition.field) | transloco }} › {{
+			fieldKey(condition.field) | transloco }} } @else { {{ 'ship_choose' | transloco }} }
+		</button>
+		<div
+			ngbDropdownMenu
+			class="srb-menu"
+			style="width: min(820px, 92vw); column-count: 3; column-gap: 16px"
+		>
+			@for (fieldGroup of fieldGroups; track fieldGroup.group) {
+			<h6
+				class="dropdown-header"
+				style="break-after: avoid"
+			>
+				{{ 'ship_fg_' + fieldGroup.group | transloco }}
+			</h6>
+			@for (field of fieldGroup.fields; track field) {
+			<button
+				ngbDropdownItem
+				type="button"
+				style="break-inside: avoid"
+				[disabled]="!lineFacts() && field.startsWith('line.')"
+				(click)="setField(i, condition, field)"
+			>
+				{{ fieldKey(field) | transloco }}
+				<small>{{ fieldKey(field) + '_help' | transloco }}</small>
+			</button>
+			} }
+		</div>
+	</div>
+	@if (condition.field) {
+	<select
+		class="form-select"
+		[attr.aria-label]="'ship_condition_operator' | transloco"
+		[disabled]="readOnly()"
+		[ngModel]="condition.op"
+		(ngModelChange)="setOperator(i, condition, $event)"
+	>
+		@for (op of operators(condition.field); track op) {
+		<option [ngValue]="op">{{ operatorKey(op) | transloco }}</option>
+		}
+	</select>
+	} @switch (kind) { @case ('boolean') {
+	<select
+		class="form-select"
+		[attr.aria-label]="'ship_condition_value' | transloco"
+		[disabled]="readOnly()"
+		[ngModel]="condition.value"
+		(ngModelChange)="setValue(i, condition, $event)"
+	>
+		<option [ngValue]="true">{{ 'yes' | transloco }}</option>
+		<option [ngValue]="false">{{ 'no' | transloco }}</option>
+	</select>
+	} @case ('number') {
+	<input
+		class="form-control srb-amt"
+		type="number"
+		[class.srb-err]="errorIds().has(condition.id)"
+		[attr.aria-label]="'ship_condition_value' | transloco"
+		[readonly]="readOnly()"
+		[ngModel]="condition.value"
+		(ngModelChange)="setValue(i, condition, numberOf($event))"
+	/>
+	} @case ('range') { @let range = rangeOf(condition.value);
+	<input
+		class="form-control srb-amt"
+		type="number"
+		[class.srb-err]="errorIds().has(condition.id)"
+		[attr.aria-label]="'ship_from' | transloco"
+		[readonly]="readOnly()"
+		[ngModel]="range[0]"
+		(ngModelChange)="setRange(i, condition, 0, $event)"
+	/>
+	<span>{{ 'ship_and_word' | transloco }}</span>
+	<input
+		class="form-control srb-amt"
+		type="number"
+		[attr.aria-label]="'ship_to' | transloco"
+		[readonly]="readOnly()"
+		[ngModel]="range[1]"
+		(ngModelChange)="setRange(i, condition, 1, $event)"
+	/>
+	} @case ('zone') {
+	<select
+		class="form-select"
+		[attr.aria-label]="'ship_condition_value' | transloco"
+		[disabled]="readOnly()"
+		[ngModel]="condition.value"
+		(ngModelChange)="setValue(i, condition, $event)"
+	>
+		<option
+			[ngValue]="null"
+			disabled
+		>
+			{{ 'ship_choose' | transloco }}
+		</option>
+		<option value="domestic">{{ 'ship_zone_domestic' | transloco }}</option>
+		<option value="international">{{ 'ship_zone_international' | transloco }}</option>
+	</select>
+	} @case ('soldBy') {
+	<select
+		class="form-select"
+		[attr.aria-label]="'ship_condition_value' | transloco"
+		[disabled]="readOnly()"
+		[ngModel]="condition.value"
+		(ngModelChange)="setValue(i, condition, $event)"
+	>
+		<option
+			[ngValue]="null"
+			disabled
+		>
+			{{ 'ship_choose' | transloco }}
+		</option>
+		<option value="piece">{{ 'ship_sold_by_piece' | transloco }}</option>
+		<option value="metre">{{ 'ship_sold_by_metre' | transloco }}</option>
+	</select>
+	} @case ('category') {
+	<select
+		class="form-select"
+		[attr.aria-label]="'ship_condition_value' | transloco"
+		[disabled]="readOnly()"
+		[ngModel]="condition.value"
+		(ngModelChange)="setValue(i, condition, $event)"
+	>
+		<option
+			[ngValue]="null"
+			disabled
+		>
+			{{ 'ship_choose_category' | transloco }}
+		</option>
+		@for (category of categories(); track category.id) {
+		<option [value]="category.id">{{ category.label }}</option>
+		}
+	</select>
+	} @case ('categories') { @let chosen = selectedList(condition.value);
+	<select
+		#many
+		class="form-select"
+		multiple
+		size="4"
+		[attr.aria-label]="'ship_condition_value' | transloco"
+		[disabled]="readOnly()"
+		(change)="pickCategories(i, condition, many)"
+	>
+		@for (category of categories(); track category.id) {
+		<option
+			[value]="category.id"
+			[selected]="chosen.includes(category.id)"
+		>
+			{{ category.label }}
+		</option>
+		}
+	</select>
+	} @case ('text') {
+	<input
+		class="form-control"
+		[class.srb-err]="errorIds().has(condition.id)"
+		[attr.aria-label]="'ship_condition_value' | transloco"
+		[readonly]="readOnly()"
+		[ngModel]="listText(condition.value)"
+		(ngModelChange)="setValue(i, condition, $event.trim() || null)"
+	/>
+	} @case ('list') {
+	<input
+		class="form-control"
+		[class.srb-err]="errorIds().has(condition.id)"
+		[placeholder]="'ship_list_hint' | transloco"
+		[attr.aria-label]="'ship_condition_value' | transloco"
+		[readonly]="readOnly()"
+		[ngModel]="listText(condition.value)"
+		(ngModelChange)="setValue(i, condition, listOf($event))"
+	/>
+	} @case ('textOrList') {
+	<input
+		class="form-control"
+		[class.srb-err]="errorIds().has(condition.id)"
+		[placeholder]="'ship_list_hint' | transloco"
+		[attr.aria-label]="'ship_condition_value' | transloco"
+		[readonly]="readOnly()"
+		[ngModel]="listText(condition.value)"
+		(ngModelChange)="setValue(i, condition, listOf($event))"
+	/>
+	} } @if (!readOnly()) {
+	<a
+		href="javascript:void(0)"
+		class="ms-1"
+		[title]="'ship_remove_condition' | transloco"
+		[attr.aria-label]="'ship_remove_condition' | transloco"
+		(click)="replace(i, null)"
+	>
+		<i class="ri-close-line"></i>
+	</a>
+	}
+</div>
+} } @if (!readOnly() && controls()) {
+<div class="srb-line">
+	<div
+		ngbDropdown
+		container="body"
+	>
+		<button
+			type="button"
+			class="btn btn-outline btn-sm srb-add"
+			ngbDropdownToggle
+		>
+			<i
+				class="ri-add-line me-1"
+				aria-hidden="true"
+			></i>
+			{{ 'ship_add_condition' | transloco }}
+		</button>
+		<div ngbDropdownMenu>
+			<button
+				ngbDropdownItem
+				type="button"
+				(click)="addCondition()"
+			>
+				{{ 'ship_add_one_condition' | transloco }}
+			</button>
+			<button
+				ngbDropdownItem
+				type="button"
+				(click)="addGroup()"
+			>
+				{{ (current.join === 'all' ? 'ship_add_any_group' : 'ship_add_all_group') | transloco }}
+			</button>
+		</div>
+	</div>
+	@if (current.items.length > 1) {
+	<select
+		class="form-select"
+		[attr.aria-label]="'ship_join' | transloco"
+		[ngModel]="current.join"
+		(ngModelChange)="setJoin($event)"
+	>
+		<option value="all">{{ 'ship_join_all' | transloco }}</option>
+		<option value="any">{{ 'ship_join_any' | transloco }}</option>
+	</select>
+	}
+</div>
+}

@@ -2,11 +2,10 @@ import { signal, type Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { TranslocoService } from '@jsverse/transloco';
-import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SiteConfigStore } from '@core/state/site-config.store';
-import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
+import { WishlistStore } from '@core/state/wishlist/wishlist.store';
 import { BlogCategory } from '@features/blog/sidebar/blog-category/blog-category';
 import { BlogTag } from '@features/blog/sidebar/blog-tag/blog-tag';
 import { RecentPost } from '@features/blog/sidebar/recent-post/recent-post';
@@ -16,7 +15,6 @@ import { ProductSidebar } from '@features/shop/product-detail/sidebar/sidebar';
 import { PaymentOption } from '@features/shop/product-detail/widgets/payment-option/payment-option';
 import { ProductDeliveryInformation } from '@features/shop/product-detail/widgets/product-delivery-information/product-delivery-information';
 import { ProductInformation } from '@features/shop/product-detail/widgets/product-information/product-information';
-import { ProductReview } from '@features/shop/product-detail/widgets/product-review/product-review';
 import { StoreInformation } from '@features/shop/product-detail/widgets/store-information/store-information';
 import { YouMayAlsoLike } from '@features/shop/product-detail/you-may-also-like/you-may-also-like';
 import { Banner } from '@features/themes/widgets/banner/banner';
@@ -35,6 +33,7 @@ import { Header } from '@layout/header/header';
 import { Logo } from '@layout/header/widgets/logo/logo';
 import { Topbar } from '@layout/header/widgets/topbar/topbar';
 import { Wishlist } from '@layout/header/widgets/wishlist/wishlist';
+import { FaqAccordion } from '@shared/ui/faq-accordion/faq-accordion';
 
 import { Breadcrumb } from './breadcrumb/breadcrumb';
 import { Loader } from './loader/loader';
@@ -57,7 +56,7 @@ const create = <T>(type: Type<T>): T => {
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: SiteConfigStore, useValue: { siteConfig: signal(null) } },
-			{ provide: WishlistFacade, useValue: { wishlistItems$: of({ data: [], total: 0 }) } },
+			{ provide: WishlistStore, useValue: { count: signal(0) } },
 			{ provide: TranslocoService, useValue: { getActiveLang: () => 'en' } },
 		],
 	});
@@ -76,6 +75,7 @@ const widgets: [string, Type<unknown>][] = [
 	['CollectionCategories', CollectionCategories],
 	['Contact', Contact],
 	['Copyright', Copyright],
+	['FaqAccordion', FaqAccordion],
 	['Footer', Footer],
 	['FooterLogo', FooterLogo],
 	['Header', Header],
@@ -89,7 +89,6 @@ const widgets: [string, Type<unknown>][] = [
 	['ProductBox', ProductBox],
 	['ProductDeliveryInformation', ProductDeliveryInformation],
 	['ProductInformation', ProductInformation],
-	['ProductReview', ProductReview],
 	['ProductSidebar', ProductSidebar],
 	['RecentPost', RecentPost],
 	['Service', Service],
@@ -130,8 +129,8 @@ describe('About', () => {
 });
 
 describe('Links', () => {
-	it('leaves the Cookie settings link off by default', () => {
-		expect((create(Links) as Links).cookieSettings()).toBe(false);
+	it('leaves the Customer Service links off by default', () => {
+		expect((create(Links) as Links).customerService()).toBe(false);
 	});
 });
 

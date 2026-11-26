@@ -8,15 +8,27 @@
 			{{ link.label | titleCase }}
 		</a>
 	</li>
-	} @if (cookieSettings()) {
+	} @if (customerService()) {
 	<li>
 		<a
 			href="javascript:void(0)"
+			role="button"
 			class="text-content"
 			id="cookie_settings_link"
 			(click)="consent.openSettings()"
 		>
 			{{ 'cookie_settings' | transloco }}
+		</a>
+	</li>
+	<li class="hide-when-installed">
+		<a
+			href="javascript:void(0)"
+			role="button"
+			class="text-content"
+			id="get_the_app_footer_link"
+			(click)="install.open()"
+		>
+			{{ 'get_the_app' | transloco }}
 		</a>
 	</li>
 	}

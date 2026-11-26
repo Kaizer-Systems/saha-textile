@@ -1291,7 +1291,8 @@
 	}
 }
 
-.newsletter-modal {
+.newsletter-modal,
+.exit-modal {
 	.modal-box {
 		display: flex;
 
@@ -1328,9 +1329,15 @@
 				width: 100%;
 			}
 
+			// The Brand Kit's wide logo is about seven times wider than tall, so the theme's 100px left
+			// it ~15px high (owner, 2026-11-10). At 258px it is ~37.5px high: the gap below it gave up
+			// 15px and the negative top margin takes the last 7px from the padding above, so the
+			// newsletter and event popups keep their size and nothing under the logo moves.
 			.modal-logo {
-				width: 100px;
-				margin-bottom: 23px;
+				width: 258px;
+				max-width: 100%;
+				margin-top: -7px;
+				margin-bottom: 8px;
 			}
 
 			h2 {
@@ -1679,7 +1686,7 @@
 									top: 50%;
 									transform: translateY(-50%) rotate(45deg);
 									left: 0;
-									background-color: #ff7272;
+									background-color: #c62828; // was #ff7272, 2.7 : 1 with white (shop change, 2026-11-10)
 									width: 100%;
 									height: 1px;
 									cursor: default;
@@ -1957,7 +1964,7 @@
 					border-bottom: 1px solid $border-color;
 
 					button {
-						background-color: #ff7272;
+						background-color: #c62828; // was #ff7272, 2.7 : 1 with white (shop change, 2026-11-10)
 					}
 				}
 
@@ -2303,7 +2310,7 @@
 									top: 50%;
 									transform: translateY(-50%) rotate(45deg);
 									left: 0;
-									background-color: #ff7272;
+									background-color: #c62828; // was #ff7272, 2.7 : 1 with white (shop change, 2026-11-10)
 									width: 100%;
 									height: 1px;
 									cursor: default;
@@ -2524,5 +2531,24 @@
 		button {
 			border-radius: 100% !important;
 		}
+	}
+}
+
+/*
+ * Event popup (owner brief, approved 2026-11-10). The two style rules the brief named as custom:
+ * - Without a picture the popup is the newsletter popup's text half on its own: the theme's 400px
+ *   (`.newsletter-modal .modal-box .modal-image` takes the other 400px). Bootstrap has no 400px
+ *   popup size, so the dialog width is set here.
+ * - Several pictures slide with ng-bootstrap's carousel, which draws its inner boxes itself; they
+ *   take the full height so the slides fill the picture half and the phone band.
+ */
+.newsletter-modal.event-popup-text-only .modal-dialog {
+	max-width: 400px;
+}
+
+.event-popup-slides {
+	.carousel-inner,
+	.carousel-item {
+		height: 100%;
 	}
 }

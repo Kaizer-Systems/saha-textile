@@ -59,7 +59,7 @@ const build = (options: {
 	} as unknown as ConsentRepository;
 	const fetchImpl = vi.fn(async () => options.reply ?? new Response('{"request_id":"r1"}', { status: 200 }));
 	const adapter = new Msg91NotificationAdapter({
-		config: { authKey: 'test-key', emailFrom: 'no-reply@sahatextile.com' },
+		config: { authKey: 'test-key', emailFromFor: () => 'no-reply@sahatextile.com' },
 		settings,
 		templates,
 		outbox,

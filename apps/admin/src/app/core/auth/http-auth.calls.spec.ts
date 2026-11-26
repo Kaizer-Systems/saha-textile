@@ -58,6 +58,13 @@ describe('HttpAdminAuthGateway calls', () => {
 		await expect(firstValueFrom(gateway.listSessions())).resolves.toEqual([{ id: 's1' }]);
 	});
 
+	it('reads the signed-out notice, and treats any failure as none', async () => {
+		http.get.mockReturnValueOnce(of({ signedOutAt: '2026-11-23' }));
+		await expect(firstValueFrom(gateway.sessionNotice())).resolves.toBe('2026-11-23');
+		http.get.mockReturnValueOnce(throwError(() => new Error('500')));
+		await expect(firstValueFrom(gateway.sessionNotice())).resolves.toBeNull();
+	});
+
 	it('reads the security settings', () => {
 		gateway.securitySettings();
 		expect(http.get).toHaveBeenCalledOnce();

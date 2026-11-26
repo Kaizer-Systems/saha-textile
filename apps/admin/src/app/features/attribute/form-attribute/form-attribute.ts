@@ -1,28 +1,39 @@
-import { Component, computed, DOCUMENT, inject, input, signal } from '@angular/core';
+import { Component, computed, DOCUMENT, effect, inject, input, type Signal, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import type { AdminAttributeWrite, AttributeDefinition, AttributeDefinitionTerm } from '@saha-textile/contracts';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { Select2 } from 'ng-select2-component';
 import { Subject, of } from 'rxjs';
-import { map, switchMap, takeUntil } from 'rxjs/operators';
+import { map, startWith, switchMap, takeUntil } from 'rxjs/operators';
 
+import { OPTION_LOOKS, usesColour, usesPicture } from '@core/catalog/option-looks';
+import { SwatchPictures } from '@core/catalog/swatch-pictures';
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import {
-	ADMIN_LOCALES,
 	focusField,
 	gapsByLocale,
 	type LanguageGap,
 	LocalizedFields,
 	SOURCE_LOCALE,
 } from '@core/i18n/localized-fields';
+import { MediaGateway } from '@core/media/media.gateway';
 import { AttributeService } from '@data-access/services/attribute.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
+import { type PickedAttachment, ImageUploadValue, onePicture } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
+import { LookPreview, type LookPreviewValue } from '@shared/ui/look-preview/look-preview';
+import { SwatchCut, type SwatchCutResult } from '@shared/ui/swatch-cut/swatch-cut';
+import { omit } from '@shared/util/omit';
+
+import type { IAttachment } from '@data-access/interfaces/attachment.interface';
+import type { AdminAttributeWrite, AttributeDefinition, AttributeDefinitionTerm } from '@saha-textile/contracts';
 
 const slugOf = (text: string): string =>
 	text
@@ -31,9 +42,11 @@ const slugOf = (text: string): string =>
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/^-+|-+$/g, '');
 
-const STYLES = ['rectangle', 'circle', 'image_swatch', 'color_swatch', 'radio', 'dropdown', 'image_tile', 'radio_bar'];
 const ROLES = ['filter_only', 'variation_axis', 'named_add_on', 'bundle_component_option'];
 const FACET_STYLES = ['checkbox', 'swatch', 'chips', 'radio'];
+
+/** Sample colours for the preview of an attribute with no values yet. */
+const SAMPLE_COLOURS = ['#1f4e96', '#b5157d', '#2e7d32'];
 
 const blankTerm = (): AttributeDefinitionTerm => ({
 	code: '',
@@ -49,7 +62,16 @@ const blankTerm = (): AttributeDefinitionTerm => ({
 	selector: 'app-form-attribute',
 	templateUrl: './form-attribute.html',
 	styleUrls: ['./form-attribute.scss'],
-	imports: [ReactiveFormsModule, FormFields, Button, TranslocoModule, Select2, LanguageSwitch],
+	imports: [
+		ReactiveFormsModule,
+		FormFields,
+		Button,
+		TranslocoModule,
+		Select2,
+		LanguageSwitch,
+		ImageUpload,
+		LookPreview,
+	],
 })
 export class FormAttribute {
 	private page = inject<Document>(DOCUMENT);
@@ -60,17 +82,22 @@ export class FormAttribute {
 	private queryClient = inject(QueryClient);
 	private notifier = inject(NotificationService);
 	private transloco = inject(TranslocoService);
+	private media = inject(MediaGateway);
+	private swatches = inject(SwatchPictures);
+	private readonly modals = inject(NgbModal);
 
 	readonly type = input<string>(undefined);
 
 	public form: FormGroup;
-	readonly locales = ADMIN_LOCALES;
+	readonly locales = inject(ActiveLanguages).list();
 	readonly fields: LocalizedFields;
 	readonly terms = signal<AttributeDefinitionTerm[]>([blankTerm()]);
+	/** Each value's default picture, by image id, as the picker shows it. */
+	readonly pictures = signal<ReadonlyMap<string, IAttachment>>(new Map());
 	/** Set when editing: the code stays, because products point at it. */
 	readonly code = signal<string | null>(null);
 
-	readonly styleOptions = STYLES.map((value) => ({ value, label: value }));
+	readonly styleOptions = OPTION_LOOKS.map((value) => ({ value, label: value }));
 	private readonly translations = toSignal(this.transloco.selectTranslation());
 	readonly roleOptions = computed(() => {
 		this.translations();
@@ -81,17 +108,60 @@ export class FormAttribute {
 	readonly nameGaps = signal<Record<string, LanguageGap[]>>({});
 	/** Name plus every value, per language, for the Language switch. */
 	readonly gaps = computed(() =>
-		gapsByLocale((locale) => [
+		gapsByLocale(this.locales, (locale) => [
 			...(this.nameGaps()[locale] ?? []),
 			...this.terms().flatMap((term, index) =>
 				term.label[locale]?.trim()
 					? []
 					: [{ key: `value_${index}`, label: 'value', name: this.guide(term) || String(index + 1) }],
 			),
+			// A second line is optional, but once written it is owed in every language.
+			...this.terms().flatMap((term, index) =>
+				this.hasNote(term) && !term.subLabel?.[locale]?.trim()
+					? [
+							{
+								key: `value_note_${index}`,
+								label: 'value_second_line',
+								name: this.guide(term) || String(index + 1),
+							},
+						]
+					: [],
+			),
 		]),
 	);
 
 	private destroy$ = new Subject<void>();
+
+	/** The look picked in the form, for the live preview under it (brief A5). */
+	readonly look: Signal<string>;
+
+	/**
+	 * What the preview draws: the values in the language on screen with their colour and default picture (the very
+	 * square the shop shows); until values are named, three samples with grey pictures.
+	 */
+	readonly previewValues = computed<LookPreviewValue[]>(() => {
+		// Read the words again once they load, or the samples keep their key.
+		this.translations();
+		const locale = this.fields.locale();
+		const named = this.terms().filter((term) => (term.label[locale] || term.label['en'])?.trim());
+		if (!named.length) {
+			return SAMPLE_COLOURS.map((hex, index) => ({
+				label: this.transloco.translate('look_preview_sample', { n: index + 1 }),
+				hex,
+				picture: null,
+			}));
+		}
+		return named.map((term) => ({
+			label: (term.label[locale] || term.label['en']) as string,
+			subLabel: term.subLabel?.[locale] || term.subLabel?.['en'] || null,
+			hex: term.hex ?? null,
+			picture: term.swatchAssetId
+				? (this.swatches.url(term.swatchAssetId, term.swatchVersionId) ??
+					this.picture(term)?.original_url ??
+					null)
+				: null,
+		}));
+	});
 
 	constructor() {
 		this.form = this.formBuilder.group({
@@ -102,6 +172,9 @@ export class FormAttribute {
 			facet_style: new FormControl('checkbox'),
 		});
 		this.fields = new LocalizedFields(this.form, ['name']);
+		const style = this.form.get('style') as FormControl<string>;
+		this.look = toSignal(style.valueChanges.pipe(startWith(style.value)), { initialValue: style.value });
+		effect(() => this.swatches.need(this.terms().flatMap((term) => term.swatchAssetId ?? [])));
 	}
 
 	get onSourceLanguage(): boolean {
@@ -109,7 +182,75 @@ export class FormAttribute {
 	}
 
 	get isColour(): boolean {
-		return this.form.get('style')?.value === 'color_swatch';
+		return usesColour(this.form.get('style')?.value);
+	}
+
+	/** Picture styles give each value a default picture that products start with. */
+	get isPicture(): boolean {
+		return usesPicture(this.form.get('style')?.value);
+	}
+
+	/** True once the value's second line is written in any language. */
+	hasNote(term: AttributeDefinitionTerm): boolean {
+		return Object.values(term.subLabel ?? {}).some((text) => text.trim());
+	}
+
+	picture(term: AttributeDefinitionTerm): IAttachment | null {
+		return term.swatchAssetId ? (this.pictures().get(term.swatchAssetId) ?? null) : null;
+	}
+
+	/**
+	 * Cut (brief P11): a square of the value's default picture, made a picture of its own; or the whole photo again.
+	 * Until the cut's own files are made, the field shows the picture it was cut from.
+	 */
+	async openCut(index: number, term: AttributeDefinitionTerm): Promise<void> {
+		const chosen = term.swatchAssetId;
+		if (!chosen) return;
+		const locale = this.fields.locale();
+		const popup = this.modals.open(SwatchCut, {
+			size: 'xl',
+			centered: true,
+			scrollable: true,
+			ariaLabelledBy: 'swatch_cut_title',
+			windowClass: 'theme-modal',
+		});
+		void (popup.componentInstance as SwatchCut).start({
+			pictureId: chosen,
+			valueName: term.label[locale] || term.label['en'] || term.code,
+		});
+		const result = (await popup.result.catch(() => null)) as SwatchCutResult | null;
+		if (!result) return;
+		const id = result.kind === 'cut' ? result.id : result.photoId;
+		const shown = this.pictures().get(chosen);
+		if (shown && !this.pictures().has(id)) this.pictures.update((map) => new Map([...map, [id, { ...shown, id }]]));
+		this.terms.update((rows) =>
+			rows.map((row, position) => {
+				if (position !== index) return row;
+				const rest = omit(row, 'swatchVersionId');
+				return {
+					...rest,
+					swatchAssetId: id,
+					...(result.kind === 'cut' ? { swatchVersionId: result.versionId } : {}),
+				};
+			}),
+		);
+	}
+
+	setPicture(index: number, value: ImageUploadValue) {
+		const picked = Array.isArray(value) ? value : onePicture(value);
+		const row = Array.isArray(picked) ? picked[0] : picked;
+		if (row) this.pictures.update((map) => new Map([...map, [String(row.id), row]]));
+		this.terms.update((rows) =>
+			rows.map((term, position) => {
+				if (position !== index) return term;
+				const rest = omit(term, 'swatchAssetId', 'swatchVersionId');
+				const versionId = (row as PickedAttachment | undefined)?.versionId;
+				// The swatch keeps the version chosen in the picker (media brief: a place stores the photo and its version).
+				return row
+					? { ...rest, swatchAssetId: String(row.id), ...(versionId ? { swatchVersionId: versionId } : {}) }
+					: rest;
+			}),
+		);
 	}
 
 	ngOnInit() {
@@ -133,6 +274,12 @@ export class FormAttribute {
 		this.code.set(definition.code);
 		this.fields.load({ name: definition.label });
 		this.terms.set(definition.terms);
+		for (const id of new Set(definition.terms.flatMap((term) => term.swatchAssetId ?? []))) {
+			this.media.get(id).subscribe({
+				next: (row) => this.pictures.update((map) => new Map([...map, [id, row]])),
+				error: () => undefined,
+			});
+		}
 		this.form.patchValue({
 			style: definition.defaultDisplayStyle,
 			default_role: definition.defaultRole,
@@ -152,7 +299,7 @@ export class FormAttribute {
 	}
 
 	refreshMissing() {
-		this.nameGaps.set(gapsByLocale((locale) => this.fields.gaps(locale)));
+		this.nameGaps.set(gapsByLocale(this.locales, (locale) => this.fields.gaps(locale)));
 	}
 
 	guide(term: AttributeDefinitionTerm): string {
@@ -168,6 +315,23 @@ export class FormAttribute {
 		// A new value takes its slug from its English name; a saved one keeps it, as products use it.
 		const naming = this.onSourceLanguage && !term.code;
 		this.change(index, { label, ...(naming ? { slug: slugOf(text) } : {}) });
+	}
+
+	/** The value's optional second line in the language on screen ("Medium" under "M"); empty clears it there. */
+	setNote(index: number, term: AttributeDefinitionTerm, text: string) {
+		const locale = this.fields.locale();
+		const others = omit<Record<string, string>, string>(term.subLabel ?? {}, locale);
+		const subLabel = text.trim() ? { ...others, [locale]: text.trim() } : others;
+		if (Object.keys(subLabel).length) {
+			this.change(index, { subLabel });
+			return;
+		}
+		this.terms.update((rows) =>
+			rows.map((row, position) => {
+				if (position !== index) return row;
+				return omit(row, 'subLabel');
+			}),
+		);
 	}
 
 	setSlug(index: number, text: string) {
@@ -220,7 +384,7 @@ export class FormAttribute {
 			label: { ...label, en: english },
 			defaultRole: raw['default_role'] as AdminAttributeWrite['defaultRole'],
 			defaultDisplayStyle: raw['style'] as AdminAttributeWrite['defaultDisplayStyle'],
-			valueType: raw['style'] === 'color_swatch' ? 'color' : 'term',
+			valueType: usesColour(raw['style'] as string) ? 'color' : 'term',
 			terms,
 			filterConfig: {
 				visible: Boolean(raw['use_as_filter']),

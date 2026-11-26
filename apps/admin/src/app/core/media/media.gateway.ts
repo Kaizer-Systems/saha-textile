@@ -7,7 +7,7 @@ import { runtimeConfig } from '@core/config/runtime-config';
 import { IAttachment, IAttachmentModel } from '@data-access/interfaces/attachment.interface';
 
 /** The image purposes an operator uploads (`MediaPurpose` minus customer review photos). */
-export type MediaPurpose = 'product' | 'category' | 'banner' | 'blog' | 'avatar' | 'icon' | 'brand';
+export type MediaPurpose = 'product' | 'category' | 'banner' | 'blog' | 'store' | 'avatar' | 'icon' | 'brand';
 
 export interface MediaUploadStatus {
 	assetId: string;
@@ -42,9 +42,20 @@ interface MediaLibraryItem {
 		height: number;
 		createdAt?: string;
 		processing: { state: string };
+		text?: MediaDetails['text'];
 	};
 	preview: { roles: Record<string, ResolvedSource[]> } | null;
 	usageCount: number;
+}
+
+/** An image's search-friendly file name and its alt text, title and caption in each language. */
+export interface MediaDetails {
+	slug: string;
+	text: {
+		alt: Record<string, string>;
+		title: Record<string, string>;
+		caption: Record<string, string>;
+	};
 }
 
 interface MediaLibraryResponse {
@@ -55,14 +66,17 @@ interface MediaLibraryResponse {
 }
 
 /**
- * A small preview: the 400 px card, else any role's smallest file. A private image (an
- * unapproved review photo) has no public file, so it shows the theme's placeholder.
+ * A small preview: the 400 px card; for a Brand Kit picture its logo copy, which keeps the clear
+ * background (the icon copies sit on white, which hides a logo made for dark screens); else any
+ * role's smallest file. A private image (an unapproved review photo) has no public file, so it
+ * shows the theme's placeholder.
  */
 const previewOf = (item: MediaLibraryItem): string => {
 	const roles = item.preview?.roles ?? {};
 	const card = roles['card']?.find((source) => source.width >= 400) ?? roles['card']?.[0];
+	const logo = roles['brand_logo']?.find((source) => source.width >= 240) ?? roles['brand_logo']?.[0];
 	const any = Object.values(roles)[0]?.[0];
-	return (card ?? any)?.url ?? 'assets/images/product.png';
+	return (card ?? logo ?? any)?.url ?? 'assets/images/product.png';
 };
 
 const toAttachment = (item: MediaLibraryItem): IAttachment =>
@@ -124,6 +138,25 @@ export class MediaGateway {
 		return this.http
 			.get<MediaLibraryItem>(this.url(`/${encodeURIComponent(assetId)}`))
 			.pipe(map((item) => toAttachment(item)));
+	}
+
+	/** The file name and text of one image, for Edit details and the product form's alt hint. */
+	details(assetId: string): Observable<MediaDetails> {
+		return this.http.get<MediaLibraryItem>(this.url(`/${encodeURIComponent(assetId)}`)).pipe(
+			map((item) => ({
+				slug: item.asset.slug,
+				text: {
+					alt: item.asset.text?.alt ?? {},
+					title: item.asset.text?.title ?? {},
+					caption: item.asset.text?.caption ?? {},
+				},
+			})),
+		);
+	}
+
+	/** Saves the details. A new file name renames every size of the image in the background. */
+	saveDetails(assetId: string, body: Omit<MediaDetails['text'], 'title'> & { slug: string }): Observable<void> {
+		return this.http.patch(this.url(`/${encodeURIComponent(assetId)}`), body).pipe(map(() => undefined));
 	}
 
 	presign(body: {

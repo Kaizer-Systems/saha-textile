@@ -1,0 +1,158 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'pb_page_settings'"
+>
+	<p class="pb-crumb">
+		<a routerLink="/page-builder">{{ 'page_builder' | transloco }}</a>
+		›
+		<a [routerLink]="['/page-builder', pageType]">{{ 'pb_page_' + pageType | transloco }}</a>
+		› {{ 'pb_page_settings' | transloco }}
+	</p>
+	<form
+		class="theme-form theme-form-2 mega-form"
+		id="pb_settings_form"
+		[formGroup]="form"
+		(ngSubmit)="submit()"
+	>
+		<app-language-switch
+			[locales]="locales"
+			[active]="fields.locale()"
+			[gaps]="gaps()"
+			(changed)="switchLanguage($event)"
+			(gapChosen)="openLanguageGap($event)"
+		/>
+		<p class="help-text mb-4">{{ 'pb_settings_help' | transloco }}</p>
+		<app-form-fields
+			[label]="'pb_settings_title'"
+			[for]="'pb_settings_title'"
+			[required]="true"
+		>
+			<input
+				class="form-control"
+				id="pb_settings_title"
+				type="text"
+				maxlength="120"
+				formControlName="title"
+			/>
+			<p class="help-text">{{ 'pb_settings_title_help' | transloco: { count: typed().title.length } }}</p>
+			@if (fields.source('title'); as guide) {
+			<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'pb_settings_description'"
+			[for]="'pb_settings_description'"
+			[required]="true"
+		>
+			<textarea
+				class="form-control"
+				id="pb_settings_description"
+				rows="3"
+				maxlength="320"
+				formControlName="description"
+			></textarea>
+			<p class="help-text">
+				{{ 'pb_settings_description_help' | transloco: { count: typed().description.length } }}
+			</p>
+			@if (fields.source('description'); as guide) {
+			<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'pb_settings_heading'"
+			[for]="'pb_settings_heading'"
+			[required]="true"
+		>
+			<input
+				class="form-control"
+				id="pb_settings_heading"
+				type="text"
+				maxlength="160"
+				formControlName="heading"
+			/>
+			<p class="help-text">{{ 'pb_settings_heading_help' | transloco }}</p>
+			@if (fields.source('heading'); as guide) {
+			<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'pb_settings_heading_shown'"
+			[for]="'pb_settings_heading_shown'"
+		>
+			<div class="form-check form-switch ps-0">
+				<label class="switch">
+					<input
+						type="checkbox"
+						id="pb_settings_heading_shown"
+						formControlName="headingShown"
+					/>
+					<span class="switch-state"></span>
+				</label>
+			</div>
+			<p class="help-text">{{ 'pb_settings_heading_shown_help' | transloco }}</p>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'pb_settings_share'"
+			[for]="'pb_settings_share'"
+		>
+			<app-image-upload
+				[profile]="'link_preview'"
+				[pickTitle]="'fm_pick_title_share'"
+				[multipleImage]="false"
+				[image]="shareImageTile()"
+				(selectedFiles)="selectShareImage($event)"
+			/>
+			<p class="help-text">{{ 'pb_settings_share_help' | transloco }}</p>
+		</app-form-fields>
+
+		<!-- SG-7: how a search result would read, in the language shown. -->
+		<div class="row">
+			<div class="col-sm-3"></div>
+			<div class="col-sm-9">
+				<h6 class="mb-2">{{ 'pb_settings_preview' | transloco }}</h6>
+				<div
+					class="pb-serp mb-4"
+					id="pb_settings_preview"
+					[attr.lang]="fields.locale()"
+				>
+					<span class="pb-serp-address">{{ preview().address }}</span>
+					<span class="pb-serp-title">
+						{{ preview().title.text || ('pb_settings_preview_empty' | transloco) }}
+					</span>
+					<span class="pb-serp-text">{{ preview().description.text }}</span>
+					@if (preview().title.cut || preview().description.cut) {
+					<span class="fm-warn d-block mt-2">{{ 'pb_settings_preview_cut' | transloco }}</span>
+					}
+				</div>
+			</div>
+		</div>
+
+		@if (refused().length) {
+		<!-- Save waits until every language the shop shows has its search title, description and main heading. -->
+		<div
+			class="alert alert-danger"
+			id="pb_settings_refused"
+		>
+			<strong>{{ 'pb_settings_refused' | transloco }}</strong>
+			<ul class="mt-2 mb-0">
+				@for (gap of refused(); track $index) {
+				<li>
+					<a
+						class="alert-link cursor-pointer"
+						(click)="openGap(gap)"
+					>
+						{{ gapLabel(gap) }}
+					</a>
+				</li>
+				}
+			</ul>
+		</div>
+		}
+		<app-button
+			[id]="'pb_settings_save'"
+			[disabled]="saving() || !page()"
+		>
+			{{ 'save' | transloco }}
+		</app-button>
+	</form>
+</app-page-wrapper>

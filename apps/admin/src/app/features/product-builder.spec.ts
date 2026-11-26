@@ -1,20 +1,26 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { PLATFORM_ID, signal, type Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormControl, FormGroup } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { BehaviorSubject, firstValueFrom, of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { goLiveLabels, goLiveToast } from '@core/catalog/go-live-report';
+import { OPTION_LOOKS } from '@core/catalog/option-looks';
+import { SwatchPictures } from '@core/catalog/swatch-pictures';
 import { LocalizedFields } from '@core/i18n/localized-fields';
+import { MediaGateway } from '@core/media/media.gateway';
 import { AddonTemplateService } from '@data-access/services/addon-template.service';
 import { AttributeService } from '@data-access/services/attribute.service';
+import { BlogService } from '@data-access/services/blog.service';
 import { CategoryService } from '@data-access/services/category.service';
 import { NotificationService } from '@data-access/services/notification.service';
+import { ProductDraftService } from '@data-access/services/product-draft.service';
 import { ProductService } from '@data-access/services/product.service';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 
@@ -46,9 +52,33 @@ vi.mock('@data-access/queries/tax.queries', () => ({
 vi.mock('@data-access/queries/attribute.queries', () => ({
 	injectAttributesQuery: (p: () => unknown) => (p(), { data: empty, refetch }),
 }));
+vi.mock('@core/shipping/shipping.gateway', async () => {
+	const { of } = await import('rxjs');
+	const { Injectable } = await import('@angular/core');
+	@Injectable({ providedIn: 'root' })
+	class ShippingGateway {
+		categoryUsage = () => of({ products: 214, ownCharges: 5 });
+		exceptions = () =>
+			of([
+				{
+					id: 'ex-1',
+					target: { kind: 'category', categoryId: 'cat_1', includeSubcategories: true },
+					domestic: { kind: 'siteWide' },
+					international: { kind: 'cantShip' },
+					note: '',
+				},
+			]);
+		overview = () => of({ ruleSets: [] });
+	}
+	return {
+		ShippingGateway,
+		injectShippingOverviewQuery: () => ({ data: empty }),
+		injectShippingExceptionsQuery: () => ({ data: empty }),
+	};
+});
 
 const translate = { translate: (key: string) => key, selectTranslation: () => of({}) };
-const both = { en: 'Red', fr: 'Rouge' };
+const both = { en: 'Red', bn: 'লাল' };
 
 const mount = <T>(type: Type<T>, providers: unknown[], inputs: Record<string, unknown> = {}) => {
 	TestBed.resetTestingModule();
@@ -72,14 +102,14 @@ describe('LocalizedFields', () => {
 	it('swaps the controls with the language and keeps what was typed', () => {
 		const { form, fields } = build();
 		form.patchValue({ name: 'Silk' });
-		fields.switchTo('fr');
+		fields.switchTo('bn');
 		expect(form.value.name).toBe('');
 		expect(fields.source('name')).toBe('Silk');
-		form.patchValue({ name: 'Soie' });
+		form.patchValue({ name: 'সিল্ক' });
 		fields.switchTo('en');
 		expect(form.value.name).toBe('Silk');
 		expect(fields.source('name')).toBe('');
-		expect(fields.text('name')).toEqual({ en: 'Silk', fr: 'Soie' });
+		expect(fields.text('name')).toEqual({ en: 'Silk', bn: 'সিল্ক' });
 	});
 
 	it('loads every language, treats non-text as empty, and counts what is missing', () => {
@@ -88,8 +118,8 @@ describe('LocalizedFields', () => {
 		expect(form.value).toMatchObject({ name: 'Silk', other: '' });
 		form.patchValue({ other: 5 });
 		expect(fields.gaps('en').length).toBe(1);
-		expect(fields.gaps('fr').length).toBe(2);
-		fields.switchTo('fr');
+		expect(fields.gaps('bn').length).toBe(2);
+		fields.switchTo('bn');
 		expect(fields.source('unknown')).toBe('');
 	});
 });
@@ -98,18 +128,17 @@ describe('LocalizedFields with an optional field', () => {
 	it('asks for other languages only once English is written', () => {
 		const form = new FormGroup({ note: new FormControl('') });
 		const fields = new LocalizedFields(form, ['note'], ['note']);
-		expect(fields.gaps('fr').length).toBe(0);
+		expect(fields.gaps('bn').length).toBe(0);
 		form.patchValue({ note: 'Soon' });
 		expect(fields.gaps('en').length).toBe(0);
-		expect(fields.gaps('fr').length).toBe(1);
+		expect(fields.gaps('bn').length).toBe(1);
 	});
 });
 
 describe('LanguageSwitch', () => {
-	it('names languages it knows, and falls back to the code', () => {
+	it('names each language in its own script, from the browser’s language data', () => {
 		const page = mount(LanguageSwitch, [], { locales: ['en'], active: 'en' });
-		expect(page.name('fr')).toBe('Français');
-		expect(page.name('xx')).toBe('xx');
+		expect(['en', 'bn', 'hi', 'xx'].map((code) => page.name(code))).toEqual(['English', 'বাংলা', 'हिन्दी', 'xx']);
 	});
 });
 
@@ -121,13 +150,18 @@ describe('Go Live report', () => {
 		expect(
 			goLiveLabels(
 				[
-					{ field: 'title', locale: 'fr' },
+					{ field: 'title', locale: 'bn' },
 					{ field: 'value:color:red', locale: 'xx' },
 					{ field: 'category', locale: null },
 				],
 				key,
 			),
-		).toEqual(['Français: gap_title', 'xx: gap_value color red', 'gap_category']);
+		).toEqual(['বাংলা: gap_title', 'xx: gap_value color red', 'gap_category']);
+	});
+
+	it('names English in English and every other language in its own script', () => {
+		expect(goLiveLabels([{ field: 'title', locale: 'en' }], key)).toEqual(['English: gap_title']);
+		expect(goLiveLabels([{ field: 'title', locale: 'hi' }], key)).toEqual(['हिन्दी: gap_title']);
 	});
 
 	it('toasts success, or the first gaps and how many more', () => {
@@ -152,14 +186,29 @@ const group = (over: Record<string, unknown> = {}) =>
 		displayStyle: 'rectangle',
 		requiredSelection: false,
 		defaultTermCode: null,
-		terms: [{ code: 'red', label: both, isBase: false, addonTemplateIds: [], requiresMeasurements: false, sortOrder: 0 }],
+		terms: [
+			{
+				code: 'red',
+				label: both,
+				isBase: false,
+				addonTemplateIds: [],
+				requiresMeasurements: false,
+				sortOrder: 0,
+			},
+		],
 		...over,
 	}) as never;
 
 describe('variantCombinations', () => {
 	it('crosses the axes only', () => {
 		expect(variantCombinations([group({ semanticRole: 'filter_only' })])).toEqual([]);
-		const size = group({ attributeCode: 'size', terms: [{ code: 's', label: both }, { code: 'm', label: both }] });
+		const size = group({
+			attributeCode: 'size',
+			terms: [
+				{ code: 's', label: both },
+				{ code: 'm', label: both },
+			],
+		});
 		const rows = variantCombinations([size, group()]);
 		expect(rows.map((row) => row.hash)).toEqual(['color:red|size:s', 'color:red|size:m']);
 	});
@@ -173,7 +222,16 @@ const definition = (over: Record<string, unknown> = {}) => ({
 	defaultDisplayStyle: 'color_swatch',
 	valueType: 'color',
 	terms: [
-		{ code: 'red', label: both, slug: 'red', hex: '#ff0000', swatchAssetId: 'a1', aliases: [], isBase: false, hidden: false },
+		{
+			code: 'red',
+			label: both,
+			slug: 'red',
+			hex: '#ff0000',
+			swatchAssetId: 'a1',
+			aliases: [],
+			isBase: false,
+			hidden: false,
+		},
 		{ code: 'blue', label: { en: 'Blue' }, slug: 'blue', aliases: [], isBase: false, hidden: false },
 		{ code: 'old', label: both, slug: 'old', aliases: [], isBase: false, hidden: true },
 	],
@@ -182,11 +240,97 @@ const definition = (over: Record<string, unknown> = {}) => ({
 
 describe('OptionGroups', () => {
 	const providers = [{ provide: TranslocoService, useValue: translate }];
-	const render = (groups: unknown[] = [], definitions: unknown[] = [definition()], locale = 'fr') =>
+	const render = (groups: unknown[] = [], definitions: unknown[] = [definition()], locale = 'bn') =>
 		mount(OptionGroups, providers, { groups, definitions, locale });
 
 	it('names roles in plain words', () => {
 		expect(render().roleOptions()[0]).toEqual({ value: 'variation_axis', label: 'role_name_variation_axis' });
+	});
+
+	it('previews the product’s own values with the square of the version the shop draws', () => {
+		const swatches = { need: vi.fn(), url: (id: string, version?: string | null) => `${id}@${version ?? 'shown'}` };
+		const term = (code: string, extra: Record<string, unknown>) => ({
+			code,
+			label: both,
+			isBase: false,
+			addonTemplateIds: [],
+			requiresMeasurements: false,
+			sortOrder: 0,
+			...extra,
+		});
+		const page = mount(OptionGroups, [...providers, { provide: SwatchPictures, useValue: swatches }], {
+			groups: [
+				group({
+					displayStyle: 'picture_row',
+					terms: [
+						term('photo', { swatchAssetId: 'p1', priceDeltaINR: 750 }),
+						term('library', { swatchAssetId: 'lib', swatchVersionId: 'product_3x4.crop' }),
+						term('plain', { subLabel: { en: 'Medium', bn: 'মাঝারি' } }),
+					],
+				}),
+			],
+			definitions: [],
+			locale: 'bn',
+			versions: { p1: 'product_3x4.crop', lib: 'product_3x4.as_is' },
+		});
+		expect(page.previews()[0]).toEqual([
+			{ label: 'লাল', subLabel: null, hex: null, picture: 'p1@product_3x4.crop', price: 750 },
+			{ label: 'লাল', subLabel: null, hex: null, picture: 'lib@product_3x4.crop', price: null },
+			{ label: 'লাল', subLabel: 'মাঝারি', hex: null, picture: null, price: null },
+		]);
+		expect(swatches.need).toHaveBeenCalledWith(['p1', 'lib']);
+	});
+
+	it('falls back to the photo’s thumbnail when its versions cannot be read', () => {
+		const page = mount(
+			OptionGroups,
+			[...providers, { provide: SwatchPictures, useValue: { need: vi.fn(), url: () => null } }],
+			{
+				groups: [
+					group({
+						displayStyle: 'picture_chip',
+						terms: [
+							{
+								code: 'a',
+								label: both,
+								isBase: false,
+								addonTemplateIds: [],
+								requiresMeasurements: false,
+								sortOrder: 0,
+								swatchAssetId: 'p1',
+							},
+							{
+								code: 'b',
+								label: both,
+								isBase: false,
+								addonTemplateIds: [],
+								requiresMeasurements: false,
+								sortOrder: 1,
+								swatchAssetId: 'p9',
+							},
+						],
+					}),
+				],
+				definitions: [],
+				locale: 'en',
+				tiles: new Map([['p1', 'p1-card.webp']]),
+			},
+		);
+		expect(page.previews()[0]?.map((value) => value.picture)).toEqual(['p1-card.webp', null]);
+	});
+
+	it('offers every look, and a picked value brings its second line', () => {
+		const medium = { code: 'm', label: both, slug: 'm', subLabel: { en: 'Medium', bn: 'মাঝারি' }, aliases: [] };
+		const page = render([group({ terms: [] })], [definition({ terms: [medium] })]);
+		expect(page.styleOptions.map((option) => option.value)).toEqual([...OPTION_LOOKS]);
+		page.pick(0, page.groups()[0]!, { value: ['m'] } as never);
+		expect(page.groups()[0]?.terms[0]?.subLabel).toEqual({ en: 'Medium', bn: 'মাঝারি' });
+		expect(['image_tile', 'picture_row', 'picture_chip', 'size_v2'].map((look) => page.usesPicture(look))).toEqual([
+			true,
+			true,
+			true,
+			false,
+		]);
 	});
 
 	describe('changing a role', () => {
@@ -236,15 +380,15 @@ describe('OptionGroups', () => {
 
 	it('titles a group, offers only named visible values, and flags the unnamed', () => {
 		const page = render();
-		expect(page.title(group())).toBe('Rouge');
+		expect(page.title(group())).toBe('লাল');
 		expect(page.title(group({ label: {} }))).toBe('color');
-		expect(page.valueOptions(group())).toEqual([{ value: 'red', label: 'Rouge' }]);
+		expect(page.valueOptions(group())).toEqual([{ value: 'red', label: 'লাল' }]);
 		expect(page.valueOptions(group({ attributeCode: 'none' }))).toEqual([]);
 		expect(page.picked(group())).toEqual(['red']);
 		const unnamed = group({ terms: [{ code: 'blue', label: { en: 'Blue' } }] });
 		expect(page.unnamed(unnamed)).toHaveLength(1);
 		expect(page.baseOptions(unnamed)).toEqual([{ value: 'blue', label: 'blue' }]);
-		expect(page.baseOptions(group())).toEqual([{ value: 'red', label: 'Rouge' }]);
+		expect(page.baseOptions(group())).toEqual([{ value: 'red', label: 'লাল' }]);
 	});
 
 	it('adds a group from its definition, and ignores anything else', () => {
@@ -285,16 +429,23 @@ describe('OptionGroups', () => {
 
 	it('names templates in this language, and marks an option as measuring', () => {
 		const page = mount(OptionGroups, [{ provide: TranslocoService, useValue: translate }], {
-			groups: [group({ terms: [{ code: 'a', label: both }, { code: 'b', label: both }] })],
+			groups: [
+				group({
+					terms: [
+						{ code: 'a', label: both },
+						{ code: 'b', label: both },
+					],
+				}),
+			],
 			definitions: [],
-			locale: 'fr',
+			locale: 'bn',
 			templates: [
-				{ code: 't1', label: { en: 'Blouse', fr: 'Blouse fr' } },
+				{ code: 't1', label: { en: 'Blouse', bn: 'Blouse bn' } },
 				{ code: 't2', label: { en: 'Fall' } },
 			],
 		});
 		expect(page.templateOptions()).toEqual([
-			{ value: 't1', label: 'Blouse fr' },
+			{ value: 't1', label: 'Blouse bn' },
 			{ value: 't2', label: 't2' },
 		]);
 		page.setMeasures(0, page.groups()[0] as never, 'b', true);
@@ -302,7 +453,12 @@ describe('OptionGroups', () => {
 	});
 
 	it('sets and clears an override, rounding to whole rupees', () => {
-		const two = group({ terms: [{ code: 'a', label: both }, { code: 'b', label: both }] });
+		const two = group({
+			terms: [
+				{ code: 'a', label: both },
+				{ code: 'b', label: both },
+			],
+		});
 		const page = render([two]);
 		page.setOverride(0, page.groups()[0] as never, 'a', '99.6');
 		expect(page.groups()[0]?.terms[0]?.priceDeltaINR).toBe(100);
@@ -319,8 +475,49 @@ describe('ProductImages', () => {
 		altOverrides: {},
 		...over,
 	});
+	const library = {
+		details: vi.fn((assetId: string) =>
+			assetId === 'broken'
+				? throwError(() => new Error('gone'))
+				: of({ slug: assetId, text: { alt: { bn: `${assetId} বিবরণ` }, title: {}, caption: {} } }),
+		),
+	};
+	/** What the Media picker hands back (media step 4b); each test sets it before opening. */
+	let picks: unknown = [];
+	const modals = {
+		open: vi.fn(() => ({ componentInstance: { start: vi.fn() }, result: Promise.resolve(picks) })),
+	};
+	const pick = (assetId: string, versionId: string | null = null) => ({
+		assetId,
+		versionId,
+		name: `${assetId}.jpg`,
+		thumbnailUrl: `https://cdn.test/${assetId}.webp`,
+	});
 	const render = (over: Record<string, unknown> = {}) =>
-		mount(ProductImages, [], { value: value(over), tiles: new Map(), combinations: [], locale: 'fr' });
+		mount(
+			ProductImages,
+			[
+				{ provide: MediaGateway, useValue: library },
+				{ provide: NgbModal, useValue: modals },
+				{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+			],
+			{
+				value: value(over),
+				tiles: new Map(),
+				combinations: [],
+				locale: 'bn',
+			},
+		);
+
+	it('shows the primary image’s library alt text as what an empty field uses', () => {
+		const page = render();
+		expect(page.libraryAlt()).toEqual({ bn: 'a বিবরণ' });
+		page.makePrimary(null, 1);
+		TestBed.tick();
+		expect(page.libraryAlt()).toEqual({ bn: 'b বিবরণ' });
+		expect(render({ gallery: ['broken'] }).libraryAlt()).toEqual({});
+		expect(render({ gallery: [] }).libraryAlt()).toEqual({});
+	});
 
 	it('knows the primary in each mode, and when there is none', () => {
 		expect(render().primary()).toBe('a');
@@ -351,21 +548,40 @@ describe('ProductImages', () => {
 		expect(page.gallery('h')).toEqual([]);
 	});
 
-	it('adds library picks once, to the gallery it was opened for', () => {
+	it('adds what the Media picker hands back once, with each photo’s version, to the gallery it was opened for', async () => {
 		const page = render();
-		page.open(null);
-		page.add([
-			{ id: 'b', original_url: 'u' },
-			{ id: 'd', original_url: 'v' },
-		] as never);
+		picks = [pick('b', 'product_3x4.white'), pick('d', 'product_3x4.blur')];
+		await page.open(null);
 		expect(page.value().gallery).toEqual(['a', 'b', 'c', 'd']);
-		expect(page.tiles().get('d')).toBe('v');
-		page.open('new');
-		page.add({ id: 'z', original_url: 'w' } as never);
+		expect(page.value().versions).toEqual({ b: 'product_3x4.white', d: 'product_3x4.blur' });
+		expect(page.tiles().get('d')).toBe('https://cdn.test/d.webp');
+		// E04: a tile names its version when it isn't the photo as it is.
+		expect(page.versionLabel('d')).toBe('profile_fill_blur');
+		expect(page.versionLabel('a')).toBeNull();
+		picks = [pick('z')];
+		await page.open('new');
 		expect(page.gallery('new')).toEqual(['z']);
+		picks = [];
+		await page.open(null);
+		expect(page.value().gallery).toEqual(['a', 'b', 'c', 'd']);
 	});
 
-	it('flags images more than 5% away from 3:4, and takes sizes from the library', () => {
+	it('E05: the photo popup sets its version and its alt text on this product', async () => {
+		const page = render();
+		picks = { versionId: 'product_3x4.blur', alt: { bn: 'লাল' } } as never;
+		await page.editPhoto('a');
+		expect(page.value().versions).toEqual({ a: 'product_3x4.blur' });
+		expect(page.value().altOverrides).toEqual({ a: { bn: 'লাল' } });
+		// Cancelled: nothing changes.
+		modals.open.mockReturnValueOnce({
+			componentInstance: { start: vi.fn() },
+			result: Promise.reject(new Error('x')),
+		} as never);
+		await page.editPhoto('a');
+		expect(page.value().versions).toEqual({ a: 'product_3x4.blur' });
+	});
+
+	it('flags images more than 5% away from 3:4', () => {
 		const page = render();
 		expect(page.offShape(null)).toEqual([]);
 		page.sizes.set(
@@ -376,19 +592,13 @@ describe('ProductImages', () => {
 			]),
 		);
 		expect(page.offShape(null)).toEqual([3]);
-		page.open(null);
-		page.add([
-			{ id: 'd', original_url: 'v', width: 600, height: 600 },
-			{ id: 'e', original_url: 'w' },
-		] as never);
-		expect(page.offShape(null)).toEqual([3, 4]);
 	});
 
 	it('edits alt text for the primary in this language', () => {
 		const page = render();
 		expect(page.alt()).toBe('');
-		page.setAlt('Rouge');
-		expect(page.alt()).toBe('Rouge');
+		page.setAlt('লাল');
+		expect(page.alt()).toBe('লাল');
 		const none = render({ gallery: [] });
 		none.setAlt('x');
 		expect(none.alt()).toBe('');
@@ -397,38 +607,14 @@ describe('ProductImages', () => {
 });
 
 describe('ProductBundleForm', () => {
-	const render = () =>
-		mount(ProductBundleForm, [], {
-			value: { bundleType: 'fixed_kit', pricePolicy: 'sum_components', fixedPriceINR: null, groups: [] },
-			products: [{ value: 'p1', label: 'Saree' }, { options: [] }],
-			locale: 'fr',
-		});
-
-	it('edits groups and components', () => {
-		const page = render();
-		page.addGroup();
-		page.addGroup();
-		const first = () => page.value().groups[0] as never;
-		page.setName(0, first(), 'Pièce');
-		page.setLimit(0, 'maxSelections', '2.4');
-		page.addComponent(0, first(), 'p1');
-		page.addComponent(0, first(), 'p2');
-		page.addComponent(0, first(), '');
-		page.addComponent(0, first(), null);
-		page.setComponent(0, first(), 1, { quantity: 3 });
-		expect(page.value().groups[0]).toMatchObject({
-			label: { fr: 'Pièce' },
-			maxSelections: 2,
-			components: [{ productId: 'p1', quantity: 1 }, { productId: 'p2', quantity: 3 }],
-		});
-		page.removeComponent(0, first(), 0);
-		expect(page.value().groups[0]?.components).toHaveLength(1);
-		page.removeGroup(1);
-		expect(page.value().groups).toHaveLength(1);
-		page.set({ bundleType: 'optional_addons' });
-		expect(page.value().bundleType).toBe('optional_addons');
-		expect(page.productName('p1')).toBe('Saree');
-		expect(page.productName('zz')).toBe('zz');
+	it('opens the bundle builder, once the bundle has a name (brief A03)', () => {
+		const card = mount(ProductBundleForm, [], { productId: null, name: 'Wedding saree set' });
+		const opened: unknown[] = [];
+		card.open.subscribe(() => opened.push(true));
+		card.open.emit();
+		expect(opened).toHaveLength(1);
+		expect(card.productId()).toBeNull();
+		expect(card.busy()).toBe(false);
 	});
 });
 
@@ -453,6 +639,7 @@ const detail = (over: Record<string, unknown> = {}) => ({
 	relatedProductIds: [],
 	upsellProductIds: [],
 	crossSellProductIds: [],
+	videos: [],
 	content: {
 		title: { en: 'Silk' },
 		shortDescription: {},
@@ -496,12 +683,12 @@ describe('FormProduct builder', () => {
 			getReplacementTargets: vi.fn(() => of([])),
 			saveCatalogProduct: vi.fn(() => of({})),
 			createCatalogProduct: vi.fn(() => of({ id: 'p1', slug: 'silk' })),
-			goLive: vi.fn(() => of({ live: false, gaps: [{ field: 'title', locale: 'fr' }] })),
+			goLive: vi.fn(() => of({ live: false, gaps: [{ field: 'title', locale: 'bn' }] })),
 			getBundle: vi.fn(() => of(options.bundle ?? null)),
 			saveBundle: vi.fn(() => of({})),
 			discontinueCatalogProduct: vi.fn(() => of({})),
 		};
-		const router = { navigateByUrl: vi.fn() };
+		const router = { navigateByUrl: vi.fn(), navigate: vi.fn(() => Promise.resolve(true)) };
 		const toasts = { showSuccess: vi.fn(), showError: vi.fn() };
 		const page = mount(
 			FormProduct,
@@ -510,7 +697,10 @@ describe('FormProduct builder', () => {
 				{ provide: Router, useValue: router },
 				{ provide: HttpClient, useValue: {} },
 				{ provide: PLATFORM_ID, useValue: 'server' },
-				{ provide: ActivatedRoute, useValue: { params: new BehaviorSubject(options.id ? { id: options.id } : {}) } },
+				{
+					provide: ActivatedRoute,
+					useValue: { params: new BehaviorSubject(options.id ? { id: options.id } : {}) },
+				},
 				{ provide: AttributeService, useValue: { getDefinitions: () => of([definition()]) } },
 				{ provide: AddonTemplateService, useValue: { list: () => of([{ code: 't1' }]) } },
 				{ provide: NotificationService, useValue: toasts },
@@ -525,7 +715,7 @@ describe('FormProduct builder', () => {
 		const { page, service } = render();
 		expect(page.definitions()).toHaveLength(1);
 		expect(page.addonTemplates()).toEqual([{ code: 't1' }]);
-		page.switchLanguage('fr');
+		page.switchLanguage('bn');
 		page.submit();
 		expect(page.fields.locale()).toBe('en');
 		expect(page.tabError).toBe('general');
@@ -579,24 +769,26 @@ describe('FormProduct builder', () => {
 		const { page, service } = render({ id: 'p1' });
 		page.selectCategoryItem(['c1', 'c2']);
 		page.submit();
-		const body = (service.saveCatalogProduct.mock.calls[0] as unknown as [string, { content: { categoryIds: string[] } }])[1];
+		const body = (
+			service.saveCatalogProduct.mock.calls[0] as unknown as [string, { content: { categoryIds: string[] } }]
+		)[1];
 		expect(body.content.categoryIds).toEqual(['c1', 'c2']);
 		page.form.patchValue({ categories: null });
 		page.submit();
-		const next = (service.saveCatalogProduct.mock.calls[1] as unknown as [string, { content: { categoryIds: string[] } }])[1];
+		const next = (
+			service.saveCatalogProduct.mock.calls[1] as unknown as [string, { content: { categoryIds: string[] } }]
+		)[1];
 		expect(next.content.categoryIds).toEqual([]);
 	});
 
-	it('reads a bundle, and saves it after the product', () => {
-		const saved = { bundleType: 'choose_one_per_group', pricePolicy: 'sum_components', fixedPriceINR: null, groups: [{}] };
-		const { page, service } = render({ id: 'p1', product: detail({ type: 'bundle' }), bundle: saved });
-		expect(page.bundle()).toEqual(saved);
-		page.submit();
-		expect(service.saveBundle).toHaveBeenCalledWith('p1', saved);
-		const blank = render({ id: 'p1', product: detail({ type: 'bundle' }) });
-		expect(blank.page.bundle().groups).toEqual([]);
-		blank.page.submit();
-		expect(blank.service.saveBundle).not.toHaveBeenCalled();
+	it('sends a bundle to its builder, and a new bundle there once its name is saved (V1, A03)', () => {
+		const { router } = render({ id: 'p1', product: detail({ type: 'bundle' }) });
+		expect(router.navigate).toHaveBeenCalledWith(['/product/bundle', 'p1'], { replaceUrl: true });
+		const fresh = render();
+		fresh.page.form.controls['type'].setValue('bundle');
+		expect(fresh.page.isBundle()).toBe(true);
+		fresh.page.openBuilder();
+		expect(fresh.service.createCatalogProduct).not.toHaveBeenCalled();
 	});
 
 	it('names combinations in the current language, falling back to English, then the code', () => {
@@ -610,15 +802,15 @@ describe('FormProduct builder', () => {
 				],
 			}),
 		]);
-		page.switchLanguage('fr');
-		expect(page.combinations().map((row) => row.label)).toEqual(['Rouge', 'Blue', 'bare']);
+		page.switchLanguage('bn');
+		expect(page.combinations().map((row) => row.label)).toEqual(['লাল', 'Blue', 'bare']);
 		page.optionGroups.update((rows) => rows.map((row) => ({ ...row, attributeCode: 'color' })));
 	});
 
 	it('shows Go Live gaps in place, and leaves on success', () => {
 		const { page, service, toasts, router } = render({ id: 'p1' });
 		page.goLive();
-		expect(page.gapLabels()).toEqual(['Français: gap_title']);
+		expect(page.gapLabels()).toEqual(['বাংলা: gap_title']);
 		expect(toasts.showError).toHaveBeenCalledOnce();
 		expect(router.navigateByUrl).not.toHaveBeenCalled();
 		service.goLive.mockReturnValueOnce(of({ live: true, gaps: [] }) as never);
@@ -633,11 +825,11 @@ describe('FormProduct builder', () => {
 		const { page } = render({ id: 'p1' });
 		const select = vi.fn();
 		(page as unknown as { nav: () => unknown }).nav = () => ({ select });
-		page.openGap({ field: 'meta_title', locale: 'fr' });
-		expect(page.fields.locale()).toBe('fr');
+		page.openGap({ field: 'meta_title', locale: 'bn' });
+		expect(page.fields.locale()).toBe('bn');
 		expect(select).toHaveBeenLastCalledWith('seo');
 		page.openGap({ field: 'value:color:red', locale: null });
-		expect(page.fields.locale()).toBe('fr');
+		expect(page.fields.locale()).toBe('bn');
 		expect(select).toHaveBeenLastCalledWith('inventory');
 	});
 
@@ -651,17 +843,12 @@ describe('FormProduct builder', () => {
 		expect(page.savedAxes()).toEqual(['color']);
 		expect(page.imageSizes().get('a')).toEqual([3, 4]);
 	});
-
-	it('leaves out bundles from the bundle picker, and lists simple products', () => {
-		const { page } = render();
-		expect(page.bundleProducts()).toEqual([]);
-	});
 });
 
 describe('FormCategory', () => {
 	const row = {
 		id: 'cat_1',
-		name: { en: 'Sarees', fr: 'Saris' },
+		name: { en: 'Sarees', bn: 'শাড়ি' },
 		description: {},
 		seoTitle: {},
 		seoDescription: {},
@@ -673,8 +860,32 @@ describe('FormCategory', () => {
 		image: { id: 'a1', url: 'https://cdn.test/a1' },
 		icon: null,
 	};
-	const render = (id?: string, inputs: Record<string, unknown> = {}, save = () => of({ id: 'cat_1' }) as never) => {
-		const service = { getCategoryRows: () => of([row]), saveCategory: vi.fn(save) };
+	const blogRow = {
+		id: 'bcat_1',
+		slug: 'saree-guides',
+		name: { en: 'Saree guides' },
+		description: { en: 'How to choose' },
+		status: 'draft',
+		displayOrder: 0,
+	};
+	const render = (
+		id?: string,
+		inputs: Record<string, unknown> = {},
+		save = () => of({ id: 'cat_1' }) as never,
+		saveBlog = () => of({ id: 'bcat_1' }) as never,
+	) => {
+		const service = {
+			getCategoryRows: () => of([row]),
+			saveCategory: vi.fn(save),
+			hsnImpact: vi.fn(() =>
+				of({
+					categoryHsn: '5007',
+					using: 214,
+					own: [{ id: 'p9', sku: 'ST-9', title: 'Own', hsnCode: '5407' }],
+				}),
+			),
+		};
+		const blogs = { getTerms: () => of([blogRow]), saveTerm: vi.fn(saveBlog) };
 		const router = { navigateByUrl: vi.fn() };
 		const toasts = { showSuccess: vi.fn(), showError: vi.fn() };
 		const client = { invalidateQueries: vi.fn() };
@@ -682,6 +893,7 @@ describe('FormCategory', () => {
 			FormCategory,
 			[
 				{ provide: CategoryService, useValue: service },
+				{ provide: BlogService, useValue: blogs },
 				{ provide: Router, useValue: router },
 				{ provide: ActivatedRoute, useValue: { params: new BehaviorSubject(id ? { id } : {}) } },
 				{ provide: QueryClient, useValue: client },
@@ -690,22 +902,79 @@ describe('FormCategory', () => {
 			],
 			{ type: id ? 'edit' : 'create', ...inputs },
 		);
-		return { page, service, router, toasts, client };
+		return { page, service, blogs, router, toasts, client };
 	};
+
+	it('asks about the products that follow a changed HSN, and saves the answer with the category (F03)', async () => {
+		const { page, service } = render('cat_1');
+		const modals = TestBed.inject(NgbModal);
+		const asked: unknown[] = [];
+		let answer: unknown = true;
+		const open = vi.spyOn(modals, 'open').mockImplementation(
+			() =>
+				({
+					componentInstance: { start: (ask: unknown) => asked.push(ask) },
+					result: Promise.resolve(answer),
+				}) as never,
+		);
+		// Unchanged HSN: no question, saved at once with its returnability.
+		page.form.patchValue({ hsn_code: '', returnable: 'no' });
+		page.submit();
+		expect(service.saveCategory).toHaveBeenLastCalledWith(
+			'cat_1',
+			expect.objectContaining({ hsnCode: null, returnable: false, updateProductsHsn: false }),
+		);
+		expect(asked).toEqual([]);
+		page.form.patchValue({ hsn_code: '5208' });
+		page.submit();
+		await vi.waitFor(() => expect(service.saveCategory).toHaveBeenCalledTimes(2));
+		expect(asked[0]).toMatchObject({
+			params: { count: 214, to: '5208', own: 1 },
+			items: ['ST-9 · Own · 5407'],
+			yes: 'category_hsn_update',
+			no: 'category_hsn_only',
+		});
+		expect(service.saveCategory).toHaveBeenLastCalledWith(
+			'cat_1',
+			expect.objectContaining({ hsnCode: '5208', updateProductsHsn: true }),
+		);
+		// Cancelled: nothing is saved.
+		answer = undefined;
+		open.mockImplementation(
+			() =>
+				({
+					componentInstance: { start: () => undefined },
+					result: Promise.reject(new Error('closed')),
+				}) as never,
+		);
+		page.submit();
+		await new Promise((resolve) => setTimeout(resolve));
+		expect(service.saveCategory).toHaveBeenCalledTimes(2);
+		// A bad code never reaches the API.
+		page.form.patchValue({ hsn_code: '54' });
+		page.submit();
+		expect(service.saveCategory).toHaveBeenCalledTimes(2);
+		open.mockRestore();
+	});
 
 	it('switches to the language of a to-do line', () => {
 		const { page } = render();
-		page.openLanguageGap({ key: 'name', locale: 'fr' });
-		expect(page.fields.locale()).toBe('fr');
+		page.openLanguageGap({ key: 'name', locale: 'bn' });
+		expect(page.fields.locale()).toBe('bn');
 	});
 
 	it('fills from the API, and copes with a missing row', () => {
 		const { page } = render('cat_1');
 		expect(page.form.value).toMatchObject({ name: 'Sarees', slug: 'sarees', parent_id: 'cat_0' });
-		expect(page.gaps()['fr']?.length).toBe(3);
+		expect(page.gaps()['bn']?.length).toBe(3);
 		expect(page.form.value).toMatchObject({ category_image_id: 'a1', category_icon_id: '' });
 		expect(page.category.category_image?.original_url).toBe('https://cdn.test/a1');
 		expect(page.category.category_icon).toBeUndefined();
+		// Shipping (brief cat01): who reads its charges, and its own exception per zone.
+		expect(page.shippingUsage()).toEqual({ products: 214, ownCharges: 5 });
+		expect(page.zoneExceptions()).toEqual([
+			{ zone: 'international', label: 'ship_choice_cantShip', cantShip: true },
+		]);
 		expect(render('nope').page.id).toBeUndefined();
 	});
 
@@ -721,8 +990,8 @@ describe('FormCategory', () => {
 		const { page } = render();
 		const seen: string[] = [];
 		page.localeChange.subscribe((locale) => seen.push(locale));
-		page.switchLanguage('fr');
-		expect(seen).toEqual(['fr']);
+		page.switchLanguage('bn');
+		expect(seen).toEqual(['bn']);
 	});
 
 	it('takes its type, and stores images', () => {
@@ -730,8 +999,11 @@ describe('FormCategory', () => {
 		page.ngOnChanges();
 		page.selectItem(['cat_2']);
 		expect(page.form.value.parent_id).toBe('cat_2');
+		expect(page.hasParent()).toBe(true);
 		page.selectItem([]);
 		expect(page.form.value.parent_id).toBe('');
+		// A top-level category's empty shipping fields follow the shop default, not a parent.
+		expect(page.hasParent()).toBe(false);
 		page.selectItem('x' as never);
 		page.selectCategoryImage({ id: 3 } as never);
 		page.selectCategoryImage(null as never);
@@ -743,7 +1015,10 @@ describe('FormCategory', () => {
 	});
 
 	it('offers other categories for the second placement', () => {
-		const tree = [{ id: 'a', name: 'A', subcategories: [{ id: 'b', name: 'B' }] }, { id: 'cat_1', name: 'Self' }];
+		const tree = [
+			{ id: 'a', name: 'A', subcategories: [{ id: 'b', name: 'B' }] },
+			{ id: 'cat_1', name: 'Self' },
+		];
 		const page = render('cat_1', { categories: tree }).page;
 		expect(page.placementOptions()).toEqual([
 			{ value: 'a', label: 'A' },
@@ -772,24 +1047,69 @@ describe('FormCategory', () => {
 		expect(created.client.invalidateQueries).toHaveBeenCalledOnce();
 		expect(created.router.navigateByUrl).toHaveBeenCalledWith('/category');
 		const edited = render('cat_1');
-		edited.page.switchLanguage('fr');
+		edited.page.switchLanguage('bn');
+		// The icon chosen in the Media picker brings its version (R4-1, media step 4d).
+		edited.page.selectCategoryIcon({ id: 'a7', versionId: 'square_1x1.crop' } as never);
 		edited.page.submit();
 		expect(edited.service.saveCategory.mock.calls[0]).toMatchObject([
 			'cat_1',
-			{ name: { en: 'Sarees', fr: 'Saris' }, parentId: 'cat_0', alsoUnder: ['cat_9'], imageId: 'a1', iconId: null },
+			{
+				name: { en: 'Sarees', bn: 'শাড়ি' },
+				parentId: 'cat_0',
+				alsoUnder: ['cat_9'],
+				imageId: 'a1',
+				iconId: 'a7',
+				imageVersions: { a7: 'square_1x1.crop' },
+			},
 		]);
 	});
 
-	it('says when a save is refused, and blog categories go nowhere', () => {
+	it('says when a save is refused', () => {
 		const refused = render(undefined, {}, () => throwError(() => new Error('no')) as never);
 		refused.page.form.patchValue({ name: 'New', slug: 'new' });
 		refused.page.submit();
 		expect(refused.toasts.showError).toHaveBeenCalledWith('category_rejected');
+	});
+
+	it('saves a blog category through the blog API, its address made from the English name', () => {
 		const blog = render(undefined, { categoryType: 'post' });
-		blog.page.form.patchValue({ name: 'New', slug: 'new' });
+		blog.page.form.patchValue({ name: 'Care and styling', slug: '' });
 		blog.page.submit();
 		expect(blog.service.saveCategory).not.toHaveBeenCalled();
+		expect(blog.blogs.saveTerm).toHaveBeenCalledWith('categories', null, {
+			name: { en: 'Care and styling' },
+			description: { en: '' },
+			slug: 'care-and-styling',
+			status: 'live',
+		});
 		expect(blog.router.navigateByUrl).toHaveBeenCalledWith('/blog/category');
+	});
+
+	it('fills a saved blog category and lists only its name and description as to-dos', () => {
+		const blog = render('bcat_1', { categoryType: 'post' });
+		expect(blog.page.form.value).toMatchObject({ name: 'Saree guides', slug: 'saree-guides', status: false });
+		expect(blog.page.gaps()['bn']?.map((gap) => gap.key)).toEqual(['name', 'description']);
+	});
+
+	it('opens the missing language when a blog category is refused for going live', () => {
+		const refusal = new HttpErrorResponse({
+			status: 400,
+			error: { error: { issues: [{ path: ['name', 'bn'], code: 'go_live_blocked', message: 'x' }] } },
+		});
+		const blog = render(undefined, { categoryType: 'post' }, undefined, () => throwError(() => refusal) as never);
+		blog.page.form.patchValue({ name: 'Care', slug: 'care' });
+		blog.page.submit();
+		expect(blog.toasts.showError).toHaveBeenCalledWith('blog_go_live_blocked বাংলা: blog_gap_name');
+		expect(blog.page.fields.locale()).toBe('bn');
+		const plain = render(
+			undefined,
+			{ categoryType: 'post' },
+			undefined,
+			() => throwError(() => new Error('x')) as never,
+		);
+		plain.page.form.patchValue({ name: 'Care', slug: 'care' });
+		plain.page.submit();
+		expect(plain.toasts.showError).toHaveBeenCalledWith('category_rejected');
 	});
 });
 
@@ -797,19 +1117,18 @@ describe('TreeNode', () => {
 	const render = (remove = () => of(undefined) as never) => {
 		const router = { navigateByUrl: vi.fn() };
 		const service = { deleteCategory: vi.fn(remove) };
+		const blogs = { deleteTerm: vi.fn(() => of(undefined)) };
 		const toasts = { showError: vi.fn() };
-		const node = mount(
-			TreeNode,
-			[
-				{ provide: Router, useValue: router },
-				{ provide: ActivatedRoute, useValue: { params: of({ id: 'c4' }) } },
-				{ provide: CategoryService, useValue: service },
-				{ provide: QueryClient, useValue: { invalidateQueries: vi.fn() } },
-				{ provide: NotificationService, useValue: toasts },
-				{ provide: TranslocoService, useValue: translate },
-			],
-		);
-		return { node, router, service, toasts };
+		const node = mount(TreeNode, [
+			{ provide: Router, useValue: router },
+			{ provide: ActivatedRoute, useValue: { params: of({ id: 'c4' }) } },
+			{ provide: CategoryService, useValue: service },
+			{ provide: BlogService, useValue: blogs },
+			{ provide: QueryClient, useValue: { invalidateQueries: vi.fn() } },
+			{ provide: NotificationService, useValue: toasts },
+			{ provide: TranslocoService, useValue: translate },
+		]);
+		return { node, router, service, blogs, toasts };
 	};
 
 	it('names a category in the language on screen, or falls back', () => {
@@ -820,27 +1139,50 @@ describe('TreeNode', () => {
 			return fixture.componentInstance.label();
 		};
 		render();
-		const row = { name: { en: 'Sarees', fr: 'Saris' } };
-		expect(label({ name: 'Sarees', row }, 'fr')).toBe('Saris');
-		expect(label({ name: 'Sarees', row: { name: { en: 'Sarees' } } }, 'fr')).toBe('Sarees');
-		expect(label({ name: 'Blog' }, 'fr')).toBe('Blog');
+		const row = { name: { en: 'Sarees', bn: 'শাড়ি' } };
+		expect(label({ name: 'Sarees', row }, 'bn')).toBe('শাড়ি');
+		expect(label({ name: 'Sarees', row: { name: { en: 'Sarees' } } }, 'bn')).toBe('Sarees');
+		expect(label({ name: 'Blog' }, 'bn')).toBe('Blog');
+		expect(label({ name: 'Guides', blog: { name: { en: 'Guides', bn: 'গাইড' } } }, 'bn')).toBe('গাইড');
+	});
+
+	it('names a row by the field the tree names, and lists its children under the tree’s key', () => {
+		render();
+		const fixture = TestBed.createComponent(TreeNode);
+		const child = { id: 'c2', name: 'Silk' };
+		fixture.componentRef.setInput('node', {
+			id: 'c1',
+			name: 'Sarees',
+			title: 'All sarees',
+			subcategories: [child],
+		});
+		fixture.componentRef.setInput('displayKey', 'title');
+		fixture.componentRef.setInput('recursionKey', 'subcategories');
+		expect(fixture.componentInstance.label()).toBe('All sarees');
+		expect(fixture.componentInstance.children()).toEqual([child]);
+		// A field that is not text falls back to the name; a leaf, or a key holding something else, has no children.
+		fixture.componentRef.setInput('displayKey', 'subcategories');
+		fixture.componentRef.setInput('recursionKey', 'name');
+		expect(fixture.componentInstance.label()).toBe('Sarees');
+		expect(fixture.componentInstance.children()).toEqual([]);
 	});
 
 	it('reads the selected id, and deletes through the API', () => {
 		const { node, router, service } = render();
 		expect(node.id).toBe('c4');
-		node.delete('delete', { id: 'c1', type: 'product' } as never);
+		node.delete({ id: 'c1', type: 'product' } as never);
 		expect(service.deleteCategory).toHaveBeenCalledWith('c1');
 		expect(router.navigateByUrl).toHaveBeenLastCalledWith('/category');
 	});
 
-	it('leaves blog categories alone, and says when a delete is refused', () => {
+	it('deletes blog categories through the blog API, and says when a delete is refused', () => {
 		const blog = render();
-		blog.node.delete('delete', { id: 'b', type: 'post' } as never);
+		blog.node.delete({ id: 'b', type: 'post' } as never);
 		expect(blog.service.deleteCategory).not.toHaveBeenCalled();
+		expect(blog.blogs.deleteTerm).toHaveBeenCalledWith('categories', 'b');
 		expect(blog.router.navigateByUrl).toHaveBeenCalledWith('/blog/category');
 		const refused = render(() => throwError(() => new Error('no')) as never);
-		refused.node.delete('delete', { id: 'c', type: 'product' } as never);
+		refused.node.delete({ id: 'c', type: 'product' } as never);
 		expect(refused.toasts.showError).toHaveBeenCalledWith('category_rejected');
 	});
 });
@@ -904,25 +1246,107 @@ describe('FormAttribute', () => {
 				{ provide: QueryClient, useValue: client },
 				{ provide: NotificationService, useValue: toasts },
 				{ provide: TranslocoService, useValue: translate },
+				{
+					provide: MediaGateway,
+					useValue: { get: (assetId: string) => of({ id: assetId, original_url: 'a.webp' }) },
+				},
 			],
 			{ type: id ? 'edit' : 'create' },
 		);
 		return { page, service, router, toasts };
 	};
 
+	it('cuts a square of a value’s default picture, or goes back to the whole photo (brief P11)', async () => {
+		const { page } = render('color');
+		const cutStart = vi.fn();
+		const modals = TestBed.inject(NgbModal);
+		const open = vi.spyOn(modals, 'open');
+		const answer = (result: unknown) =>
+			open.mockReturnValueOnce({ componentInstance: { start: cutStart }, result } as never);
+		await page.openCut(0, { ...page.terms()[0]!, swatchAssetId: undefined } as never);
+		expect(open).not.toHaveBeenCalled();
+		answer(Promise.resolve({ kind: 'cut', id: 'med_cut', versionId: 'swatch_1x1.as_is' }));
+		await page.openCut(0, page.terms()[0]!);
+		expect(cutStart).toHaveBeenCalledWith({ pictureId: 'a1', valueName: expect.any(String) });
+		expect(page.terms()[0]).toMatchObject({ swatchAssetId: 'med_cut', swatchVersionId: 'swatch_1x1.as_is' });
+		// Until the cut's own files are made, the field shows the picture it was cut from.
+		expect(page.picture(page.terms()[0]!)).toMatchObject({ id: 'med_cut', original_url: 'a.webp' });
+		answer(Promise.resolve({ kind: 'whole', photoId: 'a1' }));
+		await page.openCut(0, page.terms()[0]!);
+		expect(page.terms()[0]).toMatchObject({ swatchAssetId: 'a1' });
+		expect(page.terms()[0]).not.toHaveProperty('swatchVersionId');
+		answer(Promise.reject('closed'));
+		await page.openCut(0, page.terms()[0]!);
+		expect(page.terms()[0]?.swatchAssetId).toBe('a1');
+	});
+
+	it('gives each value a default picture in the picture styles only', () => {
+		const { page } = render('color');
+		expect(page.isPicture).toBe(false);
+		expect(page.picture(page.terms()[0]!)).toMatchObject({ id: 'a1', original_url: 'a.webp' });
+		page.form.patchValue({ style: 'image_tile' });
+		expect(page.isPicture).toBe(true);
+		page.setPicture(0, [{ id: 'b2', original_url: 'b.webp', versionId: 'square_1x1.crop' }] as never);
+		expect(page.terms()[0]).toMatchObject({ swatchAssetId: 'b2', swatchVersionId: 'square_1x1.crop' });
+		expect(page.picture(page.terms()[0]!)?.original_url).toBe('b.webp');
+		page.setPicture(0, null);
+		expect(page.terms()[0]).not.toHaveProperty('swatchAssetId');
+		expect(page.terms()[0]).not.toHaveProperty('swatchVersionId');
+		expect(page.picture(page.terms()[0]!)).toBeNull();
+	});
+
+	it('previews samples until a value is named, then the values in the look picked', () => {
+		const { page } = render();
+		expect(page.look()).toBe('rectangle');
+		expect(page.previewValues().map((value) => [value.label, value.hex])).toEqual([
+			['look_preview_sample', '#1f4e96'],
+			['look_preview_sample', '#b5157d'],
+			['look_preview_sample', '#2e7d32'],
+		]);
+		page.form.patchValue({ style: 'colour_chip' });
+		expect(page.look()).toBe('colour_chip');
+		page.setName(0, page.terms()[0]!, 'Ivory');
+		page.setHex(0, '#f2ead8');
+		page.setNote(0, page.terms()[0]!, 'Off white');
+		expect(page.previewValues()).toEqual([
+			{ label: 'Ivory', subLabel: 'Off white', hex: '#f2ead8', picture: null },
+		]);
+	});
+
+	it('offers the four new looks, and keeps a second line owed in every language once written', () => {
+		const { page } = render('color');
+		expect(page.styleOptions.map((option) => option.value)).toEqual([...OPTION_LOOKS]);
+		page.form.patchValue({ style: 'colour_chip' });
+		expect([page.isColour, page.isPicture]).toEqual([true, false]);
+		page.form.patchValue({ style: 'picture_row' });
+		expect([page.isColour, page.isPicture]).toEqual([false, true]);
+		page.form.patchValue({ style: 'size_v2' });
+		expect([page.isColour, page.isPicture]).toEqual([false, false]);
+		const before = page.gaps()['bn']?.length ?? 0;
+		page.setNote(0, page.terms()[0]!, ' Medium ');
+		expect(page.terms()[0]?.subLabel).toEqual({ en: 'Medium' });
+		expect(page.hasNote(page.terms()[0]!)).toBe(true);
+		expect(page.gaps()['bn']?.length).toBe(before + 1);
+		page.setNote(0, page.terms()[0]!, '');
+		expect(page.terms()[0]).not.toHaveProperty('subLabel');
+		expect(page.gaps()['bn']?.length).toBe(before);
+	});
+
 	it('fills from the API, keeping the code', () => {
 		const { page } = render('color');
 		expect(page.code()).toBe('color');
 		expect(page.form.value).toMatchObject({ name: 'Red', style: 'color_swatch', default_role: 'variation_axis' });
 		expect(page.isColour).toBe(true);
-		expect(page.gaps()['fr']?.length).toBe(1);
+		expect(page.gaps()['bn']?.length).toBe(1);
 		expect(render('nope').page.code()).toBeNull();
 	});
 
 	it('reads filter settings, with defaults', () => {
 		const service = {
 			getDefinitions: () =>
-				of([definition({ filterConfig: { visible: false, sortOrder: 0, defaultFacetDisplayStyle: 'swatch' } })]),
+				of([
+					definition({ filterConfig: { visible: false, sortOrder: 0, defaultFacetDisplayStyle: 'swatch' } }),
+				]),
 		};
 		const page = mount(
 			FormAttribute,
@@ -945,9 +1369,9 @@ describe('FormAttribute', () => {
 		const input = document.createElement('input');
 		input.id = 'value_0';
 		document.body.appendChild(input);
-		page.openLanguageGap({ key: 'value_0', locale: 'fr' });
+		page.openLanguageGap({ key: 'value_0', locale: 'bn' });
 		vi.runAllTimers();
-		expect(page.fields.locale()).toBe('fr');
+		expect(page.fields.locale()).toBe('bn');
 		expect(document.activeElement).toBe(input);
 		input.remove();
 		vi.useRealTimers();
@@ -966,10 +1390,10 @@ describe('FormAttribute', () => {
 		page.setHex(0, '#112233');
 		page.setAliases(0, 'neel, , blue');
 		expect(page.terms()[0]).toMatchObject({ slug: 'blue-one', hex: '#112233', aliases: ['neel', 'blue'] });
-		page.switchLanguage('fr');
+		page.switchLanguage('bn');
 		expect(page.onSourceLanguage).toBe(false);
-		page.setName(0, page.terms()[0] as never, 'Bleu');
-		expect(page.terms()[0]).toMatchObject({ label: { fr: 'Bleu' }, slug: 'blue-one' });
+		page.setName(0, page.terms()[0] as never, 'নীল');
+		expect(page.terms()[0]).toMatchObject({ label: { bn: 'নীল' }, slug: 'blue-one' });
 		expect(page.guide(page.terms()[0] as never)).toBe('Royal Blue');
 		expect(page.guide({ label: {} } as never)).toBe('');
 		page.toggleHidden(0, page.terms()[0] as never);
@@ -985,7 +1409,7 @@ describe('FormAttribute', () => {
 
 	it('refuses no English name', () => {
 		const { page, service } = render();
-		page.switchLanguage('fr');
+		page.switchLanguage('bn');
 		page.submit();
 		expect(page.fields.locale()).toBe('en');
 		expect(service.saveAttribute).not.toHaveBeenCalled();
@@ -1029,13 +1453,17 @@ describe('Product list Go Live', () => {
 			{ provide: Router, useValue: {} },
 			{ provide: ProductService, useValue: service },
 			{ provide: NotificationService, useValue: toasts },
-			{ provide: TranslocoService, useValue: translate },
+			{
+				provide: TranslocoService,
+				useValue: { ...translate, langChanges$: of('en'), getActiveLang: () => 'en' },
+			},
+			{ provide: ProductDraftService, useValue: { list: () => of({ items: [], mine: 0 }) } },
 		]);
 		page.onActionClicked({ actionToPerform: 'go_live', data: { id: 'p1' } } as never);
 		expect(service.goLive).toHaveBeenCalledWith('p1');
 		expect(toasts.showSuccess).toHaveBeenCalledOnce();
 		expect(refetch).toHaveBeenCalledOnce();
-		service.goLive.mockReturnValueOnce(of({ live: false, gaps: [{ field: 'title', locale: 'fr' }] }) as never);
+		service.goLive.mockReturnValueOnce(of({ live: false, gaps: [{ field: 'title', locale: 'bn' }] }) as never);
 		page.goLive({ id: 'p1' } as never);
 		expect(toasts.showError).toHaveBeenCalledOnce();
 		expect(refetch).toHaveBeenCalledOnce();
@@ -1106,5 +1534,122 @@ describe('Taxonomy services', () => {
 		const posted = (client.post.mock.calls as unknown as string[][]).map((call) => call[0]);
 		expect(posted[1]).toMatch(/products\/p%201\/go-live$/);
 		expect(posted[2]).toMatch(/products\/p%201\/bundle$/);
+	});
+});
+
+describe('swatch pictures', () => {
+	const picture = (id: string) => ({ id, original_url: `${id}.webp` });
+	const gateway = { get: vi.fn((id: string) => of(picture(id))), details: vi.fn() };
+	const pickerStart = vi.fn();
+	const swatchModals = {
+		open: vi.fn(() => ({
+			componentInstance: { start: pickerStart },
+			result: Promise.resolve([
+				{ assetId: 'fabric', versionId: 'square_1x1.as_is', name: 'fabric.jpg', thumbnailUrl: 'fabric.webp' },
+			]),
+		})),
+	};
+	const providers = [
+		{ provide: TranslocoService, useValue: translate },
+		{ provide: MediaGateway, useValue: gateway },
+		{ provide: NgbModal, useValue: swatchModals },
+	];
+	const swatchGroup = (terms: Record<string, unknown>[]) =>
+		group({
+			displayStyle: 'image_swatch',
+			terms: terms.map((term, index) => ({
+				code: `v${index}`,
+				label: both,
+				isBase: false,
+				addonTemplateIds: [],
+				requiresMeasurements: false,
+				sortOrder: index,
+				...term,
+			})),
+		});
+	const render = (terms: Record<string, unknown>[], tiles = new Map<string, string>()) =>
+		mount(OptionGroups, providers, {
+			groups: [swatchGroup(terms)],
+			definitions: [],
+			locale: 'en',
+			photos: ['p1', 'p2'],
+			tiles,
+		});
+
+	afterEach(() => gateway.get.mockClear());
+
+	it('offers the product photos in order, then a library picture already chosen', () => {
+		const page = render([{}, { swatchAssetId: 'lib' }], new Map([['p1', 'p1.webp']]));
+		const [plain, chosen] = page.groups()[0]!.terms;
+		expect(page.swatchTiles(plain!).map((tile) => tile.id)).toEqual(['p1', 'p2']);
+		expect(page.swatchTiles(plain!)[1]?.url).toBe('assets/images/product.png');
+		expect(page.swatchTiles(chosen!).map((tile) => tile.id)).toEqual(['p1', 'p2', 'lib']);
+	});
+
+	it('fetches a preview it does not know, once', () => {
+		const page = render([{ swatchAssetId: 'lib' }, { swatchAssetId: 'lib' }]);
+		expect(gateway.get).toHaveBeenCalledTimes(1);
+		expect(page.tiles().get('lib')).toBe('lib.webp');
+	});
+
+	it('chooses a photo on tap and clears it on a second tap', () => {
+		const page = render([{}]);
+		page.chooseSwatch(0, page.groups()[0]!, 'v0', 'p2');
+		expect(page.groups()[0]?.terms[0]?.swatchAssetId).toBe('p2');
+		page.chooseSwatch(0, page.groups()[0]!, 'v0', 'p1');
+		expect(page.groups()[0]?.terms[0]?.swatchAssetId).toBe('p1');
+		page.chooseSwatch(0, page.groups()[0]!, 'v0', 'p1');
+		expect(page.groups()[0]?.terms[0]).not.toHaveProperty('swatchAssetId');
+	});
+
+	it('the library opens the Media picker for any photo, and its choice goes to the value that asked (step 4d)', async () => {
+		const page = render([{}, {}]);
+		await page.openLibrary(0, 'v0');
+		expect(pickerStart).toHaveBeenCalledWith(
+			expect.objectContaining({ title: 'fm_pick_title_swatch', max: 1, profile: null }),
+		);
+		expect(page.groups()[0]?.terms[0]?.swatchAssetId).toBe('fabric');
+		// The version chosen in the picker is kept with the swatch (media brief: a place stores photo + version).
+		expect(page.groups()[0]?.terms[0]?.swatchVersionId).toBe('square_1x1.as_is');
+		expect(page.tiles().get('fabric')).toBe('fabric.webp');
+		// One of the product's own photos stores no version: the shop draws the one its gallery stores.
+		page.chooseSwatch(0, page.groups()[0]!, 'v0', 'p1');
+		expect(page.groups()[0]?.terms[0]).toMatchObject({ swatchAssetId: 'p1' });
+		expect(page.groups()[0]?.terms[0]).not.toHaveProperty('swatchVersionId');
+	});
+
+	it('Cut opens the swatch cut pop-up for the chosen picture, then uses the cut or the whole photo (brief P11)', async () => {
+		const page = render([{ swatchAssetId: 'p2', priceDeltaINR: 750 }, {}], new Map([['p2', 'p2.webp']]));
+		const cutStart = vi.fn();
+		const answer = (result: unknown) =>
+			swatchModals.open.mockReturnValueOnce({ componentInstance: { start: cutStart }, result } as never);
+		await page.openCut(0, page.groups()[0]!, page.groups()[0]!.terms[1]!);
+		answer(Promise.resolve({ kind: 'cut', id: 'med_cut', versionId: 'swatch_1x1.as_is' }));
+		await page.openCut(0, page.groups()[0]!, page.groups()[0]!.terms[0]!);
+		expect(cutStart).toHaveBeenCalledWith({ pictureId: 'p2', valueName: 'Red', price: 750 });
+		expect(page.groups()[0]?.terms[0]).toMatchObject({
+			swatchAssetId: 'med_cut',
+			swatchVersionId: 'swatch_1x1.as_is',
+		});
+		// Until the cut's own files are made, its tile shows the photo it was cut from.
+		expect(page.tiles().get('med_cut')).toBe('p2.webp');
+		answer(Promise.resolve({ kind: 'whole', photoId: 'p2' }));
+		await page.openCut(0, page.groups()[0]!, page.groups()[0]!.terms[0]!);
+		expect(page.groups()[0]?.terms[0]).toMatchObject({ swatchAssetId: 'p2' });
+		expect(page.groups()[0]?.terms[0]).not.toHaveProperty('swatchVersionId');
+		answer(Promise.reject('closed'));
+		await page.openCut(0, page.groups()[0]!, page.groups()[0]!.terms[0]!);
+		expect(page.groups()[0]?.terms[0]?.swatchAssetId).toBe('p2');
+	});
+
+	it('takes a picture from the library for the value that asked', () => {
+		const page = render([{}, {}]);
+		page.fromLibrary(picture('nothing') as never);
+		expect(page.groups()[0]?.terms.every((term) => !term.swatchAssetId)).toBe(true);
+		void page.openLibrary(0, 'v1');
+		page.fromLibrary([picture('close-up')] as never);
+		expect(page.groups()[0]?.terms[1]?.swatchAssetId).toBe('close-up');
+		expect(page.tiles().get('close-up')).toBe('close-up.webp');
+		expect(page.termLabel(page.groups()[0]!.terms[0]!)).toBe('Red');
 	});
 });

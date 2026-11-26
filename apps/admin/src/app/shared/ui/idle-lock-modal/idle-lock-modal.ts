@@ -2,8 +2,8 @@ import { Component, TemplateRef, effect, inject, signal, viewChild } from '@angu
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 
-import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 import { TranslocoModule } from '@jsverse/transloco';
+import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 
 // Relative `@core` imports: Storybook path maps prefer storefront `@core/*` first, and
 // this modal must bind the admin AuthStore (with `pinConfigured`) for PIN resume.

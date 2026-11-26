@@ -65,7 +65,7 @@ export class AdminUsers {
 			{ title: 'status', dataField: 'status', type: 'switch' },
 		],
 		rowActions: [
-			{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'admin_user.update' },
+			{ label: 'edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'admin_user.update' },
 		],
 		data: [],
 		total: 0,
@@ -96,8 +96,8 @@ export class AdminUsers {
 	}
 
 	onActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform === 'edit') this.edit(action.data);
-		else if (action.actionToPerform === 'status') this.status(action.data);
+		if (action.actionToPerform === 'edit') this.edit(action.data as AdminUserRow);
+		else if (action.actionToPerform === 'status') this.status(action.data as AdminUserRow);
 	}
 
 	edit(data: AdminUserRow) {

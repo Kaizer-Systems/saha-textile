@@ -1,14 +1,20 @@
-@if (breadcrumb()) {
+@if (breadcrumb()) { @if (breadcrumb()?.hiddenHeading) {
+<h1 class="visually-hidden">{{ breadcrumb()?.title }}</h1>
+}
 <section class="breadcrumb-section pt-0">
 	<div class="container-fluid-lg">
 		<div class="row">
 			<div class="col-12">
 				<div class="breadcrumb-contain">
-					<h2 class="">{{ breadcrumb()?.title | titleCase }}</h2>
 					<nav>
 						<ol class="breadcrumb mb-0">
 							<li class="breadcrumb-item">
-								<a [routerLink]="['/']"><i class="ri-home-3-fill"></i></a>
+								<a
+									[routerLink]="['/']"
+									[attr.aria-label]="'home' | transloco"
+								>
+									<i class="ri-home-3-fill"></i>
+								</a>
 							</li>
 							@for (item of breadcrumb()?.items; track item) {
 							<li

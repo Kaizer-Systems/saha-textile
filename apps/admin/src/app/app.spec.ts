@@ -4,7 +4,7 @@ import { Title } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
-import { of } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { IdleLockService } from '@core/auth/idle-lock.service';
@@ -29,7 +29,8 @@ const render = (url = '/dashboard') => {
 	const idle = { start: vi.fn(), stop: vi.fn() };
 	const router = { url, navigate: vi.fn() };
 	const title = { setTitle: vi.fn() };
-	const translate = { setActiveLang: vi.fn() };
+	const langChanges$ = new BehaviorSubject('en');
+	const translate = { setActiveLang: vi.fn(), langChanges$ };
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [
@@ -64,6 +65,14 @@ describe('Admin App', () => {
 		expect(render().translate.setActiveLang).toHaveBeenCalledWith('en');
 	});
 
+	it('states the page language as the switcher changes it', () => {
+		const { translate } = render();
+		translate.langChanges$.next('bn');
+		expect(document.documentElement.lang).toBe('bn');
+		translate.langChanges$.next('en');
+		expect(document.documentElement.lang).toBe('en');
+	});
+
 	it('watches for idleness only with a session', () => {
 		const { status, idle } = render();
 		expect(idle.stop).toHaveBeenCalled();
@@ -94,11 +103,27 @@ describe('Admin App', () => {
 		expect(visitor.router.navigate).not.toHaveBeenCalled();
 	});
 
-	it('uses the Brand Kit icon once there is one', () => {
-		brand.data = { icons: { '32': 'https://cdn.test/i.png' } };
+	it("uses the admin's Brand Kit icon once there is one, and a dark-browser icon only while there is one", () => {
+		brand.data = {
+			admin: { icons: { '32': 'https://cdn.test/i.png' }, iconsDark: { '32': 'https://cdn.test/d.png' } },
+		};
 		render();
 		TestBed.tick();
 		expect((document.querySelector('#appIcon') as HTMLLinkElement).href).toBe('https://cdn.test/i.png');
+		const dark = document.querySelector<HTMLLinkElement>('#appIconDark');
+		expect([dark?.href, dark?.media]).toEqual(['https://cdn.test/d.png', '(prefers-color-scheme: dark)']);
+		// A new dark icon updates the same link.
+		brand.data = {
+			admin: { icons: { '32': 'https://cdn.test/i.png' }, iconsDark: { '32': 'https://cdn.test/d2.png' } },
+		};
+		render();
+		TestBed.tick();
+		expect(document.querySelectorAll('#appIconDark')).toHaveLength(1);
+		expect(document.querySelector<HTMLLinkElement>('#appIconDark')?.href).toBe('https://cdn.test/d2.png');
+		brand.data = { admin: { icons: { '32': 'https://cdn.test/i.png' }, iconsDark: {} } };
+		render();
+		TestBed.tick();
+		expect(document.querySelector('#appIconDark')).toBeNull();
 		brand.data = undefined;
 	});
 

@@ -24,9 +24,9 @@ files.
 ## 1. Product and scope
 
 Saha Textile is a custom rebuild of `sahatextile.com` for a single Kolkata
-saree/textile retailer. The observed live catalog is boutique scale
-(approximately 23 public products and 40 SKUs at the time of discovery), while
-the architecture must tolerate ordinary growth without marketplace complexity.
+saree/textile retailer. The old WordPress site held only test products. The real
+catalogue will be large, so logic and capacity are built for scale, without
+marketplace complexity.
 
 In scope:
 
@@ -194,7 +194,7 @@ Core rules:
   listing unless explicitly modeled as SEO landing pages.
 - SSR/SSG output must contain user-visible content, canonical metadata,
   structured data, and correct locale alternatives.
-- Locale URL/canonical behavior is locked (owner log § Locale URLs, 2026-10-31): every route locale-prefixed, same slug across locales, no automatic language redirect, reciprocal hreflang with `x-default` → `/`.
+- Locale URL/canonical behavior is locked (owner log § Locale URLs, 2026-10-31): every route locale-prefixed, same slug across locales, no automatic language redirect, reciprocal hreflang with `x-default` → the same page in English (amended 2026-11-08), and `og:locale` on every page.
 
 ## 9. Internationalization
 
@@ -204,7 +204,7 @@ There are two distinct translation machines:
 2. Admin-authored catalog/CMS/media/measurement/SEO values use locale-keyed DB
    fields resolved by the API.
 
-English is primary. The active target locale pair is English and French.
+English is primary. The active locale pair is English and Bengali (Bengali replaced French on 2026-11-08; see the owner decision round "Bengali replaces French").
 Bengali is a likely next locale, not a locked current pair. Adding any locale requires a
 coordinated checklist across UI JSON, DB content, media alt/SEO, notification
 templates, SEO defaults, hreflang, and compiled payloads.

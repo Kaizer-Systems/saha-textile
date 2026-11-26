@@ -3,11 +3,13 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateOrderRequest, UpdateOrderStatusRequest } from '@saha-textile/contracts';
 import type { FastifyRequest } from 'fastify';
 
+import { requestedLocale } from '../catalog/catalog-locale';
 import { Principal, assertOwnership } from '../auth/ownership';
 import { type AuthenticatedPrincipal, Audience, RequirePermissions } from '../auth/session.guard';
 import { cookieNames } from '../common/cookies';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { LanguageStore } from '../languages/language-store';
 import { OrdersService } from './orders.service';
 import { API_TAGS } from '../openapi-tags';
 
@@ -22,6 +24,7 @@ export class OrdersController {
 	constructor(
 		private readonly orders: OrdersService,
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly languages: LanguageStore,
 	) {}
 
 	@Post()
@@ -38,6 +41,7 @@ export class OrdersController {
 			...body,
 			principal,
 			guestToken: cookies[names.guest] ?? null,
+			locale: requestedLocale(request.query, this.languages.shop()),
 		});
 	}
 
@@ -53,6 +57,28 @@ export class OrdersController {
 			page: page ? Number(page) : undefined,
 			pageSize: pageSize ? Number(pageSize) : undefined,
 		});
+	}
+
+	@Get('mine')
+	@ApiOperation({
+		operationId: 'listMyShopOrders',
+		summary: 'The signed-in shopper’s own orders, as the shop shows them',
+	})
+	mine(
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Query('page') page?: string,
+		@Query('pageSize') pageSize?: string,
+	) {
+		if (!principal || principal.audience !== 'storefront') throw new UnauthorizedException();
+		const size = Math.min(50, Math.max(1, Number(pageSize) || 10));
+		return this.orders.shopList(principal.userId, { page: Math.max(1, Number(page) || 1), pageSize: size });
+	}
+
+	@Get('mine/:orderNumber')
+	@ApiOperation({ operationId: 'getMyShopOrder', summary: 'One of the signed-in shopper’s own orders' })
+	mineOne(@Param('orderNumber') orderNumber: string, @Principal() principal: AuthenticatedPrincipal | undefined) {
+		if (!principal || principal.audience !== 'storefront') throw new UnauthorizedException();
+		return this.orders.shopView(principal.userId, orderNumber);
 	}
 
 	@Get(':id')

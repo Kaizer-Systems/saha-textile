@@ -3,7 +3,6 @@
 		@for (menu of menuItem; track menu) {
 		<li [class.active]="menu.active">
 			<a
-				href="javascript:void(0)"
 				[routerLink]="menu.path"
 				(click)="activeMenu(menu)"
 			>

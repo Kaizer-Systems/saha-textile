@@ -1,0 +1,85 @@
+<div
+	class="pb-slider"
+	role="region"
+	aria-roledescription="carousel"
+	[attr.aria-label]="'pb_slider_label' | transloco"
+	(mouseenter)="hold(true)"
+	(mouseleave)="hold(false)"
+	(focusin)="hold(true)"
+	(focusout)="hold(false)"
+>
+	<div
+		class="pb-track"
+		#track
+		(scroll)="onScroll()"
+		[attr.aria-live]="paused() ? 'polite' : 'off'"
+	>
+		@for (picture of piece().pictures; track picture.key; let i = $index) {
+		<div
+			class="pb-slide"
+			[class]="'pb-ink-' + picture.ink + ' pb-backing-' + picture.backing"
+			role="group"
+			aria-roledescription="slide"
+			[attr.aria-label]="'pb_slide_label' | transloco: { n: i + 1, total: count() }"
+		>
+			<app-image-link
+				[image]="{ resolved: picture }"
+				[priority]="early() && i === 0"
+				[sizes]="sizes()"
+				[class]="'home-contain rounded-0 p-0'"
+			/>
+		</div>
+		}
+	</div>
+	<div
+		class="pb-controls"
+		[class]="'pb-controls-' + piece().slider.controls"
+	>
+		<button
+			type="button"
+			class="pb-control"
+			(click)="toggle()"
+			[attr.aria-label]="(paused() ? 'pb_play' : 'pb_pause') | transloco"
+			[title]="(paused() ? 'pb_play' : 'pb_pause') | transloco"
+		>
+			<i
+				[class]="paused() ? 'ri-play-fill' : 'ri-pause-fill'"
+				aria-hidden="true"
+			></i>
+		</button>
+		<button
+			type="button"
+			class="pb-control pb-arrow"
+			(click)="go(index() - 1)"
+			[attr.aria-label]="'pb_previous' | transloco"
+			[title]="'pb_previous' | transloco"
+		>
+			<i
+				class="ri-arrow-left-s-line"
+				aria-hidden="true"
+			></i>
+		</button>
+		@for (picture of piece().pictures; track picture.key; let i = $index) {
+		<button
+			type="button"
+			class="pb-bar"
+			[class.pb-bar-on]="i === index()"
+			(click)="go(i)"
+			[attr.aria-label]="'pb_go_to' | transloco: { n: i + 1 }"
+			[attr.aria-current]="i === index() ? 'true' : null"
+		></button>
+		}
+		<button
+			type="button"
+			class="pb-control pb-arrow"
+			(click)="go(index() + 1)"
+			[attr.aria-label]="'pb_next' | transloco"
+			[title]="'pb_next' | transloco"
+		>
+			<i
+				class="ri-arrow-right-s-line"
+				aria-hidden="true"
+			></i>
+		</button>
+	</div>
+</div>

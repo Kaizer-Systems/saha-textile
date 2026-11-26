@@ -28,14 +28,12 @@ import { OrderService } from './order.service';
 import { PageService } from './page.service';
 import { PointService } from './point.service';
 import { ProductService } from './product.service';
-import { QuestionsAnswersService } from './questions-answers.service';
 import { RedirectService } from './redirect.service';
 import { RefundService } from './refund.service';
 import { ReviewService } from './review.service';
 import { SettingService } from './setting.service';
 import { ShippingService } from './shipping.service';
 import { StateService } from './state.service';
-import { StoreService } from './store.service';
 import { TagService } from './tag.service';
 import { TaxService } from './tax.service';
 import { ThemeOptionService } from './theme-option.service';
@@ -52,7 +50,6 @@ beforeEach(() => {
 describe('read services', () => {
 	it.each<[string, () => unknown, string]>([
 		['attachments', () => TestBed.inject(AttachmentService).getAttachments({ a: 1 }), '/media.json'],
-		['blogs', () => TestBed.inject(BlogService).getBlogs({ a: 1 }), '/blog.json'],
 		['coupons', () => TestBed.inject(CouponService).getCoupons({ a: 1 }), '/coupon.json'],
 		['currencies', () => TestBed.inject(CurrencyService).getCurrencies({ a: 1 }), '/currency.json'],
 		['ledger', () => TestBed.inject(CustomerLedgerService).getUserTransaction({ a: 1 }), '/wallet.json'],
@@ -63,7 +60,6 @@ describe('read services', () => {
 		['products', () => TestBed.inject(ProductService).getProducts({ a: 1 }), '/product.json'],
 		['refunds', () => TestBed.inject(RefundService).getRefunds({ a: 1 }), '/refund.json'],
 		['reviews', () => TestBed.inject(ReviewService).getReviews({ a: 1 }), '/review.json'],
-		['stores', () => TestBed.inject(StoreService).getStores({ a: 1 }), '/store.json'],
 		['tags', () => TestBed.inject(TagService).getTags({ a: 1 }), '/tag.json'],
 		['taxes', () => TestBed.inject(TaxService).getTaxes({ a: 1 }), '/tax.json'],
 	])('%s passes its parameters', (_name, call, path) => {
@@ -72,13 +68,108 @@ describe('read services', () => {
 		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { a: 1 } });
 	});
 
-	it('reads blog categories from their own list', () => {
-		TestBed.inject(CategoryService).getCategories({ type: 'post' });
-		expect(lastUrl(http.get)).toContain('/category.json');
-		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { type: 'post' } });
+	it('sends only the chosen period and category to the dashboard API', () => {
+		const dashboard = TestBed.inject(DashboardService);
+		dashboard.getRevenue({ period: 'last_month' });
+		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { period: 'last_month' } });
+		dashboard.getOrders({ period: 'custom', from: '2026-01-01', to: '2026-02-01' });
+		expect(http.get.mock.lastCall?.[1]).toEqual({
+			params: { period: 'custom', from: '2026-01-01', to: '2026-02-01' },
+		});
+		dashboard.getStock('cat');
+		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { categoryId: 'cat' } });
+		dashboard.getStock();
+		expect(http.get.mock.lastCall?.[1]).toEqual({ params: {} });
+	});
+
+	it('reads blog categories and tags from the blog API', async () => {
+		const term = { id: 'b1', slug: 'guides', name: { en: 'Guides' }, description: {}, status: 'live' };
+		http.get.mockReturnValue(of([term]));
+		const categories = await firstValueFrom(TestBed.inject(CategoryService).getCategories({ type: 'post' }));
+		expect(lastUrl(http.get)).toContain('/admin/blog/categories');
+		expect(categories).toMatchObject({
+			total: 1,
+			data: [{ id: 'b1', name: 'Guides', type: 'post', status: true }],
+		});
+		const tags = await firstValueFrom(TestBed.inject(TagService).getTags({ type: 'post' }));
+		expect(lastUrl(http.get)).toContain('/admin/blog/tags');
+		expect(tags).toMatchObject({ total: 1, data: [{ id: 'b1', name: 'Guides', type: 'post', status: '1' }] });
+		http.get.mockReturnValue(of([{ ...term, name: {}, description: {}, status: 'draft' }]));
+		const bare = await firstValueFrom(TestBed.inject(TagService).getTags({ type: 'post' }));
+		expect(bare.data[0]).toMatchObject({ name: 'guides', description: '', status: '0' });
+	});
+
+	it('reads and writes blog posts through the admin blog API', async () => {
+		const blogs = TestBed.inject(BlogService);
+		const row = {
+			post: {
+				id: 'blg_1',
+				slug: 'real-banarasi',
+				title: {},
+				status: 'live',
+				publishedAt: '2026-11-08T00:00:00.000Z',
+			},
+			cover: { id: 'm', url: 'https://cdn/x' },
+			shareImage: null,
+		};
+		http.get.mockReturnValue(
+			of({
+				items: [row, { ...row, cover: null, post: { ...row.post, status: 'draft', title: { en: 'Real' } } }],
+				total: 2,
+			}),
+		);
+		const page = await firstValueFrom(blogs.getBlogs({ page: 2, paginate: 500, search: ' silk ' }));
+		expect(lastUrl(http.get)).toContain('/admin/blog/posts');
+		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { page: '2', pageSize: '100', search: 'silk' } });
+		expect(page.data.map((blog) => [blog.title, blog.status, blog.blog_thumbnail])).toEqual([
+			['real-banarasi', '1', { original_url: 'https://cdn/x' }],
+			['Real', '0', null],
+		]);
+		await firstValueFrom(blogs.getBlogs());
+		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { page: '1', pageSize: '20' } });
+		blogs.getPost('blg 1');
+		expect(lastUrl(http.get)).toContain('/admin/blog/posts/blg%201');
+		blogs.savePost(null, {} as never);
+		expect(lastUrl(http.post)).toMatch(/\/admin\/blog\/posts$/);
+		blogs.savePost('blg_1', {} as never);
+		expect(lastUrl(http.post)).toContain('/admin/blog/posts/blg_1');
+		blogs.goLive('blg_1');
+		expect(lastUrl(http.post)).toContain('/posts/blg_1/go-live');
+		blogs.setStatus('blg_1', 'draft');
+		expect(http.post.mock.lastCall?.[1]).toEqual({ status: 'draft' });
+		blogs.deletePost('blg_1');
+		expect(lastUrl(http.delete)).toContain('/admin/blog/posts/blg_1');
+		blogs.getTerms('tags');
+		expect(lastUrl(http.get)).toContain('/admin/blog/tags');
+		blogs.saveTerm('categories', null, {} as never);
+		expect(lastUrl(http.post)).toMatch(/\/admin\/blog\/categories$/);
+		blogs.saveTerm('tags', 't 1', {} as never);
+		expect(lastUrl(http.post)).toContain('/admin/blog/tags/t%201');
+		blogs.deleteTerm('categories', 'c1');
+		expect(lastUrl(http.delete)).toContain('/admin/blog/categories/c1');
 	});
 
 	it.each<[string, () => unknown, string]>([
+		[
+			'revenue',
+			() => TestBed.inject(DashboardService).getRevenue({ period: 'last_month' }),
+			'/admin/dashboard/revenue',
+		],
+		['months', () => TestBed.inject(DashboardService).getMonthlyRevenue(), '/admin/dashboard/revenue/monthly'],
+		[
+			'orders',
+			() => TestBed.inject(DashboardService).getOrders({ period: 'last_month' }),
+			'/admin/dashboard/orders',
+		],
+		['recent orders', () => TestBed.inject(DashboardService).getRecentOrders(), '/admin/dashboard/orders/recent'],
+		['customers', () => TestBed.inject(DashboardService).getCustomers(), '/admin/dashboard/customers'],
+		['reviews', () => TestBed.inject(DashboardService).getReviews(), '/admin/dashboard/reviews'],
+		[
+			'top products',
+			() => TestBed.inject(DashboardService).getTopProducts({ period: 'today' }),
+			'/admin/dashboard/top-products',
+		],
+		['stock', () => TestBed.inject(DashboardService).getStock(), '/admin/dashboard/stock'],
 		['cart', () => TestBed.inject(CartService).getCartItems(), '/cart.json'],
 		['countries', () => TestBed.inject(CountryService).getCountries(), '/country.json'],
 		['counts', () => TestBed.inject(DashboardService).getStatisticsCount(), '/count.json'],
@@ -111,7 +202,7 @@ describe('AddonTemplateService', () => {
 		const service = TestBed.inject(AddonTemplateService);
 		service.list();
 		expect(lastUrl(http.get)).toMatch(/\/admin\/catalog\/addon-templates$/);
-		service.save({ code: 'fall', label: 'Fall', priceINR: 100 });
+		service.save({ code: 'fall', label: { en: 'Fall' }, priceINR: 100, fields: [], sizeGuide: [] });
 		expect(http.post.mock.lastCall?.[1]).toMatchObject({ code: 'fall' });
 		service.remove('fall pico');
 		expect(lastUrl(http.delete)).toMatch(/addon-templates\/fall%20pico$/);
@@ -134,7 +225,7 @@ describe('FaqService', () => {
 	const service = () => TestBed.inject(FaqService);
 	const row = {
 		id: 'f1',
-		question: { en: 'Q', fr: 'Qf' },
+		question: { en: 'Q', bn: 'প্র' },
 		answer: { en: 'A' },
 		status: 'live',
 		scope: 'global',
@@ -145,14 +236,14 @@ describe('FaqService', () => {
 	it('maps each row for the table', async () => {
 		http.get.mockReturnValue(
 			of({
-				items: [row, { ...row, question: { en: 'Q' }, answer: { en: 'A', fr: 'Af' }, status: 'draft' }],
+				items: [row, { ...row, question: { en: 'Q' }, answer: { en: 'A', bn: 'উ' }, status: 'draft' }],
 				total: 2,
 			}),
 		);
 		const page = await firstValueFrom(service().getFaqs({ page: 1 }));
 		expect(page.total).toBe(2);
-		expect(page.data[0]).toMatchObject({ id: 1, faqId: 'f1', titleFr: 'Qf', descriptionFr: '', status: true });
-		expect(page.data[1]).toMatchObject({ titleFr: '', descriptionFr: 'Af', status: false });
+		expect(page.data[0]).toMatchObject({ id: 1, faqId: 'f1', titleBn: 'প্র', descriptionBn: '', status: true });
+		expect(page.data[1]).toMatchObject({ titleBn: '', descriptionBn: 'উ', status: false });
 	});
 
 	it('saves a full row', () => {
@@ -160,8 +251,8 @@ describe('FaqService', () => {
 			faqId: 'f1',
 			title: 'Q',
 			description: 'A',
-			titleFr: 'Qf',
-			descriptionFr: 'Af',
+			titleBn: 'প্র',
+			descriptionBn: 'উ',
 			status: true,
 			scope: 'product' as never,
 			categoryIds: ['c'],
@@ -169,8 +260,8 @@ describe('FaqService', () => {
 		});
 		expect(http.post.mock.lastCall?.[1]).toEqual({
 			id: 'f1',
-			question: { en: 'Q', fr: 'Qf' },
-			answer: { en: 'A', fr: 'Af' },
+			question: { en: 'Q', bn: 'প্র' },
+			answer: { en: 'A', bn: 'উ' },
 			scope: 'product',
 			categoryIds: ['c'],
 			productIds: ['p'],
@@ -181,7 +272,7 @@ describe('FaqService', () => {
 	it('fills the defaults for a minimal row', () => {
 		service().save({ title: 'Q', description: 'A', status: false });
 		expect(http.post.mock.lastCall?.[1]).toMatchObject({
-			question: { en: 'Q', fr: undefined },
+			question: { en: 'Q', bn: undefined },
 			scope: 'global',
 			categoryIds: [],
 			productIds: [],
@@ -217,31 +308,6 @@ describe('ProductService catalogue', () => {
 		service().discontinueCatalogProduct('red', '/collections');
 		expect(lastUrl(http.post)).toMatch(/\/red\/discontinue$/);
 		expect(http.post.mock.lastCall?.[1]).toEqual({ replacementPath: '/collections' });
-	});
-});
-
-describe('QuestionsAnswersService', () => {
-	const service = () => TestBed.inject(QuestionsAnswersService);
-
-	it('maps each row, filling a missing answer', async () => {
-		http.get.mockReturnValue(
-			of({
-				items: [
-					{ id: 'q1', question: 'Q', answer: 'A', productId: 'p1', createdAt: 'now' },
-					{ id: 'q2', question: 'Q', answer: null, productId: 'p1' },
-				],
-				total: 2,
-			}),
-		);
-		const page = await firstValueFrom(service().getQuestionAnswers());
-		expect(page.data[0]).toMatchObject({ id: 1, questionId: 'q1', answer: 'A', product: { name: 'p1' } });
-		expect(page.data[1]).toMatchObject({ answer: '' });
-	});
-
-	it('posts an answer', () => {
-		service().answer('q 1', 'Yes');
-		expect(lastUrl(http.post)).toMatch(/\/questions\/q%201\/answer$/);
-		expect(http.post.mock.lastCall?.[1]).toEqual({ answer: 'Yes' });
 	});
 });
 
@@ -330,8 +396,8 @@ describe('ErrorService', () => {
 });
 
 describe('LoggingService', () => {
-	it('logs', () => {
-		const logged = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+	it('logs an error as an error', () => {
+		const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 		TestBed.inject(LoggingService).logError('boom');
 		expect(logged).toHaveBeenCalledWith('LoggingService: boom');
 		logged.mockRestore();

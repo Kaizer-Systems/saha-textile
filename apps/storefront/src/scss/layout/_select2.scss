@@ -72,6 +72,8 @@
 				.select2-selection__placeholder {
 					margin-left: 0;
 					font-weight: 200;
+					// #999 was 2.7 : 1; this reaches 5 : 1 (shop change, 2026-11-10).
+					color: #6b6b6b;
 				}
 			}
 

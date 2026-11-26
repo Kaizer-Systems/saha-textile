@@ -1,13 +1,17 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 
+import { TranslocoPipe } from '@jsverse/transloco';
+
+import { ThemeModeStore } from '@core/brand/theme-mode';
+
+/** The header's light/dark switch: the moon in light mode, the sun in dark mode. */
 @Component({
 	selector: 'app-mode',
 	templateUrl: './mode.html',
+	imports: [TranslocoPipe],
 	styleUrls: ['./mode.scss'],
 	standalone: true,
 })
 export class Mode {
-	customizeLayoutDark() {
-		document.body.classList.toggle('dark-only');
-	}
+	readonly themeMode = inject(ThemeModeStore);
 }

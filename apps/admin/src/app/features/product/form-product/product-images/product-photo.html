@@ -1,0 +1,96 @@
+<!-- E05: one photo on this product — its version and its alt text here. -->
+<div class="modal-header">
+	<h2 id="product_photo_title">{{ 'product_photo_title' | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body">
+	@if (input(); as photo) {
+	<div class="row g-4">
+		<div class="col-md-4">
+			@if (photo.thumbnailUrl) {
+			<img
+				[src]="photo.thumbnailUrl"
+				class="img-fluid rounded border"
+				alt=""
+			/>
+			}
+			<p class="small text-muted mt-2 mb-0">
+				{{ details()?.name }} @if (elsewhere()) { · {{ 'product_photo_elsewhere' | transloco: { places:
+				elsewhere() } }} }
+			</p>
+		</div>
+		<div class="col-md-8">
+			<app-language-switch
+				[locales]="locales"
+				[active]="locale()"
+				(changed)="locale.set($event)"
+			/>
+			<div class="theme-form theme-form-2 mega-form">
+				<app-form-fields
+					[label]="'product_photo_version'"
+					[for]="'product_photo_version'"
+				>
+					<select
+						class="form-select"
+						id="product_photo_version"
+						[value]="versionId() ?? ''"
+						(change)="versionId.set($any($event.target).value || null)"
+					>
+						@for (version of versions(); track version.id) {
+						<option
+							[value]="version.id"
+							[selected]="version.id === versionId()"
+						>
+							{{ version.label }}
+						</option>
+						}
+					</select>
+					<p class="help-text">{{ 'product_photo_version_help' | transloco }}</p>
+				</app-form-fields>
+				<app-form-fields
+					[label]="'product_photo_alt'"
+					[for]="'product_photo_alt'"
+				>
+					<input
+						class="form-control"
+						id="product_photo_alt"
+						[value]="alt()[locale()] ?? ''"
+						(input)="setAlt($any($event.target).value)"
+					/>
+					<p class="help-text">
+						@if (photo.defaultAlt[locale()]; as fallback) { {{ 'product_photo_alt_help' | transloco: { text:
+						fallback } }} } @else { {{ 'product_photo_alt_help_none' | transloco }} }
+					</p>
+				</app-form-fields>
+			</div>
+		</div>
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="product_photo_save"
+			(click)="save()"
+		>
+			{{ 'save' | transloco }}
+		</button>
+	</div>
+</div>

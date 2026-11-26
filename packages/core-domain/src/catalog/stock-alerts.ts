@@ -48,7 +48,9 @@ async function deliverOne(deps: StockAlertDeps, alert: StockAlert, run: StockAle
 		deps.variants.findById(alert.variantId, 'public'),
 		deps.customers.findById(alert.customerId),
 	]);
-	const canBuy = !!variant && (variant.stock.quantity > 0 || !!product?.madeToOrder);
+	// Held pieces and pieces kept for orders are not for sale: the message waits for free-to-sell stock.
+	const free = variant ? variant.stock.quantity - (variant.stock.held ?? 0) - (variant.stock.reserved ?? 0) : 0;
+	const canBuy = !!variant && (free > 0 || !!product?.madeToOrder);
 	if (!product || !canBuy || !customer || customer.status === 'deleted') {
 		run.waiting += 1;
 		return;

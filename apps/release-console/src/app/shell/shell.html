@@ -1,0 +1,427 @@
+<div class="rc">
+	<rc-load-overlay
+		#boot
+		loader="boot"
+		source="the console"
+		what="projects · keys · Mac helper"
+		[full]="true"
+		[active]="ctx.projects.isPending()"
+	/>
+	<div class="rc-top">
+		<div class="rc-brand">
+			<span
+				class="rc-logo"
+				aria-hidden="true"
+			></span>
+			<b>Release Console</b>
+		</div>
+		<div
+			class="pj-switch"
+			role="button"
+			tabindex="0"
+			aria-haspopup="menu"
+			[class.open]="projectOpen()"
+			[attr.aria-expanded]="projectOpen()"
+			(click)="toggleProject($event)"
+			(keydown.enter)="toggleProject($event)"
+		>
+			<span class="rc-label">Project</span>
+			<span class="pj-cur">
+				<rc-icon name="tabler/folders" />
+				{{ ctx.project()?.name ?? 'None chosen' }}
+			</span>
+			<span class="pj-caret">▾</span>
+			@if (projectOpen()) {
+			<div
+				class="pj-menu"
+				role="menu"
+			>
+				@for (p of ctx.projects.data()?.projects ?? []; track p.id) {
+				<div
+					class="pj-item"
+					role="menuitem"
+					tabindex="0"
+					[class.on]="p.id === ctx.projectId()"
+					(click)="$event.stopPropagation(); go(['/p', p.id, 'overview'])"
+					(keydown.enter)="$event.stopPropagation(); go(['/p', p.id, 'overview'])"
+				>
+					<b>
+						<rc-icon name="tabler/folder" />
+						{{ p.name }}
+					</b>
+					<span class="rc-mono">
+						{{ p.workspace }} · {{ p.repositories.length }} repo{{ p.repositories.length === 1 ? '' : 's' }}
+					</span>
+				</div>
+				}
+				<div
+					class="pj-item add"
+					role="menuitem"
+					tabindex="0"
+					(click)="$event.stopPropagation(); go(['/console', 'add'])"
+					(keydown.enter)="$event.stopPropagation(); go(['/console', 'add'])"
+				>
+					<b>
+						<rc-icon name="tabler/square-rounded-plus" />
+						Add a project
+					</b>
+					<span class="rc-mono">source code, environments, cloud, edge</span>
+				</div>
+				<div
+					class="pj-item"
+					role="menuitem"
+					tabindex="0"
+					(click)="$event.stopPropagation(); go(['/console', 'projects'])"
+					(keydown.enter)="$event.stopPropagation(); go(['/console', 'projects'])"
+				>
+					<b>
+						<rc-icon name="tabler/layout-grid" />
+						All projects
+					</b>
+					<span class="rc-mono">the console level</span>
+				</div>
+			</div>
+			}
+		</div>
+		@if (ctx.project(); as p) {
+		<div
+			class="pj-switch repo"
+			role="button"
+			tabindex="0"
+			aria-haspopup="menu"
+			[class.open]="repoOpen()"
+			[attr.aria-expanded]="repoOpen()"
+			(click)="toggleRepo($event)"
+			(keydown.enter)="toggleRepo($event)"
+		>
+			<span class="rc-label">Repository</span>
+			<span class="pj-cur">
+				@if (ctx.repo(); as cr) {
+				<rc-vendor-logo
+					[vendor]="cr.sourceCode.vendor"
+					[named]="false"
+					[size]="15"
+				/>
+				{{ cr.name }}} @else {
+				<rc-icon name="tabler/layout-dashboard" />
+				Project overview}
+			</span>
+			<span class="pj-caret">▾</span>
+			@if (repoOpen()) {
+			<div
+				class="pj-menu"
+				role="menu"
+			>
+				<div
+					class="pj-item"
+					role="menuitem"
+					tabindex="0"
+					[class.on]="!ctx.repo()"
+					(click)="$event.stopPropagation(); go(['/p', p.id, 'overview'])"
+					(keydown.enter)="$event.stopPropagation(); go(['/p', p.id, 'overview'])"
+				>
+					<b>
+						<rc-icon name="tabler/layout-dashboard" />
+						Project overview
+					</b>
+					<span class="rc-mono">the project level: repositories, environments, keys</span>
+				</div>
+				@for (r of p.repositories; track r.id) {
+				<div
+					class="pj-item"
+					role="menuitem"
+					tabindex="0"
+					[class.on]="r.id === ctx.repoId()"
+					(click)="$event.stopPropagation(); go(['/p', p.id, 'r', r.id, 'overview'])"
+					(keydown.enter)="$event.stopPropagation(); go(['/p', p.id, 'r', r.id, 'overview'])"
+				>
+					<b>
+						<rc-vendor-logo
+							[vendor]="r.sourceCode.vendor"
+							[named]="false"
+							[size]="15"
+						/>
+						{{ r.name }}
+					</b>
+					<span class="rc-mono">{{ r.role || r.sourceCode.repository }}</span>
+				</div>
+				}
+			</div>
+			}
+		</div>
+		@if (envSwitch()) {
+		<div
+			class="rc-envs"
+			role="tablist"
+			aria-label="Environment"
+		>
+			@for (env of ctx.environments(); track env.name) {
+			<button
+				type="button"
+				class="rc-env-tab"
+				role="tab"
+				[attr.aria-selected]="state.environment() === env.name"
+				(click)="state.setEnvironment(env.name)"
+			>
+				<rc-icon [name]="envIcon(env)" />
+				{{ env.label }}
+			</button>
+			}
+		</div>
+		} @else {
+		<span></span>
+		} } @else {
+		<span></span>
+		}
+		<div class="rc-who">
+			<span
+				class="rc-mono"
+				role="status"
+				[style.visibility]="firstReads() > 0 ? 'visible' : 'hidden'"
+			>
+				<span
+					class="rc-chk run"
+					aria-hidden="true"
+				></span>
+				{{ firstReads() > 0 ? 'Reading…' : '' }}
+			</span>
+			<span class="rc-mono">owner · unlocked</span>
+			<span class="rc-dot ok"></span>
+			<button
+				type="button"
+				class="rc-btn ghost"
+				title="Lock the console"
+				(click)="lockNow()"
+			>
+				<span
+					class="lock"
+					aria-hidden="true"
+				></span>
+				Lock
+			</button>
+		</div>
+	</div>
+	<div class="rc-body">
+		<nav
+			class="rc-side"
+			aria-label="Console menus"
+		>
+			<div class="rc-msearch">
+				<input
+					#searchBox
+					type="search"
+					autocomplete="off"
+					[attr.placeholder]="'Search ' + scope()"
+					[attr.aria-label]="'Search ' + scope()"
+					[value]="query()"
+					(input)="query.set($any($event.target).value); active.set(0)"
+					(keydown)="onSearchKey($event)"
+				/>
+				<kbd>⌘K</kbd>
+				@if (query().trim()) {
+				<div
+					class="rc-mres"
+					role="listbox"
+				>
+					<div class="pj-scope">In {{ scope() }} only</div>
+					@for (hit of hits(); track hit.link.join('/') + hit.label) {
+					<button
+						type="button"
+						class="rc-mrow"
+						role="option"
+						[attr.aria-selected]="$index === active()"
+						(mousedown)="pick(hit)"
+					>
+						<b>
+							<rc-icon [name]="hit.icon" />
+							{{ hit.label }}
+						</b>
+						<span>{{ hit.path }}{{ hit.via ? ' · “' + hit.via + '”' : '' }}</span>
+					</button>
+					} @empty {
+					<div class="rc-mnone">Nothing in {{ scope() }} matches “{{ query() }}”.</div>
+					}
+				</div>
+				}
+			</div>
+
+			@switch (ctx.level()) { @case ('console') { @for (page of consolePages; track page[0]) {
+			<button
+				type="button"
+				class="rc-nav"
+				[class.pj-sug]="page[0] === 'attention'"
+				[attr.aria-current]="ctx.page() === page[0]"
+				(click)="go(['/console', page[0]])"
+			>
+				<rc-icon [name]="consoleIcons[page[0]] ?? 'tabler/circle'" />
+				{{ page[1] }}
+			</button>
+			} } @case ('project') { @if (ctx.project(); as p) {
+			<div class="pj-level">Project</div>
+			@for (page of projectPages; track page[0]) {
+			<button
+				type="button"
+				class="rc-nav"
+				[class.pj-sug]="page[0] === 'attention'"
+				[attr.aria-current]="ctx.page() === page[0]"
+				(click)="go(['/p', p.id, page[0]])"
+			>
+				<rc-icon [name]="projectIcons[page[0]] ?? 'tabler/circle'" />
+				{{ page[1] }}
+			</button>
+			}
+			<div class="pj-level">Repositories</div>
+			@for (r of p.repositories; track r.id) {
+			<button
+				type="button"
+				class="rc-nav pj-repo"
+				(click)="go(['/p', p.id, 'r', r.id, 'overview'])"
+			>
+				<rc-vendor-logo
+					[vendor]="r.sourceCode.vendor"
+					[named]="false"
+					[size]="14"
+				/>
+				{{ r.name }} ›
+			</button>
+			} }
+			<div class="rc-navfoot">
+				<button
+					type="button"
+					class="rc-nav"
+					(click)="go(['/console', 'projects'])"
+				>
+					‹ All projects
+				</button>
+			</div>
+			} @case ('repository') { @if (ctx.project(); as p) { @if (ctx.repo(); as r) { @if (menu(); as m) {
+			<div class="pj-level">Repository · {{ r.name }}</div>
+			<ng-container
+				[ngTemplateOutlet]="navItem"
+				[ngTemplateOutletContext]="{ key: 'overview' }"
+			/>
+			@for (group of m.menu; track group.label) {
+			<div
+				class="rc-ng"
+				[class.open]="openGroup() === group.label"
+			>
+				<button
+					type="button"
+					class="rc-gl"
+					[class.pj-gl]="$index === 0 && group.label === r.name"
+					[attr.aria-expanded]="openGroup() === group.label"
+					(click)="openGroupFirst(group.label)"
+				>
+					<b>
+						@if (group.vendor) {
+						<rc-vendor-logo
+							[vendor]="group.vendor"
+							[named]="false"
+							[size]="14"
+						/>
+						} @else {
+						<rc-icon [name]="groupIcon(group)" />
+						}{{ group.label }}
+					</b>
+					<span>{{ count(group.label) }}</span>
+				</button>
+				@if (openGroup() === group.label) { @for (sub of group.subs; track $index) { @if (sub.label) {
+				<div class="rc-sub">
+					<span class="rc-subl">{{ sub.label }}</span>
+					@for (key of sub.items; track key) {
+					<ng-container
+						[ngTemplateOutlet]="navItem"
+						[ngTemplateOutletContext]="{ key }"
+					/>
+					}
+				</div>
+				} @else { @for (key of sub.items; track key) {
+				<ng-container
+					[ngTemplateOutlet]="navItem"
+					[ngTemplateOutletContext]="{ key }"
+				/>
+				} } } }
+			</div>
+			}
+			<div class="rc-navfoot">
+				<button
+					type="button"
+					class="rc-nav"
+					(click)="go(['/p', p.id, 'settings'], { tab: 'repositories', repo: r.id })"
+				>
+					<rc-icon name="tabler/adjustments-horizontal" />
+					Repository settings
+				</button>
+				<button
+					type="button"
+					class="rc-nav"
+					(click)="go(['/p', p.id, 'overview'])"
+				>
+					‹ {{ p.name }}
+				</button>
+			</div>
+			} } } } }
+		</nav>
+		<main class="rc-main">
+			<rc-version-banner />
+			<rc-load-overlay
+				[loader]="load().loader"
+				[source]="load().source"
+				[what]="load().what"
+				[enabled]="!!ctx.projects.data()"
+				[under]="boot.covering()"
+				[opened]="ctx.level() + '|' + ctx.projectId() + '|' + ctx.repoId() + '|' + ctx.page()"
+			/>
+			<router-outlet />
+		</main>
+		<rc-confirm-host />
+	</div>
+</div>
+
+<ng-template
+	#navItem
+	let-key="key"
+>
+	@let s = screen(key); @if (s) { @if (s.off) {
+	<span
+		class="rc-nav off"
+		aria-disabled="true"
+		[attr.data-tip]="s.tip"
+	>
+		<rc-icon [name]="screenIcon(key)" />
+		{{ s.label }}
+		<span
+			class="nav-x"
+			aria-hidden="true"
+		>
+			⊘
+		</span>
+	</span>
+	} @else {
+	<button
+		type="button"
+		class="rc-nav"
+		[class.part]="!!s.part"
+		[attr.data-tip]="s.part"
+		[attr.aria-current]="ctx.page() === key"
+		(click)="goScreen(key)"
+	>
+		<rc-icon [name]="screenIcon(key)" />
+		{{ s.label }} @if (isLater(key)) {
+		<span
+			class="later"
+			title="Appears once its feature is built"
+		>
+			○
+		</span>
+		} @if (planLock(key); as lock) {
+		<span
+			[class]="'pv-plan ' + lock.tier"
+			[attr.data-tip]="'Needs ' + lock.needs + ': the badge goes once the account has it.'"
+		>
+			{{ lock.needs }}
+		</span>
+		}
+	</button>
+	} }
+</ng-template>

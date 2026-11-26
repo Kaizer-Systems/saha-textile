@@ -1,5 +1,5 @@
-import { PLATFORM_ID, inject, provideAppInitializer } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { PLATFORM_ID, inject, provideAppInitializer } from '@angular/core';
 
 import { runtimeConfigReady } from '@core/config/runtime-config';
 import { AuthStore } from '@core/state/auth.store';

@@ -19,6 +19,8 @@ export interface ContentBlockDoc {
 	images: { desktop: string; tablet: string | null; phone: string | null };
 	containsText: boolean;
 	localeImages: Record<string, { desktop: string; tablet: string | null; phone: string | null }>;
+	/** The version each picture shows, by photo id (media step 4d). */
+	imageVersions?: Record<string, string>;
 	assetIds: string[];
 	heading: Record<string, string>;
 	subheading: Record<string, string>;
@@ -43,6 +45,7 @@ const ContentBlockSchema = new Schema<ContentBlockDoc>(
 		images: { type: Schema.Types.Mixed, required: true },
 		containsText: { type: Boolean, default: false },
 		localeImages: { type: Schema.Types.Mixed, default: {} },
+		imageVersions: { type: Schema.Types.Mixed, default: {} },
 		assetIds: { type: [String], default: [] },
 		heading: { type: Schema.Types.Mixed, default: {} },
 		subheading: { type: Schema.Types.Mixed, default: {} },

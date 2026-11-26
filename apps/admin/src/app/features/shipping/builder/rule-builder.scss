@@ -1,0 +1,158 @@
+// The rule builder's block layout: the one genuinely custom piece of the shipping brief
+// (approved 2026-11-19, `srb-` classes). Only the admin's named colours and the Media page's
+// `--fm-*` tokens are used, so the colour-only dark file covers it without extra rules.
+// The classes are used by this page's child blocks too (srb-node, srb-group, srb-try), so they
+// are not view-encapsulated.
+:host ::ng-deep {
+	.srb-canvas {
+		display: grid;
+		gap: 14px;
+	}
+	.srb-step {
+		border: 1px solid var(--fm-line);
+		background: var(--fm-surface);
+		border-radius: 10px;
+		padding: 12px 14px;
+	}
+	.srb-step-head {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin-bottom: 10px;
+		h6 {
+			margin: 0;
+			font-weight: 600;
+		}
+		.ms-auto i {
+			color: var(--admin-muted);
+		}
+	}
+	.srb-num {
+		width: 26px;
+		height: 26px;
+		border-radius: 50%;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		font-weight: 700;
+		font-size: 13px;
+		background: color-mix(in srgb, var(--theme-color) 14%, transparent);
+		color: var(--theme-ink-on-tint);
+	}
+	.srb-line {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 0;
+		.form-select,
+		.form-control {
+			width: auto;
+			min-width: 110px;
+		}
+		.srb-amt {
+			width: 120px;
+			min-width: 0;
+			text-align: right;
+		}
+		.input-group {
+			flex-wrap: nowrap;
+			.form-control {
+				min-width: 0;
+			}
+		}
+	}
+	.srb-trace .srb-amt {
+		width: 64px;
+		min-width: 0;
+		text-align: right;
+	}
+	.srb-kw {
+		display: inline-flex;
+		align-items: center;
+		min-width: 86px;
+		justify-content: center;
+		padding: 3px 10px;
+		border-radius: 6px;
+		font-size: 12px;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		background: var(--fm-soft2);
+		color: var(--admin-ink-2);
+		&.if {
+			background: color-mix(in srgb, var(--admin-info) 12%, transparent);
+			color: var(--admin-info);
+		}
+		&.then {
+			background: color-mix(in srgb, var(--theme-color) 14%, transparent);
+			color: var(--theme-ink-on-tint);
+		}
+		&.else {
+			background: color-mix(in srgb, var(--admin-warn) 12%, transparent);
+			color: var(--admin-warn);
+		}
+	}
+	.srb-branch {
+		margin-left: 14px;
+		padding-left: 16px;
+		border-left: 2px dashed var(--fm-line);
+	}
+	.srb-add {
+		border-style: dashed !important;
+	}
+	.srb-result {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		padding: 10px 14px;
+		border-radius: 10px;
+		background: color-mix(in srgb, var(--theme-color) 8%, transparent);
+		strong {
+			font-size: 18px;
+		}
+	}
+	.srb-words {
+		margin: 0;
+		padding-left: 18px;
+		li {
+			margin-bottom: 4px;
+		}
+	}
+	.srb-trace {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		font-size: 13px;
+		li {
+			display: flex;
+			justify-content: space-between;
+			gap: 12px;
+			padding: 5px 0;
+			border-bottom: 1px dashed var(--fm-line);
+		}
+		li:last-child {
+			border-bottom: 0;
+		}
+	}
+	.srb-err {
+		outline: 2px solid var(--admin-bad);
+		outline-offset: 2px;
+		border-radius: 6px;
+	}
+}
+
+// Dropdown menus are drawn in the page body (container="body"), outside :host.
+::ng-deep .srb-menu {
+	min-width: 300px;
+	.dropdown-header {
+		font-weight: 700;
+		color: var(--admin-ink-2);
+	}
+	.dropdown-item small {
+		color: var(--admin-muted);
+		display: block;
+		white-space: normal;
+	}
+}

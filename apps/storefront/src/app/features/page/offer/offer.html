@@ -1,6 +1,6 @@
 <app-breadcrumb [breadcrumb]="breadcrumb()" />
 
-@if (couponService.skeletonLoader) {
+@if (loading()) {
 <div class="section-b-space section-t-space offer-section skeleton-offer">
 	<div class="container-fluid-lg">
 		<div class="row g-md-4 g-3">
@@ -45,6 +45,7 @@
 							<h6 class="coupon-code success-color">#{{ coupon.code }}</h6>
 							<a
 								href="javascript:void(0)"
+								role="button"
 								class="btn theme-btn border-btn copy-btn mt-0"
 								(click)="copyFunction(coupon.code)"
 							>
@@ -54,7 +55,7 @@
 					</div>
 				</div>
 			</div>
-			} @if (!(coupon$ |async)?.data?.length && !couponService.skeletonLoader) {
+			} @if (!(coupon$ |async)?.data?.length && !loading()) {
 			<app-no-data
 				[class]="'no-data-added collection-no-data'"
 				[image]="'assets/svg/no-product.svg'"

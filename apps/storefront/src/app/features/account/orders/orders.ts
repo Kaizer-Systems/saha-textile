@@ -1,36 +1,49 @@
-import { AsyncPipe, DatePipe } from '@angular/common';
-import { Component, computed, signal } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
+import { DatePipe } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { TranslocoModule } from '@jsverse/transloco';
-import { Observable } from 'rxjs';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 
-import { Params } from '@data-access/interfaces/core.interface';
-import { IOrderModel } from '@data-access/interfaces/order.interface';
-import { injectOrdersQuery } from '@data-access/queries/order.queries';
-import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
-import { TitleCasePipe } from '@shared/pipes/title-case.pipe';
+import { injectMyOrdersQuery } from '@data-access/queries/order.queries';
 import { NoData } from '@shared/ui/no-data/no-data';
+import { OrderProgress } from '@shared/ui/order-progress/order-progress';
 import { Pagination } from '@shared/ui/pagination/pagination';
+import { ThumbStack } from '@shared/ui/thumb-stack/thumb-stack';
 
+import { OrderCard } from './order-card/order-card';
+import { orderItemsText, orderMoney, orderPill, orderThumbs } from './order-money';
+
+import type { ShopOrderSummary } from '@saha-textile/contracts';
+
+/**
+ * My orders on the shopper's real orders (bundle builder brief E06, approved 2026-11-22): Order, Date, Items, Total
+ * and Status on laptops; on phones and tablets each order is a card (OrderCard), so nothing scrolls sideways (owner,
+ * 22 Nov 2026: "a mobile specific better view").
+ */
 @Component({
 	selector: 'app-orders',
 	templateUrl: './orders.html',
 	styleUrls: ['./orders.scss'],
-	providers: [CurrencySymbolPipe],
-	imports: [RouterLink, Pagination, NoData, AsyncPipe, DatePipe, TitleCasePipe, CurrencySymbolPipe, TranslocoModule],
+	imports: [RouterLink, Pagination, NoData, DatePipe, TranslocoModule, OrderCard, ThumbStack, OrderProgress],
 })
 export class Orders {
-	public filter = signal<Params>({
-		page: 1, // Current page number
-		paginate: 10, // Display per page,
-	});
+	private readonly transloco = inject(TranslocoService);
 
-	private readonly ordersQuery = injectOrdersQuery(() => this.filter());
-	order$: Observable<IOrderModel | undefined> = toObservable(computed(() => this.ordersQuery.data()));
+	readonly pageSize = 10;
+	readonly page = signal(1);
+	private readonly query = injectMyOrdersQuery(() => this.page(), this.pageSize);
+	readonly result = computed(() => this.query.data());
+	readonly orders = computed(() => this.result()?.items ?? []);
+
+	readonly money = orderMoney;
+	readonly pill = orderPill;
+	readonly thumbs = orderThumbs;
+
+	items(order: ShopOrderSummary): string {
+		return orderItemsText(order, (key, params) => this.transloco.translate(key, params));
+	}
 
 	setPaginate(page: number) {
-		this.filter.update((f) => ({ ...f, page }));
+		this.page.set(page);
 	}
 }

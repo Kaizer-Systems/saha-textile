@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { Id, IsoDateTime, MAX_PAGE_SIZE, paginated } from './common';
-import { Address, Customer, CustomerStatus } from './customer';
+import { EnglishName, Id, IsoDateTime, MAX_PAGE_SIZE, paginated } from './common';
+import { AddressInput, Customer, CustomerStatus } from './customer';
 import { NotificationChannel } from './notification';
 
 /**
@@ -79,7 +79,7 @@ export type CustomerOrdersResponse = z.infer<typeof CustomerOrdersResponse>;
  * selected channels (`customer_activation` template through `NotificationPort`).
  */
 export const CreateCustomerRequest = z.object({
-	displayName: z.string().min(1).max(120),
+	displayName: EnglishName,
 	email: z.email(),
 	/** Required for CRM create (operator always collects a reachable phone). */
 	phone: z.string().min(1).max(32),
@@ -90,7 +90,7 @@ export type CreateCustomerRequest = z.infer<typeof CreateCustomerRequest>;
 
 /** Profile patch (`PATCH /admin/customers/:customerId`). Soft-delete is `DELETE`, not here. */
 export const UpdateCustomerRequest = z.object({
-	displayName: z.string().min(1).max(120).optional(),
+	displayName: EnglishName.optional(),
 	email: z.email().optional(),
 	/** When present, must be a non-empty phone — CRM edit always sends it. */
 	phone: z.string().min(1).max(32).optional(),
@@ -102,19 +102,17 @@ export type UpdateCustomerRequest = z.infer<typeof UpdateCustomerRequest>;
  * Address create body — server assigns `id`.
  * CRM always collects reachable phone + state; storefront `Address` stays looser.
  */
-export const CreateCustomerAddressRequest = Address.omit({ id: true }).extend({
+export const CreateCustomerAddressRequest = AddressInput.extend({
 	phone: z.string().min(1).max(32),
 	state: z.string().min(1),
 });
 export type CreateCustomerAddressRequest = z.infer<typeof CreateCustomerAddressRequest>;
 
 /** Address patch — when phone/state are sent they must be non-empty. */
-export const UpdateCustomerAddressRequest = Address.omit({ id: true })
-	.partial()
-	.extend({
-		phone: z.string().min(1).max(32).optional(),
-		state: z.string().min(1).optional(),
-	});
+export const UpdateCustomerAddressRequest = AddressInput.partial().extend({
+	phone: z.string().min(1).max(32).optional(),
+	state: z.string().min(1).optional(),
+});
 export type UpdateCustomerAddressRequest = z.infer<typeof UpdateCustomerAddressRequest>;
 
 /**

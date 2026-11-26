@@ -24,7 +24,7 @@
 				font-size: 15px;
 
 				&:hover {
-					color: var(--theme-color);
+					color: var(--theme-ink);
 				}
 			}
 		}
@@ -285,7 +285,7 @@
 					display: block;
 					margin-top: -15px;
 					font-size: calc(14px + (20 - 14) * ((100vw - 320px) / (1920 - 320)));
-					color: var(--theme-color);
+					color: var(--theme-ink);
 				}
 			}
 

@@ -3,6 +3,13 @@
 	[formGroup]="form"
 	(ngSubmit)="submit()"
 >
+	<app-language-switch
+		[locales]="locales"
+		[active]="fields.locale()"
+		[gaps]="gaps()"
+		(changed)="switchLanguage($event)"
+		(gapChosen)="openLanguageGap($event)"
+	/>
 	<app-form-fields
 		[label]="'title'"
 		[for]="'title'"
@@ -10,38 +17,64 @@
 	>
 		<input
 			class="form-control"
+			id="title"
 			type="text"
 			placeholder="{{ 'enter_blog_title' | transloco }}"
 			name="title"
 			formControlName="title"
 		/>
-		@if (form.controls['title'].touched && form.controls['title'].errors?.['required']) {
+		@if (fields.source('title'); as guide) {
+		<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+		} @if (form.controls['title'].touched && form.controls['title'].errors?.['required']) {
 		<div class="invalid-feedback">{{ 'title_is_required' | transloco }}</div>
 		}
 	</app-form-fields>
 	<app-form-fields
+		[label]="'url_slug'"
+		[for]="'slug'"
+		[required]="false"
+	>
+		<input
+			class="form-control"
+			id="slug"
+			type="text"
+			formControlName="slug"
+		/>
+		<p class="help-text">{{ 'blog_slug_help' | transloco }}</p>
+		@if (form.controls['slug'].errors?.['pattern']) {
+		<div class="invalid-feedback d-block">{{ 'url_slug_invalid' | transloco }}</div>
+		}
+	</app-form-fields>
+	<app-form-fields
 		[label]="'description'"
-		[for]="'desc'"
+		[for]="'description'"
 		[required]="false"
 	>
 		<textarea
 			class="form-control"
+			id="description"
 			placeholder="{{ 'enter_blog_description' | transloco }}"
 			formControlName="description"
 			rows="3"
 		></textarea>
+		<p class="help-text">{{ 'blog_excerpt_help' | transloco }}</p>
+		@if (fields.source('description'); as guide) {
+		<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+		}
 	</app-form-fields>
 	<app-form-fields
 		[label]="'content'"
 		[for]="'content'"
-		[required]="false"
+		[required]="true"
 	>
-		<div class="custom-editor">
+		<div
+			class="custom-editor"
+			id="content"
+		>
 			@if(isBrowser) {
 			<ngx-editor-menu [editor]="editor" />
 			<ngx-editor
 				[editor]="editor"
-				[ngModel]="html"
 				[disabled]="false"
 				[placeholder]="'Type here...'"
 				formControlName="content"
@@ -50,18 +83,68 @@
 		</div>
 	</app-form-fields>
 	<app-form-fields
-		[label]="'thumbnail'"
+		[label]="'cover_image'"
 		[for]="'image'"
 		[required]="true"
 	>
-		<app-image-upload
-			[multipleImage]="false"
-			[image]="blog?.blog_thumbnail"
-			[helpText]="'*Upload image size 1500x700px recommended'"
-			(selectedFiles)="selectThumbnail($event)"
-		/>
+		<div id="image">
+			<app-image-upload
+				[pickTitle]="'fm_pick_title_blog_cover'"
+				[multipleImage]="false"
+				[purpose]="'blog'"
+				[image]="cover"
+				[helpText]="'blog_cover_help' | transloco"
+				(selectedFiles)="selectThumbnail($event)"
+			/>
+		</div>
 		@if (form.controls['blog_thumbnail_id'].touched && form.controls['blog_thumbnail_id'].errors?.['required']) {
 		<div class="invalid-feedback">{{ 'thumbnail_is_required' | transloco }}</div>
+		}
+	</app-form-fields>
+	<app-form-fields
+		[label]="'cover_alt'"
+		[for]="'cover_alt'"
+		[required]="true"
+	>
+		<input
+			class="form-control"
+			id="cover_alt"
+			type="text"
+			formControlName="cover_alt"
+		/>
+		<p class="help-text">{{ 'cover_alt_help' | transloco }}</p>
+		@if (fields.source('cover_alt'); as guide) {
+		<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+		}
+	</app-form-fields>
+	<app-form-fields
+		[label]="'cover_title'"
+		[for]="'cover_title'"
+		[required]="false"
+	>
+		<input
+			class="form-control"
+			id="cover_title"
+			type="text"
+			formControlName="cover_title"
+		/>
+		@if (fields.source('cover_title'); as guide) {
+		<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+		}
+	</app-form-fields>
+	<app-form-fields
+		[label]="'cover_caption'"
+		[for]="'cover_caption'"
+		[required]="false"
+	>
+		<input
+			class="form-control"
+			id="cover_caption"
+			type="text"
+			formControlName="cover_caption"
+		/>
+		@if (fields.source('cover_caption'); as guide) {
+		<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
 		}
 	</app-form-fields>
 	<app-form-fields
@@ -69,13 +152,15 @@
 		[for]="'category'"
 		[required]="true"
 	>
-		<app-advanced-dropdown
-			[position]="'top'"
-			[selectedOption]="selectedCategories"
-			[options]="(category$ | async )?.data?.length ? (category$ | async )?.data : []"
-			[subArrayKey]="'subcategories'"
-			(selectedItem)="selectCategoryItem($event)"
-		/>
+		<div id="category">
+			<app-advanced-dropdown
+				[position]="'top'"
+				[selectedOption]="selectedCategories"
+				[options]="(category$ | async )?.data?.length ? (category$ | async )?.data : []"
+				[subArrayKey]="'subcategories'"
+				(selectedItem)="selectCategoryItem($event)"
+			/>
+		</div>
 		@if (form.controls['categories'].touched && form.controls['categories'].errors?.['required']) {
 		<div class="invalid-feedback">{{ 'select_category_is_required' | transloco }}</div>
 		}
@@ -85,12 +170,14 @@
 		[for]="'tag'"
 		[required]="false"
 	>
-		<app-advanced-dropdown
-			[position]="'top'"
-			[selectedOption]="selectedTags"
-			[options]="tagsQuery.data()?.data?.length ? tagsQuery.data()?.data : []"
-			(selectedItem)="selectTagItem($event)"
-		/>
+		<div id="tag">
+			<app-advanced-dropdown
+				[position]="'top'"
+				[selectedOption]="selectedTags"
+				[options]="tagsQuery.data()?.data?.length ? tagsQuery.data()?.data : []"
+				(selectedItem)="selectTagItem($event)"
+			/>
+		</div>
 	</app-form-fields>
 	<app-form-fields
 		[label]="'featured'"
@@ -125,16 +212,49 @@
 		</div>
 	</app-form-fields>
 	<app-form-fields
+		[label]="'author'"
+		[for]="'author'"
+		[required]="false"
+	>
+		<input
+			class="form-control"
+			id="author"
+			type="text"
+			formControlName="author"
+		/>
+		@if (fields.source('author'); as guide) {
+		<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+		}
+	</app-form-fields>
+	<app-form-fields
+		[label]="'publish_date'"
+		[for]="'published_at'"
+		[required]="false"
+	>
+		<input
+			class="form-control"
+			id="published_at"
+			type="date"
+			formControlName="published_at"
+		/>
+		<p class="help-text">{{ 'publish_date_help' | transloco }}</p>
+	</app-form-fields>
+	<app-form-fields
 		[label]="'meta_title'"
 		[for]="'meta_title'"
 		[required]="false"
 	>
 		<input
 			class="form-control"
+			id="meta_title"
 			type="text"
 			placeholder="{{ 'enter_meta_title' | transloco }}"
 			formControlName="meta_title"
 		/>
+		<p class="help-text">{{ 'blog_meta_title_help' | transloco }}</p>
+		@if (fields.source('meta_title'); as guide) {
+		<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+		}
 	</app-form-fields>
 	<app-form-fields
 		[label]="'meta_description'"
@@ -143,10 +263,15 @@
 	>
 		<textarea
 			class="form-control"
+			id="meta_description"
 			placeholder="{{ 'enter_meta_description' | transloco }}"
 			formControlName="meta_description"
 			rows="3"
 		></textarea>
+		<p class="help-text">{{ 'blog_meta_description_help' | transloco }}</p>
+		@if (fields.source('meta_description'); as guide) {
+		<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+		}
 	</app-form-fields>
 	<app-form-fields
 		[label]="'meta_image'"
@@ -154,26 +279,39 @@
 		[required]="false"
 	>
 		<app-image-upload
+			[pickTitle]="'fm_pick_title_share'"
 			[multipleImage]="false"
-			[image]="blog?.blog_meta_image"
+			[purpose]="'blog'"
+			[image]="shareImage"
+			[helpText]="'blog_share_image_help' | transloco"
 			(selectedFiles)="selectMetaImage($event)"
 		/>
 	</app-form-fields>
-	<app-form-fields
-		[label]="'status'"
-		[for]="'status'"
-		[required]="false"
+	@if (goLiveGaps().length) {
+	<div class="alert alert-danger">
+		<strong>{{ 'blog_go_live_blocked' | transloco }}</strong>
+		<ul class="mt-2 mb-0">
+			@for (gap of goLiveGaps(); track $index; let index = $index) {
+			<li>
+				<a
+					class="alert-link cursor-pointer"
+					(click)="openGap(gap)"
+				>
+					{{ gapLabels()[index] }}
+				</a>
+			</li>
+			}
+		</ul>
+	</div>
+	} @if (id && !isLive()) {
+	<button
+		type="button"
+		id="go_live_btn"
+		class="btn btn-theme mb-4"
+		(click)="goLive()"
 	>
-		<div class="form-check form-switch ps-0">
-			<label class="switch">
-				<input
-					type="checkbox"
-					id="status"
-					formControlName="status"
-				/>
-				<span class="switch-state"></span>
-			</label>
-		</div>
-	</app-form-fields>
+		{{ 'go_live' | transloco }}
+	</button>
+	}
 	<app-button [id]="'blog_btn'">{{ (type() === 'create' ? 'save_blog' : 'update_blog') | transloco }}</app-button>
 </form>

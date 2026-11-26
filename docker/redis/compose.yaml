@@ -3,8 +3,10 @@
 # =============================================================================
 #  The BullMQ broker for media jobs — the same settings as the mode-3 stack and the
 #  droplet: never evict (`noeviction`), persist every second (AOF `everysec`).
-#  Loopback only and without a password, like local Mongo; deployed Redis lives on
-#  the private network with REDIS_PASSWORD injected at deploy time.
+#  Loopback only. This base file runs without a password. With REDIS_AUTH=on in
+#  the gitignored docker/redis/.env, `pnpm redis:up` lays compose.auth.yaml on top:
+#  the password from docker/dev-secrets/redis-password, read into a config file at
+#  start, as on the droplet (REDIS_PASSWORD in apps/api/.env is the same value).
 #
 #    pnpm redis:up     start + wait healthy
 #    pnpm redis:down   stop (data volume kept)

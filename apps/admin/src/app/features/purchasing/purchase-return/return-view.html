@@ -1,0 +1,270 @@
+@if (doc(); as current) {
+<div class="container-fluid">
+	<div class="mb-4">
+		<div class="tracking-panel">
+			<ul>
+				@for (item of steps; track item.svg; let i = $index) {
+				<li [class.active]="i <= step()">
+					<div class="panel-content">
+						<div class="icon">
+							<img
+								src="assets/svg/tracking/{{ item.svg }}.svg"
+								class="img-fluid"
+								alt=""
+							/>
+						</div>
+						<div class="status">{{ item.label | transloco }}</div>
+					</div>
+				</li>
+				}
+			</ul>
+		</div>
+	</div>
+</div>
+<div class="row g-2">
+	<div class="col-xxl-9">
+		<app-page-wrapper
+			[gridClass]="'col-sm-12'"
+			[title]="current.kind === 'short_supply' ? 'short_supply_claim' : 'debit_note'"
+		>
+			<span
+				option
+				class="ms-2"
+			>
+				{{ current.number ?? ((current.kind === 'short_supply' ? 'pr_no_goods_to_send' : 'pr_number_on_sending')
+				| transloco) }}
+			</span>
+			<div
+				button
+				class="d-flex flex-wrap gap-2"
+			>
+				@if (current.status === 'draft') {
+				<button
+					*hasPermission="'purchase_return.create'"
+					type="button"
+					class="btn btn-outline btn-sm"
+					(click)="edit()"
+				>
+					<i class="ri-pencil-line me-1"></i>
+					{{ 'edit' | transloco }}
+				</button>
+				<button
+					*hasPermission="'purchase_return.create'"
+					type="button"
+					class="btn btn-outline btn-sm"
+					(click)="remove()"
+				>
+					<i class="ri-delete-bin-line me-1"></i>
+					{{ 'delete_draft' | transloco }}
+				</button>
+				<button
+					*hasPermission="'purchase_return.send'"
+					type="button"
+					class="btn btn-theme btn-sm"
+					(click)="send()"
+				>
+					<i class="ri-truck-line me-1"></i>
+					{{ 'send_to_supplier' | transloco }}
+				</button>
+				} @else {
+				<button
+					type="button"
+					class="btn btn-outline btn-sm"
+					(click)="pdf('debit-note')"
+				>
+					<i class="ri-download-2-line me-1"></i>
+					{{ 'debit_note_pdf' | transloco }}
+				</button>
+				@if (current.challanNumber) {
+				<button
+					type="button"
+					class="btn btn-outline btn-sm"
+					(click)="pdf('challan')"
+				>
+					<i class="ri-download-2-line me-1"></i>
+					{{ 'challan_pdf' | transloco }}
+				</button>
+				} }
+			</div>
+			<ul class="nav nav-tabs mb-3">
+				<li class="nav-item">
+					<a
+						href="javascript:void(0)"
+						class="nav-link"
+						[class.active]="tab() === 'lines'"
+						(click)="tab.set('lines')"
+					>
+						{{ 'lines' | transloco }}
+					</a>
+				</li>
+				<li class="nav-item">
+					<a
+						href="javascript:void(0)"
+						class="nav-link"
+						[class.active]="tab() === 'activity'"
+						(click)="tab.set('activity')"
+					>
+						{{ 'supplier_tab_activity' | transloco }}
+					</a>
+				</li>
+			</ul>
+			@if (tab() === 'lines') {
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th style="width: 300px">{{ 'item' | transloco }}</th>
+							<th class="text-end">{{ 'qty' | transloco }}</th>
+							<th class="text-end">{{ 'unit_cost' | transloco }}</th>
+							<th class="text-end">{{ 'taxable_value' | transloco }}</th>
+							<th class="text-end">
+								{{ current.taxType === 'intra_state' ? 'CGST + SGST' : current.taxType === 'inter_state'
+								? 'IGST' : 'GST' }}
+							</th>
+							<th class="text-end">{{ 'total' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (line of current.lines; track line.lineId) {
+						<tr>
+							<td>
+								<div class="d-flex align-items-center gap-2 text-start">
+									@if (line.imageUrl) {
+									<img
+										[src]="line.imageUrl"
+										alt=""
+										width="40"
+										height="52"
+										class="rounded"
+										style="object-fit: cover"
+									/>
+									}
+									<div>
+										<h6 class="mb-0">{{ line.title }}</h6>
+										<small class="text-muted">
+											{{ line.sku }}@if (line.optionsLabel) { · {{ line.optionsLabel }} }
+										</small>
+									</div>
+								</div>
+							</td>
+							<td class="text-end text-nowrap">{{ line.quantity | stockQty: line.soldBy }}</td>
+							<td class="text-end text-nowrap">
+								{{ (line.soldBy === 'metre' ? line.unitCostINR * 10 : line.unitCostINR) | rupees }}@if
+								(line.soldBy === 'metre') { {{ 'per_m' | transloco }} }
+							</td>
+							<td class="text-end text-nowrap">{{ line.taxableINR | rupees }}</td>
+							<td class="text-end text-nowrap">{{ line.taxINR | rupees }}</td>
+							<td class="text-end text-nowrap">{{ line.totalINR | rupees }}</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<p class="small text-muted mt-3 mb-0">
+				{{ returnWhy(current, t) }}@if (current.noteToSupplier) { · {{ current.noteToSupplier }} } @if
+				(current.sentAt) { · {{ 'pr_sent_line' | transloco: { date: (current.sentAt | shortDateTime) } }} @if
+				(current.challanNumber) { · {{ 'challan_no' | transloco: { number: current.challanNumber } }} } @if
+				(current.courier) { · {{ current.courier }}@if (current.docket) { {{ current.docket }} } } }
+			</p>
+			} @else {
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th style="width: 190px">{{ 'when' | transloco }}</th>
+							<th style="width: 140px">{{ 'who' | transloco }}</th>
+							<th>{{ 'what_happened' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of activity.data() ?? []; track row.id) {
+						<tr>
+							<td>{{ row.at | shortDateTime }}</td>
+							<td>{{ row.actorName }}</td>
+							<td>{{ row.text }}</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			}
+		</app-page-wrapper>
+	</div>
+	<div class="col-xxl-3">
+		<div class="sticky-top-sec">
+			<app-page-wrapper
+				[gridClass]="'col-sm-12'"
+				[title]="'summary'"
+			>
+				@if (current.status === 'sent' && open() > 0) {
+				<a
+					button
+					*hasPermission="'purchase_return.settle'"
+					href="javascript:void(0)"
+					class="btn btn-animation btn-sm ms-auto"
+					(click)="settle()"
+				>
+					{{ 'settle' | transloco }}
+				</a>
+				}
+				<div class="tracking-total tracking-wrapper">
+					<ul>
+						<li>
+							{{ 'debit_note_total' | transloco }}
+							<span>{{ current.totalINR | rupees }}</span>
+						</li>
+						<li>
+							{{ 'settled' | transloco }}
+							<span>{{ current.settledINR | rupees }}</span>
+						</li>
+						<li>
+							{{ 'open_amount' | transloco }}
+							<span>{{ open() | rupees }}</span>
+						</li>
+					</ul>
+				</div>
+				<div class="mt-3">
+					<div [class]="'status-' + returnStatus(current, t).pill">
+						<span>{{ returnStatus(current, t).label }}</span>
+					</div>
+				</div>
+				@for (settlement of current.settlements; track settlement.id) {
+				<p class="small text-muted mt-2 mb-0">
+					{{ settlement.date | shortDate }} · {{ 'settled_how_' + settlement.how | transloco }}@if
+					(settlement.reference) { {{ settlement.reference }} } · {{ settlement.amountINR | rupees }}
+				</p>
+				}
+			</app-page-wrapper>
+			<app-page-wrapper
+				[gridClass]="'col-sm-12'"
+				[title]="'supplier_and_bill'"
+			>
+				<div class="customer-detail tracking-wrapper">
+					<ul>
+						<li>
+							<label>{{ 'supplier' | transloco }}:</label>
+							<h4>
+								<a [routerLink]="['/suppliers', current.supplierId]">{{ current.supplierName }}</a>
+							</h4>
+						</li>
+						<li>
+							<label>{{ 'from_entry' | transloco }}:</label>
+							<h4>
+								<a [routerLink]="['/purchase-entries', current.purchaseEntryId]">
+									{{ current.purchaseEntryNumber }}
+								</a>
+							</h4>
+						</li>
+					</ul>
+				</div>
+			</app-page-wrapper>
+		</div>
+	</div>
+</div>
+} @else if (query.isError()) {
+<div class="container-fluid">
+	<div class="no-data-added">
+		<h4>{{ 'pr_not_found' | transloco }}</h4>
+	</div>
+</div>
+}

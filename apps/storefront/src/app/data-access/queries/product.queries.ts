@@ -4,10 +4,9 @@ import { cleanListingParams } from '@saha-textile/core-domain/listing';
 import { injectQuery, keepPreviousData } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
-import { ICatalogResponse } from '@data-access/interfaces/catalog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
-import { ProductService } from '@data-access/services/product.service';
+import { homeProducts, ProductService } from '@data-access/services/product.service';
 
 const RECENT_PURCHASES_REFRESH_MS = 5 * 60 * 1000;
 
@@ -23,18 +22,30 @@ function toCatalogParams(f?: Params): Params {
 	};
 }
 
+/** The home page's product rails. The menu reads the same cached answer for real product links. */
+export function injectHomeRailsQuery() {
+	const productService = inject(ProductService);
+	return injectQuery(() => ({
+		// The cache (and the page's data copy) holds the API's lean cards; products are made from them when read.
+		queryKey: ['catalog', 'home', 'cards'],
+		queryFn: () => firstValueFrom(productService.homeCards()),
+		select: homeProducts,
+	}));
+}
+
 /**
  * Category-listing query: the catalogue API's server-side filtered, paginated slice with
  * disjunctive facets. Keyed on the filter params; keepPreviousData holds the old page
  * visible while the next one loads.
  */
-export function injectCatalogQuery(params: () => Params | undefined) {
+export function injectCatalogQuery(params: () => Params | undefined, enabled: () => boolean = () => true) {
 	const productService = inject(ProductService);
 	return injectQuery(() => ({
 		queryKey: ['catalog', toCatalogParams(params())],
 		queryFn: () => firstValueFrom(productService.getCatalog(toCatalogParams(params()))),
 		placeholderData: keepPreviousData,
 		staleTime: Infinity,
+		enabled: enabled(),
 	}));
 }
 
@@ -91,5 +102,18 @@ export function injectRelatedProductsData() {
 		queryFn: () => Promise.resolve<IProduct[]>([]),
 		enabled: false,
 		staleTime: Infinity,
+	}));
+}
+
+/**
+ * The product page's Trending list. Public catalogue data under the `catalog` root, so it is
+ * read on the server and its links are in the page source.
+ */
+export function injectProductTrendingQuery(slug: () => string | undefined) {
+	const productService = inject(ProductService);
+	return injectQuery(() => ({
+		queryKey: ['catalog', 'trending', slug()],
+		queryFn: () => firstValueFrom(productService.trendingFor(slug() ?? '')),
+		enabled: !!slug(),
 	}));
 }

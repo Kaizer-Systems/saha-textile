@@ -1,0 +1,234 @@
+<div class="modal-header">
+	<h2 id="payment_popup_title">
+		{{ 'record_payment' | transloco }}@if (bill(); as chosen) { · {{ chosen.number }} }
+	</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	@if (bills().length > 1) {
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="payment_bill"
+		>
+			{{ 'payment_bill' | transloco }}
+		</label>
+		<div class="col-sm-9">
+			<select
+				class="form-select"
+				id="payment_bill"
+				[ngModel]="billId()"
+				(ngModelChange)="choose($event)"
+			>
+				@for (row of bills(); track row.id) {
+				<option [value]="row.id">
+					{{ row.number }} · {{ row.billNumber }} · {{ 'payment_left' | transloco: { amount: (row.leftINR |
+					rupees) } }}
+				</option>
+				}
+			</select>
+		</div>
+	</div>
+	} @if (bill(); as chosen) {
+	<table class="table-sm mb-3 table">
+		<tbody>
+			<tr>
+				<td class="text-muted">{{ 'bill_total' | transloco }}</td>
+				<td class="text-end">{{ chosen.totalINR | rupees }}</td>
+			</tr>
+			<tr>
+				<td class="text-muted">{{ 'paid_so_far' | transloco }}</td>
+				<td class="text-end">{{ chosen.paidINR | rupees }}</td>
+			</tr>
+			<tr>
+				<td class="text-muted">{{ 'left_to_pay' | transloco }}</td>
+				<td class="text-end">
+					<strong>{{ chosen.leftINR | rupees }}</strong>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	}
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="payment_amount"
+		>
+			{{ 'amount_rupees' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<div class="input-group">
+				<span class="input-group-text">₹</span>
+				<input
+					class="form-control"
+					id="payment_amount"
+					inputmode="decimal"
+					autocomplete="off"
+					ngbAutofocus
+					[class.is-invalid]="!!amountProblem()"
+					[ngModel]="amount()"
+					(ngModelChange)="amount.set($event)"
+				/>
+			</div>
+			@if (amountProblem(); as problem) {
+			<div class="invalid-feedback d-block">{{ problem | transloco: { left: leftText() } }}</div>
+			} @else {
+			<p class="help-text">{{ 'payment_amount_help' | transloco }}</p>
+			}
+		</div>
+	</div>
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="payment_paid_on"
+		>
+			{{ 'paid_on' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<input
+				class="form-control"
+				id="payment_paid_on"
+				type="date"
+				[max]="today"
+				[ngModel]="paidOn()"
+				(ngModelChange)="paidOn.set($event)"
+			/>
+		</div>
+	</div>
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="payment_mode"
+		>
+			{{ 'payment_how' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<select
+				class="form-select"
+				id="payment_mode"
+				[ngModel]="mode()"
+				(ngModelChange)="mode.set($event)"
+			>
+				@for (item of modes; track item) {
+				<option [value]="item">{{ 'payment_mode_' + item | transloco }}</option>
+				}
+			</select>
+		</div>
+	</div>
+	@if (choosesBank()) {
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="payment_paid_from"
+		>
+			{{ 'cn_refund_from' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<select
+				class="form-select"
+				id="payment_paid_from"
+				[ngModel]="paidFrom()"
+				(ngModelChange)="paidFrom.set($event)"
+			>
+				<option value="">—</option>
+				@for (l of banks(); track l.id) {
+				<option [value]="l.id">{{ l.name }}</option>
+				}
+			</select>
+		</div>
+	</div>
+	}
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="payment_reference"
+		>
+			{{ 'payment_reference' | transloco }}
+		</label>
+		<div class="col-sm-9">
+			<input
+				class="form-control"
+				id="payment_reference"
+				maxlength="80"
+				autocomplete="off"
+				[ngModel]="reference()"
+				(ngModelChange)="reference.set($event)"
+			/>
+			<p class="help-text">{{ 'payment_reference_help' | transloco }}</p>
+		</div>
+	</div>
+	@if (!isExpenseBill()) {
+	<div class="row align-items-center g-2 mb-2">
+		<span class="form-label-title col-sm-3 mb-0">{{ 'payment_proof' | transloco }}</span>
+		<div class="col-sm-9">
+			@if (proof(); as file) {
+			<span class="me-2">
+				<i class="ri-attachment-2"></i>
+				{{ file.name }}
+			</span>
+			<a
+				href="javascript:void(0)"
+				class="text-decoration-underline small"
+				(click)="proof.set(null)"
+			>
+				{{ 'remove' | transloco }}
+			</a>
+			} @else {
+			<a
+				href="javascript:void(0)"
+				class="text-decoration-underline small"
+				(click)="pickProof()"
+			>
+				<i class="ri-attachment-2"></i>
+				{{ 'payment_add_proof' | transloco }}
+			</a>
+			}
+		</div>
+	</div>
+	}
+	<div class="alert alert-info d-flex align-items-center mt-3 mb-0 gap-2">
+		<i class="ri-information-line"></i>
+		<span>{{ 'pv_entry_note' | transloco }}</span>
+	</div>
+	@if (error(); as problem) {
+	<div
+		class="alert alert-warning d-flex align-items-start mt-3 mb-0 gap-2"
+		role="alert"
+	>
+		<i class="ri-error-warning-line mt-1"></i>
+		<div>{{ problem }}</div>
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="payment_save"
+			[disabled]="!canSave()"
+			(click)="save()"
+		>
+			{{ 'save_payment' | transloco }}
+		</button>
+	</div>
+</div>

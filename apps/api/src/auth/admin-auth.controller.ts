@@ -39,7 +39,7 @@ import { resolveEffectivePermissions } from '@saha-textile/core-domain';
 import type { RoleRepository, AdminUserRoleAssignmentRepository } from '@saha-textile/core-domain';
 
 type AdminAuthSessionResponse = { user: AdminUser; session: SessionInfo };
-import type { CsrfTokenResponse } from '@saha-textile/contracts';
+import type { CsrfTokenResponse, SessionNoticeResponse } from '@saha-textile/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
@@ -50,8 +50,15 @@ import { AuthService } from './auth.service';
 import { Principal } from './ownership';
 import { tooManyRequests } from './rate-limit-response';
 import { RotatesSession } from './refresh-reuse.guard';
-import { type AuthenticatedPrincipal, Audience, Public, RequirePermissions, RequireRoles } from './session.guard';
-import { SessionService } from './session.service';
+import {
+	type AuthenticatedPrincipal,
+	AllowWhileLocked,
+	Audience,
+	Public,
+	RequirePermissions,
+	RequireRoles,
+} from './session.guard';
+import { isAdminSessionLocked, SessionService } from './session.service';
 import { API_TAGS } from '../openapi-tags';
 
 /**
@@ -96,6 +103,17 @@ export class AdminAuthController {
 		@Res({ passthrough: true }) reply: FastifyReply,
 	): Promise<CsrfTokenResponse> {
 		return { csrfToken: await this.sessions.issueCsrfToken(request, reply) };
+	}
+
+	/** The sign-in page's "we signed everyone out on …" line (Release Path brief, 2026-11-23). */
+	@Get('session-notice')
+	@Public()
+	@ApiOperation({
+		operationId: 'getAdminSessionNotice',
+		summary: 'Whether this browser was signed out when everyone was, after a key leak',
+	})
+	async sessionNotice(@Req() request: FastifyRequest): Promise<SessionNoticeResponse> {
+		return { signedOutAt: await this.sessions.signedOutNotice(request) };
 	}
 
 	@Post('login')
@@ -425,6 +443,7 @@ export class AdminAuthController {
 
 	@Get('me')
 	@RequireRoles('staff', 'admin')
+	@AllowWhileLocked()
 	@ApiOperation({
 		operationId: 'getCurrentAdmin',
 		summary: 'Current admin profile — sanitized, never credential material',
@@ -452,8 +471,41 @@ export class AdminAuthController {
 				audience: 'admin',
 				expiresAt: live?.expiresAt ?? new Date(Date.now() + 15 * 60 * 1000).toISOString(),
 				refreshExpiresAt: live?.absoluteExpiresAt ?? new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
+				// Held by the server: a reload or a new tab shows the lock until the PIN or password.
+				locked: live ? isAdminSessionLocked(live) : false,
 			},
 		};
+	}
+
+	/**
+	 * Puts the 15-minute lock up for this session, from the admin's own idle timer. Works while
+	 * locked (it is idempotent), so every open tab can call it safely.
+	 */
+	@Post('lock')
+	@RequireRoles('staff', 'admin')
+	@AllowWhileLocked()
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@ApiOperation({ operationId: 'lockAdminSession', summary: 'Lock the admin session until the PIN or password' })
+	async lock(@Principal() principal: AuthenticatedPrincipal | undefined): Promise<void> {
+		if (!principal) throw new UnauthorizedException('Authentication required');
+		const live = await this.sessions.findLiveById(principal.sessionId, {
+			userId: principal.userId,
+			audience: 'admin',
+		});
+		if (live) await this.sessions.lockAdminSession(live);
+	}
+
+	/**
+	 * The operator is present: sent by the admin at most once a minute while someone types, clicks or
+	 * scrolls. Refused with `session_locked` behind the lock, so it can never undo one.
+	 */
+	@Post('activity')
+	@RequireRoles('staff', 'admin')
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@ApiOperation({ operationId: 'markAdminActivity', summary: 'Record that the operator is present' })
+	async activity(@Principal() principal: AuthenticatedPrincipal | undefined): Promise<void> {
+		if (!principal) throw new UnauthorizedException('Authentication required');
+		await this.sessions.markAdminActive(principal.sessionId);
 	}
 
 	@Patch('profile')
@@ -658,6 +710,7 @@ export class AdminAuthController {
 	 */
 	@Post('resume')
 	@RequireRoles('staff', 'admin')
+	@AllowWhileLocked()
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({
 		operationId: 'resumeAdminSession',
@@ -701,6 +754,8 @@ export class AdminAuthController {
 			}
 		}
 
+		// Presence is proven: the lock comes down first, so the rotation below counts from now.
+		await this.sessions.unlockAdminSession(principal.sessionId);
 		// Rotates the refresh token and extends the idle window on the SAME session.
 		const { session } = await this.sessions.refresh({ request, reply, audience: 'admin' });
 		return {

@@ -4,12 +4,14 @@ import { Component, DestroyRef, PLATFORM_ID, TemplateRef, inject, signal, viewCh
 import { Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { injectBrandQuery } from '@data-access/queries/brand.queries';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { firstValueFrom } from 'rxjs';
 
-import { ConsentStore } from '@core/consent/consent.store';
+import { ThemeModeStore } from '@core/brand/theme-mode';
 import { runtimeConfig, runtimeConfigReady } from '@core/config/runtime-config';
+import { ConsentStore } from '@core/consent/consent.store';
+import { ShopEvents } from '@core/events/shop-events';
+import { injectBrandQuery } from '@data-access/queries/brand.queries';
 
 import { Button } from '../../button/button';
 
@@ -75,7 +77,11 @@ export class NewsletterModal {
 	/** The `newsletter_popup` banner. With none set, the popup is text only. */
 	readonly image = signal<PopupImage | null>(null);
 	readonly brand = injectBrandQuery();
+	/** The Brand Kit's dark logo in dark mode, where set. */
+	readonly themeMode = inject(ThemeModeStore);
 	private readonly consent = inject(ConsentStore);
+	/** A published event's popup goes first; this one waits for a later visit. */
+	private readonly events = inject(ShopEvents);
 	readonly notice = signal<string | null>(null);
 	readonly neverAgain = signal(false);
 
@@ -122,7 +128,7 @@ export class NewsletterModal {
 	}
 
 	private async open(): Promise<void> {
-		if (this.suppressed() || this.quietPage() || !this.consent.decided()) return;
+		if (this.suppressed() || this.quietPage() || !this.consent.decided() || this.events.popupWaiting()) return;
 		this.disarm?.();
 		this.document.defaultView?.sessionStorage.setItem(SESSION_FLAG, '1');
 		await this.loadImage();

@@ -37,42 +37,47 @@ const atlases: Record<Application, AtlasItem[]> = {
 		},
 		{
 			name: 'Catalogue listing',
-			summary: 'Category pages, the home page, cards, search and old addresses read the catalogue API.',
+			summary: 'Category pages, the home page, the menu, cards, search and old addresses read the catalogue API.',
 			status: 'scaffolded',
 			runtime: 'Collection pages and shop feature components',
-			data: 'GET /catalog/* for catalogue responses. The category menu and attribute filters read JSON files.',
+			data: 'GET /catalog/* for catalogue responses, including the menu. The attribute filter list reads a JSON file.',
 			sources: [
 				'apps/storefront/src/app/data-access/services/product.service.ts',
 				'apps/storefront/src/app/data-access/queries/product.queries.ts',
 			],
-			caution: 'Check the service behind a screen. Blog, tags and settings read JSON files.',
+			caution: 'Check the service behind a screen. Tags and settings read JSON files.',
 		},
 		{
 			name: 'Product detail',
-			summary: 'The slug route, gallery, options, related products, questions and stock alerts are present.',
+			summary:
+				'The slug route, gallery, options, related and trending products, reviews, FAQ, questions and stock alerts are present.',
 			status: 'scaffolded',
 			runtime: 'Dynamic /<locale>/product/[slug] route',
-			data: 'Product, gallery, relations and questions use the API. The review list reads a JSON file. Review submission and photo upload use the API.',
+			data: 'Product, gallery, relations, trending, reviews, FAQ and questions use the API, as do review submission, editing and photo upload.',
 			sources: [
 				'apps/storefront/src/app/pages/product/[slug].page.ts',
 				'apps/storefront/src/app/features/shop/product-detail',
 			],
 		},
 		{
-			name: 'Client cart',
-			summary: 'Cart actions, selectors, effects and browser persistence work in classic NgRx.',
+			name: 'Cart',
+			summary:
+				'The cart is held by the API and priced there from the live catalogue; classic NgRx mirrors it in the browser.',
 			status: 'implemented',
-			runtime: 'Classic NgRx store and effects',
-			data: 'Browser state only. The storefront does not call the cart API.',
-			sources: ['apps/storefront/src/app/core/state/cart', 'apps/storefront/src/app/features/shop/cart'],
-			caution: 'This describes the browser cart. Its prices and totals are not authoritative.',
+			runtime: 'Classic NgRx store and effects over the cart API',
+			data: 'GET and writes under /cart/current. The browser sends choices, never prices.',
+			sources: [
+				'apps/storefront/src/app/core/state/cart',
+				'apps/storefront/src/app/features/shop/cart',
+				'apps/storefront/src/app/data-access/services/cart.service.ts',
+			],
 		},
 		{
 			name: 'Checkout and payment handoff',
-			summary: 'The checkout forms and totals display exist. Order placement and payment do not.',
-			status: 'scaffolded',
-			runtime: 'Checkout page and feature composition',
-			data: 'A static totals object. Placing an order only navigates to a detail page.',
+			summary: 'Checkout is closed: the page says so. Order placement and payment do not exist yet.',
+			status: 'planned',
+			runtime: 'Checkout page showing the closed notice',
+			data: 'None.',
 			sources: [
 				'apps/storefront/src/app/pages/checkout.page.ts',
 				'apps/storefront/src/app/features/shop/checkout',
@@ -94,20 +99,51 @@ const atlases: Record<Application, AtlasItem[]> = {
 		{
 			name: 'Languages',
 			summary:
-				'Every page is served under /en/ or /fr/, and the switcher links to the same page in the other language.',
+				'Every page is served under /en/ or /bn/, and the switcher links to the same page in the other language.',
 			status: 'scaffolded',
 			runtime: 'Transloco HTTP loader and locale routing',
-			data: 'English and French dictionaries. Catalogue labels come from the API.',
+			data: 'English and Bengali dictionaries. Catalogue labels come from the API.',
 			sources: ['apps/storefront/src/app/app.config.ts', 'apps/storefront/src/app/core/i18n'],
 			caution: 'Bengali needs locale configuration and translated content.',
 		},
 		{
-			name: 'PWA and offline catalogue and cart',
-			summary: 'Offline catalogue and cart behaviour is planned. The PWA plugin is not in the build.',
-			status: 'planned',
-			runtime: 'Planned: Workbox through the Vite PWA integration',
-			data: 'The build has no service worker or cache rules.',
-			sources: ['apps/storefront/vite.config.ts', 'docs/engineering-live-context/owner-decisions-log.mdx'],
+			name: 'Installable app',
+			summary:
+				'The shop installs as an app, with Get the App links and a how-to popup. Offline catalogue and cart are not built.',
+			status: 'scaffolded',
+			runtime: 'Web app manifest and a service worker without fetch handling',
+			data: 'A manifest per language built from the Brand Kit; the service worker has no fetch handler, so it caches nothing.',
+			sources: [
+				'apps/storefront/src/service-worker/sw.ts',
+				'apps/storefront/src/app/core/pwa',
+				'docs/engineering-live-context/owner-decisions-log.mdx',
+			],
+		},
+		{
+			name: 'Search, wishlist and compare',
+			summary: 'The menu-bar search with suggestions, the Search page, saved hearts and the compare page work.',
+			status: 'scaffolded',
+			runtime: 'Header search widget, wishlist store and compare page',
+			data: 'GET /catalog/search and /catalog/search/trending; /storefront/wishlist for signed-in shoppers, the st_wishlist session cookie for guests.',
+			sources: [
+				'apps/storefront/src/app/layout/header/widgets/search',
+				'apps/storefront/src/app/core/state/wishlist',
+				'apps/storefront/src/app/data-access/services/wishlist.service.ts',
+			],
+		},
+		{
+			name: 'Blog, events and Contact Us',
+			summary:
+				'The blog, launch and sale countdowns with the event popup, and Contact Us with store cards and a message form.',
+			status: 'scaffolded',
+			runtime: 'Blog pages, event components and the Contact Us page',
+			data: 'GET /catalog/blog/*, /catalog/events and /catalog/store-locations; POST /storefront/contact-messages.',
+			sources: [
+				'apps/storefront/src/app/data-access/services/blog.service.ts',
+				'apps/storefront/src/app/core/events',
+				'apps/storefront/src/app/data-access/services/store-location.service.ts',
+				'apps/storefront/src/app/data-access/services/contact-message.service.ts',
+			],
 		},
 	],
 	admin: [
@@ -122,10 +158,11 @@ const atlases: Record<Application, AtlasItem[]> = {
 		},
 		{
 			name: 'Dashboard and reporting widgets',
-			summary: 'Counts, charts, tables and browser-only chart setup are assembled.',
+			summary:
+				'Revenue, orders, customers, top products, stock, reviews, stores and blog widgets, each shown by its own permission.',
 			status: 'scaffolded',
 			runtime: 'Dashboard feature and ApexCharts',
-			data: 'Dashboard queries read JSON files.',
+			data: "API routes under /admin/dashboard, plus the stores and blog APIs. The chart's commission line reads a JSON file.",
 			sources: [
 				'apps/admin/src/app/features/dashboard',
 				'apps/admin/src/app/data-access/queries/dashboard.queries.ts',
@@ -133,10 +170,10 @@ const atlases: Record<Application, AtlasItem[]> = {
 		},
 		{
 			name: 'Catalogue administration',
-			summary: 'Product, category, attribute, tag, tax, shipping, store and currency screens and forms exist.',
+			summary: 'Product, category, attribute, tag, tax, shipping and currency screens and forms exist.',
 			status: 'scaffolded',
 			runtime: 'Lazy feature routes and reactive forms',
-			data: 'The product form, redirects and add-on templates use the API. The other screens read JSON files and have no write path.',
+			data: 'Products (with Go Live, bundles and Save and next), categories, attributes with swatch pictures, redirects and add-on templates use the API. Product tags, tax, shipping and currency read JSON files and have no write path.',
 			sources: [
 				'apps/admin/src/app/features/product',
 				'apps/admin/src/app/features/category',
@@ -193,15 +230,33 @@ const atlases: Record<Application, AtlasItem[]> = {
 		},
 		{
 			name: 'Content and engagement',
-			summary: 'Blog, pages, FAQ, questions, notifications, coupons and theme settings have management screens.',
+			summary:
+				'Blog, launch and sale events, pages, FAQ, questions, notifications, coupons and theme settings have management screens.',
 			status: 'scaffolded',
 			runtime: 'Lazy feature families',
-			data: 'FAQ, questions and notification settings use the API. Blog, pages, coupons and theme options read JSON files.',
+			data: 'Blog, events, FAQ, questions and notification settings use the API. Pages, coupons and theme options read JSON files.',
 			sources: [
 				'apps/admin/src/app/features/blog',
+				'apps/admin/src/app/features/event',
 				'apps/admin/src/app/features/page',
 				'apps/admin/src/app/features/faq',
+				'apps/admin/src/app/features/questions-answers',
 				'apps/admin/src/app/features/notification',
+			],
+		},
+		{
+			name: 'Settings, search and mail',
+			summary:
+				'Brand Kit, Stores, Mailboxes with the inbox, search words and Storefront settings › Search are connected.',
+			status: 'scaffolded',
+			runtime: 'Settings tabs, search word screens and the mailbox gateway',
+			data: 'API routes under /admin/settings, /admin/store-locations, /admin/mailboxes, /admin/inbox, /admin/search-terms and /admin/storefront-settings. General settings read a JSON file.',
+			sources: [
+				'apps/admin/src/app/features/setting',
+				'apps/admin/src/app/core/stores',
+				'apps/admin/src/app/core/mailboxes',
+				'apps/admin/src/app/features/search-term',
+				'apps/admin/src/app/features/storefront-setting',
 			],
 		},
 		{

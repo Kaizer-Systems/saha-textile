@@ -4,7 +4,7 @@ wide: true
 description: Storefront sessions, OTP/OAuth, account boundaries, admin authorization, soft lock, and draft recovery.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/storefront/src/app/pages/auth
     - apps/admin/src/app/features/auth
@@ -91,6 +91,20 @@ Address add and update use one atomic MongoDB statement, so concurrent edits do 
 
 Personal records are never public offline cache, and object lookups enforce ownership.
 
+## Account deletion and restore
+
+```mermaid
+stateDiagram-v2
+    [*] --> Live
+    Live --> Deleted: operator deletes (customer.destroy)
+    Deleted --> Live: operator restores (customer.restore), previous status returns
+    Deleted --> Deleted: restore refused, email or phone now held by another customer
+```
+
+Only an operator deletes a customer, from the CRM. The deleted customer is signed out everywhere, and their outstanding links and one-time codes stop working. Their email, phone and Google or Facebook account become free, so the same person can register again as a new customer.
+
+A restore brings back the original account with its previous status, email, phone and password. Google and Facebook sign-in must be reconnected from the account page. A restore is refused when someone else has registered the email or phone since the delete. The rules are in [Security, sessions, and authorization](../backend/security-and-identity#account-deletion-and-restore).
+
 ## Admin authentication
 
 Operators sign in with a password or PIN, using email or username. The guard enforces audience, role, declared permissions and current permission versions. There is no self-registration or social sign-in.
@@ -112,7 +126,7 @@ stateDiagram-v2
     Restoring --> Blocked: stale draft, changed permission, or changed entity
 ```
 
-After 15 minutes of inactivity the shell opens the idle lock. Resume uses the preferred method, PIN when configured and otherwise password, through `POST /auth/admin/resume`. The API also enforces the admin idle lifetime and PIN lockout.
+After 15 minutes of inactivity the session locks on the server, and every admin tab shows the lock. A reload or a new tab comes back to the lock on the same page. Resume uses the preferred method, PIN when configured and otherwise password, through `POST /auth/admin/resume`; the page and any form behind the lock stay as they were. A mistyped PIN or password keeps the lock screen up. The API also enforces the admin idle lifetime and PIN lockout. A reload or tab close with unsaved form work asks the browser's "Leave site?" question first. See [Admin idle lock](/backend/security-and-identity#admin-idle-lock).
 
 ## Safe admin resume order
 
@@ -131,6 +145,6 @@ Complex product, order and invoice forms need enough draft metadata to rebuild c
 
 ## Limitations
 
-- Pending-intent continuation covers **Notify me** only.
-- Order history, wishlist, reviews, saved items, notifications, points and wallet are separate capabilities, and most read JSON data.
+- Pending-intent continuation covers **Notify me**; a guest's wishlist also moves into the account at sign-in.
+- Wishlist and reviews use the API. Order history, notifications, points and wallet read JSON data.
 - Reload and crash recovery for complex admin forms is not built.

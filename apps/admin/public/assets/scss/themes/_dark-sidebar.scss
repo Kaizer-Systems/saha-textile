@@ -15,7 +15,7 @@
 									.simplebar-content {
 										> li {
 											.sidebar-link {
-												border-bottom: 1px solid rgba($primary-color, 0.1);
+												border-bottom: 1px solid tc-alpha($primary-color, 0.1);
 												transition: all 0.3s ease;
 											}
 										}
@@ -43,7 +43,7 @@
 											@for $i from 1 through $repeat {
 												&:nth-child(#{length($colors)}n + #{$i}) {
 													svg {
-														color: lighten(
+														color: tc-shade(
 															nth($colors, random(length($colors))),
 															15%
 														) !important;
@@ -52,14 +52,14 @@
 													&:hover {
 														a {
 															svg {
-																stroke: lighten(
+																stroke: tc-shade(
 																	nth($colors, random(length($colors))),
 																	15%
 																) !important;
 															}
 
 															&:hover {
-																background-color: rgba(
+																background-color: tc-alpha(
 																	nth($colors, random(length($colors))),
 																	0.15
 																) !important;

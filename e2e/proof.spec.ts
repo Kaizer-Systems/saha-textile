@@ -1,15 +1,15 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createServer, request as httpsRequest, type Server } from 'node:https';
 import { readFileSync } from 'node:fs';
+import { createServer as createNetServer, type AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
 
 import { withDatabase } from './database';
-import { expect, test } from './support';
+import { API_URL as API, expect, test } from './support';
 
-test.skip(({ isMobile }) => isMobile, 'data and server behaviour, proven once');
+// Data and server behaviour, proven once: the phone project leaves this file out (playwright.config.ts).
 
 const LISTING = '/en/collections/sarees/pure-silk/ikkat';
-const API = 'https://localhost:4000';
 
 test.describe.serial('Badges on real cards', () => {
 	const slugs = ['bridal-ikkat-saree', 'classic-ikkat-saree', 'festive-ikkat-saree'];
@@ -40,23 +40,34 @@ test.describe.serial('Badges on real cards', () => {
 	});
 });
 
-test.describe('Misspelled search', () => {
-	test('"ikkatsilk" finds ikkat sarees in the API and on the page', async ({ page, request }) => {
-		const answer = await request.get(`${API}/catalog/search?q=ikkatsilk`, { ignoreHTTPSErrors: true });
-		expect(answer.ok()).toBe(true);
-		const body = (await answer.json()) as { total?: number; items?: Array<{ slug: string }> };
-		expect(body.items?.length ?? 0).toBeGreaterThan(0);
-		expect(body.items?.some((item) => item.slug.includes('ikkat'))).toBe(true);
+/**
+ * A port nothing listens on now, on any address. Fixed ports let a shop left running by another run (on 4211 for
+ * Lighthouse, or a run stopped half way) answer instead of the one this test starts.
+ */
+async function freePort(): Promise<number> {
+	const probe = createNetServer();
+	await new Promise<void>((done) => probe.listen(0, done));
+	const { port } = probe.address() as AddressInfo;
+	await new Promise((done) => probe.close(done));
+	return port;
+}
 
-		await page.goto('/en/search?search=ikkatsilk');
-		await page.waitForLoadState('networkidle');
-		await expect(page.locator('app-product-box').first()).toContainText(/ikkat/i);
-	});
-});
+/** Whether the server at `url` answers before `child` stops or `ms` pass. */
+async function answers(url: string, child: ChildProcess, ms: number): Promise<boolean> {
+	const deadline = Date.now() + ms;
+	while (Date.now() < deadline && child.exitCode === null && child.signalCode === null) {
+		const status = await fetch(url)
+			.then((r) => r.status)
+			.catch(() => 0);
+		if (status > 0) return true;
+		await new Promise((done) => setTimeout(done, 250));
+	}
+	return false;
+}
 
 test.describe('A slow API', () => {
-	const STOREFRONT = 4211;
-	const SLOW_API = 4001;
+	let STOREFRONT = 0;
+	let SLOW_API = 0;
 	let proxy: Server;
 	let shop: ChildProcess;
 
@@ -71,8 +82,8 @@ test.describe('A slow API', () => {
 				setTimeout(() => {
 					const upstream = httpsRequest(
 						{
-							host: 'localhost',
-							port: 4000,
+							host: new URL(API).hostname,
+							port: Number(new URL(API).port || 443),
 							path: incoming.url,
 							method: incoming.method,
 							headers: incoming.headers,
@@ -87,33 +98,32 @@ test.describe('A slow API', () => {
 					incoming.pipe(upstream);
 				}, 6_000);
 			},
-		).listen(SLOW_API, '127.0.0.1');
-		shop = spawn('node', ['dist/analog/server/index.mjs'], {
-			cwd: resolve(root, 'apps/storefront'),
-			stdio: 'ignore',
-			env: {
-				...process.env,
-				PORT: String(STOREFRONT),
-				NODE_OPTIONS: '--use-system-ca',
-				SAHA_TEXTILE_PUBLIC_CONFIG: JSON.stringify({
-					apiUrl: `https://localhost:${SLOW_API}`,
-					siteUrl: `http://localhost:${STOREFRONT}`,
-					defaultLocale: 'en',
-					supportedLocales: ['en', 'fr'],
-				}),
-			},
-		});
-		await expect
-			.poll(
-				() =>
-					fetch(`http://localhost:${STOREFRONT}/en/about-us`)
-						.then((r) => r.status)
-						.catch(() => 0),
-				{
-					timeout: 30_000,
+		);
+		// Port 0: the system picks the port as it listens. A port picked first and listened on later was once taken in
+		// between by an outgoing connection on a busy machine (EADDRINUSE, full local run, 24 Nov).
+		await new Promise<void>((done) => proxy.listen(0, '127.0.0.1', done));
+		SLOW_API = (proxy.address() as AddressInfo).port;
+		// The shop is another process, so its port is picked here; if that port is taken before the shop listens, the
+		// shop stops, and the next try picks another.
+		for (let attempt = 1; attempt <= 3; attempt++) {
+			STOREFRONT = await freePort();
+			shop = spawn('node', ['dist/analog/server/index.mjs'], {
+				cwd: resolve(root, 'apps/storefront'),
+				stdio: 'ignore',
+				env: {
+					...process.env,
+					PORT: String(STOREFRONT),
+					NODE_OPTIONS: '--use-system-ca',
+					SAHA_TEXTILE_PUBLIC_CONFIG: JSON.stringify({
+						apiUrl: `https://localhost:${SLOW_API}`,
+						siteUrl: `http://localhost:${STOREFRONT}`,
+					}),
 				},
-			)
-			.toBeGreaterThan(0);
+			});
+			if (await answers(`http://localhost:${STOREFRONT}/en/about-us`, shop, 30_000)) return;
+			shop.kill();
+		}
+		throw new Error('The test shop did not start in three tries.');
 	});
 
 	test.afterAll(() => {

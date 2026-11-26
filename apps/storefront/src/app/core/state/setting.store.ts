@@ -30,30 +30,58 @@ const CURRENCY_KEY = 'selectedCurrency';
 export const SettingStore = signalStore(
 	{ providedIn: 'root' },
 	withState<SettingStateModel>({ setting: null, selectedCurrency: null }),
-	withMethods((store, settingService = inject(SettingService), platformId = inject(PLATFORM_ID), consent = inject(ConsentStore)) => ({
-		loadSettings: rxMethod<void>(
-			pipe(
-				switchMap(() =>
-					settingService.getSettingOption().pipe(
-						tap((result) => {
-							patchState(store, (state) => ({
-								setting: result.values,
-								selectedCurrency: state.selectedCurrency
-									? state.selectedCurrency
-									: (result?.values?.general?.default_currency ?? null),
-							}));
-						}),
+	withMethods(
+		(
+			store,
+			settingService = inject(SettingService),
+			platformId = inject(PLATFORM_ID),
+			consent = inject(ConsentStore),
+		) => {
+			const setCurrency = (currency: ICurrency): void => {
+				patchState(store, { selectedCurrency: currency });
+				if (isPlatformBrowser(platformId) && consent.allows('functional')) {
+					localStorage.setItem(CURRENCY_KEY, JSON.stringify(currency));
+				}
+			};
+			return {
+				loadSettings: rxMethod<void>(
+					pipe(
+						switchMap(() =>
+							settingService.getSettingOption().pipe(
+								tap((result) => {
+									patchState(store, (state) => ({
+										setting: result.values,
+										selectedCurrency: state.selectedCurrency
+											? state.selectedCurrency
+											: (result?.values?.general?.default_currency ?? null),
+									}));
+								}),
+							),
+						),
 					),
 				),
-			),
-		),
-		setCurrency(currency: ICurrency): void {
-			patchState(store, { selectedCurrency: currency });
-			if (isPlatformBrowser(platformId) && consent.allows('functional')) {
-				localStorage.setItem(CURRENCY_KEY, JSON.stringify(currency));
-			}
+				setCurrency,
+				/**
+				 * The shop's currencies have arrived (`GET /currency`): a saved choice takes today's rate and
+				 * symbol, and one the shop no longer sells falls back to rupees. A choice saved before the
+				 * list came from the API carried the theme's demo rate, so this also replaces it.
+				 */
+				useCurrencies(list: readonly ICurrency[]): void {
+					const current = store.selectedCurrency();
+					if (!current || !list.length) return;
+					const same = list.find((row) => row.code === current.code);
+					// The list is not empty here, so there is always a row to take.
+					const next = same ?? list.find((row) => row.code === 'INR') ?? list[0];
+					if (
+						next.code !== current.code ||
+						Number(next.exchange_rate) !== Number(current.exchange_rate) ||
+						next.symbol !== current.symbol
+					)
+						setCurrency(next);
+				},
+			};
 		},
-	})),
+	),
 	withHooks({
 		onInit(store) {
 			// Restore the persisted currency before settings load, so it isn't

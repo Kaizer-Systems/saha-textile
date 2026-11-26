@@ -1,0 +1,449 @@
+@if (display() === 'list' && phone() && !trash()) {
+<!-- G01: on a phone the list is rows: the file, its size and type, its state while not ready, the star and ⋮. -->
+<div
+	class="fm-phone-list"
+	id="fm_phone_list"
+>
+	@for (file of files(); track file.id) {
+	<div
+		class="fm-row"
+		role="button"
+		tabindex="0"
+		[class.is-pending]="pending(file)"
+		[class.is-selected]="selected().has(file.id)"
+		[attr.data-file]="file.id"
+		(click)="pick.emit({ item: ref(file), event: $event, anchor: null })"
+		(dblclick)="activate.emit(file)"
+		(keydown.enter)="activate.emit(file)"
+		(contextmenu)="menu.emit({ item: ref(file), event: $event, anchor: null })"
+	>
+		<div class="fm-file">
+			@if (file.thumbnailUrl) {
+			<div class="fm-type">
+				<img
+					[src]="file.thumbnailUrl"
+					alt=""
+				/>
+			</div>
+			} @else {
+			<div
+				class="fm-type"
+				[class]="kind(file).cls"
+			>
+				<i [class]="kind(file).icon"></i>
+			</div>
+			}
+			<div style="min-width: 0">
+				<h6>{{ file.name }}</h6>
+				<p>
+					{{ file.bytes | fileSize }}@if (typeLabel(file); as type) { · {{ type }} } @if (file.usedOn) { · {{
+					'fm_places' | plural: file.usedOn }} }
+				</p>
+				@if (file.state !== 'ready' || adding(file)) {
+				<div class="fm-live">
+					<ng-container *ngTemplateOutlet="fileStatus; context: { $implicit: file }" />
+				</div>
+				}
+			</div>
+		</div>
+		@if (file.starred) {
+		<i class="ri-star-fill text-warning"></i>
+		}
+		<a
+			href="javascript:void(0)"
+			data-action="more"
+			[title]="'fm_more_actions' | transloco"
+			(click)="more(file, $event)"
+		>
+			<i class="ri-more-2-fill"></i>
+		</a>
+	</div>
+	}
+</div>
+} @else if (display() === 'list') {
+<div class="table-responsive datatable-wrapper border-table">
+	<table
+		class="all-package theme-table no-footer fm-table table"
+		id="fm_table"
+	>
+		<thead>
+			<tr>
+				@if (!trash()) {
+				<th class="sm-width">
+					<div class="custom-control custom-checkbox">
+						<input
+							type="checkbox"
+							class="custom-control-input checkbox_animated"
+							id="fm_select_all"
+							[attr.aria-label]="'fm_select_all' | transloco"
+							[checked]="allSelected()"
+							(change)="toggleAll.emit(!allSelected())"
+						/>
+					</div>
+				</th>
+				}
+				<th class="fm-namecol">{{ 'name' | transloco }}</th>
+				@if (showLocation() || trash()) {
+				<th>{{ (trash() ? 'fm_deleted_from' : 'fm_location') | transloco }}</th>
+				}
+				<th>{{ 'type' | transloco }}</th>
+				@if (trash()) {
+				<th>{{ 'fm_removed_in' | transloco }}</th>
+				<th>{{ 'fm_action' | transloco }}</th>
+				} @else {
+				<th>{{ 'status' | transloco }}</th>
+				<th>{{ 'fm_used_on' | transloco }}</th>
+				<th>{{ 'fm_modified' | transloco }}</th>
+				<th></th>
+				}
+			</tr>
+		</thead>
+		<tbody>
+			@for (folder of folders(); track folder.id) {
+			<tr [attr.data-folder]="folder.id">
+				<td class="fm-namecol">
+					<div class="fm-file">
+						<div class="fm-type k-other"><i class="ri-folder-3-fill"></i></div>
+						<div style="min-width: 0">
+							<h6>{{ folder.name }}</h6>
+							<p>{{ folder.bytes | fileSize }} · {{ 'fm_files' | plural: folder.files }}</p>
+						</div>
+					</div>
+				</td>
+				<td class="fm-path">
+					<i class="ri-folder-3-line"></i>
+					{{ folder.location || ('fm_my_files' | transloco) }}
+				</td>
+				<td>{{ 'fm_folder' | transloco }}</td>
+				<td>
+					<span [class.text-danger]="(folder.daysLeft ?? 30) <= 3">
+						{{ 'fm_days' | plural: folder.daysLeft ?? 0 }}
+					</span>
+				</td>
+				<td>
+					<ul id="actions">
+						<li>
+							<a
+								href="javascript:void(0)"
+								class="fm-restore"
+								[title]="'restore' | transloco"
+								(click)="restore.emit(folderItem(folder))"
+							>
+								<i class="ri-arrow-go-back-line"></i>
+							</a>
+						</li>
+						<li>
+							<a
+								href="javascript:void(0)"
+								class="fm-delete-forever"
+								[title]="'fm_delete_forever' | transloco"
+								(click)="deleteForever.emit(folderItem(folder))"
+							>
+								<i class="ri-delete-bin-line"></i>
+							</a>
+						</li>
+					</ul>
+				</td>
+			</tr>
+			} @for (file of files(); track file.id) {
+			<tr
+				[class.is-pending]="pending(file)"
+				[class.is-selected]="selected().has(file.id)"
+				[attr.data-file]="file.id"
+				[attr.draggable]="trash() ? null : 'true'"
+				(click)="trash() || pick.emit({ item: ref(file), event: $event, anchor: null })"
+				(dblclick)="trash() || activate.emit(file)"
+				(contextmenu)="trash() || menu.emit({ item: ref(file), event: $event, anchor: null })"
+				(dragstart)="trash() || dragStart.emit({ item: ref(file), event: $event })"
+				(dragend)="dragEnd.emit()"
+			>
+				@if (!trash()) {
+				<td class="sm-width">
+					<div class="custom-control custom-checkbox">
+						<input
+							type="checkbox"
+							class="custom-control-input checkbox_animated"
+							[attr.aria-label]="file.name"
+							[checked]="selected().has(file.id)"
+							(click)="alone($event)"
+							(change)="toggleSelect.emit(file.id)"
+						/>
+					</div>
+				</td>
+				}
+				<td class="fm-namecol">
+					<div class="fm-file">
+						@if (file.thumbnailUrl) {
+						<div class="fm-type">
+							<img
+								[src]="file.thumbnailUrl"
+								alt=""
+							/>
+						</div>
+						} @else {
+						<div
+							class="fm-type"
+							[class]="kind(file).cls"
+						>
+							<i [class]="kind(file).icon"></i>
+						</div>
+						}
+						<div style="min-width: 0">
+							<h6>{{ file.name }}</h6>
+							<p>
+								{{ file.bytes | fileSize }}@if (file.width && file.height) { · {{ file.width }} × {{
+								file.height }} } @if (file.visibility === 'private' && file.kind === 'file') { ·
+								<i class="ri-lock-line"></i>
+								{{ 'fm_private' | transloco }} }
+							</p>
+						</div>
+					</div>
+				</td>
+				@if (showLocation() || trash()) {
+				<td class="fm-path">
+					<i class="ri-folder-3-line"></i>
+					{{ file.location || ('fm_my_files' | transloco) }}
+				</td>
+				}
+				<td>{{ typeLabel(file) || '—' }}</td>
+				@if (trash()) {
+				<td>
+					<span [class.text-danger]="(file.daysLeft ?? 30) <= 3">
+						{{ 'fm_days' | plural: file.daysLeft ?? 0 }}
+					</span>
+				</td>
+				<td>
+					<ul id="actions">
+						<li>
+							<a
+								href="javascript:void(0)"
+								class="fm-restore"
+								[title]="'restore' | transloco"
+								(click)="restore.emit(fileItem(file))"
+							>
+								<i class="ri-arrow-go-back-line"></i>
+							</a>
+						</li>
+						<li>
+							<a
+								href="javascript:void(0)"
+								class="fm-delete-forever"
+								[title]="'fm_delete_forever' | transloco"
+								(click)="deleteForever.emit(fileItem(file))"
+							>
+								<i class="ri-delete-bin-line"></i>
+							</a>
+						</li>
+					</ul>
+				</td>
+				} @else {
+				<td [class.fm-live]="file.state === 'awaiting_upload' || adding(file)">
+					<ng-container *ngTemplateOutlet="fileStatus; context: { $implicit: file }" />
+				</td>
+				<td class="fm-used">
+					@if (file.usedOn) { {{ 'fm_places' | plural: file.usedOn }} } @else {
+					<span class="text-muted">—</span>
+					}
+				</td>
+				<td class="fm-when">{{ file.createdAt | date: 'd MMM y' }}</td>
+				<td>
+					<ul id="actions">
+						<li>
+							<a
+								href="javascript:void(0)"
+								class="fm-star"
+								[title]="(file.starred ? 'fm_unstar' : 'fm_star') | transloco"
+								(click)="alone($event); star.emit(file)"
+							>
+								<i [class]="file.starred ? 'ri-star-fill' : 'ri-star-line'"></i>
+							</a>
+						</li>
+						<li>
+							<a
+								href="javascript:void(0)"
+								data-action="more"
+								[title]="'fm_more_actions' | transloco"
+								(click)="more(file, $event)"
+							>
+								<i class="ri-more-2-fill"></i>
+							</a>
+						</li>
+					</ul>
+				</td>
+				}
+			</tr>
+			}
+		</tbody>
+	</table>
+</div>
+} @else {
+<div
+	class="fm-grid"
+	id="fm_grid"
+>
+	@for (file of files(); track file.id) {
+	<div
+		class="fm-tile"
+		draggable="true"
+		[class.is-pending]="pending(file)"
+		[class.is-selected]="selected().has(file.id)"
+		[class.is-drag]="dragging().has(file.id)"
+		[attr.data-file]="file.id"
+		(click)="pick.emit({ item: ref(file), event: $event, anchor: null })"
+		(dblclick)="activate.emit(file)"
+		(contextmenu)="menu.emit({ item: ref(file), event: $event, anchor: null })"
+		(dragstart)="dragStart.emit({ item: ref(file), event: $event })"
+		(dragend)="dragEnd.emit()"
+	>
+		<div class="fm-thumb">
+			@if (file.thumbnailUrl) {
+			<img
+				[src]="file.thumbnailUrl"
+				alt=""
+			/>
+			} @else {
+			<div
+				class="fm-bigicon"
+				[class]="kind(file).cls"
+			>
+				<i [class]="kind(file).icon"></i>
+			</div>
+			} @if (file.starred) {
+			<i class="ri-star-fill fm-tstar"></i>
+			}
+			<span
+				class="fm-check"
+				role="checkbox"
+				[title]="'fm_tick' | transloco"
+				[attr.aria-checked]="selected().has(file.id)"
+				[attr.aria-label]="file.name"
+				(click)="alone($event); toggleSelect.emit(file.id)"
+			>
+				@if (selected().has(file.id)) {
+				<i class="ri-check-line"></i>
+				}
+			</span>
+			@if (!pending(file)) {
+			<span
+				class="fm-tmenu"
+				role="button"
+				[title]="'fm_more_actions' | transloco"
+				(click)="more(file, $event)"
+			>
+				<i class="ri-more-fill"></i>
+			</span>
+			}
+			<span class="fm-ttype">{{ typeLabel(file) }}</span>
+			@if (adding(file)) {
+			<!-- C04: the tile's overlay while versions are added. -->
+			<div class="fm-overlay">
+				<div class="d-flex justify-content-between">
+					<span>
+						{{ file.replacing ? (remakeWords(file) | transloco) : ('fm_adding_versions' | plural:
+						file.versionsMaking ?? 0) }}
+					</span>
+				</div>
+				<div class="progress">
+					<div
+						class="progress-bar proc progress-bar-striped progress-bar-animated"
+						style="width: 100%"
+					></div>
+				</div>
+				<small>{{ 'fm_live_copy_in_use' | transloco }}</small>
+			</div>
+			}
+		</div>
+		<div class="fm-cap">
+			<h6>{{ file.name }}</h6>
+			<p>{{ file.bytes | fileSize }}</p>
+		</div>
+	</div>
+	}
+</div>
+}
+
+<!-- C03: versions being added to a photo that already has a live copy; the website keeps showing that copy. -->
+<ng-template
+	#addingVersions
+	let-file
+>
+	<span class="fm-status busy">
+		<i class="ri-refresh-line"></i>
+		{{ file.replacing ? (remakeWords(file) | transloco) : ('fm_adding_versions' | plural: file.versionsMaking) }}
+	</span>
+	<div class="progress">
+		<div
+			class="progress-bar proc progress-bar-striped progress-bar-animated"
+			style="width: 100%"
+		></div>
+	</div>
+	<small class="text-muted">{{ 'fm_live_copy_in_use' | transloco }}</small>
+</ng-template>
+
+<!-- A file's state (B06, C03): uploading with its bar, waiting, making sizes, ready or failed. -->
+<ng-template
+	#fileStatus
+	let-file
+>
+	@switch (file.state) { @case ('awaiting_upload') { @if (uploads().get(file.id); as job) { @if (job.state ===
+	'failed') {
+	<span class="fm-status fail">
+		<i class="ri-error-warning-line"></i>
+		{{ job.error }}
+	</span>
+	<div>
+		<a
+			href="javascript:void(0)"
+			class="text-decoration-underline small"
+			(click)="alone($event); retryUpload.emit(job.id)"
+		>
+			{{ 'fm_retry' | transloco }}
+		</a>
+	</div>
+	} @else { @if (job.paused) {
+	<span class="fm-status warn">
+		<i class="ri-pause-circle-line"></i>
+		{{ 'fm_upload_paused' | transloco }}
+	</span>
+	} @else {
+	<span class="fm-status busy">
+		<i class="ri-upload-cloud-2-line"></i>
+		{{ 'fm_uploading_percent' | transloco: { percent: percent(job) } }}
+	</span>
+	}
+	<div class="progress">
+		<div
+			class="progress-bar"
+			[style.width.%]="percent(job)"
+		></div>
+	</div>
+	<small class="text-muted">
+		{{ 'fm_sent_of' | transloco: { sent: (job.sent | fileSize), total: (job.bytes | fileSize) } }} @if
+		(secondsLeft(job); as left) { · {{ timeLeft(left).key | plural: timeLeft(left).count }} }
+	</small>
+	} } @else {
+	<span class="fm-status wait">
+		<i class="ri-time-line"></i>
+		{{ 'fm_waiting_to_upload' | transloco }}
+	</span>
+	} } @case ('ready') { @if (adding(file)) {
+	<ng-container *ngTemplateOutlet="addingVersions; context: { $implicit: file }" />
+	} @else {
+	<span class="fm-status ready">
+		<i class="ri-checkbox-circle-line"></i>
+		{{ 'fm_ready' | transloco }}
+	</span>
+	} } @case ('failed') {
+	<span class="fm-status fail">
+		<i class="ri-error-warning-line"></i>
+		{{ 'fm_failed' | transloco }}
+	</span>
+	} @default { @if (adding(file)) {
+	<ng-container *ngTemplateOutlet="addingVersions; context: { $implicit: file }" />
+	} @else {
+	<span class="fm-status busy">
+		<i class="ri-loader-4-line"></i>
+		{{ 'fm_making_sizes' | transloco }}
+	</span>
+	} } }
+</ng-template>

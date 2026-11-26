@@ -1,14 +1,21 @@
-import { Controller, Get, Header, Query, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Header, NotFoundException, Param, Query, UseInterceptors } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { CatalogCardsQuery, CatalogPlacementQuery, CatalogSeoRouteQuery } from '@saha-textile/contracts';
+import {
+	CatalogCardsQuery,
+	CatalogPlacementQuery,
+	CatalogProductCode,
+	CatalogSeoRouteQuery,
+} from '@saha-textile/contracts';
 
 import { Public } from '../auth/session.guard';
+import { BlogPublicService } from '../blog/blog-public.service';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { CatalogEtagInterceptor } from './catalog-etag.interceptor';
 import { CatalogLocaleInterceptor } from './catalog-locale';
 import { CatalogPublicService } from './catalog-public.service';
 import { RecentPurchasesService } from './recent-purchases.service';
+import { ShareSettingsService } from './share-settings.service';
 
 /**
  * Public catalogue reads for the storefront. Admin writes stay on `admin/catalog`.
@@ -22,6 +29,8 @@ export class StorefrontCatalogController {
 	constructor(
 		private readonly catalog: CatalogPublicService,
 		private readonly recentPurchases: RecentPurchasesService,
+		private readonly blog: BlogPublicService,
+		private readonly share: ShareSettingsService,
 	) {}
 
 	@Get('home')
@@ -42,6 +51,7 @@ export class StorefrontCatalogController {
 	@Header('Cache-Control', 'no-store')
 	@ApiOperation({ operationId: 'catalogCards', summary: 'Live cards for a personal slug list' })
 	cards(@Query(new ZodValidationPipe(CatalogCardsQuery)) query: CatalogCardsQuery) {
+		if (query.id) return this.catalog.cardsForIds([query.id].flat());
 		return this.catalog.cardsForSlugs([query.slug ?? []].flat());
 	}
 
@@ -66,7 +76,24 @@ export class StorefrontCatalogController {
 	@Header('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600')
 	@ApiOperation({ operationId: 'catalogSitemap', summary: 'Indexable addresses for the sitemap' })
 	async sitemap() {
-		return { paths: await this.catalog.sitemapPaths() };
+		const [catalog, posts] = await Promise.all([this.catalog.sitemapPaths(), this.blog.sitemapPaths()]);
+		return { paths: [...catalog, ...posts].sort() };
+	}
+
+	@Get('share-settings')
+	@Header('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600')
+	@ApiOperation({ operationId: 'catalogShareSettings', summary: "The share menu's shop-wide choices" })
+	shareSettings() {
+		return this.share.get();
+	}
+
+	@Get('code/:code')
+	@Header('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600')
+	@ApiOperation({ operationId: 'catalogProductByCode', summary: 'The product slug behind a short /p/<code> address' })
+	async byCode(@Param('code', new ZodValidationPipe(CatalogProductCode)) code: CatalogProductCode) {
+		const slug = await this.catalog.slugForCode(code);
+		if (!slug) throw new NotFoundException();
+		return { slug };
 	}
 
 	@Get('live-paths')

@@ -10,6 +10,7 @@ import {
 	NotificationChannelSettingsModel,
 	NotificationTemplateModel,
 	OrderModel,
+	ProductModel,
 	ProductQuestionModel,
 	RatingAggregateModel,
 	ReviewModel,
@@ -55,6 +56,7 @@ describe.skipIf(!hasMongoEnv())('governance, content and media repositories (int
 			NotificationChannelSettingsModel.deleteMany(byId),
 			NotificationTemplateModel.deleteMany(byId),
 			OrderModel.deleteMany(byId),
+			ProductModel.deleteMany(byId),
 			ProductQuestionModel.deleteMany(byId),
 			RatingAggregateModel.deleteMany(byId),
 			ReviewModel.deleteMany(byId),
@@ -364,6 +366,28 @@ describe.skipIf(!hasMongoEnv())('governance, content and media repositories (int
 			expect((await repo.resolveForSurface({ categoryIds: [] })).map((row) => row.id)).not.toContain(`${P}f1`);
 		});
 
+		it('leaves shop-wide questions out when asked, and lists a product’s own in order', async () => {
+			await repo.save(entry('g1', { scope: 'global', categoryIds: [], productIds: [] }));
+			await repo.save(
+				entry('p2', { scope: 'product', categoryIds: [], productIds: [`${P}own`], displayOrder: 2 }),
+			);
+			await repo.save(
+				entry('p1', {
+					scope: 'product',
+					categoryIds: [],
+					productIds: [`${P}own`],
+					displayOrder: 1,
+					status: 'draft',
+				}),
+			);
+			const withGlobal = (await repo.resolveForSurface({ productId: `${P}own` })).map((row) => row.id);
+			expect(withGlobal).toContain(`${P}g1`);
+			const without = await repo.resolveForSurface({ productId: `${P}own`, includeGlobal: false });
+			expect(without.map((row) => row.id)).toEqual([`${P}p2`]);
+			expect(await repo.resolveForSurface({ includeGlobal: false })).toEqual([]);
+			expect((await repo.listForProduct(`${P}own`)).map((row) => row.id)).toEqual([`${P}p1`, `${P}p2`]);
+		});
+
 		it('fills the gaps, keeps dates, and deletes', async () => {
 			await insertRaw(FaqEntryModel, { _id: `${P}sparse`, scope: 'global', status: 'draft' });
 			expect(await repo.findById(`${P}sparse`)).toMatchObject({
@@ -446,6 +470,14 @@ describe.skipIf(!hasMongoEnv())('governance, content and media repositories (int
 			expect((await repo.findById(`${P}q1`))?.status).toBe('rejected');
 		});
 
+		it('finds questions by any words in the question, name or email, and deletes one', async () => {
+			const found = await repo.list({ productId: `${P}qprod`, search: 'QUESTION   q1' } as never);
+			expect(found.items.map((row) => row.id)).toEqual([`${P}q1`]);
+			expect((await repo.list({ productId: `${P}qprod`, search: 'a@example.test (' } as never)).total).toBe(0);
+			await repo.deleteById(`${P}q1`);
+			expect(await repo.findById(`${P}q1`)).toBeNull();
+		});
+
 		it('lists every question when no filter is given', async () => {
 			expect(Array.isArray((await repo.list({ pageSize: 1 } as never)).items)).toBe(true);
 		});
@@ -523,6 +555,17 @@ describe.skipIf(!hasMongoEnv())('governance, content and media repositories (int
 			expect(await repo.hasVerifiedPurchase({ userId: `${P}ruser`, productId: `${P}other` })).toBe(false);
 		});
 
+		it('does not count an order that is not delivered yet', async () => {
+			await insertRaw(OrderModel, {
+				_id: `${P}shipped`,
+				orderNumber: `${P}shipped`,
+				userId: `${P}suser`,
+				status: 'shipped',
+				lines: [{ productId: `${P}rprod` }],
+			});
+			expect(await repo.hasVerifiedPurchase({ userId: `${P}suser`, productId: `${P}rprod` })).toBe(false);
+		});
+
 		it('moderates with and without a note or images, and misses a stranger', async () => {
 			const input = { status: 'approved' as const, moderatedByUserId: 'm', moderatedAt: at };
 			const noted = await new MongoTransactionManager().withTransaction((context) =>
@@ -533,10 +576,39 @@ describe.skipIf(!hasMongoEnv())('governance, content and media repositories (int
 			expect(await repo.moderate({ reviewId: `${P}none`, ...input })).toBeNull();
 		});
 
-		it('recomputes the aggregate from approved reviews', async () => {
+		it('recomputes the aggregate from approved reviews, and the product summary with it', async () => {
+			await insertRaw(ProductModel, { _id: `${P}rprod`, ratingsSummary: { avg: 4.9, count: 3 } });
 			const aggregate = await repo.recomputeAggregate(`${P}rprod`);
 			expect(aggregate).toMatchObject({ average: 3, count: 2, buckets: { 2: 1, 4: 1 } });
 			expect(await repo.getAggregate(`${P}rprod`)).toMatchObject({ average: 3, count: 2 });
+			const product = await ProductModel.findById(`${P}rprod`).lean<{ ratingsSummary: unknown }>().exec();
+			expect(product?.ratingsSummary).toEqual({ avg: 3, count: 2 });
+		});
+
+		it('finds the reviewable order and the customer’s own review', async () => {
+			expect(await repo.findReviewableOrderId({ userId: `${P}ruser`, productId: `${P}rprod` })).toBe(
+				`${P}delivered`,
+			);
+			expect(await repo.findReviewableOrderId({ userId: `${P}suser`, productId: `${P}rprod` })).toBeNull();
+			expect(await repo.findByUserAndProduct({ userId: `${P}ruser`, productId: `${P}rprod` })).toMatchObject({
+				productId: `${P}rprod`,
+			});
+			expect(await repo.findByUserAndProduct({ userId: `${P}nobody`, productId: `${P}rprod` })).toBeNull();
+		});
+
+		it('lets only the author edit, back to pending', async () => {
+			const edit = { reviewId: `${P}r1`, rating: 5, title: null, body: 'Edited', imageAssetIds: [] };
+			expect(await repo.updateByAuthor({ ...edit, userId: `${P}stranger` })).toBeNull();
+			const saved = await new MongoTransactionManager().withTransaction((context) =>
+				repo.updateByAuthor({ ...edit, userId: `${P}ruser` }, context),
+			);
+			expect(saved).toMatchObject({
+				body: 'Edited',
+				rating: 5,
+				status: 'pending',
+				moderatedByUserId: null,
+				moderationNote: null,
+			});
 		});
 
 		it('recomputes inside a transaction, and with nothing approved', async () => {
@@ -592,7 +664,12 @@ describe.skipIf(!hasMongoEnv())('governance, content and media repositories (int
 		beforeAll(async () => {
 			await repo.save(block('b1'));
 			await repo.save(
-				block('b2', { startsAt: past, endsAt: future, images: { desktop: 'd', tablet: 't', phone: 'p' } }),
+				block('b2', {
+					startsAt: past,
+					endsAt: future,
+					images: { desktop: 'd', tablet: 't', phone: 'p' },
+					imageVersions: { d: 'banner_keep_shape.as_is' },
+				}),
 			);
 			await repo.save(block('b3', { startsAt: future }));
 			await repo.save(block('b4', { status: 'draft' }));
@@ -601,6 +678,7 @@ describe.skipIf(!hasMongoEnv())('governance, content and media repositories (int
 		it('finds by key', async () => {
 			expect(await repo.findByKey(`${P}b2`)).toMatchObject({
 				images: { tablet: 't', phone: 'p' },
+				imageVersions: { d: 'banner_keep_shape.as_is' },
 				startsAt: past,
 				endsAt: future,
 			});
@@ -626,6 +704,7 @@ describe.skipIf(!hasMongoEnv())('governance, content and media repositories (int
 				ownerId: null,
 				images: { tablet: null, phone: null },
 				localeImages: {},
+				imageVersions: {},
 				heading: {},
 				subheading: {},
 				ctaLabel: {},
@@ -638,7 +717,7 @@ describe.skipIf(!hasMongoEnv())('governance, content and media repositories (int
 				_id: `${P}full`,
 				key: `${P}full`,
 				images: { desktop: 'd' },
-				localeImages: { fr: {} },
+				localeImages: { bn: {} },
 				heading: { en: 'H' },
 				subheading: { en: 'S' },
 				ctaLabel: { en: 'C' },

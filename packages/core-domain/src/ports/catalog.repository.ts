@@ -4,6 +4,8 @@ import type { CatalogAudience } from '../catalog/product-visibility';
 import type { PageQuery, Paginated } from './pagination';
 
 export interface ProductFilter extends PageQuery {
+	/** Only these items (Settings › Languages: a list filtered to what is missing in a language). */
+	ids?: readonly string[];
 	/**
 	 * Defaults to `public` in every implementation — an omitted audience must hide
 	 * non-live products, never reveal them.
@@ -19,6 +21,10 @@ export interface ProductFilter extends PageQuery {
 	insight?: 'bestseller' | 'trending';
 	/** Placement path such as `sarees/pure-cotton`. Matches a category id resolved by the caller. */
 	categoryIds?: string[];
+	/** Admin lists: only this type (Products › Bundles lists bundles). */
+	type?: 'simple' | 'variable' | 'bundle';
+	/** Admin lists: shown on the shop, or hidden from it (D5). Public lists always leave hidden products out. */
+	shop?: 'shown' | 'hidden';
 }
 
 /**
@@ -41,8 +47,14 @@ export interface ProductRepository {
 	deleteById(id: string): Promise<void>;
 	/** Live product slugs for the storefront redirect allow-list. */
 	listPublicSlugs(): Promise<string[]>;
+	/** The live product with this product code, for the short `/p/<code>` address. */
+	findPublicSlugBySku(sku: string): Promise<string | null>;
 	/** Live products per category, with the first product's lead photo. */
 	categorySummaries(): Promise<CategorySummary[]>;
+	/** Every product with at least one YouTube video, whatever its status, for the weekly check. */
+	listWithVideos(): Promise<Product[]>;
+	/** Every product, any status, whose main (first) category is this one (F03 HSN refill, PD3). */
+	listByMainCategory(categoryId: string): Promise<Product[]>;
 	/** Replaces the weekly badges: every other product loses them. */
 	setInsightBadges(input: { bestseller: readonly string[]; trending: readonly string[] }): Promise<void>;
 }

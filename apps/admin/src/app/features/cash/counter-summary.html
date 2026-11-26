@@ -1,0 +1,145 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'counter_summary'"
+>
+	<div class="d-flex align-items-end justify-content-between theme-form theme-form-2 mb-3 flex-wrap gap-2">
+		<div class="d-flex align-items-end flex-wrap gap-2">
+			<div>
+				<label
+					class="form-label-title"
+					for="summary_date"
+				>
+					{{ 'counter_summary_day' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="summary_date"
+					type="date"
+					[ngModel]="date()"
+					(ngModelChange)="date.set($event)"
+				/>
+			</div>
+			@if ((here.data()?.stores?.length ?? 0) > 1) {
+			<div>
+				<label
+					class="form-label-title"
+					for="summary_store"
+				>
+					{{ 'counter_store' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="summary_store"
+					[ngModel]="locationId()"
+					(ngModelChange)="picked.set($event)"
+				>
+					@for (s of here.data()?.stores ?? []; track s.locationId) {
+					<option [value]="s.locationId">{{ s.name }}</option>
+					}
+				</select>
+			</div>
+			}
+		</div>
+		<button
+			type="button"
+			class="btn btn-outline"
+			id="summary_print"
+			(click)="print()"
+		>
+			<i class="ri-printer-line"></i>
+			{{ 'counter_summary_print' | transloco }}
+		</button>
+	</div>
+	@if (!here.data()?.stores?.length && !here.isPending()) {
+	<p class="help-text mb-0">{{ 'counter_summary_no_store' | transloco }}</p>
+	} @if (summary.data(); as s) {
+	<p class="text-muted small mb-3">
+		{{ (s.cash ? 'counter_summary_manager_copy' : 'counter_summary_cashier_copy') | transloco: { store:
+		s.locationName } }}
+	</p>
+	<div class="row g-3">
+		<div class="col-xxl-7">
+			<div class="table-responsive">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th></th>
+							<th class="text-end">{{ 'counter_summary_bills' | transloco }}</th>
+							<th class="text-end">{{ 'amount' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of s.byMethod; track row.method) {
+						<tr>
+							<td>{{ 'ord_method_' + row.method | transloco }}</td>
+							<td class="text-end">{{ row.bills }}</td>
+							<td class="text-end">{{ row.amountINR === null ? '—' : rupees(row.amountINR) }}</td>
+						</tr>
+						}
+						<tr>
+							<td>{{ 'counter_summary_returns' | transloco }}</td>
+							<td class="text-end">{{ s.returns.notes }}</td>
+							<td class="text-end">−{{ rupees(s.returns.amountINR) }}</td>
+						</tr>
+						<tr>
+							<td>{{ 'counter_summary_exchange_new' | transloco }}</td>
+							<td class="text-end">{{ s.exchangeNew.bills }}</td>
+							<td class="text-end">{{ rupees(s.exchangeNew.amountINR) }}</td>
+						</tr>
+						<tr>
+							<td><b>{{ 'counter_summary_net' | transloco }}</b></td>
+							<td></td>
+							<td class="text-end">
+								<b>{{ s.netSalesINR === null ? '—' : rupees(s.netSalesINR) }}</b>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+		<div class="col-xxl-5">
+			<div class="row g-3">
+				<div class="col-sm-6">
+					<div class="card mb-0">
+						<div class="card-body">
+							<h6 class="text-muted mb-1">{{ 'counter_summary_bills' | transloco }}</h6>
+							<h4 class="mb-1">{{ s.billNumbers.length }}</h4>
+							<small class="text-muted">
+								{{ s.billNumbers.length ? s.billNumbers[0] + ' – ' + s.billNumbers[s.billNumbers.length
+								- 1] : '—' }}
+							</small>
+						</div>
+					</div>
+				</div>
+				<div class="col-sm-6">
+					<div class="card mb-0">
+						<div class="card-body">
+							<h6 class="text-muted mb-1">{{ 'counter_summary_first_last' | transloco }}</h6>
+							<h4 class="mb-0">{{ time(s.firstAt) }} – {{ time(s.lastAt) }}</h4>
+						</div>
+					</div>
+				</div>
+				<div class="col-sm-6">
+					<div class="card mb-0">
+						<div class="card-body">
+							<h6 class="text-muted mb-1">{{ 'counter_summary_discounts' | transloco }}</h6>
+							<h4 class="mb-0">{{ rupees(s.discountsINR) }}</h4>
+						</div>
+					</div>
+				</div>
+				<div class="col-sm-6">
+					<div class="card mb-0">
+						<div class="card-body">
+							<h6 class="text-muted mb-1">{{ 'counter_summary_sheet' | transloco }}</h6>
+							<h4 class="mb-0">
+								{{ s.sheetStatus ? ('cash_status_' + s.sheetStatus | transloco) :
+								('counter_summary_no_sheet' | transloco) }}
+							</h4>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	}
+</app-page-wrapper>

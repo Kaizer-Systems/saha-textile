@@ -2,22 +2,17 @@
 	[gridClass]="'col-sm-12'"
 	[title]="'pages'"
 >
-	<div
-		button
-		*hasPermission="'page.create'"
+	@if (missing) {
+	<p
+		class="help-text"
+		id="pages_missing_note"
 	>
-		<a
-			[routerLink]="['/page/create']"
-			class="align-items-center btn btn-theme d-flex"
-		>
-			<i class="ri-add-line"></i>
-			{{ 'add_page' | transloco }}
-		</a>
-	</div>
+		{{ 'pages_missing_note' | transloco }}
+	</p>
+	}
 	<app-table
-		[tableConfig]="tableConfig"
-		[hasCheckbox]="true"
-		(tableChanged)="onTableChange($event)"
+		[tableConfig]="tableConfig()"
+		[hasCheckbox]="false"
 		(rowClicked)="edit($event)"
 		(action)="onActionClicked($event)"
 	/>

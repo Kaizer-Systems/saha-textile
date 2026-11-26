@@ -1,59 +1,86 @@
-import { AsyncPipe, DatePipe, TitleCasePipe, UpperCasePipe } from '@angular/common';
-import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { DatePipe } from '@angular/common';
+import { Component, computed, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { Observable } from 'rxjs';
+import { map } from 'rxjs';
 
-import { IOrderStatusModel } from '@data-access/interfaces/order-status.interface';
-import { IOrder } from '@data-access/interfaces/order.interface';
-import { injectOrderStatusQuery } from '@data-access/queries/order-status.queries';
-import { injectOrderByNumberQuery } from '@data-access/queries/order.queries';
-import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
-import { PayModal } from '@shared/ui/modal/pay-modal/pay-modal';
-import { RefundModal } from '@shared/ui/modal/refund-modal/refund-modal';
+import { injectMyOrderQuery } from '@data-access/queries/order.queries';
+import { ORDER_STEPS, orderStepRank } from '@shared/ui/order-progress/order-steps';
 
+import { orderSaved } from '../order-lines/order-line-groups';
+import { OrderLines } from '../order-lines/order-lines';
+import { orderMoney, orderPill } from '../order-money';
+
+import type { OrderStatus, ShopOrderLine } from '@saha-textile/contracts';
+
+/**
+ * One of the shopper's own orders (bundle builder brief E05, approved 2026-11-22): the steps so far, every line with
+ * a set's pieces, their free items and its extras beneath it, the money in the currency paid, and the delivery
+ * address. Phones and tablets draw the lines as cards (OrderLines; owner, 22 Nov 2026), laptops as the theme's table.
+ */
 @Component({
 	selector: 'app-order-details',
 	templateUrl: './details.html',
 	styleUrls: ['./details.scss'],
-	providers: [CurrencySymbolPipe],
-	imports: [
-		RouterLink,
-		RefundModal,
-		PayModal,
-		AsyncPipe,
-		UpperCasePipe,
-		TitleCasePipe,
-		DatePipe,
-		CurrencySymbolPipe,
-		TranslocoModule,
-	],
+	imports: [DatePipe, TranslocoModule, OrderLines],
 })
 export class OrderDetails {
-	private route = inject(ActivatedRoute);
+	private readonly route = inject(ActivatedRoute);
 
-	private readonly orderStatusQuery = injectOrderStatusQuery(() => ({}));
-	orderStatus$: Observable<IOrderStatusModel | undefined> = toObservable(
-		computed(() => this.orderStatusQuery.data()),
-	);
+	private readonly orderNumber = toSignal(this.route.params.pipe(map((params) => params['id'] as string)));
+	private readonly query = injectMyOrderQuery(() => this.orderNumber());
+	readonly order = computed(() => this.query.data());
+	readonly missing = computed(() => this.query.isError());
 
-	private readonly orderNumber = signal<string | undefined>(undefined);
-	private readonly orderQuery = injectOrderByNumberQuery(() => this.orderNumber());
+	readonly steps = ORDER_STEPS;
+	readonly money = orderMoney;
+	readonly pill = orderPill;
 
-	readonly RefundModal = viewChild<RefundModal>('refundModal');
-	readonly PayModal = viewChild<PayModal>('payModal');
+	reached(step: OrderStatus): boolean {
+		const at = orderStepRank(this.order()?.status ?? 'placed');
+		const rank = orderStepRank(step);
+		return at !== null && rank !== null && rank <= at;
+	}
 
-	public order: IOrder;
+	/** The order holds a set or free items, so some lines sit under others. */
+	readonly hasTree = computed(() => (this.order()?.lines ?? []).some((line) => line.parentLineId));
 
-	constructor() {
-		// Order looked up by order_number via the query (was ViewOrderAction +
-		// OrderState.selectedOrder).
-		this.route.params.subscribe((params) => this.orderNumber.set(params['id']));
-		effect(() => {
-			const found = this.orderQuery.data();
-			if (found) this.order = found;
-		});
+	/** Everything saved on the order (sets, coupon, free items' printed price). */
+	readonly saved = computed(() => {
+		const order = this.order();
+		return order ? orderSaved(order) : 0;
+	});
+
+	/** A phone number as a dialable link: digits and the leading plus only. */
+	telOf(phone: string): string {
+		return phone.replace(/[^\d+]/g, '');
+	}
+
+	/** Lines of their own and free items: the parcel's item count. */
+	readonly itemCount = computed(() => (this.order()?.lines ?? []).filter((line) => !line.parentLineId).length);
+
+	depthOf(line: ShopOrderLine): number {
+		if (!line.parentLineId) return 0;
+		const parent = this.order()?.lines.find((row) => row.lineId === line.parentLineId);
+		return parent?.parentLineId ? 2 : 1;
+	}
+
+	pieceNumber(line: ShopOrderLine): number {
+		const siblings = (this.order()?.lines ?? []).filter(
+			(row) => row.parentLineId === line.parentLineId && row.role === 'piece',
+		);
+		return siblings.indexOf(line) + 1;
+	}
+
+	/** "3 pieces + 1 extra" for a set; "2 free items" for a product with free items. */
+	childCounts(line: ShopOrderLine): { pieces: number; extras: number; free: number } {
+		const children = (this.order()?.lines ?? []).filter((row) => row.parentLineId === line.lineId);
+		return {
+			pieces: children.filter((row) => row.role === 'piece').length,
+			extras: children.filter((row) => row.role === 'extra').length,
+			free: children.filter((row) => row.role === 'free').length,
+		};
 	}
 }

@@ -1,0 +1,236 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="existing() ? 'edit_purchase_return' : 'new_purchase_return'"
+>
+	@if (conflict(); as message) {
+	<div
+		class="alert alert-warning"
+		role="alert"
+	>
+		{{ message }}
+	</div>
+	}
+	<div class="theme-form theme-form-2 mega-form">
+		<div class="row">
+			<div class="col-xl-6">
+				<app-form-fields
+					[label]="'from_purchase_entry'"
+					[for]="'pr_entry'"
+					[required]="true"
+					[labelClass]="'form-label-title col-sm-3 mb-0'"
+					[gridClass]="'col-sm-9'"
+				>
+					@if (existing() || entry()) {
+					<input
+						class="form-control"
+						id="pr_entry"
+						readonly
+						[value]="(entry()?.number ?? '') + ' · ' + (entry()?.supplierName ?? '') + ' · ' + (entry()?.billNumber ?? '')"
+					/>
+					} @else {
+					<select2
+						class="custom-select"
+						id="pr_entry"
+						[data]="entrySelect()"
+						[customSearchEnabled]="true"
+						[placeholder]="'pick_posted_entry' | transloco"
+						noResultMessage="{{ 'no_data_found' | transloco }}"
+						(search)="searchEntries($event)"
+						(update)="chooseEntry($event)"
+					/>
+					}
+					<p class="help-text">{{ 'pr_entry_help' | transloco }}</p>
+				</app-form-fields>
+				<app-form-fields
+					[label]="'pr_why'"
+					[for]="'pr_reason'"
+					[required]="true"
+					[labelClass]="'form-label-title col-sm-3 mb-0'"
+					[gridClass]="'col-sm-9'"
+				>
+					<select
+						class="form-select"
+						id="pr_reason"
+						[ngModel]="reason()"
+						(ngModelChange)="setReason($event)"
+					>
+						@for (item of reasons; track item) {
+						<option [value]="item">{{ 'pr_reason_' + item | transloco }}</option>
+						}
+					</select>
+					@if (kind() === 'short_supply') {
+					<p class="help-text">{{ 'pr_short_supply_help' | transloco }}</p>
+					}
+				</app-form-fields>
+			</div>
+			<div class="col-xl-6">
+				<app-form-fields
+					[label]="'note_for_supplier'"
+					[for]="'pr_note'"
+					[labelClass]="'form-label-title col-sm-3 mb-0'"
+					[gridClass]="'col-sm-9'"
+				>
+					<textarea
+						class="form-control"
+						id="pr_note"
+						rows="2"
+						maxlength="1000"
+						[ngModel]="note()"
+						(ngModelChange)="note.set($event)"
+					></textarea>
+				</app-form-fields>
+				<app-form-fields
+					[label]="'photos'"
+					[for]="'pr_photos'"
+					[labelClass]="'form-label-title col-sm-3 mb-0'"
+					[gridClass]="'col-sm-9'"
+				>
+					<a
+						href="javascript:void(0)"
+						class="text-decoration-underline small"
+						id="pr_photos"
+						(click)="addPhotos()"
+					>
+						<i class="ri-attachment-2"></i>
+						{{ (photos().length ? 'photos_count' : 'add_photos') | transloco: { count: photos().length } }}
+					</a>
+				</app-form-fields>
+			</div>
+		</div>
+	</div>
+
+	@if (rows().length) {
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th style="width: 300px">{{ 'item' | transloco }}</th>
+					<th class="text-end">{{ 'received' | transloco }}</th>
+					<th class="text-end">{{ 'returned_before' | transloco }}</th>
+					<th class="text-end">{{ (kind() === 'short_supply' ? 'missing' : 'on_hand_now') | transloco }}</th>
+					<th
+						class="text-end"
+						style="width: 140px"
+					>
+						{{ (kind() === 'short_supply' ? 'claim_now' : 'return_now') | transloco }}
+					</th>
+					<th class="text-end">{{ 'value' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of rows(); track row.line.entryLineId; let i = $index) {
+				<tr [class.table-warning]="!!problems()[i]">
+					<td>
+						<div class="d-flex align-items-center gap-2 text-start">
+							@if (row.line.imageUrl) {
+							<img
+								[src]="row.line.imageUrl"
+								alt=""
+								width="40"
+								height="52"
+								class="rounded"
+								style="object-fit: cover"
+							/>
+							}
+							<div>
+								<h6 class="mb-0">{{ row.line.title }}</h6>
+								<small class="text-muted">
+									{{ row.line.sku }}@if (row.line.optionsLabel) { · {{ row.line.optionsLabel }} }
+								</small>
+								@if (problems()[i]; as problem) {
+								<div class="small text-danger mt-1">{{ problem | transloco }}</div>
+								}
+							</div>
+						</div>
+					</td>
+					<td class="text-end text-nowrap">{{ row.line.received | stockQty: row.line.soldBy }}</td>
+					<td class="text-end text-nowrap">{{ row.line.returnedBefore | stockQty: row.line.soldBy }}</td>
+					<td class="text-end text-nowrap">
+						{{ (kind() === 'short_supply' ? row.line.freeToReturn : row.line.onHand) | stockQty:
+						row.line.soldBy }}
+					</td>
+					<td class="text-end">
+						<input
+							class="form-control form-control-sm d-inline-block text-end"
+							inputmode="decimal"
+							style="width: 90px"
+							[attr.aria-label]="'return_now' | transloco"
+							[class.is-invalid]="!!problems()[i]"
+							[ngModel]="row.quantity"
+							(ngModelChange)="setQuantity(i, $event)"
+							(blur)="checkCap(i)"
+						/>
+					</td>
+					<td class="text-end text-nowrap">{{ valueOf(row) | rupees }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<div class="row mt-3">
+		<div class="col-xl-7">
+			<div
+				class="alert alert-info d-flex align-items-start gap-2"
+				role="alert"
+			>
+				<i class="ri-information-line mt-1"></i>
+				<div>{{ (kind() === 'short_supply' ? 'pr_claim_info' : 'pr_value_info') | transloco }}</div>
+			</div>
+		</div>
+		<div class="col-xl-5">
+			<div class="tracking-total tracking-wrapper">
+				<ul>
+					<li>
+						{{ 'taxable_value' | transloco }}
+						<span>{{ totals().taxableINR | rupees }}</span>
+					</li>
+					@if (entry()?.taxType === 'intra_state') {
+					<li>
+						CGST
+						<span>{{ totals().cgstINR | rupees }}</span>
+					</li>
+					<li>
+						SGST
+						<span>{{ totals().sgstINR | rupees }}</span>
+					</li>
+					} @else if (entry()?.taxType === 'inter_state') {
+					<li>
+						IGST
+						<span>{{ totals().igstINR | rupees }}</span>
+					</li>
+					}
+					<li>
+						{{ 'debit_note_total' | transloco }}
+						<span>{{ totals().totalINR | rupees }}</span>
+					</li>
+				</ul>
+			</div>
+		</div>
+	</div>
+	} @else if (entry()) {
+	<div class="no-data-added">
+		<h4>{{ 'pr_nothing_to_return' | transloco }}</h4>
+	</div>
+	}
+
+	<div class="d-flex justify-content-end mt-3 flex-wrap gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			id="pr_save"
+			[disabled]="!canSave()"
+			(click)="save()"
+		>
+			{{ 'save_draft' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="pr_send"
+			[disabled]="!canSave()"
+			(click)="send()"
+		>
+			{{ 'send_to_supplier' | transloco }}
+		</button>
+	</div>
+</app-page-wrapper>

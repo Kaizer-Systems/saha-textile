@@ -27,7 +27,8 @@ export class DeleteModal {
 	/** Translation key of the warning; a caller whose delete is not final passes its own. */
 	readonly message = input('deleted_message');
 
-	async openModal(action: string, data: any) {
+	/** `data` goes back unchanged with the answer, for the screen that asked. */
+	async openModal(action: string, data: unknown) {
 		this.modalOpen = true;
 		this.userAction = {
 			actionToPerform: action,

@@ -1,10 +1,13 @@
 import { Controller, Get, Header, Param, Query, UseInterceptors } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { CatalogSearchTrending, CatalogSearchTrendingQuery } from '@saha-textile/contracts';
 import { publicRedirectView, type ProductFilter } from '@saha-textile/core-domain';
 
 import { CatalogPublicService } from './catalog-public.service';
 import { CatalogService } from './catalog.service';
+import { SearchInsightsService } from './search-insights.service';
 import { Public } from '../auth/session.guard';
+import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { CatalogEtagInterceptor } from './catalog-etag.interceptor';
 import { CatalogLocaleInterceptor } from './catalog-locale';
@@ -24,6 +27,7 @@ export class ProductsController {
 	constructor(
 		private readonly catalog: CatalogService,
 		private readonly publicCatalog: CatalogPublicService,
+		private readonly insights: SearchInsightsService,
 	) {}
 
 	@Get()
@@ -75,6 +79,19 @@ export class ProductsController {
 	})
 	relations(@Param('idOrSlug') idOrSlug: string) {
 		return this.publicCatalog.relationCards(idOrSlug);
+	}
+
+	@Get(':idOrSlug/trending')
+	@Header('Cache-Control', 'public, max-age=300, stale-while-revalidate=600')
+	@ApiOperation({
+		operationId: 'productTrending',
+		summary: "Trending in this product's categories, topped up with its bestsellers",
+	})
+	async trending(
+		@Param('idOrSlug') slug: string,
+		@Query(new ZodValidationPipe(CatalogSearchTrendingQuery)) query: CatalogSearchTrendingQuery,
+	): Promise<CatalogSearchTrending> {
+		return CatalogSearchTrending.parse(await this.insights.trendingFor(slug, query.limit));
 	}
 
 	@Get(':idOrSlug/gallery')

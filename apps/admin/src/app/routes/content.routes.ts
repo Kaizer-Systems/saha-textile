@@ -44,6 +44,14 @@ export const content: Routes = [
 		loadChildren: () => import('@features/redirect/redirect.routes'),
 	},
 	{
+		path: 'search-term',
+		loadChildren: () => import('@features/search-term/search-term.routes'),
+	},
+	{
+		path: 'storefront-setting',
+		loadChildren: () => import('@features/storefront-setting/storefront-setting.routes'),
+	},
+	{
 		path: 'blog',
 		loadChildren: () => import('@features/blog/blog.routes'),
 	},
@@ -56,10 +64,6 @@ export const content: Routes = [
 		loadChildren: () => import('@features/tax/tax.routes'),
 	},
 	{
-		path: 'store',
-		loadChildren: () => import('@features/store/store.routes'),
-	},
-	{
 		path: 'category',
 		loadChildren: () => import('@features/category/category.routes'),
 	},
@@ -70,6 +74,10 @@ export const content: Routes = [
 	{
 		path: 'media',
 		loadChildren: () => import('@features/media/media.routes'),
+	},
+	{
+		path: 'event',
+		loadChildren: () => import('@features/event/event.routes'),
 	},
 	{
 		path: 'coupon',
@@ -96,6 +104,31 @@ export const content: Routes = [
 		loadChildren: () => import('@features/setting/setting.routes'),
 	},
 	{
+		// Accounts › E-invoices, E-way bills (accounts brief addendum 2, EI12–EI13).
+		path: 'accounts',
+		loadChildren: () => import('@features/accounts/edocs.routes'),
+	},
+	{
+		// Cash: sheets, petty expenses, expense claims (accounts brief O).
+		path: 'cash',
+		loadChildren: () => import('@features/cash/cash.routes'),
+	},
+	{
+		// Stock transfers between locations and stock by location (accounts brief N).
+		path: 'transfers',
+		loadChildren: () => import('@features/transfers/transfers.routes'),
+	},
+	{
+		// Brief 26 WL1: everything waiting on the signed-in person.
+		path: 'worklist',
+		loadComponent: () => import('@features/worklist/worklist-page').then((m) => m.WorklistPage),
+	},
+	{
+		// Payroll: employees, attendance and leave, payroll runs (accounts brief S).
+		path: 'payroll',
+		loadChildren: () => import('@features/payroll/payroll.routes'),
+	},
+	{
 		path: 'order-status',
 		loadChildren: () => import('@features/order-status/order-status.routes'),
 	},
@@ -106,6 +139,10 @@ export const content: Routes = [
 	{
 		path: 'theme-option',
 		loadChildren: () => import('@features/theme-option/theme-option.routes'),
+	},
+	{
+		path: 'page-builder',
+		loadChildren: () => import('@features/page-builder/page-builder.routes'),
 	},
 	{
 		path: 'home-banners',
@@ -120,12 +157,56 @@ export const content: Routes = [
 		loadChildren: () => import('@features/faq/faq.routes'),
 	},
 	{
+		path: 'inbox',
+		loadChildren: () => import('@features/inbox/inbox.routes'),
+	},
+	{
 		path: 'notification',
 		loadChildren: () => import('@features/notification/notification.routes'),
 	},
 	{
 		path: 'refund',
 		loadChildren: () => import('@features/refund/refund.routes'),
+	},
+	{
+		path: 'purchase-entries',
+		loadChildren: () => import('@features/purchasing/purchase-entry/entry.routes'),
+	},
+	{
+		path: 'expense-bills',
+		loadChildren: () => import('@features/purchasing/expense-bill/expense-bill.routes'),
+	},
+	{
+		path: 'stock-counts',
+		loadChildren: () => import('@features/stock/count.routes'),
+	},
+	{
+		path: 'opening-stock',
+		loadChildren: () => import('@features/stock/opening.routes'),
+	},
+	{
+		path: 'stock',
+		loadChildren: () => import('@features/stock/stock.routes'),
+	},
+	{
+		path: 'purchase-returns',
+		loadChildren: () => import('@features/purchasing/purchase-return/return.routes'),
+	},
+	{
+		path: 'purchase-orders',
+		loadChildren: () => import('@features/purchasing/purchase-order/order.routes'),
+	},
+	{
+		path: 'suppliers',
+		loadChildren: () => import('@features/purchasing/supplier/supplier.routes'),
+	},
+	{
+		path: 'businesses',
+		loadChildren: () => import('@features/business/business.routes'),
+	},
+	{
+		path: 'zones',
+		loadChildren: () => import('@features/zone/zone.routes'),
 	},
 	{
 		path: 'qna',

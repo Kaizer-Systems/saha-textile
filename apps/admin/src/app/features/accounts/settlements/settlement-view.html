@@ -1,0 +1,69 @@
+@if (settlement(); as s) {
+<div class="modal-header">
+	<h5
+		class="mb-0"
+		id="stl_view_title"
+	>
+		{{ 'stl_view_title' | transloco: { provider: s.provider, reference: s.payoutReference, date: day(s.date) } }}
+	</h5>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	></button>
+</div>
+<div class="modal-body">
+	<ul class="list-unstyled small row g-2 mb-3">
+		<li class="col-md-3">
+			<b>{{ 'stl_col_gross' | transloco }}</b>
+			<span class="d-block">{{ rupees(s.grossPaise) }}</span>
+		</li>
+		<li class="col-md-3">
+			<b>{{ 'stl_col_charges' | transloco }}</b>
+			<span class="d-block">{{ rupees(s.chargesPaise) }} + {{ rupees(s.gstPaise) }}</span>
+		</li>
+		<li class="col-md-3">
+			<b>{{ 'stl_col_net' | transloco }}</b>
+			<span class="d-block">{{ rupees(s.netPaise) }}</span>
+		</li>
+		<li class="col-md-3">
+			<b>{{ 'stl_col_matched' | transloco }}</b>
+			<span class="d-block">{{ 'stl_matched_n' | transloco: { matched: s.matched, total: s.rows.length } }}</span>
+		</li>
+	</ul>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'reference' | transloco }}</th>
+					<th>{{ 'stl_col_order' | transloco }}</th>
+					<th class="text-end">{{ 'stl_col_gross' | transloco }}</th>
+					<th class="text-end">{{ 'stl_col_charges' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (r of s.rows; track $index) {
+				<tr>
+					<td>{{ r.reference }}</td>
+					<td [class.text-danger]="!r.paymentId">{{ r.orderNumber ?? ('stl_not_matched' | transloco) }}</td>
+					<td class="text-end text-nowrap">{{ rupees(r.grossPaise) }}</td>
+					<td class="text-end text-nowrap">{{ rupees(r.chargesPaise + r.gstPaise) }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+</div>
+<div class="modal-footer">
+	<button
+		type="button"
+		class="btn btn-outline"
+		id="stl_view_print"
+		(click)="print()"
+	>
+		<i class="ri-printer-line"></i>
+		{{ 'stl_print' | transloco }}
+	</button>
+</div>
+}

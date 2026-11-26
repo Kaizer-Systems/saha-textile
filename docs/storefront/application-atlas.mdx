@@ -3,7 +3,7 @@ title: Storefront Application Atlas
 description: Interactive map of storefront capabilities.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/storefront/src/app
     - apps/storefront/vite.config.ts
@@ -28,9 +28,9 @@ Use the filters and search field to find a customer capability and see how much 
 
 ## Common misunderstandings
 
-### "The cart is implemented"
+### "The cart is implemented, so checkout is too"
 
-The browser cart works: actions, effects, selectors, optimistic updates and persistence exist. It does not use the server cart API. Ownership, pricing, stock reservation and checkout are separate concerns.
+The cart is real: the API holds it, prices every line from the live catalogue and refuses a choice that is unavailable or short of stock. Checkout is a separate concern and is closed: no order is placed and no payment is taken.
 
 ### "Server rendering makes everything server-safe"
 
@@ -38,7 +38,7 @@ Dynamic rendering is enabled, but browser-dependent components still need `isPla
 
 ### "Language switching means Bengali is ready"
 
-Transloco runs with English and French. Locale membership is configuration, not a fixed contract, so Bengali can be added once its content and validation are ready. Every page sits under a locale prefix, and the switcher is a set of links to the same page in the other language.
+Transloco runs with English and Bengali. Locale membership is configuration, not a fixed contract, which is how Bengali replaced French as data and configuration. Every page sits under a locale prefix, and the switcher is a set of links to the same page in the other language.
 
 ### "A social callback means signup is complete"
 

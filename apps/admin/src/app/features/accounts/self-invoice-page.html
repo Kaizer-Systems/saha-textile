@@ -1,0 +1,418 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'si_title'"
+>
+	@if (invoice.data(); as v) {
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">
+				{{ v.number ?? ('si_supply_title' | transloco) }}
+				<div
+					class="d-inline-block ms-2"
+					[class.status-pending]="v.status === 'draft'"
+					[class.status-success]="v.status === 'issued'"
+					[class.status-danger]="v.status === 'cancelled'"
+				>
+					<span>{{ 'si_status_' + v.status | transloco }}</span>
+				</div>
+			</h5>
+			<small class="text-muted">
+				{{ 'si_title_line' | transloco: { date: day(v.date ?? v.receivedOn), supplier: v.supplierName, what:
+				v.rule.name, month: monthName(v.forMonth) } }}
+			</small>
+		</div>
+		<div class="d-flex flex-wrap gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="si_print"
+				[disabled]="busy()"
+				(click)="print()"
+			>
+				<i class="ri-printer-line"></i>
+				{{ 'inv_print' | transloco }}
+			</button>
+			@if (canCancel()) {
+			<button
+				type="button"
+				class="btn btn-outline text-danger"
+				id="si_cancel_open"
+				[disabled]="busy()"
+				(click)="cancel(v)"
+			>
+				<i class="ri-close-circle-line"></i>
+				{{ 'cancel' | transloco }}
+			</button>
+			} @if (canPay()) {
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="si_pay_open"
+				[disabled]="busy()"
+				(click)="openPay(payModal)"
+			>
+				{{ 'record_payment' | transloco }}
+			</button>
+			}
+		</div>
+	</div>
+	<div class="row g-3">
+		<div class="col-xl-8">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'details' | transloco }}</h5>
+					</div>
+					<div class="row g-3 small">
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'si_taxable' | transloco }}</span>
+							<b>{{ inr(v.taxableINR) }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'si_total_tax' | transloco }}</span>
+							<b>{{ inr(v.taxINR) }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'si_paid' | transloco }}</span>
+							<b>{{ inr(v.paidINR) }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'si_made_on' | transloco }}</span>
+							<b [class.text-danger]="v.late">
+								{{ 'si_made_on_day' | transloco: { day: madeOnDay() } }} @if (v.late) { · {{ 'si_late' |
+								transloco }} }
+							</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'si_supplier' | transloco }}</span>
+							<b>{{ v.supplierName }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'si_what' | transloco }}</span>
+							<b>{{ v.rule.name }} · SAC {{ v.rule.code }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'si_received_on' | transloco }}</span>
+							<b>{{ day(v.receivedOn) }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'si_rule_from' | transloco }}</span>
+							<b>{{ v.rule.templateCode }} v{{ v.rule.templateVersion }}</b>
+						</div>
+						@if (v.cancelReason) {
+						<div class="col-12">
+							<span class="text-muted d-block">{{ 'si_cancelled_because' | transloco }}</span>
+							<b>{{ v.cancelReason }}</b>
+						</div>
+						}
+					</div>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'si_payment_vouchers' | transloco }}</h5>
+					</div>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'pv_number' | transloco }}</th>
+									<th>{{ 'date' | transloco }}</th>
+									<th>{{ 'payment_how' | transloco }}</th>
+									<th>{{ 'payment_reference' | transloco }}</th>
+									<th class="text-end">{{ 'doc_amount' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (p of vouchers.data() ?? []; track p.id) {
+								<tr>
+									<td>
+										<a [routerLink]="['/accounts/payment-vouchers', p.id]">{{ p.number }}</a>
+									</td>
+									<td class="text-nowrap">{{ day(p.date) }}</td>
+									<td>{{ 'payment_mode_' + p.mode | transloco }}</td>
+									<td>{{ p.reference ?? '—' }}</td>
+									<td class="text-end text-nowrap">{{ inr(p.amountINR) }}</td>
+								</tr>
+								} @empty {
+								<tr>
+									<td
+										colspan="5"
+										class="text-muted"
+									>
+										{{ 'si_no_payments' | transloco }}
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'cn_edit_log' | transloco }}</h5>
+					</div>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'log_when' | transloco }}</th>
+									<th>{{ 'log_who' | transloco }}</th>
+									<th>{{ 'log_what' | transloco }}</th>
+									<th>{{ 'log_field' | transloco }}</th>
+									<th>{{ 'log_before' | transloco }}</th>
+									<th>{{ 'log_after' | transloco }}</th>
+									<th>{{ 'log_why' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (row of logRows(); track $index) {
+								<tr>
+									<td class="text-nowrap">{{ row.when }}</td>
+									<td>{{ row.who }}</td>
+									<td>{{ row.what }}</td>
+									<td>{{ row.field }}</td>
+									<td>{{ row.before }}</td>
+									<td>{{ row.after }}</td>
+									<td>{{ row.why }}</td>
+								</tr>
+								} @empty {
+								<tr>
+									<td
+										colspan="7"
+										class="text-muted"
+									>
+										{{ 'log_empty' | transloco }}
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					<p class="help-text mt-2 mb-0">{{ 'log_caption' | transloco }}</p>
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-4">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'cn_what_changed' | transloco }}</h5>
+					</div>
+					<ul class="list-unstyled small mb-0">
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i class="ri-checkbox-circle-line text-success"></i>
+							<div>
+								<b>{{ 'ret_number' | transloco }}</b>
+								<span class="text-muted">· sequences</span>
+								<span class="d-block">{{ v.number ?? '—' }}</span>
+							</div>
+						</li>
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i class="ri-checkbox-circle-line text-success"></i>
+							<div>
+								<b>{{ 'si_effect_tax_title' | transloco }}</b>
+								<span class="text-muted">· gstEntries</span>
+								<span class="d-block">
+									{{ 'si_effect_tax' | transloco: { amount: inr(v.taxINR) } }}
+								</span>
+							</div>
+						</li>
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i class="ri-checkbox-circle-line text-success"></i>
+							<div>
+								<b>{{ 'si_effect_credit_title' | transloco }}</b>
+								<span class="text-muted">· gstEntries</span>
+								<span class="d-block">
+									{{ 'si_effect_credit' | transloco: { amount: inr(v.taxINR) } }}
+								</span>
+							</div>
+						</li>
+						<li class="d-flex gap-2 py-2">
+							<i class="ri-checkbox-circle-line text-success"></i>
+							<div>
+								<b>{{ 'si_effect_supplier_title' | transloco }}</b>
+								<span class="text-muted">· ledgerEntries</span>
+								<span class="d-block">
+									{{ (owed() > 0 ? 'si_effect_supplier_owed' : 'si_effect_supplier_settled') |
+									transloco: { name: v.supplierName, amount: inr(owed()), paid: inr(v.paidINR) } }}
+								</span>
+							</div>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<ng-template
+		#payModal
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="mb-0">{{ 'si_pay_title' | transloco: { name: v.supplierName } }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			<div class="alert alert-info d-flex align-items-center gap-2">
+				<i class="ri-information-line"></i>
+				<span>{{ 'si_pay_voucher_note' | transloco }}</span>
+			</div>
+			<div class="row g-2">
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="si_pay_amount"
+					>
+						{{ 'doc_amount' | transloco }}
+					</label>
+					<div class="input-group">
+						<span class="input-group-text">₹</span>
+						<input
+							class="form-control"
+							id="si_pay_amount"
+							inputmode="decimal"
+							autocomplete="off"
+							[ngModel]="amount()"
+							(ngModelChange)="amount.set($event)"
+						/>
+					</div>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="si_pay_paid_on"
+					>
+						{{ 'paid_on' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="si_pay_paid_on"
+						type="date"
+						[min]="v.date ?? ''"
+						[max]="today"
+						[ngModel]="paidOn()"
+						(ngModelChange)="paidOn.set($event)"
+					/>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="si_pay_mode"
+					>
+						{{ 'payment_how' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="si_pay_mode"
+						[ngModel]="mode()"
+						(ngModelChange)="mode.set($event)"
+					>
+						@for (m of modes; track m) {
+						<option [value]="m">{{ 'payment_mode_' + m | transloco }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="si_pay_reference"
+					>
+						{{ 'payment_reference' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="si_pay_reference"
+						maxlength="80"
+						autocomplete="off"
+						[ngModel]="reference()"
+						(ngModelChange)="reference.set($event)"
+					/>
+				</div>
+				@if (choosesBank()) {
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="si_pay_from"
+					>
+						{{ 'cn_refund_from' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="si_pay_from"
+						[ngModel]="paidFrom()"
+						(ngModelChange)="paidFrom.set($event)"
+					>
+						<option value="">—</option>
+						@for (l of banks(); track l.id) {
+						<option [value]="l.id">{{ l.name }}</option>
+						}
+					</select>
+				</div>
+				}
+			</div>
+			<p class="text-muted small mt-3 mb-1">{{ 'accounts_what_changes' | transloco }}</p>
+			<ul class="list-unstyled small mb-0">
+				<li class="d-flex border-bottom gap-2 py-2">
+					<i class="ri-user-line"></i>
+					<div>
+						<b>{{ 'si_effect_supplier_title' | transloco }}</b>
+						<span class="text-muted">· ledgerEntries</span>
+						<span class="d-block">
+							{{ (settles() ? 'si_pay_settled' : 'si_pay_part') | transloco: { amount: inr(amountValue()
+							?? 0), left: inr(owed() - (amountValue() ?? 0)) } }}
+						</span>
+					</div>
+				</li>
+				<li class="d-flex border-bottom gap-2 py-2">
+					<i class="ri-bank-line"></i>
+					<div>
+						<b>{{ 'si_pay_day_book' | transloco }}</b>
+						<span class="text-muted">· paymentVouchers</span>
+						<span class="d-block">
+							{{ 'si_pay_money_out' | transloco: { amount: inr(amountValue() ?? 0), reference:
+							reference().trim() || ('payment_mode_' + mode() | transloco) } }}
+						</span>
+					</div>
+				</li>
+				<li class="d-flex gap-2 py-2">
+					<i class="ri-calendar-todo-line"></i>
+					<div>
+						<b>{{ 'si_pay_still_to_do' | transloco }}</b>
+						<span class="d-block">
+							{{ 'si_pay_still_to_do_text' | transloco: { amount: inr(v.taxINR), month:
+							monthName(v.forMonth) } }}
+						</span>
+					</div>
+				</li>
+			</ul>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="si_pay_confirm"
+				[disabled]="!canConfirm()"
+				(click)="pay(v)"
+			>
+				{{ 'si_pay_confirm' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+	}
+</app-page-wrapper>

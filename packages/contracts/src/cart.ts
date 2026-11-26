@@ -1,10 +1,15 @@
 import { z } from 'zod';
 
 import { Id, IsoDateTime } from './common';
+import { FreePick } from './free-with';
 import { ResolvedImage } from './media';
+import { BundleChoice } from './product-bundle';
 
-/** A shop line, not a wholesale order. */
-const LineQuantity = z.number().int().positive().max(99);
+/**
+ * A shop line, not a wholesale order: pieces, or tenths of a metre for fabric by the metre
+ * (P11). The server holds piece lines to 99 and metre lines to the product's shortest cut.
+ */
+const LineQuantity = z.number().int().positive().max(9999);
 
 /** Captured value for a tailoring add-on on a cart line. */
 export const CartAddonValue = z.object({
@@ -20,6 +25,10 @@ export const CartLine = z.object({
 	variationId: Id.nullable().default(null),
 	quantity: z.number().int().positive(),
 	addons: z.array(CartAddonValue).default([]),
+	/** A set's choices: picks per level, sizes, extras, and free items per piece (bundle builder brief). */
+	bundle: BundleChoice.nullable().default(null),
+	/** A product's own free items picked (P8); given ones are filled in by the server. */
+	free: z.array(FreePick).max(10).default([]),
 });
 export type CartLine = z.infer<typeof CartLine>;
 
@@ -58,6 +67,8 @@ export const AddCartLineRequest = z.object({
 	variationId: z.string().min(1).nullable().optional(),
 	quantity: LineQuantity,
 	addons: z.array(CartAddonValue).max(40).optional(),
+	bundle: BundleChoice.optional(),
+	free: z.array(FreePick).max(10).optional(),
 });
 export type AddCartLineRequest = z.infer<typeof AddCartLineRequest>;
 
@@ -66,14 +77,39 @@ export const UpdateCartLineRequest = z.object({
 	quantity: LineQuantity,
 	variationId: z.string().min(1).nullable().optional(),
 	addons: z.array(CartAddonValue).max(40).optional(),
+	bundle: BundleChoice.optional(),
+	free: z.array(FreePick).max(10).optional(),
 });
 export type UpdateCartLineRequest = z.infer<typeof UpdateCartLineRequest>;
 
 /** Why a line cannot be bought as it stands. */
-export const CartLineProblem = z.enum(['unavailable', 'out_of_stock', 'limited']);
+export const CartLineProblem = z.enum(['unavailable', 'out_of_stock', 'limited', 'below_shortest_cut']);
 export type CartLineProblem = z.infer<typeof CartLineProblem>;
 
 const money = z.number().nonnegative();
+
+/**
+ * What a line holds beneath it (bundle builder brief E01–E04): a set's pieces (each at its share of the set price),
+ * their free items, the set's extras, or a product's own free items (₹0). Quantities are per one set or product.
+ */
+export const CartViewChild = z.object({
+	role: z.enum(['piece', 'free', 'extra']),
+	key: z.string(),
+	/** The piece a free item comes with; null for a set's extras and a product's own free items. */
+	parentKey: z.string().nullable().default(null),
+	level: z.string().nullable().default(null),
+	productId: Id,
+	title: z.string(),
+	sku: z.string(),
+	image: ResolvedImage.nullable().default(null),
+	variantId: Id.nullable().default(null),
+	variantLabel: z.string().nullable().default(null),
+	quantity: z.number().int().positive(),
+	/** The piece's share of the set price, an extra's price, or 0 for a free item. */
+	priceINR: money,
+	mrpINR: money.nullable().default(null),
+});
+export type CartViewChild = z.infer<typeof CartViewChild>;
 
 /** One line as the shopper sees it, priced by the server from the live product. */
 export const CartViewLine = z.object({
@@ -85,7 +121,11 @@ export const CartViewLine = z.object({
 	sku: z.string(),
 	variationId: Id.nullable(),
 	variantLabel: z.string().nullable(),
+	/** Pieces, or tenths of a metre when `soldBy` is metre. */
 	quantity: z.number().int().positive(),
+	soldBy: z.enum(['piece', 'metre']).default('piece'),
+	/** The least a buyer may cut, in tenths; null for pieces. */
+	shortestCutTenths: z.number().int().positive().nullable().default(null),
 	/** Units that can be bought now. Null means no limit. */
 	available: z.number().int().nonnegative().nullable(),
 	basePriceINR: money,
@@ -106,6 +146,14 @@ export const CartViewLine = z.object({
 	),
 	addons: z.array(CartAddonValue),
 	problem: CartLineProblem.nullable(),
+	/** A set's choices as the shopper made them, for Edit in the cart. */
+	bundle: BundleChoice.nullable().default(null),
+	free: z.array(FreePick).default([]),
+	children: z.array(CartViewChild).default([]),
+	/** A set's heading on the shop ("Bundle Components" or "Choose your set"); null for other products. */
+	setHeading: z.enum(['components', 'choose']).nullable().default(null),
+	/** A set lowered by a running sale event: coupons treat it as a piece already on sale. */
+	setOnSale: z.boolean().default(false),
 });
 export type CartViewLine = z.infer<typeof CartViewLine>;
 

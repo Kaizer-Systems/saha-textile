@@ -7,13 +7,14 @@ import { OnlineStatus } from './online-status';
 
 const setup = (platform = 'browser', onLine = true, view: unknown = undefined) => {
 	const listeners = new Map<string, () => void>();
-	const win = view === undefined
-		? {
-				navigator: { onLine },
-				addEventListener: vi.fn((name: string, run: () => void) => void listeners.set(name, run)),
-				removeEventListener: vi.fn((name: string) => void listeners.delete(name)),
-			}
-		: view;
+	const win =
+		view === undefined
+			? {
+					navigator: { onLine },
+					addEventListener: vi.fn((name: string, run: () => void) => void listeners.set(name, run)),
+					removeEventListener: vi.fn((name: string) => void listeners.delete(name)),
+				}
+			: view;
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [

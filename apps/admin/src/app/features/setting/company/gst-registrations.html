@@ -1,0 +1,275 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'gst_registrations'"
+>
+	<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+		<p class="text-muted mb-0">{{ 'gst_registrations_intro' | transloco }}</p>
+		@if (canEdit() && !draft()) {
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="gst_add"
+			(click)="add()"
+		>
+			<i
+				class="ri-add-line"
+				aria-hidden="true"
+			></i>
+			{{ 'gst_add_registration' | transloco }}
+		</button>
+		}
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'gstin' | transloco }}</th>
+					<th>{{ 'state' | transloco }}</th>
+					<th>{{ 'gst_kind' | transloco }}</th>
+					<th>{{ 'gst_returns' | transloco }}</th>
+					<th>{{ 'gst_from' | transloco }}</th>
+					<th>{{ 'status' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of rows(); track row.registration.id) {
+				<tr>
+					<td class="text-nowrap">{{ row.registration.gstin }}</td>
+					<td>{{ stateLabel(row.registration.stateCode) }} ({{ row.registration.stateCode }})</td>
+					<td>{{ 'gst_kind_' + row.terms?.kind | transloco }}</td>
+					<td>{{ 'gst_scheme_' + row.terms?.scheme | transloco }}</td>
+					<td>{{ row.terms?.from }}</td>
+					<td>{{ (row.registration.active ? 'active' : 'inactive') | transloco }}</td>
+					<td>
+						@if (canEdit()) {
+						<a
+							href="javascript:void(0)"
+							role="button"
+							[title]="'edit' | transloco"
+							(click)="edit(row.registration)"
+						>
+							<i
+								class="ri-pencil-line"
+								aria-hidden="true"
+							></i>
+						</a>
+						}
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td colspan="7">{{ 'gst_registrations_none' | transloco }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if (draft(); as current) {
+	<div
+		class="card mt-3"
+		id="gst_form"
+	>
+		<div class="card-body">
+			<h5 class="mb-3">{{ (current.id ? 'gst_edit_registration' : 'gst_add_registration') | transloco }}</h5>
+			<div class="row g-3 theme-form">
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="gst_gstin"
+					>
+						{{ 'gstin' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="gst_gstin"
+						maxlength="20"
+						[readonly]="!!current.id"
+						[class.is-invalid]="!!gstinCheck()"
+						[ngModel]="current.gstin"
+						(ngModelChange)="patch({ gstin: $event })"
+					/>
+					@if (gstinCheck(); as check) {
+					<div class="invalid-feedback d-block">{{ 'gstin_problem_' + check.problem | transloco }}</div>
+					} @else if (stateName()) {
+					<small class="help-text d-block">{{ stateName() }}</small>
+					}
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="gst_legal"
+					>
+						{{ 'legal_name' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="gst_legal"
+						[ngModel]="current.legalName"
+						(ngModelChange)="patch({ legalName: $event })"
+					/>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="gst_trade"
+					>
+						{{ 'trade_name' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="gst_trade"
+						[ngModel]="current.tradeName"
+						(ngModelChange)="patch({ tradeName: $event })"
+					/>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="gst_kind"
+					>
+						{{ 'gst_kind' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="gst_kind"
+						[ngModel]="current.kind"
+						(ngModelChange)="patch({ kind: $event })"
+					>
+						@for (kind of ['regular', 'composition', 'isd', 'casual']; track kind) {
+						<option [value]="kind">{{ 'gst_kind_' + kind | transloco }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="gst_scheme"
+					>
+						{{ 'gst_returns' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="gst_scheme"
+						[disabled]="current.kind === 'isd'"
+						[ngModel]="current.scheme"
+						(ngModelChange)="patch({ scheme: $event })"
+					>
+						<option value="monthly">{{ 'gst_scheme_monthly' | transloco }}</option>
+						<option value="qrmp">{{ 'gst_scheme_qrmp' | transloco }}</option>
+					</select>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="gst_from_date"
+					>
+						{{ 'gst_from' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="gst_from_date"
+						type="date"
+						[ngModel]="current.from"
+						(ngModelChange)="patch({ from: $event })"
+					/>
+					<small class="help-text d-block">{{ 'gst_from_help' | transloco }}</small>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="gst_turnover"
+					>
+						{{ 'gst_last_year_turnover' | transloco }}
+					</label>
+					<div class="input-group">
+						<span class="input-group-text">₹</span>
+						<input
+							class="form-control"
+							id="gst_turnover"
+							type="number"
+							min="0"
+							[ngModel]="current.lastYearTurnoverINR"
+							(ngModelChange)="patch({ lastYearTurnoverINR: +$event || 0 })"
+						/>
+					</div>
+				</div>
+				@if (current.kind === 'composition') {
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="gst_rate"
+					>
+						{{ 'gst_composition_rate' | transloco }}
+					</label>
+					<div class="input-group">
+						<input
+							class="form-control"
+							id="gst_rate"
+							type="number"
+							min="0"
+							max="100"
+							step="0.5"
+							[ngModel]="current.compositionRatePercent"
+							(ngModelChange)="patch({ compositionRatePercent: $event === null || $event === '' ? null : +$event })"
+						/>
+						<span class="input-group-text">%</span>
+					</div>
+				</div>
+				}
+			</div>
+			@if (checks(); as c) {
+			<ul
+				class="list-unstyled small mt-3 mb-0"
+				id="gst_checks"
+			>
+				<li>
+					{{ 'gst_check_einvoice' | transloco }}:
+					<b>{{ (c.eInvoice ? 'yes' : 'no') | transloco }}</b>
+				</li>
+				<li>
+					{{ 'gst_check_hsn' | transloco }}:
+					<b>{{ c.hsnDigits }}</b>
+				</li>
+				<li>
+					{{ 'gst_check_gstr9' | transloco }}:
+					<b>{{ (c.annualReturn ? 'yes' : 'no') | transloco }}</b>
+				</li>
+				<li>
+					{{ 'gst_check_gstr9c' | transloco }}:
+					<b>{{ (c.reconciliationStatement ? 'yes' : 'no') | transloco }}</b>
+				</li>
+				<li>
+					{{ 'gst_check_qrmp' | transloco }}:
+					<b>{{ (c.qrmpAllowed ? 'yes' : 'no') | transloco }}</b>
+				</li>
+				<li>
+					{{ 'gst_check_composition' | transloco }}:
+					<b>{{ (c.compositionAllowed ? 'yes' : 'no') | transloco }}</b>
+				</li>
+			</ul>
+			} @for (problem of problems(); track problem) {
+			<div class="alert alert-danger mt-3 mb-0 py-2">{{ 'gst_problem_' + problem | transloco }}</div>
+			}
+			<div class="d-flex justify-content-end mt-3 gap-2">
+				<button
+					type="button"
+					class="btn btn-outline"
+					(click)="close()"
+				>
+					{{ 'cancel' | transloco }}
+				</button>
+				<button
+					type="button"
+					class="btn btn-theme"
+					id="gst_save"
+					[disabled]="saving() || !!gstinCheck() || problems().length > 0"
+					(click)="save()"
+				>
+					{{ 'save' | transloco }}
+				</button>
+			</div>
+		</div>
+	</div>
+	}
+</app-page-wrapper>

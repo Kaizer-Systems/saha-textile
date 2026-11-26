@@ -1,0 +1,269 @@
+<div class="modal-header">
+	<h2 id="order_edoc_popup_title">
+		{{ (kind() === 'eInvoice' ? 'ord_einvoice' : 'ord_ewaybill') | transloco }}@if (order(); as o) { · {{
+		invoiceNumber() ?? o.orderNumber }} }
+	</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	<div
+		class="alert alert-info d-flex align-items-start gap-2"
+		role="status"
+	>
+		<i class="ri-information-line mt-1"></i>
+		<div>
+			{{ 'ord_edoc_not_connected' | transloco }} @if (invoiceNumber(); as number) {
+			<div class="mt-1">{{ 'inv_portal_document_number' | transloco: { number } }}</div>
+			}
+		</div>
+	</div>
+	@if (kind() === 'eInvoice') {
+	<div class="mb-3">
+		<label
+			class="form-label"
+			for="edoc_signed_file"
+		>
+			{{ 'ord_signed_file' | transloco }}
+		</label>
+		<input
+			class="form-control"
+			type="file"
+			accept=".json,application/json"
+			id="edoc_signed_file"
+			(change)="readSignedFile($any($event.target).files?.[0])"
+		/>
+		@if (fileProblem(); as problem) {
+		<p class="small text-danger mt-1 mb-0">{{ problem | transloco }}</p>
+		} @else if (fileName() && signedQr()) {
+		<p class="small text-success mt-1 mb-0">{{ 'ord_signed_file_read' | transloco }}</p>
+		} @else {
+		<p class="help-text mb-0">{{ 'ord_signed_file_help' | transloco }}</p>
+		}
+	</div>
+	<div class="row g-3">
+		<div class="col-12">
+			<label
+				class="form-label"
+				for="edoc_irn"
+			>
+				IRN
+			</label>
+			<input
+				class="form-control font-monospace"
+				id="edoc_irn"
+				maxlength="64"
+				autocomplete="off"
+				ngbAutofocus
+				[class.is-invalid]="!!irn().trim() && !irnValid()"
+				[ngModel]="irn()"
+				(ngModelChange)="irn.set($event)"
+			/>
+			<p class="help-text mb-0">{{ 'ord_irn_help' | transloco }}</p>
+		</div>
+		<div class="col-md-6">
+			<label
+				class="form-label"
+				for="edoc_ack"
+			>
+				{{ 'ord_ack_no' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="edoc_ack"
+				maxlength="20"
+				[ngModel]="ackNo()"
+				(ngModelChange)="ackNo.set($event)"
+			/>
+		</div>
+		<div class="col-md-6">
+			<label
+				class="form-label"
+				for="edoc_ack_date"
+			>
+				{{ 'ord_ack_date' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="edoc_ack_date"
+				type="date"
+				[max]="today"
+				[ngModel]="ackDate()"
+				(ngModelChange)="ackDate.set($event)"
+			/>
+		</div>
+		<div class="col-12">
+			<label
+				class="form-label"
+				for="edoc_qr"
+			>
+				{{ 'ord_signed_qr' | transloco }}
+				<span class="text-muted">({{ 'optional' | transloco }})</span>
+			</label>
+			<textarea
+				class="form-control"
+				id="edoc_qr"
+				rows="2"
+				maxlength="4000"
+				[ngModel]="signedQr()"
+				(ngModelChange)="signedQr.set($event)"
+			></textarea>
+		</div>
+	</div>
+	} @else {
+	<div class="row g-3">
+		<div class="col-md-6">
+			<label
+				class="form-label"
+				for="edoc_ewb"
+			>
+				{{ 'ord_ewb_number' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="edoc_ewb"
+				inputmode="numeric"
+				maxlength="17"
+				autocomplete="off"
+				ngbAutofocus
+				[class.is-invalid]="!!ewbNumber().trim() && !ewbValid()"
+				[ngModel]="ewbNumber()"
+				(ngModelChange)="ewbNumber.set($event)"
+			/>
+			<p class="help-text mb-0">{{ 'ord_ewb_help' | transloco }}</p>
+		</div>
+		<div class="col-md-3">
+			<label
+				class="form-label"
+				for="edoc_generated"
+			>
+				{{ 'ord_ewb_generated_on' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="edoc_generated"
+				type="date"
+				[max]="today"
+				[ngModel]="generatedOn()"
+				(ngModelChange)="generatedOn.set($event)"
+			/>
+		</div>
+		<div class="col-md-3">
+			<label
+				class="form-label"
+				for="edoc_valid"
+			>
+				{{ 'ord_valid_until' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="edoc_valid"
+				type="date"
+				[min]="generatedOn()"
+				[ngModel]="validUntil()"
+				(ngModelChange)="validUntil.set($event)"
+			/>
+		</div>
+		<div class="col-md-6">
+			<label
+				class="form-label"
+				for="edoc_transporter"
+			>
+				{{ 'ord_transporter_name' | transloco }}
+				<span class="text-muted">({{ 'optional' | transloco }})</span>
+			</label>
+			<input
+				class="form-control"
+				id="edoc_transporter"
+				maxlength="120"
+				[ngModel]="transporterName()"
+				(ngModelChange)="transporterName.set($event)"
+			/>
+		</div>
+		<div class="col-md-6">
+			<label
+				class="form-label"
+				for="edoc_transporter_id"
+			>
+				{{ 'ord_transporter_id' | transloco }}
+				<span class="text-muted">({{ 'optional' | transloco }})</span>
+			</label>
+			<input
+				class="form-control"
+				id="edoc_transporter_id"
+				maxlength="20"
+				[ngModel]="transporterId()"
+				(ngModelChange)="transporterId.set($event)"
+			/>
+		</div>
+		<div class="col-md-8">
+			<label
+				class="form-label"
+				for="edoc_vehicle"
+			>
+				{{ 'ord_vehicle_or_document' | transloco }}
+				<span class="text-muted">({{ 'optional' | transloco }})</span>
+			</label>
+			<input
+				class="form-control"
+				id="edoc_vehicle"
+				maxlength="40"
+				[ngModel]="vehicleOrDocumentNo()"
+				(ngModelChange)="vehicleOrDocumentNo.set($event)"
+			/>
+		</div>
+		<div class="col-md-4">
+			<label
+				class="form-label"
+				for="edoc_distance"
+			>
+				{{ 'ord_distance_km' | transloco }}
+				<span class="text-muted">({{ 'optional' | transloco }})</span>
+			</label>
+			<input
+				class="form-control"
+				id="edoc_distance"
+				type="number"
+				min="0"
+				max="4000"
+				[ngModel]="distanceKm()"
+				(ngModelChange)="distanceKm.set('' + ($event ?? ''))"
+			/>
+		</div>
+	</div>
+	} @if (error(); as problem) {
+	<div
+		class="alert alert-warning d-flex align-items-start mt-3 mb-0 gap-2"
+		role="alert"
+	>
+		<i class="ri-error-warning-line mt-1"></i>
+		<div>{{ problem }}</div>
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			[disabled]="!canSave()"
+			(click)="save()"
+		>
+			{{ 'save' | transloco }}
+		</button>
+	</div>
+</div>

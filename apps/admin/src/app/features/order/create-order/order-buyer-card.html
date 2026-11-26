@@ -1,0 +1,121 @@
+<div class="card">
+	<div class="card-body">
+		<div class="row g-3 align-items-end">
+			<div class="col-xl-4">
+				<label class="form-label-title d-block mb-2">{{ 'ord_order_for' | transloco }}</label>
+				<div
+					class="btn-group w-100"
+					role="group"
+					[attr.aria-label]="'ord_order_for' | transloco"
+				>
+					<button
+						type="button"
+						class="btn btn-sm"
+						[class.btn-theme]="draft.buyerKind() === 'person'"
+						[class.btn-outline]="draft.buyerKind() !== 'person'"
+						[attr.aria-pressed]="draft.buyerKind() === 'person'"
+						(click)="setKind('person')"
+					>
+						{{ 'ord_shop_customer' | transloco }}
+					</button>
+					<button
+						type="button"
+						class="btn btn-sm"
+						[class.btn-theme]="draft.buyerKind() === 'business'"
+						[class.btn-outline]="draft.buyerKind() !== 'business'"
+						[attr.aria-pressed]="draft.buyerKind() === 'business'"
+						(click)="setKind('business')"
+					>
+						{{ 'ord_business_chip' | transloco }}
+					</button>
+				</div>
+			</div>
+			<div class="col-xl-5">
+				<label class="form-label-title d-block mb-2">
+					{{ (draft.buyerKind() === 'person' ? 'ord_customer' : 'ord_business_chip') | transloco }} @if
+					(draft.buyerKind() === 'person') {
+					<a
+						href="javascript:void(0)"
+						class="fw-bold small ms-2"
+						(click)="newCustomer()"
+					>
+						<i class="ri-add-line"></i>
+						{{ 'ord_add_customer' | transloco }}
+					</a>
+					} @else {
+					<a
+						*hasPermission="'business.create'"
+						class="fw-bold small ms-2"
+						[routerLink]="['/businesses/create']"
+					>
+						<i class="ri-add-line"></i>
+						{{ 'biz_add_business' | transloco }}
+					</a>
+					}
+				</label>
+				<select2
+					class="custom-select"
+					[placeholder]="(draft.buyerKind() === 'person' ? 'ord_find_customer' : 'ord_find_business') | transloco"
+					[data]="options()"
+					[value]="selected() ?? ''"
+					[customSearchEnabled]="true"
+					[resettable]="true"
+					[noResultMessage]="'ord_no_buyer_found' | transloco"
+					(search)="search($event)"
+					(update)="pick($event)"
+				/>
+			</div>
+			<div class="col-xl-3">
+				<label
+					class="form-label-title d-block mb-2"
+					for="order_currency"
+				>
+					{{ 'ord_currency' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="order_currency"
+					[value]="draft.currency()"
+					(change)="draft.setCurrency($any($event.target).value)"
+				>
+					@for (row of currencyRows(); track row.code) {
+					<option
+						[value]="row.code"
+						[selected]="row.code === draft.currency()"
+					>
+						{{ row.symbol }} · {{ currencyName(row.code) }}
+					</option>
+					}
+				</select>
+			</div>
+			@if (rateNote(); as note) {
+			<div class="col-12">
+				<p class="help-text mb-0">
+					<i class="ri-information-line"></i>
+					{{ 'ord_currency_note' | transloco: { rate: (note.perUnit | rupees), symbol: note.symbol } }}
+				</p>
+			</div>
+			} @if (business(); as b) {
+			<div class="col-12">
+				<div class="d-flex small flex-wrap gap-3">
+					<span>
+						<i class="ri-bank-line"></i>
+						{{ 'ord_buyer_credit' | transloco: { available: (b.creditAvailableINR | rupees), limit:
+						(b.creditLimitINR | rupees), days: b.creditDays } }}
+					</span>
+					<span
+						[class]="'status-' + (b.standing === 'active' ? 'success' : b.standing === 'blocked' ? 'failed' : 'pending')"
+					>
+						<span>{{ 'ord_standing_' + b.standing | transloco }}</span>
+					</span>
+					<span class="text-muted">{{ 'ord_zone_line' | transloco: { zone: b.zone.name } }}</span>
+					@if (b.gstin) {
+					<span class="text-muted">{{ 'ord_invoices_go_to' | transloco: { gstin: b.gstin } }}</span>
+					}
+				</div>
+			</div>
+			}
+		</div>
+	</div>
+</div>
+<app-customer-modal #addCustomerModal />

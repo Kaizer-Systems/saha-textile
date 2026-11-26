@@ -1,8 +1,9 @@
 import { NgClass, NgTemplateOutlet } from '@angular/common';
-import { Component, input } from '@angular/core';
+import { Component, OnInit, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { bannerSrc, bannerSrcset } from '@data-access/queries/banner.queries';
+import { HeadPreload, pictureBandMedia } from '@core/media/head-preload';
+import { bannerSrc, bannerSrcset, type ResolvedBanner } from '@data-access/queries/banner.queries';
 
 @Component({
 	selector: 'app-image-link',
@@ -10,7 +11,7 @@ import { bannerSrc, bannerSrcset } from '@data-access/queries/banner.queries';
 	styleUrls: ['./image-link.scss'],
 	imports: [NgClass, NgTemplateOutlet, RouterLink],
 })
-export class ImageLink {
+export class ImageLink implements OnInit {
 	// TODO: Skipped for migration because:
 	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
 	//  and migrating would break narrowing currently.
@@ -30,4 +31,27 @@ export class ImageLink {
 		banner.position === 'hero' && banner.slot === 'main';
 	readonly src = bannerSrc;
 
+	private readonly preload = inject(HeadPreload);
+
+	/** The early picture is preloaded from the page's head, per screen band (FX-13; see `HeadPreload`). */
+	ngOnInit(): void {
+		const banner = this.image()?.resolved as ResolvedBanner | undefined;
+		if (!banner || !(this.priority() || this.isHeroMain(banner))) return;
+		const images = banner.images;
+		const media = pictureBandMedia({ phone: !!images.phone, tablet: !!images.tablet });
+		const bands = [
+			{ image: images.phone, sizes: '100vw', media: media.phone },
+			{ image: images.tablet, sizes: this.sizes(), media: media.tablet },
+			{ image: images.desktop, sizes: this.sizes(), media: media.desktop },
+		];
+		for (const band of bands) {
+			if (!band.image) continue;
+			this.preload.picture({
+				href: bannerSrc(band.image),
+				srcset: bannerSrcset(band.image),
+				sizes: band.sizes,
+				media: band.media,
+			});
+		}
+	}
 }

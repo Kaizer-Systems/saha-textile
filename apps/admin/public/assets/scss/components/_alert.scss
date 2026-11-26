@@ -14,12 +14,12 @@ $alert-color:
 	.alert-#{$var} {
 		.progress {
 			height: 5px;
-			background-color: darken(nth($alert-color, $i), 1%);
+			background-color: tc-shade(nth($alert-color, $i), -1%);
 			border-radius: 0;
 		}
 
 		.progress-bar {
-			background-color: lighten(nth($alert-color, $i), 50%);
+			background-color: tc-shade(nth($alert-color, $i), 50%);
 		}
 
 		.btn-close {
@@ -27,7 +27,7 @@ $alert-color:
 		}
 
 		.alert-link {
-			color: nth($alert-color, $i);
+			color: tc(nth($alert-color, $i));
 
 			@if ($var== 'light') {
 				color: $dark-color;
@@ -44,7 +44,7 @@ $alert-color:
 		}
 
 		hr {
-			border-top-color: nth($alert-color, $i);
+			border-top-color: tc(nth($alert-color, $i));
 		}
 	}
 
@@ -57,8 +57,8 @@ $alert-color:
 			}
 		}
 
-		background-color: nth($alert-color, $i);
-		border-color: nth($alert-color, $i);
+		background-color: tc(nth($alert-color, $i));
+		border-color: tc(nth($alert-color, $i));
 		color: $auth-bg-color;
 
 		@if ($var== 'light') {
@@ -69,8 +69,8 @@ $alert-color:
 	.alert-#{$var}.outline,
 	.alert-#{$var}.outline-2x {
 		background-color: $transparent-color;
-		border-color: nth($alert-color, $i);
-		color: nth($alert-color, $i);
+		border-color: tc(nth($alert-color, $i));
+		color: tc(nth($alert-color, $i));
 
 		.btn-close {
 			filter: unset;
@@ -84,7 +84,7 @@ $alert-color:
 	.alert-#{$var}.inverse {
 		background-color: transparent;
 		padding: 13px 20px 13px 65px;
-		border-color: nth($alert-color, $i);
+		border-color: tc(nth($alert-color, $i));
 		color: $theme-body-font-color;
 		&:before {
 			top: 16px;
@@ -93,7 +93,7 @@ $alert-color:
 			left: 54px;
 			width: 0;
 			height: 0;
-			border-left: 7px solid nth($alert-color, $i);
+			border-left: 7px solid tc(nth($alert-color, $i));
 			border-top: 7px solid transparent;
 			border-bottom: 7px solid transparent;
 		}
@@ -101,7 +101,7 @@ $alert-color:
 		i {
 			padding: 17px 20px;
 			display: inline-block;
-			background-color: nth($alert-color, $i);
+			background-color: tc(nth($alert-color, $i));
 			color: $white;
 			border-radius: 3px 0 0 3px;
 			position: absolute;

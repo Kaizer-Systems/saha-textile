@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import {
@@ -70,12 +70,8 @@ export class CollectionSidebar {
 	readonly facetKeys = computed(() => Object.keys(this.facets()));
 	readonly facetLabels = computed(() => this.catalogQuery.data()?.facetLabels ?? {});
 
-	constructor() {
-		// Drive the sidebar skeleton off the catalog query's first load.
-		effect(() => {
-			this.attributeService.skeletonLoader = this.catalogQuery.isPending();
-		});
-	}
+	/** The sidebar skeleton, on the catalog query's first load (its own signal, so the view redraws). */
+	readonly loading = computed(() => this.catalogQuery.isPending());
 
 	closeCanvasMenu() {
 		this.attributeService.offCanvasMenu = false;

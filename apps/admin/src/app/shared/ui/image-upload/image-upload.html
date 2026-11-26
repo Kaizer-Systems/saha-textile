@@ -1,18 +1,27 @@
 <ul class="image-select-list cursor-pointer">
+	@if (canAdd) {
 	<li
+		[title]="'add_image' | transloco"
 		class="choosefile-input"
-		(click)="MediaModal().openModal()"
+		(click)="openPicker()"
 	>
 		<i class="ri-add-line"></i>
+		@if (left !== null) {
+		<span class="fm-left">{{ 'fm_left' | transloco: { count: left } }}</span>
+		}
 	</li>
-	@for (img of showImages; track img; let i = $index) {
+	} @for (img of showImages; track img; let i = $index) {
 	<li>
 		<img
 			src="{{ img?.original_url }}"
 			alt="image"
 			class="img-fluid"
 		/>
+		@if (versionBadge(img); as badge) {
+		<span class="fm-vbadge">{{ badge }}</span>
+		}
 		<a
+			[title]="'remove_image' | transloco"
 			href="javascript:void(0)"
 			class="remove-icon"
 			id="remove-icon{{ i }}"
@@ -22,13 +31,17 @@
 		</a>
 	</li>
 	} @if (showImage) {
-	<li>
+	<li [class.bg-dark]="tone() === 'dark'">
 		<img
 			src="{{ showImage?.original_url }}"
 			alt="image"
 			class="img-fluid"
 		/>
+		@if (versionBadge(showImage); as badge) {
+		<span class="fm-vbadge">{{ badge }}</span>
+		}
 		<a
+			[title]="'remove_image' | transloco"
 			href="javascript:void(0)"
 			class="remove-icon"
 			(click)="remove($any(showImage?.id), 'single')"
@@ -44,6 +57,7 @@
 			class="img-fluid"
 		/>
 		<a
+			[title]="'remove_image' | transloco"
 			href="javascript:void(0)"
 			class="remove-icon"
 			(click)="remove(1, 'single_image_url')"
@@ -56,10 +70,3 @@
 @if (helpText) {
 <p class="help-text">{{ helpText }}</p>
 }
-<app-media-modal
-	[multipleImage]="multipleImage()"
-	[purpose]="purpose()"
-	[url]="url()"
-	(selectImage)="selectImage($event, url())"
-	#mediaModal
-/>

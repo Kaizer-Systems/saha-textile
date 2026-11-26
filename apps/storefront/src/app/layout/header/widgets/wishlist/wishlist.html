@@ -3,6 +3,7 @@
 <a
 	[routerLink]="['/wishlist']"
 	class="btn position-relative header-wishlist p-0"
+	[attr.aria-label]="'wishlist' | transloco"
 >
 	<i class="ri-heart-line"></i>
 </a>
@@ -14,8 +15,8 @@
 	[routerLink]="['/wishlist']"
 	class="header-icon bag-icon"
 >
-	@if ((wishlist$ | async)?.total) {
-	<small class="badge-number badge-light">{{ (wishlist$ | async)?.total }}</small>
+	@if (wishlist.count()) {
+	<small class="badge-number badge-light">{{ wishlist.count() }}</small>
 	}
 	<i class="ri-heart-line"></i>
 </a>

@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { ProductBundle, type Address } from '@saha-textile/contracts';
 
 import { connectMongo, disconnectMongo } from '../src/connection';
 import {
@@ -184,6 +185,32 @@ describe.skipIf(!hasMongoEnv())('customer, catalogue and inventory repositories 
 			expect(updated?.addresses.find((row) => row.id === `${P}work`)?.isDefault).toBe(false);
 			expect((await repo.updateAddress(id, `${P}home`, { line2: 'Flat 2' }))?.addresses[0]?.line2).toBe('Flat 2');
 			expect(await repo.updateAddress(id, `${P}none`, { city: 'x' })).toBeNull();
+		});
+
+		it('replaces one address whole: dropped fields go, a new default demotes the others (DEC-ADDRESS)', async () => {
+			await repo.updateAddress(id, `${P}home`, { isDefault: false });
+			await repo.updateAddress(id, `${P}work`, { isDefault: true });
+			const replaced = await repo.replaceAddress(id, {
+				id: `${P}home`,
+				label: 'Home',
+				fullName: 'Asha Sen',
+				line1: '1 High Street',
+				city: 'Canterbury',
+				state: 'Kent',
+				subdivisionCode: 'KEN',
+				postalCode: 'CT1 2AB',
+				country: 'GB',
+				countryCode: 'GB',
+				mobile: { countryCallingCode: '44', number: '7700900123' },
+				altMobile: null,
+				phone: '+44 7700900123',
+				isDefault: true,
+			});
+			const home = replaced?.addresses.find((row) => row.id === `${P}home`);
+			expect(home).toMatchObject({ city: 'Canterbury', countryCode: 'GB', mobile: { number: '7700900123' } });
+			expect(home?.line2).toBeUndefined();
+			expect(replaced?.addresses.find((row) => row.id === `${P}work`)?.isDefault).toBe(false);
+			expect(await repo.replaceAddress(id, { ...(home as Address), id: `${P}none` })).toBeNull();
 		});
 
 		it('removes an address', async () => {
@@ -430,7 +457,6 @@ describe.skipIf(!hasMongoEnv())('customer, catalogue and inventory repositories 
 				priceINR: 100,
 				compareAtPriceINR: 200,
 				salePriceINR: 90,
-				saleWindow: { startsAt: past, endsAt: future },
 				stock: { tracked: true, quantity: 5, lowStockThreshold: 1, allowBackorder: false },
 				barcode: 'b',
 				...overrides,
@@ -456,7 +482,6 @@ describe.skipIf(!hasMongoEnv())('customer, catalogue and inventory repositories 
 				compareAtPriceINR: 200,
 				salePriceINR: 90,
 				barcode: 'b',
-				saleWindow: { startsAt: past, endsAt: future },
 			});
 			expect(await repo.findById(`${P}v2`)).toBeNull();
 			expect((await repo.findById(`${P}v2`, 'admin'))?.status).toBe('draft');
@@ -479,9 +504,7 @@ describe.skipIf(!hasMongoEnv())('customer, catalogue and inventory repositories 
 			expect(Array.isArray((await repo.list({ pageSize: 1 } as never)).items)).toBe(true);
 		});
 
-		it('reads a window with open ends, and fills the gaps', async () => {
-			await repo.save(variant('v4', { saleWindow: { startsAt: null, endsAt: null } }));
-			expect((await repo.findById(`${P}v4`))?.saleWindow).toEqual({ startsAt: null, endsAt: null });
+		it('fills the gaps in a sparse row', async () => {
 			await insertRaw(ProductVariantModel, {
 				_id: `${P}sparse`,
 				sku: `${P}sparse`,
@@ -494,7 +517,6 @@ describe.skipIf(!hasMongoEnv())('customer, catalogue and inventory repositories 
 				isBaseVariant: false,
 				compareAtPriceINR: null,
 				salePriceINR: null,
-				saleWindow: undefined,
 				stock: { tracked: true, quantity: 0 },
 				barcode: null,
 				createdAt: undefined,
@@ -522,18 +544,21 @@ describe.skipIf(!hasMongoEnv())('customer, catalogue and inventory repositories 
 		const repo = new MongoProductBundleRepository();
 
 		it('saves, finds, knows a bundle, and deletes', async () => {
-			const bundle = {
+			const bundle = ProductBundle.parse({
 				id: `${P}bun`,
 				productId: `${P}bprod`,
-				bundleType: 'fixed_kit',
-				pricePolicy: 'fixed_bundle_price',
-				fixedPriceINR: 100,
-				groups: [],
+				levels: [{ code: 'core', label: { en: 'Core' }, items: [{ productId: `${P}piece` }] }],
+				extras: [{ productId: `${P}extra`, priceInSetINR: 0 }],
+				pricing: { methodId: 'bpm_fixed_price', params: { setPrice: 100 } },
 				status: 'draft',
-			} as never;
+			});
 			await repo.save(bundle);
 			expect(await repo.findByProductId(`${P}bprod`)).toBeNull();
-			expect((await repo.findByProductId(`${P}bprod`, 'admin'))?.fixedPriceINR).toBe(100);
+			expect((await repo.findByProductId(`${P}bprod`, 'admin'))?.pricing.params['setPrice']).toBe(100);
+			// Its pieces and extras are findable, and the price method knows it is in use.
+			expect((await repo.listContaining(`${P}piece`)).map((found) => found.id)).toEqual([`${P}bun`]);
+			expect((await repo.listContaining(`${P}extra`)).map((found) => found.id)).toEqual([`${P}bun`]);
+			expect(await repo.countUsingMethod('bpm_fixed_price')).toBeGreaterThanOrEqual(1);
 			expect(await repo.isBundleProduct(`${P}bprod`)).toBe(true);
 			expect(await repo.isBundleProduct(`${P}none`)).toBe(false);
 			await repo.deleteById(`${P}bun`);
@@ -543,7 +568,12 @@ describe.skipIf(!hasMongoEnv())('customer, catalogue and inventory repositories 
 		it('fills the gaps, and keeps dates', async () => {
 			await insertRaw(ProductBundleModel, { _id: `${P}sparse`, productId: `${P}sparse`, status: 'live' });
 			expect(await repo.findByProductId(`${P}sparse`)).toMatchObject({
-				fixedPriceINR: null,
+				levels: [],
+				extras: [],
+				saleWindow: null,
+				styledPhoto: null,
+				dearerReason: null,
+				stock: null,
 				createdAt: undefined,
 			});
 			await insertRaw(ProductBundleModel, {

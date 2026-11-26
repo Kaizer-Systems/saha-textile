@@ -41,7 +41,14 @@ const setup = (user: unknown = { displayName: 'Asha', username: 'asha', email: '
 			{ provide: AuthStore, useValue: store },
 			{ provide: NotificationService, useValue: notification },
 			{ provide: Router, useValue: router },
-			{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+			{
+				provide: TranslocoService,
+				useValue: {
+					translate: (key: string) => key,
+					getActiveLang: () => 'en',
+					getTranslation: () => ({ other_sessions_revoked_one: '', other_sessions_revoked_other: '' }),
+				},
+			},
 		],
 	});
 	TestBed.overrideComponent(Account, { set: { imports: [], template: '' } });
@@ -225,7 +232,8 @@ describe('Account sessions', () => {
 	it('revokes the others', () => {
 		const { page, notification } = setup();
 		page.revokeOtherSessions();
-		expect(notification.showSuccess).toHaveBeenCalledWith('other_sessions_revoked');
+		// Two other sessions: the plural sentence, chosen by `Intl.PluralRules`.
+		expect(notification.showSuccess).toHaveBeenCalledWith('other_sessions_revoked_other');
 		expect(page.sessionsBusy()).toBe(false);
 	});
 

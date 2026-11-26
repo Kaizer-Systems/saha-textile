@@ -1,0 +1,46 @@
+# Release Console on this Mac: one container (app + API + SQLite), published on 127.0.0.1 only.
+# Started by `pnpm console:up`, which first writes env/console.env from Infisical and starts the
+# Mac helper. On a server the same image runs behind Cloudflare Access; see README.md.
+name: saha-textile-release-console
+
+services:
+  console:
+    image: ${CONSOLE_IMAGE:-saha-textile-release-console:local}
+    build:
+      context: ../..
+      dockerfile: docker/release-console/Dockerfile
+    container_name: saha-textile-release-console
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${CONSOLE_PORT:-4400}:4400'
+    environment:
+      CONSOLE_ORIGIN: http://localhost:${CONSOLE_PORT:-4400}
+      CONSOLE_RUNNER_URL: http://host.docker.internal:${CONSOLE_RUNNER_PORT:-4419}
+      CONSOLE_RUNNER_TOKEN_FILE: /run/secrets/runner-token
+      CONSOLE_STACK_PREFIX: saha-textile
+      # Coverage keeps up to three CI runs read (about 130 MB each once parsed) beside the API itself;
+      # 256 MB ran out of memory on the second run (25 Nov). The heap stays under the container's limit.
+      NODE_OPTIONS: --max-old-space-size=768
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    volumes:
+      - console-data:/data
+      - ./env/console.env:/run/secrets/console.env:ro
+      - ./env/runner-token:/run/secrets/runner-token:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 1g
+    cpus: 1.0
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+
+volumes:
+  console-data:
+    name: saha_textile_release_console_data

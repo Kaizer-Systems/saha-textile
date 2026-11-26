@@ -4,17 +4,49 @@
 >
 	<div class="swiper-wrapper">
 		<!--
-			Tracked by position, not by `item.id`.
-
-			`ITopBarContent` declares an `id`, but `site-config.json` has never carried one — so
-			`track item.id` was `undefined` for every entry, Angular saw three identical keys, and
-			with Swiper's `loop: true` re-rendering constantly it emitted thousands of NG0955
-			warnings per page load. Enough to make the console unusable.
-
-			These are three fixed lines of marketing copy that are never reordered and have no
-			natural identity, which is exactly the case `$index` is for.
+			Published launch and sale events first, each with its countdown, then the site's own
+			lines. Event lines are text bindings, never innerHTML: their words come from the admin.
 		-->
-		@for (item of content(); track $index; let i = $index) {
+		@for (event of events(); track event.id) {
+		<div class="swiper-slide">
+			<div class="d-flex justify-content-xxl-center">
+				<!--
+					One line on every screen: a long title ends in "…" so the countdown always shows
+					whole (Bootstrap text-truncate and text-nowrap; the strip is one line high).
+				-->
+				<div class="timer-notification mw-100">
+					<h6>
+						<!-- On the phone strip a line with a popup opens it; any other line is a link. -->
+						@if (opensPopup(event)) {
+						<a
+							class="d-flex text-white"
+							href="javascript:void(0)"
+							role="button"
+							aria-haspopup="dialog"
+							(click)="openPopup(event); $event.preventDefault()"
+						>
+							<strong class="text-truncate me-1">{{ event.title }}</strong>
+							<span class="text-nowrap">{{ label(event) | transloco }} {{ countdown(event) }}</span>
+						</a>
+						} @else {
+						<a
+							class="d-flex text-white"
+							[routerLink]="event.linkHref ?? '/'"
+						>
+							<strong class="text-truncate me-1">{{ event.title }}</strong>
+							<span class="text-nowrap">{{ label(event) | transloco }} {{ countdown(event) }}</span>
+						</a>
+						}
+					</h6>
+				</div>
+			</div>
+		</div>
+		}
+		<!--
+			Tracked by position, not by `item.id`: `site-config.json` lines carry no id, and with
+			Swiper's loop re-rendering, `track item.id` raised thousands of NG0955 warnings.
+		-->
+		@for (item of content(); track $index) {
 		<div class="swiper-slide">
 			<div class="d-flex justify-content-xxl-center">
 				<div class="timer-notification">

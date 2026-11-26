@@ -1,0 +1,79 @@
+// Quick view (bundle builder brief G03/G04, HF; owner, 22 Nov 2026): the product page's gallery and buy box side by
+// side from tablets up; on phones a centred pop-up with space above and below whose content scrolls inside (the page
+// behind is held by the modal). Unscoped but keyed on the pop-up's own window class, so these rules load with the
+// quick view and touch nothing else; theme variables only, for the dark file.
+.st-quick-view {
+	.modal-dialog {
+		max-width: min(1120px, calc(100vw - 48px));
+	}
+
+	.modal-content {
+		overflow: hidden;
+		border: 0;
+		border-radius: 14px;
+	}
+
+	.st-qv-head {
+		position: sticky;
+		top: 0;
+		z-index: 3;
+		display: flex;
+		justify-content: flex-end;
+		height: 0;
+
+		.btn-close {
+			margin: 10px 10px 0 0;
+			padding: 10px;
+			border-radius: 50%;
+			background-color: var(--st-surface);
+			box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+			opacity: 1;
+		}
+	}
+
+	.st-qv-body {
+		padding: 24px;
+	}
+
+	.st-qv-row {
+		margin: 0;
+		padding: 0;
+	}
+
+	.st-qv-photo-wait {
+		aspect-ratio: 3 / 4;
+		border-radius: 10px;
+		background-color: var(--st-surface-soft);
+	}
+
+	.st-qv-full {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		margin-top: 16px;
+		color: var(--theme-color);
+		font-weight: 600;
+	}
+
+	// Phones: a pop-up, not a full-height sheet — 32px of the page shows above and below; the content scrolls inside.
+	@media (max-width: 767px) {
+		.modal-dialog {
+			max-width: none;
+			margin: 32px 12px;
+			min-height: calc(100% - 64px);
+		}
+
+		&.modal .modal-dialog-scrollable {
+			height: calc(100% - 64px);
+		}
+
+		.modal-dialog-scrollable .modal-content {
+			max-height: calc(100dvh - 64px);
+		}
+
+		.st-qv-body {
+			padding: 14px;
+			overscroll-behavior: contain;
+		}
+	}
+}

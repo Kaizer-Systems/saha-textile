@@ -7,6 +7,7 @@ import { loadConfig } from '../src/config/app-config';
 import { ConfigModule } from '../src/config/config.module';
 import { MeilisearchSearch } from '../src/search/meilisearch-search';
 import { PersistenceModule } from '../src/infra/persistence.module';
+import { UnavailablePaymentGateway } from '../src/infra/unavailable-payment-gateway.adapter';
 import { UnconfiguredStorageAdapter } from '../src/infra/unconfigured-storage.adapter';
 import {
 	SEARCH_PORT,
@@ -15,6 +16,7 @@ import {
 	MEDIA_JOB_QUEUE,
 	CDN_PURGE,
 	YOUTUBE_PORT,
+	INR_PAYMENT_GATEWAY,
 } from '../src/infra/tokens';
 
 const { app, registered, hooks, connect, disconnect } = vi.hoisted(() => {
@@ -28,6 +30,7 @@ const { app, registered, hooks, connect, disconnect } = vi.hoisted(() => {
 			registered.push([plugin, options]);
 		},
 		enableCors: () => {},
+		useLogger: () => {},
 		useGlobalFilters: () => {},
 		enableShutdownHooks: () => {},
 	};
@@ -107,6 +110,7 @@ describe('persistence providers', () => {
 		const youtube = factoryFor(YOUTUBE_PORT);
 		expect(youtube({ media: {} })).toBeDefined();
 		expect(youtube({ media: { youtubeApiKey: 'y' } })).toBeDefined();
+		expect(factoryFor(INR_PAYMENT_GATEWAY)(config)).toBeInstanceOf(UnavailablePaymentGateway);
 	});
 
 	it('connects on boot, survives a failure, and skips for a docs build', async () => {
@@ -150,12 +154,13 @@ describe('createApp', () => {
 		expect(limiter['errorResponseBuilder']?.()).toBeInstanceOf(HttpException);
 	});
 
-	it('echoes the request id on every reply', async () => {
+	it('echoes the request id on every reply, and keeps every reply out of search engines', async () => {
 		await createApp(config);
 		const reply = { header: vi.fn() };
 		const done = vi.fn();
 		hooks[0]?.({ id: 'r1' }, reply, 'body', done);
 		expect(reply.header).toHaveBeenCalledWith(expect.any(String), 'r1');
+		expect(reply.header).toHaveBeenCalledWith('X-Robots-Tag', 'noindex, nofollow');
 		expect(done).toHaveBeenCalledTimes(1);
 	});
 });

@@ -1,4 +1,4 @@
-import { cards, expect, openFilter, showFilters, test } from './support';
+import { API_URL, cards, expect, openFilter, showFilters, test } from './support';
 
 test.describe('a category listing', () => {
 	test.beforeEach(async ({ page }) => {
@@ -113,17 +113,17 @@ test.describe('search', () => {
 	});
 });
 
-test('a French listing shows its filters and values in French', async ({ page }) => {
-	await page.goto('/fr/collections/sarees/pure-silk/ikkat');
+test('a Bengali listing shows its filters and values in Bengali', async ({ page }) => {
+	await page.goto('/bn/collections/sarees/pure-silk/ikkat');
 	await page.waitForLoadState('networkidle');
 	await showFilters(page);
-	await expect(page.locator('.accordion-button', { hasText: 'Tissu' }).first()).toBeVisible();
-	await openFilter(page, 'Tissu');
-	await expect(page.locator('body')).toContainText('Soie');
+	await expect(page.locator('.accordion-button', { hasText: 'কাপড়' }).first()).toBeVisible();
+	await openFilter(page, 'কাপড়');
+	await expect(page.locator('body')).toContainText('সিল্ক');
 });
 
 test('the listing comes from Meilisearch, and its counts match what a tick shows', async ({ page, request }) => {
-	const api = 'https://localhost:4000/catalog/placements?path=sarees&pageSize=100';
+	const api = `${API_URL}/catalog/placements?path=sarees&pageSize=100`;
 	const all = (await (await request.get(api, { ignoreHTTPSErrors: true })).json()) as {
 		total: number;
 		facets: Array<{ code: string; terms: Array<{ code: string; count: number }> }>;

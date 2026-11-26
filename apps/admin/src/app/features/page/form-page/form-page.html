@@ -1,8 +1,28 @@
 <form
 	class="theme-form theme-form-2 mega-form"
+	id="page_form"
 	[formGroup]="form"
 	(ngSubmit)="submit()"
 >
+	<app-language-switch
+		[locales]="locales"
+		[active]="fields.locale()"
+		[gaps]="gaps()"
+		(changed)="switchLanguage($event)"
+		(gapChosen)="openLanguageGap($event)"
+	/>
+	@if (row(); as current) {
+	<!-- P3: the page is always on the shop; when it was last saved, and by whom. -->
+	<p
+		class="help-text mb-4"
+		id="page_on_shop"
+	>
+		@if (current.updatedByName; as name) { {{ 'page_on_shop_line' | transloco: { date: (current.page.updatedAt |
+		date: 'd MMM y'), name } }} } @else {
+		<!-- Written by the release step, not by a person. -->
+		{{ 'page_on_shop_line_unnamed' | transloco: { date: (current.page.updatedAt | date: 'd MMM y') } }} }
+	</p>
+	}
 	<app-form-fields
 		[label]="'title'"
 		[for]="'title'"
@@ -10,83 +30,116 @@
 	>
 		<input
 			class="form-control"
+			id="title"
 			type="text"
-			placeholder="{{ 'enter_title' | transloco }}"
 			name="title"
 			formControlName="title"
 		/>
-		@if (form.controls['title'].touched && form.controls['title'].errors?.['required']) {
-		<div class="invalid-feedback">{{ 'title_is_required' | transloco }}</div>
+		@if (fields.source('title'); as guide) {
+		<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
 		}
 	</app-form-fields>
+	@if (row(); as current) {
+	<app-form-fields
+		[label]="'slug'"
+		[for]="'page_slug'"
+	>
+		<input
+			class="form-control"
+			id="page_slug"
+			type="text"
+			readonly
+			[value]="current.page.slug"
+		/>
+		<p class="help-text">{{ 'page_fixed_address_help' | transloco }}</p>
+	</app-form-fields>
+	}
 	<app-form-fields
 		[label]="'content'"
 		[for]="'content'"
-		[required]="false"
+		[required]="true"
 	>
-		<div class="custom-editor">
-			@if(isBrowser) {
+		<div
+			class="custom-editor"
+			id="content"
+		>
+			@if (editor) {
 			<ngx-editor-menu [editor]="editor" />
 			<ngx-editor
 				[editor]="editor"
-				[ngModel]="html"
-				[disabled]="false"
-				[placeholder]="'Type here...'"
 				formControlName="content"
 			/>
 			}
 		</div>
+		@if (fields.source('content'); as guide) {
+		<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+		}
 	</app-form-fields>
 	<app-form-fields
 		[label]="'meta_title'"
-		[for]="'metatitle'"
-		[required]="false"
+		[for]="'meta_title'"
 	>
 		<input
 			class="form-control"
+			id="meta_title"
 			type="text"
-			placeholder="{{'enter_meta_title' | transloco }}"
 			formControlName="meta_title"
 		/>
+		@if (fields.source('meta_title'); as guide) {
+		<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+		}
 	</app-form-fields>
 	<app-form-fields
 		[label]="'meta_description'"
-		[for]="'desc'"
-		[required]="false"
+		[for]="'meta_description'"
 	>
 		<textarea
 			class="form-control"
-			placeholder="{{ 'enter_meta_description' | transloco }}"
-			formControlName="meta_description"
+			id="meta_description"
 			rows="3"
+			formControlName="meta_description"
 		></textarea>
+		@if (fields.source('meta_description'); as guide) {
+		<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+		}
 	</app-form-fields>
 	<app-form-fields
 		[label]="'meta_image'"
 		[for]="'meta_image'"
-		[required]="false"
 	>
 		<app-image-upload
+			[profile]="null"
+			[pickTitle]="'fm_pick_title_share'"
 			[multipleImage]="false"
-			[image]="page?.page_meta_image"
+			[image]="metaImage()"
 			(selectedFiles)="selectMetaImage($event)"
 		/>
 	</app-form-fields>
-	<app-form-fields
-		[label]="'Status'"
-		[for]="'status'"
-		[required]="false"
+	@if (refused().length) {
+	<!-- P6: the save waits until every language the shop shows has its Title and Content. -->
+	<div
+		class="alert alert-danger"
+		id="page_refused"
 	>
-		<div class="form-check form-switch ps-0">
-			<label class="switch">
-				<input
-					type="checkbox"
-					id="status"
-					formControlName="status"
-				/>
-				<span class="switch-state"></span>
-			</label>
-		</div>
-	</app-form-fields>
-	<app-button [id]="'page_btn'">{{ (type() === 'create' ? 'save_page' : 'update_page') | transloco }}</app-button>
+		<strong>{{ 'page_save_refused' | transloco }}</strong>
+		<ul class="mt-2 mb-0">
+			@for (gap of refused(); track $index) {
+			<li>
+				<a
+					class="alert-link cursor-pointer"
+					(click)="openGap(gap)"
+				>
+					{{ gapLabel(gap) }}
+				</a>
+			</li>
+			}
+		</ul>
+	</div>
+	}
+	<app-button
+		[id]="'page_btn'"
+		[disabled]="saving() || !row()"
+	>
+		{{ 'update_page' | transloco }}
+	</app-button>
 </form>

@@ -1,0 +1,75 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'features'"
+>
+	<p class="text-muted">{{ 'features_intro' | transloco }}</p>
+	@if (!canEdit()) {
+	<div
+		class="alert alert-info d-flex align-items-start gap-2"
+		role="note"
+	>
+		<i
+			class="ri-lock-line"
+			aria-hidden="true"
+		></i>
+		<span>{{ 'features_read_only' | transloco }}</span>
+	</div>
+	}
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'feature' | transloco }}</th>
+					<th>{{ 'on' | transloco }}</th>
+					<th>{{ 'feature_opens' | transloco }}</th>
+					<th>{{ 'feature_in_use' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of rows(); track row.key) {
+				<tr>
+					<td class="text-start">
+						<b>{{ 'feature_' + row.key | transloco }}</b>
+						@if (row.missing) {
+						<small class="d-block text-danger">
+							{{ 'feature_needs' | transloco: { needs: ('feature_' + row.missing | transloco) } }}
+						</small>
+						}
+					</td>
+					<td>
+						<label
+							class="switch mb-0"
+							[title]="(row.on ? 'switch_off' : 'switch_on') | transloco"
+						>
+							<input
+								type="checkbox"
+								[id]="'feature_' + row.key"
+								[checked]="row.on"
+								[disabled]="!canEdit() || row.locked"
+								(change)="toggle(row.key, $any($event.target).checked)"
+							/>
+							<span class="switch-state"></span>
+						</label>
+					</td>
+					<td class="text-start">{{ 'feature_opens_' + row.key | transloco }}</td>
+					<td>@if (row.inUse) { {{ row.inUse }} } @else { — }</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<p class="text-muted small mt-3">{{ 'features_rule' | transloco }}</p>
+	@if (canEdit()) {
+	<div class="d-flex justify-content-end">
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="features_save"
+			[disabled]="!dirty() || blocked() || saving()"
+			(click)="save()"
+		>
+			{{ 'save' | transloco }}
+		</button>
+	</div>
+	}
+</app-page-wrapper>

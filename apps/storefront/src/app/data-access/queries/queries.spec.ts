@@ -22,13 +22,14 @@ import { QuestionsAnswersService } from '@data-access/services/questions-answers
 import { RefundService } from '@data-access/services/refund.service';
 import { ReviewService } from '@data-access/services/review.service';
 import { StateService } from '@data-access/services/state.service';
+import { StoreLocationService } from '@data-access/services/store-location.service';
 import { TagService } from '@data-access/services/tag.service';
 import { WalletService } from '@data-access/services/wallet.service';
 
 import { injectAttributesQuery } from './attribute.queries';
 import { bannerSrc, bannerSrcset, injectBannersQuery } from './banner.queries';
-import { injectBlogBySlugQuery, injectBlogsQuery, injectRecentBlogsQuery } from './blog.queries';
-import { injectBlogCategoriesQuery, injectCategoriesQuery } from './category.queries';
+import { injectBlogBySlugQuery, injectBlogTermsQuery, injectBlogsQuery, injectRecentBlogsQuery } from './blog.queries';
+import { injectCategoriesQuery } from './category.queries';
 import { injectCountriesQuery } from './country.queries';
 import { injectCouponsQuery } from './coupon.queries';
 import { injectCurrenciesQuery } from './currency.queries';
@@ -44,12 +45,14 @@ import {
 	injectProductBySlugQuery,
 	injectProductRelationsQuery,
 	injectRecentPurchasesQuery,
+	injectProductTrendingQuery,
 	injectRelatedProductsData,
 } from './product.queries';
 import { injectQuestionAnswersQuery } from './questions-answers.queries';
 import { injectRefundsQuery } from './refund.queries';
-import { injectReviewQuery } from './review.queries';
+import { injectMyReviewQuery, injectReviewQuery } from './review.queries';
 import { injectStatesQuery } from './state.queries';
+import { injectStoreLocationsQuery } from './store-location.queries';
 import { injectTagsQuery } from './tag.queries';
 import { injectWalletTransactionsQuery } from './wallet.queries';
 
@@ -82,8 +85,8 @@ beforeEach(() => {
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: AttributeService, useValue: service('getAttributes') },
-			{ provide: BlogService, useValue: service('getBlogs') },
-			{ provide: CategoryService, useValue: service('getCategories', 'getBlogCategories') },
+			{ provide: BlogService, useValue: service('getBlogs', 'getBlog', 'getTerms') },
+			{ provide: CategoryService, useValue: service('getCategories') },
 			{ provide: CountryService, useValue: service('getCountries') },
 			{ provide: CouponService, useValue: service('getCoupons') },
 			{ provide: CurrencyService, useValue: service('getCurrencies') },
@@ -95,16 +98,17 @@ beforeEach(() => {
 			{ provide: PointService, useValue: service('getUserTransaction') },
 			{
 				provide: ProductService,
-				useValue: service('getCatalog', 'getProductPage', 'recentPurchases', 'getRelations'),
+				useValue: service('getCatalog', 'getProductPage', 'recentPurchases', 'getRelations', 'trendingFor'),
 			},
 			{ provide: QuestionsAnswersService, useValue: service('getQuestionAnswers') },
 			{ provide: RefundService, useValue: service('getRefunds') },
-			{ provide: ReviewService, useValue: service('getReview') },
+			{ provide: ReviewService, useValue: service('getReviews', 'mine') },
 			{ provide: StateService, useValue: service('getStates') },
+			{ provide: StoreLocationService, useValue: service('getStores') },
 			{ provide: TagService, useValue: service('getTags') },
 			{ provide: WalletService, useValue: service('getUserTransaction') },
 			{ provide: HttpClient, useValue: http },
-			{ provide: TranslocoService, useValue: { getActiveLang: () => 'fr' } },
+			{ provide: TranslocoService, useValue: { getActiveLang: () => 'bn' } },
 		],
 	});
 });
@@ -115,19 +119,21 @@ const params = () => ({ status: 1 });
 describe('list queries', () => {
 	it.each<[string, () => unknown, unknown[]]>([
 		['attributes', () => injectAttributesQuery(params), ['attributes', { status: 1 }]],
-		['blogs', () => injectBlogsQuery(params), ['blogs', { status: 1 }]],
-		['blog categories', () => injectBlogCategoriesQuery(params), ['blog-categories', { status: 1 }]],
+		['blogs', () => injectBlogsQuery(params), ['blogs', 'en', { status: 1 }]],
+		['blog categories', () => injectBlogTermsQuery('categories'), ['blogs', 'en', 'categories']],
+		['blog tags', () => injectBlogTermsQuery('tags'), ['blogs', 'en', 'tags']],
 		['categories', () => injectCategoriesQuery(), ['categories', 'en']],
 		['countries', () => injectCountriesQuery(), ['countries']],
 		['coupons', () => injectCouponsQuery(params), ['coupons', { status: 1 }]],
 		['currencies', () => injectCurrenciesQuery(params), ['currencies', { status: 1 }]],
 		['order status', () => injectOrderStatusQuery(params), ['order-status', { status: 1 }]],
 		['orders', () => injectOrdersQuery(params), ['orders', { status: 1 }]],
-		['FAQs', () => injectFaqsQuery(), ['faqs']],
+		['FAQs', () => injectFaqsQuery(), ['faqs', 'en']],
 		['payment details', () => injectPaymentDetailsQuery(), ['payment-details']],
 		['points', () => injectPointTransactionsQuery(params), ['point-transactions', { status: 1 }]],
 		['refunds', () => injectRefundsQuery(params), ['refunds', { status: 1 }]],
 		['states', () => injectStatesQuery(), ['states']],
+		['store locations', () => injectStoreLocationsQuery(), ['store-locations', 'en']],
 		['tags', () => injectTagsQuery(params), ['tags', { status: 1 }]],
 		['wallet', () => injectWalletTransactionsQuery(params), ['wallet-transactions', { status: 1 }]],
 	])('%s has its key and fetches', async (_name, build, key) => {
@@ -145,11 +151,11 @@ describe('selecting queries', () => {
 		expect(query.select?.({ data: [1] } as never)).toEqual([1]);
 	});
 
-	it('a post is found by slug, and only asked for with one', async () => {
+	it('a post is read by slug in the page language, and only asked for with one', async () => {
 		const query = options(() => injectBlogBySlugQuery(() => 'care'));
 		await query.queryFn();
 		expect(query.enabled).toBe(true);
-		expect(query.select?.({ data: [{ slug: 'care' }, { slug: 'x' }] } as never)).toEqual({ slug: 'care' });
+		expect(query.queryKey).toEqual(['blogs', 'en', 'post', 'care']);
 		expect(options(() => injectBlogBySlugQuery(() => undefined)).enabled).toBe(false);
 	});
 
@@ -183,10 +189,36 @@ describe('keyed queries', () => {
 		expect(questions.enabled).toBe(true);
 		expect(questions.queryKey).toEqual(['qna', 'silk-saree']);
 		expect(options(() => injectQuestionAnswersQuery(() => undefined)).enabled).toBe(false);
-		const reviews = options(() => injectReviewQuery(() => 7));
+		const reviews = options(() => injectReviewQuery(() => 'silk-saree'));
 		await reviews.queryFn();
 		expect(reviews.enabled).toBe(true);
+		expect(reviews.queryKey).toEqual(['reviews', 'silk-saree']);
 		expect(options(() => injectReviewQuery(() => undefined)).enabled).toBe(false);
+		const mine = options(() =>
+			injectMyReviewQuery(
+				() => 'p1',
+				() => true,
+			),
+		);
+		await mine.queryFn();
+		expect(mine.enabled).toBe(true);
+		expect(mine.queryKey).toEqual(['my-review', 'p1']);
+		expect(
+			options(() =>
+				injectMyReviewQuery(
+					() => 'p1',
+					() => false,
+				),
+			).enabled,
+		).toBe(false);
+		expect(
+			options(() =>
+				injectMyReviewQuery(
+					() => undefined,
+					() => true,
+				),
+			).enabled,
+		).toBe(false);
 	});
 });
 
@@ -236,6 +268,14 @@ describe('catalogue queries', () => {
 		expect(options(() => injectProductRelationsQuery(() => undefined)).enabled).toBe(false);
 	});
 
+	it('reads trending for one product once it has a slug', async () => {
+		const query = options(() => injectProductTrendingQuery(() => 'red-saree'));
+		expect(query.queryKey).toEqual(['catalog', 'trending', 'red-saree']);
+		await query.queryFn();
+		expect(query.enabled).toBe(true);
+		expect(options(() => injectProductTrendingQuery(() => undefined)).enabled).toBe(false);
+	});
+
 	it('only ever reads the shared related slot', async () => {
 		const query = options(() => injectRelatedProductsData());
 		expect(query.queryKey).toEqual(RELATED_PRODUCTS_KEY);
@@ -248,9 +288,9 @@ describe('banner queries', () => {
 	it('asks for the active language, with the page as default owner', async () => {
 		http.get.mockReturnValue(of({ heroLayout: 'hero_main_side', banners: [] }));
 		const query = options(() => injectBannersQuery());
-		expect(query.queryKey).toEqual(['banners', 'home', 'fr']);
+		expect(query.queryKey).toEqual(['banners', 'home', 'bn']);
 		await expect(query.queryFn()).resolves.toMatchObject({ heroLayout: 'hero_main_side' });
-		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { ownerType: 'home', locale: 'fr' } });
+		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { ownerType: 'home', locale: 'bn' } });
 	});
 
 	it('answers no banners when the API is unreachable', async () => {

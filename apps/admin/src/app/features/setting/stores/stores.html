@@ -1,0 +1,171 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'stores'"
+>
+	<div
+		button
+		*hasPermission="'setting.edit'"
+	>
+		<a
+			[routerLink]="['/setting/stores/create']"
+			class="align-items-center btn btn-theme d-flex"
+			id="add_store_btn"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'add_store' | transloco }}
+		</a>
+	</div>
+	<p class="help-text">{{ 'stores_order_help' | transloco }}</p>
+	<app-missing-language-notice [code]="missingLanguage.code()" />
+	<div class="table-responsive datatable-wrapper border-table">
+		@if (loading()) {
+		<div class="table-loader">
+			<span>{{ 'please_wait' | transloco }}...</span>
+		</div>
+		}
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th class="sm-width">{{ 'order' | transloco }}</th>
+					<th class="sm-width">{{ 'photo' | transloco }}</th>
+					<th>{{ 'name' | transloco }}</th>
+					<th>{{ 'pincode' | transloco }}</th>
+					<th>{{ 'phone' | transloco }}</th>
+					<th>{{ 'languages' | transloco }}</th>
+					<th>{{ 'active' | transloco }}</th>
+					<th>{{ 'actions' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody
+				cdkDropList
+				[cdkDropListData]="rows()"
+				[cdkDropListDisabled]="!canEdit()"
+				(cdkDropListDropped)="drop($event)"
+			>
+				@for (row of rows(); track row.store.id; let i = $index, first = $first, last = $last) {
+				<tr
+					cdkDrag
+					cdkDragLockAxis="y"
+					cdkDragPreviewContainer="parent"
+					[attr.data-store-id]="row.store.id"
+				>
+					<td class="sm-width">
+						<div class="store-order d-flex align-items-center gap-1">
+							@if (canEdit()) {
+							<button
+								[title]="'drag_to_reorder' | transloco"
+								type="button"
+								class="btn store-drag-handle p-0"
+								cdkDragHandle
+								[attr.aria-label]="'drag_to_reorder' | transloco"
+							>
+								<i class="ri-draggable"></i>
+							</button>
+							<button
+								[title]="'move_up' | transloco"
+								type="button"
+								class="btn p-0"
+								[class.invisible]="first"
+								[attr.tabindex]="first ? -1 : 0"
+								[attr.aria-label]="'move_up' | transloco"
+								(click)="move(i, i - 1)"
+							>
+								<i class="ri-arrow-up-s-line"></i>
+							</button>
+							<button
+								[title]="'move_down' | transloco"
+								type="button"
+								class="btn p-0"
+								[class.invisible]="last"
+								[attr.tabindex]="last ? -1 : 0"
+								[attr.aria-label]="'move_down' | transloco"
+								(click)="move(i, i + 1)"
+							>
+								<i class="ri-arrow-down-s-line"></i>
+							</button>
+							} @else {
+							<span>{{ i + 1 }}</span>
+							}
+						</div>
+					</td>
+					<td class="sm-width">
+						@if (row.photos[0]?.url) {
+						<img
+							class="tbl-logo-image"
+							[src]="row.photos[0]?.url"
+							[alt]="name(row)"
+						/>
+						} @else {
+						<div class="user-round">
+							<h4>{{ name(row).charAt(0) }}</h4>
+						</div>
+						}
+					</td>
+					<td>{{ name(row) }}</td>
+					<td>{{ row.store.pinCode }}</td>
+					<td>{{ phone(row) }}</td>
+					<td>
+						@if (missing(row)) {
+						<span class="badge bg-warning text-dark">
+							{{ 'store_missing' | transloco: { count: missing(row) } }}
+						</span>
+						} @else {
+						<span class="badge bg-success">{{ 'store_complete' | transloco }}</span>
+						}
+					</td>
+					<td>
+						<div class="form-check form-switch ps-0">
+							<label class="switch switch-sm">
+								<input
+									type="checkbox"
+									[id]="'store_active_' + row.store.id"
+									[checked]="row.store.active"
+									[disabled]="!canEdit()"
+									(change)="toggle(row, $event)"
+								/>
+								<span class="switch-state"></span>
+							</label>
+						</div>
+					</td>
+					<td>
+						<ul id="actions">
+							<li *hasPermission="'setting.edit'">
+								<a
+									[title]="'edit' | transloco"
+									[routerLink]="['/setting/stores/edit', row.store.id]"
+									[attr.aria-label]="'edit' | transloco"
+								>
+									<i class="ri-pencil-line"></i>
+								</a>
+							</li>
+							<li *hasPermission="'setting.edit'">
+								<a
+									[title]="'delete' | transloco"
+									href="javascript:void(0)"
+									[attr.aria-label]="'delete' | transloco"
+									(click)="deleteModal.openModal('delete', row)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</a>
+							</li>
+						</ul>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td colspan="8">
+						<div class="no-data-added">
+							<h4>{{ 'no_records_found' | transloco }}</h4>
+						</div>
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+</app-page-wrapper>
+<app-delete-modal
+	#deleteModal
+	[message]="'store_delete_message'"
+	(deleteItem)="removeFromModal($event)"
+/>

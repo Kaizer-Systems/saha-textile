@@ -1,13 +1,14 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import type { AdminAttributeWrite, AttributeDefinition } from '@saha-textile/contracts';
 import { Observable, map } from 'rxjs';
 
 import { IAttribute, IAttributeModel } from '@data-access/interfaces/attribute.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 
 import { environment } from '../../../../public/environments/environment';
+
+import type { AdminAttributeWrite, AttributeDefinition } from '@saha-textile/contracts';
 
 function toRow(definition: AttributeDefinition): IAttribute {
 	return { id: definition.code, name: definition.label.en, definition } as unknown as IAttribute;

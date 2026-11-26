@@ -4,8 +4,8 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { map } from 'rxjs';
 import { Select2Data, Select2UpdateEvent, Select2 } from 'ng-select2-component';
+import { map } from 'rxjs';
 
 import { Params } from '@data-access/interfaces/core.interface';
 import { AttributeService } from '@data-access/services/attribute.service';

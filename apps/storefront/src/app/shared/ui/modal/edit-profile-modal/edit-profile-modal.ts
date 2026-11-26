@@ -15,6 +15,7 @@ import { AccountStore } from '@core/state/account.store';
 import { IAccountUser } from '@data-access/interfaces/account.interface';
 import { ContactChangeService, type PendingContactChange } from '@data-access/services/contact-change.service';
 import * as data from '@shared/data/country-code';
+import { englishLetters } from '@shared/validators/english-letters';
 
 import { Button } from '../../button/button';
 
@@ -95,7 +96,7 @@ export class EditProfileModal {
 		this.user$.subscribe((user) => {
 			this.flicker = true;
 			this.form = this.formBuilder.group({
-				name: new FormControl(user?.name, [Validators.required]),
+				name: new FormControl(user?.name, [Validators.required, englishLetters('name')]),
 				email: new FormControl(user?.email, [Validators.required, Validators.email]),
 				phone: new FormControl(user?.phone, [Validators.required, Validators.pattern(/^[0-9]*$/)]),
 				country_code: new FormControl(user?.country_code),

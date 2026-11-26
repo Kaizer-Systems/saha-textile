@@ -1,0 +1,543 @@
+@if (view(); as v) {
+<div class="modal-header">
+	<h2 class="modal-title h5">{{ 'pb_go_live_title' | transloco: { name: v.layoutName } }}</h2>
+	<button
+		type="button"
+		class="btn-close"
+		[title]="'close' | transloco"
+		[attr.aria-label]="'close' | transloco"
+		(click)="modal.dismiss()"
+	></button>
+</div>
+
+@if (asking()) {
+<!-- E5: only a picture still being made is in the way. -->
+<div
+	class="modal-body text-center"
+	id="pb_go_live_waiting"
+>
+	<i
+		class="ri-time-line icon-box wo-bg"
+		aria-hidden="true"
+	></i>
+	<h3 class="h5">{{ 'pb_waiting_title' | plural: v.waitingPictures }}</h3>
+	<p>{{ 'pb_waiting_text' | transloco }}</p>
+	<div class="button-box justify-content-center">
+		<button
+			type="button"
+			class="btn btn-secondary"
+			id="pb_waiting_wait"
+			(click)="asking.set(false)"
+		>
+			{{ 'pb_waiting_wait' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="pb_waiting_go"
+			[disabled]="busy()"
+			(click)="go(true)"
+		>
+			{{ 'pb_waiting_go' | transloco }}
+		</button>
+	</div>
+</div>
+} @else {
+<div class="modal-body">
+	<!-- SG-16: what will change on the shop, with the list behind Compare. -->
+	<div
+		class="fm-note mb-3"
+		id="pb_changes"
+	>
+		<i
+			class="ri-exchange-line"
+			aria-hidden="true"
+		></i>
+		<div>
+			<strong>{{ 'pb_changes_title' | transloco }}</strong>
+			{{ changesLine() }} @if (v.liveLayoutName && v.changes.list.length) {
+			<button
+				type="button"
+				class="btn btn-link p-0 align-baseline"
+				id="pb_compare"
+				[attr.aria-expanded]="compare()"
+				(click)="compare.set(!compare())"
+			>
+				{{ 'pb_compare' | transloco: { name: v.liveLayoutName } }}
+			</button>
+			} @if (compare()) {
+			<ul class="mt-2 mb-0 ps-3">
+				@for (change of v.changes.list; track $index) {
+				<li>
+					{{ 'pb_change_' + change.kind | transloco: { name: sectionName(change.sectionId, change.type) } }}
+				</li>
+				}
+			</ul>
+			}
+		</div>
+	</div>
+
+	<!-- E1: languages, then pictures, then the layout itself. -->
+	<ul
+		class="list-unstyled d-grid mb-3 gap-1"
+		id="pb_checks"
+	>
+		@for (line of languageLines(); track line.locale) { @if (line.todo.length) {
+		<li
+			class="alert alert-danger mb-0"
+			[attr.data-check]="'words_' + line.locale"
+		>
+			<strong>{{ 'pb_lang_todo' | transloco: { language: line.language, count: line.todo.length } }}</strong>
+			<ul class="list-unstyled mt-1 mb-0">
+				@for (problem of line.todo; track $index) {
+				<li>
+					@if (problem.kind === 'page_settings') { {{ 'pb_page_settings' | transloco }} · {{ 'pb_settings_' +
+					problem.field | transloco }} } @else { {{ where(problem) }} · {{ fieldName(problem.field) }} }
+					<button
+						type="button"
+						class="btn btn-link p-0 align-baseline"
+						(click)="goTo(problem)"
+					>
+						{{ 'pb_go_to_it' | transloco }}
+					</button>
+				</li>
+				}
+			</ul>
+		</li>
+		} @else {
+		<li class="fm-ok">
+			<i
+				class="ri-checkbox-circle-line"
+				aria-hidden="true"
+			></i>
+			<span>{{ 'pb_lang_done' | transloco: { language: line.language } }}</span>
+		</li>
+		} } @if (pictureProblems().length) {
+		<li
+			class="alert alert-danger mb-0"
+			data-check="pictures"
+		>
+			<strong>{{ 'pb_pictures_todo' | plural: pictureProblems().length }}</strong>
+			<ul class="list-unstyled mt-1 mb-0">
+				@for (problem of pictureProblems(); track $index) {
+				<li>
+					{{ where(problem) }} · {{ 'pb_problem_' + problem.kind | transloco }}
+					<button
+						type="button"
+						class="btn btn-link p-0 align-baseline"
+						(click)="goTo(problem)"
+					>
+						{{ 'pb_go_to_it' | transloco }}
+					</button>
+				</li>
+				}
+			</ul>
+		</li>
+		} @else {
+		<li class="fm-ok">
+			<i
+				class="ri-checkbox-circle-line"
+				aria-hidden="true"
+			></i>
+			<span>
+				{{ (v.waitingPictures ? 'pb_pictures_making' : 'pb_pictures_ready') | transloco: { count:
+				v.waitingPictures } }}
+			</span>
+		</li>
+		} @if (phoneProblems().length) {
+		<li
+			class="alert alert-danger mb-0"
+			data-check="phone"
+		>
+			<strong>{{ 'pb_phone_todo' | transloco }}</strong>
+			<ul class="list-unstyled mt-1 mb-0">
+				@for (problem of phoneProblems(); track $index) {
+				<li>
+					{{ where(problem) }}
+					<button
+						type="button"
+						class="btn btn-link p-0 align-baseline"
+						(click)="goTo(problem)"
+					>
+						{{ 'pb_go_to_it' | transloco }}
+					</button>
+				</li>
+				}
+			</ul>
+		</li>
+		} @else {
+		<li class="fm-ok">
+			<i
+				class="ri-checkbox-circle-line"
+				aria-hidden="true"
+			></i>
+			<span>{{ 'pb_phone_done' | transloco }}</span>
+		</li>
+		} @if (wordProblems().length) {
+		<li
+			class="alert alert-danger mb-0"
+			data-check="words"
+		>
+			<strong>{{ 'pb_words_todo' | plural: wordProblems().length }}</strong>
+			<ul class="list-unstyled mt-1 mb-0">
+				@for (problem of wordProblems(); track $index) {
+				<li>
+					{{ wordsLine(problem) }}
+					<button
+						type="button"
+						class="btn btn-link p-0 align-baseline"
+						(click)="goTo(problem)"
+					>
+						{{ 'pb_go_to_it' | transloco }}
+					</button>
+				</li>
+				}
+			</ul>
+		</li>
+		} @else {
+		<li class="fm-ok">
+			<i
+				class="ri-checkbox-circle-line"
+				aria-hidden="true"
+			></i>
+			<span>{{ (v.waitingPictures ? 'pb_words_measuring' : 'pb_words_ok') | transloco }}</span>
+		</li>
+		} @for (problem of layoutProblems(); track $index) {
+		<li class="alert alert-danger mb-0">
+			{{ 'pb_problem_' + problem.kind | transloco: { name: sectionName(problem.sectionId, problem.type) } }}
+		</li>
+		}
+		<li class="fm-ok">
+			<i
+				class="ri-checkbox-circle-line"
+				aria-hidden="true"
+			></i>
+			<span>{{ 'pb_summary' | transloco: v.summary }}</span>
+		</li>
+		@for (note of v.notes; track note) {
+		<li class="fm-warn">
+			<i
+				class="ri-error-warning-line"
+				aria-hidden="true"
+			></i>
+			<span>{{ 'pb_note_' + note | transloco }}</span>
+		</li>
+		} @for (block of v.linkedBlocks; track block.blockId) {
+		<li class="fm-warn">
+			<i
+				class="ri-links-line"
+				aria-hidden="true"
+			></i>
+			<span>{{ 'pb_linked_reaches' | transloco: { name: block.name, layouts: block.layouts.join(', ') } }}</span>
+		</li>
+		}
+	</ul>
+
+	<!-- P6, SG-9: the speed budget. -->
+	<h3 class="h6 mb-2">{{ 'pb_budget_title' | transloco }}</h3>
+	<div
+		class="table-responsive datatable-wrapper border-table mb-3"
+		id="pb_budget"
+	>
+		<table class="theme-table fm-table mb-0 table">
+			<tbody>
+				@for (line of v.budget; track line.key) {
+				<tr [attr.data-budget]="line.key">
+					<td>
+						{{ 'pb_budget_' + line.key | transloco }}
+						<span class="help-text d-block">{{ 'pb_budget_' + line.key + '_help' | transloco }}</span>
+					</td>
+					<td class="w-25">
+						@if (line.limit !== null) {
+						<div
+							class="progress"
+							role="progressbar"
+							[attr.aria-valuenow]="line.value"
+							[attr.aria-valuemax]="line.limit"
+							[attr.aria-label]="'pb_budget_' + line.key | transloco"
+						>
+							<div
+								class="progress-bar"
+								[class.bg-success]="line.value <= line.limit * 0.9"
+								[class.bg-warning]="line.value > line.limit * 0.9 && line.value <= line.limit"
+								[class.bg-danger]="line.value > line.limit"
+								[style.width.%]="line.limit ? Math.min(100, (line.value / line.limit) * 100) : 0"
+							></div>
+						</div>
+						}
+					</td>
+					<td class="text-end text-nowrap">{{ budgetText(line) }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+
+	<!-- Search engines and access (FX-12, SG-13). -->
+	<h3 class="h6 mb-2">{{ 'pb_search_access' | transloco }}</h3>
+	<ul
+		class="list-unstyled d-grid mb-3 gap-1"
+		id="pb_search_checks"
+	>
+		<li class="fm-ok">
+			<i
+				class="ri-checkbox-circle-line"
+				aria-hidden="true"
+			></i>
+			<span>{{ 'pb_headings_ok' | transloco }}</span>
+		</li>
+		@if (linkProblems().length) {
+		<li
+			class="alert alert-danger mb-0"
+			data-check="links"
+		>
+			<strong>{{ 'pb_links_todo' | plural: linkProblems().length }}</strong>
+			<ul class="list-unstyled mt-1 mb-0">
+				@for (problem of linkProblems(); track $index) {
+				<li>
+					{{ where(problem) }} →
+					<code>{{ problem.href }}</code>
+					<button
+						type="button"
+						class="btn btn-link p-0 align-baseline"
+						(click)="goTo(problem)"
+					>
+						{{ 'pb_go_to_it' | transloco }}
+					</button>
+				</li>
+				}
+			</ul>
+		</li>
+		} @else {
+		<li class="fm-ok">
+			<i
+				class="ri-checkbox-circle-line"
+				aria-hidden="true"
+			></i>
+			<span>{{ 'pb_links_ok' | transloco }}</span>
+		</li>
+		} @for (problem of budgetProblems(); track $index) {
+		<li class="alert alert-danger mb-0">
+			{{ 'pb_budget_over' | transloco: { measure: ('pb_budget_' + problem.measure | transloco), value:
+			problem.value, limit: problem.limit } }}
+		</li>
+		} @if (v.summary.sliders) {
+		<li class="fm-ok">
+			<i
+				class="ri-checkbox-circle-line"
+				aria-hidden="true"
+			></i>
+			<span>{{ 'pb_slider_ok' | transloco }}</span>
+		</li>
+		}
+		<li class="fm-ok">
+			<i
+				class="ri-checkbox-circle-line"
+				aria-hidden="true"
+			></i>
+			<span>{{ 'pb_reading_order_ok' | transloco }}</span>
+		</li>
+	</ul>
+
+	@if (v.canGoLive) {
+	<!-- E2: when it goes live, and when it ends. -->
+	<fieldset
+		class="theme-form mb-3"
+		id="pb_when_form"
+	>
+		<legend class="h6">{{ 'pb_goes_live' | transloco }}</legend>
+		<div class="form-check">
+			<input
+				class="form-check-input"
+				type="radio"
+				id="pb_when_now"
+				name="pb_when"
+				[checked]="when() === 'now'"
+				(change)="when.set('now')"
+			/>
+			<label
+				class="form-check-label"
+				for="pb_when_now"
+			>
+				{{ 'pb_when_now' | transloco }}
+			</label>
+		</div>
+		<div class="form-check d-flex align-items-center flex-wrap gap-2">
+			<input
+				class="form-check-input"
+				type="radio"
+				id="pb_when_at"
+				name="pb_when"
+				[checked]="when() === 'at'"
+				(change)="when.set('at')"
+			/>
+			<label
+				class="form-check-label"
+				for="pb_when_at"
+			>
+				{{ 'pb_when_at' | transloco }}
+			</label>
+			<input
+				class="form-control w-auto"
+				type="datetime-local"
+				id="pb_from"
+				[attr.aria-label]="'pb_when_at' | transloco"
+				[value]="fromLocal()"
+				(focus)="when.set('at')"
+				(change)="fromLocal.set($any($event.target).value); when.set('at')"
+			/>
+			<span class="help-text">{{ 'pb_india_time_short' | transloco }}</span>
+		</div>
+	</fieldset>
+	<fieldset class="theme-form mb-3">
+		<legend class="h6">{{ 'pb_ends' | transloco }}</legend>
+		<div class="form-check">
+			<input
+				class="form-check-input"
+				type="radio"
+				id="pb_ends_another"
+				name="pb_ends"
+				[checked]="ends() === 'another'"
+				(change)="ends.set('another')"
+			/>
+			<label
+				class="form-check-label"
+				for="pb_ends_another"
+			>
+				{{ 'pb_ends_another' | transloco }}
+			</label>
+		</div>
+		<div class="form-check d-flex align-items-center flex-wrap gap-2">
+			<input
+				class="form-check-input"
+				type="radio"
+				id="pb_ends_at"
+				name="pb_ends"
+				[checked]="ends() === 'at'"
+				[disabled]="!v.handBackTo.length"
+				(change)="ends.set('at')"
+			/>
+			<label
+				class="form-check-label"
+				for="pb_ends_at"
+			>
+				{{ 'pb_when_at' | transloco }}
+			</label>
+			<input
+				class="form-control w-auto"
+				type="datetime-local"
+				id="pb_until"
+				[attr.aria-label]="'pb_ends' | transloco"
+				[disabled]="!v.handBackTo.length"
+				[value]="untilLocal()"
+				(focus)="ends.set('at')"
+				(change)="untilLocal.set($any($event.target).value); ends.set('at')"
+			/>
+			<label
+				class="help-text"
+				for="pb_hand_back"
+			>
+				{{ 'pb_then_back_to' | transloco }}
+			</label>
+			<select
+				class="form-select w-auto"
+				id="pb_hand_back"
+				[disabled]="!v.handBackTo.length"
+				(change)="handBackTo.set($any($event.target).value || null)"
+			>
+				@for (row of v.handBackTo; track row.layoutId) {
+				<option
+					[value]="row.layoutId"
+					[selected]="row.layoutId === handBackTo()"
+				>
+					{{ row.name }}
+				</option>
+				}
+			</select>
+		</div>
+		@if (!v.handBackTo.length) {
+		<p class="help-text mb-0">{{ 'pb_ends_needs_other' | transloco }}</p>
+		}
+	</fieldset>
+	@if (when() === 'at' && fromIso()) {
+	<div
+		class="fm-note mb-3"
+		id="pb_schedule_note"
+	>
+		<i
+			class="ri-calendar-line"
+			aria-hidden="true"
+		></i>
+		<div>
+			{{ 'pb_schedule_note_from' | transloco: { when: (fromIso() | date: 'd MMM y, h:mm a' : '+0530'), name:
+			v.layoutName } }} @if (ends() === 'at' && untilIso() && handBackName()) { {{ 'pb_schedule_note_until' |
+			transloco: { when: (untilIso() | date: 'd MMM y, h:mm a' : '+0530'), name: handBackName() } }} } {{
+			'pb_schedule_note_end' | transloco }}
+		</div>
+	</div>
+	} } @else {
+	<!-- Q10 A, SG-18: everyone else asks the owner and super admins. -->
+	<p class="help-text">{{ 'pb_review_help' | transloco }}</p>
+	<label
+		class="form-label-title"
+		for="pb_review_note"
+	>
+		{{ 'pb_review_note' | transloco }}
+	</label>
+	<textarea
+		class="form-control mb-2"
+		id="pb_review_note"
+		rows="2"
+		maxlength="300"
+		[value]="note()"
+		(input)="note.set($any($event.target).value)"
+	></textarea>
+	} @if (error(); as message) {
+	<p
+		class="fm-err"
+		role="alert"
+	>
+		{{ message }}
+	</p>
+	}
+</div>
+<div class="modal-footer flex-wrap">
+	@if (problems().length) {
+	<p class="fm-warn me-auto mb-0">
+		<i
+			class="ri-error-warning-line"
+			aria-hidden="true"
+		></i>
+		{{ 'pb_waits_saved' | plural: problems().length }}
+	</p>
+	}
+	<button
+		type="button"
+		class="btn btn-outline"
+		(click)="modal.dismiss()"
+	>
+		{{ 'pb_back_to_editing' | transloco }}
+	</button>
+	@if (v.canGoLive) {
+	<button
+		type="button"
+		class="btn btn-theme"
+		id="pb_go_live_confirm"
+		[disabled]="!canGo() || busy()"
+		(click)="go()"
+	>
+		{{ (when() === 'at' ? 'pb_schedule' : 'go_live') | transloco }}
+	</button>
+	} @else {
+	<button
+		type="button"
+		class="btn btn-theme"
+		id="pb_ask_review"
+		[disabled]="busy()"
+		(click)="askReview()"
+	>
+		{{ 'pb_ask_review' | transloco }}
+	</button>
+	}
+</div>
+} }

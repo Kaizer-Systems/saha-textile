@@ -1,15 +1,28 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, OnInit, PLATFORM_ID, computed, effect, inject, input, output, signal } from '@angular/core';
+import {
+	Component,
+	OnInit,
+	PLATFORM_ID,
+	computed,
+	effect,
+	inject,
+	input,
+	output,
+	signal,
+	viewChild,
+} from '@angular/core';
 
 import { CarouselComponent } from 'ngx-owl-carousel-o';
 
+import { IAttributeValue } from '@data-access/interfaces/attribute.interface';
 import { ICartAddOrUpdate, ICartLineConfig } from '@data-access/interfaces/cart.interface';
 import { ConfiguratorState, IAddonGroup, IConfiguratorSummary } from '@data-access/interfaces/product-detail.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 
 import { AddonGroup } from '../parts/addon-group/addon-group';
 import { AttributesInfo } from '../parts/attributes-info/attributes-info';
-import { BundleConfigurator } from '../parts/bundle-configurator/bundle-configurator';
+import { BundleConfigurator, type SetChoice } from '../parts/bundle-configurator/bundle-configurator';
+import { FreeItems, type FreeItemsState } from '../parts/free-items/free-items';
 import { VariationAxis } from '../parts/variation-axis/variation-axis';
 
 /**
@@ -24,7 +37,7 @@ import { VariationAxis } from '../parts/variation-axis/variation-axis';
 	selector: 'app-product-configurator',
 	templateUrl: './product-configurator.html',
 	styleUrls: ['./product-configurator.scss'],
-	imports: [AttributesInfo, VariationAxis, AddonGroup, BundleConfigurator],
+	imports: [AttributesInfo, VariationAxis, AddonGroup, BundleConfigurator, FreeItems],
 })
 export class ProductConfigurator implements OnInit {
 	readonly product = input.required<IProduct>();
@@ -32,6 +45,15 @@ export class ProductConfigurator implements OnInit {
 	readonly owlCar = input<CarouselComponent>();
 	/** Saved line snapshot to re-seed selections when editing an existing cart line. */
 	readonly initialConfig = input<ICartLineConfig>();
+	/**
+	 * The attribute chips (facts) and the option table. The product page turns both off and draws them
+	 * below its buttons so Add to cart and Buy now reach the first screen (owner, 21 Nov 2026, brief P10);
+	 * the pop-up keeps them with the choices.
+	 */
+	readonly showFacts = input(true);
+	readonly showTable = input(true);
+	/** The set's summary; the product page draws it in its right column instead (brief P8). */
+	readonly showSetSummary = input(true);
 
 	private platformId = inject(PLATFORM_ID);
 	private allowVariantUrl = false;
@@ -41,6 +63,8 @@ export class ProductConfigurator implements OnInit {
 	readonly selectedVariation = signal<IVariation | null>(null);
 	readonly addonState = signal<ConfiguratorState | null>(null);
 	readonly bundleState = signal<ConfiguratorState | null>(null);
+	/** Free with this product (P8): the picks and whether a required choice is made. */
+	readonly freeState = signal<FreeItemsState | null>(null);
 
 	// Sections the product actually has — composed additively (a product may have several at once,
 	// e.g. a Colour variation axis AND a Blouse-Design add-on). Gated purely by data presence.
@@ -53,6 +77,9 @@ export class ProductConfigurator implements OnInit {
 	readonly addonSeed = computed(() => this.initialConfig()?.raw?.addon_selections);
 	readonly bundleSeed = computed(() => this.initialConfig()?.raw?.bundle_selections);
 	readonly measurementSeed = computed(() => this.initialConfig()?.raw?.measurements);
+	/** A saved set's choices and a product's free picks, for Edit in the cart. */
+	readonly setSeed = computed(() => this.initialConfig()?.raw?.set_choice);
+	readonly freeSeed = computed(() => this.initialConfig()?.raw?.free_items ?? null);
 
 	/** Base price the add-on delta stacks onto: selected variant → bundle kit price → product base. */
 	readonly effectiveBase = computed(() => {
@@ -78,13 +105,14 @@ export class ProductConfigurator implements OnInit {
 	/** Purchasable only when EVERY present section is satisfied. */
 	readonly purchasable = computed(() => {
 		const p = this.product();
-		// A bundle shows what it holds, but cannot be bought until it can be priced (brief B12).
-		if (this.hasBundle()) return false;
+		// A set can be bought once its choices are complete (bundle builder brief; priced by the server).
+		if (this.hasBundle()) return this.bundleState()?.valid ?? false;
 		const baseStockOk = this.hasVariation()
 			? this.selectedVariation()?.stock_status === 'in_stock'
 			: p.stock_status === 'in_stock';
 		const addonOk = !this.hasAddon() || (this.addonState()?.valid ?? false);
-		return baseStockOk && addonOk;
+		const freeOk = !p.free_with || (this.freeState()?.valid ?? false);
+		return baseStockOk && addonOk && freeOk;
 	});
 
 	/** True only when genuinely out of stock — not merely awaiting add-on/bundle configuration. */
@@ -125,6 +153,41 @@ export class ProductConfigurator implements OnInit {
 			const variation = this.product().variations?.find((v) => v.id === variationId);
 			if (variation) this.selectedVariation.set(variation);
 		}
+	}
+
+	private readonly axis = viewChild(VariationAxis);
+	private readonly addonPart = viewChild(AddonGroup);
+
+	/** The add-on part's choices, for the buy bar's sheets to start from (brief P4). */
+	addonSnapshot() {
+		return this.addonPart()?.snapshot() ?? null;
+	}
+
+	private readonly setPart = viewChild(BundleConfigurator);
+
+	/** The set part's choices, for the buy bar's Configure set sheet to start from. */
+	setSnapshot() {
+		return this.setPart()?.snapshot() ?? null;
+	}
+
+	/** Writes the Configure set sheet's choices back into the page's set part. */
+	applySet(
+		selections: Record<string, string>,
+		measurements: Record<string, number>,
+		measured: boolean,
+		set: SetChoice = {},
+	) {
+		this.setPart()?.apply(selections, measurements, measured, set);
+	}
+
+	/** Writes the buy bar's sheet's add-on choices back into the page's add-on part. */
+	applyAddon(selections: Record<string, string>, measurements: Record<string, number>, measured: boolean) {
+		this.addonPart()?.apply(selections, measurements, measured);
+	}
+
+	/** Chooses an option value from outside the page's own buttons (the buy bar), through those same buttons. */
+	chooseValue(value: IAttributeValue) {
+		this.axis()?.choose(value);
 	}
 
 	selectVariation(variation: IVariation | null) {
@@ -184,6 +247,19 @@ export class ProductConfigurator implements OnInit {
 				addon_selections: this.hasAddon() ? addonSel : undefined,
 				bundle_selections: this.hasBundle() ? bundleSel : undefined,
 				measurements: meas && Object.keys(meas).length ? meas : undefined,
+				// A set's choices and a product's free items go to the cart as the shopper made them.
+				...(this.hasBundle()
+					? {
+							set_choice: {
+								picks: this.bundleState()?.picks ?? {},
+								variants: this.bundleState()?.variants ?? {},
+								extras: this.bundleState()?.extras ?? [],
+								free: this.bundleState()?.free ?? {},
+							},
+						}
+					: {}),
+				// Sent even when empty, so an edit that drops every optional free item clears them on the line.
+				...(this.freeState() ? { free_items: this.freeState()?.picks ?? [] } : {}),
 			},
 		};
 
@@ -203,7 +279,10 @@ export class ProductConfigurator implements OnInit {
 				);
 				return { group: g.label, value: term?.label ?? '', price_delta: term?.price_delta ?? 0 };
 			});
-			cfg.bundle_components = p.bundle.components.map((c) => ({ name: c.name, sku: c.sku, price: c.price }));
+			const chosen = new Set(this.bundleState()?.pieces ?? []);
+			cfg.bundle_components = [...p.bundle.levels.flatMap((level) => level.items), ...p.bundle.extras]
+				.filter((item) => chosen.has(item.key))
+				.map((item) => ({ name: item.name, sku: item.sku, price: item.today }));
 		}
 
 		const fields = p.measurement_fields ?? p.bundle?.measurement_fields;

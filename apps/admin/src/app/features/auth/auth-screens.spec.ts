@@ -2,8 +2,10 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
+import { AdminAuthGateway } from '@core/auth/auth-gateway';
 import { AuthStore } from '@core/state/auth.store';
 
 import { ForgotPassword } from './forgot-password/forgot-password';
@@ -16,7 +18,7 @@ vi.mock('@core/brand/brand.gateway', () => ({
 	injectBrandQuery: () => ({ data: brandData }),
 }));
 
-const setup = <T>(type: new () => T, token: string | null = 'tok') => {
+const setup = <T>(type: new () => T, token: string | null = 'tok', notice: string | null = null) => {
 	const store = {
 		error: signal(null),
 		pending: signal(false),
@@ -27,16 +29,18 @@ const setup = <T>(type: new () => T, token: string | null = 'tok') => {
 		requestPasswordReset: vi.fn(async () => true),
 	};
 	const router = { navigateByUrl: vi.fn(async () => true), navigate: vi.fn(async () => true) };
+	const gateway = { sessionNotice: vi.fn(() => of(notice)) };
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: AuthStore, useValue: store },
 			{ provide: Router, useValue: router },
+			{ provide: AdminAuthGateway, useValue: gateway },
 			{ provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: { get: () => token } } } },
 		],
 	});
 	TestBed.overrideComponent(type, { set: { imports: [], template: '' } });
-	return { screen: TestBed.createComponent(type).componentInstance, store, router };
+	return { screen: TestBed.createComponent(type).componentInstance, store, router, gateway };
 };
 const strong = 'long-enough-password';
 
@@ -178,5 +182,17 @@ describe('Otp', () => {
 		expect(router.navigate).toHaveBeenCalledWith(['/auth/update-password'], {
 			queryParams: { token: 'long-enough-token' },
 		});
+	});
+});
+
+describe('Login signed-out notice', () => {
+	it('shows the day everyone was signed out, when the API says this browser was one of them', () => {
+		const { screen, gateway } = setup(Login, 'tok', '2026-11-23');
+		expect(gateway.sessionNotice).toHaveBeenCalledTimes(1);
+		expect((screen as Login).signedOutDay()).toBe('23/11/2026');
+	});
+
+	it('shows nothing when the API has nothing to say', () => {
+		expect((setup(Login).screen as Login).signedOutDay()).toBeNull();
 	});
 });

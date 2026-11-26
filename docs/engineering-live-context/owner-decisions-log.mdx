@@ -363,7 +363,7 @@ Prose and comments keep saying “operator”; identifiers say `adminUser`. The 
 ## i18n
 
 - English is the primary locale.
-- The active target locale pair is English and French.
+- The active target locale pair is English and Bengali (Bengali replaced French on 2026-11-08; see that round).
 - Bengali is an illustrative likely next locale, not a currently locked launch pair.
 - The active locale set is **configuration, not a contract constant** (engineering refinement 2026-07-31). `packages/contracts` validates a locale-code shape (`LocaleCode`) and a configured set (`ActiveLocaleConfig`); it never hard-codes which locales are live, so adding, swapping, or retiring a locale is a configuration change rather than a contracts/API change. `en` must remain in the active set because `I18nString` requires it.
 - Machine 1: developer-owned UI chrome uses Transloco keys.
@@ -393,7 +393,12 @@ reciprocal, self-referencing hreflang with `x-default`).
   non-redirecting "view this page in French?" suggestion is permitted later, behind its own UI
   brief.
 - **hreflang:** every indexable page lists every active locale including itself, as fully
-  qualified URLs, plus `x-default` → `/`.
+  qualified URLs, plus `x-default` → the same page in English (`/en/…`). _Amended 2026-11-08 by
+  the owner: it was `x-default` → `/`, which sent every searcher outside the shop's languages to
+  the home page instead of the page they searched for._
+- **Link previews:** every page carries `og:locale` for its language (`en_IN`, `fr_FR`, later
+  `bn_IN`), and an indexable page lists its other languages as `og:locale:alternate` (owner,
+  2026-11-08).
 - **Currency and country are never in the URL.** Prices are canonical INR converted per visitor.
 - **Redirects:** legacy WooCommerce paths and today's unprefixed public paths are resolved by the
   legacy resolver recorded in the 2026-11-04 owner round (exact row, then a same-path `/en/`
@@ -487,7 +492,7 @@ Roles live in the `mediaRoles` collection: seeded roles are undeletable and unre
 ### Banners and content blocks
 
 - Banners are `contentBlocks` records — one record per page position, named by **position and shape, never by a Fastkart theme**. The storefront keeps one theme and colour scheme; other themes' hero styles become admin-selectable layouts rendered in our colours.
-- Home hero layout is one setting: `hero_full` (one 10:3 banner), `hero_main_side` (main + one tall tile), `hero_main_stack` (main + two stacked tiles), `hero_center_sides` (centre + tall tiles left and right). Slots within a layout: `main`, `side`, `side_top`, `side_bottom`, `left`, `right`. Record key form: `home.hero.main`.
+- Home hero layout is one setting: `hero_full` (a 10:3 carousel of up to three slides, changed in the 2026-11-07 home page round below), `hero_main_side` (main + one tall tile), `hero_main_stack` (main + two stacked tiles), `hero_center_sides` (centre + tall tiles left and right). Slots within a layout: `main`, `side`, `side_top`, `side_bottom`, `left`, `right`. Record key form: `home.hero.main`.
 - Other positions: `promo_cards`, `promo_wide`, `strip`, `bar`, `sidebar_tall`, `category_banner`, `product_sidebar`, `newsletter_popup`.
 - Banner boxes never crop: the box takes the shape of the image chosen for the current viewport width. Up to three images per slot — desktop (required), tablet 768–1199 (optional, falls back to desktop), phone below 768 (portrait or square). Landscape phones get the tablet/desktop image.
 - One "Image contains text" switch per slot. **Off (default):** a text-free photo with live heading/subheading/CTA per locale over it. **On:** the phone image is mandatory on wide slots, live-text fields hide, alt must repeat the image's words, and an optional per-locale image set overrides the default (empty falls back to it). No safe zones or hard boundaries. Designer brief: one design exported as artboards — desktop 2880×864, phone 1080×1350 or 1080×1080.
@@ -508,9 +513,10 @@ Roles live in the `mediaRoles` collection: seeded roles are undeletable and unre
 ### Video and YouTube
 
 - Uploaded video is dropped at launch; the HLS/ffmpeg seams stay dormant behind an off-by-default flag.
-- YouTube playback uses Vidstack's YouTube provider, `youtube-nocookie`, click-to-load, `rel=0` (end-screen suggestions stay within the same channel).
-- PDP videos come from a per-product field that accepts a URL or bare ID, normalised to the ID. The field has a **Validate** button that must succeed before the form can submit; on success it becomes plain text showing the matched video title, and editing the field resets it.
-- The home rail uses Data API v3 through `YouTubePort` (`playlistItems.list` on the uploads playlist, 1 quota unit), fetching and caching 10 daily at 00:00 IST; the displayed count is an admin setting seeded at 8; surfaces are a `youtubeRailPlacements` list seeded with `home`.
+- YouTube playback uses **Video.js 10** (`@videojs/html` with `@videojs/youtube-video`, Apache-2.0) in place of Vidstack (deprecated, security fixes only until January 2028): `youtube-nocookie`, click-to-load (the server renders a poster button; the player loads on the click), `rel=0`, controls in the shop's colours (2026-11-10).
+- PDP videos come from a per-product **list** of up to 5 YouTube videos, long videos and Shorts mixed, in the order admin sets. Each row accepts a URL or bare ID, normalised to the ID; the server checks it on paste or Enter (a Validate button stays for typed IDs) and refuses private, deleted, non-embeddable or duplicate videos. Nothing unchecked is ever saved. The server tells a Short from a long video by itself (length and portrait shape), so admin has no long/short switch (2026-11-10).
+- The home rail and `/videos` use Data API v3 through `YouTubePort` (`playlistItems.list` on the uploads playlist plus `videos.list`, 1 quota unit per 50 each), refreshed once a day at 00:00 IST by the worker, never per shopper. The cache holds the **24 newest videos and 12 newest Shorts**; the rail's displayed count is an admin setting seeded at 8 (maximum 24); surfaces are a `youtubeRailPlacements` list seeded with `home`.
+- See the 2026-11-10 video page round below for the page, Shorts, product-page and consent rules.
 
 ## Payments, FX, and shipping
 
@@ -571,6 +577,7 @@ Roles live in the `mediaRoles` collection: seeded roles are undeletable and unre
     - staging and prod use Cloudflare's edge certificate plus a Cloudflare Origin Certificate on Nginx (Full strict).
 - Hostnames are single-level subdomains (locked 2026-11-02), because Cloudflare's free Universal SSL covers only `*.sahatextile.com`. Staging: `staging.sahatextile.com` (storefront), `admin-staging.sahatextile.com`, `api-staging.sahatextile.com`, `cdn-staging.sahatextile.com`. Production (locked 2026-11-03): the storefront on the bare `sahatextile.com` (as the live WordPress site today; `www` permanently redirects to it), `admin.sahatextile.com`, `api.sahatextile.com`, `cdn.sahatextile.com`. Cookies are host-only (see the owner decision round of 2026-11-06).
 - Protected branches are changed only through reviewed PRs.
+- The full agreed deployment design is in `production-deployment-plan.mdx` (2026-11-08).
 
 ## Audit and retention
 
@@ -906,7 +913,7 @@ Closed: `DEC-DOMAIN-TOPOLOGY`.
 - **Cookies are host-only.** `COOKIE_DOMAIN` stays empty in every environment, so every cookie stays on the API host with the `__Host-` prefix and none reaches WordPress, staging or another subdomain. The storefront and admin take the CSRF token from the API's reply, not from a cookie. Double-submit CSRF itself is unchanged.
 - **Staging runs on demand.** A script creates the staging droplet, and it stays up until the owner runs the destroy script by hand. Nothing destroys it automatically. The destroy script removes everything billed for that droplet; the worst case for forgetting is about $24 a month.
 - **Backups go to Spaces only.** Nightly and encrypted, to a private bucket in `sgp1`. The server holds only the key to encrypt, so it cannot read old backups. The owner accepted the risk that a DigitalOcean account problem affects the shop and its backups together.
-- **Deploys reach the droplet by SSH through Cloudflare Tunnel.** Port 22 stays closed to the internet. DigitalOcean's web console is the fallback.
+- **Deploys reach the droplet by SSH through Cloudflare Tunnel.** Port 22 stays closed to the internet. The Recovery Console is the fallback (corrected 2026-11-08: the browser Droplet Console needs the SSH port open).
 
 ## Owner decision round (2026-11-07) — known gaps after Chunk F
 
@@ -939,6 +946,1836 @@ Closed: `DEC-DOMAIN-TOPOLOGY`.
 - **Logos:** a Brand Kit in admin, through the media pipeline, so a new owner uploads their own after deployment. The TIFF is the master, and both versions are cut from it so the reds match. Wide places show the full logo with seal, name and tagline; small spaces show the seal. On dark or coloured areas the logo sits on white and keeps its own colours.
 - **Cookies:** the box has three equal buttons, and refusing takes one click. Cookie settings shows all six locked categories; empty ones say Not in use with no switch, and Accept all turns on only what is in use. `st_consent` holds the answer in the browser and `POST /privacy/consent` keeps the history. The Contact map waits for consent or a click. The Privacy Policy cookie section is a draft until the owner's lawyer or CA reviews it.
 
+## Owner decision round (2026-11-07) — payment port
+
+- **`PaymentGatewayPort` has five calls:** `createPayment`, `verifyCallback`, `fetchPaymentStatus`, `refundPayment`, `fetchRefunds`. All are vendor-neutral, so Razorpay and PayPal fit the same port.
+- **One rule in core judges every gateway's answers:** `decidePaymentResult(storedAttempt, status, callback?)`, a pure function answering apply, duplicate, pending or review. Amount, currency, attempt and replay checks are written once.
+- **Amounts at the port are whole paise (minor units), and `orderId` becomes `attemptId`,** because one order can have several attempts.
+- **The CCAvenue adapter is bound in the API and unused.** `INR_PAYMENT_GATEWAY` builds the real adapter once all CCAvenue values are set, and a "not configured" adapter until then. No route calls it, so checkout stays closed.
+- **`confirmOrder` and `cancelOrder` wait for HDFC's answer** on whether this account auto-confirms.
+
+## Owner decision round (2026-11-07) — admin home page (`DEC-ADMIN-HOME-WIDGETS`)
+
+- **Revenue means the full amount paid:** `totalINR` of paid, processing, shipped and delivered orders, with shipping and after discounts. The owner may change this later.
+- **The Total Revenue and Total Orders tiles default to the last 12 months.** Each tile has its own period link with Last 30 days, Last month, Last quarter, Current quarter and Custom. Custom covers at most 24 months. Days and months follow India time, and quarters are calendar quarters. The Monthly Revenue chart stays on 12 months.
+- **Option B is the approved period control:** a small link under the number that opens a menu, built from existing dropdown and date-range parts with no new CSS class (`admin-home-period-picker-brief-2026-11-07.html`).
+- **The Total Stores tile, Top Stores panel, Latest Blogs panel and the chart's commission line stay as demo data for now.** They are marked for later. Needs Attention, Total Products and Latest Questions were proposed in their place and were not chosen, so they are not built.
+- **Each real widget has its own permission,** in one Dashboard group on the role screen: `dashboard.revenue`, `dashboard.orders`, `dashboard.customers`, `dashboard.top_products`, `dashboard.stock`, `dashboard.reviews`. The API refuses the data and the widget hides. The two demo panels keep `store.index` and `blog.index`, and the demo tile follows `store.index`.
+- **The shapes in `packages/contracts/src/dashboard.ts` are temporary** and will change when the order, stock and report screens are settled.
+
+## Owner decision round (2026-11-07) — home page restored
+
+The owner reviewed the home page after PR 6 and said the removals below were never authorised. This round reverses the menu and hero part of D8 above. The contact details from the live site stay.
+
+- **No visible removal under a broad label.** Demo menu links, page sections and layouts stay until the owner names that exact removal. A brief must list each visible item it removes, with a before and after. A missing image means the layout stays with a stand-in image through Spaces, so only the image changes later.
+- **The header menu is back in full:** Home, the real categories, Product, Mega Menu, Blog and Pages, on desktop and in the phone menu. The Mega Menu email and invoice template columns are back too, on the owner's request. They still link to the Fastkart demo site and are the one exception to "All Fastkart text goes".
+- **Demo product links open real products.** Their old slugs left with the demo catalogue, so the menu fills them from the live product rails.
+- **The full-width hero is a carousel of up to three slides.** `hero_full` gains the `slide_2` and `slide_3` slots beside `main`. This replaces "one 10:3 banner". The Home banners screen shows one form per slide, using the existing form.
+- **The two promo banners under the hero are back** as `promo_wide` `item_1` and `item_2`, set on the Home banners screen with the same form.
+- **Restored as they were:** the footer Google Play and App Store badges, the Pinterest icon, and the product page side banner. There is no app or Pinterest page yet, so those links open the general sites until real addresses exist.
+- **Stand-in images stay until real art arrives.** Ten banners went through the media pipeline to Spaces in `saha_textile_local`, filling every hero slot so all four layouts work at once. `seed:local-home-banners` repeats this and never overwrites a filled slot.
+- **Still removed:** the demo phone, address and about text, the product Unit line (replaced by D3), the old theme logos (replaced by the Brand Kit), and the attributes note on the product page.
+- **Cookie box:** the approved design stands. Labels stay on one line. Where the longest label cannot sit side by side, as in French, the buttons stack at equal width. This is a fix, not a new design.
+
+## Owner decision round (2026-11-07) — installable PWA
+
+- **Scope:** the storefront becomes an installable app now. Offline catalogue, offline cart queue and image caching are deferred, not dropped, and are built later in the same PWA chat. Until then the service worker has no `fetch` handler and there is no You're offline page.
+- **Icons and name:** the manifest reads the Brand Kit, so a white-label shop gets its own icon and name with no rebuild. Built-in neutral icons cover a shop with no seal yet.
+- **Brand icons:** square, padded and flattened on white, because an iPhone home screen fills transparency with black. The role change reprocesses existing seals from their retained originals, so no re-upload is needed.
+- **Updates:** silent. When a new build goes live, the next in-app link is a normal page load. No notice on screen.
+- **Consent:** the service worker is listed as Necessary. It stores no personal data and adds no cookie, so the policy version did not change.
+- **Get the App:** the top bar link starts the install, and the same link sits in the footer's Customer Service list because the top bar only shows at 1400 px and wider. A browser with no install prompt gets a how-to popup. No banner and no automatic popup; Chrome's own install bar on Android stays. Both links are hidden inside the installed app.
+
+## Owner decision round (2026-11-08) — deployment
+
+Closed: `DEC-SECRETS-DELIVERY`. The full design is in `production-deployment-plan.mdx`.
+
+- **Code moves `dev → staging → main` with normal merge commits.** This replaces squash-only on `main` and `staging`. Squash is for short-lived branches: between permanent branches it conflicted on the second release in a test, while normal merges ran six releases clean. `main` and `staging` lose the linear-history rule and keep signed commits, PR-only, no force-push and no deletion. `qa` retires.
+- **Images build once, when code merges into `staging`.** Production runs the same digests, found through the Git tree hash, which is the same on both branches.
+- **Merging to `main` starts the deploy, then it waits for the owner's approval in GitHub.**
+- **Every release passes the staging droplet,** with a logged emergency switch for a broken shop. CI and approval still apply.
+- **Staging create and destroy scripts run from the owner's Mac for now.** They move to a GitHub pipeline once secrets are stored more securely, so they stop depending on one device.
+- **Secrets are written to mounted read-only files.** The source was revised on 2026-11-17 to Infisical Cloud Free; see that decision round below. The master copy is in NordPass, the owner's primary password manager, with a second copy of the backup key in Bitwarden (corrected the same day; NordPass replaces Bitwarden as the main copy).
+- **The Recovery Console is the break-glass route,** with the admin user's password in NordPass.
+- **Reboots are the owner's call.** Security patches install automatically, an email says when a reboot is pending, and after 7 days the server reboots itself at 4 am IST. A super admin screen will show patch status and trigger the reboot with a PIN, with manual fallbacks.
+- **Data stays on the droplet's own disk.** No separate block volume.
+- **The catalogue will be large.** The 23 products and 40 SKUs figure described the old WordPress test site. Size against measured data.
+- **Origin lockdown adds Authenticated Origin Pulls with our own zone certificate,** on top of the firewall limit to Cloudflare's ranges.
+- **Staging sits behind a Cloudflare Access login wall** on `staging.` and `admin-staging.`. `api-staging.` stays reachable for webhooks.
+- **Deploys swap old and new side by side, with no gap** (revised the same day, after measuring a plain restart at about 1.3 seconds for the API). The "back in a moment" page, in each app's own look, stays for rare reboots and crashes. The CCAvenue return address stays on the API host, and its return path shows the storefront's page worded for a payment being confirmed. Kubernetes and several servers wait until sales justify roughly $150 to $250 a month.
+- **Two copies each of the API and storefront run behind Nginx,** so one crashing or hanging never stops the shop. Kubernetes, including free single-node k3s, was evaluated and deferred; the full reasoning and figures are in `kubernetes-evaluation.mdx`.
+- **The staging droplet is procured once full development is complete,** not before.
+- **GitHub settings changed with the owner watching:** the strict ruleset now requires signed commits only (linear history off), `qa` is deleted and out of the rulesets, and two-factor is required for the organisation. "Only allow secure two-factor methods" stays off until the owner confirms they do not use SMS codes.
+- **Both GitHub Environments require the owner's approval:** `staging` (deploys only from `staging`) and `production` (deploys only from `main`). Staging never deploys without approval.
+- **Backups keep 30 daily and 12 monthly,** with versioning on. The owner accepted that the server's key can delete backups, because Spaces has no write-only key.
+- **Monitoring is DigitalOcean only.** A super admin screen shows metrics fetched by the API. It grows with the number of droplets: a named switcher, and a view comparing metrics across servers.
+- **The developer portal stays local for now.** `DEC-PORTAL-PRIVATE-ACCESS` stays open.
+- **What happens to WordPress hosting is decided at launch.** A full export before the switch stays required.
+
+## Owner decision round (2026-11-08) — Bengali replaces French
+
+The owner approved the Bengali plan (revision 3) as recommended. This replaces the earlier lock that kept French for the whole development phase and added Bengali only afterwards. The reason for that lock still holds, so the shop keeps two live languages: English and Bengali.
+
+- **BN-1 Language code:** `bn`, pages under `/bn/…`, `hreflang="bn"`, `og:locale` `bn_IN`, `lang="bn"`.
+- **BN-2 Old French addresses:** `/fr/…` stops existing and answers not found, with no redirect. A saved `st_locale=fr` cookie falls back to English.
+- **BN-3 Digits:** English digits everywhere (prices, sizes, PIN codes, phone and order numbers, dates). Month and weekday names stay Bengali. Number formatting uses `bn-IN-u-nu-latn`.
+- **BN-4 Spelling:** Paschimbanga Bangla Akademi spelling (শাড়ি, ইমেল, শর্তাবলি).
+- **BN-5 Brand:** the logo never changes. Running Bengali text says সাহা টেক্সটাইল in full; page titles keep `| Saha Textile`. The naming check also catches a bare সাহা. {/* naming-law:allow */}
+- **BN-6 Addresses:** product and category addresses stay in English letters; only the language prefix changes.
+- **BN-7 Switcher:** label বাংলা with the India flag, in the existing switcher.
+- **BN-8 Legal pages:** all five in Bengali, each opening with a line that the English version governs. A legal reviewer is not yet available, so a qualified reader must check them before launch.
+- **BN-9 Messages:** emails follow the customer's language from the start; text messages stay English at launch; WhatsApp moves to Bengali once its templates are approved.
+- **BN-10 Admin:** full Bengali through its language switch, English by default. Go Live requires English and Bengali.
+- **BN-11 Review:** Claude drafts with the glossary and checks; the owner reads every screen on a review page before anything is pushed.
+- **Bengali review done (2026-11-08):** the owner read every storefront and admin string, the catalogue words, the legal pages and the emails on the review page and approved them as written.
+- **BN-12 Customer details:** every stored name (profile, recipient, billing, and names from Google or Facebook sign-in) and every delivery detail is in English letters. Reviews, questions and messages may be in any language.
+- **BN-13 Stored language:** on the customer (from the sign-up page, changeable in the account) and on every order.
+- **Where it runs:** on `feat/combined-after-pr6`, committed in steps, nothing pushed until the owner has read the Bengali.
+
+## Owner decision round (2026-11-08) — blog
+
+- **The six demo posts become six real Saha Textile posts** that help search rankings, created and published through the admin, with pictures uploaded through the admin's media library, never written straight into the database.
+- **Every post, blog category and tag is written in English and Bengali.** Go Live is blocked until both are complete, as for products.
+- **Byline:** author "Saha Textile" by default, changeable per post; the date only, without the time of day.
+- **Listing layout:** the "Blog list" layout (list view, left sidebar) lists all posts. Post pages use the left sidebar too, hidden on phones as today.
+- **The three grid layouts go:** the Grid left sidebar, Grid right sidebar and Grid no sidebar menu links are removed, along with the grid views they open.
+- **What has to be built first:** blog posts, categories and tags in the database and API, the admin blog screens wired to it with the Language switch, and the shop pages reading it, each sending its own title, description, share card, article facts and breadcrumb. The brief, with marked screenshots of where each field shows, is the blog plan artifact of 8 November 2026.
+
+## Owner decision round (2026-11-08) — search suggestions
+
+- **Brief approved as drawn:** one suggestion box shared by the menu-bar search and the Search page, with the wireframes, reuse list and custom CSS named in the search suggestion box brief of 8 November 2026 (box placement, a copy of the header cart's row styles, highlighted row, section labels, bold typed part).
+- **Recent searches stay in the shopper's browser only** (`st_search`, Functional cookies). Nothing about a person's searches is stored on the server, signed in or not.
+- **No new cookie question:** `st_search` is listed under Functional without bumping the cookie policy version.
+- **Before there is enough click data,** the empty box shows the shop's bestsellers under the heading "Popular", and switches to "Trending now" once at least 4 products have search clicks.
+- **Category suggestions:** up to 3, matched from the menu already in the browser, in the page language.
+
+## Owner decision round (2026-11-08) — stores, Contact Us and Gmail mailboxes
+
+- **Stores are managed under Settings › Stores, by the super admin only** (`setting.index` to read, `setting.edit` to change; no new codes). Fastkart's marketplace Store menu, screens and the four `store.*` permission codes are removed (registry now 94 codes). Older roles drop a retired code when read.
+- **Each store:** name, address and landmark in English and Bengali; PIN code; a Google Maps link; phone; opening hours stored per day and shown as short day ranges ("Mon–Sat 10:00–20:30, Sun closed"); up to 8 photos of a new `store` media purpose (4:3, card sizes 400/800/1200/1600 WebP); display order; active. A store goes active only with both languages complete, a phone and at least one open day. No coordinates are asked for.
+- **Order is set by dragging rows** in the Stores list (arrow buttons on phones). This drag handle and its drag shadow are the one approved custom piece.
+- **Contact Us:** a card per active store below the form, built as the approved wireframe from the theme's seller-card classes and Bootstrap; photos change by themselves with ng-bootstrap's carousel (bar indicators, no arrows). The single Google map and the two demo office boxes are removed. Store photos come only from the shop's own files; customer photos on Google Maps are never copied.
+- **The admin home Total Stores tile counts active stores**; the vendor Top Stores panel is removed.
+- **Email:** MSG91 email is for OTPs and the newsletter only. Contact-form messages and staff email go through Gmail (the sahatextile.com Google Workspace).
+- **Contact form:** built-in spam checks only (hidden trap, time on form, stored rate limits, link limit, repeat check). Messages are placed straight into the chosen Gmail mailbox with Gmail import, Reply-To the customer.
+- **Gmail mailboxes in the admin:** the super admin connects each sahatextile.com mailbox once by signing in to it on Google's page (Internal OAuth app, per-mailbox tokens, no domain-wide delegation), then gives admin users Read or Read-and-send per mailbox; they never sign in to Google. Aliases (Gmail send-as) can be used by anyone who may send from the mailbox. Email is read live from Gmail and never copied into our database. Both build steps at once; testing with real mailboxes is an open item for staging. Adds `mailbox.manage` and `mailbox.use` when built.
+- **Briefs:** Contact Us and Stores, Admin Stores Screen, Admin Gmail Mailboxes and Saha Textile Store Details, 8 November 2026 (artifacts).
+
+## Owner decision round (2026-11-08) — product page
+
+- **Brief approved:** Product Page Overhaul Brief, 8 November 2026 (artifact), covering rich descriptions, reviews, product Q&A, product and category FAQ, SEO, compare, wishlist and icon labels.
+- **Reviews:** the Reviews tab always shows something: the rating summary and approved reviews, or "No reviews yet" with "Be the first to review this product". Its button signs a guest in, tells a customer without a delivered order to wait, opens the form for a buyer, and reads "Edit your review" once they have reviewed. One review per customer and product. **An edited review goes back to moderation.** The public name is the first name and the initial of the last name, with "Verified buyer".
+- **Ratings come only from approved reviews.** Every product's stored rating was reset to what its approved reviews say (zero on 8 November 2026); the showcase builder's invented ratings are gone at the source. Approving or editing a review updates the product's own star summary too.
+- **Wishlist:** the heart toggles everywhere it appears, with "Added to your wishlist" / "Removed from your wishlist" and a filled red heart. **A guest's list lives in the `st_wishlist` session cookie** (ids only, at most 50, ends when the browser closes) **and counts as a necessary cookie**, because the shopper creates it. A signed-in customer's list is stored with the account (`wishlistItems`, at most 200), removed only by them, and the guest list merges in on sign-in. This replaces "Wishlist … account-bound" for guests.
+- **Compare:** up to four products for the browser session, guest or signed in, in the `st_compare` session cookie (necessary), never stored on the server. The compare page reads each product from the live catalogue.
+- **Product FAQ** shows the product's own questions and its categories' questions (parents included) when switched on for the product.
+- **Right column of the product page:** the demo placeholder banner is removed; Trending lists products opened from search lately in the same categories, topped up with their bestsellers.
+- **Descriptions:** all 1,000 local products get hand-written English and Bengali descriptions entered through the admin edit form, with a "Save and next" button added to make it faster. A craft region is named only when the product name says it.
+- **SEO:** every fix in the brief's ranked list is to be built.
+
+## Owner decision round (2026-11-08) — search words and storefront settings
+
+- **Search words are an admin feature, not a list in code.** Products › Search words: a name in every shop language, spellings per language (typos are forgiven without listing them), and one shared set of tagged categories and products per word, never per language. The fixed synonym list in code is retired; its words were re-entered through the admin.
+- **"Show first" is an admin setting.** Store front › Storefront settings is the home for small shop-wide switches, one group per tab; its Search group picks the categories that come first when the words fit equally. Sarees is set.
+- **The word list lives in the admin now**, on the planned `searchDictionary` collection, rather than in code first.
+- **Brief approved as drawn** (search words brief, 8 November 2026): the list, the form, the Storefront settings page, the search behaviour, and the starting data (Puja, Tant, Laal paar, the old spellings list, Sarees first), entered through the new screens.
+
+## Owner decision round (2026-11-09) — launch and sale events
+
+- **Brief approved as a whole** (Launch and Sale Events Brief, 8 November 2026, version 3, artifact), including the defaults the owner was not asked about one by one: the 3-day rest after ✕, the 60% warning, rounding down to whole rupees, one sale per product at a time, the popup order, and no coupons on sale items until `DEC-PROMO-STACK` is answered.
+- **Two event types under a new Events menu.** A **launch** puts draft categories and their draft products, plus single draft products, live at its start time and never ends. A **sale** gives categories and/or products a sale price between its start and end. Rules are **% off, ₹ off, or a fixed sale price** (per SKU when a product has several price rows). A category can hold products back or give one product its own rule.
+- **Publish arms an event; a draft never runs.** Save changes nothing on the shop. Publish sends the customer message once and shows the countdown. Unpublish returns a scheduled event to draft; Cancel ends a published event for good. A running sale may move its end, change rules and hold products back.
+- **Which rule wins:** a product's own rule, then an own rule set inside a category, then a hold-back, then the category rule. **A product in two sale categories with different rules gets the lower price.** Add-ons are not discounted.
+- **Sale prices are never written onto products.** They are laid over shop reads while the sale runs, so at the end prices go back by themselves. After a sale ends its working rules are cleared and the event keeps a compact record per SKU: normal and sale price, units sold, revenue and discount given.
+- **Times are India time only.** The admin enters IST, and the form treats what is typed as IST whatever the computer's zone. Shoppers see the moment as **fixed IST text**, the same everywhere ("Ends 27 Sep 2027, 11:59 PM IST"; in Bengali with English digits). The countdown is a live remaining time in days, hours, minutes and seconds (days, not months), ticking from the server's clock.
+- **Where shoppers see it:** a line in the top bar's sliding strip per published event; **a one-line strip under the header on phones**, where the top bar's message column is hidden; the product page's "Hurry up! Sale ends in" timer during a sale; and the hidden-tab title line.
+- **Event popup on desktop and phones**, built like the newsletter popup: the admin's event image, the message, the IST moment and the live countdown. A sale's popup stops at the sale's end; **a launch's popup stops 60 days after the launch starts** (not the publish date). It goes before the newsletter popup, which waits for a later visit. ✕ rests that event for 3 days; "Don't show this again" stops it for good. Both answers live per event in the **Functional `st_events` cookie**.
+- **Messages:** email to customers whose consent includes marketing, each in their own language. **SMS and WhatsApp stay an open item** for the MSG91 discussion (API roadmap, Chunk I).
+
+## Owner decision round (2026-11-10) — event popup, pictures and phone strip
+
+- **Brief approved as a whole** (Event Popup Brief, version 2, artifact NKM6KhGbaChMEM4nR6vfqa), after a full browser test of events.
+- **No picture:** on computers and tablets the popup is the text half of the picture popup on its own: 400px wide, the theme's text-half width, centred. Phones are unchanged.
+- **Pictures:** an event takes up to 5 popup pictures (portrait 3:4), still optional. One picture shows as before. Two or more slide by themselves every 4 seconds, with no arrows and Bootstrap's bar indicators at the bottom, like the Contact Us store photos (pause on hover, still for reduced motion). **Picture side** per event: right of the text (default) or left, on computers from 992px; phones and tablets show the pictures as a band above the text.
+- **Phone strip tap** opens that event's popup at once, overriding the ✕ rest, "Don't show this again", the one-per-visit limit, the quiet pages and an unanswered cookie box. If the event's popup is off or its popup period is over, the tap goes to the event's link. Closing a tapped popup stores nothing new; ticking "Don't show this again" in it is saved. The computer top bar line still goes to the link.
+- **Popup timer labels** say "Sale ends in", "Sale starts in" and "Launches in" (Bengali: সেল শেষ হতে বাকি, সেল শুরু হতে বাকি, লঞ্চ হতে বাকি). The product page's "Hurry up! Sales Ends In" becomes "Hurry up! Sale ends in".
+- **Small product card** (Trending Products on the product page, home product columns): the price line wraps inside the box and the Sale tag is left out of this card.
+- **Custom pieces approved:** two commented style rules (400px popup without a picture; the slider fills the picture half), the pictures list and picture side on the event, the three popup labels, and the strip tap behaviour.
+- `saleWindow` stays removed: timed sales are events. `flash_sale` stays for the seed promotion.
+
+## Owner decision round (2026-11-09) — page headings, deep trails and Gmail on Google Cloud
+
+- **One main heading per page (brief "Headings and Deep Trails", option H2).** Categories, Collections and the four policy pages show their name as a visible h1 in the theme's `.title` block (section-title size). Contact Us and FAQ promote their existing heading. Cart, wishlist, checkout, search, sign-in, account, About Us and Offer carry their label as a hidden h1 (Bootstrap `visually-hidden`). A blog post's title becomes its h1 (blog chat).
+- **Deep trails on phones (option T2).** Below 768px, when the trail is four steps deep after Home, the page's own name is not drawn, so every parent fits at 360px (the most common phone width in India). The name stays in the HTML and in the BreadcrumbList data. The owner asked for research first: Google does not require the page itself in the trail, shows breadcrumb results on desktop only, and a structured-data issue never affects ranking. T1, collapsing the middle steps, was declined because it tucks parent links away.
+- **Head of every page.** Each navigation clears the last page's description, share title, share picture and robots tag. Info pages carry their own title, description (English and Bengali) and BreadcrumbList. Categories get a generated description until a stored one exists. About Us and Offer stay `noindex` while they hold the theme's demo content, an empty FAQ is `noindex`, and the maintenance page is `noindex`. The sitemap lists the shop's own pages in both languages, and FAQ once it has questions.
+- **Gmail runs on a second, free Google Cloud project.** The owner never planned on Google Cloud and does not want a paid service. Any Gmail API access needs an OAuth client from the Google Cloud console, as the customer Google sign-in already has. The mailbox client lives in its own project with **Internal** consent (only sahatextile.com staff), because the customer sign-in project must stay External and full-mailbox access on an External app needs Google's paid security review. **No Pub/Sub and no billing account**: the API reads each mailbox's change list about once a minute instead of Gmail push.
+- **DNS waits for staging.** Adding Google to the SPF record and adding a DMARC record are done when staging is set up, not now.
+
+### Follow-up (2026-11-19) — Gmail projects and mailbox capabilities
+
+- **One separate company-owned Internal Mail project per environment:** dev, staging and
+  production. Keep these apart from the External customer-sign-in projects. Each has its own
+  Web OAuth client, secret and exact environment API callback; credentials are created and
+  saved privately by the owner, with the agent stopping before the credential-generating Create.
+- **Mailbox behavior requested:** normal read/write/compose/send/reply/forward, archive,
+  spam, Bin and restore, plus basic Gmail settings such as filters and vacation replies.
+  Delete outside Bin moves the message to Bin; Delete inside Bin permanently deletes only
+  after an explicit confirmation. The requested extensions still need implementation and
+  permission/confirmation proof; credential preparation does not establish feature completion.
+- **Automatic-forwarding administration stays in Gmail/Workspace.** Keep individual mailbox
+  authorization and the no-domain-wide-delegation design. This does not exclude the normal
+  Forward button for a selected message. The owner approved this recommendation after the
+  difference between message forwarding and mailbox-wide automatic forwarding was explained.
+
+### Follow-up (2026-11-19) — admin Inbox upgrade
+
+- **Brief approved as a whole:** Gmail Workspace Upgrade (https://claude.ai/artifact/CdmMcQmpgPt9cwAcCqnrJW,
+  revision 3). It covers Gmail labels and categories in the sidebar, a Refresh button, new mail sliding
+  in, new replies inside an open conversation, selection and bulk actions, Bin with Delete forever
+  and Empty Bin, star and important, Bcc and formatting, drafts kept in Gmail, Undo Send, saved
+  replies, basic Gmail settings, per-mailbox rights, and the security fixes listed there. Its six
+  custom pieces are approved: the new-row tint, the mixed checkbox state, label chips, the star
+  toggle, an action button in a toast, and the rights grid in the Access popup.
+- **Only super admins manage mailboxes.** Connecting, reconnecting, disconnecting, changing access
+  and choosing the Contact Us mailbox need the system Administrator role as well as
+  `mailbox.manage`. Managing a mailbox still does not let anyone read it.
+- **Seven rights per person per mailbox:** Read, Send, Organise, Bin, Delete forever, Labels,
+  Settings. Existing Read stays Read; existing Read-and-send becomes Read, Send, Organise and Bin.
+  Nobody gets Delete forever, Labels or Settings until a super admin ticks it. The API checks the
+  right on every call.
+- **Undo Send waits 10 seconds,** fixed. The message waits as a Gmail draft and the server sends
+  it, so closing the tab does not cancel it.
+- **Saved replies:** shared replies per mailbox, usable by everyone who can send from it and
+  editable only by people with that mailbox's Settings right, plus each admin's own personal
+  replies.
+- **Docker mode mailbox callback:** the stack's HTTPS front also answers
+  `https://localhost:4000`, for the mailbox callback path only, reusing the dev client's registered
+  callback. The Docker stack and the direct-dev API cannot run at the same time.
+- **Refresh stays at 60 seconds.** The app asks Google for `gmail.modify`, `gmail.settings.basic`
+  and full mail access, the last only for permanent delete and Empty Bin; each mailbox is
+  reconnected once to grant them.
+- **Bengali** for the new Inbox text follows the plain-words balance and is accepted in advance.
+  The review of Bengali stored in the database still waits for real content.
+
+## Owner decision round (2026-11-10) — speed targets and nothing removed without a written say-so
+
+- **Nothing is removed without the owner's own written words.** No style, theme rule, icon, font, file, page section or library is stripped, dropped, purged or subset unless the owner asks for that specific removal in their own chat message. Accepting a plan or brief through a button is not that consent, even when the plan lists the removal. Removal is the last step of any speed work, never the first, and waits until development is finished (`DEC-PERF-TRIM`).
+- **Lighthouse and PageSpeed Insights targets.** Every category at 100 on every device class (small phone to 4K and 50-inch screens, standard and Retina) for every page Google lists, with no layout shift. Pages that must stay hidden from Google (cart, wishlist, compare, sign-in, account, search results) keep `noindex`; the only points they may lose are the hidden-page audit's, and everything else on them must be perfect. Phone performance is pushed hard.
+- **Industry-grade methods only.** Speed work uses the framework's and the industry's standard architecture, not makeshift fixes. Hand-written `style=""` attributes stay banned. A build-generated critical-CSS block in the page head (what Angular's own production build does) is a different thing and is allowed when it comes from the same stylesheets automatically.
+- **AVIF stays as locked under Image ingest:** no AVIF now; each derivative records its format so AVIF can be added later as a setting.
+
+## Owner decision round (2026-11-10) — icon actions name themselves (`DEC-ICON-TITLES`)
+
+- **Every icon-only action in the admin shows its name on hover.** Staff may not know that a pencil means Edit or a bin means Delete, so any clickable thing that shows only an icon carries a translated `title` naming the action ("Edit", "Delete", "Pick a date", "Next page"). The browser's own hover text is used: no popover and no tooltip library. Buttons that already show words need nothing more.
+- **It holds for all future work.** `pnpm check:icon-titles` (part of `pnpm lint`) reads every admin template and fails on an icon-only button, link or click target without a `title`. Table row-action labels are translation keys, so the shared table names each row action in English and Bengali.
+
+## Owner decision round (2026-11-10) — video page, Shorts and product videos
+
+The owner approved the video page brief (revision 4) in full on 2026-11-10.
+
+- **`/videos` (V3, R1, V5).** One page with two tabs in the product-tab style, **Videos (24)** and **Shorts (12)**. Both tabs' contents are in the server-rendered page; `?tab=shorts` opens on Shorts. Videos tab: a large player that plays in place, then a grid of video cards. Shorts tab: a grid of 9:16 cards that open a vertical popup. A "See all on YouTube" button closes the page.
+- **What a click does (V2).** Home rail and product page open a popup (theme modal); `/videos` plays in place.
+- **When a Short ends (S2).** The next Short from our own saved list plays; another channel's video never plays.
+- **Posters on our CDN (V4).** The daily refresh copies each poster through the image pipeline. Keys carry the video ID and a fingerprint, so a changed poster gets a new address and the old one is deleted: the set stays exactly what the site shows, and nothing is overwritten in place (Cloudflare would keep the old picture).
+- **Product videos (R3, R4).** Up to 5 per product. In the photo strip they come after the photos, in admin order; a tile opens the wide popup (video) or the vertical popup (Short). In the Description tab one video plays in place; two or more form a carousel that moves on by itself only while nothing plays and stops while a video plays. Long videos and Shorts share one 16:9 frame in the carousel, a Short centred inside it.
+- **Bengali pages (V6).** Shop text is Bengali; video titles stay as YouTube gives them, marked `lang="en"`. No Bengali title field for now.
+- **Consent (V7).** YouTube is listed under Functional; pressing play counts as consent for that one video, as with the Contact map. The cookie list gains a YouTube row in both languages and the cookie policy version goes up so everyone is asked again.
+- **Old address and menus (V8).** The old-URL row `/videos` changes from 410 to a 301 to `/en/videos`. "Videos" is added to the header and footer menus.
+- **Playlists (V9).** Not at launch.
+- **Open:** whether a Short's episode code (for example `EP679-S6D` burned into the video) should link that Short to a product, and how. Tracked as `DEC-SHORTS-PRODUCT-LINK`; nothing that links Shorts to products is built until it is answered.
+
+## Owner decision round (2026-11-10) — product share button
+
+The owner approved the share brief (sections H and I) and answered section J on 2026-11-10.
+
+- **Where it lives.** A share icon beside wishlist and compare on the product page opens a popover with the theme's "Share it" block, moved rather than copied.
+- **Phone menu (lean).** Send to someone: WhatsApp message, Link, More apps (the phone's share sheet). Post: Facebook post, Instagram post. Status and Stories: WhatsApp Status, Instagram Story. Telegram, Messenger, email, X, LinkedIn and Pinterest are reached through More. No Facebook Story: from a website Facebook only makes a feed post. Computers list every app's own share address.
+- **Message and previews.** Built when the menu opens from the live product (name, price and offer, facts, chosen colour, `?ref=` tag); price in the preview title; hashtags on X only; captions copied for the apps that drop text.
+- **Short address (D6).** `sahatextile.com/p/<product code>` forwards to the product page; used in Instagram captions.
+- **Sharing settings (D4).** Storefront settings › Sharing: the shop's X account, hashtags on X on or off, and which apps the menu lists.
+- **Tall Status/Story card (J1).** The image pipeline makes the card with an empty band; the shopper's phone writes the name, facts and shop into it when sharing, so the words are always current and in the page's language.
+- **Preview strip (J2).** The link-preview card carries the Brand Kit logo on a white strip. No fonts are added to the server, and there is no strip-text setting. Captions, messages and the preview's title and description lines are text the apps write themselves and are not affected.
+- **Open:** confirm on real phones that Instagram offers Stories in the share sheet for a shared picture; share and save (M5) is for later.
+
+## Owner decision round (2026-11-10) — safe releases and the Release Console
+
+The owner approved the Safe Releases Brief (version 5) "with your recommendations" on 2026-11-10.
+The brief is a private artifact: [https://claude.ai/artifact/3xBEmhDRfYHDWL6C7DkGRd](https://claude.ai/artifact/3xBEmhDRfYHDWL6C7DkGRd).
+
+- **Search plan, four steps.**
+    1. A versioned index (`products_v1`), built before the switch only when the search version
+       rises. Waits follow the engine's own progress, not a stopwatch, and fail on a failed task or
+       60 seconds without progress. The previous version stays for a rollback.
+    2. An outbox queue for every product change.
+    3. Search counts as optional at release unless the search version rises.
+    4. A nightly check against Mongo.
+
+    When a new index is needed it must finish before the switch, or the release stops.
+
+- **One release-steps runner** (approved earlier the same day as Decision 2). Every step answers
+  "is it needed, do it, check it", in this order: system roles with a check that Administrator
+  holds every permission; database indexes compared and rebuilt; numbered data migrations, each
+  recorded once in `releaseMigrations` and written in expand and contract halves; then search.
+  Everything runs before the switch. The production deploy, `pnpm stack:up` and
+  `pnpm local:refresh` all use it. A failed check stops the release before shoppers see it.
+- **Release Console.**
+    - Runs only on the owner's Mac, with an agent on each server.
+    - The futuristic look is approved (`DEC-UI-REUSE`).
+    - A terminal inside the console (xterm.js and node-pty) replaces the iTerm2 launcher. Production
+      tabs are framed red; destructive commands need the environment name typed.
+    - Every PM2 Plus and Enterprise feature that applies is covered, without `pm2 link`.
+    - OpenTelemetry runs locally now; on the servers it stays off until decided.
+    - Real user monitoring is approved, behind the Analytics consent category, after the privacy policy.
+    - Logs: 30 days in full, 12 months of totals.
+    - Personal data in logs is masked before the 30-day store ships.
+- **What "build everything in the brief" excludes (2026-11-10).**
+    - Chunk K, the privacy policy rewrite and its data-rights workflows. That keeps out the Privacy requests screen, and real user monitoring (Shopper experience) waits for the new policy.
+    - Chunk L: session replay, chaos testing in production, automatic AI fixes, canary releases, a public status page, and "Ask Claude".
+    - Everything retired in the brief: packet capture, a terminal on a hosted console, the iTerm2 launcher, hosting the console anywhere but the Mac, and 14-day log history.
+- **Console apps (2026-11-10).**
+    - The console is its own Angular app without server-side rendering (`apps/release-console`), with its own local API (`apps/release-console-api`). A small agent (`apps/release-agent`) runs on each server and in the local stack.
+    - Nothing of the console goes into the storefront or the admin.
+    - The console and its local API are never deployed or published as images. The agent ships to the servers, so CI checks it.
+- **CI checks the console only when it changes (2026-11-10).** The owner chose this over skipping it.
+    - A pull request runs the console's lint, types, tests and build only when it changes a file in
+      `apps/release-console`, `apps/release-console-api`, `apps/release-agent` or
+      `packages/release-console-contracts`, or a shared package they use (core-domain, contracts,
+      config, the root lock file or the CI files). Turborepo works out which packages a change touches.
+    - The first pull request that adds the console runs everything once. After that, a shop-only
+      change skips the console checks, and a shared-code change runs both.
+    - The shop's own checks are unchanged and still run on every pull request.
+- **Server screens live only in the console (2026-11-10).** DigitalOcean graphs, patches and Reboot are not built in the admin.
+- **English only (2026-11-10).** The Release Console has no Bengali and no Transloco: it is an
+  owner-only tool, so the en and bn parity rule for the shop and admin does not apply to it.
+- **Side menu approved (2026-11-10).**
+    - Overview, then five groups (Ship, Watch, Run, Shop, Governance), each with second-level
+      sub-groups and screens, plus Settings. The tree is recorded in
+      `production-deployment-plan.mdx` § Release Console.
+    - There is no "Architect's additions" group; those screens sit in the group where they belong,
+      and a screen appears only once its feature is built.
+    - The owner added a menu search: a box at the top of the menu (⌘K focuses it) shows full and
+      partial matches of screen and tab names, with their place in the tree. A click or Enter
+      opens the screen.
+- **DigitalOcean and Cloudflare inside the console (2026-11-10).** Approved by the owner with
+  “Yes, apply it” and “start building”.
+    - Two new top-level menu groups. **DigitalOcean**: Compute, Storage, Databases, Containers and
+      images, Networking, AI, Manage, covering every product DigitalOcean offers today, used by the
+      shop or not, so another project can use them later. **Cloudflare** copies the real dashboard
+      as read from the owner’s signed-in account on 10 Nov 2026: the user level (Accounts,
+      Domains), the account menu (Build; Protect & connect; Manage account) and the domain menu
+      (Overview, AI Crawl Control, Agent Readiness, Analytics, Observability, DNS, Email, SSL/TLS,
+      Security, Access, Speed, Caching, Workers Routes, Rules, Error Pages, Network, Traffic, Web3),
+      with a domain bar, a domain switcher and the overview’s right-hand column.
+    - DigitalOcean DNS and Cloudflare DNS are separate screens, never merged.
+    - Every product has screens for each stage: see, create, creating, use, edit, monitor, back
+      up, its main operation, destroy, and history.
+    - **Portal-only states.** Red means the console cannot do it; yellow means it can do part.
+      A red menu item or tab is shown crossed out and disabled, with a hover note “Please go to
+      the ‹provider› portal to access this” and the reason. A yellow menu item or tab opens, and
+      its hover note says what is here and what is on the portal. On a page, a red striped box
+      shows a section only the portal can do (controls greyed out), and a yellow striped box
+      frames what the console can show and lists what is missing. Plan locks (Pro, Business,
+      add-on) keep their own badge; “not used today” keeps its grey band.
+    - sahatextile.com is in the owner’s second Cloudflare account, so the console’s Cloudflare
+      tokens are created in that account.
+- **Diagnose a request (2026-11-10).** Every traced request gets a Diagnose button: fixed rules
+  over our own traces, logs, releases and issues find where it failed or spent its time, how many
+  shoppers were hit, what changed, and the matching log lines, then offer rollback, the pull
+  request or the runbook. An AI explanation stays parked in Chunk L.
+- **Release Console for many projects (2026-11-10).** UI brief “Release Console Projects”, version 4.
+    - Three levels: the console, a project, and the project’s repositories. A project holds several
+      repositories (for example web, API, admin).
+    - Search is on at every level and finds only what that level can open: console menus at the
+      console level, the project’s overview menus at the project level, and the repository’s
+      Ship, Watch, Run, cloud, edge and own menus at the repository level. It never crosses
+      projects or repositories.
+    - Every vendor sits in a slot on the repository: exactly one source-code vendor (GitHub today;
+      GitLab, Bitbucket, Azure Repos later), one or more cloud platforms (DigitalOcean today; AWS,
+      Google Cloud, Azure later), and one or more edge and DNS platforms (Cloudflare today). Each
+      environment runs on one cloud; each domain belongs to one edge platform.
+    - Other vendors get their own screens, built the way that vendor works, when a repository
+      first uses them; today’s screens are not stretched to fit them.
+    - Accepted: a GitHub App instead of personal tokens; cloud roles or service principals instead
+      of stored long-lived keys; a cloud or edge key reusable by repositories of the same project
+      (never across projects); each vendor built as an adapter behind its slot.
+    - No passwords in the console: a pasted token, or a browser sign-in window that returns a token
+      (and refresh token where offered). Cloudflare stays a pasted, narrow token.
+    - Also approved (owner: “Keep all three”): a PIN lock screen when the console opens,
+      workspaces grouping projects on the console level, and an Attention list (keys expiring,
+      failed deploys, approvals waiting; project names and counts only at the console level).
+- **The owner adds every project (2026-11-10, after the build).** The console starts with no
+  projects and never adds one by itself; Saha Textile is added by the owner with Add a project,
+  like any other. `.release-console.json` lists only a repository's own menus, which the wizard
+  reads. The owner's console data was reset the same day (the old folder moved to the Trash).
+- **PIN typed into the six boxes (2026-11-10).** The PIN is typed straight into the lock screen's
+  six boxes; there is no separate text box.
+- **Where the console keeps things (2026-11-10, explained to the owner).** Nothing goes to MongoDB
+  or any server: projects, key references, the PIN hash and the lock state are in
+  `~/Library/Application Support/Release Console/console.json` (owner-only), the audit trail in
+  `audit.jsonl` beside it, and pasted tokens only in the macOS login Keychain.
+- **Parked:**
+    - The privacy policy rewrite and its review are open Chunk K in the API/DB roadmap; the owner
+      wants more briefs first.
+    - The ideas considered and not recommended (session replay, chaos testing in production, AI
+      auto-fixes, canary releases, a public status page) are open Chunk L, for a later decision.
+
 ## Open decisions
 
 All unresolved owner choices are listed in `pending-decisions.mdx`. No open question should be added to this file.
+
+## Owner decision round (2026-11-10) — restored theme styles and self-hosted fonts
+
+The owner answered the removal restore brief on 2026-11-10.
+
+- **Dark mode stays, as a file of its own.** The theme's dark mode (the whole theme compiled again under `.dark`) is built by the storefront's `styles` script into `public/assets/css/theme-dark.gen.css`. A page links it only when `site-config` sets the mode to dark, on the server as well as in the browser. Light pages never download it, and the service worker's precache leaves it out. The admin's dark mode was never affected.
+- **Every text font is served from our own address.** Public Sans, Noto Sans Bengali and Russo One in the storefront, Public Sans and Noto Sans Bengali in the admin, the Release Console's fonts, and the fallback pages' fonts. `scripts/self-host-fonts.mjs` downloads the same files Google Fonts serves, with every face and language subset and each family's SIL Open Font License, and writes each app's `fonts.css`. Pages no longer contact Google Fonts, the English upright Public Sans file is preloaded, and the Content Security Policy no longer allows the Google Fonts hosts.
+- **Russo One is restored but used nowhere for now.** Where it may appear is open as `DEC-DISPLAY-FONT`.
+- **The exit-intent popup stays deleted.** The newsletter popup already opens on desktop exit intent. The theme's `.exit-modal` selector goes back into the shared popup rule.
+- **The `swiper/css` import stays out** (owner's words recorded under `DEC-PERF-TRIM`): `swiper-bundle.css` holds every rule it had.
+
+## Owner decision round (2026-11-13) — MSG91 terms, channels and the Communications page
+
+MSG91 answered by phone and in writing on 2026-11-13 (Vishant Chaurasia, quotation attached to that email). The owner then approved the channel list and the Communications page brief (artifact X9yNp517VED2sQGhqK1LEa, version 2).
+
+- **MSG91 terms.** DLT registration is ₹5,000 + GST and **renews yearly** under operator policy. Premium DLT Support is ₹1,500 + GST **once**, covering PE, header, telemarketer chain and template approval, with an account manager afterwards. No other charge beyond SMS wallet credit; no minimum purchase, no per-template or verification fee. No sandbox: test sends use normal credit. A template variable holds **at most 30 characters** (letters, digits and special characters), so long links go out as MSG91 short links approved under the DLT CTA category.
+- **One MSG91 account, one auth key per environment.** Development, staging and production each get their own auth key in the same account, and all three may send. This replaces the per-environment separate MSG91 resources of the 2026-11-02 environment rule, for MSG91 only.
+- **Templates are registered in English only** at launch. Every template keeps a slot per language so the business can add languages later; the shop and admin stay multi-language in code and data.
+- **The newsletter is built in our admin** and sent through the MSG91 email API. MSG91's Segmento and Campaign products are not used; consent stays in our database.
+- **Twenty messages and their channels.** The approved table lives in `packages/contracts/src/communication-use.ts`. Recommended cells start on; every other cell is built but starts off with a yellow warning (cost, promotional route or marketing rate), except the four red security cells, email verification and staff invitation by SMS or WhatsApp, which stay **locked off** (option A). The newsletter is email only.
+- **Settings › Communications (super admin).** One table, a switch per message and channel, a heading row per group. Yellow and red i marks sit at the switch's top right with the reason as the translated hover name. Turning on a yellow cell asks for the **password only**, never the PIN; the API checks it with the existing recent-password proof. Turning off needs no password. For the four code rows, Email stays on and SMS and WhatsApp cannot both be off. The channel kill switches on Notification settings still win, and every change is audited.
+- **One custom piece approved:** the shared class `table-sticky-first` (admin `components/_table.scss` and `themes/_dark.scss`) keeps a table's first column in place while the others scroll on narrow screens.
+- **Still owed to the brief:** real captures of the hover tooltips, which need the owner's read-only Chrome permission at the Mac. On phones the i has no hover; the reason shows in the password popup.
+
+## Owner decision round (2026-11-15) — media build foundations: admin dark mode, contrast, one language list
+
+The owner accepted the media file manager brief (revision 6) on 2026-11-15, including R6-3, and asked for the foundations first. Decisions made while building them:
+
+- **Admin dark mode is its own colour-only file**, like the shop's: built from the theme's `body.dark-only` rules, loaded only in dark mode, remembered per browser and applied before the first paint.
+- **R6-3 contrast fixes are colour changes only** and reach WCAG AA on every admin screen in both modes. They extend to every grey, teal, status and dark-mode text the check finds on real screens, not only the brief's examples, and live in named admin colours (`--theme-strong`, `--theme-ink`, `--admin-muted` and the rest).
+- **One language list, from the API** (`GET /storefront/languages`, today from `ACTIVE_LOCALES`), read by every admin switch and by the shop's addresses, menu, alternates and sitemap. No app keeps its own copy.
+- **Language names are always in their own script** (owner, 2026-11-15): "English", "বাংলা", "हिन्दी" in buttons, menus, sentences, reports, emails and test expectations, whatever language the reader uses. Names come from `Intl.DisplayNames` in the language itself. Only the joining words of a list follow the reader ("English and বাংলা", "English এবং বাংলা"). This replaces the brief's R5-4 wording that named languages in the reader's language ("Hindi" in English).
+- **Counts in sentences use plural rules** (`_one` / `_other` keys chosen by `Intl.PluralRules`), and lists use `Intl.ListFormat` (Indian English: no comma before "and").
+
+### Language management (step 0d brief, accepted 2026-11-15)
+
+- **The Admin switch controls the admin's own words (Option 1).** It decides whether staff may turn the admin itself into that language (the header's language menu). Writing a language's text for the shop is always possible once the language is added: every form shows it, as a draft with red to-dos, whatever the Admin switch says. Draft languages never block Go Live; Go Live checks only the languages that are on for the shop.
+- **Menu and button text ships with a release first; the language is added afterwards** in Settings › Languages, which offers only languages whose files came with the release in both apps. Files for a language not added sit unused and affect nothing.
+- **Shop on** only when nothing is left: every live item and every photo the website uses has its text, and the shop's menu text and the four legal pages exist in it. **Admin on** only when the admin's menu text is complete. **Shop off**: every `/xx/…` address answers 301 to the same page in English; the text stays.
+- **Delete** (only once the shop is off) removes the language from every list and switch and keeps its text; after 30 days unused the bell reminds the owner every 30 days. **Erase**, from that reminder, removes the stored text for good after the language's name is typed. Files in the code stay until a release removes them.
+- **Legal pages become real admin Pages** (privacy, shipping, returns and refunds, terms) in their own chunk with its own brief; until then they count as to-dos for a new language.
+- **A new permission, `language.manage`**, held by the Administrator role only at first. **Messages** (email, SMS, WhatsApp) fall back to English and never block a language.
+
+## Owner decision round (2026-11-15) — order snapshot, refunds, HSN by category, returnability, purchase module
+
+- **`DEC-ORDER-SNAPSHOT` — Option A, the rich bounded snapshot.** Every order line keeps its own
+  copy of what was sold: product and variant ids, title, SKU, chosen options, add-ons and
+  measurements, primary picture reference, quantity, INR price, display currency and rate,
+  discounts, HSN, tax rate, taxable base and tax per line (with the CA-mandated place-of-supply
+  fields), category context, whether it can be returned and its return window, and cost (COGS)
+  when known. Refunds, returns and reports read the snapshot, never today's product.
+- **Refunds are separate records that point at order lines.** An order is never edited to show a
+  refund, return or cancellation; each one is its own record naming the lines and quantities it
+  covers, so partial returns and later CA rules (round-2 `D14`) plug in without a schema change.
+- **HSN is set on categories and inherited by products (`DEC-TAX-HSN` model, Option A).** A
+  category carries an HSN when it is created. Choosing a category on the product form fills the
+  product's HSN from it; the product may override it. On edit, changing the category refills the
+  HSN from the new category at once and shows a warning popup asking the admin to check the HSN
+  because the category changed. The actual codes, rates and the per-piece threshold still wait on
+  the CA (round-2 `B2.4`–`B2.6`). The model itself is the owner's decision and is no longer put to the CA (old `B2.7` removed).
+- **Returnability is a category default with a product override.** Not returnable by default:
+  made-to-measure or customised garments, altered garments, innerwear and petticoats (hygiene),
+  per the owner's round-2 `A2.6` answer. The resolved value is frozen on the order line.
+- **Stock enters through a purchase invoice module, not a typed number.** The owner asked for a
+  full screen brief first: purchase in, purchase return, damaged or dead stock found after a
+  purchase is accepted, inventory tables, and permission-controlled stock adjustments with reason
+  codes and audit messages, automated wherever possible. Brief to be approved before building.
+
+## Owner decision round (2026-11-15, later) — purchases and stock brief accepted; P1–P13
+
+The owner accepted every screen and user story of the purchases and stock brief, revision 1
+(https://claude.ai/artifact/83RYxkJJk8RoF4XiwbaeQd), and asked that all of them be built with every
+button and behaviour shown: no screen or feature may be dropped. Revision 2 adds the changes below.
+
+- **HSN popup on category change (R2-1).** Three buttons: Put back the old code, Enter manually,
+  Keep the new code. Enter manually swaps the buttons for an HSN box with a green tick and a red
+  cross icon (each with a hover name). The tick puts the typed code into the HSN field and closes
+  the popup; the cross hides the box and brings the three buttons back. An HSN has 4, 6 or 8
+  digits. The popup also names "Can be returned", which refills from the new category the same
+  way (P13).
+- **P1 — posting steps.** One person may check goods and post, for now. The super admin can make
+  any purchase-entry step need a different person from the step before (Settings › Purchases and stock).
+- **P2 — write-offs.** Every write-off needs approval; there is no amount limit. Anyone holding
+  the write-off approval permission (the super admin, and any role or single user the super admin
+  gives it to) writes off directly, recorded as approved by themselves; everyone else raises a
+  request. Stock-count differences follow the same rule.
+- **P3 — held stock.** A Held bucket: on hand, in stock value, not for sale.
+- **P4 — purchase orders at launch.** Draft → Sent → Part received → Received, closed short or
+  cancelled; sent by email through a connected mailbox or as a PDF; never moves stock or money;
+  the reorder list makes draft orders.
+- **P5 — cost basis.** Before GST where input credit is claimable, full price where not (AS 2).
+  Sent to the CA to confirm (round 2, D15.5).
+- **P6 — freight inward.** Part of stock cost, shared across a bill's lines by value. Sent to the
+  CA to confirm (D15.6).
+- **P7 — internal numbers.** PE/26-27/000014, OS/26-27/000001, SC/26-27/000007, and PO/ in the
+  same style; reset each 1 April. Debit notes and challans wait on the CA (16-character limit).
+- **P8 — cost visibility.** A separate permission; the API sends no cost to anyone without it.
+- **P9 — books-closed date.** Set by the owner; nothing can be dated on or before it.
+- **P10 — barcode labels now.** A4 label sheets holding many labels and many items per sheet.
+- **P11 — units.** A product is sold by the piece or by the metre; metres in steps of 0.1 m,
+  stored as whole tenths. Unit codes sent to the CA (D15.7). The shop side (product page and cart
+  in metres) needs its own brief.
+- **P12 — notes.** Every write-off carries a written note.
+- **P13 — returnability refill.** Yes, named inside the HSN popup.
+
+## Owner decision round (2026-11-15) — round-2 CA questionnaire cut to open questions
+
+Answers the owner gave as final in the "Accountant questions interactive pop-ups" chat
+(2026-11-10/11, ledger `.claude/tax-r2-answers.md`), now recorded here and removed from the
+round-2 questionnaire:
+
+- **Loyalty coins on returns (old round-2 `A1.3`, business half).** Coins earned on an order stay
+  on hold per product until that product's own return window has passed, and are credited only
+  then. If admin accepts a return after the window as an exception, admin may take back the coins
+  for those products only. If the customer has already spent them, the balance goes negative and
+  shows in red (instead of the normal points colour, in light and dark mode). Whether taking
+  coins back creates a GST event stays with the CA (`A1.3`).
+- **Refund choice (old `A2.3`).** For orders paid fully by card, UPI or netbanking, the customer
+  chooses a refund to the original method or to store balance; the original method is always
+  available.
+- **Non-returnable items (old `A2.6`).** Made-to-measure or customised garments, altered garments,
+  innerwear and petticoats, and any return after the published window (admin may accept one as an
+  exception, per the coin rule above).
+
+The owner asked (2026-11-15) that `tax-compliance-questionnaire-round-2.mdx` hold only open or
+confirmation questions, each with options, for and against, and a recommended answer, with no
+restated settled points. It was rewritten that way the same day; item numbers were kept, so gaps
+mark removed items. Also removed as owner-answered: `B2.7` (HSN by category with product
+override) and `D15.1` (FIFO valuation, stock value on any date). New: `B4.9` (store credit issued
+only on refunds, same GST treatment as gift cards?) and `D13.1` options.
+
+## Owner decision round (2026-11-15) — legal pages in the admin (brief accepted)
+
+Brief: https://claude.ai/artifact/Byj8JxDnANYQPnnqNhnBtW. The owner wrote “your legal pages brief is
+approved”, accepting it as drawn with the recommended choice in each question. Nothing is built yet.
+
+- **The pages.** Privacy Policy, Terms & Conditions, Refund & Returns Policy and Shipping Policy
+  become database pages in Admin › Pages, written per language behind the one Language switch.
+  The shop reads them from the API at the same addresses. A release step copies today's text in
+  once and never overwrites a page already stored.
+- **1 · Only the four legal pages (A).** Their URL slugs are fixed; they cannot be deleted or taken
+  off the shop. A save is refused while any language the shop shows lacks a title or content.
+  Draft languages may stay empty and count as that language's to-dos.
+- **2 · “Last updated” date** under the title on the shop page.
+- **3 · Earlier versions** kept in the database; no screen for them yet.
+- **4 · The eight page files** in the shop's code are deleted in the same change.
+- **5 · Menu place** unchanged: Pages stays between Blog and Taxes.
+- **Removals.** Choice A drops the demo screens' Add Page button, Delete action, row tick boxes and
+  Status switch; choice 4 deletes the eight files. They were named in the brief and approved with
+  it in typed words; the build still names each one again before it lands.
+
+## Owner decision round (2026-11-15) — fabric sold by the metre (shop brief)
+
+The owner accepted the shop brief for metre products (https://claude.ai/artifact/QrQRbrvj3d9DzLxFXnLzX8)
+and asked for the cart, phone cart and mini cart screens to be redrawn with aligned steppers
+(done in revision 2).
+
+- **M1:** − and + change a metre line by 0.5 m; any length in steps of 0.1 m can be typed.
+- **M2:** a new metre product's shortest cut defaults to 1.0 m, changeable per product.
+- **M3:** what happens when a cut would leave less than the shortest cut goes to the business
+  owner (round-2 questionnaire, item `O1`).
+- **M4:** fabric sold by the metre is not returnable by default; admin can change it per product.
+- **M5:** up to 4 quick-length buttons per product, set in admin; none shown when empty.
+- **M6:** "/ m" after the price on cards, "per metre" on the product page.
+- **Cart page, wide screens:** the small stepper under the product name is hidden from 992 px up,
+  where the Quantity column already shows one (owner's written OK, 2026-11-15). The theme hid it by
+  position (`li:nth-child(n + 4)`), which missed items without a discount. Phones and tablets keep it.
+
+## Owner decision round (2026-11-15) — the shop's share link page (media step 1.4)
+
+Brief: https://claude.ai/artifact/F22nAygDh1T3PtZPvY7g5a. The owner accepted it (“looks good and I
+accept it”), with both recommended choices, and asked what happens after “Opening the file…”.
+
+- **S1–S6 as drawn**, built from the shop's sign-in and not-found pages; nothing custom.
+- **Dark-mode red alerts, shop-wide:** colour only in the shop's dark file (dark red surface, light
+  red text). The sign-in page's error was unreadable in dark mode before this.
+- **After “Opening the file…” (revision 2):** files the browser can show open in its own viewer in
+  the same tab (S7); anything else downloads and the page says so (S8). At the owner's request S8
+  carries “If your download didn't start automatically, click here to download it.”, which fetches
+  a fresh five-minute address, as Google Drive and OneDrive do. S9 shows Spaces' own message when the
+  viewer is reloaded after five minutes; opening the share link again works.
+
+## Owner decision round (2026-11-15) — photos on the new Media page wait for image profiles (media step 1.5e)
+
+Asked while building uploads on the new Media page: the approved upload popup picks an image
+profile per photo, and image profiles arrive in media step 2. The owner chose **“Photos wait for
+step 2”** over uploading them as product photos (today's “Add media” default) or guessing a purpose
+from the photo's shape.
+
+- Until step 2, the Media page uploads every file except photos: documents, archives, videos,
+  backups and camera RAW (stored as files, decision 3). Photos picked or dropped are listed in the
+  upload popup as waiting for image profiles and left out; the API refuses them at the plain-file
+  upload (`photo_needs_profiles`) as well.
+- Paste to upload (S12) is for photos, so it comes with step 2.
+- `/media` switches to the new page only after step 2; the earlier Media page stays until then.
+
+## Owner decision round (2026-11-16) — banner profiles and the homepage builder (media step 2)
+
+Brief: https://claude.ai/artifact/Uug8q6gFMQQVb8SdhEs9sL (every banner slot, where it shows, today's pictures).
+
+- **Banners keep their own shape (option A).** One more built-in image profile, “Banner (keep shape)”: banner
+  sizes 480–2,880 px, the picture keeps its own shape, as banners work today. Every existing banner becomes
+  “Banner (keep shape) · As is” and nothing is remade. Hero 21:9, Hero 16:9 and Phone banner 4:5 stay for slots
+  that want a fixed shape. Pictures are never squeezed to fit a profile.
+- **A homepage builder gets its own brief, started now beside step 2.** Ready templates (the Fastkart home
+  layouts, including the three-piece left · main · right banner) and custom layouts made from the shop's own
+  sections. Every element has its own picture picker; several pictures in one element make that element its own
+  slider, with controls inside the picture, readable in light and dark mode, and its own auto-slide time. The
+  admin previews the real shop at phone, tablet, desktop and large sizes, upright and on its side. Performance
+  comes first: Lighthouse 97+ overall and close to 100 in every category on every size and orientation, no
+  layout shift. A picture that does not fit an element warns and offers a new version of it (a fill).
+- **Page Builder, not only a home page builder (owner, later the same day).** The builder becomes a general Page
+  Builder: a list of the shop's pages; choosing one opens its layouts. Only the home page is built at first;
+  other pages join later as extensions under Page Builder. The brief's own plan is to be critiqued and pushed
+  further, more customisable, with no cost to SEO, speed, accessibility or UI/UX: every Lighthouse and PageSpeed
+  score at 97 or more, 100 as the target. Revision 2 of the brief carries this.
+- **How layouts reach the shop (owner, 16 Nov, after reading revision 2).** The owner accepted revision 2 and the
+  build approach: the shop's server draws each page from the layout stored in the database, using section kinds
+  shipped ahead of time with a normal release, each its own small, late-loading file. A layout change or Go Live is
+  data only: no build, no deploy, no admin-triggered pipeline. A new kind of section is developer work, tested and
+  budgeted once, then shipped in a release. Every ready-made template and section kind is tested at every screen
+  size: layout shift 0 and Accessibility, Best Practices and SEO 100 are hard; Performance aims at 100 and fails
+  under 97 (lab scores move a point or two between runs).
+- **Speed check of a draft before Go Live (owner asked; recommended, to add to the builder).** A "Test speed" button
+  in the Go Live checks: a 10-minute, read-only, hidden-from-search test address for that one draft goes to Google's
+  free PageSpeed Insights API, which runs Lighthouse on Google's machines (our server serves two page views); phone
+  and computer scores show in about a minute. Staging and production only. Also to add for "feels instant": link
+  prerendering while the pointer rests on a link (Speculation Rules), finished pages cached at Cloudflare per
+  language and currency and refreshed at each Go Live, and the PWA's saved page shell.
+
+## Owner decision round (2026-11-16) — media step 5 answers and the cleanup rule
+
+- **AVIF photos upload (answers the "No AVIF now" question).** The worker's image library reads AVIF (checked on
+  16 Nov: an AVIF photo decoded and was made into WebP sizes), so AVIF photos upload and get versions like JPEG,
+  PNG, WebP and GIF. The lock under Image ingest stays for what we make: versions are WebP, JPEG and PNG, and AVIF
+  output waits as a later setting.
+- **New packages approved:** a zip library for folder downloads as .zip (a link that works 24 hours), and decoders
+  so JPEG XL, JPEG 2000, BMP, ICO and PSD photos are made into versions in the worker.
+- **TIFF and SVG are measured in the browser** during upload (their size read from the file's first bytes, no new
+  package), so the upload popup can suggest profiles and give its notes for them.
+- **Cleanup at the end of the project.** Pieces replaced or left unused by the build (the earlier Add Media popup,
+  the media-box grid, the old picker path in the image field, `ngx-dropzone`, the purpose list, the earlier Media
+  page at `/media/previous`) are not removed now. They are kept and listed in `end-of-project-cleanup-list.mdx`
+  for one cleanup pass when the project is finished.
+- **Shown before deciding:** the Legal Pages removals (choice A's four parts, the eight page files) and the place
+  of the web file name were drawn on the real admin for the owner
+  (https://claude.ai/artifact/VF4CfdFBnArQynXvdWTGSs); the answers are recorded when given.
+
+## Owner decision round (2026-11-17) — PDF engine for business documents
+
+Asked while building purchase orders (PO03 email with the PDF attached, PO05 the order PDF from
+the vendor invoice template). Nothing in the repository made PDFs. Options researched and shown
+with for and against: Chromium through Playwright, Gotenberg, Typst, pdfmake, pdf-lib, WeasyPrint,
+Prince and DocRaptor.
+
+- **Decided: headless Chromium driven by Playwright** (owner, 2026-11-17) for every business
+  document: purchase orders now; debit notes, delivery challans, customer tax invoices, report
+  exports and A4 label sheets later. Reasons: it prints the approved vendor HTML template exactly,
+  shapes Bengali correctly (the browser's own text engine), supports `@page` margin boxes for page
+  numbers and running headers (Chrome 131+), and Playwright is already pinned in the repository
+  (1.64.1) for the browser tests.
+- **How it is built:** behind a document-renderer port in `core-domain` with a Chromium adapter
+  package, so a later move (Gotenberg for archival PDF/A or Word conversion) touches only the
+  adapter and one binding. The light `chromium-headless-shell` build runs in the existing background
+  worker, never in the shop. Every network request during a render is blocked except the
+  document's own fonts and pictures; one browser stays open with a fresh page per document and a
+  time limit. `@cantoo/pdf-lib` (the maintained pdf-lib fork) may set document details or merge
+  files later.
+- **Not chosen:** Gotenberg (a second service to patch; serious 2026 security advisories), Typst
+  (the template would be redrawn in its own language; Bengali unverified), pdfmake/PDFKit (code
+  layouts; known Bengali conjunct bugs), WeasyPrint (a Python service), Prince/DocRaptor (paid;
+  DocRaptor would send documents to a third party).
+
+## Owner decision round (2026-11-17, later) — Bengali balance, the shop's identity on documents, commits
+
+- **Bengali in the admin and shop:** a healthy balance between translation and transliteration,
+  never pure (শুদ্ধ) Bengali that everyday readers would not know. Plain Bengali where people say it
+  that way, the English word in Bengali letters where that is what staff and customers say
+  (সাপ্লায়ার, ওপেনিং স্টক, পেমেন্ট), acronyms from real documents in Latin letters (GSTIN, CA).
+  Strings are drafted, critiqued as a UX writer, an e-commerce expert and a linguist, and revised
+  until nothing improves; the owner accepts the final set (applied to the purchases and stock menu
+  names and search hints the same day).
+- **The shop's legal name, GSTIN and address on documents** are typed on an admin screen that only
+  a holder of its own permission can change, given to the super admin (owner) by default. The
+  screen is drawn in a brief for approval before it is built.
+- **Commits:** the build commits as it goes (Conventional Commits, own hunks only).
+
+## Owner decision round (2026-11-17, orders) — stock hold, backorders, the stores' company, cancellation, invoices, gateways, product origin
+
+Ten of the 31 questions in the Orders Decision Round (https://claude.ai/artifact/6sDuRMWyHjopdS9ee1Us9h)
+were answered in chat on 2026-11-17, then the owner answered the points raised on them the same
+day. The other 21 stay open on that page. Closed here: `DEC-STOCK-RESERVE` and
+`DEC-INR-GATEWAY-TIMING`. `DEC-BACKORDER` (closed 2026-11-04 as "oversell stays off") is replaced.
+Round-2 CA items settled by a Final answer leave that document only once the answer is built:
+B5.7 (OD12), D8.3 and D8.5 (OD19).
+
+- **OD1, `DEC-STOCK-RESERVE` — the hold starts at Pay and lasts 15 minutes.** The pieces are held
+  when the buyer presses Pay. The hold is released the moment the payment fails or is cancelled,
+  and becomes a sale when it succeeds. A "still pending" answer from the bank keeps the hold until
+  the 15 minutes run out. A payment that succeeds after the hold ended, for a piece sold meanwhile,
+  follows OD2 when backorders are on for that piece; otherwise that line is refunded at once and the
+  buyer sees a popup on the cart screen with the out-of-stock lines marked. In an order where only
+  some pieces were sold meanwhile, the whole order is refunded and the buyer is sent back to the cart
+  with the sold lines marked, to pay again for the rest (owner, 2026-11-17). The buyer is emailed
+  as well, because a late UPI approval often arrives after the tab is closed. The popup is drawn
+  in a brief before it is built.
+- **OD2, replaces `DEC-BACKORDER` — backorders per product, open to every shopper.**
+    - Staff switch backorders on per product, with a limit on how many pieces may be owed. A variant
+      may override both, as the 2026-11-04 variant rule does for price and stock. Products start
+      switched off, so one-of-a-kind pieces are never oversold.
+    - Where it is on, the product page shows "On backorder" with a dispatch estimate, and any shopper
+      may buy up to the limit. A late payment (OD1) joins the same list.
+    - Backorders off, or the limit reached: full refund at once, an apology email with similar pieces,
+      and a staff alert.
+    - The buyer is emailed that the piece is on backorder, with the dispatch date and free
+      cancellation until packing.
+    - **Backorders screen:** every backorder line from every order in one list. Staff bulk-select
+      lines and send them to the purchase-order screen, choose the supplier and quantity for each line
+      there, and may split them across several purchase orders for several suppliers.
+    - **Purchase-order product picker:** backorder lines are listed first. Picking one fills the line
+      with the owed quantity (2 owed gives 2). A larger quantity is fine; a smaller one puts the
+      remainder back in the picker at once. A line counts against the backorder as soon as it is
+      saved; deleting the line or cancelling the purchase order returns the quantity to the picker.
+    - Arriving stock fills waiting backorders first, oldest order first, before it goes on sale.
+    - The two screens are not in the 55-screen purchases brief. They are drawn as a brief for the
+      owner's approval before they are built (`DEC-UI-REUSE`).
+- **OD3 — the stores are a separate company and a normal supplier.** The website business and the
+  Kolkata stores trade under the same brand, Saha Textile, but are two separate legal entities. The
+  website has its own stock, and store counter sales never touch it. When the website needs stock
+  from the stores, the stores' company is a normal B2B supplier: the website company sends a
+  purchase order and receives the stores' purchase invoice, or staff enter a direct purchase invoice
+  without a purchase order, as with any supplier. No transfer screen is built. GST credit needs the
+  stores' tax invoice; a proforma invoice alone is not enough. Website orders cannot be collected or
+  returned at a store counter. A CA confirmation question on purchases between the two companies
+  waits for the owner's approval of its wording.
+- **OD12 — cancellation.** Free from the customer's account, with no cancellation charge anywhere.
+  Ready pieces can be cancelled until the line is Packed; after that the return policy applies.
+  Made-to-order and stitched pieces can be cancelled until staff mark the line Processing, which
+  counts as work started; after that they cannot be cancelled. "Accepted" and "Processing" are one
+  status, set per line or for the whole order, and shown in the customer's account. Made-to-order
+  and stitched lines say they cannot be cancelled once work starts, on the product page and at
+  checkout.
+- **OD19 — the invoice and order emails.** The invoice is in English only. It reaches the buyer as a
+  PDF attached to the Tax invoice email at dispatch (the invoice is issued when the goods leave), in
+  the customer's account, and as a printed copy in the parcel. The Order confirmed email carries a
+  rich, cart-style view of the ordered items, as large shops send. Emails are in English at launch
+  (2026-11-13 rule).
+    - **How the emails are built (owner, 2026-11-17, option B):** our own designs, kept in the
+      repository and registered with MSG91 as templates through its template API; MSG91 still sends
+      every email. MSG91's send call needs a registered template (no one-off HTML body), templates
+      are full HTML with Handlebars variables, `if`/`else`/`unless` and `each` only, and each new
+      template or version is approved by MSG91 (usually 10–30 minutes). The owner's conditions: no
+      added cost, no template rejections, and every email under Gmail's ~102 KB clipping limit. So:
+      open-source tooling only, no paid certificate or service; transactional content only, no
+      promotions, each template proven in development before launch; an automatic size check on the
+      largest realistic order. The invoice PDF is attached as the file itself, never as a public
+      link. Template names carry a version so a development change never reaches customers (one
+      MSG91 account serves all three environments). The designs are drawn as a brief for approval
+      before they are built (`DEC-UI-REUSE`).
+- **OD20, `DEC-INR-GATEWAY-TIMING` — CCAvenue at launch; gateways switchable in the admin.**
+  CCAvenue at launch. Razorpay when HDFC gives the timeline, the kit, and merchant fees equal to or
+  better than CCAvenue's. All payment code is provider-neutral. Both INR adapters stay built and
+  ready, and the admin chooses which one is the active INR gateway. Shoppers never see a gateway
+  name or choice: they see Add to cart and Buy now on the product page and Pay at checkout. The
+  currency decides the gateway: rupees go to the admin's active INR gateway, every other currency
+  to PayPal. There is no automatic switching by success rate. Switching a gateway off stops new
+  payments only; refunds and payment updates for payments it already took keep working. Gateway
+  keys stay in server settings and are never typed into the admin.
+- **PD1 — country of origin.** The shop default is India, overridable per category and per product.
+  The admin picks countries from a full world list, stored as the standard two-letter country code
+  so reports stay consistent. Names show in the page's language (ভারত on Bengali pages), taken from
+  the browser's built-in country names the same way language names are shown, so there is nothing
+  to translate (owner, 2026-11-17).
+- **PD2 — back-in-stock date.** A field on each variant's Inventory tab. It clears itself when stock
+  for sale goes above zero, not when arriving stock all goes to waiting backorders.
+- **PD3 — HSN for a product in several categories.** The main category's HSN wins. A product's own
+  HSN still beats its category's (2026-11-15 rule).
+- **FX6 — currencies at launch.** US$, £, €, C$, A$, S$ and NZ$, besides rupees. Shoppers choose the
+  currency in the shop's picker while browsing. **Open:** what checkout does when the delivery
+  address and the chosen currency do not fit together (question FX7, 2026-11-17).
+
+## Owner decision round (2026-11-17) — Page Builder revision 2: every recommendation accepted
+
+Brief: https://claude.ai/artifact/6ozbXGKre7WzFyumRB4ctX (revision 2: PG pages, FX fixes, SG suggestions). The
+owner answered "accept all recommended", so every question takes its recommended option and every suggestion is
+accepted with its recommended timing. The brief's list of genuinely custom parts is approved with it (DEC-UI-REUSE).
+
+- **Q1 A:** the middle of the builder is the real shop at the chosen size, with the chosen piece outlined.
+- **Q2 A:** the first picture sets a piece's shape (Banner (keep shape)); later pictures match within 5%, or the
+  different-shape popup makes a version.
+- **Q3 A:** stretching or squeezing is never offered; only the approved fills.
+- **Q4 A:** one control pill on its own dark backing: pause first, then previous, one bar per picture, next.
+- **Q5 A:** on a phone held upright, Main on top and the side pictures next to each other below (source order).
+- **Q6 B:** at most 10 pictures in one slider.
+- **Q7 A:** 3 to 15 seconds per picture, 6 by default.
+- **Q8 A:** a template's sections stay in place; pictures, words, products, hiding and the Look tab can change;
+  "Make a custom copy" unlocks everything.
+- **Q9 A:** Home's first templates are the four banner arrangements Home banners offers today, each as a whole
+  page, plus "Today's home page". Whole Fastkart pages follow as their sections arrive.
+- **Q10 A:** the owner and super admins go live and schedule; other admins with Store Front access save drafts and
+  ask for review; set per page type.
+- **Q11 A:** Store Front › Home banners stays until the owner types its removal, with a note linking to Page
+  Builder › Home. The newsletter popup picture stays there.
+- **Q12 A:** the last 20 Go Live revisions of each layout, and autosaved drafts for 30 days.
+- **Q13 A:** Store Front › Page Builder, first item under Store Front.
+- **Q14 A:** a line of words over a picture passes when 95% of the picture under it reaches AA; its weakest spot
+  is shown.
+- **Q15 A:** a Go Live over the speed budget waits; nobody can override.
+- **Q16 A:** an instant estimate at Go Live, plus a real Lighthouse run every night and after every switch,
+  ringing the bell under 97. The PageSpeed Insights "Test speed" button recorded on 16 Nov stays planned for
+  staging and production.
+- **Q17 A:** a page's search settings live on the page; layouts can't change them.
+- **Q18 A:** saved blocks are copied by default and linked only when chosen.
+- **Q19 A:** when "Today's home page" is made, darker brand words on the hero slides, and darker words on a soft
+  light backing on the two promos (10 of 10 lines pass on computer and phone).
+- **Q20 A:** About Us is the next page after Home.
+- **SG-1 to SG-35: all accepted.** Timing as recommended: SG-24 (event-linked layouts) after the Events build;
+  SG-25 (landing pages) and SG-28 (site parts) later, each with its own brief; SG-26 (rich text and contents) with
+  About Us; SG-27 (own video) later. SG-34 puts the rows' theme carousel on the speed list; its removal still
+  waits for the owner's typed words.
+- **Nothing is removed by this build.** Home banners' hero part, Theme Options' page tabs, the shop's fixed home
+  code and the theme carousel stay until the owner types each removal.
+- **Build order:** the brief's PG-8 plan: baseline, page-agnostic data and core, shop renderer behind a switch with
+  the CI speed gate, admin list and layouts, builder, preview, Go Live, proof of generality with a test-only page
+  type. Runs now that media steps 2 to 5 are built.
+
+## Owner decision round (2026-11-17) — Infisical Cloud secrets source
+
+- **Use Infisical Cloud Free with three separate projects:** `saha-textile-dev` uses Development
+  (`dev`), `saha-textile-staging` uses Staging (`staging`), and `saha-textile-production` uses
+  Production (`prod`). Other default environments stay empty. Separate projects provide the
+  intended deployment-tier boundary when project-level automation access is configured.
+- **Prepare names only; the owner enters values.** The owner explicitly requested that the agent
+  avoid reading secret values. Names come from committed templates, runtime configuration source
+  and deployment documentation. All 363 entries were verified empty after creation. Personal MCP
+  and local-only portal credentials are outside these application deployment projects.
+- **This revises the source in `DEC-SECRETS-DELIVERY`, not runtime consumption.** Infisical replaces
+  the previously chosen GitHub Environment value store. Root-owned files mounted read-only remain
+  the application interface; secrets stay out of Docker images and browser bundles. Value entry,
+  machine identities, permissions and pipeline authentication/fetching are separate work and have
+  not been implemented. See `docker/infisical/README.md` and `variable-names.json` for handover.
+
+## Owner decision round (2026-11-18) — purchases decisions brief: shop details, items built beyond the drawings, backorders, portal
+
+Answered on the purchases decisions brief (https://claude.ai/artifact/XdCdbE91mKaSVsGZvLfeBk):
+"accept all recommended", with two exceptions (H2, M3) below.
+
+- **S1 A — Shop details are read only for everyone else with Settings access.** Settings › Shop
+  details (X04) is editable only with the new `shop_details.edit` permission (the Administrator role
+  holds it); anyone with `setting.index` sees the same page read only, with a note naming the
+  permission (X04D). The API refuses a write without the permission and audits the attempt.
+- **S2 A — A new GSTIN or legal name asks for confirmation only (X04B).** No PIN or password step.
+  Address, phone and email save without the popup.
+- **G1 A — A GST % box on every purchase-entry line**, starting from the product's HSN rate; tax is
+  worked out per rate. Kept as built.
+- **H1 A — HSN and "Can be returned" sit on the product form's Setup tab, under Categories.** Kept as
+  built.
+- **H2 — decided later the same day: one switch on the Setup tab.** The theme's Return switch moves from the
+  Status tab to replace the "Can be returned" dropdown under Categories and HSN (owner: "take that return switcher
+  from the status tab to the setup tab and replace the drop down", then "Build it" after annotated screenshots).
+  It shows the main category's answer with "Follows Sarees: can be returned." beside it; flipping it makes it the
+  product's own answer ("Set for this product", with a "Follow Sarees again" link). Data: the product's
+  `returnable` is `null` (follow, read live from the main category by id, nothing copied), `true` or `false`;
+  "Follow again" sets `null`; an order line freezes the answer at purchase.
+- **D1 A — "Default delivery place for orders" stays** in Settings › Purchases and stock.
+- **D2 A — Only the super admin changes the purchase-entry step rules and the books-closed date.**
+- **D3 A — Opening stock keeps both changes:** "Type it in the row, or fix the sheet" for a missing
+  cost, and a received date may lie before the books-closed date (a date after today is refused).
+- **M3 — held for discussion.** The scrap a metre cut would leave stays an open owner question:
+  `DEC-METRE-SCRAP` in `pending-decisions.mdx` (also round-2 O1). Nothing is built for it; the shop
+  cuts what is asked.
+- **B1 A — Both backorder drawings approved (BO01, BO02); Backorders sit under Orders.** Built with
+  the orders chunk (Chunk G), since backorder lines are order lines.
+- **P1 A — The portal check is fixed from this log:** the decision register count follows
+  `pending-decisions.mdx`, and Schema Nebula no longer names closed decisions as blocking.
+- **P2 A — The portal pages this build touched are re-read and corrected now;** the remaining pages
+  get one pass before deployment.
+
+## Owner decision round (2026-11-19) — shipping rule builder, international orders without export, PayPal rates
+
+Answers to the Orders Decision Round follow-ups (FX1, FX2, FX4, FX7, OD8, OD9 closed and removed
+from https://claude.ai/artifact/6sDuRMWyHjopdS9ee1Us9h). Closed: `DEC-PAYPAL-FX`. `DEC-SHIPPING`:
+the commercial policy is settled; its CA items (C2) stay open.
+
+- **Saha Textile's rules are named, configurable paths.** Every rule specific to Saha Textile below is a named
+  rule set or a named processing path chosen in settings. Other businesses follow the standard
+  paths (by-the-book invoicing, order processing and tax) unless they configure their own. The
+  hexagonal ports keep each path swappable.
+- **Export is off for Saha Textile.** It does not export and has no export registration. An "export
+  on" path is designed as a switch but not built; its CA questions moved to
+  `tax-compliance-future-expansion.mdx`, to be opened only when a business switches export on.
+- **Shipping is calculated by rule sets built in a rule builder.** Domestic and international each
+  choose a rule set or a courier-provider quote, independently and in any mix. Rule sets are
+  assigned site-wide, per category or per product, with exclusions; category shipping values are
+  inherited by products and overridable per product. Weight and box dimensions are stored for
+  volumetric quotes when a provider adapter is switched on later. Pre-made rule sets cover common
+  cases (sum per unit, highest charge only, first unit plus each further unit, free above an
+  amount). Every rule set, Saha Textile's included, is built in the builder, never coded. The
+  screens are drawn as a brief for approval first (`DEC-UI-REUSE`).
+- **Saha Textile's rule set.** Domestic: a piece sold at MRP ships free; each unit of a discounted
+  piece costs ₹100 (3 units of discounted pieces cost ₹300). Discounted means the selling price is
+  below MRP, either as set on the product or lowered by an active sale event; coupons never change
+  shipping. International: ₹2,000 for the first unit and ₹900 for each further unit across the
+  cart (3 units cost ₹3,800). The delivery country decides which rule applies; the currency only
+  decides the gateway. A buyer paying in ₹ for a parcel to Dubai pays the international charge; a
+  buyer paying in US$ for delivery in Kolkata gets the domestic rule.
+- **Addresses and the invoice (Saha Textile path, export off).** Billing and delivery in India: the
+  normal flow. Billing in India, delivery abroad: the normal invoice to the billing address.
+  Billing abroad, delivery in India: the invoice is made out to the Indian delivery address, and
+  the foreign billing address is kept on the order for reference. Billing and delivery both abroad:
+  checkout shows a small optional "Indian address for the invoice" form, every field optional; a
+  complete one becomes the invoice address. If it is missing or incomplete (name, street, city,
+  state and a 6-digit PIN code), the order carries an admin-only "Invoice address needed" flag,
+  staff get the address from the customer and enter it on the order, and the order cannot be
+  marked Packed until it is complete. The shopper never sees that flag. The admin order page shows
+  every address as entered and which one the invoice uses. The parcel abroad is sent by staff
+  outside the system.
+- **Payment routing.** Rupees go to the admin's active INR gateway; every other currency to PayPal.
+  A buyer with an Indian billing address paying in a foreign currency goes to PayPal. When a PayPal
+  attempt fails or comes back unpaid, the cart shows a popup asking the buyer to choose their
+  currency, so a payer inside India can switch to ₹. A buyer abroad who keeps ₹ pays through the
+  INR gateway once HDFC switches on international cards; if the gateway rejects the card and the
+  reason can be read, the cart shows a popup asking the buyer to switch to their region's currency.
+- **`DEC-PAYPAL-FX` — a flat 6% markup.** One number for every currency, applied to the whole PayPal
+  payment including shipping; PayPal's fixed fee per payment is absorbed. Only the super admin can
+  change it. Foreign prices start from the GST-inclusive shop price, since GST is always charged
+  while export is off.
+- **Exchange rates: one source chosen in the admin.** Either PayPal's own rates through its Foreign
+  Exchange as a Service API (`POST /v2/pricing/quote-exchange-rates`), if PayPal approves the
+  account, falling back to the stored rates whenever it is unavailable, down or returns nothing; or
+  the stored rates per currency, typed by the admin and, when switched on, refreshed daily by an
+  automatic market-rate fetch that the admin can turn off for a while or for good. Rates are never
+  adjusted from past payments. PayPal has no self-service form for FXaaS: its docs send merchants to
+  "Contact PayPal" (paypal.com/cshelp/contact-us) or their account manager. The request is sent,
+  with the owner's OK, when the PayPal build starts.
+- **Latest versions.** PayPal work targets Orders API v2 through `@paypal/paypal-server-sdk` 2.5.0
+  and the JavaScript SDK v6 through `@paypal/paypal-js` 11.3.0 (v5 is deprecated); every new
+  integration uses the newest API and SDK unless compatibility needs an older one.
+- **CA document reshaped (owner, 2026-11-19).** Round 2 now holds only the questions relevant
+  today; export items moved to the future-expansion document; export wording removed from the
+  others.
+
+## Owner decision round (2026-11-19) — WhatsApp on hold
+
+- **WhatsApp is on hold (owner, 2026-11-19).** It is not built further and not registered with
+  MSG91 or Meta. Reason: MSG91's written answers of 2026-11-18 confirmed that Meta lets only
+  eligible businesses (verification plus at least 2,000 business-initiated conversations a day per
+  number) send authentication templates, and that a sign-in code may not go in a Utility template.
+- **What already exists stays** (nothing removed without a written say-so): the WhatsApp column
+  on Settings › Communications and the WhatsApp channel in the MSG91 sender. With no WhatsApp
+  number configured, the channel is simply not used.
+- **Templates and MSG91 talks cover SMS and email only.** The templates document lists 17 SMS,
+  1 consent and 22 email templates; the follow-up to MSG91 closes questions 41–48.
+- **Two order messages added to Settings › Communications** from the 2026-11-17 orders round
+  (OD1, OD2): an item on backorder, and an item sold out before payment (order refunded). Both
+  start on for every channel, like the other order messages (commit 2dad11a7).
+
+## Owner decision round (2026-11-19) — Infisical in every way the shop runs
+
+Answered on the Infisical secrets plan (https://claude.ai/artifact/5tzzYYLGeDSh2dMXcYJH9B, v2).
+Each mode reads only its own project: the Mac reads `saha-textile-dev`, each GitHub deploy job reads
+only its own project after the owner's approval, droplets receive finished files and never talk to
+Infisical, and pull-request checks keep made-up values. One renderer turns Infisical values into
+files for every caller and prints names, never values.
+
+- **L1 — `pnpm dev` refreshes the file.** Before a run, `apps/api/.env` is rewritten from the dev
+  project; offline or signed out, one line says so and the last copy is used. A gitignored
+  `apps/api/.env.overrides` is laid on top. No entry point changes.
+- **L2 — local runner A+.** `pnpm pipeline:local` runs the same stage scripts as GitHub: checks,
+  the production proof on throwaway values, images built once into a local registry. Stage 4 writes
+  the full release folder from the real dev values and runs `deploy.sh --check-only` (the release
+  check, nothing started); then the browsable Docker stack runs those digests with the dev values.
+  `act` and a self-hosted runner were rejected (no environments/OIDC; unsafe on a public repo).
+- **L3 — each shared password is stored once.** The owner deletes `/infrastructure/mongo-app-password`
+  and `/infrastructure/redis-password` in all three projects (six entries); the renderer writes both
+  files from `/api/MONGODB_PASSWORD` and `/api/REDIS_PASSWORD`. Root username, root password,
+  keyfile and `meilisearch.toml` stay. Compose and `deploy.sh` are unchanged.
+- **L4 — four of the five free identities.** The owner, `github-deploy-staging` and
+  `github-deploy-production` (GitHub OIDC, each a read-only member of its own project only, bound to
+  its GitHub environment), and a read-only dev-project key for unattended local runs whose secret
+  lives in the macOS Keychain.
+  **Changed on 2026-11-20: three identities.** The Keychain key is dropped (owner: "drop it so that
+  one of the machine identity frees up"; Release Console round of 2026-11-20). Every local refresh
+  uses the owner's own CLI login; when it has expired, commands keep the last copy and say to run
+  `infisical login`. Two of the five free slots stay unused.
+- **Mode 3 matches the droplet.** The stack's API and worker read a read-only file mounted at
+  `/run/secrets/api.env` through `DOTENV_CONFIG_PATH`, instead of `env_file`.
+- The renderer, `pnpm secrets:status` and `pnpm check:infisical-names` were built the same day
+  (`scripts/secrets/`); the rest follows the plan page's order. Hand-over: `.claude/infisical-plan/HANDOVER.md`.
+
+## Owner decision round (2026-11-20) — values stored twice in Infisical
+
+Answered on the Dev Secrets Checklist (https://claude.ai/artifact/6wVEWhFonbSuCG3egWfEN6), after a
+names-only audit of the dev project against the files on the Mac.
+
+- **D2 — the public sign-in IDs are kept once, in `/api`.** The owner deletes
+  `/deployment/GOOGLE_CLIENT_ID` and `/deployment/FACEBOOK_APP_ID` in all three projects (six
+  entries); the renderer writes both into `release.env` from `/api/GOOGLE_OAUTH_CLIENT_ID` and
+  `/api/FACEBOOK_OAUTH_APP_ID`, as the Docker stack already did. Checked first: every filled copy
+  equalled its `/api` value.
+- **D3 — addresses stored as a URL and as a host stay.** `SITE_URL`/`STOREFRONT_HOST`,
+  `ADMIN_URL`/`ADMIN_HOST`, `API_URL`/`API_HOST`, and `CDN_HOST`, `CCAVENUE_HOST`,
+  `PAYMENT_RETURN_PATH` beside the `/api` addresses they come from. The release step checks that each
+  pair agrees, built with the local pipeline (plan step 6).
+- **The owner copies values in Infisical by hand** (D1), and the agent checks them with a names-only
+  trial fetch into a temporary folder that is deleted afterwards.
+- **`SHOP_ORIGIN` stays in the dev project only.** In staging and production Compose sets it from
+  `STOREFRONT_HOST`.
+
+## Owner decision (2026-11-20) — the geo refresh job reuses the API's Spaces keys
+
+- **Decision** (owner: "Reuse the API's keys"): `.github/workflows/geo-refresh.yml` uploads the
+  country, State and PIN files with the same Spaces keys the API uses. Its repository secrets
+  `SPACES_KEY_<ENV>`, `SPACES_SECRET_<ENV>` and `SPACES_BUCKET_<ENV>` (ENV = DEV, STAGING,
+  PRODUCTION) are copies of that project's `/api/SPACES_KEY`, `/api/SPACES_SECRET` and
+  `/api/SPACES_BUCKET` in Infisical, which stay the master copies. Nothing new is stored in
+  Infisical.
+- **When a key changes**, update it in Infisical and in GitHub's repository secrets.
+- **Known trade-off:** repository secrets can be read by any workflow in the repository, and these
+  keys can write to the whole media bucket. Separate bucket-limited keys were offered and declined.
+- **Today** only the dev project has its Spaces keys; staging and production are copied once their
+  buckets and keys exist. Until then the job skips those environments and names them in its pull
+  request.
+
+## Owner decision round (2026-11-20) — which address each customer email comes from
+
+The owner, answering questions about `MSG91_EMAIL_FROM` on the Dev Secrets Checklist and in chat.
+
+- **One sender setting per group on Settings › Communications.** `MSG91_EMAIL_FROM` is replaced
+  by four settings. Each email takes the sender of its template's group, so a new email needs no
+  new wiring.
+
+| Setting                      | Group     | Emails                                                                   | From address                                |
+| ---------------------------- | --------- | ------------------------------------------------------------------------ | ------------------------------------------- |
+| `MSG91_EMAIL_FROM_ACCOUNT`   | account   | sign-in and verification codes, activation, password reset, staff invite | `no-reply@sahatextile.com`                  |
+| `MSG91_EMAIL_FROM_ORDERS`    | orders    | order updates, invoices, payment links                                   | `orders@sahatextile.com` (2026-11-17)       |
+| `MSG91_EMAIL_FROM_SHOP`      | shop      | back in stock, question answered                                         | `notifications@sahatextile.com` (new alias) |
+| `MSG91_EMAIL_FROM_MARKETING` | marketing | newsletter, sale and launch announcements                                | `newsletter@sahatextile.com` (2026-11-17)   |
+
+- **All four are Google Workspace aliases of `wecare@sahatextile.com`,** not mailboxes, so a
+  customer's reply to any of them lands in the customer-care inbox. The owner adds
+  `notifications@` as a new alias.
+- A blank setting falls back to the address in the table. A template that is not on
+  Settings › Communications sends as `account`.
+- **The owner changes the names in Infisical by hand** in all three projects. Dev holds the four
+  addresses; staging and production stay blank until MSG91 answers question 29.
+- **Still open:** MSG91 question 29, whether the From address may sit on `sahatextile.com` itself
+  or must use a sending subdomain, and questions 39–40, which MSG91 product and domain the
+  newsletter must use. MSG91 sends on its own servers and checks only that the address's domain is
+  verified with it; the aliases decide only where replies go.
+
+## Owner decision round (2026-11-19) — shipping rules brief approved
+
+- **The Shipping Rules Brief is approved as drawn (owner, 2026-11-19: "Approved").**
+  https://claude.ai/artifact/FzAxc1XfEyMr8dsWvVsmdE — 28 admin screens, 6 dark-mode versions,
+  8 shop scenes and the walkthrough GIF of both Saha Textile rule sets. Approval covers the screens, the
+  logic and edge-case tables, the reuse inventory, and the one custom piece: the rule builder's block
+  layout (the `srb-` classes). Every other part is assembled from existing elements (`DEC-UI-REUSE`).
+- **The shop never says why it asks for an Indian address (owner, 2026-11-19: "just ask for a local
+  indian address without giving the details away").** The checkout step is titled "Address in India
+  (optional)" and only says the shopper can add one (family, friends or an office) and that the parcel
+  still goes to the delivery address. No shop text mentions the invoice, GST or a follow-up contact;
+  the name field is "Full name". Staff screens may still call it the invoice address. Brief v2 shows
+  this wording.
+- **Made redundant, not removed** (end-of-project cleanup list): the theme's Shipping country pages,
+  the shipping rule form and its two modals, and the gateway key fields in Settings › Payment method.
+- **Build order:** contracts → core rule engine → adapters → API → admin → shop. Still open and not
+  decided by the brief: foreign-price rounding (FX3), repricing threshold (FX5), refunds in foreign
+  currency (FX8), and the CA's C2 questions on how the delivery charge is taxed.
+
+## Owner decision round (2026-11-19) — product bulk actions and product drafts brief approved
+
+- **The Product Bulk Actions brief (round 3) is approved with the recommended answers (owner,
+  2026-11-19: "A few was recommended with question three also taking your recommendation of
+  removing them." — dictated; read as "Approve as recommended", Q3 = remove).**
+  https://claude.ai/artifact/LR2dRNgmXPWss4N8HGHTac. Approval covers the screens, the logic lists and
+  the reuse table; the only new styling is placing the copied picked-list under the bar and pinning
+  the bar to the bottom on phones (`DEC-UI-REUSE`).
+- **Scope:** ticks that stay through search, page, sort and page size on every shared admin table
+  (kept for the browser tab); the selection bar, chips with ✕ and the "Show list" panel; bulk Go Live,
+  Take off shop, Discontinue, Put on sale, Duplicate and Delete on Products, all working on the
+  server; the row Status switch made true and working; the sale form's Discounts table at full width
+  without wrapping; Save as draft on the product form for new products and for changes to existing
+  ones, with one Products › Drafts screen.
+- **Q1 = A — Delete only for products that never went live.** A product that has been live, sold or
+  stocked is discontinued, never deleted (fits the hard-delete-for-exceptions rule). The row bin icon
+  follows the same rule.
+- **Q2 = A — "Discount" means a timed sale only.** Bulk Put on sale adds products to a sale from
+  Events (% off, ₹ off, or a fixed sale price typed per product, per colour where needed). No
+  permanent "Change price" bulk action.
+- **Q3 = B — remove the Approve and Store columns from the product list (the owner's written
+  say-so).** Both came from the Fastkart marketplace template; Saha Textile is one shop. The physical
+  stores on the Stores screen are unaffected.
+- **Q4 = A — the product status `draft` shows as "Not live yet"** in the admin; "Draft" means only
+  unfinished work saved with Save as draft. Only the label changes; the stored status stays `draft`.
+- **Product drafts live apart from products** (own collection): never seen by the shop, search,
+  sitemap, sales or stock; never deleted automatically; one draft of changes per product per person;
+  Update Product runs every check and writes only the changed fields, asking per field when the
+  product was saved by someone else after the draft began.
+
+## Owner decision round (2026-11-20) — orders brief answers: open orders, payment requests, coupons, addresses, numbering
+
+Answers given in chat on the orders, checkout, businesses and payments brief (version 1,
+https://claude.ai/artifact/AbKBNhxsUbpZPkYxqW41eD). Closed here: `DEC-PROMO-STACK` (Orders round OD4) and
+`DEC-ADDRESS` (OD6). Removed from the round-2 CA document: B1.2, B1.7 and B6.1–B6.2. Added to it: B3.2
+(reworded) and B8.7 in the wording the owner accepted, and the rounding of foreign prices (Orders round
+FX3) as D19.1.
+
+- **Open orders for regular buyers (admin orders, shop customers and businesses alike).** Some buyers
+  collect pieces over two or three months and take them in one shipment. An admin order can be saved and
+  kept open: its pieces are held, staff add and remove pieces over time, and the order total follows.
+  An order can take several payments. A payment typed by hand (UPI, bank transfer, cash) opens with the
+  amount still due filled in; staff may change it: less leaves the rest due, more leaves the order paid
+  ahead. An online payment request (INR gateway or PayPal) can only be for the amount still due.
+- **Pieces on an unpaid admin order are held, whether or not a payment has started** (concern K7: "draft
+  orders will block inventory regardless whether payment initiated or not").
+- **Payment requests come from the gateway itself.** The owner meant the gateway's own payment request,
+  which the gateway emails and texts to the customer in its own format (CCAvenue's invoice service sends
+  email and SMS; PayPal's invoice is emailed by PayPal); we only pass the details it needs. Beside the
+  link in the admin: Copy, plus "Send as SMS" and "Send as email" buttons that use our MSG91 templates.
+  Those two are pressed by staff and never sent automatically.
+- **Businesses.** Business customers and suppliers are kept as companies in one collection, so the
+  business order screen offers them in one list. For Saha Textile the customer and supplier accounts stay
+  separate and each is settled by payment. For other businesses the system allows a set-off between the
+  two accounts, either as a standing setting backed by a written agreement or as a single entry with its
+  own agreement, built from a senior UI/UX, e-commerce and audit point of view, and ready even
+  though Saha Textile will not use it. No CA question is added for it (the proposed D13.5 is dropped).
+- **OD4, `DEC-PROMO-STACK` — option A plus a stacking switch.** One coupon per order; a coupon skips items
+  already on sale unless it is set to include them; automatic offers never stack, and the lowest price
+  wins; coupons cover products and their stitching, never delivery (free delivery is its own coupon type);
+  once per customer unless set otherwise. A coupon whose type allows stacking may be used together with
+  other coupons that also allow it, under the same rules. A coupon builder replaces the theme's demo
+  coupon screens (in the spirit of the shipping rule builder), and coupons work in both the shop checkout
+  and the admin order checkout. How a coupon's discount is split across items at different GST rates stays
+  with the CA (round-2 D1).
+- **OD6, `DEC-ADDRESS` — option A plus country rules.** Several named addresses; mobile number required (10
+  digits in India, international format abroad); second number and landmark optional; the PIN code fills
+  city and State and checks a courier can deliver; billing the same as delivery unless the buyer unticks
+  it. Every address form: the chosen country limits the State list and sets the phone country code, which
+  staff or the buyer may still change for the phone only. Saved addresses are managed by staff for a
+  customer in the admin and by the customer in the shop account; both checkouts let billing and delivery
+  each be picked from saved addresses or typed new, with a "save this address" box that asks for the
+  address's name when ticked.
+- **B1.2 (relayed by the round-2 CA question chat, Final, 2026-11-20).** Checkout always takes both a billing
+  and a delivery address, with a "same as delivery" box; the admin order screens show both; the case of a
+  buyer abroad giving an Indian address for the invoice stays behind the named `exportOffIndianInvoice`
+  path. **D8.6 (open, owner and CA):** in which currency, and on how many documents, such an order is
+  invoiced; nothing is built for it until answered, only a seam.
+- **OD10 — import duty abroad.** Not for Saha Textile, whose export path is off. Kept as a setting under the
+  named orders-abroad paths for businesses that ship abroad, off for Saha Textile.
+- **OD18 and `DEC-NUMBERING` — the owner chooses every document number format** from the recommended table
+  in the brief; the CA has agreed to accept that choice, so B6.1–B6.2 leave the CA document.
+- **FX3** goes to the CA document (D19.1). **FX5** (answered in the next round, 2026-11-20) is not settled by the rate sources: it asks how often the
+  foreign prices shown in the shop change, and stays open in the Orders round.
+- **Admin lock screen.** The 15-minute lock must be held by the server, so a reload or a new tab cannot
+  skip it. A form being filled when the lock appears must keep its values after the password or PIN, and a
+  reload or tab close with unsaved changes, locked or not, must ask the browser's "leave this page?"
+  question. To be built and tested without pictures.
+
+## Owner decision round (2026-11-20) — orders and checkout brief approved, with changes
+
+The orders, checkout, businesses and payments brief v2.1 (https://claude.ai/artifact/AbKBNhxsUbpZPkYxqW41eD)
+is **approved with the recommendations** (owner, 2026-11-20: "rest of the brief is accepted with your
+recommendations. integrate the above decisions and start building the code in the background"). Approval covers
+every picture, the green side of concerns K1–K10, the named-settings table, the permissions table, the status
+table, the S1–S10 address × currency table, the 24 emails and the reuse inventory; the one custom piece is the
+email layout (`DEC-UI-REUSE`). The changes and additions below are built directly, without redrawing the brief.
+
+- **FX5 — foreign prices follow the active rate source, with no threshold (Final).** Owner: "change each day auto
+  fetch from API when enabled from api, or manually set by admin changed only when admin changes it or dynamic
+  rates per transaction when FXaaS is approved." The daily fetch, when switched on, changes foreign prices each
+  day; a rate typed by staff while the fetch is off changes only when staff change it; PayPal's own rate per
+  payment applies once FXaaS is approved. The brief's "only past a 1% move" idea is dropped. Carts are priced
+  again at checkout (existing rule). The built Currencies code already works this way (no threshold anywhere).
+- **fx03 — accepted as written; nothing to build now.** The "PayPal's rates unavailable" banner can appear only
+  when the source is PayPal's rates and PayPal's rate service fails; the PayPal choice stays greyed until PayPal
+  approves FXaaS.
+- **`PAYPAL_ENV` is set in Infisical by the owner** ("PAYPAL_ENV set in dev staging and prod in infisical as
+  sandbox for dev and staging and live for production"). It replaces "derive from `DEPLOY_ENV`": the PayPal
+  adapter reads `PAYPAL_ENV` (`sandbox` | `live`, required when the PayPal keys are set) and fails closed on a
+  mismatch (`live` outside production, or `sandbox` in production): PayPal is switched off with a clear
+  startup log line and the gateway page says PayPal isn't configured. Key values are never printed.
+- **Orders list — a date range filter** beside the drawn filters (ol02–ol04): "only a date range filter selection
+  should also be there along with your drawn filters." Server-side and index-backed.
+- **Create order — the buyer search uses the theme's search-select** already in the admin ("think the fastkart
+  theme might have such a search select dropdown as a plugin already available to re-use"). A shop customer is
+  found by anything typed — name, phone or email; a business by name, phone number or GSTIN. Server-side,
+  debounced and keyboard-friendly, with "Add customer" / "Add business" kept.
+- **Shop pay page, expired link (shop11):** the two buttons become normal-size **"Call us"** and **"Email us"**
+  anchors (`tel:` and `mailto:` from the store's contact settings), with no phone number or email address in
+  the button text ("that should be reduced to call us and email us with proper anchor links to trigger the
+  actions").
+- **`DEC-B2B-ZONES` — zones (buyer levels) for business customers.** Owner: "when B2B client is made they also
+  should have a zone attached with them which tells indicates what level of buyer they are and every zone will
+  have their individual pricing lists attached to them … for now default zone would be RETAIL which will not
+  contain any values but it will inherit normal customer shop pricing … only one zone per B2B client."
+    - Every business with the customer role has exactly one zone. **RETAIL** is a system zone with no rules that
+      can't be deleted; a RETAIL business pays normal shop pricing, the same as a shop customer, sale events
+      included.
+    - Admins add more named zones. Each holds a price list built like a sale event: all-products rules, several
+      category rules, and product-level exceptions picked and un-picked from a list. Rule kinds now: a **flat
+      price** (absolute ₹) or a **percentage less than retail**. Product exceptions beat category rules, which beat
+      all-products rules.
+    - The business form gains the Zone field; the business list shows it; assigning a zone has its own permission.
+    - Creating an order for a business: product cards are priced by the business's zone. A product with no price
+      in that zone shows, in red, **"Price not set for this zone"** in place of the price line, and the card is
+      greyed and disabled (no click, no quantity). Search and the category dropdowns work as now.
+    - The order keeps the zone, its version and the rule that priced each line. Zones never change shop prices;
+      they apply only to admin orders for businesses.
+    - Still open (`DEC-B2B-ZONES` in `pending-decisions.mdx`): a shop sale versus the zone price, whether zone
+      prices include GST, further rule kinds, a product in two categories with different zone rules, and coupons
+      on zone-priced lines.
+- **Coupons list:** row ticks with bulk **Delete**, **Turn on** and **Turn off**, and a row on/off switch.
+- **Every admin table keeps its ticks** through a search, clearing the search and a page change ("make sure all
+  tables in the backend admin panel follow this same rule for better UI/UX"). Bulk actions act on every pick,
+  not only the current page.
+- **`DEC-NUMBERING` — the document-number table is accepted for every row except the order number.** Accepted
+  as written in the brief: parcel/shipment, return, payment request, tax invoice, credit note, debit note,
+  receipt, refund voucher, delivery challan, payment voucher, self-invoice, purchase order, purchase entry,
+  purchase return note, journal, stock adjustment and stock count, e-way bill, e-invoice IRN, courier AWB,
+  gateway and bank references. Each format is a setting per document type (prefix, financial-year token,
+  digits, reset each financial year or never; at most 16 characters for GST documents; unique once separators
+  are stripped; locked after the first number is issued; allocated in the same save as the document; a
+  cancelled document keeps its number). **The order number format is still open**: the owner asked how
+  `ST-#####-#####` works (random or counted, which part identifies the order, year segregation, what large
+  businesses do); it stays a setting until answered.
+- **E-invoice IRN and e-way bill for business orders, before dispatch.** Fields for both on the order, filled by
+  hand until an integration exists, with standard **Raise e-invoice** and **Raise e-way bill** buttons. Each button
+  calls its integration; with none connected, it falls back to a popup with the manual entry fields (e-invoice:
+  IRN, acknowledgement number and date, signed QR optional; e-way bill: number, generated on, valid until,
+  transporter, vehicle or transport document number, distance). Stored with where it came from (typed or
+  integration), who and when. Whether Shipped is blocked until they are filled is still open.
+- **Country, State and phone data:** the owner asked where the monthly refresh script runs and where it fetches
+  from; still open. The data file is built by a script that runs locally first.
+
+## Owner decision round (2026-11-20) — orders build: the pending questions answered
+
+The owner answered every question left open by the orders brief approval (question popups after message 21; exact
+words in the orders brief's notes). Closed here: the order row of `DEC-NUMBERING` (OD18), `DEC-B2B-ZONES`,
+`DEC-EDOCS-GATE` and `DEC-GEO-REFRESH`.
+
+- **OD18 Final — order number `ST-YYMM-NNNNNN`** ("Month + random (Recommended)"), e.g. `ST-2611-482190`: the year and
+  month (IST) the order record is created (an open order: the day it was opened), then six random digits. It never
+  restarts and the whole string is the order's id; it is unique once separators are removed (`ST2611482190`, the SMS
+  form), and search accepts both forms. Parcels, returns and payment requests hang off it (`/P1`, `/R1`, `/Q1`). The
+  format stays a setting.
+- **`DEC-B2B-ZONES` — zone prices are written by each owner in a rule builder** ("can we have this as configurable with
+  conditions and variables in the zone creation/setup screen in the same query builder as of the zone's rules builder?
+  so that each owner can make their own rules"). The zone builder reuses the shipping rule builder's blocks (if /
+  otherwise, variables, Try it, In plain words). Variables: the piece's regular selling price (never touched by sales),
+  its current sale price (empty when no sale is live), whether it is on sale, MRP, purchase cost and quantity.
+    - **Data rule (owner):** a product's selling price and its sale price are stored separately; a sale price (from a sale
+      event or a product's own sale) is cleared when the sale ends or is switched off and is never written over the
+      selling price.
+    - **Zone prices include GST**, like shop prices ("Include GST (Recommended)").
+    - **Rule kinds:** flat price, % less than a base, ₹ less than a base, % above purchase cost (no cost: "Price not set for
+      this zone"), quantity breaks, rounding, and a cost guard, "and any other flexible offerings you think a business
+      might need to become the most versatile software".
+    - **Clashes: order in the builder.** Tiers stay fixed (product exception > category rules > all-products rule); within a
+      tier the first matching rule wins and the owner drags rules into order.
+    - **Coupons on zone prices: a switch on each coupon**, "Usable on zone prices", off by default; OD4 applies on top.
+    - **Stitching and add-ons: the rule decides** (owner's answer of 2026-11-20, "Rule decides (Recommended)"; it reached
+      the build on 2026-11-21). Every zone rule has a switch, "Also apply to stitching and add-ons", off by default. Off:
+      only the piece takes the zone price and stitching and other add-ons keep their listed price. On: the rule's % off
+      or ₹ off also applies to each add-on (never below ₹0). A flat price, per-variant flat price, price per metre (and
+      % above cost) never touches add-ons, even with the switch on; the builder greys the switch for them and says why.
+      Inside quantity breaks or lower-of / higher-of, the formula that set the piece's price decides. In Plain words and
+      Try it the add-on effect shows per rule and per line, and the order line records whether its add-ons were
+      zone-priced. Admin order lines now keep their options, add-ons (stitching at the price charged) and measurements,
+      as shop orders do, for this and for the invoice.
+- **`DEC-EDOCS-GATE` — block when required** ("Block when required (Recommended)"). Mark as Shipped stays off, with the
+  reason, until the e-invoice IRN is in while the e-invoice switch is on (on by default for business orders; the CA
+  confirms the turnover test) and, for goods of ₹50,000 or more, the e-way bill number is in — shop orders of that value
+  included. The switch and the threshold are settings.
+- **`DEC-GEO-REFRESH` — a monthly GitHub Actions job** on GitHub's machines, never our servers: it downloads the official
+  releases, rebuilds the country, State and phone data file and opens a pull request into `dev` only when something
+  changed; with no change it ends quietly. A person reviews and merges. (Owner: "if no change in data … there wont be any
+  new PR opened if nothing changes, right?" — right.)
+    - **Amended the same day (owner, 2026-11-20):** "definitely move all that data to spaces", read with targeted
+      queries, then "yes do publish directly to spaces". The data is small files in each environment's Spaces bucket
+      (`geo/<sha256>.json`) with the index as `geo/manifest.json`; the monthly job publishes there directly, with no pull
+      request, code change or release. Automatic safety checks replace the review (countries, India's States with GST
+      codes, PIN counts); every index is kept for rollback. GitHub holds each environment's Spaces keys as copies of its
+      `/api` values (owner: "Reuse the API's keys").
+
+## Owner decision round (2026-11-20) — Release Console upgrade
+
+The owner asked to move the console's keys to Infisical, make it a deployable app, add a secrets-manager step and list
+every missing piece for yes/no answers (request word for word in the console chat's hand-over). Answers:
+
+- **Secrets managers in projects.** Add a project gains a step for secrets managers, one or more per repository (managed
+  services such as Infisical Cloud, AWS Secrets Manager, Google Secret Manager, Azure Key Vault or Doppler; self-hosted ones
+  such as Infisical or Vault; GitHub Actions secrets; files on the server). Each environment reads one of them.
+- **"Yes, all recommended"** to the upgrade list: keys only from Infisical and never pasted into the console; one
+  `/release-console` folder in the dev project only; `pnpm console:env` writes the console's key file with the owner's own
+  login (no machine identity); a GitHub token inside Docker; a Secrets screen with names and dates only; one image holding
+  the app, its API and its SQLite database; a Mac helper on `127.0.0.1` with a fixed list of commands, never the Docker socket
+  in the container; `pnpm console:up`/`console:down`; the image published privately but not deployed until the owner says;
+  Cloudflare Access plus the PIN on a server; deploy to local from the console with live progress; start and stop the
+  stack's own services only; never the checks stage under running dev servers; this Mac's figures in place of DigitalOcean's
+  (5-second live, 7-day history); live logs; a requests view; VictoriaTraces with tracing in the API, worker and shop
+  server; no log database; local alerts; a heavy-load measurement before `DEC-TRACING-SERVERS`; screens per the Safe
+  Releases Brief (a brief first for any screen without a design); phone layout; browser tests; troubleshooting steps; a
+  portal guide.
+- **Read-only Keychain identity dropped** (owner, 20 Nov: "drop it so that one of the machine identity frees up"). Infisical
+  plan L4 becomes three identities: the owner, `github-deploy-staging` and `github-deploy-production`. Local refreshes use
+  the owner's own CLI login; when it has expired they keep the last copy and say to run `infisical login`; nothing
+  refreshes in the background while the owner is signed out.
+- **Still open:** the database monitor's read-only Mongo login.
+- **Sign-in with a PIN or a password** (owner: "make sure the release console login pin is no longer on keychain and is
+  properly maintained in dashboard with an option for password and pin both"). The PIN was never in the Keychain; both are
+  scrypt hashes in the console's database, managed in Console settings.
+- **One DigitalOcean token.** The owner made one full-access token without an expiry and keeps it in
+  `CONSOLE_DO_WRITE_TOKEN`; a read/change pair counts as complete when either is filled. The console would use a read-only
+  token first if one is added later.
+- **Cloudflare read token:** "Read all resources", 90 days, in the account that holds `sahatextile.com`.
+
+## Owner decision round (2026-11-21) — product page brief: first screen, render ideas, bundles, buy bar, swatch cuts
+
+Brief: https://claude.ai/artifact/4d5yK6GhiTrg3T25KybWeN (revision 4). Owner, 21 Nov: "Yes, all your recommendations accepted, along with all the optional extra views that you suggested." Then: "with these in mind, you can start building", and for the revision 4 additions: "Once all of these changes are incorporated in that, I'll approve it directly."
+
+- **Phone first screen (P1 = B):** dots on a full-width photo, no thumbnail row and no arrows on phones; breadcrumb padding 7 px and a 16 px gap below it ("keep a healthy balance, at least in the mobile UI"); the photo is never narrowed from the sides.
+- **Thumbnails (P2):** only under the photo, never a side strip; each tile a fifth of the photo's width, as in the Codex renders; no row for one photo with no video; arrows only past five.
+- **Removals (P3, written OK):** on phones the photo's arrows and the thumbnail row; on set pages Trending Products, replaced by the set summary. Nothing deleted from the code.
+- **Buy bar (P4):** one bar for every kind of product, from the first screen on phones and on laptops whenever the page's own buttons are out of view; chips open their choices; Edit add-on and Configure set open the page's own parts in the product pop-up (P5: sheet on phones, centred on laptops).
+- **New looks (P6):** picture row, picture chip, Size V2 (optional second line on values, both languages) and colour chip.
+- **Measurements (P7):** the measurement row with its pop-up always in sets and from the bar; on the product page inline for 4 fields or fewer, the row for more.
+- **Set page (P8):** piece rows with photos and status marks, one open at a time, chips of choices, the set summary in the right column.
+- **Option table and measurement touches (P9):** radio rings in place of the tick circles, greyed sold-out rows, amber low stock, "Price (incl. taxes)"; the measurement title names the choice, in/cm on the title row, the total box with a border.
+- **Laptop first screen (P10):** a 24 px gap above the title, one price line, a two-line description, quantity, Add to cart and Buy now in one row, facts and the option table below the buttons, the total box only once an add-on adds to the price.
+- **Swatch cuts (P11, P12):** a cut is a new picture made from the product photo by the image worker and listed under it; Replace re-cuts at the same square; a 360 px Image V2 size is added; anyone who may edit products may cut.
+- **Icons (owner):** Buy now gets a lightning bolt beside its text, like Add to cart's cart; measurements use a coiled measuring tape ("ফিতে") instead of the ruler.
+- **Admin look preview (owner):** wherever a look is chosen in admin, a plain sketch of that look with the values on hand shows at once.
+- **Set prices for picks and optional pieces (owner, 21 Nov, popup):** "Follow each set's price setting (Recommended)". A group holding more pieces than it takes is a choice and its first pieces are included. A fixed-price set keeps its price unless the shopper picks a dearer piece, which adds the difference; a cheaper pick shows "Included". A sum-of-pieces set costs what the chosen pieces cost (after each piece's adjustment when discounted). An optional piece adds its own price under every setting. The server works it out (core `set-price`); the shop only shows it. Before this, the server added up every piece of every group, alternatives included.
+
+## Owner decision round (2026-11-21) — this computer and a development server get separate Infisical projects
+
+- **The development server** (owner, popup): "Code path only (Recommended)". The API and the
+  release builder know a development server (`DEPLOY_ENV=development`, as strict as staging, test
+  payments only); nothing is made in GitHub or DigitalOcean until the owner decides to make the
+  server. Its deploy identity would take the Infisical Free plan's last identity (5 of 5).
+- **Its settings** (owner, word for word): "can you duplicate the entire saha-textile-dev project
+  itself into a new one? the primary copy gets renamed to saha-textile-local, and the duplicated
+  copy gets renamed to saha-textile-development. is that possible for you to do? and then in the
+  saha-textile-development project folder, you remove the key(s) and value(s) pairs which were
+  added specifically for local env and which are not needed at all for dev server kind of
+  deployment. you are free to use chrome for this if you need and make any necessary adjustments
+  in code if or configuration if needed due to this local and dev project separation."
+- **Done 2026-11-21:** the owner renamed `saha-textile-dev` to `saha-textile-local` (slug
+  `saha-textile-local-s77l`). The copy is `saha-textile-development`, without this computer's own
+  entries and with the server settings every server uses; what was left out, changed and left
+  blank is listed in `docker/infisical/README.md` (Changes on 2026-11-21). Its sign-in secrets and
+  passwords are still this computer's copies until the server gets its own.
+- **Revision 4 additions approved** (owner, 21 Nov: "Approve additions including everything and all the optionals too"): the icons, the phone spacing (breadcrumb padding 7 px, a 16 px gap below it, the photo full width), the buy-bar chip lists, the pencil, Edit add-on and Configure set pop-ups, and the admin look preview. Phones show no arrows on the photo (dots and swipe), as P3 says; laptops and tablets keep them.
+
+## Owner decision round (2026-11-21) — servers made from the Release Console: SSH, certificates, Search Console key
+
+- **SSH route stays the plan's.** Asked why Cloudflare is needed for a droplet's SSH, the owner
+  chose "Keep the plan: tunnel + Access (Recommended)": port 22 stays closed, SSH goes out through
+  `cloudflared`, the deploy job proves itself with an Access service token.
+- **Who may sign in is a list.** Owner: "going with your recommended option, but flexibility to add
+  more people too as and when required, not just one." Each project keeps a list of emails
+  (Release Console › Droplets › Who may sign in over SSH); changing it rewrites every server's
+  Access rule.
+- **Certificates live in Infisical.** Owner: "key and csr made on the device that triggers it, yes
+  not just this mac. and if possible also include to hold the public and private key in infisical
+  in the specific project's specific env … if infisical has no value to pull from then key and csr
+  gets made again, else subsequent releases pull from infisical when value avalable." Built: the
+  optional `/infrastructure` names `origin.pem`, `origin.key`, `origin-ca.pem` and
+  `cloudflare-client-ca.pem` (variable-names.json `certificateFileNames`); a release carries the
+  ones that are set and `deploy.sh` installs them into `certs/`. Creating a server reuses them when
+  set, otherwise makes the key and CSR on the console's machine and our own origin-pulls CA, and
+  saves them there.
+- **Search Console key in production.** Owner: the Google key belongs to the production project.
+  The service account `release-console-search` lives in Google Cloud project
+  `saha-textile-production` (Restricted user on `sc-domain:sahatextile.com`); the organisation's
+  "Disable service account key creation" rule is lifted for that project only while the key is
+  made, then put back ("Brief: off, create, back on"). The unused account in `saha-textile-dev` was
+  deleted on the owner's yes.
+
+## Owner decision round (2026-11-21) — Release Console loaders
+
+- **29 loaders, one per kind of work.** Brief `N5kmX6DLJv1ECitVUPFHJ8` revision 2. Owner: "All
+  accepted. Build it just like that for every loader with first load, slow vendor(10 sec instead of
+  20), refresh data on screen and data arrives states." Keep waiting is offered at 10 seconds; the
+  amber "still waiting" stays at 8 seconds.
+- **Verified on every page.** Owner: "all animations per page, they all have to be verified per page
+  after the build is complete." `pnpm e2e:console:loaders` checks every place in every state, at
+  laptop and phone size.
+- **At least one second on every page.** Owner: "even if there is no data or something that being
+  read ... at least show 1 second bare minimum of the loading animation ... That's the minimum amount
+  for any screen." Every page (each menu screen, the console and project pages) shows its loader at
+  once when it opens and keeps it at least one second, longer while its reads last. This replaces the
+  brief's "shown only after 150 ms, kept at least 400 ms". The second counts from when the loader is
+  on screen. Opening the console fresh shows the Boot sequence for its own second, then hands over to
+  the page's loader, which shows its full second once the Boot sequence has faded.
+
+## Owner decision round (2026-11-22) — bundle builder brief approved (revisions 1–3); the build starts
+
+Brief: https://claude.ai/artifact/UE6GxSvKq5VfspTqD41ixQ (revision 3, 563 screens). Revision 1 (D1–D7 and every
+suggestion) and revision 2 (R1–R3) were accepted in full on 22 Nov. On revision 3 the owner wrote: "v1 to v9 all
+accepted", then "start building the code directly".
+
+- **Bundle model (D1):** a bundle is a product of type Bundle built in its own builder: levels, each holding one or
+  more products and a "take N"; a level with one product is fixed (green tick), a level with more than it takes is a
+  choice. The shop heading is "Bundle Components" when nothing is chosen and "Choose your set" when any level is a
+  choice. Optional extras use the same rows with an outlined tick that fills when ticked (no switch, no checkbox),
+  shown "Free" or "+₹X" (D3).
+- **Prices (R1):** each item shows MRP, Selling price, Current sale price (only while a sale covers an item in that
+  table, with the sale's name) and an editable Price in this set, which starts from the selling price. Bought
+  separately counts each piece's price today (its sale price while a sale runs); a check warns when the set costs
+  more than its pieces during a sale.
+- **Sale base (R3):** sales stay off the selling price, with no MRP or selling choice; the sale review shows
+  "Shopper sees: N% off MRP".
+- **Where a bundle is edited (V1):** Products › Bundles (list, Add bundle, Edit) and one builder page with tabs
+  Build, Price rules, Details, Photos, SEO, FAQ's and Status. Add product with Type = Bundle opens the builder; the
+  old Bundle tab retires.
+- **Field exceptions (V2):** a bundle has no HSN, tax, stock, MRP or selling price of its own, no barcode, weight
+  or variations; its own number is a BND- search number; categories never open the HSN pop-up for it; it is left
+  out of purchase orders, purchase entries, purchase returns, stock counts, adjustments, opening stock and barcode
+  labels. Photos are linked from the pieces in level order (nothing uploaded); SEO and FAQs are the bundle's own.
+- **Stock (V3):** worked out, never typed: "sets possible" from the pieces in stock. A bundle is out of stock only
+  when not one full combination of choices across all its levels can be made (owner's rule). No "partial" status;
+  an amber note names sold-out choices. Optional extras and free items never block.
+- **Price methods (V4, changed by the owner):** the "Set price is" list is **not built into the code**. Owner: "the
+  rules which you already showed us in this brief's screenshots, better to not bake into code, but build the builder
+  and create those exact same rules by default as seed data into the db itself for use so we always get it in the
+  dropdown from day 1." Price methods are records made in a builder, listed with add, edit and remove; One fixed
+  price, Pieces added up, Pieces % off, Pieces ₹ off and Buy more save more are seeded. Each bundle can add its own
+  price rules on the same rule blocks.
+- **Free with this product (V5, D4):** one or more free items on any product; for two or more, the shopper gets all
+  of them or a choice (exactly N, up to N, between M and N), required or optional. A free item is a real stocked
+  product, never a service. When a free item runs out the main product keeps selling, the row hides and admin is
+  alerted. Inside a bundle, a pick that brings free items opens a pop-up when a choice is needed.
+- **Show on shop (D5):** a product switch beside Status. Off: the product stays live, keeps stock, fills from
+  purchase orders and can be a set piece, extra or free item, but leaves listings, search, sitemap and feeds, and its
+  own page answers "not found".
+- **Cards and quick view (V6, V9 with the owner's comments):** bundle cards read "Set of N" or "Choose your set",
+  with "From ₹" for choices. Quick view carries every product page change: the same photo gallery, spacing and
+  buy box. Tablet quick view is side by side like the laptop one ("It should be sideways and not … one below the
+  other"). On phones quick view is a centred pop-up with space above and below, scrolling inside itself without
+  scrolling the page ("not like a huge-ass popup running from top end to bottom end").
+- **Grouped lines and Pack list (V7):** cart, header cart, shop orders and admin orders show a bundle with its
+  pieces, their free items and extras as a tree; phones fold a set's pieces; admin gets a Pack list and Mark packed
+  waits for every tick. Owner on My orders for phones: "could you think of a better UI" than a sideways-scrolling
+  table.
+- **Documents (V8, changed by the owner):** our format for every accepted document type, Settings › Document
+  formats with one table per document and exactly one active format each, Make new layout, and a layout builder per
+  document offering only that document's fields. Owner: "include the document builder's builder in the plan too now
+  instead of later." A set prints as a heading row with no amount or tax; its pieces are indented with their own
+  HSN, share and tax; free items at ₹0.
+- **Tax treatment (owner-final for concern 1):** each piece of a set is billed at its own share of the set price, the
+  share in proportion to each piece's Price in this set (owner: "yes i agree your drawn version is better and risk
+  free"). Concerns 2 (the ₹2,500 garment band) and 3 (free items at ₹0) went to the CA round 2 file as B2.9 and D2.5.
+- **Returning one piece of a set (concern 4):** refund that piece's share; the other pieces keep theirs ("okay").
+- **Colour picker (question answered):** Admin › Attributes already gives colour values a colour picker (hex) for
+  the Colour swatch and Colour chip looks; the shop draws circles and chips from it.
+
+## Owner decision round (2026-11-23) — accounts brief approved: documents, books, cash, locations, payroll (D1–D31)
+
+Brief: https://claude.ai/artifact/2fn4V9AS2BDBP9vyWSNjwp (revision 1, then request 2 in three renditions). Owner: "I
+approve all of them along with all your recommendations uh, and everything and also for the cart option too as GA."
+Nothing is built yet; an addendum (banks, kinds of business, GST, several GSTINs) is drawn for a separate approval.
+
+- **Documents (D1, D3–D10):** an Accounts menu lists every document; documents are made where the work happens.
+  Tax invoices at dispatch come first. Returns: 7-day window (setting) with exclusions, refund to the original
+  payment, each piece back to stock, held as damaged or written off. Issued documents are never edited or deleted;
+  only a super admin cancels, with a reason, while the GST month is not filed and books are open; afterwards a
+  counter-document. Every supplier payment gets a payment voucher. Written-off stock reverses its input tax by
+  journal voucher. Drafts lock to their editor (2 minutes idle, super admin may take over). Inbox ticks survive
+  search and pages within a mailbox.
+- **Cart (D8):** option A, Edit / Add to wishlist / Remove as links under each item's name on laptops.
+- **Books (D11, D12, D20, D24, D25):** a full double-entry ledger posted with every document in the same transaction
+  (replaces D2); sales booked at dispatch; one set of company books with every line carrying its location; Accounts
+  menu of 11 entries; bill-by-bill settlement.
+- **Cash (D16, D23, D26):** blind day-end count; the cashier never sees amounts or the expected balance; a second
+  mismatch is submitted explicitly with a difference and settled by a manager; a closed sheet is never edited; a new
+  sheet can't open while an earlier one is open; an unsettled difference is carried on every later sheet. Expense
+  claims are paid back with salary by default.
+- **Locations and orders (D13–D15, D19):** locations are warehouses, stores or offices with their own address and,
+  in another state, their own GSTIN; orders route by themselves when one location has every piece; transfers are
+  requested, approved, packed, in transit and received with checklists; cost layers travel with the piece. Counter
+  bills ask name and phone; an address is required at ₹50,000 or more or with a GSTIN (CGST rule 46).
+- **Periods, payroll, imports, CA (D17, D18, D21, D22):** months close for staff then lock per part of the books;
+  statutory payroll with dated rule versions confirmed with the CA; books brought in at a year start, a chosen date
+  or with full history (Tally and others); the CA logs in with accountant powers including locks.
+- **Rendition 3 (D28–D31):** GST screens per GSTIN; personal data encrypted, masked and never exported; a numbered
+  manual bill book when a counter loses the internet; exports for the CA in Tally XML, Excel, PDF and GST files.
+
+## Owner decision round (2026-11-23) — Release Path brief approved: servers, releases, rotation, failures, tracing
+
+Brief: https://claude.ai/artifact/MTo5HZTUH13ySALXGd2qWh. Owner: "yes, I approve the entire brief." All nine choices
+take the recommended answer. The Release Console chat builds its part (C1–C16) in its own thread; the Infisical chat
+builds the rest (M1–M10) in its own; "No chat is going to create a sub chat or a forked chat."
+
+- **Rotation (Q1, Q6):** a deploy may change the database, Redis and search secrets only when started with `rotate`
+  (typed environment name and PIN, from any console). A new keyfile is used from the database's next restart unless
+  `restart_database` is also ticked. Any failed change puts every old value back.
+- **Grace keys (Q2, Q5):** the sign-in, CSRF and mailbox keys keep their previous value for 30 days after a planned
+  change, so nobody is signed out. After a leak there is no grace period; the shop and admin sign-in pages then show a
+  signed-out note (existing alerts, English and Bengali) and a mailbox shows its existing "needs connecting again".
+- **Rollback (Q3):** a fast rollback on the server through the deploy user's one command, and older versions by a tag
+  per release.
+- **Staging SSL (Q4):** Full (strict) by a rule for the staging hosts while WordPress stays on the zone.
+- **Tracing (Q7):** built locally now (VictoriaTraces, OpenTelemetry in the API, worker and the shop's server pages);
+  `DEC-TRACING-SERVERS` stays open until the heavy-load measurement.
+- **Reading a server (Q8):** DigitalOcean monitoring, the API's `/ops` address and a one-command `observer` login
+  through the tunnel; no new open port, no agent.
+- **Database monitor (Q9):** a read-only database login for the console, per environment.
+- **DigitalOcean DNS:** "It should be available there for me if I want to use it." The create job offers DigitalOcean
+  DNS for a domain delegated to DigitalOcean; such hosts are not behind Cloudflare, so the server then needs a public
+  certificate and the firewall opens 443 to everyone. Saha Textile stays on Cloudflare.
+
+## Owner decision round (2026-11-23) — accounts addenda approved: banks, kinds of business, GST, several GSTINs (AD1–AD12); e-invoice and e-way bill (AE1–AE9)
+
+Brief: https://claude.ai/artifact/2fn4V9AS2BDBP9vyWSNjwp (addendum and addendum 2). Owner on the first addendum: "Yes, all your
+addendums are also approved." On GST filing: the software makes the portal files and the ARN entry locks the month; a GST
+Suvidha Provider can be plugged in later behind a port. On addendum 2: "Approve all".
+
+- **Addendum (AD1–AD12):** several bank accounts with Excel or CSV statement import (PDF later) and an editable review before
+  saving; reconciliation where matches start as drafts to accept, reject or relink; account statements with the usual date
+  presets; kinds of business (proprietorship, partnership, LLP, one-person and private limited companies; no public limited);
+  GST taxpayer kinds and return schemes with dated terms per GSTIN; every GST return per GSTIN with finalisation, ARN and lock;
+  one set of books per company with every line carrying its GSTIN and location.
+- **Facts behind addendum 2:** the online shop's legal entity is K.R. Marketing, GSTIN 19DBYPS6736R1ZZ, **not enabled for
+  e-invoicing** (owner's portal check, 23 Nov 2026). The offline stores are a separate business and deployment; their status is
+  to be checked. NIC's own IRP and Cygnet give direct API access only from ₹100 crore; IRIS IRP 6's free plan is open to any
+  enabled GSTIN; NIC's e-way bill API needs about 10,000 e-way bills a month per GSTIN.
+- **AE1 Paths:** by hand for both documents, active now; four automatic paths built and tested (e-invoice direct with an IRP,
+  e-invoice through a provider, e-way bill direct with NIC, e-way bill through a provider), switched on per GSTIN when their
+  keys pass Test. The buttons are the same in every path: Generate turns into Print once done; by hand, Generate opens a
+  popup for the portal file and the numbers.
+- **AE2** Direct e-invoice: IRIS IRP 6 first; the same adapter speaks to NIC by base address. **AE3** Provider: Masters India,
+  with a written quote before switching on; TaxPro runner-up.
+- **AE4** The signed QR, IRN, acknowledgement and e-way bill print in a fixed foot band on every page, only on invoices with an
+  IRN. **AE5** Copies (Rule 48): Original for recipient, Duplicate for transporter, Triplicate for supplier; credit and debit
+  notes Original for recipient and Duplicate for supplier; delivery challans Original for consignee, Duplicate for transporter,
+  Triplicate for consigner (Rule 55). Print and Download offer each copy, or all three.
+- **AE6** Path keys are entered in Settings and sealed with the server key `EDOC_KEYS_KEY`; never shown again or logged.
+  **AE7** A path that stops answering falls back to the by-hand popup with the reason; a duplicate IRN fetches the existing one.
+  **AE8** Shipped stays blocked until they are in; the ₹50,000 setting moves to the new settings page; e-way bill numbers take
+  12 or 14 digits (14 from 23 Nov 2026). **AE9** Owner checks the offline stores' GSTIN status.
+
+## Owner decision round (2026-11-23) — Release Console tracing switch approved
+
+- **One button instead of typed commands.** Owner: "why manual commands i have to write? then what is
+  the release console for?" Brief `8UmNaHHAuiGLez47McHkj8`, approved: "Approve, both A". Watch › Traces
+  on the Local tab gets **Turn tracing on for this Mac** and **Turn tracing off**, each with the PIN:
+  start or stop only the trace store, give the apps its address, restart the local stack's API, worker
+  and shop when they run, then say which apps are sending. The console never stops what it did not start.
+- **Q1 A.** The address on this Mac lives in `apps/api/.env.overrides`, not in Infisical: it is this
+  Mac's own address and not a secret. Servers keep waiting for `DEC-TRACING-SERVERS`.
+- **Q2 A.** The shop's `pnpm start` loads its tracing file too (Infisical chat), so the shop sends
+  wherever it runs except the vite dev server.
+
+## Owner decision round (2026-11-23) — the online business and the offline stores are separate companies
+
+Owner: "that belongs to a different business. why are you confusing them with the online business? legally they are two
+separate companies." K.R. Marketing (GSTIN 19DBYPS6736R1ZZ) is one online business; the shops on the shop's Stores page belong to
+the separate offline company.
+
+- **Locations:** this deployment's locations are K.R. Marketing's own places only. The first location is made from Shop details as
+  a warehouse that ships online orders (no counter). Stores page entries never become locations and are never linked to its
+  places; this replaces the brief's "Stores become locations" for this deployment (cleanup list LO1).
+- **Multi-store check, temporary:** to prove the software also fits a company with several stores in several States, test
+  locations may be added locally and used for books, GST per GSTIN and stock in and out; when the check is done they are removed,
+  so K.R. Marketing stays a single online business.
+
+## Owner decision round (2026-11-23) — git history without AI attribution
+
+- **Every commit message cleaned, nothing else changed.** Owner: "would you be able to rewrite all the
+  commits that have such, codex or Claude or cursor or any kind of AI related stuff? ... without
+  affecting code or the order of commits or any kind of working of the code". All 1,470 commits on
+  every branch were rebuilt with the same files, parents, authors, committers and dates; 882 AI
+  co-author lines were removed and 24 messages reworded where they named an AI chat. Each commit is
+  signed again with the owner's key; GitHub's five pull-request merge commits are kept unsigned with
+  GitHub as committer. `main`, `staging`, `dev` and the old feature branches were force-pushed
+  (admin bypass); the branch `cursor/cloud-agent-1784884449111-q71gq` was deleted ("Delete it").
+  Commit ids quoted in these docs were switched to the new ids ("Yes, switch them"). A full backup of
+  the old history (bundle and mirror) and the old-to-new id list sit beside the project folder in
+  `saha-textile-history-backup-2026-11-23/`. GitHub's pages for pull requests #1–#6 still show their
+  old commits; only GitHub Support can remove those.
+- **No AI attribution from now on** ("AGENTS.md and my CLAUDE.md"): AGENTS.md §5 and the owner's own
+  CLAUDE.md say commit messages and pull requests never name an AI tool or chat.
+
+## Owner decision round (2026-11-23) — the books' edit log is kept 8 years
+
+Asked whether the books' edit history follows the accounts brief ("kept at least 8 years") or the 7-year money tier of the
+2026-07-23 lock. Owner: "Yes 8 years".
+
+- A new audit retention tier `books` (8 years) holds every change to the books: vouchers posted or reversed, ledgers and groups,
+  month locks. The 8 years follow the Companies Act and cover GST's 72 months.
+- `financial_security` stays 7 years and `catalog_admin` 5 years for everything else.
+
+## Owner decision round (2026-11-23) — every change keeps its own code at 100% coverage
+
+PR #7's coverage job measured about 68,000 statements on 23 Nov, with about 25,900 statements and 22,000 branches untested
+(on 7 Nov all 18,599 measured statements were covered). Asked whether every chat should keep the code it changes at 100%
+from now on, so the gap stops growing while the backlog is worked off. Owner: "Yes, add the rule".
+
+- **The rule** (AGENTS.md §5): whatever a chat adds or changes in a measured workspace ships with tests covering it fully
+  (statements, branches, functions, lines). Before each commit, `pnpm coverage -- <workspace>` for every workspace touched,
+  and none of the changed files may be listed with missed lines.
+- **No shortcuts:** the gate is not lowered, files are not excluded, and no `istanbul`/`v8`/`c8 ignore` comments are added
+  (the repository has none). A branch that can never run is restructured, not hidden.
+- **The CI gate stays as it is**: `pnpm coverage`, 100% in every measured workspace. The existing backlog is worked off
+  separately, smallest workspace first.
+
+## Owner decision round (2026-11-24) — CI coverage floor at 50% for now
+
+So the staging deployment can go ahead while the coverage backlog is tested: "If the coverage check 100% is like a single
+place where 100% numeric figure has to be changed, can you temporarily just drop it to 50% or 60%? Because yeah, 50% is
+fine ... later, when we have completed all of the test cases and everything, we'll just put it back to 100 again. So we
+don't have to disable or skip a check. Everything will run just at a lower number for now."
+
+- **One number:** `COVERAGE_FLOOR` in `scripts/coverage.mjs` is 50. CI's **Tests at 100% coverage** job still runs on every
+  pull request and in Publish images, and fails a workspace whose statements, branches, functions or lines fall below it,
+  or whose tests fail. Nothing is skipped or switched off. Back to 100 by changing that number when the backlog is done.
+- **Unchanged:** every change still keeps its own files at 100% (AGENTS.md §5; the 2026-11-23 round above). The coverage
+  run still lists every file below 100%, so each chat can check its own.
+- **Then 10% (24 Nov, same night).** At 50% the shop, admin and API passed, but the Release Console's two apps (12–18% and
+  16–27%) would have held the staging deployment for days of tests. Owner chose "Floor 10% for now": `COVERAGE_FLOOR` is 10,
+  raised as coverage grows.
+
+## Owner decision round (2026-11-24) — accounts templates: nothing kind- or law-dependent in code
+
+**Owner (24 Nov):** "all those inner things which you probably have baked into code, they should be built through the builder
+and then saved as a template, and then locked, waiting to be unlocked based on company choosing types, so that everything is
+customizable and none of it stays baked in code." Plan published as the Accounts templates brief
+(https://claude.ai/artifact/2VQqcwct33tTnTVxHbsQ8p); owner: "Approve, start T1".
+
+- **Engine and templates.** Code keeps only the rules every set of books obeys (double entry, numbering, locks, the edit log) and
+  a list of **roles**. Posting rules post to roles; which ledger plays each role is template data.
+- **Templates** (charts of accounts, roles, tax rule sets such as the reverse-charge list, TDS sections and limits, report
+  layouts) are made in a builder and saved with a reference code, dated versions, their legal source, the kinds of company
+  they apply to, and a CA review state.
+- **Shared and exclusive.** Company setup installs the shared templates and the chosen kind's own (proprietorship,
+  partnership firm, LLP, private limited, one person company); the rest stay locked, visible and greyed with the reason.
+- **Decisions AT-D1 to AT-D8 approved as recommended:** starter packs authored in the builder and marked for CA review;
+  locked templates visible; changing the kind only through Convert (new books for a new legal person); a new "Accounts
+  templates" permission for the super admin and the CA login; law changes as new dated versions offered as "Update
+  available", never installed by themselves, the company's own changes kept; CA review before go-live; the report builder is
+  part of this work; D4 (self-invoices, payment vouchers) built on roles and the reverse-charge rule set.
+- **Order:** T1 roles in the engine → T2 template store → D4 → T3 setup unlock → T4 builder screens → T5 tax rule sets →
+  T6 report templates → T7 updates → T8 starter packs for all five kinds.
+
+## Owner decision round (2026-11-24) — Release Console Coverage screen
+
+- **Brief** `CRmpBdP3ce62g1JoCAhh23` (24 Nov): Ship › Code › Coverage. The owner: "Yes, I approve the brief." Every choice
+  as recommended:
+    - **Q1 A:** CI runs of any commit (the coverage job keeps its reports as the run's `coverage` artifact, 90 days) and This
+      Mac (the latest `pnpm coverage`, through the helper).
+    - **Q2 A:** green only at 100%, amber from 80%, red below.
+    - **Q3 A:** Ship › Code › Coverage, next to Pipelines and Job logs.
+    - **Q4 A:** syntax colours with highlight.js (TypeScript, JavaScript, HTML, styles, JSON).
+    - **Q5 A:** all the additions: gaps in plain words, the gap list and n/p keys, failures beside the code, changed lines,
+      the map, comparing two runs, Run on This Mac, slowest tests.
+- **Dynamic, not tailored (owner's question, answered 24 Nov):** every number, colour and gap word comes from rules over
+  Istanbul data, the test report and git, so it works on any JavaScript or TypeScript code; the screen never writes a
+  failure's cause, only the facts that point to it (the failing line, the lines it went through, the commit that last
+  changed them). Another language needs a reader for its coverage format (LCOV or Cobertura) behind the same shape.
+
+## Owner decision round (2026-11-24) — receipts and purchase bills post inline, and Convert
+
+**Owner (24 Nov):** "It's inline transaction, but first give the brief, then do the inline transaction". Brief "Postings and
+Convert" (https://claude.ai/artifact/76vgVJ5Ki6F4HRFd25iPV7); owner: "Approve all".
+
+- **Inline.** Received payments on orders, purchase entries and their voids, supplier payments and their reversals, purchase
+  returns and refunds from suppliers post to the books in the same database transaction as the step that saves them (brief
+  P1 table).
+- **AP-D1:** one "Where money lands" card on Accounts › Ledgers sets the ledger for each way of paying, once (received by the
+  gateway, by UPI, by bank transfer or cheque, cash on delivery; supplier payments by bank and in cash).
+- **AP-D2:** when a posting can't be made (month locked, ledger missing, no bank account set), staff steps are refused with
+  the reason in words and nothing is half saved. At shop checkout the customer has already paid, so the payment is kept and
+  flagged for staff.
+- **AP-D3:** documents saved before this are posted by a super-admin "Post them" on Accounts › Periods and locks, each on its
+  own date, once; locked months are skipped and listed, never unlocked.
+- **AC-D1:** Convert happens in the same deployment (AT-D3): the old books are locked read-only up to the last day, the new
+  kind's templates are installed, and one opening voucher carries every balance, the owners' accounts mapped by a form. AD5's
+  "new deployment through Import" is not used for Convert.
+- **AC-D2:** Convert is for the super admin only, with a Preview first, and is not undone (the opening voucher can be reversed
+  like any voucher while its month is open).
+- **Order:** N3a where money lands and the posting rules → N3b inline posting in the orders and purchases steps → N3c catch-up
+  → N4 Convert → T4 builder screens.
+
+## Owner decision round (2026-11-24) — Admin Quick Add
+
+- **Brief** `9biZop3Hbm6qDDrwH9UwbS` (sent 23 Nov). The owner, 24 Nov: "yes i also approve the quick add brief too. build
+  it." Every choice as recommended:
+    - **Q1 B:** one round "+" at the bottom right of every admin page opens Add Product and Add Order as two named round
+      buttons; Escape, a click outside or × closes them.
+    - **Q2 A:** shown on phones too, above the footer, at a 44 px tap size.
+    - **Q3 A:** on Add Product or Add Order itself, that page's own action is left out.
+- **Header:** the two buttons leave `.header-btns` (the location chip stays); the icons sit at one even gap (the hidden
+  search slot no longer takes space above 762 px, and the language button loses the 30 px padding that beat its `p-0`);
+  the signed-in name ends in "…" at 150 px with the full name on hover; the profile menu opens from the right.
+- **Custom values, as the brief listed:** the round shape, the distance that clears the fixed footer, and the header's gap
+  and name width. Also needed and added: a card background behind the floating labels and rounds (the theme's outline
+  button is see-through), and hiding closed actions from Tab.
+- **Why it was late:** the brief waited for approval from 23 Nov and dropped out of its chat's open list at a compaction;
+  an unanswered approval stays on the open list and is asked again.
+
+## Owner decision round (2026-11-24) — opening stock counts as units received
+
+- **Asked** by the purchases chat while it checked two lines the coverage chat had removed. The owner's answer, typed in
+  the coverage chat on 24 Nov: "remove both, and yes fix opening stock now".
+- **Remove both:**
+    - The product form's units-received and back-in-stock lines in `catalog.service.ts`. They had been dead since stock
+      left the product form (cleanup PS3).
+    - The empty-address fallback in `toBusiness`. A supplier is always saved with its address, and the fallback could
+      never pass the contract anyway.
+- **Opening stock:** posting a load adds its units to each product's units received (`lifetimeUnitsReceived`; pieces,
+  or tenths of a metre). The badge rule depends on it:
+    - a product that has only ever held one unit shows no "Only N left";
+    - a purchase entry starts Back in stock only for a product that has received units before.
+
+    Without this, everything loaded at launch would have stayed unbadged. A load never sets the back-in-stock date,
+    because it is a product's first stock.
+
+## Owner decision round (2026-11-24) — TDS sections and limits as tax rule sets
+
+**Owner (24 Nov):** "TDS and limit rulesets brief approved with your recommendations". Brief "TDS sections and limits in the
+rule set builder" (https://claude.ai/artifact/3mjx6XT5w8cpiZkYtgAUNh).
+
+- **AT5-D1:** a tax rule set lists the reverse-charge list, TDS sections or limits, chosen in New template and fixed once
+  published. Its columns follow the list: reverse charge as drawn in AT5 (service, SAC, rate, expense role, applies to, from,
+  source); TDS sections show payment, section, rate, limit, applies to, from, source; limits show what, limit, applies to,
+  from, source.
+- **AT5-D2:** a section with a single-payment limit and a yearly one (contractors) is two entries with the same section and
+  rate; either limit triggers the deduction.
+- **AT5-D3:** a section renumbered by the Income-tax Act 2025 is two dated entries: the 1961 number until 31 Mar 2026, the
+  new one from 1 Apr 2026. Documents of earlier years keep the old number.
+- An entry gains a limit in rupees and what it counts (a payment, a month, a year, or a single amount). Publishing a TDS or
+  limits entry needs its limit; a limit has no rate. The starter TDS and limits sets are written in T8 and go to the CA with
+  the rest (AT-D6).
+
+## Owner decision round (2026-11-24) — Inbox redesign
+
+- **Why:** the owner rated the admin Inbox 3 out of 10 on 24 Nov: the mailbox address floating on its own line, the
+  search hint cut off and no Gmail search options, the list jumping and the toolbar wrapping when rows are ticked, the
+  whole page blanking under "Loading" on every folder click, and no way to collapse the folders to icons.
+- **Brief** `4U7Dbjy4fHkS3xJ2TXXhf7` (revision 1, 24 Nov). The owner: "Approve, build it". Every choice as recommended:
+    - **Q1:** the folder rail starts open on screens 1400 px and wider, as icons below; after that each person's own
+      choice is kept in their browser.
+    - **Q2:** the search options offer Gmail's full set: From, To, Subject, Has the words, Doesn't have, Size, Date
+      within, Search in, Has attachment, Unread only, and Create filter (Settings right only).
+    - **Q3:** Inbox reads and the background checks never raise the page-wide "Loading" cover; every other page keeps
+      its first-load cover. Built: only two checks repeat every minute (unread mail for the menu badge, stock alerts); the
+      third the brief counted, categories, was a one-off page request.
+    - **Q4:** the list column is fixed at 380 px, not draggable.
+- **What changes:** one title row (Inbox, mailbox switcher, search, Compose); a folder rail pinned open or icons only,
+  opened over the list by pointing or Tab; a 40 px toolbar that never wraps and a 22 px status line that is always there,
+  so ticking never moves the rows; columns that fill the window and scroll on their own; three-line rows; a folder
+  drawer on phones.
+- **Replaced on screen** (the approved pictures are the say-so; the old code goes on the end-of-project cleanup list):
+  the single-mailbox address line and the select2 mailbox picker, the search box in the list column and its "Results
+  for" row, the selection, bulk-result and Bin banners (their words move to the status line), and the rule from
+  6832756d that pinned the four folder lists as one block.
+- **Custom, as the brief listed (C1–C8):** title row, search box and options panel, window-height columns, collapsible
+  rail, toolbar and status line, compact rows, reading-pane words that fold to icons below 560 px, phone layout. No new
+  component library, font or package.
+
+## Owner decision round (2026-11-24) — Release Console pull request page
+
+- **Why:** the owner's screenshots of Ship › Code › Pull requests: "these dropdowns on this page and also used in many
+  other pages; they seem so out of place with the theme", a long title against the badge, "description header and text
+  are overlapping", "description box not shown fully and also cut off on the right side", and "PR is not clickable like
+  how Pull Requests list pages on github allow which is bad UX. it should be clickable so that the full fledged PR screen
+  can be shown". Then: "it should be that, like, the entire GitHub UI is replaceable here. Why just 500 characters?" and,
+  on reading big pull requests from this Mac: "You can't do these uh, workarounds and hacks when the release console is
+  deployed on a server. What would you do then?"
+- **Fixed without a brief** (existing classes only): fact rows (`.rc-kv`) keep their name's width and wrap a long value
+  inside the row; every console dropdown (`.rc-select`) takes the Repository picker's look through Chrome's customizable
+  select; list rows open their pull request.
+- **Brief** `E5WE6RSF2AJvpxDyDA1EJt` (24 Nov). The owner: "Approve, build it". Every choice as recommended:
+    - **Q1 A:** the description and comments as GitHub draws them (`body_html`), in the console's colours; no Markdown
+      library.
+    - **Q2 A:** past GitHub's 3,000-file list, the console API keeps its own copy of the repository in its data folder
+      (a bare clone, fetched with the repository's key, which reaches git only through its environment); the same code
+      on this Mac and on a server, and the console's image installs `git`. Commits come from GitHub's compare list,
+      which pages past 250 (up to 10,000).
+    - **Q3 A:** Comment, Approve and Request changes from the page, beside Merge and Close (every write with the PIN);
+      Merge when ready when the repository allows it.
+    - **Q4 A:** changes in one column with old and new line numbers.
+    - **Q5 A:** all the additions: the description's outline, the conversation with the newest commit's checks, big
+      pull requests read whole, the Coverage tree for files, keys (`j`/`k`, `n`/`p`, `/`, `1`–`4`, Esc), closed and
+      merged pull requests.
+- **Custom, as the brief listed (C1–C5):** the description's look, the conversation's time line, the outline beside the
+  description, the changed-line tints, the page header; and their phone layout (Actions ▾, Outline ▾, Files ▾). Commits
+  are drawn in the existing `rc-t` table rather than new rows. Numbers use the console's Indian grouping (6,23,963).
+- **Replaced on screen:** the five drawn Pull requests states (now the page's tabs and merge status) and the old list read;
+  both on the end-of-project cleanup list (PR1–PR3).
+
+## Owner decision round (2026-11-24) — Pull request branches, newer-console notice, repository pages
+
+- **Why:** the owner's tab kept the old Pull requests screen after the console restarted (it had loaded two minutes
+  before), and on the page's header: "proper base branch changeable with dropdown should be there. and both branches
+  container on console is overlapping with the lower container's border. also the branches are usually clickable".
+  Then: "include in this brief any other GitHub UI like the code base, like the basically the repository screen … If
+  they are replicable and functionable through the tokens, please add them."
+- **Brief** `7Hu1SuB3A8qiJzeDwvFZLR`. Revision 1 approved 24 Nov ("whatever you have mentioned in the current version of
+  the brief, those are all approved"):
+    - **Part A:** the header, merge status and tabs keep the console's 12 px apart; the base sits in one box with ▾,
+      which opens the console's branch picker (GitHub's branches, never the head) and then **Change the base branch**
+      with the PIN; the head sits in one box with a copy button.
+    - **Q1 B:** that form shows the pull request's commits and files against the base it has and the one picked, first.
+    - **Q2 C:** a branch name opens the console's own Code page for that branch.
+    - **Part B, Q3 A, Q4 A:** an open tab that runs an older console than the console API serves shows a banner under
+      the top bar with Reload (amber with "Reload and lose it" while typed text is not sent); it never reloads by itself.
+    - **Custom C6:** two chips joined as one control. Nothing else drawn new.
+- **Revision 2 approved 24 Nov** (Part C, GitHub's repository pages). The owner: "I hope all the pages that you made
+  are dynamic, right? … If yes, then yeah, the entire brief is approved. You can go ahead and start building that. Make
+  sure the UI and UX is accurate and as per … GitHub, and it shouldn't falter in any way. It should have all the
+  functionalities, the navigations, and everything like properly the way GitHub UI does."
+    - **Q5 B:** one menu item, Ship › Code › Code, with its pages as tabs: Files, Commits, Branches, Tags, Releases,
+      Compare, Activity (Search from the header's box).
+    - **Q6 A:** files can be created, edited, uploaded and deleted from the console, each commit with the PIN, by default
+      on a new branch with a pull request; straight onto a branch only where no rule guards it.
+    - **Q7 A:** Packages needs GitHub's `read:packages` right; the owner signs in to GitHub again from the console and
+      approves it on GitHub's own page.
+    - **Q8 A:** GitHub's other tabs (Issues and Insights first, then Projects, Wiki, Settings) get a brief of their own.
+    - **Custom C7:** the languages bar and dots in GitHub's colour for each language. **Custom C8:** blame's commit
+      column on the left of the code view. Nothing else drawn new.
+    - Files, blame, search and each entry's last commit are read with `git` from the console API's own copy of the
+      repository, so any branch, tag or size works on this Mac and on a server; everything else comes from GitHub.
+    - Not possible through GitHub's API, so not shown: Pin, Report, Sponsor, symbol navigation, the github.dev editor,
+      Codespaces (a link to GitHub instead), star lists, and whether two branches without a pull request can merge.
+- **Payroll key (same day).** The owner on `PAYROLL_PII_KEY`: "put it in the deployment automation scripts that when it
+  runs on local, it creates the key locally, pushes it to in physical once, and then subsequent runs don't generate it
+  anymore. Same for the staging and the production environments, or rather any environment." It is a random 32-byte
+  key made by `scripts/secrets/generate.mjs` when the environment's Infisical place lacks it, like the console's other
+  generated keys; it is never rotated, because it encrypts stored personal data.
+
+## Owner decision round (2026-11-25) — payslips, tax regimes, bonus, State rules, exports, counts, year-end profit, expense bills
+
+**Owner (25 Nov):** "Approve all". Brief "Payslips, Exports and Year End"
+(https://claude.ai/artifact/E6mFZwdmbjS9sBghCVGeH7), every recommendation.
+
+- **PS-D1 to PS-D3:** the payslip is a document in Settings › Document formats (group Payroll; "Our payslip" A4 and
+  "Compact payslip" A5, six new block kinds), numbered PS/yy-yy/n when its run is paid; emailing payslips comes later.
+- **TX-D1, TX-D2:** each employee is on the new regime unless their declaration for the year chooses the old one;
+  declarations count until the proof month, then only those with proof; the comparison of both regimes never switches
+  the regime by itself. Both regimes are dated data in Payroll rules, marked for the CA's review.
+- **BN-D1:** statutory bonus is provided each month and paid once a year.
+- **ST-D1:** professional tax, the labour welfare fund and their due days are kept per State and applied by each
+  employee's work location; West Bengal's set starts from today's figures; a run with a State that has no rules can't
+  be approved.
+- **EX-D1, EX-D2:** one Export menu (CSV, Excel, PDF) on every list and report, every filtered row, Excel and PDF made on
+  the server, accounts exports logged; the Download CSV buttons became the menu.
+- **SC-D1:** a stock count names its location; the CARO report and its export filter by location; the year-end check
+  looks at each location that holds stock.
+- **YC-D1, YC-D2:** closing the year asks where the profit goes, with the choices for the kind of business ("keep in
+  profit and loss" pre-selected for companies that closed a year before); a firm's deed (shares, capital kind, interest,
+  remuneration, dated) shares it, interest day by day, the s.40(b) limit shown and never forced, TDS on partners posted.
+- **EB-D1:** bills for services and expenses are a document under Purchases (Expense bills), paid by payment voucher and
+  counted in statements, rule 37, GSTR-2B and, for an ISD, GSTR-6.
+- Import formats wait for a later conversation (owner, same message round).

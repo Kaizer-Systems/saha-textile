@@ -1,0 +1,18 @@
+// The theme's dark mode: the whole theme compiled again with dark colours under `.dark`, as the
+// original theme builds it. The `styles` script compiles this to src/scss/dark-copy.gen.css, then
+// scripts/build-dark-theme.mjs keeps only the colours that differ from the light theme and writes
+// public/assets/css/theme-dark.gen.css. Sizes, spacing and fonts therefore always come from the
+// light theme. A page links the file only in dark mode (`ThemeModeStore` in core/brand/theme-mode.ts).
+.dark {
+	// The base variables come first, as in the light theme. Inside `.dark`, so their `:root` colour
+	// lands under `.dark` and never overrides the shop's colour in theme-color.css.
+	@import 'utils/variables';
+	@import 'utils/dark_variables';
+	@import 'style';
+}
+
+// The shop's own dark colours and fixes to the theme's dark mode, outside `.dark` (they use html.dark).
+@import 'shop-dark';
+
+// After every rule, at the top level: the heading classes follow the dark copy's and the shop's dark rules alike.
+@import 'components/heading-classes';

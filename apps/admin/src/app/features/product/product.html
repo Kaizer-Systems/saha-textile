@@ -14,10 +14,11 @@
 			{{ 'add_product' | transloco }}
 		</a>
 	</div>
+	<app-missing-language-notice [code]="missing.code()" />
 	<app-table
 		[tableConfig]="tableConfig()"
 		[hasCheckbox]="true"
-		[hasDuplicate]="true"
+		[selectionKey]="'products'"
 		(tableChanged)="onTableChange($event)"
 		(rowClicked)="edit($event)"
 		(action)="onActionClicked($event)"

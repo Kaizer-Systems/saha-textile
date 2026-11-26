@@ -4,6 +4,7 @@ import { SignupError, SignupService } from '../src/auth/signup.service';
 import { StorefrontAuthController } from '../src/auth/storefront-auth.controller';
 import { cookieNames } from '../src/common/cookies';
 import { loadConfig } from '../src/config/app-config';
+import { LanguageStore } from '../src/languages/language-store';
 
 /**
  * Signing in to the account a signup code has just proven (`DEC-SIGNUP-VERIFICATION`: "sign-in is
@@ -73,6 +74,7 @@ function harness(options: { record?: ReturnType<typeof pending>; owner?: { id: s
 		{} as never,
 		{} as never,
 		config,
+		LanguageStore.fixed(['en', 'bn']),
 	);
 	const request = { cookies: { [cookieNames(config).signup]: 'psk_1' }, ip: '127.0.0.1' } as never;
 	const reply = { setCookie: (name: string, value: string) => cookies.push([name, value]) } as never;

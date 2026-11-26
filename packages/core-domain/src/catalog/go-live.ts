@@ -13,6 +13,8 @@ export interface GoLiveInput {
 	assetAlt: AssetAlt;
 	/** The sizes the primary image has been made in. Null when it is not in the library. */
 	primaryRoles?: readonly string[] | null;
+	/** The product's own FAQ questions, checked only while its FAQ is switched on. */
+	faq?: readonly { question: Readonly<Record<string, string>>; answer: Readonly<Record<string, string>> }[];
 }
 
 /** The images a product shows: its gallery, or every combination's in order in compound mode. */
@@ -23,6 +25,14 @@ export function productGallery(product: Pick<Product, 'imageMode' | 'media'>): s
 
 const filled = (value: string | undefined): boolean => !!value && value.trim().length > 0;
 
+/** Looks that are only a colour, so each value needs one. */
+const COLOUR_LOOKS: ReadonlySet<string> = new Set(['color_swatch', 'colour_chip']);
+/**
+ * Looks that are only a picture beside, at most, a name, so each value needs one. The picture tiles
+ * (`image_tile`, `picture_row`) also carry the price and fall back to a placeholder, as before.
+ */
+const PICTURE_REQUIRED_LOOKS: ReadonlySet<string> = new Set(['image_swatch', 'picture_chip']);
+
 function text(field: string, values: Readonly<Record<string, string>> | undefined, locales: readonly string[]) {
 	return locales.filter((locale) => !filled(values?.[locale])).map((locale) => ({ field, locale }));
 }
@@ -31,7 +41,7 @@ function text(field: string, values: Readonly<Record<string, string>> | undefine
  * Everything that stops a product going live. One rule for the form and the list: every
  * language-bound field in every active language, plus a category, a price and a primary image.
  */
-export function goLiveGaps({ product, variants, locales, assetAlt, primaryRoles }: GoLiveInput): GoLiveGap[] {
+export function goLiveGaps({ product, variants, locales, assetAlt, primaryRoles, faq = [] }: GoLiveInput): GoLiveGap[] {
 	const gaps: GoLiveGap[] = [
 		...text('title', product.title, locales),
 		...text('short_description', product.shortDescription, locales),
@@ -43,20 +53,31 @@ export function goLiveGaps({ product, variants, locales, assetAlt, primaryRoles 
 		gaps.push(...text(`option:${group.attributeCode}`, group.label, locales));
 		for (const term of group.terms) {
 			gaps.push(...text(`value:${group.attributeCode}:${term.code}`, term.label, locales));
-			if (group.displayStyle === 'color_swatch' && !term.hex) {
+			// A second line is optional, but once written in one language it is owed in every one.
+			if (Object.values(term.subLabel ?? {}).some(filled)) {
+				gaps.push(...text(`value_note:${group.attributeCode}:${term.code}`, term.subLabel, locales));
+			}
+			if (COLOUR_LOOKS.has(group.displayStyle) && !term.hex) {
 				gaps.push({ field: `swatch_colour:${group.attributeCode}:${term.code}`, locale: null });
 			}
-			if (group.displayStyle === 'image_swatch' && !term.swatchAssetId) {
+			if (PICTURE_REQUIRED_LOOKS.has(group.displayStyle) && !term.swatchAssetId) {
 				gaps.push({ field: `swatch_image:${group.attributeCode}:${term.code}`, locale: null });
 			}
 		}
+	}
+	if (product.faqEnabled) {
+		faq.forEach((entry, index) => {
+			gaps.push(...text(`faq_question:${index + 1}`, entry.question, locales));
+			gaps.push(...text(`faq_answer:${index + 1}`, entry.answer, locales));
+		});
 	}
 	const leadTime = product.estimatedDeliveryText;
 	if (leadTime && filled(leadTime['en'])) gaps.push(...text('lead_time', leadTime, locales));
 	const measures = product.optionGroups.some((group) => group.terms.some((term) => term.requiresMeasurements));
 	if (measures && !product.addonTemplateCode) gaps.push({ field: 'addon_template', locale: null });
 	if (!product.categoryIds.length) gaps.push({ field: 'category', locale: null });
-	const priced = variants.some((row) => row.priceINR > 0);
+	// A bundle has no price of its own: its pieces are priced, and its own checks run in the builder (V2, V4).
+	const priced = product.type === 'bundle' || variants.some((row) => row.priceINR > 0);
 	if (!priced) gaps.push({ field: 'price', locale: null });
 	const primary = productGallery(product)[0];
 	if (!primary) gaps.push({ field: 'primary_image', locale: null });

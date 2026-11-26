@@ -8,10 +8,13 @@ import { NgbNavConfig } from '@ng-bootstrap/ng-bootstrap';
 import { LoadingBarRouterModule } from '@ngx-loading-bar/router';
 import { Observable } from 'rxjs';
 
-import { injectBrandQuery } from '@core/brand/brand.gateway';
 import { IdleLockService } from '@core/auth/idle-lock.service';
+import { injectBrandQuery } from '@core/brand/brand.gateway';
+import { applyThemeColor } from '@core/brand/theme-color';
+import { ThemeModeStore } from '@core/brand/theme-mode';
 import { AuthStore } from '@core/state/auth.store';
 import { SettingStore } from '@core/state/setting.store';
+import { UnsavedChanges } from '@core/unsaved/unsaved-changes';
 import { IValues } from '@data-access/interfaces/setting.interface';
 import { IdleLockModal } from '@shared/ui/idle-lock-modal/idle-lock-modal';
 
@@ -32,21 +35,51 @@ export class App {
 	setting$: Observable<IValues | null> = toObservable(this.settingStore.setting);
 
 	private readonly brand = injectBrandQuery();
+	/** Light or dark, on every screen including sign-in (the header's switch changes it). */
+	private readonly themeMode = inject(ThemeModeStore);
 
 	/** True after this tab has held an authenticated session — drives clean login redirect. */
 	private hadAuthenticatedSession = false;
 
 	constructor() {
 		const page = inject<Document>(DOCUMENT);
+		// Reload or close with unsaved form work, locked or not: the browser asks first.
+		inject(UnsavedChanges).start(page);
+		// The admin's theme colour from the Brand Kit (every theme style reads `--theme-color`).
+		effect(() => applyThemeColor(page, this.brand.data()?.adminThemeColor));
+		// The admin's tab icon from the Brand Kit (its own set, else the shop's), plus the icon a
+		// dark browser picks when the Brand Kit has one.
 		effect(() => {
-			const icon = this.brand.data()?.icons['32'];
+			const logos = this.brand.data()?.admin;
+			const icon = logos?.icons['32'];
 			const link = page.querySelector<HTMLLinkElement>('#appIcon');
-			if (icon && link) link.href = icon;
+			if (icon && link) {
+				link.type = 'image/png';
+				link.href = icon;
+			}
+			const darkIcon = logos?.iconsDark['32'];
+			let dark = page.querySelector<HTMLLinkElement>('#appIconDark');
+			if (!darkIcon) {
+				dark?.remove();
+				return;
+			}
+			if (!dark) {
+				dark = page.createElement('link');
+				dark.id = 'appIconDark';
+				dark.rel = 'icon';
+				dark.type = 'image/png';
+				dark.media = '(prefers-color-scheme: dark)';
+				page.head.appendChild(dark);
+			}
+			dark.href = darkIcon;
 		});
 		const config = inject(NgbNavConfig);
 		const document = inject<Document>(DOCUMENT);
 
 		this.translate.setActiveLang('en');
+		// The page states its language, so the Bengali type rules (`:lang(bn)`) and screen
+		// readers follow the switcher.
+		this.translate.langChanges$.subscribe((lang) => (page.documentElement.lang = lang));
 		this.settingStore.loadSetting().subscribe();
 
 		effect(() => {

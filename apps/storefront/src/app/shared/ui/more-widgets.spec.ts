@@ -2,14 +2,12 @@ import { CurrencyPipe } from '@angular/common';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { firstValueFrom, of, Subject } from 'rxjs';
+import { Subject } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { CompareFacade } from '@core/state/compare/compare.store';
+import { CompareStore } from '@core/state/compare/compare.store';
 import { SettingStore } from '@core/state/setting.store';
-import { SiteConfigStore } from '@core/state/site-config.store';
 import { NotificationService } from '@data-access/services/notification.service';
-import { ProductBanner } from '@features/shop/product-detail/widgets/product-banner/product-banner';
 import { Categorie } from '@features/themes/widgets/categorie/categorie';
 import { WalletOffer } from '@features/themes/widgets/wallet-offer/wallet-offer';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
@@ -48,11 +46,10 @@ describe('Alert', () => {
 });
 
 describe('StickyCompare', () => {
-	it('loads the compare list', async () => {
-		const facade = { compareTotal$: of(3), getCompare: vi.fn() };
-		const widget = bare(StickyCompare, [{ provide: CompareFacade, useValue: facade }]).componentInstance;
-		expect(facade.getCompare).toHaveBeenCalledOnce();
-		expect(await firstValueFrom(widget.compareTotal$)).toBe(3);
+	it('reads the count from the compare list', () => {
+		const store = { count: signal(3) };
+		const widget = bare(StickyCompare, [{ provide: CompareStore, useValue: store }]).componentInstance;
+		expect(widget.compare.count()).toBe(3);
 	});
 });
 
@@ -103,14 +100,6 @@ describe('WalletOffer', () => {
 		vi.stubGlobal('navigator', { clipboard: { writeText } });
 		widget.copyFunction('SAVE');
 		expect(writeText).toHaveBeenCalledWith('SAVE');
-	});
-});
-
-describe('ProductBanner', () => {
-	it('builds the banner from the image', () => {
-		const banner = bare(ProductBanner).componentInstance;
-		banner.ngOnChanges({ image: { currentValue: 'a.jpg' } } as never);
-		expect(JSON.stringify(banner.banner)).toContain('a.jpg');
 	});
 });
 

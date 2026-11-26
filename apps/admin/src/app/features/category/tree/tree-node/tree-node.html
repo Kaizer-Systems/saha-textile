@@ -1,28 +1,31 @@
 <li
 	class="cursor-pointer"
-	[class.inside-ul]="node()[recursionKey()] && node()[recursionKey()].length"
+	[class.inside-ul]="children().length > 0"
 >
 	<div>
 		<i
+			[title]="'show_subcategories' | transloco"
 			class="tree-icon file-icon"
 			role="presentation"
 			(click)="showChildrenNode = !showChildrenNode"
 		></i>
 		<span
 			[class]="node().id === id ? 'active' : ''"
-			[class.disabled]="node().status !== '1'"
+			[class.disabled]="!node().status"
 		>
 			{{ label() }}
 		</span>
 		<div class="tree-options">
 			<a
+				[title]="'edit' | transloco"
 				href="javascript:void(0)"
 				*hasPermission="'category.edit'"
-				[routerLink]="[node().type === 'post' ? '/blog/category/edit' : '/category/edit', node()?.id]"
+				[routerLink]="[node().type === 'post' ? '/blog/category/edit' : '/category/edit', node().id]"
 			>
 				<i class="ri-pencil-line text-success"></i>
 			</a>
 			<a
+				[title]="'delete' | transloco"
 				href="javascript:void(0)"
 				*hasPermission="'category.destroy'"
 				(click)="DeleteModal().openModal('delete', node())"
@@ -31,9 +34,9 @@
 			</a>
 		</div>
 	</div>
-	@if (node()[recursionKey()] && node()[recursionKey()].length && showChildrenNode) {
+	@if (children().length && showChildrenNode) {
 	<ul>
-		@for (node of node()[recursionKey()]; track node.id) {
+		@for (node of children(); track node.id) {
 		<app-tree-node
 			[node]="node"
 			[displayKey]="displayKey()"
@@ -48,5 +51,5 @@
 <!-- Delete Modal -->
 <app-delete-modal
 	#deleteModal
-	(deleteItem)="delete($event.actionToPerform,$event.data)"
+	(deleteItem)="delete(node())"
 />

@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, effect, signal, viewChild } from '@angular/core';
 
 import { Params } from '@data-access/interfaces/core.interface';
 import { IRefund } from '@data-access/interfaces/refund.interface';
@@ -39,7 +39,7 @@ export class Refund {
 				sort_direction: 'desc',
 			},
 		],
-		rowActions: [{ label: 'View', actionToPerform: 'view', icon: 'ri-eye-line' }],
+		rowActions: [{ label: 'view', actionToPerform: 'view', icon: 'ri-eye-line' }],
 		data: [] as IRefund[],
 		total: 0,
 	};
@@ -61,7 +61,7 @@ export class Refund {
 	}
 
 	onActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform == 'view') void this.PayoutModal().openModal(action.data);
+		if (action.actionToPerform == 'view') void this.PayoutModal().openModal(action.data as IRefund);
 	}
 
 	onTableChange(data?: Params) {

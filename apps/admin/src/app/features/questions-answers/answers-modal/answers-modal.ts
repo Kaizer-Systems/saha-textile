@@ -1,10 +1,11 @@
-import { Component, TemplateRef, inject, viewChild } from '@angular/core';
+import { Component, TemplateRef, inject, output, viewChild } from '@angular/core';
 import { FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 
-import { IQuestionAnswers } from '@data-access/interfaces/questions-answers.interface';
+import { IAdminQuestionRow } from '@data-access/interfaces/questions-answers.interface';
+import { NotificationService } from '@data-access/services/notification.service';
 import { QuestionsAnswersService } from '@data-access/services/questions-answers.service';
 import { Button } from '@shared/ui/button/button';
 
@@ -17,22 +18,23 @@ import { Button } from '@shared/ui/button/button';
 export class AnswersModal {
 	private modalService = inject(NgbModal);
 	private api = inject(QuestionsAnswersService);
+	private notifications = inject(NotificationService);
+	private transloco = inject(TranslocoService);
+
+	/** After an answer is saved, so the list can refresh. */
+	readonly answered = output<void>();
 
 	public modalOpen: boolean = false;
 	public closeResult: string;
-	public qna: IQuestionAnswers;
+	public qna: IAdminQuestionRow;
 	public answers = new FormControl('', [Validators.required]);
 
 	readonly AnswersModal = viewChild<TemplateRef<string>>('answersModal');
 
-	async openModal(data: IQuestionAnswers) {
+	async openModal(data: IAdminQuestionRow) {
 		this.modalOpen = true;
 		this.qna = data;
-		if (data.answer) {
-			this.answers.patchValue(data.answer);
-		} else {
-			this.answers.patchValue('');
-		}
+		this.answers.reset(data.question.answer ?? '');
 		this.modalService
 			.open(this.AnswersModal(), {
 				ariaLabelledBy: 'Payout-Modal',
@@ -62,11 +64,14 @@ export class AnswersModal {
 
 	submit() {
 		this.answers.markAllAsTouched();
-		if (this.answers.valid && this.qna.questionId) {
-			this.api
-				.answer(this.qna.questionId, this.answers.value ?? '')
-				.subscribe(() => this.modalService.dismissAll());
-		}
+		const answer = (this.answers.value ?? '').trim();
+		if (!this.answers.valid || !answer || !this.qna) return;
+		const first = this.qna.question.status !== 'answered';
+		this.api.answer(this.qna.question.id, answer).subscribe(() => {
+			this.modalService.dismissAll();
+			this.notifications.showSuccess(this.transloco.translate(first ? 'question_answered' : 'answer_updated'));
+			this.answered.emit();
+		});
 	}
 
 	ngOnDestroy() {

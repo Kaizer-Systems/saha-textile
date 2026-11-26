@@ -1,0 +1,624 @@
+@let d = draft();
+<div class="container-fluid">
+	<div class="row g-2">
+		<div class="col-xxl-8">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>
+								@if (d.code) { {{ d.code }}@if (d.title) { · {{ d.title }} } } @else { {{ 'cpn_new' |
+								transloco }} }
+							</h5>
+						</div>
+						<div class="d-flex flex-wrap gap-2">
+							<button
+								type="button"
+								class="btn btn-outline btn-sm"
+								[disabled]="!canSave()"
+								(click)="save(false)"
+							>
+								{{ 'cpn_save_draft' | transloco }}
+							</button>
+							<button
+								type="button"
+								class="btn btn-theme btn-sm"
+								[disabled]="!canSave()"
+								(click)="save(true)"
+							>
+								{{ 'cpn_save_on' | transloco }}
+							</button>
+						</div>
+					</div>
+					<div class="theme-form theme-form-2 mega-form">
+						<div class="vertical-tabs">
+							<div class="row">
+								<div class="col-xl-3 col-lg-4">
+									<ul
+										ngbNav
+										#nav="ngbNav"
+										[(activeId)]="active"
+										class="nav-pills coupon-tab"
+										orientation="vertical"
+									>
+										<li ngbNavItem="general">
+											<a ngbNavLink>
+												<i class="ri-settings-line"></i>
+												{{ 'cpn_tab_general' | transloco }}
+											</a>
+											<ng-template ngbNavContent>
+												<div class="row g-3">
+													<div class="col-md-6">
+														<label
+															class="form-label"
+															for="cpn_code"
+														>
+															{{ 'cpn_code' | transloco }}
+														</label>
+														<input
+															class="form-control text-uppercase"
+															id="cpn_code"
+															maxlength="24"
+															[value]="d.code"
+															(input)="patch({ code: $any($event.target).value.toUpperCase().trim() })"
+														/>
+														<p class="help-text mb-0">{{ 'cpn_code_help' | transloco }}</p>
+													</div>
+													<div class="col-md-6">
+														<label
+															class="form-label"
+															for="cpn_title"
+														>
+															{{ 'cpn_title' | transloco }}
+														</label>
+														<input
+															class="form-control"
+															id="cpn_title"
+															maxlength="120"
+															[value]="d.title"
+															(input)="patch({ title: $any($event.target).value })"
+														/>
+														<p class="help-text mb-0">{{ 'cpn_title_help' | transloco }}</p>
+													</div>
+												</div>
+											</ng-template>
+										</li>
+										<li ngbNavItem="discount">
+											<a ngbNavLink>
+												<i class="ri-percent-line"></i>
+												{{ 'cpn_tab_discount' | transloco }}
+											</a>
+											<ng-template ngbNavContent>
+												<label class="form-label">{{ 'cpn_gives' | transloco }}</label>
+												<div class="d-flex mb-2 flex-wrap gap-2">
+													@for (kind of ['percentOff', 'amountOff', 'freeDelivery']; track
+													kind) {
+													<button
+														type="button"
+														class="btn btn-sm"
+														[class.btn-theme]="d.kind === kind"
+														[class.btn-outline]="d.kind !== kind"
+														[attr.aria-pressed]="d.kind === kind"
+														(click)="setKind($any(kind))"
+													>
+														{{ 'cpn_kind_' + kind | transloco }}
+													</button>
+													}
+												</div>
+												<p class="help-text">{{ 'cpn_free_delivery_note' | transloco }}</p>
+												@if (d.kind !== 'freeDelivery') {
+												<div class="row g-3">
+													<div class="col-md-6">
+														<label
+															class="form-label"
+															for="cpn_value"
+														>
+															{{ 'cpn_amount' | transloco }}
+														</label>
+														<div class="input-group">
+															@if (d.kind === 'amountOff') {
+															<span class="input-group-text">₹</span>
+															}
+															<input
+																class="form-control"
+																id="cpn_value"
+																inputmode="decimal"
+																[value]="d.value"
+																(change)="patch({ value: num($any($event.target).value) })"
+															/>
+															@if (d.kind === 'percentOff') {
+															<span class="input-group-text">%</span>
+															}
+														</div>
+													</div>
+													@if (d.kind === 'percentOff') {
+													<div class="col-md-6">
+														<label
+															class="form-label"
+															for="cpn_cap"
+														>
+															{{ 'cpn_at_most' | transloco }}
+														</label>
+														<div class="input-group">
+															<span class="input-group-text">₹</span>
+															<input
+																class="form-control"
+																id="cpn_cap"
+																inputmode="decimal"
+																[value]="d.capINR ?? ''"
+																(change)="patch({ capINR: optionalNum($any($event.target).value) })"
+															/>
+														</div>
+														<p class="help-text mb-0">{{ 'cpn_cap_help' | transloco }}</p>
+													</div>
+													}
+												</div>
+												<p class="help-text mt-3 mb-0">{{ 'cpn_applies_note' | transloco }}</p>
+												}
+											</ng-template>
+										</li>
+										<li ngbNavItem="items">
+											<a ngbNavLink>
+												<i class="ri-shopping-bag-line"></i>
+												{{ 'cpn_tab_items' | transloco }}
+											</a>
+											<ng-template ngbNavContent>
+												<label class="form-label">{{ 'cpn_which_items' | transloco }}</label>
+												<div class="d-flex mb-2 flex-wrap gap-2">
+													@for (kind of ['wholeOrder', 'categories', 'products']; track kind)
+													{
+													<button
+														type="button"
+														class="btn btn-sm"
+														[class.btn-theme]="d.scope.kind === kind"
+														[class.btn-outline]="d.scope.kind !== kind"
+														[attr.aria-pressed]="d.scope.kind === kind"
+														(click)="setScope($any(kind))"
+													>
+														{{ 'cpn_scope_' + kind | transloco }}
+													</button>
+													}
+												</div>
+												@if (d.scope.kind === 'categories' && categoryOptions().length) {
+												<select2
+													class="custom-select mb-2"
+													[data]="categoryOptions()"
+													[value]="scopeIds()"
+													[multiple]="true"
+													[placeholder]="'zone_pick_categories' | transloco"
+													(update)="setScopeIds($event)"
+												/>
+												<div class="form-check mb-3">
+													<input
+														class="form-check-input"
+														type="checkbox"
+														id="cpn_subs"
+														[checked]="$any(d.scope).includeSubcategories"
+														(change)="patch({ scope: { kind: 'categories', categoryIds: $any(d.scope).categoryIds, includeSubcategories: $any($event.target).checked } })"
+													/>
+													<label
+														class="form-check-label"
+														for="cpn_subs"
+													>
+														{{ 'cpn_include_subs' | transloco }}
+													</label>
+												</div>
+												} @else if (d.scope.kind === 'products') {
+												<select2
+													class="custom-select mb-3"
+													[data]="productOptions()"
+													[value]="scopeIds()"
+													[multiple]="true"
+													[customSearchEnabled]="true"
+													[placeholder]="'zone_pick_products' | transloco"
+													[noResultMessage]="'no_data_found' | transloco"
+													(search)="searchProducts($event)"
+													(update)="setScopeIds($event)"
+												/>
+												}
+												<label class="form-label">{{ 'cpn_left_out' | transloco }}</label>
+												<select2
+													class="custom-select mb-3"
+													[data]="productOptions()"
+													[value]="d.excludedProductIds"
+													[multiple]="true"
+													[customSearchEnabled]="true"
+													[placeholder]="'zone_pick_products' | transloco"
+													[noResultMessage]="'no_data_found' | transloco"
+													(search)="searchProducts($event)"
+													(update)="patch({ excludedProductIds: ids($event) })"
+												/>
+												<p class="help-text mt-n2 mb-3">
+													{{ 'cpn_left_out_help' | transloco }}
+												</p>
+												<div class="d-flex align-items-center mb-2 gap-3">
+													<label class="switch mb-0">
+														<input
+															type="checkbox"
+															id="cpn_sale"
+															[checked]="d.includeSaleItems"
+															(change)="patch({ includeSaleItems: $any($event.target).checked })"
+														/>
+														<span class="switch-state"></span>
+													</label>
+													<label
+														class="form-label mb-0"
+														for="cpn_sale"
+													>
+														{{ 'cpn_sale_label' | transloco }}
+													</label>
+												</div>
+												<p class="help-text">{{ 'cpn_sale_help' | transloco }}</p>
+												<div class="d-flex align-items-center mb-2 gap-3">
+													<label class="switch mb-0">
+														<input
+															type="checkbox"
+															id="cpn_sets"
+															[checked]="d.includeSets"
+															(change)="patch({ includeSets: $any($event.target).checked })"
+														/>
+														<span class="switch-state"></span>
+													</label>
+													<label
+														class="form-label mb-0"
+														for="cpn_sets"
+													>
+														{{ 'cpn_sets_label' | transloco }}
+													</label>
+												</div>
+												<p class="help-text">{{ 'cpn_sets_help' | transloco }}</p>
+												<label
+													class="form-label"
+													for="cpn_min"
+												>
+													{{ 'cpn_min_order' | transloco }}
+												</label>
+												<div class="input-group w-auto">
+													<span class="input-group-text">₹</span>
+													<input
+														class="form-control"
+														id="cpn_min"
+														inputmode="decimal"
+														[value]="d.minOrderINR"
+														(change)="patch({ minOrderINR: num($any($event.target).value) })"
+													/>
+												</div>
+												<p class="help-text mb-0">{{ 'cpn_min_help' | transloco }}</p>
+											</ng-template>
+										</li>
+										<li ngbNavItem="who">
+											<a ngbNavLink>
+												<i class="ri-user-line"></i>
+												{{ 'cpn_tab_who' | transloco }}
+											</a>
+											<ng-template ngbNavContent>
+												<label class="form-label">{{ 'cpn_who' | transloco }}</label>
+												<div class="d-flex mb-2 flex-wrap gap-2">
+													@for (kind of ['everyone', 'firstOrder', 'customers', 'businesses'];
+													track kind) {
+													<button
+														type="button"
+														class="btn btn-sm"
+														[class.btn-theme]="d.audience.kind === kind"
+														[class.btn-outline]="d.audience.kind !== kind"
+														[attr.aria-pressed]="d.audience.kind === kind"
+														(click)="setAudience($any(kind))"
+													>
+														{{ 'cpn_audience_' + kind | transloco }}
+													</button>
+													}
+												</div>
+												@if (d.audience.kind === 'customers' || d.audience.kind ===
+												'businesses') {
+												<select2
+													class="custom-select mb-3"
+													[data]="buyerOptions()"
+													[value]="audienceIds()"
+													[multiple]="true"
+													[customSearchEnabled]="true"
+													[placeholder]="(d.audience.kind === 'customers' ? 'ord_find_customer' : 'ord_find_business') | transloco"
+													[noResultMessage]="'ord_no_buyer_found' | transloco"
+													(search)="searchBuyers($event)"
+													(update)="setAudienceIds($event)"
+												/>
+												}
+												<label class="form-label">{{ 'cpn_where' | transloco }}</label>
+												<div class="d-flex flex-wrap gap-4">
+													<div class="form-check">
+														<input
+															class="form-check-input"
+															type="checkbox"
+															id="cpn_shop"
+															[checked]="d.channels.shop"
+															(change)="patch({ channels: { shop: $any($event.target).checked, admin: d.channels.admin } })"
+														/>
+														<label
+															class="form-check-label"
+															for="cpn_shop"
+														>
+															{{ 'cpn_channel_shop' | transloco }}
+														</label>
+													</div>
+													<div class="form-check">
+														<input
+															class="form-check-input"
+															type="checkbox"
+															id="cpn_admin"
+															[checked]="d.channels.admin"
+															(change)="patch({ channels: { shop: d.channels.shop, admin: $any($event.target).checked } })"
+														/>
+														<label
+															class="form-check-label"
+															for="cpn_admin"
+														>
+															{{ 'cpn_channel_admin' | transloco }}
+														</label>
+													</div>
+												</div>
+											</ng-template>
+										</li>
+										<li ngbNavItem="dates">
+											<a ngbNavLink>
+												<i class="ri-calendar-line"></i>
+												{{ 'cpn_tab_dates' | transloco }}
+											</a>
+											<ng-template ngbNavContent>
+												<div class="row g-3">
+													<div class="col-md-6">
+														<label
+															class="form-label"
+															for="cpn_from"
+														>
+															{{ 'zone_valid_from' | transloco }}
+														</label>
+														<input
+															class="form-control"
+															id="cpn_from"
+															type="datetime-local"
+															[value]="toLocal(d.validFrom)"
+															(change)="patch({ validFrom: fromLocal($any($event.target).value) })"
+														/>
+													</div>
+													<div class="col-md-6">
+														<label
+															class="form-label"
+															for="cpn_until"
+														>
+															{{ 'zone_valid_until' | transloco }}
+														</label>
+														<input
+															class="form-control"
+															id="cpn_until"
+															type="datetime-local"
+															[value]="toLocal(d.validUntil)"
+															(change)="patch({ validUntil: fromLocal($any($event.target).value) })"
+														/>
+													</div>
+													<div class="col-md-6">
+														<label
+															class="form-label"
+															for="cpn_per_customer"
+														>
+															{{ 'cpn_uses_per_customer' | transloco }}
+														</label>
+														<input
+															class="form-control"
+															id="cpn_per_customer"
+															inputmode="numeric"
+															[placeholder]="'cpn_unlimited' | transloco"
+															[value]="d.usesPerCustomer ?? ''"
+															(change)="patch({ usesPerCustomer: optionalNum($any($event.target).value) })"
+														/>
+														<p class="help-text mb-0">
+															{{ 'cpn_per_customer_help' | transloco }}
+														</p>
+													</div>
+													<div class="col-md-6">
+														<label
+															class="form-label"
+															for="cpn_total"
+														>
+															{{ 'cpn_uses_total' | transloco }}
+														</label>
+														<input
+															class="form-control"
+															id="cpn_total"
+															inputmode="numeric"
+															[placeholder]="'cpn_unlimited' | transloco"
+															[value]="d.totalUses ?? ''"
+															(change)="patch({ totalUses: optionalNum($any($event.target).value) })"
+														/>
+														<p class="help-text mb-0">
+															{{ 'cpn_empty_unlimited' | transloco }}
+														</p>
+													</div>
+												</div>
+											</ng-template>
+										</li>
+										<li ngbNavItem="combining">
+											<a ngbNavLink>
+												<i class="ri-stack-line"></i>
+												{{ 'cpn_tab_combining' | transloco }}
+											</a>
+											<ng-template ngbNavContent>
+												<div class="d-flex align-items-center mb-2 gap-3">
+													<label class="switch mb-0">
+														<input
+															type="checkbox"
+															id="cpn_combines"
+															[checked]="d.combines"
+															(change)="patch({ combines: $any($event.target).checked })"
+														/>
+														<span class="switch-state"></span>
+													</label>
+													<label
+														class="form-label mb-0"
+														for="cpn_combines"
+													>
+														{{ 'cpn_combines_label' | transloco }}
+													</label>
+												</div>
+												<p class="help-text">{{ 'cpn_combines_switch_help' | transloco }}</p>
+												<!-- cp04: the order coupons are used in, and how they meet sale prices (fixed rules, shown). -->
+												<label
+													class="form-label"
+													for="cpn_order_of_use"
+												>
+													{{ 'cpn_order_of_use' | transloco }}
+												</label>
+												<select
+													class="form-select"
+													id="cpn_order_of_use"
+													disabled
+												>
+													<option>{{ 'cpn_order_of_use_value' | transloco }}</option>
+												</select>
+												<p class="help-text">{{ 'cpn_combines_help' | transloco }}</p>
+												<label class="form-label">
+													{{ 'cpn_automatic_offers' | transloco }}
+												</label>
+												<p class="small">{{ 'cpn_automatic_offers_text' | transloco }}</p>
+												<div class="d-flex align-items-center mb-2 gap-3">
+													<label class="switch mb-0">
+														<input
+															type="checkbox"
+															id="cpn_zone"
+															[checked]="d.usableOnZonePrices"
+															(change)="patch({ usableOnZonePrices: $any($event.target).checked })"
+														/>
+														<span class="switch-state"></span>
+													</label>
+													<label
+														class="form-label mb-0"
+														for="cpn_zone"
+													>
+														{{ 'cpn_zone_label' | transloco }}
+													</label>
+												</div>
+												<p class="help-text mb-0">{{ 'cpn_zone_help' | transloco }}</p>
+											</ng-template>
+										</li>
+									</ul>
+								</div>
+								<div class="col-xl-9 col-lg-8">
+									<div [ngbNavOutlet]="nav"></div>
+								</div>
+							</div>
+						</div>
+					</div>
+					@if (error(); as problem) {
+					<div
+						class="alert alert-warning d-flex align-items-start mt-3 mb-0 gap-2"
+						role="alert"
+					>
+						<i class="ri-error-warning-line mt-1"></i>
+						<div>{{ problem }}</div>
+					</div>
+					}
+				</div>
+			</div>
+		</div>
+
+		<div class="col-xxl-4">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ 'cpn_check_it' | transloco }}</h5>
+						</div>
+					</div>
+					<h6 class="mb-2">{{ 'zone_in_plain_words' | transloco }}</h6>
+					<ul class="small mb-3 ps-3">
+						@for (line of words(); track $index) {
+						<li class="mb-1">{{ line }}</li>
+						}
+					</ul>
+					<h6 class="mb-2">{{ 'zone_try_it' | transloco }}</h6>
+					<select2
+						class="custom-select"
+						[data]="productOptions()"
+						[customSearchEnabled]="true"
+						[placeholder]="'zone_try_add_product' | transloco"
+						[noResultMessage]="'no_data_found' | transloco"
+						(search)="searchProducts($event)"
+						(update)="addTryItem($event)"
+					/>
+					@for (row of tryItems(); track row.productId) {
+					<div class="d-flex align-items-center mt-2 gap-2">
+						<span class="small flex-grow-1">{{ row.label }}</span>
+						<button
+							type="button"
+							class="btn btn-link text-danger p-0"
+							[title]="'zone_remove_try' | transloco"
+							[attr.aria-label]="'zone_remove_try' | transloco"
+							(click)="removeTryItem(row.productId)"
+						>
+							<i class="ri-close-circle-line"></i>
+						</button>
+					</div>
+					}
+					<button
+						type="button"
+						class="btn btn-theme btn-sm mt-2"
+						[disabled]="!tryItems().length || trying()"
+						(click)="tryIt()"
+					>
+						<i class="ri-play-line me-1"></i>
+						{{ 'zone_try_it' | transloco }}
+					</button>
+					@if (tryResult(); as result) {
+					<p class="small text-muted mt-3 mb-2">
+						{{ 'cpn_try_cart' | transloco: { count: tryPieces(), delivery: money(result.deliveryINR) } }}
+					</p>
+					<ul class="list-unstyled small mb-0">
+						@for (line of result.lines; track line.lineId) {
+						<li class="d-flex justify-content-between border-bottom gap-2 py-2">
+							<span>
+								<b>{{ line.title }} × {{ line.quantity }}</b>
+								<span class="d-block text-muted">
+									@if (result.used.length > 1 && line.byCoupon.length) { @for (part of line.byCoupon;
+									track part.code) { @if (!$first) { · } {{ part.code }}: {{ money(part.amountINR) }}
+									} } @else { {{ 'cpn_reason_' + line.reason | transloco }} }
+								</span>
+							</span>
+							<span class="text-nowrap">
+								{{ money(line.unitPriceINR * line.quantity) }} @if (line.amountINR > 0) {
+								<b class="text-success">−{{ money(line.amountINR) }}</b>
+								}
+							</span>
+						</li>
+						}
+						<li class="d-flex justify-content-between border-bottom gap-2 py-2">
+							<span>
+								<b>{{ 'cpn_try_delivery' | transloco }}</b>
+								<span class="d-block text-muted">
+									@if (result.deliveryOff; as free) { {{ 'cpn_try_free_delivery' | transloco: { code:
+									free.code } }} } @else { {{ 'cpn_try_delivery_unchanged' | transloco }} }
+								</span>
+							</span>
+							<span class="text-nowrap">
+								{{ money(result.deliveryINR) }} @if (result.deliveryOff; as free) {
+								<b class="text-success">−{{ money(free.amountINR) }}</b>
+								}
+							</span>
+						</li>
+						@if (result.used.length > 1) {
+						<li class="d-flex justify-content-between py-2">
+							<span>{{ 'cpn_try_coupons_used' | transloco }}</span>
+							<b>{{ usedCodes(result) }}</b>
+						</li>
+						}
+						<li class="d-flex justify-content-between py-2">
+							<span>{{ 'cpn_try_discount' | transloco }}</span>
+							<b>−{{ money(result.totalBeforeINR - result.totalAfterINR) }}</b>
+						</li>
+						@if (result.refusal) {
+						<li class="text-danger">{{ 'ord_coupon_refusal_' + result.refusal | transloco }}</li>
+						}
+					</ul>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+</div>

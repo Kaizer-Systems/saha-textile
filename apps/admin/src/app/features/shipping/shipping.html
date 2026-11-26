@@ -23,6 +23,7 @@
 			</a>
 			<div>
 				<a
+					[title]="'edit' | transloco"
 					[routerLink]="['/shipping/edit/', shipping?.id]"
 					class="me-2"
 					*hasPermission="'shipping.edit'"
@@ -30,6 +31,7 @@
 					<i class="ri-pencil-line text-success"></i>
 				</a>
 				<a
+					[title]="'delete' | transloco"
 					href="javascript:void(0)"
 					*hasPermission="'shipping.destroy'"
 					(click)="DeleteModal().openModal('delete', shipping)"

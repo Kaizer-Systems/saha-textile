@@ -1,0 +1,236 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'si_title'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">
+				{{ 'si_supply_title' | transloco }}
+				<div class="status-pending d-inline-block ms-2">
+					<span>{{ 'si_status_draft' | transloco }}</span>
+				</div>
+			</h5>
+			<small class="text-muted">{{ 'si_supply_line' | transloco }}</small>
+		</div>
+		<div class="d-flex flex-wrap gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="si_save"
+				[disabled]="!ready()"
+				(click)="save()"
+			>
+				{{ 'si_save_draft' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="si_issue"
+				[disabled]="!ready()"
+				(click)="issue()"
+			>
+				<i class="ri-check-line"></i>
+				{{ 'si_issue' | transloco }}
+			</button>
+		</div>
+	</div>
+	<div
+		class="alert alert-info d-flex align-items-center gap-2"
+		id="si_clock"
+	>
+		<i class="ri-time-line"></i>
+		<span>
+			<b>{{ 'si_rule_47a' | transloco }}</b>
+			{{ 'si_rule_47a_text' | transloco: { received: day(receivedOn()), by: day(clock().by) } }} @if (clock().left
+			>= 0) { {{ 'si_days_left' | transloco: { count: clock().left } }} } @else {
+			<b class="text-danger">{{ 'si_days_late' | transloco: { count: -clock().left } }}</b>
+			}
+		</span>
+	</div>
+	<div class="row g-3">
+		<div class="col-xl-8">
+			<div class="card">
+				<div class="card-body theme-form theme-form-2">
+					<div class="title-header">
+						<h5>{{ 'si_the_supply' | transloco }}</h5>
+					</div>
+					<div class="row g-3 small mb-3">
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'si_place_of_supply' | transloco }}</span>
+							<b>{{ placeName() }}</b>
+						</div>
+						@if (interState()) {
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">
+								{{ 'si_igst_we_pay' | transloco: { rate: choice()?.ratePercent ?? 0 } }}
+							</span>
+							<b>{{ inr(tax().igstINR) }}</b>
+						</div>
+						} @else {
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">
+								{{ 'si_cgst_we_pay' | transloco: { rate: halfRate() } }}
+							</span>
+							<b>{{ inr(tax().cgstINR) }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">
+								{{ 'si_sgst_we_pay' | transloco: { rate: halfRate() } }}
+							</span>
+							<b>{{ inr(tax().sgstINR) }}</b>
+						</div>
+						}
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'si_total_tax' | transloco }}</span>
+							<b>{{ inr(tax().taxINR) }}</b>
+						</div>
+					</div>
+					<div class="row g-3">
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="si_supplier"
+							>
+								{{ 'si_supplier' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="si_supplier"
+								[ngModel]="supplierId()"
+								(ngModelChange)="supplierId.set($event)"
+							>
+								<option value="">—</option>
+								@for (s of options.data()?.suppliers ?? []; track s.id) {
+								<option [value]="s.id">{{ 'si_supplier_option' | transloco: { name: s.name } }}</option>
+								}
+							</select>
+							<p class="help-text">{{ 'si_supplier_help' | transloco }}</p>
+						</div>
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="si_what"
+							>
+								{{ 'si_what' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="si_what"
+								[ngModel]="ruleKey()"
+								(ngModelChange)="ruleKey.set($event)"
+							>
+								<option value="">—</option>
+								@for (c of options.data()?.choices ?? []; track c.key) {
+								<option [value]="c.key">
+									{{ 'si_what_option' | transloco: { name: c.name, code: c.code } }}
+								</option>
+								}
+							</select>
+							<p class="help-text">{{ 'si_what_help' | transloco }}</p>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="si_for"
+							>
+								{{ 'si_for' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="si_for"
+								type="month"
+								[ngModel]="forMonth()"
+								(ngModelChange)="forMonth.set($event)"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="si_received_on"
+							>
+								{{ 'si_received_on' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="si_received_on"
+								type="date"
+								[max]="today"
+								[ngModel]="receivedOn()"
+								(ngModelChange)="receivedOn.set($event)"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="si_taxable"
+							>
+								{{ 'si_taxable_value' | transloco }}
+							</label>
+							<div class="input-group">
+								<span class="input-group-text">₹</span>
+								<input
+									class="form-control"
+									id="si_taxable"
+									inputmode="decimal"
+									autocomplete="off"
+									[ngModel]="taxable()"
+									(ngModelChange)="taxable.set($event)"
+								/>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-4">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'cn_when_issue' | transloco }}</h5>
+					</div>
+					<ul class="list-unstyled small mb-0">
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i class="ri-hashtag"></i>
+							<div>
+								<b>{{ 'ret_number' | transloco }}</b>
+								<span class="text-muted">· sequences</span>
+								<span class="d-block">{{ 'si_effect_number' | transloco }}</span>
+							</div>
+						</li>
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i class="ri-percent-line"></i>
+							<div>
+								<b>{{ 'si_effect_tax_title' | transloco }}</b>
+								<span class="text-muted">· gstEntries</span>
+								<span class="d-block">
+									{{ 'si_effect_tax' | transloco: { amount: inr(tax().taxINR) } }}
+								</span>
+							</div>
+						</li>
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i class="ri-arrow-go-back-line"></i>
+							<div>
+								<b>{{ 'si_effect_credit_title' | transloco }}</b>
+								<span class="text-muted">· gstEntries</span>
+								<span class="d-block">
+									{{ 'si_effect_credit' | transloco: { amount: inr(tax().taxINR) } }}
+								</span>
+							</div>
+						</li>
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i class="ri-user-line"></i>
+							<div>
+								<b>{{ 'si_effect_supplier_title' | transloco }}</b>
+								<span class="text-muted">· ledgerEntries</span>
+								<span class="d-block">
+									{{ 'si_effect_supplier' | transloco: { name: supplier()?.name ?? '—', amount:
+									inr(taxableValue() ?? 0) } }}
+								</span>
+							</div>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+</app-page-wrapper>

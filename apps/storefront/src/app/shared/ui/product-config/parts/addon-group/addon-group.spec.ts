@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 
-import { describe, expect, it } from 'vitest';
+import { TranslocoService } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { describe, expect, it, vi } from 'vitest';
 
 import { AddonGroup } from './addon-group';
 
@@ -22,8 +24,18 @@ const product = {
 	],
 } as never;
 
+const modals = { open: vi.fn() };
 const render = (inputs: Record<string, unknown> = {}) => {
 	TestBed.resetTestingModule();
+	TestBed.configureTestingModule({
+		providers: [
+			{ provide: NgbModal, useValue: modals },
+			{
+				provide: TranslocoService,
+				useValue: { translate: (key: string, params?: { name?: string }) => `${key}:${params?.name ?? ''}` },
+			},
+		],
+	});
 	TestBed.overrideComponent(AddonGroup, { set: { imports: [], template: '' } });
 	const fixture = TestBed.createComponent(AddonGroup);
 	const states: ConfiguratorState[] = [];
@@ -75,5 +87,74 @@ describe('AddonGroup', () => {
 		const { group } = render({ initialSelections: { tailoring: 'gone' } });
 		expect(group.delta()).toBe(50);
 		expect(group.needsMeasurements()).toBe(false);
+	});
+});
+
+describe('AddonGroup measurement title', () => {
+	it('names the chosen add-on that needs measurements, and nothing while none does', () => {
+		const { group } = render();
+		expect(group.measuredLabel()).toBe('');
+		group.select(group.groups()[0], 'stitched');
+		expect(group.measuredLabel()).toBe('Stitched');
+	});
+
+	describe('measurements as a row (brief P7)', () => {
+		const field = (code: string) => ({ code, label: code, unit: 'in' });
+		const withFields = (count: number, extra: Record<string, unknown> = {}) => ({
+			...(product as object),
+			measurement_fields: Array.from({ length: count }, (_, index) => field(`f${index}`)),
+			...extra,
+		});
+
+		it('keeps up to four fields on the page and moves more behind the row, or always when asked', () => {
+			expect(render({ product: withFields(4) }).group.asRow()).toBe(false);
+			expect(render({ product: withFields(5) }).group.asRow()).toBe(true);
+			expect(render({ product: withFields(2), measureAs: 'row' }).group.asRow()).toBe(true);
+		});
+
+		it('names the row after the template, else after the chosen add-on', () => {
+			const { group } = render({ product: withFields(5, { measurement_title: 'Suit measurements' }) });
+			expect(group.rowTitle()).toBe('Suit measurements');
+			const plain = render({ product: withFields(5) }).group;
+			plain.select(plain.groups()[0]!, 'stitched');
+			expect(plain.rowTitle()).toBe('measurements_for:Stitched');
+		});
+
+		it('opens the form in the pop-up and takes back only what is saved', async () => {
+			const start = vi.fn();
+			const { group, states } = render({ product: withFields(5, { size_guide: { fields: [], rows: [] } }) });
+			group.select(group.groups()[0]!, 'stitched');
+			modals.open.mockReturnValueOnce({ componentInstance: { start }, result: Promise.reject('closed') });
+			await group.openMeasurements();
+			expect(start).toHaveBeenCalledWith(
+				expect.objectContaining({ forName: 'Stitched', sizeGuide: true, values: {} }),
+			);
+			expect(group.measured()).toBe(false);
+			modals.open.mockReturnValueOnce({ componentInstance: { start }, result: Promise.resolve({ f0: 36 }) });
+			await group.openMeasurements();
+			expect(group.measured()).toBe(true);
+			expect(states.at(-1)).toMatchObject({ valid: true, measurements: { f0: 36 } });
+			expect(modals.open.mock.lastCall?.[1]).toMatchObject({ windowClass: 'theme-modal st-sheet' });
+		});
+	});
+
+	it('takes choices made in the bar’s sheet as its own and draws the form again', () => {
+		const { group, states } = render();
+		const key = group.formKey();
+		group.apply({ tailoring: 'stitched' }, { chest: 36 }, true);
+		expect(group.snapshot()).toEqual({
+			selections: { tailoring: 'stitched' },
+			measurements: { chest: 36 },
+			measured: true,
+		});
+		expect(states.at(-1)).toMatchObject({ valid: true, total: 1550 });
+		expect(group.formKey()).toBe(key + 1);
+		expect(group.formSeed()).toEqual({ chest: 36 });
+		expect(
+			render({
+				measureAs: 'form',
+				product: { ...(product as object), measurement_fields: Array(6).fill({ code: 'x' }) },
+			}).group.asRow(),
+		).toBe(false);
 	});
 });

@@ -4,14 +4,16 @@ wide: true
 description: How AnalogJS file routes, route metadata, dynamic SSR, and browser-only code fit together.
 status: implemented
 audience: [beginner, frontend]
-last_verified: '2026-11-07'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/storefront/src/app/app.config.server.ts
     - apps/storefront/src/app/pages
     - apps/storefront/src/app/core/i18n
     - apps/storefront/src/server/middleware/locale.ts
+    - apps/storefront/src/server/api-url.ts
     - apps/storefront/vite.config.ts
+    - apps/storefront/script-priority.vite.ts
 ---
 
 # Storefront routing and rendering
@@ -43,7 +45,7 @@ A page entry does four small jobs:
 4. Exports the feature as the default route component.
 
 ```ts title="Conceptual route entry"
-import { ScrollPositionGuard } from '@core/guards/scroll-position.guard';
+import { ScrollPositionGuard } from '@core/guards/scroll.guard';
 import { Collections } from '@features/shop/collection/collection';
 
 export const routeMeta = { canActivate: [ScrollPositionGuard] };
@@ -54,9 +56,26 @@ Keep querying, filtering, mutation, and presentation orchestration inside the ap
 
 The registration route carries both guards. `guestOnlyGuard` keeps a signed-in customer on `/account/dashboard`. Its `canDeactivate` guard distinguishes in-app abandonment from a browser reload. Leaving discards server-held pending signup state without blocking navigation; reload does not run the guard and the page resumes through `GET /auth/storefront/signup`. Login, one-time-code, and forgot-password use the same guest-only activation guard.
 
+## Scroll position after navigation
+
+`ScrollMemory` (`core/navigation/scroll-memory.ts`), started by `App`, decides where the page sits after a navigation:
+
+| Navigation                  | Result                                        |
+| --------------------------- | --------------------------------------------- |
+| A link or `router.navigate` | The new page opens at its top                 |
+| Back or Forward             | The page returns to where the shopper left it |
+| A URL with a `#fragment`    | The element with that id scrolls into view    |
+| The first page of a visit   | Left where the browser put it                 |
+
+A restored position waits up to two seconds for content that loads after the route (product grids) before scrolling. Scrolls are instant, never smooth.
+
+Back lands on the same content, not just the same pixel. Before leaving a page, `ScrollMemory` also notes the section that fills most of the screen, counted from the last section, and how far it was from the top. On Back it restores the position, then moves the page so that section is where it was. Counting from the end keeps it right when a row appears higher up while the shopper was away (Home's `Recently viewed` row appears after a product was opened). For 1.5 s after a Back, rows the browser fills in later are followed the same way; the shopper's own scroll, tap or key ends that at once. Far sections are drawn only near the screen (`scss/components/_render-near-screen.scss`), so `html.st-render-all` draws them all while a position is restored and is removed two frames later, once their real heights are remembered. `e2e/home-restore.spec.ts` checks that a product opens at its top and that Back puts the opened card back in the same place.
+
+The router's own `withInMemoryScrolling` is set to `disabled`. Angular only scrolls once the application is stable after hydration, and the storefront keeps timers running inside Angular's zone (query cache clean-up, countdowns, refresh intervals), so that moment may never come. `ScrollPositionGuard` remains on the pages that list it and only makes sure `ScrollMemory` is running.
+
 ## Locale URLs
 
-Every page is served under its language, `/en/…` or `/fr/…`, including private routes.
+Every page is served under its language, `/en/…` or `/bn/…`, including private routes.
 
 **The locale is the router's base, not a route segment.** `provideLocaleRouting()` (`core/i18n/locale-routing.ts`) sets Angular's `APP_BASE_HREF` to `/<locale>`, read once from the requested URL (`ACTIVE_LOCALE`). Page files, `routerLink`s, menu data and `navigateByUrl` calls therefore stay locale-free (`/cart`, `/product/<slug>`), and `Location` adds and strips the prefix. The document's `<base href="/">` is unchanged, so relative asset URLs still resolve from the site root. Never write `/en/` into a link. The base adds it.
 
@@ -67,7 +86,7 @@ Every page is served under its language, `/en/…` or `/fr/…`, including priva
 | Request                                                                | Answer                                                                                           |
 | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | `/`                                                                    | `302` to the `st_locale` choice, else `/en/`; `Cache-Control: private, no-store`, `Vary: Cookie` |
-| `/en`, `/fr`                                                           | `301` to `/en/`, `/fr/` (one home address)                                                       |
+| `/en`, `/bn`                                                           | `301` to `/en/`, `/bn/` (one home address)                                                       |
 | Any unprefixed page, e.g. `/cart`                                      | `301` to `/en/cart`, query kept                                                                  |
 | `/de/…` (unsupported language)                                         | Treated as unprefixed: `301` to `/en/de/…`                                                       |
 | Assets, `/api/*`, `/_analog/*`, dev internals, files with an extension | Untouched                                                                                        |
@@ -76,7 +95,7 @@ There is no redirect on browser language or IP. Old addresses are resolved first
 
 **The switcher is a set of real links** (`layout/header/widgets/language`): each option links to the same page under the other prefix, so choosing a language is a full navigation the server renders, and clicking records the choice in the `st_locale` cookie — which is the only input `/` reads.
 
-**Head tags** (`LocaleSeo`, `core/i18n/locale-seo.ts`): every public page gets a canonical in its own language plus reciprocal `hreflang` for each locale and `x-default` → `/`, refreshed on every navigation. Private paths (`/account`, `/auth`, `/cart`, `/checkout`, `/wishlist`, `/compare`, `/search`) get `noindex,follow` and no alternates. A page that knows its canonical better calls `setCanonicalPath()` — the collection page does, so an extra-placement category points everything at its home path. Not-found pages (the catch-all and `/404`, where an unknown product slug also lands) export `routeMeta = notFoundRouteMeta`: they get the same `noindex` treatment, and the server answers them with HTTP `404` instead of a `200` page claiming itself as canonical. A retired address renders the gone page with HTTP `410`. The middleware keeps a copy of the redirect rows and live paths, refreshed every 15 seconds, and a `410` is not cached until the first load has finished.
+**Head tags** (`LocaleSeo`, `core/i18n/locale-seo.ts`): every public page gets a canonical in its own language plus reciprocal `hreflang` for each locale, and an `x-default` naming the English version of the same page. Every page carries `og:locale`, and a public page also lists its other languages as `og:locale:alternate`. Each navigation clears the previous page's title, description, share picture and robots tag before the new page sets its own, and a page with a trail adds schema.org `BreadcrumbList` data. Private paths (`/account`, `/auth`, `/cart`, `/checkout`, `/wishlist`, `/compare`, `/search`) get `noindex,follow` and no alternates. A page that knows its canonical better calls `setCanonicalPath()` — the collection page does, so an extra-placement category points everything at its home path. Not-found pages (the catch-all and `/404`, where an unknown product slug also lands) export `routeMeta = notFoundRouteMeta`: they get the same `noindex` treatment, and the server answers them with HTTP `404` instead of a `200` page claiming itself as canonical. A retired address renders the gone page with HTTP `410`. The middleware keeps a copy of the redirect rows and live paths, read from the API at `serverApiUrl()` and refreshed every 15 seconds, and a `410` is not cached until the first load has finished. Only the first load after the server starts holds a request back, for at most 3 seconds; a failed load retries with backoff in the background, so a slow or absent API never delays later pages.
 
 Analog loads `src/server/middleware/*.ts` **without compiling TypeScript** in development, so a type annotation or `import type` there crashes the server. Keep middleware to valid JavaScript.
 
@@ -109,6 +128,10 @@ The configuration is:
 - No routes are prerendered.
 - Nitro targets a Node server.
 
+### Script priority
+
+The page is complete before any script runs, so the application scripts are not needed for the first paint. Vite links the entry as `<script type="module">` and each script file it imports as `<link rel="modulepreload">`, which a browser fetches at high priority, so on a phone's line about 430 KB of scripts shared the bandwidth with the page's first picture and styles. A build step, `script-priority.vite.ts`, marks those tags `fetchpriority="low"` (the Fetch Priority API; Chrome gives an `async` script the same priority). The browser then gives the first picture, the stylesheets and the preloaded fonts the line first and fetches the scripts straight after; Angular's event replay keeps a tap made before hydration. On the builder Home in Lighthouse's phone setting, first paint went from 4.2 s to 1.0 s and Speed Index from 4.2 s to 1.8 s. Inline scripts and module scripts without `src` are left alone, and a tag that already names a priority keeps it.
+
 ## Browser-only safety
 
 Code executed during SSR cannot assume `window`, `document`, browser storage, media APIs, or DOM-dependent libraries exist.
@@ -123,11 +146,17 @@ if (isPlatformBrowser(this.platformId)) {
 
 Prefer rendering a stable server-safe structure and enhancing it in the browser. Avoid returning entirely different markup unless the feature genuinely cannot render on the server.
 
+Angular itself skips browser-only work on the server, such as the viewport and hover triggers of `@defer`, by testing the global `ngServerMode`. Analog's build optimizer sets that value once from the top-level config, so `vite.config.ts` adds `angularServerMode()`, which sets `ngServerMode` to `true` for every server-side build environment. Without it the server bundle takes the browser paths, and a block such as `@defer (on viewport; hydrate on viewport)` reaches for `IntersectionObserver` during the render.
+
 ## Data during server rendering
 
 Public API requests run during the server render and pass through Angular's HTTP transfer cache, so the browser does not repeat them. `ServerApiTimeoutInterceptor` limits each API call to 2.5 seconds. Past that limit the query stays empty, and the browser fetches the data after hydration. Requests with credentials do not run through the transfer cache.
 
 Check both direct navigation and client-side navigation after hydration.
+
+### Server handlers
+
+Handlers in `src/server/` run in Nitro, outside Angular. The app initializer that loads `/config.json` never runs there, so the shared `environment` keeps its `localhost` default. A handler that calls the API takes the address from `serverApiUrl()` in `src/server/api-url.ts`. It reads `apiUrl` from `SAHA_TEXTILE_PUBLIC_CONFIG` and falls back to `environment.apiUrl` only when the variable is unset or unreadable. Every handler that calls the API uses it: the sitemap and FAQ in `middleware/seo-files.ts` and the web manifest in `middleware/web-manifest.ts`.
 
 ## Adding a route safely
 

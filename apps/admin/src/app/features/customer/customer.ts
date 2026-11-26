@@ -95,15 +95,15 @@ export class Customer {
 			{ title: 'status', dataField: 'status' },
 		],
 		rowActions: [
-			{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'customer.update' },
+			{ label: 'edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'customer.update' },
 			{
-				label: 'Delete',
+				label: 'delete',
 				actionToPerform: 'delete',
 				icon: 'ri-delete-bin-line',
 				permission: 'customer.destroy',
 			},
 			{
-				label: 'Restore',
+				label: 'restore',
 				actionToPerform: 'restore',
 				icon: 'ri-arrow-go-back-line',
 				permission: 'customer.restore',
@@ -154,9 +154,10 @@ export class Customer {
 	}
 
 	onActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform === 'edit') this.edit(action.data);
-		else if (action.actionToPerform === 'delete') this.remove(action.data);
-		else if (action.actionToPerform === 'restore') this.restoreMutation.mutate(String(action.data.id));
+		if (action.actionToPerform === 'edit') this.edit(action.data as CustomerRow);
+		else if (action.actionToPerform === 'delete') this.remove(action.data as CustomerRow);
+		else if (action.actionToPerform === 'restore')
+			this.restoreMutation.mutate(String((action.data as CustomerRow).id));
 	}
 
 	edit(data: CustomerRow) {

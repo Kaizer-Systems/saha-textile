@@ -1,0 +1,195 @@
+<div class="modal-header">
+	<h2 id="draft_product_title">{{ 'make_draft_product' | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	<p class="text-muted">{{ 'draft_product_intro' | transloco }}</p>
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="dp_name"
+		>
+			{{ 'name' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<input
+				class="form-control"
+				id="dp_name"
+				maxlength="200"
+				ngbAutofocus
+				[ngModel]="name()"
+				(ngModelChange)="name.set($event)"
+			/>
+		</div>
+	</div>
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="dp_category"
+		>
+			{{ 'category' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<select
+				class="form-select"
+				id="dp_category"
+				[ngModel]="categoryId()"
+				(ngModelChange)="chooseCategory($event)"
+			>
+				<option value="">{{ 'pick_category' | transloco }}</option>
+				@for (option of categoryOptions(); track option.id) {
+				<option [value]="option.id">{{ option.label }}</option>
+				}
+			</select>
+			@if (defaults(); as from) {
+			<p class="help-text">
+				{{ (from.hsnCode ? 'draft_product_from_category' : 'draft_product_from_category_no_hsn') | transloco: {
+				hsn: from.hsnCode, returnable: ((from.returnable ? 'yes' : 'no') | transloco) } }}
+			</p>
+			}
+		</div>
+	</div>
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="dp_sku"
+		>
+			{{ 'sku' | transloco }}
+		</label>
+		<div class="col-sm-9">
+			@if (needsPrefix()) {
+			<input
+				class="form-control text-uppercase"
+				id="dp_sku"
+				maxlength="20"
+				[placeholder]="'draft_product_prefix_placeholder' | transloco"
+				[ngModel]="typedPrefix()"
+				(ngModelChange)="typedPrefix.set($event)"
+			/>
+			<p class="help-text">{{ 'draft_product_prefix_help' | transloco }}</p>
+			} @else if (defaults(); as from) {
+			<div class="input-group">
+				<span class="input-group-text">{{ from.skuPrefix }}</span>
+				<input
+					class="form-control"
+					id="dp_sku"
+					readonly
+					[value]="from.skuNext ?? ''"
+				/>
+			</div>
+			<p class="help-text">{{ 'draft_product_next_number' | transloco: { prefix: from.skuPrefix } }}</p>
+			} @else {
+			<p class="help-text mb-0">{{ 'draft_product_sku_after_category' | transloco }}</p>
+			} @if (fieldErrors()['sku']; as problem) {
+			<div class="invalid-feedback d-block">{{ problem }}</div>
+			}
+		</div>
+	</div>
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="dp_selling"
+		>
+			{{ 'selling_price' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<div class="input-group">
+				<span class="input-group-text">₹</span>
+				<input
+					class="form-control"
+					id="dp_selling"
+					inputmode="numeric"
+					[class.is-invalid]="!!selling().trim() && sellingValue() === null"
+					[ngModel]="selling()"
+					(ngModelChange)="selling.set($event)"
+				/>
+			</div>
+			@if (selling().trim() && sellingValue() === null) {
+			<div class="invalid-feedback d-block">{{ 'whole_rupees_only' | transloco }}</div>
+			} @else {
+			<p class="help-text">{{ 'tax_inclusive_everywhere' | transloco }}</p>
+			}
+		</div>
+	</div>
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="dp_mrp"
+		>
+			{{ 'mrp' | transloco }}
+		</label>
+		<div class="col-sm-9">
+			<div class="input-group">
+				<span class="input-group-text">₹</span>
+				<input
+					class="form-control"
+					id="dp_mrp"
+					inputmode="numeric"
+					[class.is-invalid]="!!mrpProblem()"
+					[ngModel]="mrp()"
+					(ngModelChange)="mrp.set($event)"
+				/>
+			</div>
+			@if (mrpProblem(); as problem) {
+			<div class="invalid-feedback d-block">{{ problem | transloco }}</div>
+			}
+		</div>
+	</div>
+	<div class="row align-items-center g-2 mb-2">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="dp_code"
+		>
+			{{ 'their_item_code' | transloco }}
+		</label>
+		<div class="col-sm-9">
+			<input
+				class="form-control"
+				id="dp_code"
+				maxlength="60"
+				[ngModel]="code()"
+				(ngModelChange)="code.set($event)"
+			/>
+		</div>
+	</div>
+	@if (error(); as problem) {
+	<div
+		class="alert alert-warning d-flex align-items-start mt-3 mb-0 gap-2"
+		role="alert"
+	>
+		<i class="ri-error-warning-line mt-1"></i>
+		<div>{{ problem }}</div>
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="dp_save"
+			[disabled]="!canSave()"
+			(click)="save()"
+		>
+			{{ 'make_draft_and_add_line' | transloco }}
+		</button>
+	</div>
+</div>

@@ -1,0 +1,75 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'reports_title'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">{{ 'report_' + side() + '_ageing' | transloco }}</h5>
+			@if (report.data(); as r) {
+			<small class="text-muted">{{ 'ageing_as_at' | transloco: { date: day(r.asAt) } }}</small>
+			}
+		</div>
+		<div class="d-flex align-items-center flex-wrap gap-2">
+			<input
+				class="form-control w-auto"
+				id="ageing_find"
+				[placeholder]="'ageing_find' | transloco"
+				[attr.aria-label]="'ageing_find' | transloco"
+				[ngModel]="q()"
+				(ngModelChange)="q.set($event)"
+			/>
+			@if (report.data(); as r) {
+			<app-export-menu
+				id="ageing_export"
+				[source]="exportSource(r)"
+			/>
+			}
+		</div>
+	</div>
+	@if (report.error()) {
+	<div class="alert alert-warning py-2">{{ 'statement_problem' | transloco }}</div>
+	} @if (report.data(); as r) {
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'ageing_party' | transloco }}</th>
+					@for (b of buckets; track b) {
+					<th>{{ 'ageing_' + b | transloco }}</th>
+					}
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of rows(); track row.partyId) {
+				<tr>
+					<td>{{ row.name }}</td>
+					@for (b of buckets; track b) {
+					<td
+						class="text-nowrap"
+						[class.fw-bold]="b === 'total'"
+					>
+						{{ money(row[b]) }}
+					</td>
+					}
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="7"
+						class="text-muted"
+					>
+						{{ 'ageing_none' | transloco }}
+					</td>
+				</tr>
+				}
+				<tr>
+					<td class="fw-bold">{{ 'total' | transloco }}</td>
+					@for (b of buckets; track b) {
+					<td class="fw-bold text-nowrap">{{ money(r.totals[b]) }}</td>
+					}
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	}
+</app-page-wrapper>

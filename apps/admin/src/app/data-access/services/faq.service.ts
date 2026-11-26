@@ -19,8 +19,8 @@ export class FaqService {
 			.get<{
 				items: Array<{
 					id: string;
-					question: { en: string; fr?: string };
-					answer: { en: string; fr?: string };
+					question: { en: string; bn?: string };
+					answer: { en: string; bn?: string };
 					status: string;
 					scope: FaqScope;
 					categoryIds: string[];
@@ -35,8 +35,8 @@ export class FaqService {
 						faqId: row.id,
 						title: row.question.en,
 						description: row.answer.en,
-						titleFr: row.question.fr ?? '',
-						descriptionFr: row.answer.fr ?? '',
+						titleBn: row.question.bn ?? '',
+						descriptionBn: row.answer.bn ?? '',
 						created_by_id: false,
 						status: row.status === 'live',
 						scope: row.scope,
@@ -52,8 +52,8 @@ export class FaqService {
 		faqId?: string;
 		title: string;
 		description: string;
-		titleFr?: string;
-		descriptionFr?: string;
+		titleBn?: string;
+		descriptionBn?: string;
 		status: boolean;
 		scope?: FaqScope;
 		categoryIds?: string[];
@@ -63,8 +63,8 @@ export class FaqService {
 			`${environment.apiUrl}/admin/catalog/faq`,
 			{
 				id: row.faqId,
-				question: { en: row.title, fr: row.titleFr || undefined },
-				answer: { en: row.description, fr: row.descriptionFr || undefined },
+				question: { en: row.title, bn: row.titleBn || undefined },
+				answer: { en: row.description, bn: row.descriptionBn || undefined },
 				scope: row.scope ?? 'global',
 				categoryIds: row.categoryIds ?? [],
 				productIds: row.productIds ?? [],

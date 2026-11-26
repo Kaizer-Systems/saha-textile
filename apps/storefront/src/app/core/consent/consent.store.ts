@@ -6,7 +6,13 @@ import { firstValueFrom } from 'rxjs';
 
 import { runtimeConfig, runtimeConfigReady } from '@core/config/runtime-config';
 
-import { COOKIE_POLICY_VERSION, OPTIONAL_COOKIES, OPTIONAL_STORAGE, type OptionalCategory } from './cookie-catalogue';
+import {
+	COOKIE_POLICY_VERSION,
+	OPTIONAL_COOKIES,
+	OPTIONAL_STORAGE,
+	VISIT_ONLY_WHEN_REFUSED,
+	type OptionalCategory,
+} from './cookie-catalogue';
 
 const COOKIE = 'st_consent';
 const YEAR_SECONDS = 365 * 24 * 60 * 60;
@@ -45,7 +51,8 @@ function parseChoice(value: string | undefined): ConsentChoice | null {
 /**
  * The shopper's cookie decision. The browser's `st_consent` cookie is the live answer, because the
  * shop must know before any request returns; the API keeps the add-only history. Nothing optional
- * runs until `allows` says so. The server never shows the box, so returning visitors see no flash.
+ * runs until `allows` says so. The server draws the box hidden in every page and the page head shows it to a visitor
+ * who has not decided (consent-ask.vite.ts), so returning visitors never see it, not even for a moment.
  */
 @Injectable({ providedIn: 'root' })
 export class ConsentStore {
@@ -56,7 +63,7 @@ export class ConsentStore {
 
 	readonly choice = signal<ConsentChoice | null>(this.isBrowser ? this.readCookie() : null);
 	readonly decided = computed(() => this.choice() !== null);
-	/** Browser only: the first HTML never carries the box. */
+	/** Browser only: the server's HTML always draws the box hidden; the page head decides its first paint. */
 	readonly boxOpen = computed(() => this.isBrowser && !this.decided());
 	/** Goes up each time something asks for Cookie settings. */
 	readonly settingsRequests = signal(0);
@@ -97,6 +104,14 @@ export class ConsentStore {
 	private clearOptional(): void {
 		for (const name of OPTIONAL_COOKIES) this.page.cookie = `${name}=; Max-Age=0; Path=/`;
 		for (const key of OPTIONAL_STORAGE) this.page.defaultView?.localStorage.removeItem(key);
+		// The shopper's own look-and-feel choice stays for this visit, so the switch never looks broken.
+		for (const name of VISIT_ONLY_WHEN_REFUSED) {
+			const value = this.page.cookie
+				.split('; ')
+				.find((row) => row.startsWith(`${name}=`))
+				?.slice(name.length + 1);
+			if (value) this.page.cookie = `${name}=${value}; Path=/; SameSite=Lax`;
+		}
 	}
 
 	/** The history is evidence, not the live answer, so a failed write never blocks the shopper. */
@@ -124,7 +139,9 @@ export class ConsentStore {
 			const saved = await firstValueFrom(
 				this.injector
 					.get(HttpClient)
-					.get<{ categories: Categories; policyVersion: string | null }>(`${runtimeConfig.apiUrl}/privacy/consent`),
+					.get<{ categories: Categories; policyVersion: string | null }>(
+						`${runtimeConfig.apiUrl}/privacy/consent`,
+					),
 			);
 			if (saved.policyVersion !== COOKIE_POLICY_VERSION) return;
 			const { functional, analytics, targeting, marketing, promotional } = saved.categories;

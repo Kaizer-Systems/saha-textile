@@ -1,0 +1,215 @@
+#cloud-config
+# First boot of a Saha Textile server (production-deployment-plan.mdx §5). `pnpm server:create`
+# (scripts/server/servers.mjs) fills every marker (a name between double @ signs) and passes the result as the droplet's
+# user data; a marker left unfilled stops the create. Nothing here prints a secret.
+#
+# What it sets up: the admin and deploy users, SSH reachable only through the Cloudflare tunnel,
+# Docker with the `local` log driver and live-restore, cloudflared as a service, UFW as a second
+# layer behind the DigitalOcean Cloud Firewall, 4 GiB swap, UTC, automatic security patches with
+# the 7-day reboot rule, and /opt/saha-textile with the deploy user's one command.
+
+timezone: Etc/UTC
+package_update: true
+package_upgrade: true
+packages:
+  - ca-certificates
+  - curl
+  - git
+  - gnupg
+  - ufw
+  - unattended-upgrades
+  - update-notifier-common
+
+ssh_pwauth: false
+disable_root: true
+users:
+  - name: '@@ADMIN_USER@@'
+    groups: [sudo]
+    shell: /bin/bash
+    # The Recovery Console (no network) needs this password; its master copy is in NordPass.
+    lock_passwd: false
+    passwd: '@@ADMIN_PASSWORD_HASH@@'
+    sudo: 'ALL=(ALL) ALL'
+    ssh_authorized_keys:
+      - '@@ADMIN_SSH_KEY@@'
+  - name: deploy
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+      # The deploy job's key can only hand over a release (docker/production/bin/receive-release.sh).
+      - 'restrict,command="sudo -n /opt/saha-textile/bin/receive-release.sh" @@DEPLOY_SSH_KEY@@'
+  - name: observer
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+      # The Release Console's read-only key (owner, 2026-11-23, Release Path brief Q8): containers,
+      # logs, releases and disk, nothing else (docker/production/bin/observe.sh).
+      - 'restrict,command="sudo -n /opt/saha-textile/bin/observe.sh" @@OBSERVER_SSH_KEY@@'
+
+write_files:
+  - path: /etc/ssh/sshd_config.d/60-saha-textile.conf
+    permissions: '0644'
+    content: |
+      # Only the Cloudflare tunnel reaches SSH: here and on the private address (61-saha-textile-private.conf).
+      ListenAddress 127.0.0.1
+      PermitRootLogin no
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      AllowUsers @@ADMIN_USER@@ deploy observer
+  - path: /etc/sudoers.d/60-saha-textile-deploy
+    permissions: '0440'
+    content: |
+      deploy ALL=(root) NOPASSWD: /opt/saha-textile/bin/receive-release.sh
+      # The observer's request travels in SSH_ORIGINAL_COMMAND, which observe.sh checks word by word.
+      Defaults:observer env_keep += "SSH_ORIGINAL_COMMAND"
+      observer ALL=(root) NOPASSWD: /opt/saha-textile/bin/observe.sh
+  - path: /etc/docker/daemon.json
+    permissions: '0644'
+    content: |
+      {"log-driver": "local", "log-opts": {"max-size": "20m", "max-file": "5"}, "live-restore": true}
+  - path: /etc/sysctl.d/60-saha-textile.conf
+    permissions: '0644'
+    content: |
+      # Redis forks to save; MongoDB and Redis prefer memory over swap.
+      vm.overcommit_memory = 1
+      vm.swappiness = 10
+  - path: /etc/apt/apt.conf.d/52-saha-textile-upgrades
+    permissions: '0644'
+    content: |
+      // Security patches install by themselves; the owner decides when to reboot.
+      Unattended-Upgrade::Allowed-Origins { "${distro_id}:${distro_codename}-security"; };
+      Unattended-Upgrade::Automatic-Reboot "false";
+  - path: /usr/local/sbin/saha-textile-reboot-check
+    permissions: '0755'
+    content: |
+      #!/bin/sh
+      # A reboot that has waited 7 days happens now (the timer runs at 04:00 IST).
+      flag=/var/run/reboot-required
+      [ -f "$flag" ] || exit 0
+      age=$(( $(date +%s) - $(stat -c %Y "$flag") ))
+      [ "$age" -ge 604800 ] && exec /sbin/shutdown -r now 'Saha Textile: a pending reboot waited 7 days'
+      exit 0
+  - path: /etc/systemd/system/saha-textile-reboot-check.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Reboot when a pending reboot has waited 7 days
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/saha-textile-reboot-check
+  - path: /etc/systemd/system/saha-textile-reboot-check.timer
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Daily reboot check at 04:00 IST
+      [Timer]
+      OnCalendar=*-*-* 22:30:00 UTC
+      Persistent=false
+      [Install]
+      WantedBy=timers.target
+  - path: /etc/systemd/system/saha-textile-renew-certs.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Keep the public certificate current (only for an environment not behind Cloudflare)
+      [Service]
+      Type=oneshot
+      ExecStart=/opt/saha-textile/bin/renew-current-certs.sh
+  - path: /etc/systemd/system/saha-textile-renew-certs.timer
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Daily certificate check at 03:30 IST
+      [Timer]
+      OnCalendar=*-*-* 22:00:00 UTC
+      Persistent=true
+      [Install]
+      WantedBy=timers.target
+  - path: /opt/saha-textile/bin/renew-current-certs.sh
+    permissions: '0755'
+    owner: root:root
+    content: |
+      #!/bin/sh
+      # The live release's own renew-certs.sh; nothing before the first deploy, nothing behind Cloudflare.
+      release="$(readlink -f /opt/saha-textile/current)" || exit 0
+      [ -d "$release" ] || exit 0
+      exec bash "$release/bin/renew-certs.sh" "$release"
+  - path: /opt/saha-textile/bin/receive-release.sh
+    permissions: '0755'
+    owner: root:root
+    encoding: b64
+    content: '@@RECEIVE_RELEASE_B64@@'
+  - path: /opt/saha-textile/bin/observe.sh
+    permissions: '0755'
+    owner: root:root
+    encoding: b64
+    content: '@@OBSERVE_B64@@'
+  - path: /root/.saha-textile-tunnel-token
+    permissions: '0600'
+    owner: root:root
+    content: '@@TUNNEL_TOKEN@@'
+
+runcmd:
+  # 4 GiB swap.
+  - [
+      sh,
+      -c,
+      'fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile && echo "/swapfile none swap sw 0 0" >> /etc/fstab',
+    ]
+  - [sysctl, --system]
+  # Docker from Docker's own apt repository.
+  - [
+      sh,
+      -c,
+      'install -m 0755 -d /etc/apt/keyrings && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc && chmod a+r /etc/apt/keyrings/docker.asc',
+    ]
+  - [
+      sh,
+      -c,
+      '. /etc/os-release && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $VERSION_CODENAME stable" > /etc/apt/sources.list.d/docker.list',
+    ]
+  # cloudflared from Cloudflare's own apt repository.
+  - [
+      sh,
+      -c,
+      'curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg -o /usr/share/keyrings/cloudflare-main.gpg && echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main" > /etc/apt/sources.list.d/cloudflared.list',
+    ]
+  - [
+      sh,
+      -c,
+      'apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin cloudflared',
+    ]
+  - [systemctl, enable, --now, docker]
+  - [usermod, -aG, docker, '@@ADMIN_USER@@']
+  # The tunnel dials out; the token file is removed once the service holds it.
+  - [
+      sh,
+      -c,
+      'cloudflared service install "$(cat /root/.saha-textile-tunnel-token)" && shred -u /root/.saha-textile-tunnel-token',
+    ]
+  # UFW is a second layer: Docker's published ports bypass it, so the Cloud Firewall is the gate.
+  - [ufw, default, deny, incoming]
+  - [ufw, default, allow, outgoing]
+  - [ufw, allow, 443/tcp]
+  - [ufw, --force, enable]
+  - [
+      sh,
+      -c,
+      'install -d -m 0755 -o root -g root /opt/saha-textile /opt/saha-textile/bin /opt/saha-textile/edge && install -d -m 0700 -o root -g root /opt/saha-textile/releases /opt/saha-textile/certs',
+    ]
+  - [systemctl, enable, --now, unattended-upgrades]
+  - [systemctl, daemon-reload]
+  - [systemctl, enable, --now, saha-textile-reboot-check.timer]
+  # Does nothing behind Cloudflare; renews a public certificate 30 days before it ends (M10).
+  - [systemctl, enable, --now, saha-textile-renew-certs.timer]
+  # WARP private access (owner, 21 Nov): SSH also answers on the private VPC address, reached only through the
+  # tunnel's private route; the Cloud Firewall and UFW keep 22 closed to everything else.
+  - [
+      sh,
+      -c,
+      'ip=$(curl -fsS http://169.254.169.254/metadata/v1/interfaces/private/0/ipv4/address) && echo "ListenAddress $ip" > /etc/ssh/sshd_config.d/61-saha-textile-private.conf || echo "first-boot: no private address for SSH" >&2',
+    ]
+  - [systemctl, restart, ssh]
+  - [touch, /opt/saha-textile/first-boot.done]
+
+final_message: 'Saha Textile first boot finished after $UPTIME seconds'

@@ -2,13 +2,13 @@ import { isPlatformBrowser } from '@angular/common';
 import { Component, TemplateRef, PLATFORM_ID, inject, viewChild } from '@angular/core';
 import { FormControl, ReactiveFormsModule, FormsModule } from '@angular/forms';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { ToastrService } from '@damjantonkli/ngx-toastr';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 
-import { IProduct } from '@data-access/interfaces/product.interface';
-import { IQuestionAnswers } from '@data-access/interfaces/questions-answers.interface';
-import { QuestionsAnswersService } from '@data-access/services/questions-answers.service';
 import { AuthStore } from '@core/state/auth.store';
+import { IProduct } from '@data-access/interfaces/product.interface';
+import { QuestionsAnswersService } from '@data-access/services/questions-answers.service';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 
 import { Button } from '../../button/button';
@@ -25,6 +25,8 @@ export class QuestionModal {
 	private platformId = inject<Object>(PLATFORM_ID);
 	private questionsApi = inject(QuestionsAnswersService);
 	private authStore = inject(AuthStore);
+	private toastr = inject(ToastrService);
+	private transloco = inject(TranslocoService);
 
 	readonly QuestionModal = viewChild<TemplateRef<string>>('questionModal');
 
@@ -36,16 +38,8 @@ export class QuestionModal {
 	public askerName = new FormControl('');
 	public askerEmail = new FormControl('');
 	public stayAnonymous = new FormControl(false);
-	public type = 'crate';
-	public id: number;
-
-	async openModal(product: IProduct, qna?: IQuestionAnswers) {
+	async openModal(product: IProduct) {
 		if (isPlatformBrowser(this.platformId)) {
-			if (qna) {
-				this.type = 'edit';
-				this.id = qna.id;
-				this.question.patchValue(qna.question);
-			}
 			this.product = product;
 			this.askerName.patchValue(this.authStore.email() ? this.authStore.email().split('@')[0] : '');
 			this.askerEmail.patchValue(this.authStore.email());
@@ -90,6 +84,11 @@ export class QuestionModal {
 				askerEmail,
 				isAnonymous: this.stayAnonymous.value === true,
 			})
-			.subscribe(() => this.modalService.dismissAll());
+			.subscribe(() => {
+				this.modalService.dismissAll();
+				this.question.reset('');
+				// The theme toast; the question shows on the page once the shop answers it.
+				this.toastr.success(this.transloco.translate('question_sent'));
+			});
 	}
 }

@@ -61,6 +61,33 @@ class FakeAssets implements MediaAssetRepository {
 	constructor(seed: MediaAsset[]) {
 		for (const row of seed) this.rows.set(row.id, row);
 	}
+	/** Reprocess, Replace and focal point (media step 3) are not exercised here. */
+	async addVersions() {
+		return null;
+	}
+	async removeVersion() {
+		return null;
+	}
+	async startReplace() {
+		return null;
+	}
+	async moveReplace() {
+		return null;
+	}
+	async finishReplace() {
+		return null;
+	}
+	async setFocal() {}
+	async listWithOlderVersions() {
+		return [];
+	}
+	async refreshCounts() {
+		return { older: 0, running: 0, failed: 0 };
+	}
+	async listKeptDue() {
+		return [];
+	}
+	async dropKept() {}
 	async findById(id: string) {
 		return this.rows.get(id) ?? null;
 	}
@@ -95,6 +122,19 @@ class FakeAssets implements MediaAssetRepository {
 	async listStaleForRole() {
 		return [];
 	}
+	async settleVersions(input: Parameters<MediaAssetRepository['settleVersions']>[0]) {
+		const row = this.rows.get(input.assetId);
+		if (!row) return null;
+		const byId = new Map(input.versions.map((version) => [version.id, version]));
+		const next = {
+			...row,
+			...input.set,
+			derivatives: [...row.derivatives, ...input.addDerivatives],
+			versions: row.versions?.map((version) => byId.get(version.id) ?? version),
+		};
+		this.rows.set(row.id, next);
+		return next;
+	}
 	async listLiveCreatedBefore(input: { createdBefore: string; afterId: string | null; limit: number }) {
 		return [...this.rows.values()]
 			.filter(
@@ -126,6 +166,11 @@ class FakeAssets implements MediaAssetRepository {
 const storage = (bytes = new Uint8Array([1, 2, 3])) => {
 	const uploads: { key: string; visibility?: string; cacheControl?: string }[] = [];
 	const port: StoragePort = {
+		listKeys: async function* () {},
+		readStream: async function* () {
+			yield bytes;
+		},
+		uploadStream: async () => ({ bytes: 0 }),
 		upload: async (input) => {
 			uploads.push(input);
 			return { key: input.key, url: `https://cdn.test/${input.key}` };
@@ -137,6 +182,11 @@ const storage = (bytes = new Uint8Array([1, 2, 3])) => {
 		setVisibility: async () => {},
 		createSignedDownloadUrl: async ({ key }) => `https://signed.test/${key}`,
 		createSignedUploadUrl: async ({ key }) => ({ url: `https://upload.test/${key}` }),
+		startMultipartUpload: async () => ({ uploadId: 'upload_1' }),
+		createSignedPartUrl: async ({ partNumber }) => `https://upload.test/part/${partNumber}`,
+		listUploadedParts: async () => [],
+		completeMultipartUpload: async () => undefined,
+		abortMultipartUpload: async () => undefined,
 	};
 	return { port, uploads };
 };
@@ -216,20 +266,35 @@ const role = (overrides: Partial<MediaRoleDefinition>): MediaRoleDefinition => (
 	quality: 80,
 	primaryOnly: false,
 	respectSlotMaxWidth: false,
+	brandStrip: false,
+	inset: 0,
 	version: 1,
 	...overrides,
+});
+
+describe('checkIngest for store photos', () => {
+	const store = { purpose: 'store' as const, contentType: 'image/jpeg', byteSize: 1000 };
+	it('warns on a narrow store photo and on one off 4:3', () => {
+		expect(checkIngest({ ...store, width: 1200, height: 900 }).warnings).toContain('below_recommended_size');
+		expect(checkIngest({ ...store, width: 1600, height: 1200 }).warnings).toEqual([]);
+		expect(checkIngest({ ...store, width: 1600, height: 900 }).warnings).toContain('aspect_off_target');
+	});
 });
 
 describe('checkIngest for blogs', () => {
 	const blog = { purpose: 'blog' as const, contentType: 'image/jpeg', byteSize: 1000 };
 	it('warns on a narrow blog image only', () => {
-		expect(checkIngest({ ...blog, width: 900, height: 506 }).warnings).toContain('below_recommended_size');
-		expect(checkIngest({ ...blog, width: 2400, height: 1350 }).warnings).not.toContain('below_recommended_size');
+		expect(checkIngest({ ...blog, width: 900, height: 450 }).warnings).toContain('below_recommended_size');
+		expect(checkIngest({ ...blog, width: 2400, height: 1200 }).warnings).not.toContain('below_recommended_size');
+	});
+	it('takes a 2:1 cover as on shape and a 16:9 one as off shape', () => {
+		expect(checkIngest({ ...blog, width: 1774, height: 887 }).warnings).not.toContain('aspect_off_target');
+		expect(checkIngest({ ...blog, width: 2400, height: 1350 }).warnings).toContain('aspect_off_target');
 	});
 });
 
 describe('planDerivatives shapes', () => {
-	it.each(['category', 'blog'] as const)('letterboxes an off-shape %s image', (purpose) => {
+	it.each(['category', 'blog', 'store'] as const)('letterboxes an off-shape %s image', (purpose) => {
 		const plan = planDerivatives({
 			asset: asset({ purpose }),
 			source: { width: 3000, height: 3000 },
@@ -273,12 +338,12 @@ describe('storage keys', () => {
 		const key = derivativeStorageKey({
 			assetId: 'med_1',
 			slug: 'red',
-			role: 'email_thumb',
-			width: 300,
+			role: 'share',
+			width: 1200,
 			sha256: 'abcdef0123',
 			format: 'image/jpeg',
 		});
-		expect(key).toBe('media/med_1/red-email-thumb-300w-abcdef01.jpg');
+		expect(key).toBe('media/med_1/red-share-1200w-abcdef01.jpg');
 	});
 });
 
@@ -446,7 +511,7 @@ describe('resolveImage alt fallback', () => {
 				text: { alt: text, title: {}, caption: {} },
 			}),
 			getUrl: (key) => key,
-			locale: 'fr',
+			locale: 'bn',
 			fallbackLocale: 'en',
 			...(altOverride ? { altOverride } : {}),
 		});
@@ -528,45 +593,106 @@ describe('review photos', () => {
 });
 
 describe('refreshYouTubeFeed', () => {
-	const video = (index: number) => ({
-		videoId: `video${index}`,
-		title: `Video ${index}`,
-		publishedAt: '2026-10-01T00:00:00.000Z',
+	const upload = (index: number) => ({
+		videoId: `video${String(index).padStart(6, '0')}`,
+		title: `Upload ${index}`,
+		// Newer uploads have higher numbers.
+		publishedAt: new Date(Date.UTC(2026, 9, 1) + index * 3_600_000).toISOString(),
 		thumbnailUrl: 'https://i.ytimg.com/a.jpg',
 	});
+	let feedBefore: unknown = null;
+	/** 50 uploads: every third one is a Short; the last one cannot be played. */
+	const uploads = Array.from({ length: 50 }, (_, index) => upload(index));
 	const build = (stored: unknown, channel: unknown) => {
 		const set = vi.fn(async () => {});
-		const settings = { get: async () => stored, set } as unknown as SiteSettingsRepository;
+		const settings = {
+			get: async (key: string) => (key === 'youtube.feed' ? feedBefore : stored),
+			set,
+		} as unknown as SiteSettingsRepository;
 		const youtube = {
 			resolveChannel: vi.fn(async () => channel),
-			listPlaylistVideos: vi.fn(async () => Array.from({ length: 12 }, (_, index) => video(index))),
+			listPlaylistVideos: vi.fn(async () => uploads),
+			describeVideos: vi.fn(async (ids: string[]) =>
+				uploads
+					.filter((item) => ids.includes(item.videoId) && item.videoId !== upload(49).videoId)
+					.map((item, index) => ({
+						...item,
+						kind: index % 3 === 0 ? 'short' : 'video',
+						durationSeconds: index % 3 === 0 ? 45 : 900,
+					})),
+			),
 		} as unknown as YouTubePort;
 		return { set, settings, youtube };
+	};
+	type Feed = {
+		videos: { videoId: string; kind: string; posterUrl: null }[];
+		shorts: { videoId: string; kind: string }[];
+		fetchedAt: string;
 	};
 
 	it('stops when the channel cannot be found', async () => {
 		const { settings, youtube, set } = build(null, null);
 		expect(await refreshYouTubeFeed({ settings, youtube, now })).toEqual({ skipped: 'channel_not_found' });
 		expect(youtube.resolveChannel).toHaveBeenCalledWith('@SahaTextile');
-		expect(set).not.toHaveBeenCalled();
+		expect(set).toHaveBeenCalledOnce();
+		expect(set).toHaveBeenCalledWith('youtube.feed', {
+			videos: [],
+			shorts: [],
+			fetchedAt: null,
+			lastAttemptAt: '2026-11-02T00:00:00.000Z',
+			lastError: 'No YouTube channel has the handle @SahaTextile.',
+			retiredPosters: [],
+		});
 	});
 
-	it('resolves the channel once, saves it, and stores ten videos', async () => {
+	it("keeps yesterday's videos and says why when YouTube fails, then lets the job retry", async () => {
+		feedBefore = { videos: [{ videoId: 'kept' }], shorts: [], fetchedAt: '2026-11-01T00:00:00.000Z' };
+		const { settings, youtube, set } = build(
+			{ channelHandle: '@a', channelId: 'UC1', uploadsPlaylistId: 'UU9', displayCount: 8, railPlacements: [] },
+			null,
+		);
+		vi.mocked(youtube.listPlaylistVideos).mockRejectedValueOnce(
+			new Error('YouTube playlistItems answered HTTP 403'),
+		);
+		await expect(refreshYouTubeFeed({ settings, youtube, now })).rejects.toThrow('HTTP 403');
+		expect(set).toHaveBeenLastCalledWith('youtube.feed', {
+			videos: [{ videoId: 'kept' }],
+			shorts: [],
+			fetchedAt: '2026-11-01T00:00:00.000Z',
+			lastAttemptAt: '2026-11-02T00:00:00.000Z',
+			lastError: 'YouTube playlistItems answered HTTP 403',
+			retiredPosters: [],
+		});
+		vi.mocked(youtube.listPlaylistVideos).mockRejectedValueOnce('down');
+		await expect(refreshYouTubeFeed({ settings, youtube, now })).rejects.toBe('down');
+		expect(set).toHaveBeenLastCalledWith('youtube.feed', expect.objectContaining({ lastError: 'down' }));
+		feedBefore = null;
+	});
+
+	it('resolves the channel once and stores the 24 newest videos and 12 newest Shorts', async () => {
 		const { settings, youtube, set } = build(null, { channelId: 'UC1', uploadsPlaylistId: 'UU1' });
-		expect(await refreshYouTubeFeed({ settings, youtube, now })).toEqual({ videos: 12 });
+		expect(await refreshYouTubeFeed({ settings, youtube, now })).toEqual({ videos: 24, shorts: 12 });
 		expect(set).toHaveBeenNthCalledWith(1, 'youtube', expect.objectContaining({ uploadsPlaylistId: 'UU1' }));
-		const feed = (set.mock.calls[1] as unknown as [string, { videos: unknown[]; fetchedAt: string }])[1];
-		expect(feed.videos).toHaveLength(10);
+		const feed = (set.mock.calls[1] as unknown as [string, Feed])[1];
+		expect(feed.videos).toHaveLength(24);
+		expect(feed.shorts).toHaveLength(12);
+		expect(feed.videos.every((video) => video.kind === 'video' && video.posterUrl === null)).toBe(true);
+		expect(feed.shorts.every((video) => video.kind === 'short')).toBe(true);
+		// Newest first; the unplayable newest upload (49) is left out, and 48 is a Short.
+		expect(feed.shorts[0]?.videoId).toBe(upload(48).videoId);
+		expect(feed.videos[0]?.videoId).toBe(upload(47).videoId);
 		expect(feed.fetchedAt).toBe('2026-11-02T00:00:00.000Z');
+		expect(feed).toMatchObject({ lastAttemptAt: '2026-11-02T00:00:00.000Z', lastError: null, retiredPosters: [] });
 	});
 
-	it('reuses a saved playlist', async () => {
+	it('reuses a saved playlist and reads one page of uploads', async () => {
 		const { settings, youtube } = build(
 			{ channelHandle: '@a', channelId: 'UC1', uploadsPlaylistId: 'UU9', displayCount: 8, railPlacements: [] },
 			null,
 		);
 		await refreshYouTubeFeed({ settings, youtube, now });
 		expect(youtube.resolveChannel).not.toHaveBeenCalled();
-		expect(youtube.listPlaylistVideos).toHaveBeenCalledWith({ playlistId: 'UU9', limit: 10 });
+		expect(youtube.listPlaylistVideos).toHaveBeenCalledWith({ playlistId: 'UU9', limit: 50 });
+		expect(youtube.describeVideos).toHaveBeenCalledWith(uploads.map((item) => item.videoId));
 	});
 });

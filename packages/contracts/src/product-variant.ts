@@ -14,15 +14,27 @@ export type VariantOptionSelection = z.infer<typeof VariantOptionSelection>;
  * Stock for one variant.
  *
  * Owner lock: stock is tracked on VARIANTS, never on the parent product.
- * `allowBackorder` stays false. Made to order is a product switch, not an oversell
- * of a stocked saree. `DEC-STOCK-RESERVE` still owns reservation timing. The card's
- * low-stock threshold lives on the product, so this per-variant field is not a second rule.
+ * `allowBackorder`: backorders are allowed per product with a limit on pieces owed, and a
+ * variant may override both (owner decision OD2, 2026-11-17, replacing DEC-BACKORDER's
+ * "oversell stays off"). Everything starts switched off until that chunk is built. Made to
+ * order is a product switch, not a backorder. The card's low-stock threshold lives on the
+ * product, so this per-variant field is not a second rule.
  */
 export const VariantStock = z.object({
 	tracked: z.boolean().default(true),
+	/** On hand. Moves only through stock documents (purchases, returns, adjustments, counts). */
 	quantity: z.number().int().default(0),
+	/** On hand but not for sale (photoshoot, display, waiting for the supplier). */
+	held: z.number().int().nonnegative().default(0),
+	/**
+	 * Pieces kept for orders (`DEC-STOCK-RESERVE`): an admin order's pieces from the moment it is saved
+	 * (K7, owner 2026-11-20), a shop order's from Pay (OD1). Free to sell = quantity − held − reserved.
+	 * They leave on-hand when the order ships, and come back to sale when a line is removed or the
+	 * order cancelled.
+	 */
+	reserved: z.number().int().nonnegative().default(0),
 	lowStockThreshold: z.number().int().nonnegative().nullable().default(null),
-	/** Seam — `DEC-BACKORDER`. */
+	/** Backorders for this variant (OD2): off by default; the product's switch and limit, overridable here. */
 	allowBackorder: z.boolean().default(false),
 });
 export type VariantStock = z.infer<typeof VariantStock>;
@@ -46,16 +58,6 @@ export const VariantTaxProfile = z.object({
 	taxClassId: Id.nullable().default(null),
 });
 export type VariantTaxProfile = z.infer<typeof VariantTaxProfile>;
-
-/**
- * Optional window during which `salePriceINR` is the selling price. The card and the
- * product page read the two stored rupee amounts; they do not recompute a percent.
- */
-export const VariantSaleWindow = z.object({
-	startsAt: IsoDateTime.nullable().default(null),
-	endsAt: IsoDateTime.nullable().default(null),
-});
-export type VariantSaleWindow = z.infer<typeof VariantSaleWindow>;
 
 /**
  * A purchasable SKU row (`productVariants`) — first-class, not embedded in the product.
@@ -92,13 +94,21 @@ export const ProductVariant = z
 		compareAtPriceINR: CatalogRupee.nullable().default(null),
 		salePriceINR: CatalogRupee.nullable().default(null),
 		barcode: z.string().min(1).nullable().optional(),
-		saleWindow: VariantSaleWindow.optional(),
-		stock: VariantStock.default({ tracked: true, quantity: 0, lowStockThreshold: null, allowBackorder: false }),
+		stock: VariantStock.default({
+			tracked: true,
+			quantity: 0,
+			held: 0,
+			reserved: 0,
+			lowStockThreshold: null,
+			allowBackorder: false,
+		}),
 		shippingProfile: VariantShippingProfile.optional(),
 		taxProfile: VariantTaxProfile.optional(),
 		media: z
 			.object({
 				primaryAssetId: Id.nullable().default(null),
+				/** The version that picture shows (media R4-1). */
+				primaryVersionId: z.string().nullable().default(null),
 			})
 			.optional(),
 		createdAt: IsoDateTime.optional(),
@@ -119,15 +129,6 @@ export const ProductVariant = z
 				code: 'custom',
 				message: '`salePriceINR` may not exceed `priceINR`',
 				path: ['salePriceINR'],
-			});
-		}
-
-		const { startsAt, endsAt } = variant.saleWindow ?? {};
-		if (startsAt && endsAt && startsAt > endsAt) {
-			ctx.addIssue({
-				code: 'custom',
-				message: 'sale window ends before it starts',
-				path: ['saleWindow', 'endsAt'],
 			});
 		}
 	});

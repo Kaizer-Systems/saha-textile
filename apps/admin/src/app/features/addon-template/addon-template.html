@@ -3,6 +3,7 @@
 	[title]="'addon_templates'"
 >
 	@if (!formOnly()) {
+	<app-missing-language-notice [code]="missing.code()" />
 	<a routerLink="create">{{ 'create' | transloco }}</a>
 	<app-table
 		[tableConfig]="tableConfig()"
@@ -147,7 +148,7 @@
 			<p class="help-text">{{ 'size_guide_help' | transloco }}</p>
 			@if (sizeGuide().length) {
 			<div class="table-responsive">
-				<table class="table table-bordered">
+				<table class="table-bordered table">
 					<thead>
 						<tr>
 							<th scope="col">{{ 'size' | transloco }}</th>

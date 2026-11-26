@@ -1,4 +1,4 @@
-<div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+<div class="d-flex align-items-center mb-3 flex-wrap gap-2">
 	<span class="form-label-title me-1">{{ 'language' | transloco }}</span>
 	@for (locale of locales(); track locale) {
 	<div
@@ -13,7 +13,9 @@
 			[attr.aria-pressed]="locale === active()"
 			(click)="changed.emit(locale)"
 		>
-			{{ name(locale) }} @if (!gaps()[locale]?.length) {
+			{{ name(locale) }} @if (draft(locale)) {
+			<span class="badge bg-warning ms-1">{{ 'language_draft' | transloco }}</span>
+			} @if (!gaps()[locale]?.length) {
 			<span class="badge bg-success ms-1">{{ 'language_done' | transloco }}</span>
 			}
 		</button>
@@ -40,6 +42,6 @@
 		}
 	</div>
 	} @if (active() !== locales()[0]) {
-	<span class="help-text mb-0 ms-2">{{ 'language_help' | transloco }}</span>
+	<span class="help-text ms-2 mb-0">{{ 'language_help' | transloco }}</span>
 	}
 </div>

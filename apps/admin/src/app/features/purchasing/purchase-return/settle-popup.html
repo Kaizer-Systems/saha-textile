@@ -1,0 +1,145 @@
+@if (doc(); as current) {
+<div class="modal-header">
+	<h2 id="settle_popup_title">{{ 'settle_title' | transloco: { number: current.number ?? '' } }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="settle_how"
+		>
+			{{ 'settle_how' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<select
+				class="form-select"
+				id="settle_how"
+				[ngModel]="how()"
+				(ngModelChange)="how.set($event)"
+			>
+				@for (item of hows; track item) {
+				<option [value]="item">{{ 'settle_how_' + item | transloco }}</option>
+				}
+			</select>
+		</div>
+	</div>
+	@if (how() === 'credit_note' || how() === 'refund' || how() === 'later_bill') {
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="settle_reference"
+		>
+			{{ ('settle_reference_' + how()) | transloco }}@if (needsReference()) {
+			<span class="theme-color required-dot ms-2">*</span>
+			}
+		</label>
+		<div class="col-sm-9">
+			<input
+				class="form-control"
+				id="settle_reference"
+				maxlength="80"
+				[ngModel]="reference()"
+				(ngModelChange)="reference.set($event)"
+			/>
+		</div>
+	</div>
+	}
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="settle_date"
+		>
+			{{ 'date' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<input
+				class="form-control"
+				id="settle_date"
+				type="date"
+				[max]="today"
+				[ngModel]="date()"
+				(ngModelChange)="date.set($event)"
+			/>
+		</div>
+	</div>
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="settle_amount"
+		>
+			{{ 'amount_rupees' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<div class="input-group">
+				<span class="input-group-text">₹</span>
+				<input
+					class="form-control"
+					id="settle_amount"
+					inputmode="decimal"
+					[class.is-invalid]="!!problem()"
+					[ngModel]="amount()"
+					(ngModelChange)="amount.set($event)"
+				/>
+			</div>
+			@if (problem(); as key) {
+			<div class="invalid-feedback d-block">{{ key | transloco: { open: (open() | rupees) } }}</div>
+			} @else {
+			<p class="help-text">{{ 'settle_amount_help' | transloco: { open: (open() | rupees) } }}</p>
+			}
+		</div>
+	</div>
+	<div class="row align-items-center g-2 mb-2">
+		<span class="form-label-title col-sm-3 mb-0">{{ 'copy' | transloco }}</span>
+		<div class="col-sm-9">
+			<a
+				href="javascript:void(0)"
+				class="text-decoration-underline small"
+				(click)="pickCopy()"
+			>
+				<i class="ri-attachment-2"></i>
+				{{ copy()?.name ?? ('settle_add_copy' | transloco) }}
+			</a>
+		</div>
+	</div>
+	@if (error(); as message) {
+	<div
+		class="alert alert-warning mt-3 mb-0"
+		role="alert"
+	>
+		{{ message }}
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="settle_save"
+			[disabled]="!canSave()"
+			(click)="save()"
+		>
+			{{ 'mark_settled' | transloco }}
+		</button>
+	</div>
+</div>
+}

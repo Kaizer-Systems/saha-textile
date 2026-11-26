@@ -1,0 +1,47 @@
+<div class="card">
+	<div class="card-body theme-form theme-form-2">
+		<div class="title-header d-flex justify-content-between align-items-center">
+			<h5>{{ 'ml_title' | transloco }}</h5>
+			@if (canEdit()) {
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="ml_save"
+				[disabled]="busy() || !form()"
+				(click)="save()"
+			>
+				{{ 'save' | transloco }}
+			</button>
+			}
+		</div>
+		@if (form(); as f) {
+		<div class="row g-3">
+			@for (item of fields; track item.field) {
+			<div class="col-md-6">
+				<label
+					class="form-label-title"
+					[for]="'ml_' + item.field"
+				>
+					{{ 'ml_' + item.field | transloco }}
+				</label>
+				<select
+					class="form-select"
+					[id]="'ml_' + item.field"
+					[disabled]="!canEdit()"
+					[ngModel]="f[item.field] ?? ''"
+					(ngModelChange)="set(item.field, $event)"
+				>
+					<option value="">
+						{{ (item.offers === 'bank' ? 'ml_choose_bank' : 'ml_role_own') | transloco }}
+					</option>
+					@for (l of options(item.offers); track l.id) {
+					<option [value]="l.id">{{ l.name }}</option>
+					}
+				</select>
+			</div>
+			}
+		</div>
+		<p class="help-text mt-2 mb-0">{{ 'ml_help' | transloco }}</p>
+		}
+	</div>
+</div>

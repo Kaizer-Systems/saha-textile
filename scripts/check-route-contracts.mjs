@@ -41,6 +41,15 @@ const DECLARED_FAMILIES = [
 	'privacy',
 	'media',
 	'reviews',
+	'blog',
+	'events',
+	'stores',
+	'mailboxes',
+	'wishlist',
+	'languages',
+	'purchases',
+	'stock',
+	'shipping',
 ];
 
 const ROUTE_DECORATOR = /@(Get|Post|Put|Patch|Delete)\s*\(/g;

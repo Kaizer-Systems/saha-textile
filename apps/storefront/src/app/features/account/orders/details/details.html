@@ -1,123 +1,169 @@
-@if (order) {
+@if (order(); as o) {
 <div>
 	<div class="title-header">
 		<div class="d-flex align-items-center justify-content-between w-100">
-			<h5>{{ 'order_number' | transloco }}: #{{ order.order_number }}</h5>
-			<div class="right-option">
-				@if (order.payment_status === 'FAILED') {
-				<a
-					href="javascript:void(0)"
-					class="btn btn-md fw-bold text-light theme-bg-color"
-					(click)="payModal.openModal(order)"
-				>
-					{{ 'pay_now' | transloco }}
-					<i class="ri-refresh-line ms-2"></i>
-				</a>
-				} @if (order.invoice_url && order.payment_status === 'COMPLETED') {
-				<a
-					href="{{order.invoice_url}}"
-					class="btn btn-md fw-bold text-light theme-bg-color ms-auto"
-					download="download"
-				>
-					{{ 'invoice' | transloco }}
-					<i class="ri-download-2-fill ms-2"></i>
-				</a>
-				}
-			</div>
+			<h5>{{ 'order_number' | transloco }}: #{{ o.orderNumber }}</h5>
 		</div>
 	</div>
 	<div class="mb-4">
 		<div class="tracking-panel">
-			@if (order && !order.sub_orders.length) {
 			<ul>
-				@for (orderStatus of (orderStatus$ | async)?.data; track orderStatus) {
-				<li
-					[class.active]="orderStatus?.sequence! <= order.order_status.sequence!"
-					[class.d-none]="(orderStatus?.sequence! >= order.order_status.sequence! && order.order_status.slug === 'cancelled') ||
-                                            orderStatus?.slug === 'cancelled'"
-				>
+				@for (step of steps; track step.status) { @if (o.status !== 'cancelled' || reached(step.status)) {
+				<li [class.active]="reached(step.status)">
 					<div class="panel-content">
 						<div class="icon">
 							<img
-								src="assets/svg/tracking/{{orderStatus?.slug}}.svg"
+								[src]="'assets/svg/tracking/' + step.icon + '.svg'"
 								class="img-fluid"
-								alt="image"
+								alt=""
 							/>
 						</div>
-						<div class="status">{{ orderStatus?.name?.replace('_', ' ') | titlecase }}</div>
+						<div class="status">{{ 'shop_order_status_' + step.status | transloco }}</div>
 					</div>
 				</li>
-				} @if (order.order_status.slug === 'cancelled') {
+				} } @if (o.status === 'cancelled') {
 				<li class="active cancelled-box">
 					<div class="panel-content">
 						<div class="icon">
 							<img
-								src="assets/svg/tracking/{{order.order_status.slug}}.svg"
+								src="assets/svg/tracking/cancelled.svg"
 								class="img-fluid"
-								alt="image"
+								alt=""
 							/>
 						</div>
-						<div class="status">{{ order.order_status.name.replace('_', ' ')! | titlecase }}</div>
+						<div class="status">{{ 'shop_order_status_cancelled' | transloco }}</div>
 					</div>
 				</li>
 				}
 			</ul>
-			}
 		</div>
 	</div>
-	@if (order.products.length) {
 	<div class="card">
 		<div class="card-body">
-			<div class="tracking-wrapper table-responsive">
-				<table class="product-table table">
-					<thead>
-						<tr>
-							<th scope="col">{{ 'image' | transloco }}</th>
-							<th scope="col">{{ 'name' | transloco }}</th>
-							<th scope="col">{{ 'price' | transloco }}</th>
-							<th scope="col">{{ 'quantity' | transloco }}</th>
-							<th scope="col">{{ 'subtotal' | transloco }}</th>
-							<th scope="col">{{ 'action' | transloco }}</th>
-						</tr>
-					</thead>
+			<!-- The order at a glance (owner, 22 Nov 2026): when it was placed, how many items, the pieces in the parcel. -->
+			<div class="st-order-facts">
+				@if (o.placedAt) {
+				<span class="st-piece-chip">
+					<i
+						class="ri-calendar-line"
+						aria-hidden="true"
+					></i>
+					{{ 'my_order_placed_on' | transloco: { date: (o.placedAt | date: 'd MMM yyyy') } }}
+				</span>
+				}
+				<span class="st-piece-chip">
+					<i
+						class="ri-shopping-bag-3-line"
+						aria-hidden="true"
+					></i>
+					{{ (itemCount() === 1 ? 'my_order_item_count_one' : 'my_order_item_count') | transloco: { count:
+					itemCount() } }}
+				</span>
+				<span class="st-piece-chip">
+					<i
+						class="ri-archive-line"
+						aria-hidden="true"
+					></i>
+					{{ (o.pieces === 1 ? 'my_order_one_parcel_one' : 'my_order_one_parcel') | transloco: { count:
+					o.pieces } }}
+				</span>
+				@if (o.freeItems) {
+				<span class="st-piece-chip is-free">
+					<i
+						class="ri-gift-line"
+						aria-hidden="true"
+					></i>
+					{{ (o.freeItems === 1 ? 'cart_set_free_one' : 'cart_set_free') | transloco: { count: o.freeItems }
+					}}
+				</span>
+				}
+			</div>
+			@if (hasTree()) {
+			<p class="st-order-note">{{ 'my_order_tree_note' | transloco }}</p>
+			}
+			<!-- Phones and tablets: each line a card, what came with it on a rail beneath (owner, 22 Nov 2026). -->
+			<app-order-lines
+				class="d-xl-none"
+				[order]="o"
+			/>
+			<!-- Laptops: the theme's tracking table as a tree (E05). -->
+			<div class="tracking-wrapper table-responsive d-none d-xl-block">
+				<!-- What was bought, as a tree (E05): a set's line, then its pieces, their free items and its extras. -->
+				<table class="product-table my-order-lines table">
 					<tbody>
-						@for (product of order.products; track product) {
-						<tr>
+						@for (line of o.lines; track line.lineId) { @let depth = depthOf(line);
+						<tr
+							[class.mo-group]="line.role === 'bundle' || (!depth && childCounts(line).free > 0)"
+							[class.mo-child]="depth > 0"
+							[class.is-free]="line.role === 'free'"
+							[class.is-depth-2]="depth === 2"
+						>
 							<td class="product-image">
 								<img
-									[src]="product?.pivot?.variation && product?.pivot?.variation?.variation_image
-                                        ? product?.pivot?.variation?.variation_image?.original_url
-                                        : product?.product_thumbnail
-                                        ? product?.product_thumbnail?.original_url
-                                        : 'assets/images/product.png'"
+									[src]="line.imageUrl ?? 'assets/images/product.png'"
 									class="img-fluid"
-									alt="product"
+									alt=""
 								/>
 							</td>
-							<td>
-								<h6>
-									{{ product?.pivot?.variation ? product?.pivot?.variation?.name : product?.name }}
-								</h6>
+							<td class="mo-name">
+								@if (depth) { @if (line.role === 'free') {
+								<span class="st-piece-chip is-free">{{ 'free' | transloco }}</span>
+								} @else if (line.role === 'extra') {
+								<span class="st-piece-chip">{{ 'cart_extra' | transloco }}</span>
+								}
+								<span>@if (line.role === 'piece') { {{ pieceNumber(line) }}. }{{ line.title }}</span>
+								} @else {
+								<h6>{{ line.title }}</h6>
+								} @if (line.role === 'bundle' && line.set) { @let counts = childCounts(line);
+								<span class="st-piece-chip is-set">
+									{{ (line.set.heading === 'choose' ? 'choose_your_set' : 'bundle_components') |
+									transloco }}
+								</span>
+								<small class="d-block text-content">
+									{{ (counts.pieces === 1 ? 'cart_set_pieces_one' : 'cart_set_pieces') | transloco: {
+									count: counts.pieces } }}@if (counts.extras) { {{ 'cart_set_extras' | transloco: {
+									count: counts.extras } }} } @if (line.set.saved) { · {{ 'my_order_you_saved' |
+									transloco: { amount: money(line.set.saved, o.currency) } }} }
+								</small>
+								} @else if (!depth && childCounts(line).free) {
+								<small class="d-block text-content">
+									{{ (childCounts(line).free === 1 ? 'cart_set_free_one' : 'cart_set_free') |
+									transloco: { count: childCounts(line).free } }}
+								</small>
+								} @if (line.details.length) {
+								<small class="d-block text-content">{{ line.details.join(' · ') }}</small>
+								}
 							</td>
 							<td>
-								<h6>{{ product?.pivot?.single_price | currencySymbol }}</h6>
+								@if (depth) {
+								<small>
+									@if (line.role === 'free') { @if (line.mrp) {
+									<del class="text-content">{{ money(line.mrp, o.currency) }}</del>
+									}
+									<b class="text-success ms-1">{{ 'free' | transloco }}</b>
+									} @else if (line.role === 'extra') { +{{ money(line.unitPrice, o.currency) }} }
+									@else {
+									<span class="text-content">{{ 'included' | transloco }}</span>
+									}
+								</small>
+								} @else {
+								<h6 class="text-content">{{ 'price' | transloco }}</h6>
+								<h6>{{ money(line.unitPrice, o.currency) }}</h6>
+								}
 							</td>
 							<td>
-								<h6>{{ product?.pivot?.quantity }}</h6>
+								@if (depth) {
+								<small class="text-content">× {{ line.quantity }}</small>
+								} @else {
+								<h6 class="text-content">{{ 'quantity' | transloco }}</h6>
+								<h6>{{ line.quantity }}</h6>
+								}
 							</td>
 							<td>
-								<h6>{{ product?.pivot?.subtotal | currencySymbol }}</h6>
-							</td>
-							<td>
-								@if (product?.is_return === 1 && product?.pivot?.is_refunded === 0 &&
-								order.payment_status === 'COMPLETED' && order.order_status.slug === 'delivered') {
-								<a
-									href="javascript:void(0)"
-									(click)="refundModal.openModal(product)"
-								>
-									{{ 'ask_for_refund' | transloco }}
-								</a>
-								} @else { - }
+								@if (!depth) {
+								<h6 class="text-content">{{ 'total' | transloco }}</h6>
+								<h6>{{ money(line.lineTotal, o.currency) }}</h6>
+								}
 							</td>
 						</tr>
 						}
@@ -126,157 +172,86 @@
 			</div>
 		</div>
 	</div>
-	}
 	<div class="row">
-		<div class="col-xxl-8 col-lg-12 col-md-7">
-			<div class="card">
-				<div class="card-body">
-					<h3 class="fw-semibold mb-3">{{ 'consumer_details' | transloco }}</h3>
-					<div class="customer-detail tracking-wrapper">
-						<ul class="row g-3">
-							@if (order.billing_address) {
-							<li class="col-sm-6">
-								<label>{{ 'billing_address' | transloco }}:</label>
-								<h4>
-									{{ order.billing_address.street }} {{ order.billing_address.city }} {{
-									order.billing_address.state.name }} {{ order.billing_address.country.name }} {{
-									order.billing_address.pincode }}
-									<br />
-									{{ 'phone' | transloco }} : +{{ order.shipping_address.country_code }} {{
-									order.billing_address.phone }}
-								</h4>
-							</li>
-							} @if (order.shipping_address) {
-							<li class="col-sm-6">
-								<label>{{ 'shipping_address' | transloco }}:</label>
-								<h4>
-									{{ order.shipping_address.street }} {{ order.shipping_address.city }} {{
-									order.shipping_address.state.name }} {{ order.shipping_address.country.name }} {{
-									order.shipping_address.pincode }}
-									<br />
-									{{ 'phone' | transloco }} : +{{ order.shipping_address.country_code }} {{
-									order.shipping_address.phone }}
-								</h4>
-							</li>
-							} @if (order.delivery_description) {
-							<li class="col-sm-6">
-								<label>{{ 'delivery_slot' | transloco }}:</label>
-								<h4>{{ order.delivery_description }}</h4>
-							</li>
-							} @if (order.payment_method) {
-							<li class="col-sm-3">
-								<label>{{ 'payment_mode' | transloco }}:</label>
-								<div class="d-flex align-items-center gap-2">
-									<h4>{{ order.payment_method | uppercase }}</h4>
-								</div>
-							</li>
-							} @if (order.payment_method) {
-							<li class="col-sm-3">
-								<label>{{ 'payment_status' | transloco }}:</label>
-								<div class="d-flex align-items-center gap-2">
-									<h4>{{ order.payment_status | uppercase }}</h4>
-								</div>
-							</li>
-							}
-						</ul>
-					</div>
-				</div>
-			</div>
-		</div>
-		<div class="col-xxl-4 col-lg-12 col-md-5">
+		<div class="col-xxl-5 col-lg-12 col-md-5">
 			<div class="card h-m30">
 				<div class="card-body">
 					<h3 class="fw-semibold mb-3">{{ 'summary' | transloco }}</h3>
 					<div class="tracking-total tracking-wrapper">
 						<ul>
 							<li>
-								{{ 'subtotal' | transloco }}
-								<span>{{ (order.amount ? order.amount : 0) | currencySymbol }}</span>
+								{{ 'my_order_items' | transloco }}
+								<span>{{ money(o.goods, o.currency) }}</span>
 							</li>
-							<li>
-								{{ 'shipping'| transloco }}
-								<span>{{ (order.shipping_total ? order.shipping_total : 0) | currencySymbol }}</span>
+							@if (o.freeItems) {
+							<li class="text-success">
+								{{ 'my_order_free_items' | transloco: { count: o.freeItems } }}
+								<span>{{ money(0, o.currency) }}</span>
 							</li>
-							<li>
-								{{ 'tax'| transloco }}
-								<span>{{ (order.tax_total ? order.tax_total : 0) | currencySymbol }}</span>
-							</li>
-							@if (order.points_amount !== 0) {
+							} @if (o.coupon) {
 							<li class="txt-primary fw-bold">
-								{{ 'points'| transloco }}
-								<span>{{ order.points_amount | currencySymbol }}</span>
-							</li>
-							} @if (order.wallet_balance !== 0) {
-							<li class="txt-primary fw-bold">
-								{{ 'wallet_balance'| transloco }}
-								<span>{{ order.wallet_balance | currencySymbol }}</span>
-							</li>
-							} @if (order.coupon_total_discount !== 0) {
-							<li class="txt-primary fw-bold">
-								{{ 'coupon_discount'| transloco }}
-								<span>{{ order.coupon_total_discount | currencySymbol }}</span>
+								{{ 'coupon_discount' | transloco }}
+								<span>− {{ money(o.coupon, o.currency) }}</span>
 							</li>
 							}
 							<li>
-								{{ 'total'| transloco }}
-								<span>{{ (order.total ? order.total : 0) | currencySymbol }}</span>
+								{{ 'shipping' | transloco }}
+								<span>{{ money(o.shipping, o.currency) }}</span>
+							</li>
+							<li class="st-order-total">
+								{{ 'my_order_total_incl_gst' | transloco }}
+								<span>{{ money(o.total, o.currency) }}</span>
 							</li>
 						</ul>
 					</div>
+					@if (saved()) {
+					<p class="st-order-saved">
+						<i
+							class="ri-price-tag-3-line"
+							aria-hidden="true"
+						></i>
+						{{ 'my_order_saved_total' | transloco: { amount: money(saved(), o.currency) } }}
+					</p>
+					}
 				</div>
 			</div>
 		</div>
-	</div>
-	@if (order.sub_orders.length) {
-	<div class="card">
-		<div class="card-body">
-			<div class="tracking-wrapper table-responsive">
-				<table class="product-table table">
-					<thead>
-						<tr>
-							<th scope="col">{{ 'order_number' | transloco }}</th>
-							<th scope="col">{{ 'order_date' | transloco }}</th>
-							<th scope="col">{{ 'total_amount' | transloco }}</th>
-							<th scope="col">{{ 'status' | transloco }}</th>
-							<th scope="col">{{ 'action' | transloco }}</th>
-						</tr>
-					</thead>
-					<tbody>
-						@for (subOrder of order.sub_orders; track subOrder) {
-						<tr>
-							<td>
-								<h6>{{ '#'+subOrder.order_number }}</h6>
-							</td>
-							<td>
-								<h6>{{ subOrder.created_at | date: 'dd MMM yyyy hh:mm:a' }}</h6>
-							</td>
-							<td>
-								<h6>{{ subOrder.amount | currencySymbol }}</h6>
-							</td>
-							<td>
-								<h6>
-									<div class="status-{{subOrder.order_status.slug}}">
-										<span>{{ subOrder.order_status.name }}</span>
-									</div>
-								</h6>
-							</td>
-							<td>
-								<a
-									href="javascript:void(0)"
-									[routerLink]="['/account/order/details', subOrder.order_number]"
-								>
-									<i [class]="'ri-eye-line'"></i>
-								</a>
-							</td>
-						</tr>
+		@if (o.delivery; as d) {
+		<div class="col-xxl-7 col-lg-12 col-md-7">
+			<div class="card">
+				<div class="card-body">
+					<h3 class="fw-semibold mb-3">{{ 'my_order_delivery' | transloco }}</h3>
+					<ul class="st-order-delivery">
+						<li>
+							<i
+								class="ri-user-3-line"
+								aria-hidden="true"
+							></i>
+							<b>{{ d.name }}</b>
+						</li>
+						<li>
+							<i
+								class="ri-map-pin-line"
+								aria-hidden="true"
+							></i>
+							<span>{{ d.address }}</span>
+						</li>
+						@if (d.phone) {
+						<li>
+							<i
+								class="ri-phone-line"
+								aria-hidden="true"
+							></i>
+							<a [href]="'tel:' + telOf(d.phone)">{{ d.phone }}</a>
+						</li>
 						}
-					</tbody>
-				</table>
+					</ul>
+				</div>
 			</div>
 		</div>
+		}
 	</div>
-	}
 </div>
+} @else if (missing()) {
+<p class="text-content">{{ 'my_order_not_found' | transloco }}</p>
 }
-<app-refund-modal #refundModal />
-<app-pay-modal #payModal />

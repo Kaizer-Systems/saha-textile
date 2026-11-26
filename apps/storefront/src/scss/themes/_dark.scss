@@ -684,7 +684,11 @@ html {
 
 		.product-box {
 			.label-tag {
-				color: #fff;
+				color: #1d1d22;
+
+				&.sale-tag {
+					color: #fff;
+				}
 			}
 		}
 
@@ -855,7 +859,11 @@ html {
 
 		.product-box {
 			.label-tag {
-				color: #ffffff;
+				color: #1d1d22;
+
+				&.sale-tag {
+					color: #ffffff;
+				}
 			}
 
 			.progress {
@@ -4455,6 +4463,10 @@ html {
 			.product-label-group {
 				.product-label-tag {
 					color: #fff;
+
+					&.warning-label-tag {
+						color: #1d1d22;
+					}
 				}
 			}
 		}

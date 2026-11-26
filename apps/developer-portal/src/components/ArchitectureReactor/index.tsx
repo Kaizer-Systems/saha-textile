@@ -81,7 +81,7 @@ const BOUNDARIES: Boundary[] = [
 		sub: 'Mongo · MSG91 · Meili · Spaces',
 		angle: 150,
 		doc: '/backend/composition-and-adapters',
-		detail: 'Adapters translate a port into a concrete provider. The Mongo adapter is bound today; MSG91 notifications, Meilisearch, Spaces and the payment gateways are configured or planned — not yet wired.',
+		detail: 'Adapters translate a port into a concrete provider. MongoDB, MSG91, Meilisearch, Spaces, sharp, BullMQ, Cloudflare, YouTube and Gmail are bound. The CCAvenue adapter is bound and no route calls it yet. Shipping and exchange rates have no adapter.',
 	},
 	{
 		id: 'external',
@@ -89,7 +89,7 @@ const BOUNDARIES: Boundary[] = [
 		sub: 'MongoDB rs0 · providers',
 		angle: -150,
 		doc: '/database/current-adapter-map',
-		detail: 'Self-hosted Docker MongoDB 8.3 single-node replica set (rs0) is the source of truth — the same profile locally (pnpm mongo:up) and in production. Meilisearch and external providers sit behind their adapters.',
+		detail: 'Self-hosted Docker MongoDB 9.0.4 single-node replica set (rs0) is the source of truth — the same profile locally (pnpm mongo:up) and in production. Meilisearch and external providers sit behind their adapters.',
 	},
 ];
 

@@ -296,8 +296,10 @@ export const singleSlider: OwlOptions = {
 };
 
 // Full-width hero banner carousel (custom home). One slide at a time, infinite
-// auto-advance, with BOTH manual controls: side arrows (nav) and bottom dots.
-// autoplayHoverPause lets the user stop on hover to read/click a slide.
+// auto-advance, with BOTH manual controls: side arrows (nav) and bottom dots. Phones hide
+// the arrows in home.scss, not here: owl picks its responsive settings from the carousel's
+// width at start-up, which is still 0 on a fresh load. autoplayHoverPause lets the user
+// stop on hover to read/click a slide.
 export const heroBannerSlider: OwlOptions = {
 	loop: true,
 	items: 1,
@@ -319,11 +321,16 @@ export const productMainThumbSlider: OwlOptions = {
 	mouseDrag: true,
 	touchDrag: true,
 	pullDrag: true,
-	dots: false,
 	items: 1,
 	nav: true,
 	autoplay: true,
+	// Stays on the photo while the pointer is over it (the hover zoom); moves on once it leaves.
+	autoplayHoverPause: true,
 	navSpeed: 300,
+	// Dots and arrows are both drawn; phones show both, laptops only the arrows (scss/components/_product-gallery.scss).
+	// Owl's own `responsive` reads the carousel's width, not the screen's, so a 438 px photo box on a laptop counted as a
+	// phone; that is why the screen width is decided in CSS.
+	dots: true,
 	responsive: {
 		0: {
 			items: 1,
@@ -331,22 +338,15 @@ export const productMainThumbSlider: OwlOptions = {
 	},
 };
 
-// Product Thumbnail Slider
+// Product Thumbnail Slider: only for more than five tiles; five or fewer are a plain row (owner, 21 Nov, P2).
 export const productThumbSlider: OwlOptions = {
 	loop: false,
 	dots: false,
+	nav: true,
 	margin: 10,
 	navSpeed: 300,
 	autoHeight: true,
-	items: 4,
-	responsive: {
-		0: {
-			items: 3,
-		},
-		485: {
-			items: 4,
-		},
-	},
+	items: 5,
 };
 
 export const productSliderLayout: OwlOptions = {

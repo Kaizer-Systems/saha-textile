@@ -1,13 +1,14 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import type { AdminCategoryRow, AdminCategoryWrite } from '@saha-textile/contracts';
 import { Observable, map } from 'rxjs';
 
 import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 
 import { environment } from '../../../../public/environments/environment';
+
+import type { AdminCategoryRow, AdminCategoryWrite, BlogCategory, CategoryHsnImpact } from '@saha-textile/contracts';
 
 /** A row as the tree and dropdowns draw it, with every language kept for the form. */
 function toCategory(row: AdminCategoryRow): ICategory {
@@ -20,6 +21,19 @@ function toCategory(row: AdminCategoryRow): ICategory {
 		parent_id: row.parentId ?? undefined,
 		status: true,
 		row,
+	};
+}
+
+/** A blog category as the tree and the post form's dropdown draw it. Blog categories are flat. */
+export function toBlogCategory(row: BlogCategory): ICategory {
+	return {
+		id: row.id,
+		name: row.name['en'] ?? row.slug,
+		slug: row.slug,
+		description: row.description['en'] ?? '',
+		type: 'post',
+		status: row.status === 'live',
+		blog: row,
 	};
 }
 
@@ -43,9 +57,10 @@ export class CategoryService {
 	private base = () => `${environment.apiUrl}/admin/catalog/categories`;
 
 	getCategories(payload?: Params): Observable<ICategoryModel> {
-		// Blog categories stay on their demo file until blog has a backend.
 		if (payload?.['type'] === 'post') {
-			return this.http.get<ICategoryModel>(`${environment.URL}/category.json`, { params: payload });
+			return this.http
+				.get<BlogCategory[]>(`${environment.apiUrl}/admin/blog/categories`)
+				.pipe(map((rows) => ({ data: rows.map(toBlogCategory), total: rows.length }) as ICategoryModel));
 		}
 		return this.http
 			.get<AdminCategoryRow[]>(this.base())
@@ -58,6 +73,11 @@ export class CategoryService {
 
 	saveCategory(id: string | null, body: AdminCategoryWrite): Observable<{ id: string }> {
 		return this.http.post<{ id: string }>(id ? `${this.base()}/${encodeURIComponent(id)}` : this.base(), body);
+	}
+
+	/** F03: products that follow this category's HSN, and those with their own code. */
+	hsnImpact(id: string): Observable<CategoryHsnImpact> {
+		return this.http.get<CategoryHsnImpact>(`${this.base()}/${encodeURIComponent(id)}/hsn-impact`);
 	}
 
 	deleteCategory(id: string): Observable<void> {

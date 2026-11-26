@@ -4,6 +4,7 @@ import {
 	AdminProductList,
 	AdminReplacementTarget,
 	CatalogBadgeCode,
+	FaqEntry,
 	ProductRelation,
 	type AddonTemplateWrite,
 	type AdminProductListQuery,
@@ -13,10 +14,15 @@ import {
 	type Product,
 	type ProductMerchandisingWrite,
 	type ProductVariant,
+	mainCategoryId,
 	type SeoRedirect,
 	type SeoRedirectWrite,
 } from '@saha-textile/contracts';
 import {
+	isShownOnShop,
+	quoteBundle,
+	type ProductBundleRepository,
+	swatchesLeftBehind,
 	normaliseSourcePath,
 	productGallery,
 	repointedRows,
@@ -25,6 +31,8 @@ import {
 	sellingPriceINR,
 	type AddonTemplateRepository,
 	type AttributeDefinitionRepository,
+	requestSearchSync,
+	type SearchOutboxRepository,
 	type SearchPort,
 	valueSearchWords,
 	type StockAlertRepository,
@@ -32,13 +40,18 @@ import {
 	type CatalogAudience,
 	type CategoryPlacementRepository,
 	type CategoryRepository,
+	type FaqRepository,
 	type MediaAssetRepository,
 	type Paginated,
 	type ProductFilter,
 	type ProductRelationRepository,
 	type ProductRepository,
 	type ProductVariantRepository,
+	type MediaJobQueuePort,
 	type SeoRedirectRepository,
+	type OrderRepository,
+	soldByChangeProblem,
+	type StockReadRepository,
 	type StoragePort,
 	type TransactionManagerPort,
 } from '@saha-textile/core-domain';
@@ -46,24 +59,42 @@ import { randomUUID } from 'node:crypto';
 
 import { productReadModel, skuView } from './catalog-read-model';
 import { applyProductContent, syncVariantRows } from './product-content';
+import type { BundleReader } from './bundles/bundle-reader';
+import type { BundleStockService } from './bundles/bundle-stock.service';
+import { SearchVocabularyService } from './search-vocabulary.service';
 import {
+	BUNDLE_READER,
+	BUNDLE_STOCK,
 	ADDON_TEMPLATE_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
 	CATEGORY_PLACEMENT_REPOSITORY,
 	CATEGORY_REPOSITORY,
+	FAQ_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
+	MEDIA_JOB_QUEUE,
 	PRODUCT_REPOSITORY,
 	PRODUCT_RELATION_REPOSITORY,
 	PRODUCT_VARIANT_REPOSITORY,
 	ATTRIBUTE_DEFINITION_REPOSITORY,
+	SEARCH_OUTBOX,
 	SEARCH_PORT,
 	SEO_REDIRECT_REPOSITORY,
 	STOCK_ALERT_REPOSITORY,
 	STORAGE_PORT,
 	TRANSACTION_MANAGER,
+	LANGUAGE_COVERAGE_REPOSITORY,
+	ORDER_REPOSITORY,
+	STOCK_READ_REPOSITORY,
+	PRODUCT_BUNDLE_REPOSITORY,
 } from '../infra/tokens';
+import type { LanguageCoverageRepository } from '@saha-textile/core-domain';
+import { missingFilter } from '../languages/missing-filter';
 
 const RELATION_TYPES = ['related', 'upsell', 'cross_sell'] as const;
+
+/** Every swatch picture a product's values hold. */
+const swatchIdsOf = (product: Pick<Product, 'optionGroups'>): (string | undefined)[] =>
+	product.optionGroups.flatMap((group) => group.terms.map((term) => term.swatchAssetId));
 
 @Injectable()
 export class CatalogService {
@@ -92,7 +123,162 @@ export class CatalogService {
 		@Optional()
 		@Inject(ATTRIBUTE_DEFINITION_REPOSITORY)
 		private readonly attributes: AttributeDefinitionRepository | null = null,
+		// Named outright: a `| null` type is recorded as Object, which Nest cannot resolve.
+		@Optional() @Inject(SearchVocabularyService) private readonly vocabulary: SearchVocabularyService | null = null,
+		@Optional() @Inject(FAQ_REPOSITORY) private readonly faqs: FaqRepository | null = null,
+		@Optional() @Inject(MEDIA_JOB_QUEUE) private readonly mediaJobs: MediaJobQueuePort | null = null,
+		@Optional() @Inject(SEARCH_OUTBOX) private readonly searchOutbox: SearchOutboxRepository | null = null,
+		@Optional()
+		@Inject(LANGUAGE_COVERAGE_REPOSITORY)
+		private readonly coverage: LanguageCoverageRepository | null = null,
+		@Optional() @Inject(STOCK_READ_REPOSITORY) private readonly stockRead: StockReadRepository | null = null,
+		@Optional() @Inject(ORDER_REPOSITORY) private readonly orders: OrderRepository | null = null,
+		@Optional() @Inject(BUNDLE_STOCK) private readonly bundleStock: BundleStockService | null = null,
+		@Optional() @Inject(BUNDLE_READER) private readonly bundleReader: BundleReader | null = null,
+		@Optional()
+		@Inject(PRODUCT_BUNDLE_REPOSITORY)
+		private readonly bundleRepo: ProductBundleRepository | null = null,
 	) {}
+
+	/** P11: the unit is fixed once the product has stock, stock history or orders. */
+	private async soldByFacts(product: Product, rows: readonly ProductVariant[]) {
+		const hasStock = rows.some((row) => row.stock.quantity > 0 || row.stock.held > 0);
+		const moved = this.stockRead
+			? await this.stockRead.withMovements(rows.map((row) => row.id))
+			: new Set<string>();
+		const hasOrders = this.orders ? await this.orders.hasLinesFor(product.id) : false;
+		return { hasStock, hasMovements: moved.size > 0, hasOrders };
+	}
+
+	/** Stock, stock history and orders: what keeps a product from ever being deleted (bulk Delete, Q1 = A). */
+	async deletionFacts(product: Product) {
+		return this.soldByFacts(product, await this.variants.listForProduct(product.id, 'admin'));
+	}
+
+	/**
+	 * Take off shop: a live product stays saved with everything in it, but the shop and search stop
+	 * showing it until it goes live again. Its old links answer "not found" meanwhile.
+	 */
+	async takeOff(product: Product, actorUserId: string | null): Promise<Product> {
+		const next: Product = {
+			...product,
+			status: 'disabled',
+			lifecycle: { ...product.lifecycle, disabledAt: new Date().toISOString() },
+		};
+		await this.inTransaction(async () => {
+			await this.products.save(next);
+			await this.searchOutbox?.request([product.id], new Date());
+		});
+		await this.syncSearch(next);
+		await this.record(actorUserId, 'catalog.product.take-off', product.id, { sku: product.sku });
+		return next;
+	}
+
+	/**
+	 * Deletes a product that never went live, was never stocked and is on no order, with its rows,
+	 * its own questions and the links it offers. The caller has checked that it may.
+	 */
+	async removeNeverLive(product: Product, actorUserId: string | null): Promise<void> {
+		const variants = await this.variants.listForProduct(product.id, 'admin');
+		const faq = this.faqs ? await this.faqs.listForProduct(product.id) : [];
+		const relations: ProductRelation[] = [];
+		if (this.relations) {
+			for (const relationType of RELATION_TYPES) {
+				relations.push(
+					...(await this.relations.listForProduct({
+						sourceProductId: product.id,
+						relationType,
+						audience: 'admin',
+						pageSize: 100,
+					})),
+				);
+			}
+		}
+		await this.inTransaction(async () => {
+			for (const row of variants) await this.variants.deleteById(row.id);
+			for (const row of relations) await this.relations?.deleteById(row.id);
+			// Others stop offering it as related, upsell or cross-sell.
+			await this.relations?.disableForTarget(product.id);
+			await this.products.deleteById(product.id);
+		});
+		for (const entry of faq) if (entry.productIds.length === 1) await this.faqs?.deleteById(entry.id);
+		await this.record(actorUserId, 'catalog.product.delete', product.id, {
+			sku: product.sku,
+			title: product.title.en,
+		});
+	}
+
+	/** A copy gets the original's own questions and the products it offers (related, upsell, cross-sell). */
+	async copyExtras(fromId: string, toId: string): Promise<void> {
+		const ids = await this.manualRelationIds(fromId);
+		for (const relationType of RELATION_TYPES)
+			await this.replaceManualRelations(toId, relationType, ids[relationType]);
+		if (!this.faqs) return;
+		for (const { createdAt: _created, updatedAt: _updated, ...entry } of await this.faqs.listForProduct(fromId)) {
+			await this.faqs.save(FaqEntry.parse({ ...entry, id: `faq_${randomUUID()}`, productIds: [toId] }));
+		}
+	}
+
+	/** The main category's HSN and returnability, the defaults the form shows (F02, PD3). */
+	private async mainCategoryOf(product: Product) {
+		const id = mainCategoryId(product.categoryIds);
+		const category = id ? await this.categories.findById(id) : null;
+		return category
+			? {
+					id: category.id,
+					name: category.name.en ?? Object.values(category.name)[0] ?? category.slug,
+					hsnCode: category.hsnCode ?? null,
+					returnable: category.returnable,
+					shipping: category.shipping ?? null,
+				}
+			: null;
+	}
+
+	/** A product's own FAQ questions, any status, in display order (the form and Go Live). */
+	async productFaq(productId: string): Promise<FaqEntry[]> {
+		return this.faqs ? this.faqs.listForProduct(productId) : [];
+	}
+
+	/**
+	 * The FAQ tab's questions become product-scoped FAQ entries, so they also show in the FAQ
+	 * screen. Saved in the form's order; a question removed from the form is deleted, unless an
+	 * editor has since pointed it at other products too. Blank rows are skipped.
+	 */
+	/** A bundle's FAQ's tab saves its questions the same way as the product form (bundle builder brief A05). */
+	saveProductFaq(productId: string, rows: NonNullable<ProductMerchandisingWrite['content']>['faq']) {
+		return this.syncProductFaq(productId, rows);
+	}
+
+	private async syncProductFaq(productId: string, rows: NonNullable<ProductMerchandisingWrite['content']>['faq']) {
+		if (!this.faqs) return;
+		const existing = await this.faqs.listForProduct(productId);
+		const known = new Set(existing.map((entry) => entry.id));
+		const kept = new Set<string>();
+		const filled = rows.filter((row) =>
+			[...Object.values(row.question), ...Object.values(row.answer)].some((value) => value.trim()),
+		);
+		for (const [index, row] of filled.entries()) {
+			const id = row.id && known.has(row.id) ? row.id : `faq_${randomUUID()}`;
+			kept.add(id);
+			const clean = (text: Readonly<Record<string, string>>) =>
+				Object.fromEntries(Object.entries(text).map(([locale, value]) => [locale, value.trim()]));
+			await this.faqs.save(
+				FaqEntry.parse({
+					id,
+					question: { en: '', ...clean(row.question) },
+					answer: { en: '', ...clean(row.answer) },
+					scope: 'product',
+					categoryIds: [],
+					productIds: [productId],
+					displayOrder: index,
+					status: 'live',
+				}),
+			);
+		}
+		for (const entry of existing) {
+			if (!kept.has(entry.id) && entry.productIds.length === 1) await this.faqs.deleteById(entry.id);
+		}
+	}
 
 	listProducts(filter: ProductFilter): Promise<Paginated<Product>> {
 		return this.products.list({ ...filter, audience: filter.audience ?? 'public' });
@@ -181,6 +367,10 @@ export class CatalogService {
 		await this.inTransaction(async () => {
 			await this.products.save(next);
 			await this.upsertRedirect(redirect);
+			// Auto-pause: other products stop offering this one as related, upsell or cross-sell.
+			await this.relations?.disableForTarget(product.id);
+			// In the same transaction, so a committed change is never missing from the queue.
+			await this.searchOutbox?.request([product.id], new Date());
 		});
 		await this.syncSearch(next);
 		await this.record(actorUserId, 'catalog.product.discontinue', product.id, {
@@ -190,7 +380,8 @@ export class CatalogService {
 		return { slug: product.slug, statusCode: redirect.statusCode, targetPath: replacement?.path ?? null };
 	}
 
-	private async liveReplacement(path: string, ownSlug: string): Promise<Product['replacementTarget']> {
+	/** Refuses a replacement that is not a live product or collection, or is the product itself. */
+	async liveReplacement(path: string, ownSlug: string): Promise<Product['replacementTarget']> {
 		const [, kind, ...rest] = path.split('/');
 		if (kind === 'product') {
 			const slug = rest[0] ?? '';
@@ -208,9 +399,13 @@ export class CatalogService {
 			audience: 'admin',
 			search: query.search,
 			status: query.status,
+			...(query.type ? { type: query.type } : {}),
+			...(query.shop ? { shop: query.shop } : {}),
 			page: query.page,
 			pageSize: query.pageSize,
+			...(await missingFilter(this.coverage, 'products', query.missing)),
 		});
+		const bundleInfo = await this.bundleRows(page.items.filter((product) => product.type === 'bundle'));
 		const rows = await Promise.all(
 			page.items.map(async (product) => ({
 				product,
@@ -232,6 +427,10 @@ export class CatalogService {
 				stock: variants.reduce((sum, row) => sum + row.stock.quantity, 0),
 				variantCount: variants.length,
 				thumbnailUrl: this.thumbnail(assets.get(product.media.gallery[0] ?? '')),
+				wasLive: isPublished(product),
+				type: product.type,
+				showOnShop: product.showOnShop !== false,
+				bundle: bundleInfo.get(product.id) ?? null,
 			})),
 			total: page.total,
 			page: page.page,
@@ -239,9 +438,31 @@ export class CatalogService {
 		});
 	}
 
+	/** Products › Bundles (B1–B3): each bundle's levels, set price today and worked-out stock. */
+	private async bundleRows(products: readonly Product[]) {
+		const out = new Map<string, NonNullable<AdminProductList['items'][number]['bundle']>>();
+		if (!this.bundleReader || !this.bundleRepo || products.length === 0) return out;
+		const bundles = await this.bundleRepo.listByProductIds(products.map((product) => product.id));
+		for (const bundle of bundles) {
+			const product = products.find((row) => row.id === bundle.productId);
+			const resolved = await this.bundleReader.resolve(bundle);
+			const quote = quoteBundle(this.bundleReader.toQuote(resolved));
+			const choices = resolved.levels.some((level) => level.items.length > level.take);
+			out.set(bundle.productId, {
+				levels: bundle.levels.length,
+				choices,
+				setPriceINR: quote.ok ? quote.totalINR : null,
+				fromPrice: choices,
+				stock: bundle.stock ?? this.bundleReader.stock(resolved, product?.lowStockThreshold ?? null),
+			});
+		}
+		return out;
+	}
+
 	async adminDetail(idOrSlug: string): Promise<AdminProductDetail> {
 		const product = await this.getProduct(idOrSlug, 'admin');
 		const variants = await this.variants.listForProduct(product.id, 'admin');
+		const facts = await this.soldByFacts(product, variants);
 		const relationIds = await this.manualRelationIds(product.id);
 		const termLabel = new Map(
 			product.optionGroups.flatMap((group) =>
@@ -257,6 +478,8 @@ export class CatalogService {
 			status: product.status,
 			published: isPublished(product),
 			featured: product.featured,
+			showOnShop: product.showOnShop !== false,
+			freeWith: product.freeWith ?? null,
 			madeToOrder: product.madeToOrder,
 			estimatedDeliveryText: product.estimatedDeliveryText?.en ?? null,
 			lowStockThreshold: product.lowStockThreshold,
@@ -265,7 +488,19 @@ export class CatalogService {
 			addonPriceINR: product.addonPriceINR,
 			replacementPath: product.replacementTarget?.path ?? null,
 			shipping: product.shippingDefaults,
+			shippingCharges: product.shippingCharges ?? null,
+			freeShipping: product.freeShipping ?? false,
 			hsnCode: product.hsnCode,
+			soldBy: product.soldBy,
+			soldByLocked: facts.hasStock || facts.hasMovements || facts.hasOrders,
+			returnable: product.returnable,
+			mainCategory: await this.mainCategoryOf(product),
+			metre: {
+				shortestCutTenths: product.shortestCutTenths,
+				quickLengths: product.quickLengths,
+				widthInches: product.widthInches,
+				weightPerMetreGrams: product.weightPerMetreGrams,
+			},
 			content: {
 				title: product.title,
 				shortDescription: product.shortDescription,
@@ -282,11 +517,24 @@ export class CatalogService {
 				gallery: product.media.gallery,
 				compound: product.media.compound,
 				altOverrides: product.media.altOverrides,
+				versions: product.media.versions,
+				shareImage: product.media.shareImage ?? null,
+				faqEnabled: product.faqEnabled,
+				faq: (await this.productFaq(product.id)).map((entry) => ({
+					id: entry.id,
+					question: entry.question,
+					answer: entry.answer,
+				})),
 			},
-			images: await this.imageTiles(product),
+			images: await this.imageTiles(
+				product,
+				variants.flatMap((row) => row.media?.primaryAssetId ?? []),
+			),
 			relatedProductIds: relationIds.related,
 			upsellProductIds: relationIds.upsell,
 			crossSellProductIds: relationIds.cross_sell,
+			videos: product.videos,
+			updatedAt: product.updatedAt ?? null,
 			variants: variants.map((row) => ({
 				id: row.id,
 				sku: row.sku,
@@ -299,6 +547,9 @@ export class CatalogService {
 				mrpINR: mrpPriceINR(row.priceINR, row.compareAtPriceINR, row.salePriceINR) ?? row.compareAtPriceINR,
 				sellingINR: sellingPriceINR(row.priceINR, row.salePriceINR),
 				quantity: row.stock.quantity,
+				held: row.stock.held,
+				inOrders: row.stock.reserved,
+				freeToSell: row.stock.quantity - row.stock.held - row.stock.reserved,
 				available: row.status === 'live',
 				weightGrams: row.shippingProfile?.weightGrams ?? null,
 				lengthCm: row.shippingProfile?.lengthCm ?? null,
@@ -306,6 +557,9 @@ export class CatalogService {
 				heightCm: row.shippingProfile?.heightCm ?? null,
 				barcode: row.barcode ?? null,
 				hsnCode: row.taxProfile?.hsnCode ?? null,
+				image: row.media?.primaryAssetId
+					? { assetId: row.media.primaryAssetId, versionId: row.media.primaryVersionId }
+					: null,
 			})),
 		});
 	}
@@ -346,7 +600,32 @@ export class CatalogService {
 		if (published && body.sku !== product.sku) {
 			throw new BadRequestException('A published product keeps its SKU');
 		}
+		// Free items are real products (P8): never the product itself, never a bundle, never missing.
+		for (const item of body.freeWith?.items ?? []) {
+			if (item.productId === product.id) throw new BadRequestException('A product cannot be free with itself');
+			const target = await this.products.findById(item.productId, 'admin');
+			if (!target) throw new NotFoundException(`Product not found: ${item.productId}`);
+			if (target.type === 'bundle') throw new BadRequestException('A bundle cannot be a free item');
+		}
 		const rows = new Map((await this.variants.listForProduct(product.id, 'admin')).map((row) => [row.id, row]));
+		const soldBy = body.soldBy ?? product.soldBy;
+		if (soldBy !== product.soldBy) {
+			const problem = soldByChangeProblem({
+				from: product.soldBy,
+				to: soldBy,
+				...(await this.soldByFacts(product, [...rows.values()])),
+			});
+			if (problem) throw new BadRequestException(problem.detail);
+		}
+		const metre = body.metre ?? {
+			shortestCutTenths: product.shortestCutTenths,
+			quickLengths: product.quickLengths,
+			widthInches: product.widthInches,
+			weightPerMetreGrams: product.weightPerMetreGrams,
+		};
+		if (soldBy === 'metre' && (metre.shortestCutTenths === null || metre.weightPerMetreGrams === null)) {
+			throw new BadRequestException('Fabric sold by the metre needs a shortest cut and a weight per metre');
+		}
 		const nextRows: ProductVariant[] = body.variants.map((write) => {
 			const row = rows.get(write.id);
 			if (!row) throw new BadRequestException(`Unknown variant: ${write.id}`);
@@ -362,7 +641,9 @@ export class CatalogService {
 				compareAtPriceINR: write.mrpINR,
 				salePriceINR: discounted ? write.sellingINR : null,
 				barcode: write.barcode,
-				stock: { ...row.stock, quantity: write.quantity },
+				// Stock moves only through stock documents (purchases and stock brief, F01): the typed
+				// quantity the form still sends is ignored; held and on-hand stay as the ledger left them.
+				stock: row.stock,
 				shippingProfile: {
 					weightGrams: write.weightGrams,
 					lengthCm: write.lengthCm,
@@ -370,6 +651,14 @@ export class CatalogService {
 					heightCm: write.heightCm,
 				},
 				taxProfile: { hsnCode: write.hsnCode, taxClassId: row.taxProfile?.taxClassId ?? null },
+				// The variant's own picture, shown first when it is chosen (owner, 17 Nov).
+				media:
+					write.image === undefined
+						? row.media
+						: {
+								primaryAssetId: write.image?.assetId ?? null,
+								primaryVersionId: write.image?.versionId ?? null,
+							},
 			};
 		});
 		const now = new Date().toISOString();
@@ -388,6 +677,8 @@ export class CatalogService {
 					body.status === 'disabled' && product.status !== 'disabled' ? now : product.lifecycle.disabledAt,
 			},
 			featured: body.featured,
+			showOnShop: body.showOnShop === undefined ? product.showOnShop : body.showOnShop,
+			freeWith: body.freeWith === undefined ? product.freeWith : body.freeWith,
 			madeToOrder: body.madeToOrder,
 			estimatedDeliveryText: body.estimatedDeliveryText
 				? { ...(product.estimatedDeliveryText ?? {}), en: body.estimatedDeliveryText }
@@ -397,18 +688,25 @@ export class CatalogService {
 			hiddenBadges: body.hiddenBadges,
 			addonPriceINR: body.addonPriceINR,
 			shippingDefaults: body.shipping,
+			shippingCharges: body.shippingCharges === undefined ? product.shippingCharges : body.shippingCharges,
+			freeShipping: body.freeShipping === undefined ? product.freeShipping : body.freeShipping,
 			hsnCode: body.hsnCode,
+			soldBy,
+			returnable: body.returnable === undefined ? product.returnable : body.returnable,
+			...(soldBy === 'metre'
+				? {
+						shortestCutTenths: metre.shortestCutTenths,
+						quickLengths: metre.quickLengths,
+						widthInches: metre.widthInches,
+						weightPerMetreGrams: metre.weightPerMetreGrams,
+					}
+				: {}),
 			basePriceINR: selling.length ? Math.min(...selling) : product.basePriceINR,
 			onSale: live.some((row) => row.salePriceINR !== null && row.salePriceINR < row.priceINR),
 			...(body.content ? applyProductContent(product, body.content) : {}),
+			...(body.videos ? { videos: body.videos } : {}),
 		};
-		const stocked = (list: readonly ProductVariant[]) => list.reduce((sum, row) => sum + row.stock.quantity, 0);
-		const received = nextRows.reduce(
-			(sum, row) => sum + Math.max(0, row.stock.quantity - (rows.get(row.id)?.stock.quantity ?? 0)),
-			0,
-		);
-		next.lifetimeUnitsReceived = product.lifetimeUnitsReceived + received;
-		if (stocked([...rows.values()]) === 0 && stocked(nextRows) > 0) next.backInStockAt = now;
+		// Units received and "back in stock" are set by purchase entries: this form never changes stock (F01).
 		const renamed = next.slug !== product.slug;
 		if (renamed && (await this.products.findBySlug(next.slug, 'admin'))) {
 			throw new BadRequestException('That address is already taken');
@@ -428,32 +726,120 @@ export class CatalogService {
 					entityId: product.id,
 				});
 			}
+			// In the same transaction, so a committed change is never missing from the queue.
+			await this.searchOutbox?.request([product.id], new Date());
 		});
+		if (body.content) await this.syncProductFaq(product.id, body.content.faq);
+		await this.promotePrimaryImage(next);
 		await this.syncSearch(next);
-		await this.record(actorUserId, 'catalog.product.save', product.id, {
-			sku: next.sku,
-			status: next.status,
-			variants: nextRows.map((row) => ({ sku: row.sku, priceINR: row.priceINR, salePriceINR: row.salePriceINR })),
-		});
+		await this.record(
+			actorUserId,
+			'catalog.product.save',
+			product.id,
+			{
+				sku: next.sku,
+				status: next.status,
+				variants: nextRows.map((row) => ({
+					sku: row.sku,
+					priceINR: row.priceINR,
+					salePriceINR: row.salePriceINR,
+				})),
+			},
+			priceDiffs(rows, nextRows),
+		);
 		await this.replaceManualRelations(product.id, 'related', body.relatedProductIds);
 		await this.replaceManualRelations(product.id, 'upsell', body.upsellProductIds);
 		await this.replaceManualRelations(product.id, 'cross_sell', body.crossSellProductIds);
+		await this.dropLeftBehindSwatches(swatchIdsOf(product), swatchIdsOf(next));
+		// Its stock, price or status may change what the bundles holding it can make (V3).
+		await this.bundleStock?.refreshContaining([product.id]);
 		return { id: product.id, slug: next.slug };
 	}
 
-	/** The index is derived and rebuildable, so a failed update never fails the save. */
+	/**
+	 * Swatch pictures a save left behind (owner, 22 Nov 2026): each goes to the worker, which deletes it for good only
+	 * when it is a swatch cut that nothing uses any more. Photos and library pictures are never deleted this way.
+	 */
+	async dropLeftBehindSwatches(before: readonly (string | undefined)[], after: readonly (string | undefined)[]) {
+		if (!this.mediaJobs) return;
+		for (const assetId of swatchesLeftBehind(before, after))
+			await this.mediaJobs.enqueue({ type: 'drop-cut', assetId });
+	}
+
+	/**
+	 * The index is derived and rebuildable, so a failed update never fails the save. With the
+	 * search change queue, the change waits there until search takes it.
+	 */
 	async syncSearch(product: Product): Promise<void> {
+		if (this.searchOutbox) return this.sendToSearch([product]);
 		try {
-			if (product.status === 'live') {
-				const variants = await this.variants.listForProduct(product.id, 'public');
-				const categories = await Promise.all(product.categoryIds.map((id) => this.categories.findById(id)));
-				const categoryNames = categories.flatMap((row) => Object.values(row?.name ?? {}));
-				const searchWords = valueSearchWords(product, (await this.attributes?.listAll()) ?? []);
-				await this.search?.indexProduct({ product, variants, categoryNames, searchWords });
-			} else await this.search?.removeProduct(product.id);
+			if (isShownOnShop(product)) await this.indexLive([product]);
+			else await this.search?.removeProduct(product.id);
 		} catch (error) {
 			this.logger.warn(`Search index not updated for ${product.id}: ${String(error)}`);
 		}
+	}
+
+	/**
+	 * Re-indexes many products in one pass, for a search word or a Storefront setting that
+	 * changes how they are found. Products not on the shop leave the index.
+	 */
+	async syncSearchMany(products: readonly Product[]): Promise<number> {
+		const live = products.filter((product) => isShownOnShop(product));
+		if (this.searchOutbox) await this.sendToSearch(products);
+		else await this.indexLive(live);
+		return live.length;
+	}
+
+	/** Queues the products' search changes and sends them at once; what search refuses waits for the worker. */
+	private async sendToSearch(products: readonly Product[]): Promise<void> {
+		const outbox = this.searchOutbox;
+		const search = this.search;
+		if (!outbox || !search || !products.length) return;
+		const known = new Map(products.map((product) => [product.id, product]));
+		try {
+			const result = await requestSearchSync(
+				{
+					outbox,
+					// Every id below comes from `known`.
+					loadProduct: async (id) => known.get(id),
+					apply: async (live, removed) => {
+						await this.indexLive(live);
+						for (const id of removed) await search.removeProduct(id);
+					},
+					now: () => new Date(),
+				},
+				[...known.keys()],
+			);
+			if (result.failed) this.logger.warn(`Search update waits in the queue for ${result.failed} product(s)`);
+		} catch (error) {
+			// Even the queue is unreachable: the nightly check finds and repairs the difference.
+			this.logger.warn(`Search change not queued for ${[...known.keys()].join(', ')}: ${String(error)}`);
+		}
+	}
+
+	private async indexLive(products: readonly Product[]): Promise<void> {
+		if (!this.search || !products.length) return;
+		const [variants, tree, definitions, vocabulary] = await Promise.all([
+			this.variants.listForProducts(
+				products.map((product) => product.id),
+				'public',
+			),
+			this.categories.tree(),
+			this.attributes?.listAll() ?? Promise.resolve([]),
+			this.vocabulary?.current() ?? Promise.resolve(null),
+		]);
+		const names = new Map(tree.map((row) => [row.id, Object.values(row.name)]));
+		await this.search.indexProducts(
+			products.map((product) => ({
+				product,
+				variants: variants.filter((row) => row.productId === product.id),
+				categoryNames: product.categoryIds.flatMap((id) => names.get(id) ?? []),
+				searchWords: valueSearchWords(product, definitions),
+				searchTerms: vocabulary?.wordsFor(product) ?? [],
+				showFirst: vocabulary?.showsFirst(product) ?? false,
+			})),
+		);
 	}
 
 	async inTransaction(write: () => Promise<void>) {
@@ -476,8 +862,33 @@ export class CatalogService {
 		return ids;
 	}
 
-	private async imageTiles(product: Product) {
-		const ids = [...new Set([...product.media.gallery, ...productGallery(product)])];
+	/**
+	 * The product's first photo gets the sizes only a main photo needs: the 1200×630 link-preview
+	 * card, the shopping-feed square and the email thumbnail. Marking it queues a background
+	 * reprocess; a photo already marked is left alone. A photo that stops being first keeps its
+	 * extra sizes, which cost a few files and keep any link already shared working.
+	 */
+	private async promotePrimaryImage(product: Product): Promise<void> {
+		const assetId = productGallery(product)[0];
+		if (!assetId || !this.media || !this.mediaJobs) return;
+		const asset = await this.media.findById(assetId);
+		if (!asset || asset.servesAsPrimary) return;
+		await this.media.update({ ...asset, servesAsPrimary: true });
+		if (asset.processing.state === 'ready') {
+			await this.mediaJobs.enqueue({ type: 'reprocess', assetId, reason: 'primary' });
+		}
+	}
+
+	private async imageTiles(product: Product, variantImages: readonly string[] = []) {
+		// Swatch pictures too, so the Options tab can show each value's chosen picture; and the share picture and
+		// each variant's own picture (owner, 17 Nov), so their fields show what was chosen.
+		const swatches = product.optionGroups.flatMap((group) =>
+			group.terms.flatMap((term) => term.swatchAssetId ?? []),
+		);
+		const share = product.media.shareImage?.assetId ? [product.media.shareImage.assetId] : [];
+		const ids = [
+			...new Set([...product.media.gallery, ...productGallery(product), ...swatches, ...share, ...variantImages]),
+		];
 		const assets = await this.assetsFor(ids);
 		return ids.flatMap((assetId) => {
 			const asset = assets.get(assetId);
@@ -491,6 +902,12 @@ export class CatalogService {
 		if (!this.media || wanted.length === 0) return new Map();
 		const assets = await this.media.findManyByIds(wanted);
 		return new Map(assets.map((asset) => [asset.id, asset]));
+	}
+
+	/** List-size pictures for these photos, by photo id (Products › Drafts). */
+	async thumbnailsFor(ids: readonly string[]): Promise<Map<string, string | null>> {
+		const assets = await this.assetsFor([...ids]);
+		return new Map([...ids].map((id) => [id, this.thumbnail(assets.get(id))]));
 	}
 
 	private thumbnail(asset: MediaAsset | undefined): string | null {
@@ -580,7 +997,13 @@ export class CatalogService {
 		await this.record(actorUserId, 'catalog.addon-template.remove', code, { code });
 	}
 
-	async record(actorUserId: string | null, action: string, entityId: string, metadata: Record<string, unknown>) {
+	async record(
+		actorUserId: string | null,
+		action: string,
+		entityId: string,
+		metadata: Record<string, unknown>,
+		diffs: AuditLog['diffs'] = [],
+	) {
 		if (!this.audit) return;
 		const entry: AuditLog = {
 			id: `audit_${randomUUID()}`,
@@ -592,7 +1015,7 @@ export class CatalogService {
 			entityId,
 			severity: 'info',
 			retentionTier: 'catalog_admin',
-			diffs: [],
+			diffs,
 			metadata,
 			requestId: null,
 			ipHash: null,
@@ -628,4 +1051,25 @@ function isPublished(product: Product): boolean {
 
 function isBadgeCode(code: string): code is CatalogBadgeCode {
 	return CatalogBadgeCode.safeParse(code).success;
+}
+
+/**
+ * Brief 26 AU2: each variant's price and sale price changed by a save, before and after, so the audit trail and its
+ * "Price changes" report show them (a new variant's prices count as changed from nothing).
+ */
+export function priceDiffs(
+	before: ReadonlyMap<string, Pick<ProductVariant, 'priceINR' | 'salePriceINR'>>,
+	after: readonly Pick<ProductVariant, 'id' | 'sku' | 'priceINR' | 'salePriceINR'>[],
+): AuditLog['diffs'] {
+	return after.flatMap((row) => {
+		const was = before.get(row.id);
+		return (
+			[
+				['price', 'priceINR'],
+				['sale price', 'salePriceINR'],
+			] as const
+		)
+			.map(([name, key]) => ({ field: `${row.sku}: ${name}`, before: was?.[key] ?? null, after: row[key] }))
+			.filter((d) => d.before !== d.after);
+	});
 }

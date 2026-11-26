@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeAll } from 'vitest';
 
 import {
 	collapseRedirectTarget,
@@ -8,7 +8,11 @@ import {
 	retiredCollectionRow,
 	SITEMAP_PATH,
 	type SeoRedirectRow,
+	setLocalePrefixTest,
 } from '../src/catalog/legacy-resolve';
+
+// Today's addresses carry English and Bengali prefixes (the shop and the API set the real list).
+beforeAll(() => setLocalePrefixTest((segment) => segment === 'en' || segment === 'bn'));
 
 const rows: SeoRedirectRow[] = [
 	{ sourcePath: '/product-category/saree', statusCode: 301, targetPath: '/en/collections/sarees' },
@@ -25,20 +29,20 @@ describe('resolving an address', () => {
 	it.each([
 		['/product-category/saree/', '/en/collections/sarees'],
 		['/en/product-category/saree/', '/en/collections/sarees'],
-		['/fr/product-category/saree/', '/fr/collections/sarees'],
+		['/bn/product-category/saree/', '/bn/collections/sarees'],
 		['/PRODUCT-CATEGORY/SAREE/', '/en/collections/sarees'],
 		['/product-category/saree/page/3/', '/en/collections/sarees'],
-		['/fr/product/old', '/fr/product/new'],
+		['/bn/product/old', '/bn/product/new'],
 		['/en/product/old', '/en/product/new'],
 		['/product/old', '/en/product/new'],
-		['/fr/home-page', '/fr'],
+		['/bn/home-page', '/bn'],
 	])('%s goes to %s', (address, location) => {
 		expect(resolve(address)).toMatchObject({ location });
 	});
 
 	it('answers gone rows in any language', () => {
 		expect(resolve('/product/gone')).toEqual({ status: 410 });
-		expect(resolve('/fr/product/gone')).toEqual({ status: 410 });
+		expect(resolve('/bn/product/gone')).toEqual({ status: 410 });
 	});
 
 	it.each(['/wp-admin/x', '/wp-content/a.jpg', '/wp-login.php', '/wp-json/v2', '/xmlrpc.php', '/shop/feed'])(
@@ -56,7 +60,7 @@ describe('resolving an address', () => {
 
 	it('treats a search only on the home page, in the request language', () => {
 		expect(resolve('/?s=silk+saree')).toEqual({ status: 301, location: '/en/search?search=silk%20saree' });
-		expect(resolve('/fr/?s=soie')).toEqual({ status: 301, location: '/fr/search?search=soie' });
+		expect(resolve('/bn/?s=soie')).toEqual({ status: 301, location: '/bn/search?search=soie' });
 		expect(resolve('/about-us?s=silk')).toMatchObject({ location: '/en/about-us?s=silk' });
 		expect(resolve('/en/about-us?s=silk')).toBeNull();
 	});
@@ -69,7 +73,7 @@ describe('resolving an address', () => {
 
 	it('sends old account links to the account in the request language', () => {
 		expect(resolve('/my-account/orders/')).toEqual({ status: 302, location: '/en/account' });
-		expect(resolve('/fr/my-account')).toEqual({ status: 302, location: '/fr/account' });
+		expect(resolve('/bn/my-account')).toEqual({ status: 302, location: '/bn/account' });
 	});
 
 	it('moves the old cart and checkout only when unprefixed', () => {
@@ -121,7 +125,7 @@ describe('resolving an address', () => {
 
 describe('saving redirects', () => {
 	it('stores a source without language, case or slash', () => {
-		expect(normaliseSourcePath('/FR/Product/Old/')).toBe('/product/old');
+		expect(normaliseSourcePath('/BN/Product/Old/')).toBe('/product/old');
 	});
 
 	it('repoints rows that led to the saved source', () => {

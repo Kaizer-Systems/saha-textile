@@ -1,0 +1,59 @@
+@if (videos().length) {
+<div
+	class="product-description mt-4"
+	id="product-videos"
+>
+	<h4 class="fw-semibold mb-3">
+		{{ videos().length === 1 ? ('product_video' | transloco) : ('product_videos_count' | transloco: { count:
+		videos().length }) }}
+	</h4>
+	@if (videos().length === 1) { @let only = videos()[0]; @if (only.kind === 'short') {
+	<div class="col-sm-6 col-lg-4 col-8 mx-auto">
+		<app-video-poster [video]="only" />
+	</div>
+	} @else {
+	<app-video-poster [video]="only" />
+	} } @else {
+	<div
+		class="product-arrow"
+		(mouseenter)="hover(true)"
+		(mouseleave)="hover(false)"
+	>
+		<owl-carousel-o
+			#carousel
+			[options]="options"
+			(translated)="slideChanged()"
+		>
+			@for (video of videos(); track video.videoId) {
+			<ng-template
+				carouselSlide
+				[id]="video.videoId"
+			>
+				@if (video.kind === 'short') {
+				<div class="ratio ratio-16x9 bg-dark rounded-3">
+					<div class="d-flex justify-content-center">
+						<div class="short-in-frame">
+							<app-video-poster
+								[video]="video"
+								(started)="playing()"
+							/>
+						</div>
+					</div>
+				</div>
+				} @else {
+				<app-video-poster
+					[video]="video"
+					(started)="playing()"
+				/>
+				}
+				<p class="text-content small mt-2 mb-0">
+					{{ (video.kind === 'short' ? 'video_kind_short' : 'video_kind_video') | transloco }} ·
+					<span lang="en">{{ video.title }}</span>
+				</p>
+			</ng-template>
+			}
+		</owl-carousel-o>
+	</div>
+	}
+</div>
+}

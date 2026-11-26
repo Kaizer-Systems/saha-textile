@@ -4,7 +4,10 @@
 			@for (module of modules$ | async; track module.id; let i = $index) {
 			<div class="col-12">
 				<ul>
-					<li>{{ module?.name.replace('_', ' ') | titlecase }}</li>
+					<li>
+						@if (label('' + module.id); as key) { {{ key | transloco }} } @else { {{
+						module?.name.replace('_', ' ') | titlecase }} }
+					</li>
 					<li>
 						<div class="form-check form-switch">
 							<input
@@ -46,7 +49,8 @@
 								class="form-check-label form-label m-0"
 								for="{{ permission.permission_id }}"
 							>
-								{{ permission.name | titlecase }}
+								@if (label('' + permission.permission_id); as key) { {{ key | transloco }} } @else { {{
+								permission.name.replace('_', ' ') | titlecase }} }
 							</label>
 						</div>
 					</li>

@@ -20,6 +20,22 @@ import { IProduct, IProductRelations, IRecentPurchase } from '@data-access/inter
 
 import { environment } from '../../../../public/environments/environment';
 
+export interface SearchOptions {
+	page?: number;
+	pageSize?: number;
+	source?: 'typeahead' | 'page';
+}
+
+export interface SearchPage {
+	items: IProduct[];
+	total: number;
+}
+
+export interface SearchTrending {
+	kind: 'trending' | 'popular';
+	items: IProduct[];
+}
+
 @Injectable({
 	providedIn: 'root',
 })
@@ -40,14 +56,15 @@ export class ProductService {
 	}
 
 	home(): Observable<{ newArrivals: IProduct[]; bestsellers: IProduct[]; featured: IProduct[]; sale: IProduct[] }> {
-		return this.http.get<ApiHome>(`${environment.apiUrl}/catalog/home`, { context: backgroundRequest() }).pipe(
-			map((home) => ({
-				newArrivals: home.newArrivals.map(cardToProduct),
-				bestsellers: home.bestsellers.map(cardToProduct),
-				featured: home.featured.map(cardToProduct),
-				sale: home.sale.map(cardToProduct),
-			})),
-		);
+		return this.homeCards().pipe(map(homeProducts));
+	}
+
+	/**
+	 * The home rows as the API sends them: lean cards. The home query keeps these in its cache (and so in the page's
+	 * data copy) and maps them to products only when read, so the copy carries the cards, not the expanded products.
+	 */
+	homeCards(): Observable<ApiHome> {
+		return this.http.get<ApiHome>(`${environment.apiUrl}/catalog/home`, { context: backgroundRequest() });
 	}
 
 	/** Real sales from the last day. Empty until there are paid orders, which keeps the popup hidden. */
@@ -63,13 +80,48 @@ export class ProductService {
 			);
 	}
 
-	search(term: string): Observable<IProduct[]> {
+	/**
+	 * One page of search results. `source: 'page'` marks a search the shopper committed, which the
+	 * API counts; the suggestion box sends `typeahead`, which it never counts.
+	 */
+	search(term: string, options: SearchOptions = {}): Observable<SearchPage> {
+		const { page = 1, pageSize = 24, source = 'typeahead' } = options;
 		return this.http
-			.get<{ items: ApiCard[] }>(`${environment.apiUrl}/catalog/search`, {
+			.get<{ items: ApiCard[]; total: number }>(`${environment.apiUrl}/catalog/search`, {
 				context: backgroundRequest(),
-				params: { q: term },
+				params: { q: term, page, pageSize, source },
 			})
-			.pipe(map((page) => page.items.map(cardToProduct)));
+			.pipe(map((body) => ({ items: body.items.map(cardToProduct), total: body.total })));
+	}
+
+	/** Counts a product opened from search. Fire and forget: a lost count never bothers the shopper. */
+	searchClick(term: string, productId: string | number): void {
+		this.http
+			.post(
+				`${environment.apiUrl}/catalog/search/clicks`,
+				{ q: term, productId: String(productId) },
+				{ context: backgroundRequest() },
+			)
+			.subscribe({ error: () => undefined });
+	}
+
+	/** Products most opened from search lately, or bestsellers as Popular until there is data. */
+	trending(limit = 6): Observable<SearchTrending> {
+		return this.http
+			.get<{ kind: SearchTrending['kind']; items: ApiCard[] }>(`${environment.apiUrl}/catalog/search/trending`, {
+				context: backgroundRequest(),
+				params: { limit },
+			})
+			.pipe(map((body) => ({ kind: body.kind, items: body.items.map(cardToProduct) })));
+	}
+
+	/** Trending in this product's categories, topped up with their bestsellers (never the product itself). */
+	trendingFor(slug: string, limit = 4): Observable<IProduct[]> {
+		return this.http
+			.get<{ items: ApiCard[] }>(`${environment.apiUrl}/catalog/products/${encodeURIComponent(slug)}/trending`, {
+				params: { limit },
+			})
+			.pipe(map((body) => body.items.map(cardToProduct)));
 	}
 
 	cardsFor(slugs: string[]): Observable<IProduct[]> {
@@ -113,3 +165,13 @@ export class ProductService {
 			.pipe(map((body) => body.frames.map(galleryAttachment)));
 	}
 }
+
+/** The home rows' cards as the shop's product shape. */
+export const homeProducts = (
+	home: ApiHome,
+): { newArrivals: IProduct[]; bestsellers: IProduct[]; featured: IProduct[]; sale: IProduct[] } => ({
+	newArrivals: home.newArrivals.map(cardToProduct),
+	bestsellers: home.bestsellers.map(cardToProduct),
+	featured: home.featured.map(cardToProduct),
+	sale: home.sale.map(cardToProduct),
+});

@@ -1,29 +1,54 @@
 #!/usr/bin/env node
 /**
- * Test coverage of the application code, held at 100%.
+ * Test coverage of the application code. Every workspace must reach COVERAGE_FLOOR on statements,
+ * branches, functions and lines, and its tests must pass. The goal is 100; the floor is lower for now
+ * (see COVERAGE_FLOOR). Every file below 100% is listed either way, so a chat can check the files it
+ * changed (AGENTS.md §5: every change keeps its own code at 100%).
  *
  *   pnpm coverage                  every workspace
  *   pnpm coverage -- api contracts just those
  *
  * Vitest silently drops Angular files that no spec imports, so a plain run reads high. For the
- * two Angular apps this writes a temporary spec importing every source file, then deletes it.
+ * Angular apps this writes a temporary spec importing every source file (all but specs, type
+ * declarations, test setup, the main entry points, server code, the service worker and `interfaces/`),
+ * then deletes it.
  * Any file Vitest still refuses to parse fails the run, so the count cannot shrink quietly.
  *
  * The Mongo adapter suite needs the replica set: `pnpm mongo:up`. It runs on `saha_textile_it`.
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { coverageMeta } from './test-report/meta.mjs';
+import { localMongoTarget, testDatabaseUri } from './secrets/test-login.mjs';
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const METRICS = ['statements', 'branches', 'functions', 'lines'];
+/**
+ * The share (in %) of each metric every workspace must reach. The goal is 100. Lowered on 24 Nov 2026 (owner:
+ * "temporarily just drop it ... later when we have completed all of the test cases ... we'll just put it back to
+ * 100 again"), to 10 so the Release Console's two apps (then 12–18% and 16–27%) pass while the backlog is tested
+ * and staging can be deployed. Raise it as coverage grows; 100 when the backlog is done.
+ */
+const COVERAGE_FLOOR = 10;
 const DENOMINATOR = 'src/zz-denominator.spec.ts';
 
 const WORKSPACES = {
 	storefront: { dir: 'apps/storefront', angular: true },
-	admin: { dir: 'apps/admin', angular: true },
-	api: { dir: 'apps/api' },
+	// The dark-theme spec reads the generated dark stylesheet, which only `styles` (run by the admin's
+	// dev and build scripts) makes; a fresh checkout such as CI's coverage job has none.
+	admin: {
+		dir: 'apps/admin',
+		angular: true,
+		generated: { file: 'public/assets/css/theme-dark.gen.css', script: 'styles' },
+	},
+	// test/purchasing-flow.test.ts runs purchases and stock end to end on MongoDB, so the API gets the
+	// test login too. Every API test that touches a database names its own `saha_textile_it_*` database.
+	api: { dir: 'apps/api', mongo: true },
+	'release-console': { dir: 'apps/release-console', angular: true },
+	'release-console-api': { dir: 'apps/release-console-api' },
 	'adapters-db-mongo': { dir: 'packages/adapters-db-mongo', mongo: true },
 	'core-domain': { dir: 'packages/core-domain' },
 	contracts: { dir: 'packages/contracts' },
@@ -34,7 +59,16 @@ const WORKSPACES = {
 	'adapters-queue-bullmq': { dir: 'packages/adapters-queue-bullmq' },
 	'adapters-image-sharp': { dir: 'packages/adapters-image-sharp' },
 	'adapters-youtube': { dir: 'packages/adapters-youtube' },
+	'adapters-payments': { dir: 'packages/adapters-payments' },
 	'adapters-cdn-cloudflare': { dir: 'packages/adapters-cdn-cloudflare' },
+	'adapters-archive-zip': { dir: 'packages/adapters-archive-zip' },
+	'adapters-fx': { dir: 'packages/adapters-fx' },
+	'adapters-geo': { dir: 'packages/adapters-geo' },
+	'adapters-gst-edocs': { dir: 'packages/adapters-gst-edocs' },
+	'adapters-mail-gmail': { dir: 'packages/adapters-mail-gmail' },
+	'adapters-pdf-chromium': { dir: 'packages/adapters-pdf-chromium' },
+	'email-templates': { dir: 'packages/email-templates' },
+	'release-console-contracts': { dir: 'packages/release-console-contracts' },
 };
 
 const envFile = join(ROOT, 'apps/api/.env');
@@ -45,7 +79,12 @@ function writeDenominator(cwd) {
 	const imports = listed.stdout
 		.split('\n')
 		.filter((file) => /\.ts$/.test(file))
-		.filter((file) => !/\.spec\.ts$|\.d\.ts$|test-setup|main\.ts$|main\.server|\/server\/|interfaces\//.test(file))
+		.filter(
+			(file) =>
+				!/\.spec\.ts$|\.d\.ts$|test-setup|main\.ts$|main\.server|\/server\/|service-worker\/|interfaces\//.test(
+					file,
+				),
+		)
 		.filter((file) => existsSync(join(cwd, file)))
 		.map((file) => `import './${file.replace(/^src\//, '').replace(/\.ts$/, '')}';`);
 	writeFileSync(
@@ -54,7 +93,7 @@ function writeDenominator(cwd) {
 	);
 }
 
-function measure(name, { dir, angular, mongo }) {
+function measure(name, { dir, angular, mongo, generated }) {
 	const cwd = join(ROOT, dir);
 	const report = join(ROOT, 'coverage', name);
 	const args = [
@@ -70,18 +109,42 @@ function measure(name, { dir, angular, mongo }) {
 		'--coverage.reporter=json-summary',
 		'--coverage.reporter=json',
 		`--coverage.reportsDirectory=${report}`,
+		// The usual output, plus each test's outcome for the Release Console's Coverage screen.
+		'--reporter=default',
+		`--reporter=${join(ROOT, 'scripts/test-report/tests-reporter.mjs')}`,
+		// The Angular apps' tests run in Analog's `vmThreads` pool, where a worker's memory only grows until it is
+		// replaced at this limit. On CI's 4-core machine a worker reached its thread's own heap ceiling first and
+		// died ("Worker exited unexpectedly", 26 Nov), so it is replaced at 1 GB, well below that ceiling.
+		...(angular ? ['--vmMemoryLimit=1GB'] : []),
 	];
+	// Where the suite's MongoDB is: CI's environment, else this Mac's apps/api/.env (port 27018).
+	const target = mongo ? localMongoTarget('saha_textile_it') : null;
+	const testsFile = join(report, 'tests.json');
+	rmSync(testsFile, { force: true });
 	const env = {
 		...process.env,
-		...(mongo
+		COVERAGE_TESTS_FILE: testsFile,
+		COVERAGE_ROOT: ROOT,
+		COVERAGE_TESTS_SKIP: angular ? DENOMINATOR : '',
+		...(target
 			? {
 					RUN_DB_IT: '1',
-					MONGODB_HOST: process.env.MONGODB_HOST || '127.0.0.1',
+					MONGODB_HOST: target.host || '127.0.0.1',
 					MONGODB_DB_NAME: 'saha_textile_it',
-					MONGODB_REPLICA_SET: process.env.MONGODB_REPLICA_SET || 'rs0',
+					// The shop's own database login (apps/api/.env) reaches only its own database. The suite's
+					// databases are reached with this Mac's test login, when there is one.
+					MONGODB_URI: testDatabaseUri(target),
+					MONGODB_USERNAME: '',
+					MONGODB_PASSWORD: '',
+					MONGODB_REPLICA_SET: target.replicaSet || 'rs0',
 				}
 			: {}),
 	};
+	if (generated && !existsSync(join(cwd, generated.file))) {
+		const made = spawnSync('pnpm', ['run', generated.script], { cwd, encoding: 'utf8' });
+		if (made.status !== 0)
+			console.log(`${name}: pnpm run ${generated.script} failed, so ${generated.file} is missing.`);
+	}
 	if (angular) writeDenominator(cwd);
 	let run;
 	try {
@@ -92,13 +155,16 @@ function measure(name, { dir, angular, mongo }) {
 	const output = `${run.stdout}${run.stderr}`;
 	const dropped = (output.match(/Failed to parse .*\.ts\. /g) ?? []).length;
 	const summary = join(report, 'coverage-summary.json');
-	const total = existsSync(summary) ? JSON.parse(readFileSync(summary, 'utf8')).total : null;
+	const detail = existsSync(summary) ? JSON.parse(readFileSync(summary, 'utf8')) : null;
+	const total = detail?.total;
 	const percents = METRICS.map((metric) => total?.[metric]?.pct ?? 0);
-	const ok = run.status === 0 && dropped === 0 && percents.every((percent) => percent === 100);
-	console.log(
-		`${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(30)} ${METRICS.map((metric, index) => `${metric[0]} ${percents[index]}%`).join('  ')}  (${total?.statements?.total ?? 0} statements)`,
-	);
-	if (!ok) {
+	// Tests passed, nothing was dropped from the count and something was measured.
+	const complete = run.status === 0 && dropped === 0 && total?.statements?.total > 0;
+	const ok = complete && percents.every((percent) => percent >= COVERAGE_FLOOR);
+	const full = complete && METRICS.every((metric) => total[metric]?.covered === total[metric]?.total);
+	const line = `${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(30)} ${METRICS.map((metric, index) => `${metric[0]} ${percents[index]}%`).join('  ')}  (${total?.statements?.total ?? 0} statements)`;
+	console.log(line);
+	if (!full) {
 		if (run.status !== 0)
 			console.log(
 				output
@@ -108,24 +174,25 @@ function measure(name, { dir, angular, mongo }) {
 					.join('\n'),
 			);
 		if (dropped) console.log(`      ${dropped} source files were dropped from the count`);
-		if (total) {
-			const detail = JSON.parse(readFileSync(summary, 'utf8'));
+		const reportFile = join(report, 'coverage-final.json');
+		if (detail && existsSync(reportFile)) {
+			const sourceCoverage = JSON.parse(readFileSync(reportFile, 'utf8'));
 			for (const [file, values] of Object.entries(detail)) {
 				if (file !== 'total' && METRICS.some((metric) => values[metric].pct !== 100)) {
 					console.log(
 						`      ${file.replace(`${ROOT}/`, '')}  ${METRICS.map((m) => `${m[0]} ${values[m].pct}`).join(' ')}`,
 					);
-					console.log(`        lines ${missedLines(join(report, 'coverage-final.json'), file).join(', ')}`);
+					if (sourceCoverage[file])
+						console.log(`        lines ${missedLines(sourceCoverage[file]).join(', ')}`);
 				}
 			}
 		}
 	}
-	return ok;
+	return { ok, full, line, passed: run.status === 0, dir };
 }
 
 /** Where a file lost its statements and branches, so a CI failure names the line. */
-function missedLines(reportFile, file) {
-	const entry = JSON.parse(readFileSync(reportFile, 'utf8'))[file];
+function missedLines(entry) {
 	const statements = Object.entries(entry.s).filter(([, hits]) => hits === 0);
 	const branches = Object.entries(entry.b).filter(([, hits]) => hits.includes(0));
 	const lines = [
@@ -143,7 +210,31 @@ if (unknown.length) {
 	process.exit(2);
 }
 
-let failed = 0;
-for (const name of names) if (!measure(name, WORKSPACES[name])) failed += 1;
-console.log(failed ? `\n${failed} workspace(s) below 100%.` : '\nAll workspaces at 100%.');
+const results = names.map((name) => ({ name, ...measure(name, WORKSPACES[name]) }));
+const failed = results.filter((result) => !result.ok).length;
+const short = results.filter((result) => !result.full).length;
+const verdict = [
+	failed
+		? `${failed} workspace(s) below the ${COVERAGE_FLOOR}% floor or failing their tests.`
+		: `Every workspace reaches the ${COVERAGE_FLOOR}% floor and passes its tests.`,
+	short ? `${short} workspace(s) not yet at 100%.` : 'All workspaces at 100%.',
+].join(' ');
+console.log(`\n${verdict}`);
+// What the Release Console's Coverage screen reads beside the reports (commit, branch, run, results).
+const metaFile = join(ROOT, 'coverage', 'meta.json');
+const previous = existsSync(metaFile) ? JSON.parse(readFileSync(metaFile, 'utf8')) : null;
+mkdirSync(join(ROOT, 'coverage'), { recursive: true });
+writeFileSync(
+	metaFile,
+	JSON.stringify(
+		coverageMeta({ root: ROOT, env: process.env, results, floor: COVERAGE_FLOOR, previous }),
+		null,
+		'\t',
+	),
+);
+if (process.env.GITHUB_STEP_SUMMARY)
+	appendFileSync(
+		process.env.GITHUB_STEP_SUMMARY,
+		`### Test coverage (floor ${COVERAGE_FLOOR}%)\n\n\`\`\`\n${results.map((result) => result.line).join('\n')}\n\`\`\`\n\n${verdict}\n`,
+	);
 process.exit(failed ? 1 : 0);

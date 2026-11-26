@@ -9,7 +9,13 @@ import { provideAdminSessionBootstrap } from '@core/auth/session-bootstrap';
 import { TranslocoHttpLoader } from '@core/i18n/transloco-loader';
 import { AuthStore } from '@core/state/auth.store';
 
-import { loadRuntimeConfig, provideRuntimeConfig, runtimeConfig, runtimeConfigReady } from './runtime-config';
+import {
+	loadRuntimeConfig,
+	loadServedConfig,
+	provideRuntimeConfig,
+	runtimeConfig,
+	runtimeConfigReady,
+} from './runtime-config';
 import { environment } from '../../../../public/environments/environment';
 
 const held = { ...runtimeConfig };
@@ -77,7 +83,43 @@ describe('TranslocoHttpLoader', () => {
 		const get = vi.fn(() => of({}));
 		TestBed.resetTestingModule();
 		TestBed.configureTestingModule({ providers: [{ provide: HttpClient, useValue: { get } }] });
-		TestBed.inject(TranslocoHttpLoader).getTranslation('fr');
-		expect(get).toHaveBeenCalledWith('/assets/i18n/fr.json');
+		TestBed.inject(TranslocoHttpLoader).getTranslation('bn');
+		expect(get).toHaveBeenCalledWith('/assets/i18n/bn.json');
+	});
+});
+
+describe('loadRuntimeConfig on a deployed host', () => {
+	const host = 'shop.example.test';
+
+	it('refuses a missing, cut-off or localhost config', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => ({ ok: false })),
+		);
+		await expect(loadServedConfig(host)).rejects.toThrow('Runtime config is missing');
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => ({
+				ok: true,
+				json: async () => {
+					throw new SyntaxError('cut off');
+				},
+			})),
+		);
+		await expect(loadServedConfig(host)).rejects.toThrow('Runtime config is missing');
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => ({ ok: true, json: async () => ({ apiUrl: 'https://localhost:4000' }) })),
+		);
+		await expect(loadServedConfig(host)).rejects.toThrow('points at localhost');
+	});
+
+	it('starts with a real API address', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => ({ ok: true, json: async () => ({ apiUrl: 'https://api.example.test' }) })),
+		);
+		await loadServedConfig(host);
+		expect(runtimeConfig.apiUrl).toBe('https://api.example.test');
 	});
 });

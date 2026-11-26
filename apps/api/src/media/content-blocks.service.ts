@@ -20,16 +20,20 @@ import {
 	type SiteSettingsRepository,
 	type StoragePort,
 	resolveImage,
+	servesProfile,
 } from '@saha-textile/core-domain';
 
 import { mediaRefusal } from './media-refusal';
-import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { LanguageStore } from '../languages/language-store';
 import {
 	CONTENT_BLOCK_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
 	SITE_SETTINGS_REPOSITORY,
 	STORAGE_PORT,
 } from '../infra/tokens';
+
+/** Every banner profile makes the banner sizes: the slot keeps the picture's shape (option A) or a fixed one. */
+const BANNER_PROFILES = ['banner_keep_shape', 'hero_21x9', 'hero_16x9', 'phone_banner_4x5'];
 
 /**
  * Banners (owner log § Media → Banners and content blocks). One record per page position and
@@ -43,7 +47,7 @@ export class ContentBlocksService {
 		@Inject(MEDIA_ASSET_REPOSITORY) private readonly assets: MediaAssetRepository,
 		@Inject(SITE_SETTINGS_REPOSITORY) private readonly settings: SiteSettingsRepository,
 		@Inject(STORAGE_PORT) private readonly storage: StoragePort,
-		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly languages: LanguageStore,
 	) {}
 
 	list(query: ContentBlockListQuery): Promise<ContentBlock[]> {
@@ -62,7 +66,12 @@ export class ContentBlocksService {
 		const found = await this.assets.findManyByIds(ids);
 		const unusable = ids.filter((id) => {
 			const asset = found.find((candidate) => candidate.id === id);
-			return !asset || asset.deletedAt || asset.purpose !== 'banner' || asset.processing.state !== 'ready';
+			return (
+				!asset ||
+				asset.deletedAt ||
+				!servesProfile(asset, BANNER_PROFILES) ||
+				asset.processing.state !== 'ready'
+			);
 		});
 		if (unusable.length > 0) {
 			throw mediaRefusal(
@@ -72,7 +81,7 @@ export class ContentBlocksService {
 			);
 		}
 		if (input.status === 'active') {
-			const missing = this.config.locales.filter((locale) => !input.alt[locale]?.trim());
+			const missing = this.languages.shop().filter((locale) => !input.alt[locale]?.trim());
 			if (missing.length > 0) {
 				throw mediaRefusal(
 					HttpStatus.UNPROCESSABLE_ENTITY,
@@ -82,7 +91,11 @@ export class ContentBlocksService {
 			}
 		}
 		const existing = await this.blocks.findByKey(key);
-		const block: ContentBlock = { ...input, id: existing?.id ?? `cbk_${randomUUID()}`, key };
+		// Only the block's own pictures keep a stored version.
+		const imageVersions = Object.fromEntries(
+			Object.entries(input.imageVersions ?? {}).filter(([assetId]) => ids.includes(assetId)),
+		);
+		const block: ContentBlock = { ...input, imageVersions, id: existing?.id ?? `cbk_${randomUUID()}`, key };
 		await this.blocks.save(block);
 		return block;
 	}
@@ -131,6 +144,7 @@ export class ContentBlocksService {
 						locale,
 						fallbackLocale: 'en',
 						altOverride: block.alt,
+						versionId: block.imageVersions?.[id as string] ?? null,
 					})
 				: null;
 		};

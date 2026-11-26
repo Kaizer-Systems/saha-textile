@@ -93,3 +93,89 @@ describe('storage key limits', () => {
 		expect(() => adapterSending(async () => ({})).getUrl(`a${String.fromCodePoint(0x7f)}b`)).toThrow(/control/);
 	});
 });
+
+async function collect<T>(source: AsyncIterable<T>): Promise<T[]> {
+	const items: T[] = [];
+	for await (const item of source) items.push(item);
+	return items;
+}
+
+const upload = { key: 'media/asset-1/original.zip', uploadId: 'upload-1' };
+const start = { key: upload.key, contentType: 'application/zip' };
+
+describe('multipart errors', () => {
+	it('cannot start an upload if storage returns no id', async () => {
+		await expect(adapterSending(async () => ({})).startMultipartUpload(start)).rejects.toMatchObject({
+			message: `Failed to start a multipart upload for "${upload.key}"`,
+			cause: new Error('no upload id'),
+		});
+	});
+
+	it('wraps failure to sign a valid part', async () => {
+		const error = new Error('clock skew');
+		signer.mockRejectedValueOnce(error);
+		await expect(
+			broken().createSignedPartUrl({ ...upload, partNumber: 1, expiresInSeconds: 60 }),
+		).rejects.toMatchObject({
+			message: `Failed to presign part 1 of "${upload.key}"`,
+			cause: error,
+		});
+	});
+
+	it('reports both listing and abort errors with the object key', async () => {
+		await expect(broken().listUploadedParts(upload)).rejects.toThrow(`Failed to list the parts of "${upload.key}"`);
+		await expect(broken().abortMultipartUpload(upload)).rejects.toThrow(
+			`Failed to stop the multipart upload of "${upload.key}"`,
+		);
+	});
+
+	it('reports a failed completion after listing the parts', async () => {
+		const refused = new Error('storage refused to join parts');
+		const send = vi
+			.fn()
+			.mockResolvedValueOnce({ Parts: [{ PartNumber: 1, ETag: 'etag' }] })
+			.mockRejectedValueOnce(refused);
+		await expect(adapterSending(send).completeMultipartUpload(upload)).rejects.toMatchObject({
+			message: `Failed to finish the multipart upload of "${upload.key}"`,
+			cause: refused,
+		});
+	});
+
+	it('still reports the missing ETag if the cleanup also fails', async () => {
+		const send = vi
+			.fn()
+			.mockResolvedValueOnce({ UploadId: upload.uploadId })
+			.mockResolvedValueOnce({})
+			.mockRejectedValueOnce(new Error('abort failed'));
+		await expect(adapterSending(send).uploadStream({ ...start, body: ReadableBytes.empty() })).rejects.toThrow(
+			`No ETag for part 1 of "${upload.key}"`,
+		);
+		expect(send).toHaveBeenNthCalledWith(
+			3,
+			expect.objectContaining({ input: expect.objectContaining({ UploadId: upload.uploadId }) }),
+		);
+	});
+
+	it('cannot upload bytes if storage returns no upload id', async () => {
+		await expect(
+			adapterSending(async () => ({})).uploadStream({ ...start, body: ReadableBytes.empty() }),
+		).rejects.toThrow(`No upload id for "${upload.key}"`);
+	});
+});
+
+const ReadableBytes = { empty: async function* (): AsyncIterable<Uint8Array> {} };
+
+describe('streaming read errors', () => {
+	it.each([undefined, { transformToByteArray: () => Uint8Array.of(1) }])(
+		'requires a stream in the response',
+		async (Body) => {
+			await expect(collect(adapterSending(async () => ({ Body })).readStream(upload.key))).rejects.toThrow(
+				'no readable body',
+			);
+		},
+	);
+
+	it('wraps transport failure while opening the object', async () => {
+		await expect(collect(broken().readStream(upload.key))).rejects.toThrow(`Failed to read object "${upload.key}"`);
+	});
+});

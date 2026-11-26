@@ -1,19 +1,597 @@
 <app-breadcrumb [breadcrumb]="breadcrumb()" />
-<section class="section-b-space">
+<ng-template
+	#addressBoxes
+	let-picked="picked"
+	let-name="name"
+	let-pick="pick"
+>
+	<div class="row g-3">
+		@for (row of addresses(); track row.address_id) {
+		<div class="col-xxl-6 col-lg-12 col-md-6">
+			<label class="w-100">
+				<div class="delivery-address-box">
+					<div>
+						<div class="form-check">
+							<input
+								class="form-check-input"
+								type="radio"
+								[name]="name"
+								[checked]="picked === row.address_id"
+								(change)="pick(row.address_id)"
+							/>
+						</div>
+						<ul class="delivery-address-detail">
+							<li>
+								<h4 class="fw-semibold">{{ row.title || ('chk_untitled_address' | transloco) }}</h4>
+							</li>
+							<li>
+								<p class="text-content">
+									<span class="text-title">{{ 'chk_address' | transloco }}:</span>
+									{{ row.street }}, {{ row.city }}@if (row.state.name) {, {{ row.state.name }} }, {{
+									row.country.name }}
+								</p>
+							</li>
+							<li>
+								<h6 class="text-content">
+									<span class="text-title">{{ 'addr_postal_pin' | transloco }}:</span>
+									{{ row.pincode }}
+								</h6>
+							</li>
+							<li>
+								<h6 class="text-content mb-0">
+									<span class="text-title">{{ 'phone' | transloco }} :</span>
+									+{{ row.country_code }} {{ row.phone }}
+								</h6>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</label>
+		</div>
+		}
+		<div class="col-xxl-6 col-lg-12 col-md-6">
+			<label class="w-100">
+				<div class="delivery-address-box">
+					<div>
+						<div class="form-check">
+							<input
+								class="form-check-input"
+								type="radio"
+								[name]="name"
+								[checked]="picked === 'new'"
+								(change)="pick('new')"
+							/>
+						</div>
+						<ul class="delivery-address-detail">
+							<li>
+								<h4 class="fw-semibold">+ {{ 'chk_new_address' | transloco }}</h4>
+							</li>
+							<li>
+								<p class="text-content">{{ 'chk_new_address_help' | transloco }}</p>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</label>
+		</div>
+	</div>
+</ng-template>
+
+<section class="checkout-section-2 section-b-space">
 	<div class="container-fluid-lg">
-		<app-no-data
-			[class]="'no-data-added'"
-			[image]="'assets/svg/empty-items.svg'"
-			[text]="'checkout_closed' | transloco"
-			[description]="'checkout_closed_detail' | transloco"
-		/>
-		<div class="d-flex justify-content-center mt-3">
-			<a
-				class="btn btn-animation proceed-btn fw-bold"
-				[routerLink]="['/cart']"
-			>
-				{{ 'back_to_cart' | transloco }}
-			</a>
+		<div class="row g-sm-4 g-3">
+			<div class="col-xxl-8 col-xl-7">
+				<div class="left-sidebar-checkout">
+					<div class="checkout-detail-box">
+						<ul>
+							<!-- Delivery address (shop01, shop17): a saved one, or a new one with the country rules. -->
+							<li>
+								<div class="checkout-icon">
+									<i class="ri-map-pin-line"></i>
+								</div>
+								<div class="checkout-box">
+									<div class="checkout-title">
+										<h4>{{ 'chk_delivery_address' | transloco }}</h4>
+									</div>
+									<div class="checkout-detail">
+										<ng-container
+											*ngTemplateOutlet="addressBoxes; context: { picked: delivery(), name: 'chk_delivery', pick: pickDelivery }"
+										/>
+										@if (delivery() === 'new') {
+										<div class="address-form mt-3">
+											<app-shop-address-form
+												[idPrefix]="'chk_delivery'"
+												(changed)="newDelivery.set($event)"
+											/>
+											<div class="form-check mt-3">
+												<input
+													class="form-check-input"
+													type="checkbox"
+													id="chk_save_delivery"
+													[checked]="saveDelivery()"
+													(change)="saveDelivery.set($any($event.target).checked)"
+												/>
+												<label
+													class="form-check-label"
+													for="chk_save_delivery"
+												>
+													{{ 'chk_save_to_my_addresses' | transloco }}
+												</label>
+											</div>
+											@if (saveDelivery()) {
+											<div class="col-md-6 mt-2">
+												<label
+													class="form-label"
+													for="chk_delivery_label"
+												>
+													{{ 'chk_name_this_address' | transloco }}
+												</label>
+												<input
+													class="form-control"
+													id="chk_delivery_label"
+													maxlength="80"
+													[value]="deliveryName()"
+													(input)="deliveryName.set($any($event.target).value)"
+												/>
+											</div>
+											}
+										</div>
+										}
+									</div>
+								</div>
+							</li>
+							<!-- Billing address: the same as delivery unless unticked. -->
+							<li>
+								<div class="checkout-icon">
+									<i class="ri-map-pin-line"></i>
+								</div>
+								<div class="checkout-box">
+									<div class="checkout-title">
+										<h4>{{ 'chk_billing_address' | transloco }}</h4>
+									</div>
+									<div class="checkout-detail">
+										<div class="form-check mb-3">
+											<input
+												class="form-check-input"
+												type="checkbox"
+												id="chk_billing_same"
+												[checked]="billingSame()"
+												(change)="billingSame.set($any($event.target).checked)"
+											/>
+											<label
+												class="form-check-label"
+												for="chk_billing_same"
+											>
+												{{ 'chk_same_as_delivery' | transloco }}
+											</label>
+										</div>
+										@if (!billingSame()) {
+										<ng-container
+											*ngTemplateOutlet="addressBoxes; context: { picked: billing(), name: 'chk_billing', pick: pickBilling }"
+										/>
+										@if (billing() === 'new') {
+										<div class="address-form mt-3">
+											<app-shop-address-form
+												[idPrefix]="'chk_billing'"
+												(changed)="newBilling.set($event)"
+											/>
+											<div class="form-check mt-3">
+												<input
+													class="form-check-input"
+													type="checkbox"
+													id="chk_save_billing"
+													[checked]="saveBilling()"
+													(change)="saveBilling.set($any($event.target).checked)"
+												/>
+												<label
+													class="form-check-label"
+													for="chk_save_billing"
+												>
+													{{ 'chk_save_to_my_addresses' | transloco }}
+												</label>
+											</div>
+											@if (saveBilling()) {
+											<div class="col-md-6 mt-2">
+												<label
+													class="form-label"
+													for="chk_billing_label"
+												>
+													{{ 'chk_name_this_address' | transloco }}
+												</label>
+												<input
+													class="form-control"
+													id="chk_billing_label"
+													maxlength="80"
+													[value]="billingName()"
+													(input)="billingName.set($any($event.target).value)"
+												/>
+											</div>
+											}
+										</div>
+										} }
+									</div>
+								</div>
+							</li>
+							@if (q()?.showAddressInIndia) {
+							<!-- shop03: optional; the shopper is only asked for an address in India, never why. -->
+							<li>
+								<div class="checkout-icon">
+									<i class="ri-file-list-3-line"></i>
+								</div>
+								<div class="checkout-box">
+									<div class="checkout-title">
+										<h4>
+											{{ 'chk_address_in_india' | transloco }}
+											<span class="text-muted fw-normal small">
+												({{ 'optional' | transloco }})
+											</span>
+										</h4>
+										<a
+											href="javascript:void(0)"
+											class="d-flex align-items-center fw-bold"
+											(click)="indiaOpen.set(!indiaOpen())"
+										>
+											<i
+												[class]="(indiaOpen() ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line') + ' me-1'"
+											></i>
+											{{ (indiaOpen() ? 'chk_hide' : 'chk_add') | transloco }}
+										</a>
+									</div>
+									@if (indiaOpen()) {
+									<div class="checkout-detail">
+										<p class="text-content mb-3">{{ 'chk_address_in_india_help' | transloco }}</p>
+										<div class="address-form">
+											<div class="row g-3">
+												<div class="col-12">
+													<label
+														class="form-label"
+														for="chk_india_name"
+													>
+														{{ 'addr_full_name' | transloco }}
+													</label>
+													<input
+														class="form-control"
+														id="chk_india_name"
+														maxlength="120"
+														[value]="india().fullName"
+														(input)="setIndia('fullName', $any($event.target).value)"
+													/>
+												</div>
+												<div class="col-12">
+													<label
+														class="form-label"
+														for="chk_india_street"
+													>
+														{{ 'chk_street_address' | transloco }}
+													</label>
+													<input
+														class="form-control"
+														id="chk_india_street"
+														maxlength="200"
+														[value]="india().line1"
+														(input)="setIndia('line1', $any($event.target).value)"
+													/>
+												</div>
+												<div class="col-md-4">
+													<label
+														class="form-label"
+														for="chk_india_city"
+													>
+														{{ 'addr_city' | transloco }}
+													</label>
+													<input
+														class="form-control"
+														id="chk_india_city"
+														maxlength="80"
+														[value]="india().city"
+														(input)="setIndia('city', $any($event.target).value)"
+													/>
+												</div>
+												<div class="col-md-4">
+													<label
+														class="form-label"
+														for="chk_india_state"
+													>
+														{{ 'addr_sub_state' | transloco }}
+													</label>
+													<select
+														class="form-select"
+														id="chk_india_state"
+														(change)="setIndia('state', $any($event.target).value)"
+													>
+														<option value="">{{ 'ord_choose' | transloco }}</option>
+														@for (state of indiaStates.data()?.subdivisions ?? []; track
+														state.code) {
+														<option
+															[value]="state.name"
+															[selected]="india().state === state.name"
+														>
+															{{ state.name }}
+														</option>
+														}
+													</select>
+												</div>
+												<div class="col-md-4">
+													<label
+														class="form-label"
+														for="chk_india_pin"
+													>
+														{{ 'addr_postal_pin' | transloco }}
+													</label>
+													<input
+														class="form-control"
+														id="chk_india_pin"
+														inputmode="numeric"
+														maxlength="6"
+														[value]="india().postalCode"
+														(input)="setIndia('postalCode', $any($event.target).value)"
+													/>
+												</div>
+											</div>
+										</div>
+									</div>
+									}
+								</div>
+							</li>
+							}
+							<!-- Payment: the currency picks the gateway; shoppers never see a gateway name. -->
+							<li>
+								<div class="checkout-icon">
+									<i class="ri-bank-card-line"></i>
+								</div>
+								<div class="checkout-box">
+									<div class="checkout-title">
+										<h4>{{ 'chk_payment' | transloco }}</h4>
+									</div>
+									<div class="checkout-detail">
+										@if (q(); as quote) { @if (quote.currency === 'INR') {
+										<p class="text-content mb-0">{{ 'chk_pay_inr_help' | transloco }}</p>
+										} @else {
+										<p class="text-content mb-0">
+											{{ 'chk_pay_paypal_help_lead' | transloco }}
+											<b>{{ money(quote.totals.total) }}</b>
+											{{ 'chk_pay_paypal_help_rest' | transloco }}
+										</p>
+										} @if (quote.notes.includes('payFromIndiaInRupees')) {
+										<div
+											class="alert alert-info d-flex align-items-start mt-3 mb-0 gap-2"
+											role="status"
+										>
+											<i class="ri-information-line mt-1"></i>
+											<div>
+												<b>{{ 'chk_paying_from_india' | transloco }}</b>
+												{{ 'chk_paypal_not_from_india' | transloco }}
+												<a
+													class="fw-bold"
+													href="javascript:void(0)"
+													(click)="payInRupees()"
+												>
+													{{ 'chk_pay_in_rupees_instead' | transloco }}
+												</a>
+												{{ 'chk_by_card_upi_netbanking' | transloco }}
+											</div>
+										</div>
+										} @if (quote.currencyPicker; as picker) {
+										<!-- shop09: billed abroad, paying in ₹, before the INR gateway takes cards from abroad. -->
+										<div class="theme-modal mt-3 rounded border p-3 text-center">
+											<i class="ri-exchange-funds-line icon-box wo-bg"></i>
+											<h5 class="modal-title">{{ 'ret_choose_title' | transloco }}</h5>
+											<p>{{ 'chk_choose_currency_abroad' | transloco }}</p>
+											<div class="mt-3 text-start">
+												@for (row of pickerChoices(picker.first); track row.code) {
+												<button
+													type="button"
+													class="btn btn-md d-flex justify-content-between align-items-center mb-2 w-100"
+													[class.theme-bg-color]="row.code === picker.first"
+													[class.text-light]="row.code === picker.first"
+													[class.btn-theme-outline]="row.code !== picker.first"
+													(click)="useCurrency(row.code, row.symbol)"
+												>
+													<span>
+														<b>{{ row.symbol }}</b>
+														{{ row.name | transloco }}
+													</span>
+													@if (row.code === picker.first) {
+													<small>{{ 'ret_from_billing' | transloco }}</small>
+													}
+												</button>
+												}
+											</div>
+										</div>
+										} } @else {
+										<p class="text-content mb-0">{{ 'chk_choose_address_first' | transloco }}</p>
+										}
+									</div>
+								</div>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-xxl-4 col-xl-5">
+				<div class="card pos-detail-card">
+					<div class="card-body">
+						<div class="title-header">
+							<div class="d-flex align-items-center">
+								<h5>{{ 'chk_checkout' | transloco }}</h5>
+							</div>
+						</div>
+						@if (q(); as quote) {
+						<div class="product-details">
+							<ul class="cart-listing">
+								@for (line of quote.lines; track line.lineId) {
+								<li>
+									<img
+										[src]="imageOf(line.lineId)"
+										class="img-fluid"
+										alt=""
+									/>
+									<div class="cart-content">
+										<h4>{{ line.title }}</h4>
+										<h5 class="text-theme">{{ money(line.unitPrice) }} X {{ line.quantity }}</h5>
+										<h5 class="price">{{ money(line.lineTotal) }}</h5>
+										@if (lineSub(line); as sub) {
+										<p class="small text-muted mb-0">{{ sub }}</p>
+										} @if (problemWords(line.lineId); as problem) {
+										<p class="text-danger small mt-1 mb-0">
+											<i class="ri-error-warning-line"></i>
+											{{ problem }}
+										</p>
+										} @if (line.cannotShipReason) {
+										<p class="text-danger small mt-1 mb-0">
+											<i class="ri-error-warning-line"></i>
+											{{ line.cannotShipReason }}
+											<a
+												class="text-danger fw-bold"
+												href="javascript:void(0)"
+												(click)="removeLine(line.lineId)"
+											>
+												{{ 'chk_remove' | transloco }}
+											</a>
+										</p>
+										}
+									</div>
+								</li>
+								}
+							</ul>
+						</div>
+						<ul class="summary-total">
+							<li>
+								<h4>{{ 'chk_subtotal' | transloco }}</h4>
+								<h4 class="price">{{ money(quote.totals.goods) }}</h4>
+							</li>
+							@for (coupon of goodsCoupons(); track coupon.code) {
+							<li>
+								<h4>
+									{{ coupon.code }}
+									<br />
+									<small class="text-muted fw-normal">{{ 'chk_coupon_row_help' | transloco }}</small>
+								</h4>
+								<h4 class="price">−{{ couponMoney(coupon.amountINR) }}</h4>
+							</li>
+							}
+							<li>
+								<h4>
+									{{ 'chk_shipping' | transloco }} @if (quote.payBlocked === 'pieceCannotShip') {
+									<br />
+									<small class="text-muted fw-normal">
+										{{ 'chk_ship_after_removal' | transloco }}
+									</small>
+									} @else if (shippingWhy(); as why) {
+									<br />
+									<small class="text-muted fw-normal">{{ why }}</small>
+									}
+								</h4>
+								<h4 class="price">
+									{{ quote.payBlocked === 'pieceCannotShip' ? '—' : money(quote.shipping.charge) }}
+								</h4>
+							</li>
+							@if (freeDelivery(); as free) {
+							<li>
+								<h4>
+									{{ free.code }}
+									<br />
+									<small class="text-muted fw-normal">{{ 'chk_free_delivery' | transloco }}</small>
+								</h4>
+								<h4 class="price">−{{ money(quote.shipping.charge) }}</h4>
+							</li>
+							} @if (quote.payBlocked !== 'pieceCannotShip') {
+							<li>
+								<h4>{{ 'chk_gst' | transloco }}</h4>
+								<h4 class="price">{{ 'chk_included' | transloco }}</h4>
+							</li>
+							}
+							<li class="list-total">
+								<h4>{{ 'chk_total' | transloco }}</h4>
+								<h4 class="price">
+									{{ quote.payBlocked === 'pieceCannotShip' ? '—' : money(quote.totals.total) }}
+								</h4>
+							</li>
+						</ul>
+						<!-- shop12, shop13: the coupon box; each applied coupon with Remove, and why one can't apply. -->
+						<div class="coupon-cart mt-3">
+							<h6 class="text-content mb-2">{{ 'chk_coupon' | transloco }}</h6>
+							@for (coupon of quote.coupons; track coupon.code) {
+							<div class="d-flex justify-content-between align-items-start mb-2 rounded border p-2">
+								<div>
+									<b>{{ coupon.code }}</b>
+									<div class="small text-muted">
+										{{ 'chk_coupon_kind_' + coupon.kind | transloco: { value: coupon.value } }}@if
+										(coupon.combines) { · {{ 'chk_combines' | transloco }} }
+									</div>
+								</div>
+								<a
+									class="small fw-bold text-danger"
+									href="javascript:void(0)"
+									(click)="removeCoupon(coupon.code)"
+								>
+									{{ 'chk_remove' | transloco }}
+								</a>
+							</div>
+							}
+							<div class="coupon-box input-group mb-2">
+								<input
+									class="form-control"
+									[placeholder]="'chk_enter_coupon' | transloco"
+									[attr.aria-label]="'chk_enter_coupon' | transloco"
+									[value]="couponInput()"
+									(input)="couponInput.set($any($event.target).value)"
+									(keydown.enter)="applyCoupon()"
+								/>
+								<button
+									type="button"
+									class="btn-apply btn theme-bg-color text-white"
+									(click)="applyCoupon()"
+								>
+									{{ 'chk_apply' | transloco }}
+								</button>
+							</div>
+							@for (refused of quote.couponRefusals; track refused.code) {
+							<p class="small text-danger mb-1">
+								<i class="ri-error-warning-line"></i>
+								{{ refusalWords(refused.code, refused.refusal) }}
+								<a
+									class="text-danger fw-bold"
+									href="javascript:void(0)"
+									(click)="removeCoupon(refused.code)"
+								>
+									{{ 'chk_remove' | transloco }}
+								</a>
+							</p>
+							}
+						</div>
+						@if (error(); as problem) {
+						<p class="small text-danger mt-2 mb-0">{{ problem }}</p>
+						}
+						<button
+							type="button"
+							class="btn btn-animation proceed-btn mt-3 w-100"
+							[disabled]="!!quote.payBlocked || busy()"
+							(click)="pay()"
+						>
+							{{ payWords() }}
+						</button>
+						} @else if (quote.isError()) {
+						<p class="small text-danger mb-0">{{ 'chk_quote_failed' | transloco }}</p>
+						} @else {
+						<app-no-data
+							[class]="'no-data-added'"
+							[image]="'assets/svg/empty-items.svg'"
+							[text]="'chk_choose_address_first' | transloco"
+						/>
+						<div class="d-flex justify-content-center mt-3">
+							<a
+								class="btn btn-animation proceed-btn fw-bold"
+								[routerLink]="['/cart']"
+							>
+								{{ 'back_to_cart' | transloco }}
+							</a>
+						</div>
+						}
+					</div>
+				</div>
+			</div>
 		</div>
 	</div>
 </section>

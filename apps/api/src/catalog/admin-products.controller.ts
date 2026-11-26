@@ -3,6 +3,8 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	AdminProductListQuery,
 	DiscontinueProduct,
+	ProductBulkDiscontinueWrite,
+	ProductBulkWrite,
 	ProductBundleWrite,
 	ProductCreate,
 	ProductMerchandisingWrite,
@@ -14,6 +16,7 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { CatalogService } from './catalog.service';
 import { ProductBuilderService } from './product-builder.service';
+import { ProductBulkService } from './product-bulk.service';
 
 @ApiTags(API_TAGS.catalog)
 @Audience('admin')
@@ -22,6 +25,7 @@ export class AdminProductsController {
 	constructor(
 		private readonly catalog: CatalogService,
 		private readonly builder: ProductBuilderService,
+		private readonly bulk: ProductBulkService,
 	) {}
 
 	@Get()
@@ -60,6 +64,78 @@ export class AdminProductsController {
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	) {
 		return this.builder.create(body, principal?.userId ?? null);
+	}
+
+	// ── Bulk actions on the product list (product bulk actions brief, 2026-11-19) ──
+	// Up to 200 products; each answers for itself. `dryRun` says what would happen and changes nothing.
+
+	@Post('bulk/go-live')
+	@HttpCode(200)
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('product.edit')
+	@ApiOperation({
+		operationId: 'bulkGoLiveProducts',
+		summary: 'Go Live for many products, each checked as on the form',
+	})
+	bulkGoLive(
+		@Body(new ZodValidationPipe(ProductBulkWrite)) body: ProductBulkWrite,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.bulk.goLive(body, principal?.userId ?? null);
+	}
+
+	@Post('bulk/take-off')
+	@HttpCode(200)
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('product.edit')
+	@ApiOperation({ operationId: 'bulkTakeOffProducts', summary: 'Take live products off the shop' })
+	bulkTakeOff(
+		@Body(new ZodValidationPipe(ProductBulkWrite)) body: ProductBulkWrite,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.bulk.takeOff(body, principal?.userId ?? null);
+	}
+
+	@Post('bulk/discontinue')
+	@HttpCode(200)
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('product.edit')
+	@ApiOperation({
+		operationId: 'bulkDiscontinueProducts',
+		summary: 'Discontinue many products, one redirect for all',
+	})
+	bulkDiscontinue(
+		@Body(new ZodValidationPipe(ProductBulkDiscontinueWrite)) body: ProductBulkDiscontinueWrite,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.bulk.discontinue(body, principal?.userId ?? null);
+	}
+
+	@Post('bulk/duplicate')
+	@HttpCode(200)
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('product.create')
+	@ApiOperation({ operationId: 'bulkDuplicateProducts', summary: 'Copy products as products that are not live yet' })
+	bulkDuplicate(
+		@Body(new ZodValidationPipe(ProductBulkWrite)) body: ProductBulkWrite,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.bulk.duplicate(body, principal?.userId ?? null);
+	}
+
+	@Post('bulk/delete')
+	@HttpCode(200)
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('product.destroy')
+	@ApiOperation({
+		operationId: 'bulkDeleteProducts',
+		summary: 'Delete products that were never live, stocked or ordered; the rest are refused',
+	})
+	bulkDelete(
+		@Body(new ZodValidationPipe(ProductBulkWrite)) body: ProductBulkWrite,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.bulk.delete(body, principal?.userId ?? null);
 	}
 
 	@Post(':idOrSlug/go-live')

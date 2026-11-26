@@ -12,15 +12,8 @@
  * Exit codes: 0 = aligned (or nothing to do), 1 = failure.
  */
 import { connectMongo, disconnectMongo, getMongoose } from '../src/connection';
-import * as models from '../src/models';
 import { reconcileIndexes } from '../src/migrations/reconcile-indexes';
-
-/** Every exported model, so a divergence cannot hide in a collection nobody thought to list. */
-function allModels() {
-	return Object.entries(models)
-		.filter(([name, value]) => name.endsWith('Model') && typeof value === 'function')
-		.map(([, value]) => value as never);
-}
+import { allModels } from '../src/release/database-steps';
 
 async function main(): Promise<void> {
 	const dryRun = process.argv.includes('--dry-run');

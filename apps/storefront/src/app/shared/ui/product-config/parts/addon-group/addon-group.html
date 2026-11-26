@@ -2,7 +2,7 @@
 	@for (group of groups(); track group.code) {
 	<div class="addon-block">
 		<div class="addon-head">
-			<h4>{{ 'required_addon' | transloco }}: {{ group.label }}</h4>
+			<h2 class="h4">{{ 'required_addon' | transloco }}: {{ group.label }}</h2>
 		</div>
 		@if (group.help_text) {
 		<p class="addon-help text-content">{{ group.help_text }}</p>
@@ -15,28 +15,37 @@
 			(selectedChange)="select(group, $event)"
 		/>
 	</div>
-	} @if (needsMeasurements()) {
+	} @if (needsMeasurements()) { @if (asRow()) {
+	<app-measurement-row
+		[title]="rowTitle()"
+		[fieldCount]="fields().length"
+		[added]="measured()"
+		(open)="openMeasurements()"
+	/>
+	} @else { @for (key of [formKey()]; track key) {
 	<app-measurements-form
-		[fields]="product().measurement_fields || []"
+		[fields]="fields()"
 		[title]="'measurements_required_for_selection'"
-		[initialValues]="initialMeasurements()"
+		[forName]="measuredLabel()"
+		[initialValues]="formSeed() ?? initialMeasurements()"
 		(valueChange)="onMeasurementsValue($event)"
 		(validChange)="onMeasurementsValid($event)"
 	/>
-	}
+	} } }
 
+	<!-- Only once an add-on adds to the price; before that it only repeated the price (owner, 21 Nov 2026, brief P10). -->
+	@if (delta() && !inSheet()) {
 	<div class="addon-total">
 		<span class="total-label">{{ 'total_price' | transloco }}</span>
 		<span class="total-value">
 			{{ total() | currencySymbol }}
 			<small>
-				({{ 'base' | transloco }} {{ base() | currencySymbol }} @if (delta()) { + {{ 'addon' | transloco }} {{
-				delta() | currencySymbol }} })
+				({{ 'base' | transloco }} {{ base() | currencySymbol }} + {{ 'addon' | transloco }} {{ delta() |
+				currencySymbol }})
 			</small>
 		</span>
 	</div>
-
-	@if (needsMeasurements() && !valid()) {
+	} @if (needsMeasurements() && !valid() && !inSheet()) {
 	<p class="addon-warning">
 		<i class="ri-error-warning-line"></i>
 		{{ 'fill_measurements_to_add' | transloco }}

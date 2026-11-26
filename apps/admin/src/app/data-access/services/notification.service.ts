@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, NgZone, inject } from '@angular/core';
 
-import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ToastrService } from '@damjantonkli/ngx-toastr';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { Observable, Subject } from 'rxjs';
 
 import { Params } from '@data-access/interfaces/core.interface';

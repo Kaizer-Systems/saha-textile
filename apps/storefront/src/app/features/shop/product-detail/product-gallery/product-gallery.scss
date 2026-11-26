@@ -1,0 +1,4 @@
+/* A video tile matches the photos' 3:4 box in the strip; Bootstrap ships no 3:4 ratio. */
+.ratio-3x4 {
+	--bs-aspect-ratio: 133.33%;
+}

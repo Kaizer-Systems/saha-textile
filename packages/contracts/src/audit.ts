@@ -4,10 +4,19 @@ import { Id, IsoDateTime } from './common';
 
 /**
  * Audit retention tier (owner lock 2026-07-23): `financial_security` = 7 years,
- * `catalog_admin` = 5 years. Raw analytics events are NOT audit logs (~90 days
- * after rollup; see `analytics` contracts when built).
+ * `catalog_admin` = 5 years. `books` = 8 years (owner, 2026-11-23): the books' edit
+ * log (vouchers, ledgers, month locks) is kept at least as long as the Companies Act's
+ * 8 years, which also covers GST's 72 months. Raw analytics events are NOT audit logs
+ * (~90 days after rollup; see `analytics` contracts when built).
  */
-export const AuditRetentionTier = z.enum(['financial_security', 'catalog_admin']);
+export const AuditRetentionTier = z.enum(['financial_security', 'catalog_admin', 'books']);
+
+/** How long each tier is kept, in years (the retention job's cut-off). */
+export const AUDIT_RETENTION_YEARS: Readonly<Record<AuditRetentionTier, number>> = {
+	financial_security: 7,
+	catalog_admin: 5,
+	books: 8,
+};
 export type AuditRetentionTier = z.infer<typeof AuditRetentionTier>;
 
 export const AuditAudience = z.enum(['storefront', 'admin', 'system']);
@@ -72,6 +81,11 @@ export const AuditLogListQuery = z.object({
 	actorUserId: Id.optional(),
 	targetUserId: Id.optional(),
 	action: z.string().optional(),
+	/** Brief 26 AU1: a module, the first part of the action (`payroll` for `payroll.payslip.edit`). */
+	module: z
+		.string()
+		.regex(/^[a-z][a-z_]*$/)
+		.optional(),
 	entityType: z.string().optional(),
 	entityId: Id.optional(),
 	severity: AuditSeverity.optional(),
@@ -101,7 +115,10 @@ export type AuditLogListQuery = z.infer<typeof AuditLogListQuery>;
  * `metadata` are redacted before they are ever written (owner lock 2026-07-23 — secrets,
  * tokens and PAN are never persisted), so the read model does not re-litigate that.
  */
-export const AuditLogEntry = AuditLog.omit({ ipHash: true, userAgentHash: true });
+export const AuditLogEntry = AuditLog.omit({ ipHash: true, userAgentHash: true }).extend({
+	/** Brief 26 AU1: the person's name as the admin shows it, when the reader is given it. */
+	actorName: z.string().nullable().optional(),
+});
 export type AuditLogEntry = z.infer<typeof AuditLogEntry>;
 
 /** `GET /admin/audit-logs` response. */

@@ -3,7 +3,7 @@ title: Generated Surfaces and Persistent Portal Runtime
 description: How Storybook, TypeDoc, Scalar and the database catalogue are built and served.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/developer-portal
     - apps/developer-portal-storybook

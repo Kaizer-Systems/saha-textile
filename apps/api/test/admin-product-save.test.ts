@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Product, ProductMerchandisingWrite, ProductVariant, type SeoRedirect } from '@saha-textile/contracts';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { z } from 'zod';
 
 import { CatalogService } from '../src/catalog/catalog.service';
@@ -36,7 +36,7 @@ function variant(id: string, sku: string): Variant {
 	});
 }
 
-function harness(start: ProductRow = product()) {
+function harness(start: ProductRow = product(), faqs: unknown = null) {
 	let saved = start;
 	const variants = new Map([
 		['var_s', variant('var_s', 'KPS-1')],
@@ -66,7 +66,25 @@ function harness(start: ProductRow = product()) {
 		findBySource: async () => null,
 		list: async () => redirects,
 	};
-	const catalog = new CatalogService(products as never, { findById: async () => null } as never, variantRepo as never, redirectRepo as never);
+	const none = undefined as never;
+	const catalog = new CatalogService(
+		products as never,
+		{ findById: async () => null } as never,
+		variantRepo as never,
+		redirectRepo as never,
+		none,
+		none,
+		none,
+		none,
+		none,
+		none,
+		none,
+		none,
+		none,
+		none,
+		none,
+		faqs as never,
+	);
 	return { catalog, variants, redirects, current: () => saved };
 }
 
@@ -107,6 +125,29 @@ function row(id: string, sku: string) {
 }
 
 describe('admin product save', () => {
+	it("stores each variant's own picture with its version, keeps it when a save omits it, clears it on null", async () => {
+		const { catalog, variants } = harness();
+		const picked = { assetId: 'med_red', versionId: 'product.white' };
+		await catalog.updateMerchandising(
+			'prd_kurti',
+			form({
+				variants: [
+					{ ...row('var_s', 'KPS-1'), mrpINR: null, sellingINR: 2400, image: picked },
+					{ ...row('var_m', 'KPS-2'), mrpINR: null, sellingINR: 2400 },
+				],
+			}),
+		);
+		expect(variants.get('var_s')?.media).toEqual({ primaryAssetId: 'med_red', primaryVersionId: 'product.white' });
+		expect(variants.get('var_m')?.media).toBeUndefined();
+		await catalog.updateMerchandising('prd_kurti', form());
+		expect(variants.get('var_s')?.media).toEqual({ primaryAssetId: 'med_red', primaryVersionId: 'product.white' });
+		await catalog.updateMerchandising(
+			'prd_kurti',
+			form({ variants: [{ ...row('var_s', 'KPS-1'), mrpINR: null, sellingINR: 2400, image: null }] }),
+		);
+		expect(variants.get('var_s')?.media).toEqual({ primaryAssetId: null, primaryVersionId: null });
+	});
+
 	it('writes every variant, with the MRP and the selling price it was given', async () => {
 		const { catalog, variants, current } = harness();
 		await catalog.updateMerchandising('prd_kurti', form());
@@ -120,18 +161,27 @@ describe('admin product save', () => {
 		const { catalog, variants, current } = harness();
 		const axis = {
 			attributeCode: 'color',
-			label: { en: 'Colour', fr: 'Couleur' },
+			label: { en: 'Colour', bn: 'রং' },
 			semanticRole: 'variation_axis',
 			displayStyle: 'rectangle',
 			requiredSelection: false,
 			defaultTermCode: null,
-			terms: [{ code: 'red', label: { en: 'Red', fr: 'Rouge' }, isBase: false, addonTemplateIds: [], requiresMeasurements: false, sortOrder: 0 }],
+			terms: [
+				{
+					code: 'red',
+					label: { en: 'Red', bn: 'লাল' },
+					isBase: false,
+					addonTemplateIds: [],
+					requiresMeasurements: false,
+					sortOrder: 0,
+				},
+			],
 		};
 		await catalog.updateMerchandising('prd_kurti', {
 			...form(),
 			content: {
-				title: { en: 'Kurti', fr: 'Kurti' },
-				shortDescription: { fr: 'Court' },
+				title: { en: 'Kurti', bn: 'Kurti' },
+				shortDescription: { bn: 'Court' },
 				description: {},
 				metaTitle: {},
 				metaDescription: {},
@@ -145,8 +195,109 @@ describe('admin product save', () => {
 				altOverrides: {},
 			},
 		} as never);
-		expect(current().shortDescription).toEqual({ fr: 'Court' });
+		expect(current().shortDescription).toEqual({ bn: 'Court' });
 		expect([...variants.values()].some((row) => row.optionSelectionHash === 'color:red')).toBe(true);
+	});
+
+	it('saves the FAQ tab as product questions in order, dropping blanks and removed ones', async () => {
+		const stored = [
+			{ id: 'faq_old', productIds: ['prd_kurti'], question: { en: 'Old?' }, answer: { en: 'Yes' } },
+			{ id: 'faq_shared', productIds: ['prd_kurti', 'prd_other'], question: { en: 'S?' }, answer: { en: 'S' } },
+			{ id: 'faq_keep', productIds: ['prd_kurti'], question: { en: 'Keep?' }, answer: { en: 'Yes' } },
+		];
+		const faqs = {
+			listForProduct: vi.fn(async () => stored),
+			save: vi.fn(async (entry: unknown) => entry),
+			deleteById: vi.fn(async () => {}),
+		};
+		const { catalog, current } = harness(product(), faqs);
+		const base = {
+			title: { en: 'Kurti' },
+			shortDescription: {},
+			description: {},
+			metaTitle: {},
+			metaDescription: {},
+			categoryIds: ['c'],
+			optionGroups: [],
+			addonTemplateCode: null,
+			imageMode: 'simple',
+			gallery: [],
+			compound: [],
+			altOverrides: {},
+		};
+		await catalog.updateMerchandising('prd_kurti', {
+			...form(),
+			content: {
+				...base,
+				estimatedDeliveryText: {},
+				faqEnabled: true,
+				faq: [
+					{ id: 'faq_keep', question: { en: ' Keep? ', bn: 'রাখবেন?' }, answer: { en: 'Yes', bn: 'হ্যাঁ' } },
+					{ question: { en: '' }, answer: { bn: '  ' } },
+					{ id: 'faq_stranger', question: { en: 'New?' }, answer: { en: 'Yes' } },
+				],
+			},
+		} as never);
+		expect(current().faqEnabled).toBe(true);
+		expect(faqs.save).toHaveBeenCalledTimes(2);
+		expect(faqs.save).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				id: 'faq_keep',
+				question: { en: 'Keep?', bn: 'রাখবেন?' },
+				scope: 'product',
+				productIds: ['prd_kurti'],
+				displayOrder: 0,
+				status: 'live',
+			}),
+		);
+		const fresh = faqs.save.mock.calls[1]?.[0] as { id: string; displayOrder: number };
+		expect(fresh.id).toMatch(/^faq_/);
+		expect(fresh.id).not.toBe('faq_stranger');
+		expect(fresh.displayOrder).toBe(1);
+		expect(faqs.deleteById).toHaveBeenCalledTimes(1);
+		expect(faqs.deleteById).toHaveBeenCalledWith('faq_old');
+	});
+
+	it('saves the product videos in admin order, and leaves them alone when the form sends none', async () => {
+		const long = {
+			videoId: 'QRP0xuczTUo',
+			title: 'EP693',
+			thumbnailUrl: 'u',
+			kind: 'video',
+			durationSeconds: 1521,
+		};
+		const short = {
+			videoId: 'YfNsUapqTqE',
+			title: 'EP679 S6D',
+			thumbnailUrl: 'u',
+			kind: 'short',
+			durationSeconds: 48,
+		};
+		const { catalog, current } = harness();
+		await catalog.updateMerchandising('prd_kurti', form({ videos: [short, long] as never }));
+		expect(current().videos.map((video) => video.videoId)).toEqual(['YfNsUapqTqE', 'QRP0xuczTUo']);
+		await catalog.updateMerchandising('prd_kurti', form());
+		expect(current().videos).toHaveLength(2);
+		await catalog.updateMerchandising('prd_kurti', form({ videos: [] }));
+		expect(current().videos).toEqual([]);
+	});
+
+	it('refuses a sixth video and the same video twice', () => {
+		const pipe = new ZodValidationPipe(ProductMerchandisingWrite);
+		const video = (id: string) => ({
+			videoId: id,
+			title: 't',
+			thumbnailUrl: 'u',
+			kind: 'video',
+			durationSeconds: 60,
+		});
+		const ids = ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'ccccccccccc', 'ddddddddddd', 'eeeeeeeeeee', 'fffffffffff'];
+		expect(() => pipe.transform({ ...form(), videos: ids.map(video) })).toThrow(BadRequestException);
+		expect(() => pipe.transform({ ...form(), videos: [video(ids[0]!), video(ids[0]!)] })).toThrow(
+			BadRequestException,
+		);
+		expect(pipe.transform({ ...form(), videos: ids.slice(0, 5).map(video) })).toBeTruthy();
 	});
 
 	it('rejects a selling price above the MRP before it reaches the service', () => {
@@ -180,7 +331,9 @@ describe('admin product save', () => {
 		const { catalog, current } = harness(product({ status: 'draft', lifecycle: { liveAt: null } }));
 		await catalog.updateMerchandising('prd_kurti', form({ sku: 'KPS-RENAMED', status: 'disabled' }));
 		expect(current().sku).toBe('KPS-RENAMED');
-		await expect(catalog.updateMerchandising('prd_kurti', form({ sku: 'KPS-RENAMED' }))).rejects.toThrow('Use Go Live');
+		await expect(catalog.updateMerchandising('prd_kurti', form({ sku: 'KPS-RENAMED' }))).rejects.toThrow(
+			'Use Go Live',
+		);
 	});
 
 	it('disables without discontinuing, and refuses a variant that is not the product’s', async () => {
@@ -201,5 +354,80 @@ describe('admin product save', () => {
 		expect(redirects[0]).toMatchObject({ statusCode: 301, targetPath: '/product/live-saree' });
 		expect(current().replacementTarget).toEqual({ kind: 'product', path: '/product/live-saree' });
 		await expect(catalog.updateMerchandising('prd_kurti', form())).rejects.toThrow('discontinued');
+	});
+
+	it('fixes Sold by once the product has stock, and asks a metre product for its cut and weight (P11, A01)', async () => {
+		const { catalog, variants, current } = harness();
+		await expect(catalog.updateMerchandising('prd_kurti', form({ soldBy: 'metre' }))).rejects.toThrow(
+			'Sold by stays piece: it has stock',
+		);
+		for (const [id, row] of variants) variants.set(id, { ...row, stock: { ...row.stock, quantity: 0 } });
+		await expect(catalog.updateMerchandising('prd_kurti', form({ soldBy: 'metre' }))).rejects.toThrow(
+			'needs a shortest cut and a weight per metre',
+		);
+		await catalog.updateMerchandising(
+			'prd_kurti',
+			form({
+				soldBy: 'metre',
+				metre: {
+					shortestCutTenths: 10,
+					quickLengths: [{ tenths: 25, label: { en: 'suit', bn: 'সুট' } }],
+					widthInches: 44,
+					weightPerMetreGrams: 85,
+				},
+			}),
+		);
+		expect(current()).toMatchObject({
+			soldBy: 'metre',
+			shortestCutTenths: 10,
+			widthInches: 44,
+			weightPerMetreGrams: 85,
+			quickLengths: [{ tenths: 25, label: { en: 'suit', bn: 'সুট' } }],
+		});
+		// Left out, Sold by and the metre fields stay as saved.
+		await catalog.updateMerchandising('prd_kurti', form());
+		expect(current()).toMatchObject({ soldBy: 'metre', shortestCutTenths: 10 });
+	});
+
+	it('keeps returnability following the category until it is set, and back again with null', async () => {
+		const { catalog, current } = harness();
+		await catalog.updateMerchandising('prd_kurti', form());
+		expect(current().returnable).toBeNull();
+		await catalog.updateMerchandising('prd_kurti', form({ returnable: false }));
+		expect(current().returnable).toBe(false);
+		await catalog.updateMerchandising('prd_kurti', form());
+		expect(current().returnable).toBe(false);
+		await catalog.updateMerchandising('prd_kurti', form({ returnable: null }));
+		expect(current().returnable).toBeNull();
+	});
+
+	it('saves the product’s own shipping charges and Free shipping switch, and keeps them when a save leaves them out', async () => {
+		const { catalog, current } = harness();
+		await catalog.updateMerchandising('prd_kurti', form());
+		expect(current().shippingCharges).toBeUndefined();
+		const charges = { domesticINR: null, internationalFirstINR: 3500, internationalFurtherINR: null };
+		await catalog.updateMerchandising('prd_kurti', form({ shippingCharges: charges, freeShipping: true }));
+		expect(current()).toMatchObject({ shippingCharges: charges, freeShipping: true });
+		await catalog.updateMerchandising('prd_kurti', form());
+		expect(current()).toMatchObject({ shippingCharges: charges, freeShipping: true });
+		await catalog.updateMerchandising('prd_kurti', form({ freeShipping: false }));
+		expect(current().freeShipping).toBe(false);
+		expect(() =>
+			new ZodValidationPipe(ProductMerchandisingWrite).transform({
+				...form(),
+				shippingCharges: { ...charges, domesticINR: -1 },
+			}),
+		).toThrow(BadRequestException);
+	});
+
+	it('refuses an HSN that is not 4, 6 or 8 digits, on the product and on a variant (F02C)', async () => {
+		const pipe = new ZodValidationPipe(ProductMerchandisingWrite);
+		const body = form();
+		expect(() => pipe.transform({ ...body, hsnCode: '54' })).toThrow(BadRequestException);
+		expect(() => pipe.transform({ ...body, hsnCode: '50071' })).toThrow(BadRequestException);
+		expect(() =>
+			pipe.transform({ ...body, variants: [{ ...body.variants[0], hsnCode: 'ABCD' }, body.variants[1]] }),
+		).toThrow(BadRequestException);
+		expect(pipe.transform({ ...body, hsnCode: '52081000' })).toMatchObject({ hsnCode: '52081000' });
 	});
 });

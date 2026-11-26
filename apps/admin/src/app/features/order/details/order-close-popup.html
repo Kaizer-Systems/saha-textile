@@ -1,0 +1,165 @@
+<div class="modal-header">
+	<h2 id="order_close_popup_title">{{ 'ord_close_title' | transloco: { number: order()?.orderNumber ?? '' } }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	<p class="mb-3">{{ 'ord_close_intro' | transloco }}</p>
+	@if (preview(); as p) {
+	<ul class="list-unstyled mb-3">
+		<li class="d-flex justify-content-between mb-1 gap-3">
+			<span>{{ 'ord_close_goods' | transloco: { count: p.pieces } }}</span>
+			<span class="text-nowrap">{{ p.goodsINR | rupees }}</span>
+		</li>
+		<li class="d-flex justify-content-between mb-1 gap-3">
+			<span>
+				@if (p.zone && shipWhy()) { {{ 'ord_close_shipping_line' | transloco: { zone: ('ord_zone_' + p.zone |
+				transloco), count: p.pieces, reason: shipWhy() } }} } @else { {{ 'ord_shipping' | transloco }} @if
+				(p.zone) { ({{ 'ord_zone_' + p.zone | transloco }}) } }
+			</span>
+			<span class="text-nowrap">@if (p.shippingINR !== null) { {{ p.shippingINR | rupees }} } @else { — }</span>
+		</li>
+		<li class="d-flex justify-content-between fw-bold mb-1 gap-3">
+			<span>{{ 'ord_order_total' | transloco }}</span>
+			<span class="text-nowrap">{{ p.totalINR | rupees }}</span>
+		</li>
+		<li class="d-flex justify-content-between border-bottom mb-2 gap-3 pb-2">
+			<span>{{ 'ord_paid_so_far' | transloco }}</span>
+			<span class="text-nowrap">{{ p.paidINR | rupees }}</span>
+		</li>
+		@if (p.paidAheadINR > 0) {
+		<li class="d-flex justify-content-between fw-bold gap-3">
+			<span>{{ 'ord_pay_paid_ahead' | transloco }}</span>
+			<span class="text-nowrap">{{ p.paidAheadINR | rupees }}</span>
+		</li>
+		} @else {
+		<li class="d-flex justify-content-between fw-bold gap-3">
+			<span>{{ 'ord_close_due' | transloco }}</span>
+			<span class="text-nowrap">{{ p.dueINR | rupees }}</span>
+		</li>
+		}
+	</ul>
+
+	@if (p.problem) {
+	<div
+		class="alert alert-warning d-flex align-items-start mb-0 gap-2"
+		role="alert"
+	>
+		<i class="ri-error-warning-line mt-1"></i>
+		<div>{{ 'ord_close_problem_' + p.problem | transloco }}</div>
+	</div>
+	} @else if (!nothingDue()) {
+	<label class="form-label">{{ 'ord_close_then' | transloco }}</label>
+	<div class="d-grid mb-3 gap-2">
+		<div class="rounded border p-2">
+			<div class="form-check">
+				<input
+					class="form-check-input"
+					type="radio"
+					id="close_request"
+					name="close_then"
+					[checked]="then() === 'requestOnline'"
+					(change)="then.set('requestOnline')"
+				/>
+				<label
+					class="form-check-label"
+					for="close_request"
+				>
+					<b>{{ 'ord_close_request_now' | transloco: { amount: (p.dueINR | rupees) } }}</b>
+					<span class="d-block small text-muted">{{ 'ord_close_request_now_help' | transloco }}</span>
+				</label>
+			</div>
+		</div>
+		<div class="rounded border p-2">
+			<div class="form-check">
+				<input
+					class="form-check-input"
+					type="radio"
+					id="close_later"
+					name="close_then"
+					[checked]="then() === 'recordLater'"
+					(change)="then.set('recordLater')"
+				/>
+				<label
+					class="form-check-label"
+					for="close_later"
+				>
+					<b>{{ 'ord_close_record_later' | transloco }}</b>
+					<span class="d-block small text-muted">
+						{{ 'ord_close_record_later_help' | transloco: { amount: (p.dueINR | rupees) } }}
+					</span>
+				</label>
+			</div>
+		</div>
+		@if (p.toAccount; as account) {
+		<div class="rounded border p-2">
+			<div class="form-check">
+				<input
+					class="form-check-input"
+					type="radio"
+					id="close_account"
+					name="close_then"
+					[disabled]="!account.allowed"
+					[checked]="then() === 'toAccount'"
+					(change)="then.set('toAccount')"
+				/>
+				<label
+					class="form-check-label"
+					for="close_account"
+				>
+					<b>{{ 'ord_close_to_account' | transloco: { amount: (p.dueINR | rupees) } }}</b>
+					@if (account.allowed) {
+					<span class="d-block small text-muted">{{ 'ord_close_to_account_help' | transloco }}</span>
+					} @else {
+					<span class="d-block small text-danger">
+						{{ 'ord_credit_refusal_' + account.reason | transloco }}
+					</span>
+					}
+				</label>
+			</div>
+		</div>
+		}
+	</div>
+	@if (!p.toAccount) {
+	<p class="small text-muted mb-0">{{ 'ord_close_account_note' | transloco }}</p>
+	} } @else {
+	<p class="small text-muted mb-0">{{ 'ord_close_nothing_due' | transloco }}</p>
+	} } @else if (!error()) {
+	<p class="text-muted mb-0">{{ 'loading' | transloco }}</p>
+	} @if (error(); as problem) {
+	<div
+		class="alert alert-warning d-flex align-items-start mt-3 mb-0 gap-2"
+		role="alert"
+	>
+		<i class="ri-error-warning-line mt-1"></i>
+		<div>{{ problem }}</div>
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			[disabled]="!canClose()"
+			(click)="close()"
+		>
+			<i class="ri-lock-line me-1"></i>
+			{{ 'ord_close_the_order' | transloco }}
+		</button>
+	</div>
+</div>

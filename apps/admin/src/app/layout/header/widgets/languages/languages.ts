@@ -1,8 +1,10 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, inject } from '@angular/core';
 
-import { TranslocoService } from '@jsverse/transloco';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { languageFlag, languageName } from '@saha-textile/core-domain/languages';
 
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import { ClickOutsideDirective } from '@shared/directives/out-side-directive';
 import { Button } from '@shared/ui/button/button';
 
@@ -16,42 +18,40 @@ export interface ILanguage {
 	selector: 'app-languages',
 	templateUrl: './languages.html',
 	styleUrls: ['./languages.scss'],
-	imports: [ClickOutsideDirective, Button],
+	imports: [ClickOutsideDirective, Button, TranslocoPipe],
 })
 export class Languages {
 	private translate = inject(TranslocoService);
 	private platformId = inject<Object>(PLATFORM_ID);
 
-	public active: boolean = false;
-	public languages: ILanguage[] = [
-		{
-			language: 'English',
-			code: 'en',
-			icon: 'us',
-		},
-		{
-			language: 'Français',
-			code: 'fr',
-			icon: 'fr',
-		},
-	];
+	private readonly activeLanguages = inject(ActiveLanguages);
 
-	public selectedLanguage: ILanguage = {
-		language: 'English',
-		code: 'en',
-		icon: 'us',
-	};
+	public active: boolean = false;
+	/**
+	 * The page-language menu: the languages the Admin switch lets staff use (Settings › Languages),
+	 * each in its own name, with the theme's flag. Languages only being written for the shop are not
+	 * offered here (Option 1, 2026-11-15).
+	 */
+	public languages: ILanguage[] = this.activeLanguages.adminList().map((code) => ({
+		language: languageName(code),
+		code,
+		icon: languageFlag(code),
+	}));
+
+	public selectedLanguage: ILanguage = this.languages[0]!;
 
 	constructor() {
 		if (isPlatformBrowser(this.platformId)) {
-			let language = localStorage.getItem('language');
-
-			if (language == null) {
-				this.translate.setActiveLang(this.selectedLanguage.code);
-			} else {
-				this.selectedLanguage = JSON.parse(language);
-				this.translate.setActiveLang(this.selectedLanguage.code);
+			let saved: unknown = null;
+			try {
+				saved = JSON.parse(localStorage.getItem('language') ?? 'null');
+			} catch {
+				saved = null;
 			}
+			const code = (saved as Partial<ILanguage> | null)?.code;
+			// A saved language that is no longer active falls back to English.
+			this.selectedLanguage = this.languages.find((language) => language.code === code) ?? this.languages[0]!;
+			this.translate.setActiveLang(this.selectedLanguage.code);
 		}
 	}
 

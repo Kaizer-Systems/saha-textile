@@ -19,13 +19,14 @@ async function signIn(page: import('@playwright/test').Page, email: string) {
 	await page.locator('#login_btn').click();
 }
 
-test.describe.serial('Notify Me', () => {
-	test.skip(({ isMobile }) => isMobile, 'one account, so the flow runs once');
+// One account, so the flow runs once (on the laptop project).
+test.describe.serial('Notify Me', { tag: '@desktop-only' }, () => {
 	test.beforeEach(tidy);
 	test.afterAll(tidy);
 
 	test('a guest click becomes one saved row after sign-in', async ({ page }) => {
-		await page.goto(PRODUCT);
+		// Clicked once the page has loaded, so the button's handler is in place.
+		await page.goto(PRODUCT, { waitUntil: 'networkidle' });
 		await page.locator('[id^="notifybtn-"]').click();
 		await expect(page).toHaveURL(/auth\/login/);
 
@@ -36,7 +37,9 @@ test.describe.serial('Notify Me', () => {
 
 	test('a signed-in click saves one row, and a repeat changes nothing', async ({ page }) => {
 		await page.goto('/en/auth/login');
-		await signIn(page, 'anjali.sharma.002@example.com');
+		// Its own shopper: checkout-rules.admin.spec.ts signs Anjali in on a parallel worker, and one account
+		// takes one one-time code at a time, so a shared one left this sign-in on the login page in CI.
+		await signIn(page, 'kabir.sharma.008@example.com');
 		await expect(page).not.toHaveURL(/auth\/login/);
 
 		await page.goto(PRODUCT);

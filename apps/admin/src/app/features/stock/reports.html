@@ -1,0 +1,449 @@
+@if (tab() === 'ageing' && ageing.data(); as data) {
+<section class="dashboard-tiles">
+	<div class="container-fluid">
+		<div class="row g-3 mb-3">
+			@for (band of data.bands; track band.label; let i = $index) {
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'age_band_' + i | transloco }}</h6>
+						<h3>{{ band.valueINR === null ? '—' : (band.valueINR | rupees) }}</h3>
+						<p class="small text-muted mb-0">{{ 'qty_pieces' | plural: band.units }}</p>
+					</div>
+					<div class="icon-box">
+						<i
+							[class]="['ri-leaf-line', 'ri-time-line', 'ri-hourglass-line', 'ri-alarm-warning-line'][i] ?? 'ri-time-line'"
+						></i>
+					</div>
+				</div>
+			</div>
+			}
+		</div>
+	</div>
+</section>
+}
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'stock_reports'"
+>
+	<ul class="nav nav-tabs mb-3">
+		@for (item of tabs; track item) {
+		<li class="nav-item">
+			<a
+				href="javascript:void(0)"
+				class="nav-link"
+				[class.active]="tab() === item"
+				(click)="tab.set(item)"
+			>
+				{{ 'report_tab_' + item | transloco }}
+			</a>
+		</li>
+		}
+	</ul>
+
+	@switch (tab()) { @case ('ageing') {
+	<div class="d-flex mb-3 flex-wrap gap-2">
+		<button
+			type="button"
+			class="btn btn-sm"
+			[class.btn-theme]="band() === null"
+			[class.btn-outline]="band() !== null"
+			(click)="setBand(null)"
+		>
+			{{ 'filter_all' | transloco }}
+		</button>
+		@for (index of [2, 3]; track index) {
+		<button
+			type="button"
+			class="btn btn-sm"
+			[class.btn-theme]="band() === index"
+			[class.btn-outline]="band() !== index"
+			(click)="setBand(index)"
+		>
+			{{ 'age_band_' + index | transloco }}
+		</button>
+		}
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th class="sm-width"></th>
+					<th style="width: 280px">{{ 'item' | transloco }}</th>
+					<th class="text-end">{{ 'on_hand' | transloco }}</th>
+					<th>{{ 'oldest_piece' | transloco }}</th>
+					<th>{{ 'last_sold' | transloco }}</th>
+					@if (canSeeCost()) {
+					<th class="text-end">{{ 'value_at_cost' | transloco }}</th>
+					}
+					<th>{{ 'ideas' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of ageing.data()?.rows ?? []; track row.variantId) {
+				<tr>
+					<td class="sm-width">
+						<input
+							type="checkbox"
+							class="checkbox_animated"
+							[attr.aria-label]="row.sku"
+							[checked]="ticked().has(row.variantId)"
+							(change)="toggle(row.variantId)"
+						/>
+					</td>
+					<td>
+						<a [routerLink]="['/stock', 'items', row.variantId]">
+							<h6 class="mb-0">{{ row.title }}</h6>
+						</a>
+						<small class="text-muted">
+							{{ row.sku }}@if (row.optionsLabel) { · {{ row.optionsLabel }} }
+						</small>
+					</td>
+					<td class="text-end text-nowrap">{{ row.onHand | stockQty: row.soldBy }}</td>
+					<td>{{ 'days_n' | transloco: { count: row.oldestPieceDays } }}</td>
+					<td>{{ row.lastSoldOn ? (row.lastSoldOn | shortDate) : ('never' | transloco) }}</td>
+					@if (canSeeCost()) {
+					<td class="text-end text-nowrap">
+						{{ row.valueAtCostINR === null ? '—' : (row.valueAtCostINR | rupees) }}
+					</td>
+					}
+					<td>
+						<a
+							href="javascript:void(0)"
+							(click)="toSale([row.productId])"
+						>
+							{{ 'put_in_a_sale' | transloco }}
+						</a>
+						@if (row.canReturnToSupplier) { ·
+						<a
+							href="javascript:void(0)"
+							(click)="returnToSupplier(row)"
+						>
+							{{ 'return_to_supplier' | transloco }}
+						</a>
+						} ·
+						<a
+							*hasPermission="['stock.adjust', 'stock.approve']"
+							href="javascript:void(0)"
+							(click)="writeOff(row)"
+						>
+							{{ 'write_off' | transloco }}
+						</a>
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if ((ageing.data()?.total ?? 0) > 30) {
+	<nav class="custom-pagination">
+		<app-pagination
+			[total]="ageing.data()?.total ?? 0"
+			[currentPage]="ageingPage()"
+			[pageSize]="30"
+			(setPage)="ageingPage.set($event)"
+		/>
+	</nav>
+	}
+	<div class="d-flex justify-content-end mt-3 flex-wrap gap-2">
+		<app-export-menu
+			*hasPermission="'stock_report.export'"
+			id="stock_ageing_export"
+			[source]="exportAgeingSource()"
+		/>
+		<button
+			type="button"
+			class="btn btn-theme"
+			[disabled]="!ticked().size"
+			(click)="toSale(tickedProducts())"
+		>
+			<i class="ri-price-tag-3-line me-1"></i>
+			{{ 'add_n_to_sale' | plural: ticked().size }}
+		</button>
+	</div>
+	} @case ('value') {
+	<div class="row g-2 align-items-end mb-3">
+		<div class="col-md-3">
+			<label
+				class="form-label-title"
+				for="value_as_on"
+			>
+				{{ 'as_on' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="value_as_on"
+				type="date"
+				[max]="today"
+				[ngModel]="asOn()"
+				(ngModelChange)="asOn.set($event)"
+			/>
+		</div>
+		<div class="col-md-3">
+			<label
+				class="form-label-title"
+				for="value_group"
+			>
+				{{ 'group_by' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="value_group"
+				[ngModel]="groupBy()"
+				(ngModelChange)="groupBy.set($event)"
+			>
+				<option value="category">{{ 'group_category' | transloco }}</option>
+				<option value="supplier">{{ 'group_supplier' | transloco }}</option>
+				<option value="product">{{ 'group_product' | transloco }}</option>
+			</select>
+		</div>
+		<div class="col-md-6 text-end">
+			<app-export-menu
+				*hasPermission="'stock_report.export'"
+				id="stock_valuation_export"
+				[source]="exportValuationSource()"
+			/>
+		</div>
+	</div>
+	@if (valuation.data(); as data) {
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'group_' + data.groupBy | transloco }}</th>
+					<th class="text-end">{{ 'pieces' | transloco }}</th>
+					<th class="text-end">{{ 'value_at_cost_fifo' | transloco }}</th>
+					<th class="text-end">{{ 'selling_value' | transloco }}</th>
+					<th class="text-end">{{ 'share' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of data.rows; track row.label) {
+				<tr>
+					<td>{{ row.label }}</td>
+					<td class="text-end text-nowrap">{{ row.units }}</td>
+					<td class="text-end text-nowrap">{{ row.valueAtCostINR | rupees }}</td>
+					<td class="text-end text-nowrap">{{ row.sellingValueINR | rupees }}</td>
+					<td class="text-end text-nowrap">{{ row.sharePct }}%</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<div class="tracking-total tracking-wrapper mt-3">
+		<ul>
+			<li>
+				{{ 'total' | transloco }}
+				<span>{{ 'qty_pieces' | plural: data.totalUnits }} · {{ data.totalValueINR | rupees }}</span>
+			</li>
+		</ul>
+	</div>
+	@if (data.uncostedUnits) {
+	<p class="small text-warning mt-2 mb-0">{{ 'uncosted_units_note' | transloco: { count: data.uncostedUnits } }}</p>
+	} }
+	<p class="small text-muted mt-3 mb-0">{{ 'value_on_date_note' | transloco }}</p>
+	} @case ('movements') {
+	<div class="row g-2 align-items-end mb-3">
+		<div class="col-md-3">
+			<label
+				class="form-label-title"
+				for="moves_from"
+			>
+				{{ 'from_date' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="moves_from"
+				type="date"
+				[ngModel]="movementFrom()"
+				(ngModelChange)="movementFrom.set($event); movementPage.set(1)"
+			/>
+		</div>
+		<div class="col-md-3">
+			<label
+				class="form-label-title"
+				for="moves_to"
+			>
+				{{ 'to_date' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="moves_to"
+				type="date"
+				[ngModel]="movementTo()"
+				(ngModelChange)="movementTo.set($event); movementPage.set(1)"
+			/>
+		</div>
+		<div class="col-md-6">
+			<label
+				class="form-label-title"
+				for="moves_search"
+			>
+				{{ 'search' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="moves_search"
+				type="search"
+				[placeholder]="'stock_search_placeholder' | transloco"
+				[ngModel]="movementSearch()"
+				(ngModelChange)="movementSearch.set($event); movementPage.set(1)"
+			/>
+		</div>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'when' | transloco }}</th>
+					<th>{{ 'item' | transloco }}</th>
+					<th>{{ 'what_happened' | transloco }}</th>
+					<th>{{ 'reference' | transloco }}</th>
+					<th>{{ 'who' | transloco }}</th>
+					<th class="text-end">{{ 'qty_change' | transloco }}</th>
+					<th class="text-end">{{ 'on_hand_after' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of movements.data()?.items ?? []; track row.id) {
+				<tr>
+					<td>{{ row.createdAt | shortDateTime }}</td>
+					<td>
+						<a [routerLink]="['/stock', 'items', row.variantId]">{{ row.sku }}</a>
+						<div class="small text-muted">{{ row.title }}</div>
+					</td>
+					<td>{{ 'movement_' + row.source | transloco }}</td>
+					<td>
+						{{ row.referenceNumber ?? (row.reasonCode ? ('reason_code_' + row.reasonCode | transloco) : '—')
+						}}
+					</td>
+					<td>{{ row.actorName ?? '—' }}</td>
+					<td class="text-end text-nowrap">{{ row.quantityDelta > 0 ? '+' : '' }}{{ row.quantityDelta }}</td>
+					<td class="text-end text-nowrap">{{ row.balanceAfter | stockQty: row.soldBy }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if ((movements.data()?.total ?? 0) > 30) {
+	<nav class="custom-pagination">
+		<app-pagination
+			[total]="movements.data()?.total ?? 0"
+			[currentPage]="movementPage()"
+			[pageSize]="30"
+			(setPage)="movementPage.set($event)"
+		/>
+	</nav>
+	} } @case ('register') {
+	<div class="row g-2 align-items-end mb-3">
+		<div class="col-md-3">
+			<label
+				class="form-label-title"
+				for="register_month"
+			>
+				{{ 'month' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="register_month"
+				type="month"
+				[ngModel]="month()"
+				(ngModelChange)="month.set($event)"
+			/>
+		</div>
+		<div class="col-md-9 text-end">
+			<app-export-menu
+				*hasPermission="'stock_report.export'"
+				id="stock_register_export"
+				[source]="exportRegisterSource()"
+			/>
+		</div>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'bill_date' | transloco }}</th>
+					<th>{{ 'supplier' | transloco }}</th>
+					<th>{{ 'gstin' | transloco }}</th>
+					<th>{{ 'their_bill' | transloco }}</th>
+					<th>{{ 'place_of_supply' | transloco }}</th>
+					<th class="text-end">{{ 'taxable_value' | transloco }}</th>
+					<th class="text-end">CGST</th>
+					<th class="text-end">SGST</th>
+					<th class="text-end">IGST</th>
+					<th class="text-end">{{ 'total' | transloco }}</th>
+					<th>{{ 'entry_no' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of register.data()?.rows ?? []; track row.entryNumber) {
+				<tr>
+					<td>{{ row.billDate | shortDate }}</td>
+					<td>{{ row.supplierName }}</td>
+					<td>{{ row.gstin ?? '—' }}</td>
+					<td>{{ row.billNumber }}</td>
+					<td>{{ row.placeOfSupply }}</td>
+					<td class="text-end text-nowrap">{{ row.taxableINR | rupees }}</td>
+					<td class="text-end text-nowrap">{{ row.cgstINR | rupees }}</td>
+					<td class="text-end text-nowrap">{{ row.sgstINR | rupees }}</td>
+					<td class="text-end text-nowrap">{{ row.igstINR | rupees }}</td>
+					<td class="text-end text-nowrap">{{ row.totalINR | rupees }}</td>
+					<td>{{ row.entryNumber }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<p class="small text-muted mt-3 mb-0">{{ 'register_note' | transloco }}</p>
+	} @case ('unpaid') {
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'entry_no' | transloco }}</th>
+					<th>{{ 'supplier' | transloco }}</th>
+					<th>{{ 'their_bill_no' | transloco }}</th>
+					<th>{{ 'bill_date' | transloco }}</th>
+					<th>{{ 'due_date' | transloco }}</th>
+					<th class="text-end">{{ 'left_to_pay' | transloco }}</th>
+					<th class="text-end">{{ 'days_since_bill' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of unpaid.data()?.rows ?? []; track row.id) {
+				<tr [class.table-warning]="row.nearLimit">
+					<td>
+						<a [routerLink]="[row.kind === 'expenseBill' ? '/expense-bills' : '/purchase-entries', row.id]">
+							{{ row.number }}
+						</a>
+					</td>
+					<td>{{ row.supplierName }}</td>
+					<td>{{ row.billNumber }}</td>
+					<td>{{ row.billDate | shortDate }}</td>
+					<td>{{ row.dueOn | shortDate }}</td>
+					<td class="text-end text-nowrap">{{ row.leftINR | rupees }}</td>
+					<td class="text-end text-nowrap">{{ row.days }}</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td colspan="7">
+						<div class="no-data-added">
+							<h4>{{ 'no_unpaid_bills' | transloco }}</h4>
+						</div>
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<div class="d-flex justify-content-between mt-3 flex-wrap gap-2">
+		<p class="small text-muted mb-0">{{ 'unpaid_note' | transloco: { days: unpaid.data()?.alertDays ?? 150 } }}</p>
+		<app-export-menu
+			*hasPermission="'stock_report.export'"
+			id="stock_unpaid_export"
+			[source]="exportUnpaidSource()"
+		/>
+	</div>
+	} }
+</app-page-wrapper>

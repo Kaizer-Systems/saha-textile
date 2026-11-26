@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 

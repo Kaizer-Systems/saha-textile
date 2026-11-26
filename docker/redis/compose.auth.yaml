@@ -1,0 +1,31 @@
+# =============================================================================
+#  Local Redis with a password required — laid over compose.yaml
+# =============================================================================
+#  Used by `pnpm redis:up` only when the gitignored docker/redis/.env says
+#  REDIS_AUTH=on. The same shape as the droplet: the password is read from a
+#  mounted file into a config file at start, so it never shows on a command line
+#  or in `docker inspect`. The file is docker/dev-secrets/redis-password, which
+#  `pnpm secrets:setup-local` writes from REDIS_PASSWORD in apps/api/.env.
+# =============================================================================
+
+services:
+  redis:
+    # BullMQ needs every job kept: never evict, and persist each second.
+    command:
+      - sh
+      - -c
+      - >-
+        umask 077 &&
+        printf 'requirepass %s\n' "$$(cat /run/secrets/redis-password)" > /tmp/redis.conf &&
+        exec redis-server /tmp/redis.conf --appendonly yes --appendfsync everysec
+        --maxmemory-policy noeviction
+    secrets:
+      - redis-password
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - REDISCLI_AUTH="$$(cat /run/secrets/redis-password)" redis-cli ping | grep -q PONG
+
+secrets:
+  redis-password:
+    file: ../dev-secrets/redis-password

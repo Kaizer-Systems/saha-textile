@@ -1,0 +1,516 @@
+#!/usr/bin/env bash
+# Deploys one release folder: bin/deploy.sh <release-folder>
+#   bin/deploy.sh --check-only <release-folder>   only the checks on the folder itself (digests,
+#   settings, secret files, required names, the payment host, addresses that must agree); nothing
+#   starts. The local pipeline runs it on a folder made from the dev project (plan step 6).
+#
+#   check inputs → the data services' own secrets (same as before, the first copy, or a rotation
+#   asked for) → back up (production) → pull by digest → data services → rotation → database and search
+#   keys → release steps (roles, indexes, migrations, search; all before the switch) → the
+#   release's certificates → apps → health and config checks
+#
+# Any failure after the apps change puts the previous release back, with the server's own
+# certificates if the release replaced them, and exits 1.
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
+CHECK_ONLY=0
+if [[ "${1:-}" == --check-only ]]; then
+	CHECK_ONLY=1
+	shift
+fi
+RELEASE="$(cd "${1:?Usage: deploy.sh [--check-only] <release-folder>}" && pwd)"
+CURRENT="$SAHA_TEXTILE_ROOT/current"
+PREVIOUS="$SAHA_TEXTILE_ROOT/previous"
+SECRETS="$RELEASE/secrets"
+PUBLIC="$RELEASE/public"
+KEEP_RELEASES=3
+HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-180}"
+
+CERT_FILES='origin.pem origin.key origin-ca.pem cloudflare-client-ca.pem'
+CERTS="$SAHA_TEXTILE_ROOT/certs"
+# The server's own copies a deploy replaced, kept until the new release is live (private, 0700).
+CERTS_BEFORE="$RELEASE/certs-before"
+
+# The server's data-service copies a rotating release replaced, kept until it is live (private, 0700).
+DATA_BEFORE="$RELEASE/data-secrets-before"
+# Set from rotation.txt (written by `secrets:release --rotate [--restart-database]`).
+ROTATE=0
+RESTART_DATABASE=0
+# The data-service files this release changes; empty unless it rotates.
+ROTATING=''
+
+# The edge's mode (release.env EDGE_TLS): cloudflare, the default, or public for an environment not
+# behind Cloudflare (Release Path brief M10).
+edge_tls() {
+	local value
+	value="$(release_value "$RELEASE" EDGE_TLS)"
+	printf '%s' "${value:-cloudflare}"
+}
+
+# How this script's own checks trust the edge: Cloudflare's Origin CA, or the system's own for a public
+# certificate. EDGE_CHECK_CA (release.env, the production proof only) names a mounted CA that stands in
+# for Let's Encrypt; a real server leaves it unset.
+ca_option() {
+	local stand_in
+	if [[ "$(edge_tls)" != public ]]; then
+		printf '%s' '--cacert /certs/origin-ca.pem'
+		return
+	fi
+	stand_in="$(release_value "$RELEASE" EDGE_CHECK_CA)"
+	if [[ -n "$stand_in" ]]; then printf '%s' "--cacert $stand_in"; fi
+}
+
+check_inputs() {
+	check_release
+	local name required="$CERT_FILES"
+	if [[ "$(edge_tls)" == public ]]; then
+		# No Cloudflare CA to trust or client certificate to ask for: only the server's own pair, kept by
+		# Let's Encrypt. A missing or ending one is fetched before anything else happens.
+		required='origin.pem origin.key'
+		local using
+		using="$(cert_source origin.pem)"
+		if [[ ! -s "$using" ]] || ! openssl x509 -noout -checkend 2592000 -in "$using" >/dev/null 2>&1; then
+			bash "$RELEASE/bin/renew-certs.sh" "$RELEASE"
+		fi
+	fi
+	for name in $required; do
+		[[ -s "$SECRETS/$name" || -s "$CERTS/$name" ]] || die "certs/$name is missing or empty."
+	done
+	# A certificate from the release with the server's key, or the other way round, must still pair.
+	if [[ -s "$SECRETS/origin.pem" || -s "$SECRETS/origin.key" ]]; then
+		check_cert_pair "$(cert_source origin.pem)" "$(cert_source origin.key)"
+	fi
+}
+
+# The copy a deploy will use: the release's when it carries one, else the server's.
+cert_source() {
+	if [[ -s "$SECRETS/$1" ]]; then printf '%s' "$SECRETS/$1"; else printf '%s' "$CERTS/$1"; fi
+}
+
+# Certificates the release carries from Infisical (/infrastructure, owner 21 Nov) are checked before
+# anything starts: each parses, none has expired, and the origin certificate belongs to its key. A
+# wrong file would otherwise stop the edge on its next reload, and the previous release with it.
+check_release_certs() {
+	local name carried=0
+	for name in $CERT_FILES; do [[ -s "$SECRETS/$name" ]] && carried=1; done
+	[[ "$carried" == 1 ]] || return 0
+	command -v openssl >/dev/null || die 'openssl is needed to check the certificates this release carries.'
+	for name in origin.pem origin-ca.pem cloudflare-client-ca.pem; do
+		[[ -s "$SECRETS/$name" ]] || continue
+		openssl x509 -noout -in "$SECRETS/$name" 2>/dev/null || die "secrets/$name is not a certificate."
+		openssl x509 -noout -checkend 0 -in "$SECRETS/$name" >/dev/null 2>&1 || die "secrets/$name has expired."
+	done
+	if [[ -s "$SECRETS/origin.key" ]]; then
+		openssl pkey -noout -in "$SECRETS/origin.key" 2>/dev/null || die 'secrets/origin.key is not a private key.'
+	fi
+	if [[ -s "$SECRETS/origin.pem" && -s "$SECRETS/origin.key" ]]; then
+		check_cert_pair "$SECRETS/origin.pem" "$SECRETS/origin.key"
+	fi
+}
+
+check_cert_pair() {
+	local cert_key key_key
+	cert_key="$(openssl x509 -noout -pubkey -in "$1" 2>/dev/null)" || die 'origin.pem cannot be read.'
+	key_key="$(openssl pkey -pubout -in "$2" 2>/dev/null)" || die 'origin.key cannot be read.'
+	[[ -n "$cert_key" && "$cert_key" == "$key_key" ]] || die 'origin.pem and origin.key do not belong together.'
+}
+
+# Writes one certificate file. An existing file is rewritten in place, never replaced: Compose mounts
+# each one into the edge as a single file, and a mount keeps the file it started with, so a new file
+# would stay unseen on Linux (the old certificate served on) and vanish on Docker Desktop.
+put_cert() {
+	local from="$1" to="$2" mode=0644
+	[[ "$to" == *.key ]] && mode=0600
+	if [[ -e "$to" ]]; then
+		chmod "$mode" "$to"
+		cat "$from" >"$to"
+	else
+		install -m "$mode" "$from" "$to"
+	fi
+}
+
+# The first deploy copies the release's data-service files into the server's folder. A later release
+# that carries different ones changes the running services only when it was started with rotation:
+# otherwise the apps would get a password the database, Redis or search never saw. Without rotation
+# it stops here, before anything changes (README, "Data-service secrets").
+sync_data_secrets() {
+	local name changed
+	install -d -m 0700 "$DATA_SECRETS"
+	changed="$(data_secrets_changed "$RELEASE")"
+	if [[ -n "$changed" ]]; then
+		[[ "$ROTATE" == 1 ]] || die "This release changes secrets the database, Redis or search already run with: $changed. Deploy with rotation to apply them; nothing was changed."
+		[[ " $changed " != *' mongo-root-username '* ]] || die "The database administrator's name cannot change on a running database; nothing was changed."
+		ROTATING="$changed"
+		say "Rotating: $changed"
+	fi
+	for name in $DATA_SECRET_FILES; do
+		[[ -e "$DATA_SECRETS/$name" ]] && continue
+		cp -p "$SECRETS/$name" "$DATA_SECRETS/$name"
+		say "data-secrets/$name from the release"
+	done
+}
+
+# rotation.txt: `rotate`, and `restart-database` only with it. Anything else is refused.
+read_rotation() {
+	local word
+	[[ -f "$RELEASE/rotation.txt" ]] || return 0
+	while read -r word; do
+		case "$word" in
+		'') ;;
+		rotate) ROTATE=1 ;;
+		restart-database) RESTART_DATABASE=1 ;;
+		*) die 'rotation.txt holds something other than rotate or restart-database.' ;;
+		esac
+	done <"$RELEASE/rotation.txt"
+	[[ "$RESTART_DATABASE" == 0 || "$ROTATE" == 1 ]] || die 'restart-database goes only with rotate.'
+}
+
+# Installs the release's certificates right before the switch. Each server copy it changes is kept
+# in the release folder first, so a release that does not come up healthy puts them back.
+install_certs() {
+	local name
+	install -d -m 0755 "$CERTS"
+	install -d -m 0700 "$CERTS_BEFORE"
+	for name in $CERT_FILES; do
+		[[ -s "$SECRETS/$name" ]] || continue
+		cmp -s "$SECRETS/$name" "$CERTS/$name" && continue
+		[[ -e "$CERTS/$name" ]] && cp -p "$CERTS/$name" "$CERTS_BEFORE/$name"
+		put_cert "$SECRETS/$name" "$CERTS/$name"
+		say "certs/$name from the release"
+	done
+}
+
+# Puts back the server's own certificates that install_certs changed.
+restore_certs() {
+	local name
+	for name in $CERT_FILES; do
+		[[ -e "$CERTS_BEFORE/$name" ]] || continue
+		put_cert "$CERTS_BEFORE/$name" "$CERTS/$name"
+		say "certs/$name put back"
+	done
+	rm -rf "$CERTS_BEFORE"
+}
+
+# Everything that can be checked in the release folder alone, before any server is touched.
+check_release() {
+	say 'Checking the release'
+	local name value
+	for name in API_IMAGE STOREFRONT_IMAGE ADMIN_IMAGE OPS_IMAGE; do
+		value="$(release_value "$RELEASE" "$name")"
+		[[ "$value" == *@sha256:* ]] || die "$name must be pinned by digest."
+	done
+	for name in DEPLOY_ENV EDGE_PORT STOREFRONT_HOST ADMIN_HOST API_HOST CDN_HOST SPACES_HOST CCAVENUE_HOST \
+		SITE_URL API_URL ADMIN_URL; do
+		[[ -n "$(release_value "$RELEASE" "$name")" ]] || die "$name is missing from release.env."
+	done
+	for name in api.env backup.env mongo-keyfile mongo-root-username mongo-root-password mongo-app-password \
+		redis-password meilisearch.toml; do
+		[[ -s "$SECRETS/$name" ]] || die "secrets/$name is missing or empty."
+	done
+	# Empty when the monitor login is not set up, but always there: the database mounts it.
+	[[ -e "$SECRETS/mongo-monitor-password" ]] || die 'secrets/mongo-monitor-password is missing.'
+
+	local tags deploy_env
+	deploy_env="$(release_value "$RELEASE" DEPLOY_ENV)"
+	read_allowed_blank
+	read_rotation
+	case "$(edge_tls)" in
+	cloudflare) ;;
+	public)
+		[[ -n "$(release_value "$RELEASE" ACME_EMAIL)" ]] || die 'EDGE_TLS=public needs ACME_EMAIL in release.env.'
+		[[ -s "$SECRETS/do-dns-token" || -s "$SECRETS/origin.pem" || -s "$CERTS/origin.pem" ]] ||
+			die 'EDGE_TLS=public needs secrets/do-dns-token (or a certificate) for its public certificate.'
+		;;
+	*) die 'EDGE_TLS must be cloudflare or public.' ;;
+	esac
+	while read -r name tags; do
+		[[ -z "$name" || "$name" == \#* ]] && continue
+		# `server-only` names may stay blank on this computer, never on a server (required-secrets.txt).
+		[[ " $tags " == *' server-only '* && "$deploy_env" == local ]] && continue
+		# This server deploy was told to leave it blank (allowed-blank.txt).
+		[[ "$ALLOWED_BLANK" == *" $name "* ]] && continue
+		grep -q "^$name=." "$SECRETS/api.env" || die "$name has no value in secrets/api.env."
+	done <"$RELEASE/required-secrets.txt"
+	check_payment_host
+	check_addresses
+	check_release_certs
+}
+
+# Required names this server deploy was told to leave blank: allowed-blank.txt, written by the
+# release from `--allow-blank` (owner, 2026-11-21, the Release Console's "deploy with these blank").
+# Only names tagged `may-deploy-blank` in required-secrets.txt qualify, and the API must have been
+# told the same list in RELEASE_ALLOWED_BLANK, or it would refuse to start. Names only in messages.
+ALLOWED_BLANK=' '
+read_allowed_blank() {
+	local file="$RELEASE/allowed-blank.txt" name list=''
+	[[ -f "$file" ]] || return 0
+	[[ "$(release_value "$RELEASE" DEPLOY_ENV)" != local ]] ||
+		die 'allowed-blank.txt is for a server deploy, not a release on this computer.'
+	while read -r name || [[ -n "$name" ]]; do
+		[[ -z "$name" ]] && continue
+		[[ "$name" =~ ^[A-Z][A-Z0-9_]{1,63}$ ]] || die 'allowed-blank.txt holds a line that is not a setting name.'
+		grep -Eq "^$name[[:space:]](.*[[:space:]])?may-deploy-blank([[:space:]]|\$)" "$RELEASE/required-secrets.txt" ||
+			die "$name may never be deployed blank (required-secrets.txt)."
+		list="${list:+$list,}$name"
+	done <"$file"
+	[[ -n "$list" ]] || die 'allowed-blank.txt is empty.'
+	[[ "$(api_value RELEASE_ALLOWED_BLANK)" == "$list" ]] ||
+		die 'RELEASE_ALLOWED_BLANK in secrets/api.env must list the names in allowed-blank.txt.'
+	ALLOWED_BLANK=" ${list//,/ } "
+	say "Deploying with these blank, as asked: ${list//,/, }"
+}
+
+api_value() { sed -n "s/^$1=//p" "$SECRETS/api.env" | tail -n 1; }
+# The host part of an address: no scheme, port or path.
+host_of() {
+	local value="${1#*://}"
+	value="${value%%/*}"
+	printf '%s' "${value%%:*}"
+}
+
+# Addresses kept twice, as a full address and as a bare host (owner decision D3, 2026-11-20). Both
+# forms stay; a release whose two forms disagree is refused before anything starts. Messages name
+# the settings, never their values.
+check_addresses() {
+	local pair url host
+	for pair in SITE_URL:STOREFRONT_HOST ADMIN_URL:ADMIN_HOST API_URL:API_HOST; do
+		url="$(release_value "$RELEASE" "${pair%%:*}")"
+		host="$(release_value "$RELEASE" "${pair##*:}")"
+		[[ "$(host_of "$url")" == "$host" ]] ||
+			die "${pair%%:*} and ${pair##*:} in release.env must name the same host."
+	done
+	[[ "$(host_of "$(api_value SPACES_CDN_URL)")" == "$(release_value "$RELEASE" CDN_HOST)" ]] ||
+		die 'CDN_HOST in release.env must be the host of SPACES_CDN_URL in secrets/api.env.'
+	local endpoint admin_app
+	endpoint="$(api_value SPACES_ENDPOINT)"
+	[[ -z "$endpoint" || "$(host_of "$endpoint")" == "$(release_value "$RELEASE" SPACES_HOST)" ]] ||
+		die 'SPACES_HOST in release.env must be the host of SPACES_ENDPOINT in secrets/api.env.'
+	admin_app="$(api_value ADMIN_APP_URL)"
+	local admin_url
+	admin_url="$(release_value "$RELEASE" ADMIN_URL)"
+	[[ -z "$admin_app" || "${admin_app%/}" == "${admin_url%/}" ]] ||
+		die 'ADMIN_APP_URL in secrets/api.env must be ADMIN_URL from release.env.'
+}
+
+# The storefront's CSP lets forms post only to CCAVENUE_HOST. If that is not the host the API sends
+# customers to, the browser refuses the payment form. Skipped until CCAvenue is configured.
+check_payment_host() {
+	grep -q '^CCAVENUE_MERCHANT_ID=.' "$SECRETS/api.env" || return 0
+	local host
+	host="$(sed -n 's/^CCAVENUE_BASE_URL=//p' "$SECRETS/api.env" | tail -n 1)"
+	host="${host:-https://test.ccavenue.com}" # the API's default when the name is unset
+	host="${host#https://}"
+	host="${host%%/*}"
+	[[ "$host" == "$(release_value "$RELEASE" CCAVENUE_HOST)" ]] ||
+		die 'CCAVENUE_HOST in release.env must be the host of CCAVENUE_BASE_URL in secrets/api.env.'
+	# The payment return gets its own page while the API is down, so Nginx must know its path.
+	local return_url expected
+	return_url="$(sed -n 's/^CCAVENUE_RETURN_URL=//p' "$SECRETS/api.env" | tail -n 1)"
+	expected="$(release_value "$RELEASE" PAYMENT_RETURN_PATH)"
+	expected="${expected:-/payments/ccavenue/return}"
+	[[ "/${return_url#https://*/}" == "$expected" ]] ||
+		die 'PAYMENT_RETURN_PATH in release.env must be the path of CCAVENUE_RETURN_URL in secrets/api.env.'
+}
+
+render_public_config() {
+	say 'Writing public config'
+	local storefront
+	storefront="$(ops "$RELEASE" jq -cn \
+		--arg apiUrl "$(release_value "$RELEASE" API_URL)" \
+		--arg siteUrl "$(release_value "$RELEASE" SITE_URL)" \
+		--arg googleClientId "$(release_value "$RELEASE" GOOGLE_CLIENT_ID)" \
+		--arg facebookAppId "$(release_value "$RELEASE" FACEBOOK_APP_ID)" \
+		'{$apiUrl, $siteUrl, defaultLocale: "en", $googleClientId, $facebookAppId}')"
+	printf '%s\n' "$storefront" >"$PUBLIC/storefront.config.json"
+	printf 'SAHA_TEXTILE_PUBLIC_CONFIG=%s\n' "$storefront" >"$PUBLIC/storefront.env"
+	ops "$RELEASE" jq -n --arg apiUrl "$(release_value "$RELEASE" API_URL)" \
+		--arg adminUrl "$(release_value "$RELEASE" ADMIN_URL)" \
+		--arg siteUrl "$(release_value "$RELEASE" SITE_URL)" '{$apiUrl, $adminUrl, $siteUrl}' \
+		>"$PUBLIC/admin.config.json"
+}
+
+# The API uses the admin key, never the master key. It comes from the search server, so it is one
+# secret fewer to keep: it follows from the master key and survives a restart.
+ensure_search_key() {
+	say 'Reading the search key'
+	local keys key
+	keys="$(compose_for "$RELEASE" exec -T meilisearch sh -c \
+		'curl -fsS -H "Authorization: Bearer $(sed -n "s/^master_key *= *\"\(.*\)\"/\1/p" /run/secrets/meilisearch.toml)" http://127.0.0.1:7700/keys')"
+	key="$(printf '%s' "$keys" | ops "$RELEASE" jq -r \
+		'.results[] | select(.name == "Default Admin API Key") | .key')"
+	[[ -n "$key" ]] || die 'The search server has no admin key.'
+	local without
+	without="$(grep -v '^MEILISEARCH_API_KEY=' "$SECRETS/api.env")"
+	printf '%s\nMEILISEARCH_API_KEY=%s\n' "$without" "$key" >"$SECRETS/api.env"
+}
+
+check_running() {
+	say 'Checking health and config'
+	local api site admin
+	api="$(release_value "$RELEASE" API_URL)"
+	site="$(release_value "$RELEASE" SITE_URL)"
+	admin="$(release_value "$RELEASE" ADMIN_URL)"
+	# Mongo and Redis must be up. Search may read "degraded": the shop sells without it, changes
+	# wait in the search queue, and a release that needed a new search version already built it.
+	ops "$RELEASE" sh -s <<SCRIPT
+set -eu
+fetch() { curl -fsS $(ca_option) --max-time 20 "\$1"; }
+fetch "$api/health/ready" | jq -e '[.dependencies[] | select(.name != "search") | .status] | all(. == "up")' >/dev/null
+fetch "$api/health/ready" | jq -e '[.dependencies[] | select(.name == "search") | .status] | all(. == "up" or . == "degraded")' >/dev/null
+fetch "$site/config.json" | jq -e '.apiUrl == "$api"' >/dev/null
+fetch "$admin/config.json" | jq -e '.apiUrl == "$api"' >/dev/null
+curl -fsSL $(ca_option) --max-time 20 "$site/" | grep -q '</html>'
+fetch "$admin/" | grep -q '</html>'
+SCRIPT
+}
+
+start_apps() {
+	say 'Starting the apps'
+	# Before the switch, from the new release's image, while the old release keeps serving:
+	# system roles (checked), database indexes, data migrations, and the search index (built only
+	# when its version is new). The first failed step stops the release before shoppers see it.
+	say 'Running the release steps'
+	compose_for "$RELEASE" run --rm --no-deps -T api node dist/release-steps.js
+	swap_apps "$RELEASE"
+	install_fallback_pages
+	check_running
+}
+
+# The "back in a moment" pages come from the ops image. The shop name and logo come from the Brand
+# Kit, so the pages never call the API while it is down: a logo changed in admin appears here from
+# the next deploy. Files are replaced inside the folder Nginx already has open.
+install_fallback_pages() {
+	say 'Installing the back-in-a-moment pages'
+	local folder="$SAHA_TEXTILE_ROOT/edge/fallback" site
+	site="$(release_value "$RELEASE" SITE_URL)"
+	mkdir -p "$folder"
+	compose_for "$RELEASE" --profile ops run --rm --no-deps -T --user 0 -v "$folder:/out" \
+		-e API_URL="$(release_value "$RELEASE" API_URL)" -e SITE_URL="$site" -e CA_OPTION="$(ca_option)" ops sh -s <<'SCRIPT' >/dev/null
+set -eu
+find /out -mindepth 1 -delete
+cp -R /fallback/. /out/
+# shellcheck disable=SC2086 # CA_OPTION is empty or two words
+brand="$(curl -fsS $CA_OPTION --max-time 20 "$API_URL/storefront/brand" || echo '{}')"
+name="$(printf '%s' "$brand" | jq -r '.shopName // empty' | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g')"
+logo_url="$(printf '%s' "$brand" | jq -r '.logo.url // empty')"
+logo=''
+if [ -n "$logo_url" ]; then
+	extension="${logo_url##*.}"
+	if curl -fsS --max-time 20 "$logo_url" -o "/out/storefront/logo.$extension"; then
+		logo="<img src=\"/__fallback/logo.$extension\" class=\"img-fluid mb-4\" width=\"260\" alt=\"$name\">"
+	fi
+fi
+# sed treats & and the | delimiter in a replacement as special, so both are escaped first.
+for_sed() { printf '%s' "$1" | sed 's/[&|\\]/\\&/g'; }
+name_sed="$(for_sed "$name")"
+site_sed="$(for_sed "$SITE_URL")"
+logo_sed="$(for_sed "$logo")"
+# Without a name the title keeps its own words, not a trailing separator.
+[ -n "$name" ] || sed -i 's| · __SHOP_NAME__||g' /out/storefront/*.html /out/admin/*.html
+for page in /out/storefront/*.html /out/admin/*.html; do
+	sed -i "s|__SHOP_NAME__|$name_sed|g; s|__SITE_URL__|$site_sed|g; s|<!--logo-->|$logo_sed|" "$page"
+done
+chmod -R a+rX /out
+SCRIPT
+}
+
+restore_previous() {
+	if [[ -L "$CURRENT" ]]; then
+		say 'Putting the previous release back'
+		swap_apps "$(readlink "$CURRENT")" || die 'The previous release did not come back: use SSH.'
+		say 'Previous release restored'
+	else
+		say 'No previous release to restore: stopping the apps'
+		compose_for "$RELEASE" stop api worker storefront admin edge >/dev/null 2>&1 || true
+	fi
+}
+
+# Keeps the newest releases and their images, so a rollback needs no registry login. The current
+# and previous releases are always kept, however many failed or refused releases came after them,
+# and so is every image either of them runs.
+prune_releases() {
+	local kept=0 release image value in_use=' ' live
+	for live in "$CURRENT" "$PREVIOUS"; do
+		[[ -L "$live" ]] || continue
+		for image in API_IMAGE STOREFRONT_IMAGE ADMIN_IMAGE OPS_IMAGE; do
+			in_use+="$(release_value "$(readlink "$live")" "$image") "
+		done
+	done
+	while read -r release; do
+		kept=$((kept + 1))
+		[[ "$kept" -le "$KEEP_RELEASES" ]] && continue
+		[[ "$release" -ef "$CURRENT" || "$release" -ef "$PREVIOUS" ]] && continue
+		for image in API_IMAGE STOREFRONT_IMAGE ADMIN_IMAGE OPS_IMAGE; do
+			value="$(release_value "$release" "$image")"
+			[[ -z "$value" || "$in_use" == *" $value "* ]] && continue
+			docker image rm "$value" >/dev/null 2>&1 || true
+		done
+		rm -rf "$release"
+	done < <(find "$(dirname "$RELEASE")" -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0 ls -dt)
+}
+
+if [[ "$CHECK_ONLY" == 1 ]]; then
+	check_release
+	say 'The release folder passed every check. Nothing was started.'
+	exit 0
+fi
+check_inputs
+sync_data_secrets
+mkdir -p "$PUBLIC"
+touch "$PUBLIC/storefront.env" "$PUBLIC/storefront.config.json" "$PUBLIC/admin.config.json"
+if [[ "$(release_value "$RELEASE" DEPLOY_ENV)" == production && -L "$CURRENT" ]]; then
+	"$(dirname "${BASH_SOURCE[0]}")/backup.sh" "$(readlink "$CURRENT")"
+fi
+if [[ "${PULL_IMAGES:-1}" == 1 ]]; then
+	say 'Pulling images'
+	compose_for "$RELEASE" --profile ops pull --quiet
+fi
+render_public_config
+say 'Starting data services'
+compose_for "$RELEASE" up --detach --wait --wait-timeout "$HEALTH_TIMEOUT" mongo redis meilisearch
+# Rotation (when asked), the app login and the search key, while the old release keeps serving. A failure
+# puts every rotated secret back before stopping.
+set +e
+(
+	set -e
+	if [[ -n "$ROTATING" ]]; then rotate_data_secrets "$RELEASE" "$DATA_BEFORE" "$RESTART_DATABASE" "$ROTATING"; fi
+	ensure_database "$RELEASE"
+	ensure_search_key
+)
+prepared=$?
+set -e
+if [[ "$prepared" -ne 0 ]]; then
+	restore_data_secrets "$RELEASE" "$DATA_BEFORE"
+	die 'The data services could not be prepared. Every rotated secret is back, and the old release keeps serving.'
+fi
+# Not `if ! start_apps`: Bash ignores `set -e` inside a condition, so a failed step would go on.
+set +e
+(
+	set -e
+	install_certs
+	start_apps
+)
+started=$?
+set -e
+if [[ "$started" -ne 0 ]]; then
+	restore_certs
+	restore_data_secrets "$RELEASE" "$DATA_BEFORE"
+	restore_previous
+	die 'The release was not healthy and is not live. Read the logs over SSH.'
+fi
+# Live: the copies kept for a failure are no longer needed (they hold the old private key and passwords).
+rm -rf "$CERTS_BEFORE" "$DATA_BEFORE"
+# The deploy and observer users' one command each follows the code, so a server made earlier learns
+# new requests (rollback; another read).
+for command in receive-release.sh observe.sh; do
+	[[ -s "$RELEASE/bin/$command" ]] || continue
+	cmp -s "$RELEASE/bin/$command" "$SAHA_TEXTILE_ROOT/bin/$command" && continue
+	install -d -m 0755 "$SAHA_TEXTILE_ROOT/bin"
+	install -m 0755 "$RELEASE/bin/$command" "$SAHA_TEXTILE_ROOT/bin/$command"
+	say "bin/$command brought up to date"
+done
+
+if [[ -L "$CURRENT" ]]; then ln -sfn "$(readlink "$CURRENT")" "$PREVIOUS"; fi
+ln -sfn "$RELEASE" "$CURRENT"
+prune_releases
+say 'Release is live'

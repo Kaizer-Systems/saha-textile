@@ -1,4 +1,4 @@
-const PUBLIC_READ = /^\/(catalog|storefront\/(banners|youtube))(\/|\?|$)/;
+const PUBLIC_READ = /^\/(catalog|storefront\/(banners|youtube|languages))(\/|\?|$)/;
 const LIMITED = /^\/catalog\/search(\/|\?|$)/;
 
 /** A cacheable storefront read that the shared per-address limit must not count. */

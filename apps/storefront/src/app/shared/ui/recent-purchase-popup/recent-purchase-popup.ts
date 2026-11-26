@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { TranslocoModule } from '@jsverse/transloco';
 
 import { ACTIVE_LOCALE } from '@core/i18n/active-locale';
+import { intlLocale } from '@core/i18n/locale';
 import { IRecentPurchase } from '@data-access/interfaces/product.interface';
 import { injectRecentPurchasesQuery } from '@data-access/queries/product.queries';
 
@@ -25,7 +26,7 @@ const MINUTE_MS = 60_000;
 export class RecentPurchasePopup {
 	private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
 	private readonly purchases = injectRecentPurchasesQuery(() => this.browser);
-	private readonly relativeTime = new Intl.RelativeTimeFormat(inject(ACTIVE_LOCALE));
+	private readonly relativeTime = new Intl.RelativeTimeFormat(intlLocale(inject(ACTIVE_LOCALE)));
 	private next = 0;
 
 	readonly purchase = signal<IRecentPurchase | null>(null);

@@ -1,9 +1,11 @@
 import { PLATFORM_ID, SimpleChange, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 
+import { TranslocoService } from '@jsverse/transloco';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { ShopEvents } from '@core/events/shop-events';
 import { AccountStore } from '@core/state/account.store';
 import { AuthStore } from '@core/state/auth.store';
 
@@ -14,6 +16,9 @@ import { Notice } from './widgets/notice/notice';
 import { Search } from './widgets/search/search';
 
 const swiper = vi.hoisted(() => ({ created: [] as unknown[][] }));
+vi.mock('@data-access/queries/brand.queries', () => ({
+	injectBrandQuery: () => ({ data: () => undefined }),
+}));
 vi.mock('swiper', () => ({
 	default: class {
 		static use() {
@@ -21,6 +26,12 @@ vi.mock('swiper', () => ({
 		}
 		constructor(...args: unknown[]) {
 			swiper.created.push(args);
+		}
+		update() {
+			return undefined;
+		}
+		destroy() {
+			return undefined;
 		}
 	},
 }));
@@ -71,10 +82,25 @@ describe('NavbarMenuButton', () => {
 	});
 });
 
+const ask = vi.fn();
+
 describe('Notice', () => {
 	const render = (platform: string, template = '<div #swiperContainer></div>') => {
 		TestBed.resetTestingModule();
-		TestBed.configureTestingModule({ providers: [{ provide: PLATFORM_ID, useValue: platform }] });
+		TestBed.configureTestingModule({
+			providers: [
+				{ provide: PLATFORM_ID, useValue: platform },
+				{
+					provide: ShopEvents,
+					useValue: {
+						left: (iso: string | null) => (iso ? { days: 3, hours: 4, minutes: 12, seconds: 5 } : null),
+						hasPopup: (event: { popupUntil: string | null }) => !!event.popupUntil,
+						ask,
+					},
+				},
+				{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+			],
+		});
 		TestBed.overrideComponent(Notice, { set: { imports: [], template } });
 		const fixture = TestBed.createComponent(Notice);
 		fixture.detectChanges();
@@ -96,6 +122,60 @@ describe('Notice', () => {
 		expect(swiper.created).toEqual([]);
 	});
 
+	it('writes each event line with its countdown in days, and none once launched', () => {
+		const { componentInstance } = render('server');
+		const sale = { id: 'e', type: 'sale', phase: 'running', countdownTo: 'x' } as never;
+		expect(componentInstance.label(sale)).toBe('event_sale_ends_in');
+		expect(componentInstance.countdown(sale)).toBe(
+			'3event_unit_day 04event_unit_hour 12event_unit_minute 05event_unit_second',
+		);
+		expect(
+			componentInstance.countdown({ ...(sale as object), phase: 'launched', countdownTo: null } as never),
+		).toBe('');
+	});
+
+	it('opens the popup on a phone strip tap when the event has one, and links otherwise', () => {
+		const fixture = render('server');
+		const notice = fixture.componentInstance;
+		const withPopup = { id: 'e', popupUntil: '2099-01-01T00:00:00.000Z' } as never;
+		const noPopup = { id: 'f', popupUntil: null } as never;
+		expect(notice.opensPopup(withPopup)).toBe(false);
+		fixture.componentRef.setInput('tapOpensPopup', true);
+		expect(notice.opensPopup(withPopup)).toBe(true);
+		expect(notice.opensPopup(noPopup)).toBe(false);
+		notice.openPopup(withPopup);
+		expect(ask).toHaveBeenCalledWith(withPopup);
+	});
+
+	it('tells the slider when an event line comes or goes', () => {
+		vi.useFakeTimers();
+		const fixture = render('browser');
+		vi.advanceTimersByTime(2000);
+		const update = vi.spyOn(
+			(fixture.componentInstance as unknown as { swiper: { update: () => void } }).swiper,
+			'update',
+		);
+		fixture.componentRef.setInput('events', [{ id: 'e' }]);
+		fixture.detectChanges();
+		vi.advanceTimersByTime(1);
+		expect(update).toHaveBeenCalled();
+		fixture.componentRef.setInput('events', []);
+		fixture.detectChanges();
+		vi.advanceTimersByTime(1);
+		expect(update).toHaveBeenCalledOnce();
+	});
+
+	it('plays several lines in turn and leaves one line still', () => {
+		vi.useFakeTimers();
+		const fixture = render('browser');
+		fixture.componentRef.setInput('events', [{ id: 'a' }, { id: 'b' }]);
+		vi.advanceTimersByTime(2000);
+		expect((swiper.created[0]?.[1] as { autoplay: unknown }).autoplay).toEqual({
+			delay: 2000,
+			disableOnInteraction: false,
+		});
+	});
+
 	it('skips the slider when the element is gone', () => {
 		vi.useFakeTimers();
 		const { componentInstance } = render('browser');
@@ -108,37 +188,32 @@ describe('Notice', () => {
 describe('Header search', () => {
 	const render = () => {
 		const router = { navigate: vi.fn() };
-		const route = {};
 		TestBed.resetTestingModule();
-		TestBed.configureTestingModule({
-			providers: [
-				{ provide: ActivatedRoute, useValue: route },
-				{ provide: Router, useValue: router },
-			],
-		});
+		TestBed.configureTestingModule({ providers: [{ provide: Router, useValue: router }] });
 		TestBed.overrideComponent(Search, { set: { imports: [], template: '' } });
-		return { widget: TestBed.createComponent(Search).componentInstance, router, route };
+		return { widget: TestBed.createComponent(Search).componentInstance, router };
 	};
 
-	it('goes to the results with the term, or without one', () => {
-		const { widget, router, route } = render();
-		widget.term.setValue('silk');
+	it('goes to the results with the typed or chosen words, or without any, and closes the bar', () => {
+		const { widget, router } = render();
+		widget.show = true;
+		widget.term.setValue(' silk ');
 		widget.redirectToSearch();
-		expect(router.navigate).toHaveBeenLastCalledWith(['/search'], {
-			relativeTo: route,
-			queryParams: { category: null, search: 'silk' },
-			queryParamsHandling: 'merge',
-			skipLocationChange: false,
-		});
+		expect(router.navigate).toHaveBeenLastCalledWith(['/search'], { queryParams: { search: 'silk' } });
+		expect(widget.show).toBe(false);
+		widget.redirectToSearch('red banarasi');
+		expect(router.navigate).toHaveBeenLastCalledWith(['/search'], { queryParams: { search: 'red banarasi' } });
 		widget.term.setValue('');
 		widget.redirectToSearch();
-		expect(router.navigate.mock.lastCall?.[1].queryParams).toEqual({ category: null, search: null });
+		expect(router.navigate.mock.lastCall?.[1].queryParams).toEqual({ search: null });
 	});
 
-	it('toggles the box', () => {
+	it('toggles the bar', () => {
 		const { widget } = render();
 		widget.toggleSearchBox();
 		expect(widget.show).toBe(true);
+		widget.toggleSearchBox();
+		expect(widget.show).toBe(false);
 	});
 });
 

@@ -1,0 +1,27 @@
+{
+	"compilerOptions": {
+		"module": "ES2022",
+		"moduleResolution": "bundler",
+		"target": "ES2023",
+		"lib": ["ES2023"],
+		"outDir": "./dist/esm/payroll-rules",
+		"rootDir": "./src",
+		"strict": true,
+		"skipLibCheck": true,
+		"declaration": false,
+		"sourceMap": false
+	},
+	"files": [
+		"src/payroll/payroll-rules-entry.ts",
+		"src/payroll/pt-starting-sets.ts",
+		"src/payroll/state-rules.ts",
+		"src/payroll/income-tax.ts",
+		"src/payroll/payroll-rules.ts",
+		"src/payroll/bonus.ts",
+		"src/payroll/leave.ts",
+		"src/payroll/attendance-days.ts",
+		"src/payroll/salary-revision.ts",
+		"src/payroll/payslip-edits.ts",
+		"src/documents/words.ts"
+	]
+}

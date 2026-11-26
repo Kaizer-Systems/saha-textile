@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 
 import type { Model } from 'mongoose';
 
+import { seedBundlePriceMethods } from '../migrations/bundles-v2';
 import {
 	AttributeDefinitionModel,
 	CategoryModel,
@@ -17,7 +18,7 @@ import {
 import { AddonTemplateModel } from '../models/merchandising.model';
 import { MongoNotificationTemplateRepository } from '../repositories/index';
 import { CATALOG_NOTIFICATION_TEMPLATES } from './notification-templates';
-import { LEGACY_ADDRESSES, approvedLegacyRows, legacyTargetIsLive } from './legacy-addresses';
+import { LEGACY_ADDRESSES, type LegacyAddressRow, approvedLegacyRows, legacyTargetIsLive } from './legacy-addresses';
 import { mapDemoCatalogue, type DemoCatalogue } from './map-demo-catalogue';
 
 export interface DemoCatalogueSeedResult {
@@ -39,9 +40,9 @@ const dataFile = (name: string): { data: unknown[] } =>
 		data: unknown[];
 	};
 
-/** Refuses any database but a local one, or the throwaway browser-test database. */
+/** Refuses any database but a local one, or a throwaway test-run database (`…_e2e`: browser tests, the accounts run). */
 export function assertLocalDatabase(name: string | undefined): string {
-	if (!name || !(name.toLowerCase().includes('local') || name === 'saha_textile_e2e')) {
+	if (!name || !(name.toLowerCase().includes('local') || /^saha_textile_[a-z0-9_]*e2e$/.test(name))) {
 		throw new Error(`Refusing to seed catalogue into "${name ?? ''}". The database name must contain "local".`);
 	}
 	return name;
@@ -153,7 +154,16 @@ function documents(mapped: DemoCatalogue) {
 		attributes: mapped.attributeDefinitions.map(({ id, ...rest }) => ({ _id: id, ...rest })),
 		products: mapped.products.map(({ id, ...rest }) => ({ _id: id, ...rest })),
 		variants: mapped.variants.map(({ id, ...rest }) => ({ _id: id, ...rest })),
-		bundles: mapped.bundles.map(({ id, ...rest }) => ({ _id: id, ...rest })),
+		bundles: mapped.bundles.map(({ id, ...rest }) => ({
+			_id: id,
+			...rest,
+			memberIds: [
+				...new Set(
+					[...rest.levels.flatMap((level) => level.items), ...rest.extras].map((item) => item.productId),
+				),
+			],
+			methodId: rest.pricing.methodId,
+		})),
 		addonTemplates: mapped.addonTemplates.map((template) => ({
 			_id: template.id,
 			code: template.code,
@@ -171,6 +181,15 @@ function documents(mapped: DemoCatalogue) {
  * when the documents already match. Photo assets are inserted only when missing,
  * so a real pipeline upload is left alone.
  */
+/** A legacy address's redirect row: a page gone for good (410) has no target to send anyone to. */
+export const legacyRedirectDoc = (row: LegacyAddressRow) => ({
+	_id: `redir_${row.sourcePath.replace(/[^a-z0-9]+/g, '_')}`,
+	sourcePath: row.sourcePath,
+	statusCode: row.statusCode,
+	...(row.targetPath ? { targetPath: row.targetPath } : {}),
+	reason: 'legacy_woo',
+});
+
 export async function seedDemoCatalogue(dbName: string | undefined): Promise<DemoCatalogueSeedResult> {
 	return writeCatalogue(
 		dbName,
@@ -206,6 +225,7 @@ export async function writeCatalogue(
 		await upsertChanged(AttributeDefinitionModel, docs.attributes as never, ['code']),
 		await upsertChanged(ProductModel, docs.products as never, ['slug', 'sku']),
 		await upsertChanged(ProductVariantModel, docs.variants as never, ['sku']),
+		(await seedBundlePriceMethods(), 0),
 		await upsertChanged(ProductBundleModel, docs.bundles as never),
 		await upsertChanged(AddonTemplateModel, docs.addonTemplates as never, ['code']),
 		await upsertChanged(MediaAssetModel, missingPhotos as never),
@@ -228,13 +248,7 @@ export async function writeCatalogue(
 			throw new Error(`Legacy target is not a live page: ${row.sourcePath} -> ${row.targetPath}`);
 		}
 	}
-	const redirectDocs = legacy.map((row) => ({
-		_id: `redir_${row.sourcePath.replace(/[^a-z0-9]+/g, '_')}`,
-		sourcePath: row.sourcePath,
-		statusCode: row.statusCode,
-		...(row.targetPath ? { targetPath: row.targetPath } : {}),
-		reason: 'legacy_woo',
-	}));
+	const redirectDocs = legacy.map(legacyRedirectDoc);
 	const seoDocs = seoRouteDocs(mapped);
 	written += await upsertChanged(SeoRedirectModel, redirectDocs as never, ['sourcePath']);
 	written += await upsertChanged(SeoRouteModel, seoDocs as never);
@@ -255,15 +269,22 @@ export async function writeCatalogue(
 }
 
 function seoRouteDocs(mapped: DemoCatalogue): Array<{ _id: string }> {
+	const LOCALES = ['en', 'bn'] as const;
+	type Locale = (typeof LOCALES)[number];
 	const rows: Array<Record<string, unknown>> = [];
-	const add = (path: string, title: string, description: string, entityType: string, entityId: string) => {
-		for (const locale of ['en', 'fr'] as const) {
+	/** Each language row carries that language's title and description, never another's. */
+	const add = (
+		path: string,
+		text: (locale: Locale) => { title: string; description: string },
+		entityType: string,
+		entityId: string,
+	) => {
+		for (const locale of LOCALES) {
 			rows.push({
 				_id: `seo_${locale}${path.replace(/\//g, '_')}`,
 				path,
 				locale,
-				title,
-				description,
+				...text(locale),
 				canonicalPath: `/${locale}${path === '/' ? '' : path}`,
 				robots: 'index,follow',
 				indexable: true,
@@ -272,15 +293,37 @@ function seoRouteDocs(mapped: DemoCatalogue): Array<{ _id: string }> {
 			});
 		}
 	};
-	add('/', 'Saha Textile', '', 'page', 'home');
+	const localized = (value: Record<string, string> | undefined, locale: Locale): string =>
+		value?.[locale] || value?.['en'] || '';
+	add('/', () => ({ title: 'Saha Textile', description: '' }), 'page', 'home');
 	for (const product of mapped.products) {
 		if (product.status !== 'live') continue;
-		add(`/product/${product.slug}`, product.title.en, product.description?.en ?? '', 'product', product.id);
+		add(
+			`/product/${product.slug}`,
+			(locale) => ({
+				title: localized(product.title, locale),
+				description: localized(product.description, locale),
+			}),
+			'product',
+			product.id,
+		);
 	}
+	const categoryNames = new Map(mapped.categories.map((row) => [row.id, row.name as Record<string, string>]));
 	for (const placement of mapped.placements) {
 		if (placement.status !== 'live') continue;
 		const path = `/collections/${placement.pathSlugs.join('/')}`;
-		add(path, placement.pathLabel, '', 'category', placement.id);
+		add(
+			path,
+			(locale) => ({
+				title:
+					locale === 'en'
+						? placement.pathLabel
+						: placement.pathCategoryIds.map((id) => localized(categoryNames.get(id), locale)).join(' / '),
+				description: '',
+			}),
+			'category',
+			placement.id,
+		);
 	}
 	return rows as Array<{ _id: string }>;
 }

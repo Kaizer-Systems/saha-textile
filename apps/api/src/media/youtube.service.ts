@@ -6,19 +6,46 @@ import {
 	type YouTubeSettings,
 	type YouTubeSettingsUpdate,
 	type YouTubeValidateResponse,
+	type YouTubeFeedStatus,
+	type YouTubeVideoSummary,
+	type YouTubeVideosResponse,
 	normalizeYouTubeVideoId,
 } from '@saha-textile/contracts';
-import { DEFAULT_YOUTUBE_SETTINGS, type SiteSettingsRepository, type YouTubePort } from '@saha-textile/core-domain';
+import {
+	DEFAULT_YOUTUBE_SETTINGS,
+	type MediaJobQueuePort,
+	type SiteSettingsRepository,
+	type StoragePort,
+	type YouTubePort,
+} from '@saha-textile/core-domain';
 
-import { SITE_SETTINGS_REPOSITORY, YOUTUBE_PORT } from '../infra/tokens';
+import { MEDIA_JOB_QUEUE, SITE_SETTINGS_REPOSITORY, STORAGE_PORT, YOUTUBE_PORT } from '../infra/tokens';
 
-/** The PDP video Validate button and the home rail (owner log § Media → Video and YouTube). */
+/** The product video check, the home rail and `/videos` (owner log § Media → Video and YouTube). */
 @Injectable()
 export class YouTubeService {
 	constructor(
 		@Inject(YOUTUBE_PORT) private readonly youtube: YouTubePort,
 		@Inject(SITE_SETTINGS_REPOSITORY) private readonly settings: SiteSettingsRepository,
+		@Inject(MEDIA_JOB_QUEUE) private readonly queue: MediaJobQueuePort,
+		@Inject(STORAGE_PORT) private readonly storage: Pick<StoragePort, 'getUrl'>,
 	) {}
+
+	/**
+	 * Our CDN copy of a poster when the refresh has made one, else YouTube's own picture. The
+	 * address comes from the stored key and this server's own bucket, never from the address saved
+	 * with it, so a copied bucket and database work as they are (owner, 2026-11-23: staging and
+	 * production get copies of the dev bucket). Without storage settings, YouTube's picture shows.
+	 */
+	private readonly withPoster = (video: YouTubeVideoSummary): YouTubeVideoSummary => {
+		if (!video.posterKey) return video;
+		try {
+			const posterUrl = this.storage.getUrl(video.posterKey);
+			return { ...video, posterUrl, thumbnailUrl: posterUrl };
+		} catch {
+			return { ...video, posterUrl: null };
+		}
+	};
 
 	/** Normalises whatever was pasted and confirms the video exists and can be embedded. */
 	async validate(input: string): Promise<YouTubeValidateResponse> {
@@ -33,7 +60,14 @@ export class YouTubeService {
 		const video = await this.youtube.findVideo(videoId);
 		if (!video)
 			throw mediaRefusal(HttpStatus.NOT_FOUND, 'video_not_found', 'No public, embeddable video has that id.');
-		return { videoId: video.videoId, title: video.title, thumbnailUrl: video.thumbnailUrl };
+		return {
+			videoId: video.videoId,
+			title: video.title,
+			thumbnailUrl: video.thumbnailUrl,
+			kind: video.kind,
+			durationSeconds: video.durationSeconds,
+			publishedAt: video.publishedAt,
+		};
 	}
 
 	async getSettings(): Promise<YouTubeSettings> {
@@ -58,6 +92,33 @@ export class YouTubeService {
 		const settings = await this.getSettings();
 		if (!settings.railPlacements.includes(placement)) return { videos: [] };
 		const feed = await this.settings.get('youtube.feed');
-		return { videos: (feed?.videos ?? []).slice(0, settings.displayCount) };
+		return { videos: (feed?.videos ?? []).slice(0, settings.displayCount).map(this.withPoster) };
+	}
+
+	/** What admin's YouTube tab shows: when the cache was last filled, and the last error. */
+	async status(): Promise<YouTubeFeedStatus> {
+		const feed = await this.settings.get('youtube.feed');
+		return {
+			fetchedAt: feed?.fetchedAt ?? null,
+			lastAttemptAt: feed?.lastAttemptAt ?? null,
+			lastError: feed?.lastError ?? null,
+			videos: feed?.videos.length ?? 0,
+			shorts: feed?.shorts.length ?? 0,
+		};
+	}
+
+	/** Admin's "Refresh now": the worker runs the daily refresh at once (2 quota units). */
+	async refreshNow(): Promise<void> {
+		await this.queue.enqueue({ type: 'youtube-refresh' });
+	}
+
+	/** Everything `/videos` shows. Empty lists until the first refresh, which the page says plainly. */
+	async videos(): Promise<YouTubeVideosResponse> {
+		const [settings, feed] = await Promise.all([this.getSettings(), this.settings.get('youtube.feed')]);
+		return {
+			videos: (feed?.videos ?? []).map(this.withPoster),
+			shorts: (feed?.shorts ?? []).map(this.withPoster),
+			channelUrl: `https://www.youtube.com/${settings.channelHandle}`,
+		};
 	}
 }

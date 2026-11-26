@@ -2,8 +2,9 @@ import { HttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 
 import { firstValueFrom, of, throwError } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { loadRuntimeConfig, runtimeConfig } from '@core/config/runtime-config';
 import { BACKGROUND_REQUEST } from '@core/interceptors/background-request';
 
 import { AccountAddressService } from './account-address.service';
@@ -12,8 +13,8 @@ import { AttributeService } from './attribute.service';
 import { BlogService } from './blog.service';
 import { CartService } from './cart.service';
 import { CategoryService } from './category.service';
-import { CompareService } from './compare.service';
 import { ContactChangeService } from './contact-change.service';
+import { ContactMessageService } from './contact-message.service';
 import { CountryService } from './country.service';
 import { CouponService } from './coupon.service';
 import { CurrencyService } from './currency.service';
@@ -30,6 +31,7 @@ import { ReviewService } from './review.service';
 import { SettingService } from './setting.service';
 import { SiteConfigService } from './site-config.service';
 import { StateService } from './state.service';
+import { StoreLocationService } from './store-location.service';
 import { StoreService } from './store.service';
 import { TagService } from './tag.service';
 import { WalletService } from './wallet.service';
@@ -51,30 +53,134 @@ beforeEach(() => {
 
 const reads: [string, () => unknown, string, unknown][] = [
 	['attributes', () => TestBed.inject(AttributeService).getAttributes({ a: 1 }), '/attribute.json', { a: 1 }],
-	['blogs', () => TestBed.inject(BlogService).getBlogs({ a: 1 }), '/blog.json', { a: 1 }],
-	['blog categories', () => TestBed.inject(CategoryService).getBlogCategories({ a: 1 }), '/category.json', { a: 1 }],
 	['coupons', () => TestBed.inject(CouponService).getCoupons({ a: 1 }), '/coupon.json', { a: 1 }],
-	['currencies', () => TestBed.inject(CurrencyService).getCurrencies({ a: 1 }), '/currency.json', { a: 1 }],
 	['order status', () => TestBed.inject(OrderStatusService).getOrderStatus({ a: 1 }), '/order-status.json', { a: 1 }],
 	['orders', () => TestBed.inject(OrderService).getOrders({ a: 1 }), '/order.json', { a: 1 }],
 	['points', () => TestBed.inject(PointService).getUserTransaction({ a: 1 }), '/point.json', { a: 1 }],
 	['refunds', () => TestBed.inject(RefundService).getRefunds({ a: 1 }), '/refund.json', { a: 1 }],
-	['reviews', () => TestBed.inject(ReviewService).getReview({ a: 1 }), '/review.json', { a: 1 }],
 	['stores', () => TestBed.inject(StoreService).getStores({ a: 1 }), '/store.json', { a: 1 }],
 	['tags', () => TestBed.inject(TagService).getTags({ a: 1 }), '/tag.json', { a: 1 }],
 	['wallet', () => TestBed.inject(WalletService).getUserTransaction({ a: 1 }), '/wallet.json', { a: 1 }],
 ];
 
 const plainReads: [string, () => unknown, string][] = [
-	['compare', () => TestBed.inject(CompareService).getCompareItems(), '/compare.json'],
 	['countries', () => TestBed.inject(CountryService).getCountries(), '/country.json'],
 	['payment account', () => TestBed.inject(PaymentDetailsService).getPaymentAccount(), '/payment-account.json'],
 	['settings', () => TestBed.inject(SettingService).getSettingOption(), '/setting.json'],
 	['site config', () => TestBed.inject(SiteConfigService).getSiteConfig(), '/site-config.json'],
 	['states', () => TestBed.inject(StateService).getStates(), '/state.json'],
-	['wishlist', () => TestBed.inject(WishlistService).getWishlistItems(), '/wishlist.json'],
-	['a static page', () => TestBed.inject(PageService).getPage('about'), '/pages/about.json'],
+	['a legal page', () => TestBed.inject(PageService).getPage('privacy-policy'), '/catalog/pages/privacy-policy'],
 ];
+
+describe('currency service', () => {
+	it('reads the shop’s currencies from the API, each at the shop rate', async () => {
+		http.get.mockReturnValue(
+			of([
+				{ code: 'INR', symbol: '₹', enabled: true, rateFromINR: 1, shopRateFromINR: 1 },
+				{ code: 'USD', symbol: 'US$', enabled: true, rateFromINR: 0.012, shopRateFromINR: 0.01272 },
+			]),
+		);
+		const model = await firstValueFrom(TestBed.inject(CurrencyService).getCurrencies({ status: 1 }));
+		expect(String(http.get.mock.lastCall?.[0])).toMatch(/\/currency$/);
+		expect(model.data.map((row) => [row.id, row.code, row.symbol, row.exchange_rate, row.status])).toEqual([
+			[1, 'INR', '₹', 1, true],
+			[2, 'USD', 'US$', 0.01272, true],
+		]);
+		expect(model.data[1]).toMatchObject({ symbol_position: 'before_price', no_of_decimal: 2 });
+	});
+});
+
+describe('contact message service', () => {
+	it('sends a Contact Us message to the API', async () => {
+		http.post.mockReturnValue(of({ accepted: true }));
+		await firstValueFrom(TestBed.inject(ContactMessageService).send({ name: 'R' } as never));
+		expect(String(http.post.mock.lastCall?.[0])).toContain('/storefront/contact-messages');
+	});
+});
+
+describe('store location service', () => {
+	it('reads the active stores from the catalogue', async () => {
+		http.get.mockReturnValue(of([]));
+		await firstValueFrom(TestBed.inject(StoreLocationService).getStores());
+		expect(String(http.get.mock.lastCall?.[0])).toContain('/catalog/store-locations');
+	});
+});
+
+describe('blog service', () => {
+	const card = {
+		id: 'blg_1',
+		slug: 'real-banarasi',
+		title: 'Real Banarasi',
+		excerpt: 'Seven checks',
+		author: 'Saha Textile',
+		publishedAt: '2026-11-08T00:00:00.000Z',
+		featured: false,
+		sticky: true,
+		readingMinutes: 6,
+		cover: {
+			assetId: 'm',
+			width: 1774,
+			height: 887,
+			alt: 'A red Banarasi',
+			roles: {
+				blog: [
+					{ url: 'https://cdn/480.webp', width: 480, height: 240 },
+					{ url: 'https://cdn/1600.webp', width: 1600, height: 800 },
+				],
+			},
+		},
+		categories: [{ slug: 'saree-guides', name: 'Saree guides' }],
+		tags: [],
+	};
+
+	it('reads a page of posts from the API as cards', async () => {
+		http.get.mockReturnValue(of({ items: [card], total: 1, page: 1, pageSize: 10 }));
+		const page = await firstValueFrom(
+			TestBed.inject(BlogService).getBlogs({ page: 2, paginate: 99, tag: 'silk', category: '' }),
+		);
+		expect(String(http.get.mock.lastCall?.[0])).toContain('/catalog/blog/posts');
+		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { page: '2', pageSize: '50', tag: 'silk' } });
+		expect(page.total).toBe(1);
+		expect(page.data[0]).toMatchObject({
+			id: 'blg_1',
+			description: 'Seven checks',
+			published_at: '2026-11-08T00:00:00.000Z',
+			is_sticky: 1,
+			blog_thumbnail: {
+				original_url: 'https://cdn/1600.webp',
+				srcset: 'https://cdn/480.webp 480w, https://cdn/1600.webp 1600w',
+				alt: 'A red Banarasi',
+			},
+			content: '',
+		});
+		await firstValueFrom(TestBed.inject(BlogService).getBlogs());
+		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { page: '1', pageSize: '10' } });
+	});
+
+	it('reads one post with its article and search text, and the sidebar terms', async () => {
+		const post = {
+			...card,
+			sticky: false,
+			cover: null,
+			content: '<p>Checks</p>',
+			seoTitle: 'Real Banarasi | Saha Textile',
+			seoDescription: 'Seven checks',
+			shareImage: null,
+			updatedAt: '2026-11-09T00:00:00.000Z',
+		};
+		http.get.mockReturnValue(of(post));
+		const blog = await firstValueFrom(TestBed.inject(BlogService).getBlog('real banarasi'));
+		expect(String(http.get.mock.lastCall?.[0])).toContain('/catalog/blog/posts/real%20banarasi');
+		expect(blog).toMatchObject({
+			content: '<p>Checks</p>',
+			is_sticky: 0,
+			blog_thumbnail: null,
+			updated_at: post.updatedAt,
+		});
+		TestBed.inject(BlogService).getTerms('tags');
+		expect(String(http.get.mock.lastCall?.[0])).toContain('/catalog/blog/tags');
+	});
+});
 
 describe('read services', () => {
 	it.each(reads)('%s passes its parameters', (_name, call, path, params) => {
@@ -121,10 +227,13 @@ describe('CategoryService', () => {
 });
 
 describe('CartService', () => {
-	it('reads and changes the shopper cart, sending cookies and no toast', () => {
+	// The first cart read waits for the runtime config, as it does when the app starts.
+	beforeAll(() => loadRuntimeConfig());
+
+	it('reads and changes the shopper cart, sending cookies and no toast', async () => {
 		const service = TestBed.inject(CartService);
 		for (const method of ['get', 'post', 'patch', 'delete'] as const) http[method].mockReturnValue(of({}));
-		service.current();
+		await firstValueFrom(service.current());
 		service.add({ productId: 'p', quantity: 1, variationId: null, addons: [] });
 		service.update('a b', { quantity: 2 });
 		service.remove('a b');
@@ -209,6 +318,14 @@ describe('PageService', () => {
 		const page = await firstValueFrom(TestBed.inject(PageService).getFaqs());
 		expect(page.total).toBe(1);
 		expect(page.data[0]).toMatchObject({ id: 1, title: 'Q', description: 'A' });
+		http.get.mockReturnValue(of([{ id: 'f1', question: { en: 'Q', bn: 'প্রশ্ন' }, answer: { en: 'A' } }]));
+		const bengali = await firstValueFrom(TestBed.inject(PageService).getFaqs('bn'));
+		expect(bengali.data[0]).toMatchObject({ title: 'প্রশ্ন', description: 'A' });
+		http.get.mockReturnValue(of([{ id: 'f2', question: {}, answer: {} }]));
+		expect((await firstValueFrom(TestBed.inject(PageService).getFaqs('bn'))).data[0]).toMatchObject({
+			title: '',
+			description: '',
+		});
 	});
 });
 
@@ -227,14 +344,20 @@ describe('QuestionsAnswersService', () => {
 	it('maps the rows, filling what is missing', async () => {
 		http.get.mockReturnValue(
 			of([
-				{ id: 'q1', question: 'Silk?', askerName: 'Asha', answer: 'Yes' },
-				{ id: 'q2', question: 'Cotton?', askerName: null, answer: null },
+				{ id: 'q1', question: 'Silk?', askerName: 'Asha', answer: 'Yes', answeredAt: '2026-11-08T10:00:00Z' },
+				{ id: 'q2', question: 'Cotton?', askerName: null, answer: null, answeredAt: null },
 			]),
 		);
 		const page = await firstValueFrom(service().getQuestionAnswers({ slug: 'red' }));
 		expect(page.total).toBe(2);
-		expect(page.data[0]).toMatchObject({ id: 1, answer: 'Yes', store: { store_name: 'Asha' } });
-		expect(page.data[1]).toMatchObject({ id: 2, answer: '', store: { store_name: '' } });
+		expect(page.data[0]).toEqual({
+			id: 'q1',
+			question: 'Silk?',
+			answer: 'Yes',
+			askerName: 'Asha',
+			answeredAt: '2026-11-08T10:00:00Z',
+		});
+		expect(page.data[1]).toMatchObject({ id: 'q2', answer: '', askerName: null });
 	});
 
 	it('posts a question with credentials', () => {
@@ -274,5 +397,71 @@ describe('small services', () => {
 	it('leaves a failed observable to the caller', async () => {
 		http.get.mockReturnValue(throwError(() => new Error('down')));
 		await expect(firstValueFrom(TestBed.inject(AccountService).GetUserDetails())).rejects.toThrow('down');
+	});
+});
+
+describe('ReviewService', () => {
+	it('reads the public reviews and the customer’s own, and edits with the session', () => {
+		const reviews = TestBed.inject(ReviewService);
+		reviews.getReviews('silk-saree').subscribe();
+		expect(http.get).toHaveBeenLastCalledWith(expect.stringMatching(/\/catalog\/reviews$/), {
+			params: { productSlug: 'silk-saree', page: 1, pageSize: 10 },
+		});
+		reviews.mine('p1').subscribe();
+		expect(http.get).toHaveBeenLastCalledWith(expect.stringMatching(/\/storefront\/reviews\/mine$/), {
+			params: { productId: 'p1' },
+			withCredentials: true,
+		});
+		const edit = { rating: 4, title: null, body: 'Fine', imageAssetIds: [] };
+		reviews.update('r 1', edit).subscribe();
+		expect(http.patch).toHaveBeenLastCalledWith(expect.stringMatching(/\/storefront\/reviews\/r%201$/), edit, {
+			withCredentials: true,
+		});
+	});
+});
+
+describe('WishlistService', () => {
+	it('reads and changes the account list with the session, and guest cards by id', async () => {
+		const wishlist = TestBed.inject(WishlistService);
+		http.get.mockReturnValueOnce(of({ productIds: ['p1'], items: [] }));
+		expect(await firstValueFrom(wishlist.account())).toEqual({ productIds: ['p1'], items: [] });
+		expect(http.get).toHaveBeenLastCalledWith(expect.stringMatching(/\/storefront\/wishlist$/), {
+			withCredentials: true,
+		});
+		wishlist.add('p1').subscribe();
+		expect(http.post).toHaveBeenLastCalledWith(
+			expect.stringMatching(/\/storefront\/wishlist$/),
+			{ productId: 'p1' },
+			{ withCredentials: true },
+		);
+		wishlist.merge(['p1', 'p2']).subscribe();
+		expect(http.post).toHaveBeenLastCalledWith(
+			expect.stringMatching(/\/storefront\/wishlist\/merge$/),
+			{ productIds: ['p1', 'p2'] },
+			{ withCredentials: true },
+		);
+		wishlist.remove('p 1').subscribe();
+		expect(http.delete).toHaveBeenLastCalledWith(expect.stringMatching(/\/storefront\/wishlist\/p%201$/), {
+			withCredentials: true,
+		});
+		expect(await firstValueFrom(wishlist.cards([]))).toEqual([]);
+		http.get.mockReturnValueOnce(of([]));
+		expect(await firstValueFrom(wishlist.cards(['p1']))).toEqual([]);
+		expect(http.get).toHaveBeenLastCalledWith(expect.stringMatching(/\/catalog\/cards$/), {
+			params: { id: ['p1'] },
+		});
+	});
+
+	it('reads the API address from the runtime config when it reads, not when it is made', async () => {
+		const service = TestBed.inject(CartService);
+		http.get.mockReturnValue(of({}));
+		const before = runtimeConfig.apiUrl;
+		runtimeConfig.apiUrl = 'https://api.example.test';
+		try {
+			await firstValueFrom(service.current());
+			expect(http.get.mock.lastCall?.[0]).toBe('https://api.example.test/cart/current');
+		} finally {
+			runtimeConfig.apiUrl = before;
+		}
 	});
 });

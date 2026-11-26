@@ -1,0 +1,87 @@
+@if (start$(); as s) {
+<div class="modal-header">
+	<h5
+		class="mb-0"
+		id="bank_link_title"
+	>
+		{{ 'bank_link_title' | transloco : { line: s.line.description, amount: rupees(s.line.inPaise ||
+		s.line.outPaise), date: day(s.line.date), } }}
+	</h5>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	></button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	@if (s.removed) {
+	<div class="alert alert-warning py-2">
+		<i class="ri-link-unlink me-1"></i>
+		{{ 'bank_link_removed' | transloco: { match: s.removed } }}
+	</div>
+	} @if (problem(); as p) {
+	<div class="alert alert-danger py-2">{{ p.key | transloco: p.params }}</div>
+	}
+	<label
+		class="form-label-title"
+		for="bank_link_find"
+	>
+		{{ 'bank_link_find' | transloco }}
+	</label>
+	<input
+		class="form-control mb-2"
+		id="bank_link_find"
+		[placeholder]="'bank_link_placeholder' | transloco"
+		[ngModel]="q()"
+		(ngModelChange)="q.set($event)"
+	/>
+	<div class="rounded border">
+		<small class="text-muted d-block px-2 py-1">{{ 'bank_link_results' | transloco }}</small>
+		@for (e of found.data() ?? []; track e.voucherId) {
+		<div class="form-check d-flex justify-content-between border-top ms-0 px-2 py-2">
+			<span>
+				<input
+					class="form-check-input ms-0 me-2"
+					type="checkbox"
+					[id]="'bank_link_' + e.voucherId"
+					[checked]="picked().has(e.voucherId)"
+					(change)="toggle(e)"
+				/>
+				<label
+					class="form-check-label"
+					[for]="'bank_link_' + e.voucherId"
+				>
+					{{ e.number }} · {{ e.narration }} · {{ day(e.date) }}
+				</label>
+			</span>
+			<b class="text-nowrap">{{ e.inPaise ? rupees(e.inPaise) : '−' + rupees(e.outPaise) }}</b>
+		</div>
+		} @empty {
+		<small class="text-muted d-block border-top px-2 py-2">{{ 'bank_link_none' | transloco }}</small>
+		}
+	</div>
+	<small class="text-muted d-block mt-2">
+		{{ 'bank_link_total' | transloco: { picked: rupees(pickedNet()), amount: rupees(lineNet()) } }}
+	</small>
+	<small class="text-muted d-block">{{ 'bank_link_note' | transloco }}</small>
+</div>
+<div class="modal-footer">
+	<button
+		type="button"
+		class="btn btn-outline"
+		(click)="modal.dismiss()"
+	>
+		{{ 'cancel' | transloco }}
+	</button>
+	<button
+		type="button"
+		class="btn btn-theme"
+		id="bank_link_do"
+		[disabled]="busy() || !ready()"
+		(click)="link()"
+	>
+		{{ 'bank_link' | transloco }}
+	</button>
+</div>
+}

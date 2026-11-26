@@ -26,13 +26,14 @@
 	}
 }
 
+// Status pills: text and outline in the named status colours, AA in both modes (R6-3).
 .status-danger,
 .status-out_of_stock,
 .status-failed,
 .status-debit {
 	span {
-		color: #e22454;
-		border: 1px solid #e22454;
+		color: var(--admin-bad);
+		border: 1px solid var(--admin-bad);
 	}
 }
 
@@ -43,23 +44,23 @@
 .status-delivered,
 .status-credit {
 	span {
-		color: #2f8733;
-		border: 1px solid #2f8733;
+		color: var(--admin-ok);
+		border: 1px solid var(--admin-ok);
 	}
 }
 
 .status-pending,
 .status-draft {
 	span {
-		color: #db8827;
-		border: 1px solid #db8827;
+		color: var(--admin-warn);
+		border: 1px solid var(--admin-warn);
 	}
 }
 
 .status-processing {
 	span {
-		color: #0077b3;
-		border: 1px solid #0077b3;
+		color: var(--admin-info);
+		border: 1px solid var(--admin-info);
 	}
 }
 
@@ -67,20 +68,20 @@
 .status-cancelled,
 .status-rejected {
 	span {
-		color: #d9534f;
-		border: 1px solid #d9534f;
+		color: var(--admin-bad);
+		border: 1px solid var(--admin-bad);
 	}
 }
 
 .status-awaiting_for_approval {
 	span {
-		color: #7e7e7e;
-		border: 1px solid #7e7e7e;
+		color: var(--admin-muted);
+		border: 1px solid var(--admin-muted);
 	}
 }
 
 .badge-theme {
-	background-color: var(--theme-color);
+	background-color: var(--theme-strong);
 }
 
 // flat badge loop css
@@ -97,7 +98,7 @@
 }
 
 .pill-badge-primary {
-	background-color: var(--theme-color);
+	background-color: var(--theme-strong);
 }
 
 .pill-badge-secondary {
@@ -118,7 +119,7 @@
 }
 
 .round-badge-primary {
-	background-color: var(--theme-color);
+	background-color: var(--theme-strong);
 }
 
 .round-badge-secondary {

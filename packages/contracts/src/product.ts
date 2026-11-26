@@ -1,7 +1,22 @@
 import { z } from 'zod';
 
 import { CatalogRupee, I18nString, Id, IsoDateTime, LocalizedText, PriceINR, SeoMeta, Slug } from './common';
+import { FreeWith } from './free-with';
 import { ProductOptionGroupSet } from './product-options';
+import { ProductShippingCharges } from './shipping-rules';
+import { ProductVideo } from './site-settings';
+
+/** One quick-length button of a metre product (M5): "2.5 m · suit". */
+export const QuickLength = z.object({
+	tenths: z.number().int().min(1).max(1000),
+	label: LocalizedText.default({}),
+});
+export type QuickLength = z.infer<typeof QuickLength>;
+
+/** The main category is the first one chosen; its HSN and returnability are the product's defaults (PD3). */
+export function mainCategoryId(categoryIds: readonly string[]): string | null {
+	return categoryIds[0] ?? null;
+}
 
 export const ProductType = z.enum(['simple', 'variable', 'bundle']);
 export type ProductType = z.infer<typeof ProductType>;
@@ -139,8 +154,15 @@ export const Product = z.object({
 			compound: z.array(z.object({ selectionHash: z.string().min(1), gallery: z.array(z.string()) })).default([]),
 			/** Alt text set here, per asset, in each language. Empty inherits the media library. */
 			altOverrides: z.record(z.string(), LocalizedText).default({}),
+			/**
+			 * The version each photo shows here (R4-1: a page stores the photo and its version), per asset id. A photo
+			 * without one shows the version the website picks by itself (photos chosen before media step 4).
+			 */
+			versions: z.record(z.string(), z.string()).default({}),
+			/** The link-preview picture chosen in "Meta image", when not the main photo's own share card. */
+			shareImage: z.object({ assetId: Id, versionId: z.string().nullable() }).nullable().optional(),
 		})
-		.default({ gallery: [], compound: [], altOverrides: {} }),
+		.default({ gallery: [], compound: [], altOverrides: {}, versions: {} }),
 	attributes: z.array(Attribute).default([]),
 	/**
 	 * Per-product option groups: variation axes, named add-ons, filter-only facts, and bundle
@@ -170,6 +192,17 @@ export const Product = z.object({
 	lowStockThreshold: z.number().int().nonnegative().nullable().default(null),
 	lifetimeUnitsReceived: z.number().int().nonnegative().default(0),
 	featured: z.boolean().default(false),
+	/**
+	 * Show on shop (owner, 22 Nov 2026, D5): off keeps a live product stocked and usable as a set piece, an extra
+	 * or a free item, but out of listings, search, the sitemap, feeds and related lists; its own page is "not found".
+	 */
+	showOnShop: z.boolean().default(true),
+	/** Free with this product (P8): real products given at no charge, always or by the shopper's choice. */
+	freeWith: FreeWith.nullable().default(null),
+	/** Shows the FAQ section on the product page: its own questions and its categories'. */
+	faqEnabled: z.boolean().default(false),
+	/** YouTube videos and Shorts, at most five, in the order admin set (owner, 2026-11-10). */
+	videos: z.array(ProductVideo).default([]),
 	insightBadges: z.array(z.enum(['bestseller', 'trending'])).default([]),
 	pinnedBadges: z.array(z.string()).default([]),
 	hiddenBadges: z.array(z.string()).default([]),
@@ -190,6 +223,10 @@ export const Product = z.object({
 	addonPriceINR: CatalogRupee.nullable().default(null),
 	/** True when a live variant is selling below its MRP. Home's Sale rail reads this. */
 	onSale: z.boolean().default(false),
+	/** The product's own shipping charges; empty uses its main category's (owner, 2026-11-19). */
+	shippingCharges: ProductShippingCharges.optional(),
+	/** Ships free in both zones, whatever the rule sets say. */
+	freeShipping: z.boolean().optional(),
 	shippingDefaults: ProductShippingDefaults.default({
 		weightGrams: null,
 		lengthCm: null,
@@ -198,6 +235,21 @@ export const Product = z.object({
 	}),
 	/** Product-level HSN. A variant's empty HSN inherits it. */
 	hsnCode: z.string().min(1).nullable().default(null),
+	/**
+	 * Pieces, or fabric by the metre (P11). Metre stock and order quantities are whole tenths of
+	 * a metre. Fixed once the product has stock or orders.
+	 */
+	soldBy: z.enum(['piece', 'metre']).default('piece'),
+	/** Whether a buyer may return it: null follows the main category (owner, 2026-11-15). */
+	returnable: z.boolean().nullable().default(null),
+	/** Fabric by the metre (shop brief A01): the least a buyer may cut, in tenths (M2: 1.0 m = 10). */
+	shortestCutTenths: z.number().int().min(1).max(1000).nullable().default(null),
+	/** Up to four quick-length buttons (M5), each a length in tenths and a label in every language. */
+	quickLengths: z.array(QuickLength).max(4).default([]),
+	/** Cloth width in inches, shown in Product Information. */
+	widthInches: z.number().positive().max(200).nullable().default(null),
+	/** Delivery weight of one metre: an order line weighs length × this. */
+	weightPerMetreGrams: z.number().int().positive().max(100_000).nullable().default(null),
 	createdAt: z.string().optional(),
 	updatedAt: z.string().optional(),
 });

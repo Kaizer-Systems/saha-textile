@@ -2,11 +2,21 @@ import { IAttachment } from './attachment.interface';
 import { IAttribute, IAttributeValue } from './attribute.interface';
 import { ICategory } from './category.interface';
 import { IPaginateModel } from './core.interface';
-import { IAddonGroup, IBundle, IMeasurementField, ISemanticAttribute, ISizeGuide } from './product-detail.interface';
+import {
+	IAddonGroup,
+	IBundle,
+	IFreeWith,
+	IMeasurementField,
+	ISemanticAttribute,
+	ISizeGuide,
+} from './product-detail.interface';
 import { IReview } from './review.interface';
 import { IStores } from './store.interface';
 import { ITag } from './tag.interface';
 import { ITax } from './tax.interface';
+import { IVideo } from './video.interface';
+
+import type { MetreRule } from '@core/catalog/metre-length';
 
 /** A real sale, as the popup shows it. Product and time only. */
 export interface IRecentPurchase {
@@ -45,6 +55,16 @@ export interface IProduct {
 	store_id?: number;
 	size_guide?: ISizeGuide;
 	saree_length_m?: number | null;
+	/** Piece, or fabric by the metre (shop brief): then every quantity is tenths of a metre. */
+	sold_by?: 'piece' | 'metre';
+	/** A set's card (bundle builder brief G02): its pieces, and whether the shopper must choose before adding. */
+	set_card?: { pieces: number; choose: boolean } | null;
+	/** Made to order keeps selling whatever the stock (no length limit for fabric). */
+	made_to_order?: boolean;
+	/** The metre rules (shortest cut, step, quick lengths, width) of a metre product. */
+	metre_rule?: MetreRule | null;
+	/** YouTube videos and Shorts: photo-strip tiles after the photos, and the Description tab. */
+	videos?: IVideo[];
 	blouse_piece_m?: number | null;
 	estimated_delivery_text: string;
 	return_policy_text: string;
@@ -64,6 +84,10 @@ export interface IProduct {
 	meta_title: string;
 	meta_description: string;
 	product_meta_image: IAttachment;
+	/** The tall 1080×1920 card for WhatsApp Status and Instagram Stories, once the image pipeline has made it. */
+	share_story_image?: IAttachment;
+	/** The product code, for the short `/p/<code>` address. */
+	product_code?: string;
 	product_meta_image_id: number;
 	tags: ITag[];
 	tag: ITag;
@@ -84,9 +108,15 @@ export interface IProduct {
 	 */
 	semantic_role?: 'simple' | 'variation_axis' | 'named_add_on' | 'bundle';
 	semantic_attributes?: ISemanticAttribute[]; // filter_only display attributes
+	/** The product page FAQ (its own questions, then its categories'), in the page language. */
+	faq?: Array<{ question: string; answer: string }>;
 	addon_groups?: IAddonGroup[]; // named_add_on option groups
 	measurement_fields?: IMeasurementField[]; // tailoring inputs for add-on/bundle
+	/** The measurement template's name ("Suit measurements"), shown on the measurement row. */
+	measurement_title?: string;
 	bundle?: IBundle; // true composite/kit
+	/** Free with this product (P8). */
+	free_with?: IFreeWith;
 	related_blog_ids?: number[]; // blogs the admin linked to this (or parent) product
 	is_random_related_products: boolean;
 	related_products: number[];

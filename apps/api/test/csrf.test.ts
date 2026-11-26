@@ -1,10 +1,12 @@
 import { ForbiddenException } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import type { FastifyRequest } from 'fastify';
 import { describe, expect, it } from 'vitest';
 
 import { cookieName, cookieNames, csrfCookieOptions, sessionCookieOptions, useHostPrefix } from '../src/common/cookies';
 import { CsrfGuard } from '../src/common/csrf.guard';
+import { Public } from '../src/auth/session.guard';
 import type { SessionService } from '../src/auth/session.service';
 import { loadConfig } from '../src/config/app-config';
 
@@ -100,8 +102,20 @@ describe('cookie attributes', () => {
 });
 
 describe('CsrfGuard', () => {
-	const contextFor = (request: Partial<FastifyRequest> & { cookies?: Record<string, string> }) =>
-		({ switchToHttp: () => ({ getRequest: () => request }) }) as unknown as ExecutionContext;
+	const protectedRoute = (): void => {};
+	const publicRoute = (): void => {};
+	// Applied by hand: this test file is transformed without decorator syntax.
+	Public()(publicRoute);
+
+	const contextFor = (
+		request: Partial<FastifyRequest> & { cookies?: Record<string, string> },
+		handler: () => void = protectedRoute,
+	) =>
+		({
+			switchToHttp: () => ({ getRequest: () => request }),
+			getHandler: () => handler,
+			getClass: () => Object,
+		}) as unknown as ExecutionContext;
 
 	const liveSession = {
 		id: 'sess_live',
@@ -113,7 +127,7 @@ describe('CsrfGuard', () => {
 		verifyCsrfForSession: () => true,
 	} as unknown as SessionService;
 
-	const guard = new CsrfGuard(dev, sessionsStub);
+	const guard = new CsrfGuard(new Reflector(), dev, sessionsStub);
 	const names = cookieNames(dev);
 
 	it('allows safe methods without a token', async () => {
@@ -178,7 +192,7 @@ describe('CsrfGuard', () => {
 	});
 
 	it('fails closed when session credentials are present but no live session resolves', async () => {
-		const failClosed = new CsrfGuard(dev, {
+		const failClosed = new CsrfGuard(new Reflector(), dev, {
 			resolveLiveSessionFromRequest: async () => null,
 			verifyCsrfForSession: () => true,
 		} as unknown as SessionService);
@@ -194,8 +208,82 @@ describe('CsrfGuard', () => {
 		).rejects.toThrow(ForbiddenException);
 	});
 
+	/**
+	 * The admin lock-out of 2026-11-07. Cookies for a session that no longer exists stayed in
+	 * the browser, every sign-in was answered 403 before the password was read, and refresh
+	 * was refused the same way, so the browser could not recover by itself.
+	 */
+	describe('dead cookies on a public route', () => {
+		const noLiveSession = new CsrfGuard(new Reflector(), dev, {
+			resolveLiveSessionFromRequest: async () => null,
+			verifyCsrfForSession: () => false,
+		} as unknown as SessionService);
+
+		it('lets a sign-in through, with or without a token', async () => {
+			const stale = { [names.access]: 'dead', [names.refresh]: 'dead' };
+			await expect(
+				noLiveSession.canActivate(contextFor({ method: 'POST', headers: {}, cookies: stale }, publicRoute)),
+			).resolves.toBe(true);
+			await expect(
+				noLiveSession.canActivate(
+					contextFor(
+						{
+							method: 'POST',
+							headers: { 'x-csrf-token': 'matching-token' },
+							cookies: { ...stale, [names.csrf]: 'matching-token' },
+						},
+						publicRoute,
+					),
+				),
+			).resolves.toBe(true);
+		});
+
+		it('still refuses a missing token when the session on a public route is alive', async () => {
+			await expect(
+				guard.canActivate(
+					contextFor({ method: 'POST', headers: {}, cookies: { [names.access]: 'session' } }, publicRoute),
+				),
+			).rejects.toThrow(ForbiddenException);
+		});
+
+		it('still refuses a token from another session on a public route', async () => {
+			const rebound = new CsrfGuard(new Reflector(), dev, {
+				resolveLiveSessionFromRequest: async () => liveSession,
+				verifyCsrfForSession: () => false,
+			} as unknown as SessionService);
+
+			await expect(
+				rebound.canActivate(
+					contextFor(
+						{
+							method: 'POST',
+							headers: { 'x-csrf-token': 'session-a-token' },
+							cookies: { [names.access]: 'session-b', [names.csrf]: 'session-a-token' },
+						},
+						publicRoute,
+					),
+				),
+			).rejects.toThrow(ForbiddenException);
+		});
+
+		it('accepts a matching pair for a live session on a public route', async () => {
+			await expect(
+				guard.canActivate(
+					contextFor(
+						{
+							method: 'POST',
+							headers: { 'x-csrf-token': 'matching-token' },
+							cookies: { [names.access]: 'session', [names.csrf]: 'matching-token' },
+						},
+						publicRoute,
+					),
+				),
+			).resolves.toBe(true);
+		});
+	});
+
 	it('rejects a CSRF token that does not belong to the resolved session', async () => {
-		const rebound = new CsrfGuard(dev, {
+		const rebound = new CsrfGuard(new Reflector(), dev, {
 			resolveLiveSessionFromRequest: async () => liveSession,
 			verifyCsrfForSession: () => false,
 		} as unknown as SessionService);

@@ -1,10 +1,11 @@
 import { HttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 
+import { BrandSettings } from '@saha-textile/contracts';
 import { firstValueFrom, of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
-import { BrandGateway, injectBrandQuery } from './brand.gateway';
+import { BrandGateway, injectBrandQuery, NO_BRAND } from './brand.gateway';
 
 const captured = vi.hoisted(() => ({ options: undefined as unknown as () => { queryFn: () => Promise<unknown> } }));
 vi.mock('@tanstack/angular-query-experimental', () => ({
@@ -29,7 +30,10 @@ describe('BrandGateway', () => {
 		expect(http.get).toHaveBeenLastCalledWith('https://api.test/storefront/brand');
 		await firstValueFrom(gateway.settings());
 		expect(http.get).toHaveBeenLastCalledWith('https://api.test/admin/settings/brand');
-		await firstValueFrom(gateway.save({ shopName: 'S', logoAssetId: null, sealAssetId: null }));
+		await firstValueFrom(
+			// Every Brand Kit field, from the contract's own defaults (tests may import values).
+			gateway.save(BrandSettings.parse({ shopName: 'S' })),
+		);
 		expect(http.put).toHaveBeenCalledOnce();
 	});
 
@@ -38,6 +42,6 @@ describe('BrandGateway', () => {
 		TestBed.runInInjectionContext(() => injectBrandQuery());
 		expect(await captured.options().queryFn()).toBe('read');
 		http.get.mockReturnValue(throwError(() => new Error('down')) as never);
-		expect(await captured.options().queryFn()).toEqual({ shopName: '', logo: null, seal: null, icons: {} });
+		expect(await captured.options().queryFn()).toEqual(NO_BRAND);
 	});
 });

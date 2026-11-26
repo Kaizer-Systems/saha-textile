@@ -1,5 +1,6 @@
-import type { ProductBundle, ProductRelation, ProductVariant } from '@saha-textile/contracts';
+import type { BundlePriceMethod, ProductBundle, ProductRelation, ProductVariant } from '@saha-textile/contracts';
 import {
+	type BundlePriceMethodRepository,
 	type CatalogAudience,
 	type Paginated,
 	type ProductBundleRepository,
@@ -12,6 +13,8 @@ import {
 } from '@saha-textile/core-domain';
 
 import {
+	BundlePriceMethodModel,
+	type BundlePriceMethodDoc,
 	ProductBundleModel,
 	type ProductBundleDoc,
 	ProductRelationModel,
@@ -41,10 +44,14 @@ const toVariant = (doc: ProductVariantDoc): ProductVariant => ({
 	priceINR: doc.priceINR,
 	compareAtPriceINR: doc.compareAtPriceINR ?? null,
 	salePriceINR: doc.salePriceINR ?? null,
-	saleWindow: doc.saleWindow
-		? { startsAt: isoOrNull(doc.saleWindow.startsAt), endsAt: isoOrNull(doc.saleWindow.endsAt) }
-		: undefined,
-	stock: doc.stock ?? { tracked: true, quantity: 0, lowStockThreshold: null, allowBackorder: false },
+	stock: {
+		tracked: doc.stock?.tracked ?? true,
+		quantity: doc.stock?.quantity ?? 0,
+		held: doc.stock?.held ?? 0,
+		reserved: doc.stock?.reserved ?? 0,
+		lowStockThreshold: doc.stock?.lowStockThreshold ?? null,
+		allowBackorder: doc.stock?.allowBackorder ?? false,
+	},
 	shippingProfile: doc.shippingProfile as ProductVariant['shippingProfile'],
 	taxProfile: doc.taxProfile as ProductVariant['taxProfile'],
 	media: doc.media as ProductVariant['media'],
@@ -52,6 +59,24 @@ const toVariant = (doc: ProductVariantDoc): ProductVariant => ({
 	createdAt: iso(doc.createdAt),
 	updatedAt: iso(doc.updatedAt),
 });
+
+/**
+ * A catalogue save of a variant. On-hand and held move only through stock documents (purchase
+ * entries, returns, adjustments, counts, opening stock) via the guarded ledger update, so a save
+ * from the product form never overwrites them: they are written once, when the row is created.
+ */
+function variantWrite(variant: ProductVariant) {
+	const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, stock, ...rest } = variant;
+	return {
+		$set: {
+			...rest,
+			'stock.tracked': stock.tracked,
+			'stock.lowStockThreshold': stock.lowStockThreshold,
+			'stock.allowBackorder': stock.allowBackorder,
+		},
+		$setOnInsert: { 'stock.quantity': stock.quantity, 'stock.held': 0, 'stock.reserved': 0 },
+	};
+}
 
 export class MongoProductVariantRepository implements ProductVariantRepository {
 	async findById(variantId: string, audience: CatalogAudience = 'public'): Promise<ProductVariant | null> {
@@ -97,10 +122,11 @@ export class MongoProductVariantRepository implements ProductVariantRepository {
 		const query: Record<string, unknown> = { ...statusClause(filter.audience) };
 		if (filter.productId) query.productId = filter.productId;
 		if (filter.purchasableOnly) {
-			// Purchasable = live AND (untracked OR has stock OR backorder is allowed).
+			// Purchasable = live AND (untracked OR free to sell OR backorder is allowed). Held
+			// pieces are on hand but not for sale.
 			query.$or = [
 				{ 'stock.tracked': false },
-				{ 'stock.quantity': { $gt: 0 } },
+				{ $expr: { $gt: [{ $subtract: ['$stock.quantity', { $ifNull: ['$stock.held', 0] }] }, 0] } },
 				{ 'stock.allowBackorder': true },
 			];
 		}
@@ -121,12 +147,11 @@ export class MongoProductVariantRepository implements ProductVariantRepository {
 	}
 
 	async save(variant: ProductVariant, context?: TransactionContext): Promise<ProductVariant> {
-		const { id, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = variant;
-		await ProductVariantModel.findByIdAndUpdate(
-			id,
-			{ $set: rest },
-			{ upsert: true, setDefaultsOnInsert: true, session: sessionFrom(context) },
-		).exec();
+		await ProductVariantModel.findByIdAndUpdate(variant.id, variantWrite(variant), {
+			upsert: true,
+			setDefaultsOnInsert: true,
+			session: sessionFrom(context),
+		}).exec();
 		return variant;
 	}
 
@@ -137,10 +162,9 @@ export class MongoProductVariantRepository implements ProductVariantRepository {
 	 */
 	async saveMany(variants: readonly ProductVariant[], context?: TransactionContext): Promise<ProductVariant[]> {
 		const session = sessionFrom(context);
-		const operations = variants.map((variant) => {
-			const { id, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = variant;
-			return { updateOne: { filter: { _id: id }, update: { $set: rest }, upsert: true } };
-		});
+		const operations = variants.map((variant) => ({
+			updateOne: { filter: { _id: variant.id }, update: variantWrite(variant), upsert: true },
+		}));
 		await ProductVariantModel.bulkWrite(operations as Parameters<typeof ProductVariantModel.bulkWrite>[0], {
 			session,
 		});
@@ -156,14 +180,22 @@ const toBundle = (doc: ProductBundleDoc): ProductBundle =>
 	({
 		id: doc._id,
 		productId: doc.productId,
-		bundleType: doc.bundleType,
-		pricePolicy: doc.pricePolicy,
-		fixedPriceINR: doc.fixedPriceINR ?? null,
-		groups: doc.groups,
+		levels: doc.levels ?? [],
+		extras: doc.extras ?? [],
+		pricing: doc.pricing,
+		saleWindow: doc.saleWindow ?? null,
+		styledPhoto: doc.styledPhoto ?? null,
+		dearerReason: doc.dearerReason ?? null,
+		stock: doc.stock ?? null,
 		status: doc.status,
 		createdAt: iso(doc.createdAt),
 		updatedAt: iso(doc.updatedAt),
 	}) as ProductBundle;
+
+/** Every product a bundle holds, as a piece or an extra. */
+const memberIdsOf = (bundle: ProductBundle): string[] => [
+	...new Set([...bundle.levels.flatMap((level) => level.items), ...bundle.extras].map((item) => item.productId)),
+];
 
 export class MongoProductBundleRepository implements ProductBundleRepository {
 	async findByProductId(productId: string, audience: CatalogAudience = 'public'): Promise<ProductBundle | null> {
@@ -171,6 +203,23 @@ export class MongoProductBundleRepository implements ProductBundleRepository {
 			.lean<ProductBundleDoc>()
 			.exec();
 		return doc ? toBundle(doc) : null;
+	}
+
+	async listByProductIds(productIds: readonly string[]): Promise<ProductBundle[]> {
+		if (productIds.length === 0) return [];
+		const docs = await ProductBundleModel.find({ productId: { $in: [...productIds] } })
+			.lean<ProductBundleDoc[]>()
+			.exec();
+		return docs.map(toBundle);
+	}
+
+	async listContaining(productId: string): Promise<ProductBundle[]> {
+		const docs = await ProductBundleModel.find({ memberIds: productId }).lean<ProductBundleDoc[]>().exec();
+		return docs.map(toBundle);
+	}
+
+	async countUsingMethod(methodId: string): Promise<number> {
+		return ProductBundleModel.countDocuments({ methodId }).exec();
 	}
 
 	/**
@@ -184,17 +233,73 @@ export class MongoProductBundleRepository implements ProductBundleRepository {
 	}
 
 	async save(bundle: ProductBundle, context?: TransactionContext): Promise<ProductBundle> {
-		const { id, ...rest } = bundle as ProductBundle & { id: string };
+		const { id, createdAt: _created, updatedAt: _updated, ...rest } = bundle as ProductBundle & { id: string };
 		await ProductBundleModel.findByIdAndUpdate(
 			id,
-			{ $set: rest },
+			{ $set: { ...rest, memberIds: memberIdsOf(bundle), methodId: bundle.pricing.methodId } },
 			{ upsert: true, setDefaultsOnInsert: true, session: sessionFrom(context) },
 		).exec();
 		return bundle;
 	}
 
+	async saveStock(productId: string, stock: NonNullable<ProductBundle['stock']>): Promise<void> {
+		await ProductBundleModel.updateOne({ productId }, { $set: { stock } }).exec();
+	}
+
 	async deleteById(bundleId: string, context?: TransactionContext): Promise<void> {
 		await ProductBundleModel.deleteOne({ _id: bundleId }, { session: sessionFrom(context) }).exec();
+	}
+}
+
+const toMethod = (doc: BundlePriceMethodDoc): BundlePriceMethod =>
+	({
+		id: doc._id,
+		code: doc.code,
+		name: doc.name,
+		help: doc.help,
+		inputs: doc.inputs ?? [],
+		base: doc.base,
+		rules: doc.rules ?? [],
+		combine: doc.combine,
+		active: doc.active !== false,
+		seeded: doc.seeded === true,
+		version: doc.version ?? 1,
+		sortOrder: doc.sortOrder ?? 0,
+		createdAt: iso(doc.createdAt),
+		updatedAt: iso(doc.updatedAt),
+	}) as BundlePriceMethod;
+
+export class MongoBundlePriceMethodRepository implements BundlePriceMethodRepository {
+	async list(): Promise<BundlePriceMethod[]> {
+		const docs = await BundlePriceMethodModel.find({})
+			.sort({ sortOrder: 1, _id: 1 })
+			.lean<BundlePriceMethodDoc[]>()
+			.exec();
+		return docs.map(toMethod);
+	}
+
+	async findById(id: string): Promise<BundlePriceMethod | null> {
+		const doc = await BundlePriceMethodModel.findById(id).lean<BundlePriceMethodDoc>().exec();
+		return doc ? toMethod(doc) : null;
+	}
+
+	async findByCode(code: string): Promise<BundlePriceMethod | null> {
+		const doc = await BundlePriceMethodModel.findOne({ code }).lean<BundlePriceMethodDoc>().exec();
+		return doc ? toMethod(doc) : null;
+	}
+
+	async save(method: BundlePriceMethod): Promise<BundlePriceMethod> {
+		const { id, createdAt: _created, updatedAt: _updated, ...rest } = method;
+		await BundlePriceMethodModel.findByIdAndUpdate(
+			id,
+			{ $set: rest },
+			{ upsert: true, setDefaultsOnInsert: true },
+		).exec();
+		return method;
+	}
+
+	async deleteById(id: string): Promise<void> {
+		await BundlePriceMethodModel.deleteOne({ _id: id }).exec();
 	}
 }
 

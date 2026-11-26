@@ -14,12 +14,20 @@ export interface InventoryLedgerDoc {
 	productId: string;
 	quantityDelta: number;
 	balanceAfter: number;
+	heldDelta?: number;
+	heldAfter?: number;
+	reservedDelta?: number;
+	reservedAfter?: number;
 	source: string;
 	reasonCode: string | null;
 	note: string | null;
 	referenceType: string | null;
 	referenceId: string | null;
+	referenceNumber?: string | null;
 	actorUserId: string | null;
+	approverUserId?: string | null;
+	/** Where the pieces moved (accounts brief F4). */
+	locationId?: string | null;
 	createdAt: Date;
 }
 
@@ -30,6 +38,10 @@ const InventoryLedgerSchema = new Schema<InventoryLedgerDoc>(
 		productId: { type: String, required: true },
 		quantityDelta: { type: Number, required: true },
 		balanceAfter: { type: Number, required: true },
+		heldDelta: { type: Number, default: 0 },
+		heldAfter: { type: Number, default: 0 },
+		reservedDelta: { type: Number, default: 0 },
+		reservedAfter: { type: Number, default: 0 },
 		source: {
 			type: String,
 			enum: InventoryMovementSource.options,
@@ -39,7 +51,10 @@ const InventoryLedgerSchema = new Schema<InventoryLedgerDoc>(
 		note: { type: String, default: null },
 		referenceType: { type: String, default: null },
 		referenceId: { type: String, default: null },
+		referenceNumber: { type: String, default: null },
 		actorUserId: { type: String, default: null },
+		approverUserId: { type: String, default: null },
+		locationId: { type: String, default: null },
 	},
 	{ collection: 'inventoryLedger', timestamps: { createdAt: true, updatedAt: false } },
 );
@@ -66,6 +81,10 @@ export interface InventoryCostLayerDoc {
 	_id: string;
 	variantId: string;
 	purchaseInvoiceId: string | null;
+	sourceType?: string;
+	sourceLineId?: string | null;
+	sourceNumber?: string | null;
+	locationId?: string | null;
 	unitCostINR: number;
 	quantityReceived: number;
 	quantityRemaining: number;
@@ -78,6 +97,10 @@ const InventoryCostLayerSchema = new Schema<InventoryCostLayerDoc>(
 		_id: { type: String, required: true },
 		variantId: { type: String, required: true },
 		purchaseInvoiceId: { type: String, default: null },
+		sourceType: { type: String, default: 'purchase_invoice' },
+		sourceLineId: { type: String, default: null },
+		sourceNumber: { type: String, default: null },
+		locationId: { type: String, default: null },
 		unitCostINR: { type: Number, required: true },
 		quantityReceived: { type: Number, required: true },
 		quantityRemaining: { type: Number, required: true },
@@ -95,6 +118,13 @@ InventoryCostLayerSchema.index(
 	{ partialFilterExpression: { quantityRemaining: { $gt: 0 } } },
 );
 InventoryCostLayerSchema.index({ purchaseInvoiceId: 1 });
+InventoryCostLayerSchema.index({ sourceLineId: 1 });
+/** Opening stock is once per SKU (o01), even when two loads are posted at the same moment. */
+InventoryCostLayerSchema.index(
+	{ variantId: 1 },
+	{ unique: true, partialFilterExpression: { sourceType: 'opening_stock' }, name: 'one_opening_stock_per_variant' },
+);
+InventoryCostLayerSchema.index({ variantId: 1, receivedAt: -1 });
 
 export const InventoryCostLayerModel: Model<InventoryCostLayerDoc> =
 	(models.InventoryCostLayer as Model<InventoryCostLayerDoc>) ??

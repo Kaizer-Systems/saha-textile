@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { Order } from '@saha-textile/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { buildMongoConfig } from '../src/config';
@@ -47,16 +48,27 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 			userId: 'user_tx',
 			guestToken: null,
 			currency: 'INR',
-			lines: [{ id: 'line_1', productId: 'prod_1', variationId: null, quantity: 1, addons: [] }],
+			lines: [
+				{
+					id: 'line_1',
+					productId: 'prod_1',
+					variationId: null,
+					quantity: 1,
+					addons: [],
+					bundle: null,
+					free: [],
+				},
+			],
 		});
 
 		await transactions.withTransaction(async (context) => {
 			await orders.save(
-				{
+				Order.parse({
 					id: orderId,
 					orderNumber: `SAHA-TEXTILE-TX-${orderId.slice(-6)}`,
 					userId: 'user_tx',
 					currency: 'INR',
+					locale: 'en',
 					lines: [
 						{
 							productId: 'prod_1',
@@ -79,7 +91,7 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 					totalPaid: 100,
 					status: 'pending',
 					statusTimeline: [{ status: 'pending', at: new Date().toISOString() }],
-				},
+				}),
 				context,
 			);
 			await carts.deleteById(cartId, context);
@@ -97,7 +109,17 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 			userId: 'user_tx',
 			guestToken: null,
 			currency: 'INR',
-			lines: [{ id: 'line_1', productId: 'prod_1', variationId: null, quantity: 1, addons: [] }],
+			lines: [
+				{
+					id: 'line_1',
+					productId: 'prod_1',
+					variationId: null,
+					quantity: 1,
+					addons: [],
+					bundle: null,
+					free: [],
+				},
+			],
 		});
 
 		const line = {
@@ -117,11 +139,12 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 		await expect(
 			transactions.withTransaction(async (context) => {
 				await orders.save(
-					{
+					Order.parse({
 						id: orderId,
 						orderNumber: `SAHA-TEXTILE-TX-${orderId.slice(-6)}`,
 						userId: 'user_tx',
 						currency: 'INR',
+						locale: 'en',
 						lines: [line],
 						subtotalINR: 100,
 						subtotalPaid: 100,
@@ -130,7 +153,7 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 						totalPaid: 100,
 						status: 'pending',
 						statusTimeline: [{ status: 'pending', at: new Date().toISOString() }],
-					},
+					}),
 					context,
 				);
 				await carts.deleteById(cartId, context);
@@ -150,17 +173,28 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 			userId: 'user_tx',
 			guestToken: null,
 			currency: 'INR',
-			lines: [{ id: 'line_1', productId: 'prod_1', variationId: null, quantity: 1, addons: [] }],
+			lines: [
+				{
+					id: 'line_1',
+					productId: 'prod_1',
+					variationId: null,
+					quantity: 1,
+					addons: [],
+					bundle: null,
+					free: [],
+				},
+			],
 		});
 
 		await expect(
 			transactions.withTransaction(async (context) => {
 				await orders.save(
-					{
+					Order.parse({
 						id: orderId,
 						orderNumber: `SAHA-TEXTILE-TX-${orderId.slice(-6)}`,
 						userId: 'user_tx',
 						currency: 'INR',
+						locale: 'en',
 						lines: [
 							{
 								productId: 'prod_1',
@@ -183,7 +217,7 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 						totalPaid: 100,
 						status: 'pending',
 						statusTimeline: [{ status: 'pending', at: new Date().toISOString() }],
-					},
+					}),
 					context,
 				);
 				throw new Error('failure before cart consume');

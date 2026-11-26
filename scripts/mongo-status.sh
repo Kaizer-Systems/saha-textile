@@ -17,9 +17,16 @@ HOST_PORT="${MONGO_HOST_PORT:-27017}"
 
 docker compose -f "$COMPOSE_FILE" ps
 
+# With logins required (MONGO_AUTH=on), the administrator logs in first. The script goes in on
+# standard input, so the password never reaches a command line.
+STATUS='const s = rs.status(); print(`replicaSet=${s.set} ok=${s.ok} state=${s.members[0].stateStr}`)'
+if [[ "${MONGO_AUTH:-off}" == on ]]; then
+	SECRETS_DIR="$ROOT_DIR/docker/dev-secrets"
+	STATUS="db.getSiblingDB('admin').auth($(node -p 'JSON.stringify(require("fs").readFileSync(process.argv[1], "utf8"))' "$SECRETS_DIR/mongo-root-username"), $(node -p 'JSON.stringify(require("fs").readFileSync(process.argv[1], "utf8"))' "$SECRETS_DIR/mongo-root-password")); $STATUS"
+fi
+
 echo
-if docker exec saha-textile-mongo mongosh --quiet --eval \
-	'const s = rs.status(); print(`replicaSet=${s.set} ok=${s.ok} state=${s.members[0].stateStr}`)' 2>/dev/null; then
+if printf '%s\n' "$STATUS" | docker exec -i saha-textile-mongo mongosh --quiet --norc 2>/dev/null | sed -n 's/^.*replicaSet=/replicaSet=/p' | grep replicaSet=; then
 	echo "URI: mongodb://127.0.0.1:$HOST_PORT/saha_textile_local?replicaSet=rs0&directConnection=true"
 else
 	echo "Replica set not reachable — is it up? Try: pnpm mongo:up" >&2

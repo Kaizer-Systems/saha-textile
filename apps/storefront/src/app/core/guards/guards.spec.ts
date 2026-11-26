@@ -1,11 +1,10 @@
-import { ViewportScroller } from '@angular/common';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { NavigationEnd, Router, Scroll } from '@angular/router';
+import { Router } from '@angular/router';
 
-import { Subject } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ScrollMemory } from '@core/navigation/scroll-memory';
 import { AuthStore } from '@core/state/auth.store';
 import { AuthService } from '@data-access/services/auth.service';
 
@@ -51,27 +50,9 @@ describe('guestOnlyGuard', () => {
 });
 
 describe('ScrollPositionGuard', () => {
-	const run = (url: string) => {
-		const events = new Subject<unknown>();
-		const scroller = { scrollToPosition: vi.fn() };
+	it('lets the page open and starts the scroll memory', () => {
 		TestBed.resetTestingModule();
-		TestBed.configureTestingModule({
-			providers: [
-				{ provide: Router, useValue: { events, url } },
-				{ provide: ViewportScroller, useValue: scroller },
-			],
-		});
+		TestBed.configureTestingModule({ providers: [{ provide: ScrollMemory, useValue: {} }] });
 		expect(TestBed.inject(ScrollPositionGuard).canActivate()).toBe(true);
-		events.next(new NavigationEnd(1, url, url));
-		events.next(new Scroll(new NavigationEnd(1, url, url), null, null));
-		return scroller;
-	};
-
-	it('goes to the top on most pages', () => {
-		expect(run('/cart').scrollToPosition.mock.calls).toEqual([[[0, 0]]]);
-	});
-
-	it('keeps the listing offset on collections', () => {
-		expect(run('/collections').scrollToPosition.mock.calls).toEqual([[[150, 150]]]);
 	});
 });

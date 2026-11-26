@@ -13,7 +13,7 @@ const block = (overrides: Record<string, unknown> = {}) => ({
 describe('ContentBlockInput', () => {
 	it('accepts a text-free hero with live text', () => {
 		expect(
-			ContentBlockInput.safeParse(block({ heading: { en: 'Festive edit', fr: 'Édition festive' } })).success,
+			ContentBlockInput.safeParse(block({ heading: { en: 'Festive edit', bn: 'Édition festive' } })).success,
 		).toBe(true);
 	});
 	it('requires a phone image when a wide banner bakes text into the art', () => {
@@ -26,7 +26,7 @@ describe('ContentBlockInput', () => {
 				block({
 					containsText: true,
 					images: { desktop: 'd', phone: 'p' },
-					localeImages: { fr: { desktop: 'fd' } },
+					localeImages: { bn: { desktop: 'fd' } },
 				}),
 			).success,
 		).toBe(false);
@@ -61,7 +61,7 @@ describe('content block helpers', () => {
 		expect(
 			contentBlockAssetIds({
 				images: { desktop: 'a', tablet: null, phone: 'b' },
-				localeImages: { fr: { desktop: 'c', tablet: null, phone: 'b' } },
+				localeImages: { bn: { desktop: 'c', tablet: null, phone: 'b' } },
 			}),
 		).toEqual(['a', 'b', 'c']);
 	});

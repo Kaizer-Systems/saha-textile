@@ -355,6 +355,24 @@ export class MongoCustomerRepository implements CustomerRepository {
 		return doc ? mapCustomer(doc) : null;
 	}
 
+	async replaceAddress(customerId: string, address: Address): Promise<Customer | null> {
+		const set: Record<string, unknown> = { 'addresses.$[target]': address };
+		const arrayFilters: unknown[] = [{ 'target.id': address.id }];
+		if (address.isDefault) {
+			set['addresses.$[other].isDefault'] = false;
+			arrayFilters.push({ 'other.id': { $ne: address.id } });
+		}
+		const options: Record<string, unknown> = { returnDocument: 'after', arrayFilters };
+		const doc = await CustomerModel.findOneAndUpdate(
+			{ _id: customerId, 'addresses.id': address.id },
+			{ $set: set },
+			options,
+		)
+			.lean<CustomerDoc>()
+			.exec();
+		return doc ? mapCustomer(doc) : null;
+	}
+
 	/**
 	 * Writes the customer row. Identities are NOT written here.
 	 *

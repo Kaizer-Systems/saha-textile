@@ -6,21 +6,15 @@
 	position: relative;
 	overflow: hidden;
 
-	@include mq-max(md) {
-		margin-top: 12px;
-	}
-
+	// Slim trail (owner, breadcrumbs brief D1 + M1, 2026-11-08): one row at every width, about
+	// 40 px on desktop and 34 px on phones, without the page title the trail already names.
 	.breadcrumb-contain {
-		padding: calc(26px + (40 - 26) * ((100vw - 320px) / (1920 - 320))) 0;
+		padding: 9px 0;
 		text-align: center;
 		color: $title-color;
 		font-family: $public-sans;
 		display: flex;
 		align-items: center;
-
-		@include mq-max(xs) {
-			display: block;
-		}
 
 		h2 {
 			font-weight: 700;
@@ -68,7 +62,8 @@
 		}
 
 		nav {
-			margin-left: auto;
+			flex: 1;
+			min-width: 0;
 
 			body.rtl & {
 				margin-left: unset;
@@ -78,19 +73,58 @@
 			.breadcrumb {
 				@include flex_common($dis: flex, $align: center, $justify: flex-end);
 
-				@include mq-max(xs) {
-					justify-content: center;
+				justify-content: flex-start;
+				flex-wrap: nowrap;
+				// A deep trail swipes sideways on a phone instead of wrapping onto a second line.
+				overflow-x: auto;
+				scrollbar-width: none;
+
+				&::-webkit-scrollbar {
+					display: none;
 				}
 
 				.breadcrumb-item {
 					font-weight: 500;
+					font-size: 14px;
+					flex-shrink: 0;
+
+					// The page's own name gives way first. The full text stays in the HTML, so
+					// search engines and screen readers read all of it; only the screen shows "…".
+					&:last-child {
+						flex-shrink: 1;
+						// Room for the start of the name ("Maroon Te…") however deep the trail;
+						// past that the trail swipes sideways instead of squeezing the name away.
+						min-width: 9em;
+						// Block, not flex: an ellipsis only draws on a block of text.
+						display: block;
+						line-height: 20px;
+						white-space: nowrap;
+						overflow: hidden;
+						text-overflow: ellipsis;
+
+						// The chevron floats, so it lines up by matching the row's line height.
+						// `:not(:first-child)` outranks the theme's own chevron rule further down.
+						&:not(:first-child)::before {
+							line-height: 20px;
+						}
+					}
+
+					// Phones: when the trail is four steps deep after Home, the page's own name is
+					// left out so every parent fits at 360px; the page's heading names it, and the
+					// HTML and the BreadcrumbList data keep it. Owner-approved, brief "Headings and
+					// Deep Trails" (T2).
+					&:last-child:nth-child(n + 5) {
+						@include mq-max(md) {
+							display: none;
+						}
+					}
 					display: flex;
 					line-height: 1;
 					align-items: center;
 
 					i {
 						color: $content-color;
-						font-size: 20px;
+						font-size: 16px;
 					}
 
 					&.active {
@@ -114,7 +148,7 @@
 							@include remixicon;
 							content: '\ea6e';
 							color: $content-color;
-							font-size: 20px;
+							font-size: 16px;
 							line-height: 1;
 
 							body.rtl & {

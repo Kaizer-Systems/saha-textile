@@ -3,7 +3,9 @@ import { randomUUID } from 'node:crypto';
 import {
 	type AppliedPromotion,
 	type Order,
-	type OrderLine,
+	type ShopOrderPage,
+	type ShopOrderView,
+	type OrderLineInput,
 	type OrderStatus,
 	Order as OrderSchema,
 } from '@saha-textile/contracts';
@@ -23,6 +25,7 @@ import {
 
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import { CartService } from '../cart/cart.service';
+import { shopOrderSummary, shopOrderView } from './shop-order-view';
 import {
 	CURRENCY_REPOSITORY,
 	ORDER_REPOSITORY,
@@ -38,6 +41,8 @@ export interface CreateOrderInput {
 	couponCode?: string;
 	principal: AuthenticatedPrincipal;
 	guestToken?: string | null;
+	/** The page language the order was placed from (BN-13). */
+	locale?: string;
 }
 
 @Injectable()
@@ -69,7 +74,7 @@ export class OrdersService {
 		const currencyCode = (input.currency ?? cart.currency ?? 'INR').toUpperCase();
 		const rateFromINR = await this.resolveRate(currencyCode);
 
-		const lines: OrderLine[] = [];
+		const lines: OrderLineInput[] = [];
 		for (const cartLine of cart.lines) {
 			const product = await this.products.findById(cartLine.productId);
 			if (!product) throw new BadRequestException(`Product not found: ${cartLine.productId}`);
@@ -107,6 +112,7 @@ export class OrdersService {
 			orderNumber: this.generateOrderNumber(),
 			userId: input.principal.userId,
 			currency: currencyCode,
+			locale: input.locale ?? 'en',
 			lines,
 			subtotalINR,
 			subtotalPaid: roundMoney(convertFromINR(subtotalINR, rateFromINR)),
@@ -114,8 +120,8 @@ export class OrdersService {
 			totalINR,
 			totalPaid: roundMoney(convertFromINR(totalINR, rateFromINR)),
 			gateway: input.gateway,
-			status: 'pending',
-			statusTimeline: [{ status: 'pending', at: new Date().toISOString() }],
+			status: 'awaiting_payment',
+			statusTimeline: [{ status: 'awaiting_payment', at: new Date().toISOString() }],
 		});
 
 		return this.transactions.withTransaction(async (context) => {
@@ -129,6 +135,26 @@ export class OrdersService {
 		const order = await this.orders.findById(id);
 		if (!order) throw new NotFoundException(`Order not found: ${id}`);
 		return order;
+	}
+
+	/** A shopper's own orders, newest first, in the shape the shop shows (brief E06). */
+	async shopList(userId: string, query: PageQuery): Promise<ShopOrderPage> {
+		const page = await this.orders.listByUser(userId, query);
+		return {
+			items: page.items.map(shopOrderSummary),
+			total: page.total,
+			page: page.page,
+			pageSize: page.pageSize,
+		};
+	}
+
+	/** One of the shopper's own orders by its number (E05); another's is "not found", never "forbidden". */
+	async shopView(userId: string, orderNumber: string): Promise<ShopOrderView> {
+		// Shop addresses are lower case ("/account/order/details/st-2611-482190"); order numbers are kept upper case.
+		const typed = orderNumber.trim();
+		const order =
+			(await this.orders.findByOrderNumber(typed)) ?? (await this.orders.findByOrderNumber(typed.toUpperCase()));
+		return ownOrderView(order, userId);
 	}
 
 	listByUser(userId: string, query: PageQuery): Promise<Paginated<Order>> {
@@ -192,4 +218,13 @@ export class OrdersService {
 		const rand = randomUUID().slice(0, 6).toUpperCase();
 		return `SAHA-TEXTILE-${stamp}-${rand}`;
 	}
+}
+
+/**
+ * The shopper's own order as the shop shows it; anyone else's is "not found". Kept out of the async method: V8
+ * counted the else of an if-throw right after an await as never run (or less than never).
+ */
+function ownOrderView(order: Order | null, userId: string): ShopOrderView {
+	if (!order || order.userId !== userId) throw new NotFoundException('Order not found');
+	return shopOrderView(order);
 }

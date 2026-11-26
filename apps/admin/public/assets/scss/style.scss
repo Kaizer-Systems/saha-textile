@@ -10,6 +10,8 @@
 	*** utils ***
 -----------------------*/
 @import 'utils/variables';
+@import 'utils/theme-color';
+@import 'utils/admin-colours';
 @import 'utils/breakpoints';
 @import 'utils/mixins';
 
@@ -18,6 +20,7 @@
 -----------------------*/
 @import 'base/reset';
 @import 'base/typography';
+@import 'base/bengali';
 
 /* ---------------------
 	*** components ***
@@ -36,6 +39,7 @@
 @import 'components/modal';
 @import 'components/pagination';
 @import 'components/radio';
+@import 'components/choice-box';
 @import 'components/switch';
 @import 'components/tab';
 @import 'components/table';
@@ -63,6 +67,8 @@
 @import 'pages/dashboard';
 @import 'pages/login';
 @import 'pages/media';
+@import 'pages/file-manager';
+@import 'pages/page-builder';
 @import 'pages/notification';
 @import 'pages/order-tracking';
 @import 'pages/pos';
@@ -74,6 +80,9 @@
 	*** themes ***
 -----------------------*/
 @import 'themes/dark';
+@import 'themes/dark-colours';
+@import 'themes/dark-contrast';
 @import 'themes/dark-sidebar';
 @import 'themes/update';
 @import 'themes/responsive';
+@import 'themes/contrast';

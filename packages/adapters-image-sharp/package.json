@@ -20,8 +20,13 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@cornerstonejs/codec-openjpeg": "1.3.6",
+    "@jsquash/jxl": "1.3.0",
     "@saha-textile/contracts": "workspace:*",
     "@saha-textile/core-domain": "workspace:*",
+    "ag-psd": "34.1.0",
+    "bmp-ts": "1.0.9",
+    "decode-ico": "0.4.1",
     "sharp": "0.35.5",
     "thumbhash": "0.1.1"
   },

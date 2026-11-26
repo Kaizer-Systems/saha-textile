@@ -20,8 +20,8 @@
 	.row {
 		padding: 15px 0;
 		min-height: 10rem;
-		border: 1px solid rgba($primary-color, 0.02);
+		border: 1px solid tc-alpha($primary-color, 0.02);
 		margin-bottom: 30px;
-		background-color: rgba($primary-color, 0.02);
+		background-color: tc-alpha($primary-color, 0.02);
 	}
 }

@@ -1,6 +1,8 @@
 import { PLATFORM_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
+import { ToastrService } from '@damjantonkli/ngx-toastr';
+import { TranslocoService } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
@@ -14,6 +16,7 @@ const render = (email = '', platform = 'browser', result: Promise<unknown> = Pro
 	const open = vi.fn(() => ({ result }));
 	const dismissAll = vi.fn();
 	const ask = vi.fn(() => of({}));
+	const toastr = { success: vi.fn() };
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [
@@ -21,10 +24,12 @@ const render = (email = '', platform = 'browser', result: Promise<unknown> = Pro
 			{ provide: QuestionsAnswersService, useValue: { ask } },
 			{ provide: AuthStore, useValue: { email: signal(email) } },
 			{ provide: PLATFORM_ID, useValue: platform },
+			{ provide: ToastrService, useValue: toastr },
+			{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
 		],
 	});
 	TestBed.overrideComponent(QuestionModal, { set: { imports: [], template: '' } });
-	return { modal: TestBed.createComponent(QuestionModal).componentInstance, open, dismissAll, ask };
+	return { modal: TestBed.createComponent(QuestionModal).componentInstance, open, dismissAll, ask, toastr };
 };
 const product = { slug: 'red-saree' } as never;
 
@@ -41,21 +46,12 @@ describe('QuestionModal.openModal', () => {
 		expect(open).toHaveBeenCalledOnce();
 		expect(modal.askerName.value).toBe('asha');
 		expect(modal.askerEmail.value).toBe('asha@b.co');
-		expect(modal.type).toBe('crate');
 	});
 
 	it('leaves the fields empty for a guest', async () => {
 		const { modal } = render();
 		await modal.openModal(product);
 		expect(modal.askerName.value).toBe('');
-	});
-
-	it('loads an existing question for editing', async () => {
-		const { modal } = render();
-		await modal.openModal(product, { id: 4, question: 'Is it silk?' } as never);
-		expect(modal.type).toBe('edit');
-		expect(modal.id).toBe(4);
-		expect(modal.question.value).toBe('Is it silk?');
 	});
 
 	it.each([
@@ -81,8 +77,8 @@ describe('QuestionModal.submit', () => {
 		return parts;
 	};
 
-	it('sends the trimmed question and closes', () => {
-		const { modal, ask, dismissAll } = filled();
+	it('sends the trimmed question, closes and thanks the shopper', () => {
+		const { modal, ask, dismissAll, toastr } = filled();
 		modal.stayAnonymous.setValue(true);
 		modal.submit();
 		expect(ask).toHaveBeenCalledWith({
@@ -93,6 +89,8 @@ describe('QuestionModal.submit', () => {
 			isAnonymous: true,
 		});
 		expect(dismissAll).toHaveBeenCalledOnce();
+		expect(toastr.success).toHaveBeenCalledWith('question_sent');
+		expect(modal.question.value).toBe('');
 	});
 
 	it.each(['question', 'askerName', 'askerEmail'] as const)('needs %s', (field) => {

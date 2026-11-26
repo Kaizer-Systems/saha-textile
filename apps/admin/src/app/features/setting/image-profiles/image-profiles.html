@@ -1,0 +1,161 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'image_profiles'"
+>
+	<div
+		button
+		*hasPermission="'setting.edit'"
+	>
+		<a
+			[routerLink]="['/setting/image-profiles/create']"
+			class="align-items-center btn btn-theme d-flex"
+			id="profile_add"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'profile_add' | transloco }}
+		</a>
+	</div>
+	<p class="text-muted">{{ 'profile_intro' | transloco }}</p>
+	<div
+		class="table-responsive datatable-wrapper border-table"
+		id="profile_list"
+	>
+		@if (loading()) {
+		<div class="table-loader">
+			<span>{{ 'please_wait' | transloco }}...</span>
+		</div>
+		}
+		<table class="all-package theme-table no-footer fm-table table">
+			<thead>
+				<tr>
+					<th>{{ 'name' | transloco }}</th>
+					<th>{{ 'profile_shape' | transloco }}</th>
+					<th>{{ 'profile_sizes' | transloco }}</th>
+					<th>{{ 'profile_smallest' | transloco }}</th>
+					<th>{{ 'profile_fills' | transloco }}</th>
+					<th>{{ 'profile_max_upload' | transloco }}</th>
+					<th>{{ 'profile_images' | transloco }}</th>
+					<th>{{ 'status' | transloco }}</th>
+					<th>{{ 'actions' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of rows(); track row.profile.key) {
+				<tr [attr.data-profile]="row.profile.key">
+					<td class="text-nowrap">
+						<strong>{{ name(row) }}</strong>
+						@if (row.profile.builtIn) {
+						<span class="fm-pchip ms-1">{{ 'profile_built_in' | transloco }}</span>
+						}
+					</td>
+					<td class="text-nowrap">
+						<span
+							class="fm-shape"
+							[style.width.px]="shapeBox(row.profile.shape).width"
+							[style.height.px]="shapeBox(row.profile.shape).height"
+						></span>
+						{{ shape(row) }}
+					</td>
+					<td class="text-nowrap">{{ sizesLabel(row.profile.widths) }}</td>
+					<td>{{ smallest(row) }}</td>
+					<td>{{ fills(row) }}</td>
+					<td class="text-nowrap">{{ mb(row.profile.maxBytes) }} MB</td>
+					<td>{{ row.photos }}</td>
+					<td>
+						<div class="form-check form-switch ps-0">
+							<label class="switch switch-sm">
+								<input
+									type="checkbox"
+									[id]="'profile_on_' + row.profile.key"
+									[attr.aria-label]="'status' | transloco"
+									[checked]="row.profile.enabled"
+									[disabled]="!canEdit()"
+									(change)="toggle(row, $event)"
+								/>
+								<span class="switch-state"></span>
+							</label>
+						</div>
+					</td>
+					<td>
+						<ul id="actions">
+							<li *hasPermission="'setting.edit'">
+								<a
+									[title]="'edit' | transloco"
+									[attr.aria-label]="'edit' | transloco"
+									[routerLink]="['/setting/image-profiles/edit', row.profile.key]"
+								>
+									<i class="ri-pencil-line"></i>
+								</a>
+							</li>
+							<li *hasPermission="'setting.edit'">
+								@if (row.profile.builtIn) {
+								<span
+									[title]="'profile_built_in_locked' | transloco"
+									[attr.aria-label]="'profile_built_in_locked' | transloco"
+								>
+									<i class="ri-lock-line"></i>
+								</span>
+								} @else {
+								<a
+									href="javascript:void(0)"
+									[title]="'delete' | transloco"
+									[attr.aria-label]="'delete' | transloco"
+									(click)="askDelete(row)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</a>
+								}
+							</li>
+						</ul>
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+</app-page-wrapper>
+
+<ng-template
+	#profileConfirm
+	let-modal
+>
+	<div
+		class="modal-body"
+		id="profile_confirm"
+	>
+		@if (ask(); as current) {
+		<i class="ri-error-warning-line icon-box wo-bg"></i>
+		@if (current.kind === 'turn_off') {
+		<h5 class="modal-title">{{ 'profile_in_use_title' | plural: current.row.photos }}</h5>
+		<p>
+			<strong>{{ name(current.row) }}</strong>
+		</p>
+		<p>{{ 'profile_in_use_body' | plural: current.row.photos }}</p>
+		} @else {
+		<h5 class="modal-title">{{ 'profile_delete_title' | transloco }}</h5>
+		<p>
+			<strong>{{ name(current.row) }}</strong>
+		</p>
+		<p>{{ 'profile_delete_body' | transloco }}</p>
+		}
+		<div class="button-box">
+			<app-button
+				[class]="'btn-md fw-bold btn btn-secondary'"
+				[spinner]="false"
+				[id]="'profile_confirm_no'"
+				(click)="modal.dismiss('cancel')"
+			>
+				{{ 'cancel' | transloco }}
+			</app-button>
+			<app-button
+				[class]="current.kind === 'turn_off' ? 'btn-theme btn-md fw-bold btn' : 'btn-md fw-bold btn btn-danger'"
+				[spinner]="false"
+				[id]="'profile_confirm_yes'"
+				(click)="modal.close('yes')"
+			>
+				{{ (current.kind === 'turn_off' ? 'profile_turn_off' : 'delete') | transloco }}
+			</app-button>
+		</div>
+		}
+	</div>
+</ng-template>

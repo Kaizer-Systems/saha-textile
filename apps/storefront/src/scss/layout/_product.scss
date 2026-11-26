@@ -694,7 +694,8 @@
 		padding: 5px 13px;
 		background-color: #ffba00;
 		font-size: 14px;
-		color: $white;
+		// Dark text on the yellow (about 11 : 1); white on it was 1.7 : 1. Shop change, 2026-11-10.
+		color: #1d1d22;
 		font-weight: 500;
 		z-index: 1;
 
@@ -776,12 +777,14 @@
 			transform: rotate(180deg);
 		}
 
+		// A deeper red so the white text reaches 5.6 : 1 (it was 2.7 : 1 on #ff7272). Shop change, 2026-11-10.
 		&.sale-tag {
-			background-color: #ff7272;
+			background-color: #c62828;
+			color: $white;
 
 			&:before,
 			&:after {
-				border-bottom-color: #ff7272;
+				border-bottom-color: #c62828;
 			}
 		}
 

@@ -1,0 +1,316 @@
+// An order's lines as cards (owner, 22 Nov 2026: the order page on phones, "next level", nothing scrolls sideways).
+// A set or a product with free items carries the cart's bar in the theme colour; what came with it hangs beneath on a
+// rail with elbows, pieces numbered on their pictures, free items tinted green. Theme variables only, so the
+// colour-only dark file covers it.
+:host {
+	display: block;
+}
+
+.st-order-lines {
+	display: grid;
+	gap: 12px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.st-order-line {
+	padding: 12px;
+	border: 1px solid var(--st-border-soft);
+	border-radius: 12px;
+	background-color: var(--st-surface);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+
+	&.is-set,
+	&.has-kids {
+		box-shadow:
+			inset 4px 0 0 var(--theme-color),
+			0 1px 2px rgba(0, 0, 0, 0.04);
+		padding-left: 16px;
+	}
+}
+
+.st-order-line-main {
+	display: flex;
+	gap: 12px;
+}
+
+.st-order-line-photo {
+	flex: none;
+	width: 64px;
+	height: 84px;
+	border-radius: 8px;
+	object-fit: cover;
+	background-color: var(--st-surface-soft);
+}
+
+.st-order-line-text {
+	flex: 1;
+	min-width: 0;
+
+	.st-piece-chip {
+		margin: 0 0 4px;
+		font-weight: 600;
+	}
+}
+
+.st-order-line-name {
+	display: -webkit-box;
+	margin: 0;
+	overflow: hidden;
+	color: var(--st-text);
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1.35;
+	white-space: normal;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+}
+
+.st-order-line-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-top: 6px;
+
+	span {
+		padding: 1px 8px;
+		border-radius: 999px;
+		background-color: var(--st-surface-soft);
+		color: var(--st-text-body);
+		font-size: 12px;
+	}
+}
+
+.st-order-line-sub {
+	display: block;
+	margin-top: 4px;
+	color: var(--st-text-muted);
+	font-size: 12.5px;
+	line-height: 1.4;
+
+	&.is-free {
+		color: var(--st-success);
+	}
+}
+
+.st-order-line-saved {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	margin-top: 6px;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background-color: color-mix(in srgb, var(--st-success) 12%, transparent);
+	color: var(--st-success);
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.st-order-line-money {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 10px;
+	margin-top: 10px;
+	padding-top: 10px;
+	border-top: 1px dashed var(--st-border-line);
+
+	span {
+		color: var(--st-text-muted);
+		font-size: 13px;
+	}
+
+	b {
+		color: var(--st-text);
+		font-size: 16px;
+	}
+}
+
+// What came with the line, on a rail: each row's elbow joins the rail; the rail runs on while a first-level row
+// follows (`has-rail`). Rows touch (no gap) so the lines meet.
+.st-order-kids {
+	margin: 8px 0 0;
+	padding: 0 0 0 26px;
+	list-style: none;
+}
+
+.st-order-kid {
+	position: relative;
+	display: grid;
+	grid-template-columns: 40px minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 10px;
+	padding: 6px 8px;
+	border-radius: 10px;
+
+	&::before,
+	&::after {
+		content: '';
+		position: absolute;
+		left: -16px;
+		border-left: 2px solid var(--st-border-line);
+	}
+
+	// The elbow from the rail into this row's picture.
+	&::before {
+		top: 0;
+		height: 50%;
+		width: 12px;
+		border-bottom: 2px solid var(--st-border-line);
+		border-bottom-left-radius: 8px;
+	}
+
+	// The first row's elbow starts at the card's dashed line above.
+	&:first-child::before {
+		top: -8px;
+		height: calc(50% + 8px);
+	}
+
+	&.has-rail::after {
+		top: 50%;
+		bottom: 0;
+	}
+
+	// A free item under a piece: its elbow drops from the middle of the piece's picture (8px padding + 20px).
+	&.is-depth-2 {
+		margin-left: 44px;
+
+		// The first level's rail passes beside it.
+		&.has-rail::after {
+			top: 0;
+			left: -60px;
+		}
+	}
+
+	&.is-free {
+		background-color: color-mix(in srgb, var(--st-success) 7%, transparent);
+	}
+}
+
+.st-order-kid-photo {
+	position: relative;
+	width: 40px;
+	height: 52px;
+
+	img {
+		width: 40px;
+		height: 52px;
+		border-radius: 6px;
+		object-fit: cover;
+		background-color: var(--st-surface-soft);
+	}
+}
+
+.st-order-kid-no {
+	position: absolute;
+	top: -6px;
+	left: -6px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	border: 2px solid var(--st-surface);
+	border-radius: 50%;
+	background-color: var(--theme-color);
+	color: #fff;
+	font-size: 11px;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.st-order-kid-text {
+	display: grid;
+	min-width: 0;
+	line-height: 1.3;
+
+	.st-piece-chip {
+		justify-self: start;
+		margin: 0 0 2px;
+		padding: 0 8px;
+		font-size: 11px;
+		font-weight: 600;
+	}
+}
+
+.st-order-kid-name {
+	display: -webkit-box;
+	overflow: hidden;
+	color: var(--st-text);
+	font-size: 13.5px;
+	font-weight: 500;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+.st-order-kid-sub {
+	color: var(--st-text-muted);
+	font-size: 12px;
+}
+
+.st-order-kid-price {
+	display: grid;
+	justify-items: end;
+	color: var(--st-text-muted);
+	font-size: 12.5px;
+	white-space: nowrap;
+
+	del {
+		color: var(--st-text-faint);
+		font-size: 11.5px;
+	}
+
+	b {
+		color: var(--st-text);
+	}
+
+	b.is-free {
+		color: var(--st-success);
+	}
+}
+
+// Phones: what came with a line is narrow beside the rail, so its price moves under its name (Included, the struck
+// price and Free, or +₹ for an extra) and the name keeps the row's width.
+@media (max-width: 575px) {
+	.st-order-kids {
+		padding-left: 22px;
+	}
+
+	.st-order-kid {
+		grid-template-columns: 40px minmax(0, 1fr);
+		grid-template-areas:
+			'photo text'
+			'photo price';
+		row-gap: 2px;
+
+		&::before,
+		&::after {
+			left: -14px;
+		}
+
+		&.is-depth-2 {
+			margin-left: 42px;
+
+			&.has-rail::after {
+				left: -56px;
+			}
+		}
+	}
+
+	.st-order-kid-photo {
+		grid-area: photo;
+		align-self: center;
+	}
+
+	.st-order-kid-text {
+		grid-area: text;
+	}
+
+	.st-order-kid-price {
+		display: flex;
+		grid-area: price;
+		align-items: baseline;
+		gap: 6px;
+	}
+}

@@ -5,7 +5,7 @@
 				<app-alert />
 				<div class="log-in-box">
 					<div class="log-in-title">
-						@if (brand.data()?.logo; as logo) {
+						@if (themeMode.pick(brand.data()?.admin?.logo, brand.data()?.admin?.logoDark); as logo) {
 						<img
 							class="img-fluid mb-3"
 							[src]="logo.url"
@@ -29,10 +29,19 @@
 						class="alert alert-danger"
 						role="alert"
 					>
-						{{ error()! | transloco }}
+						{{ error()! | transloco }} @if (method() === 'pin') {
 						<div class="small mt-1">
 							{{ 'if_your_pin_is_locked_sign_in_with_your_password' | transloco }}
 						</div>
+						}
+					</div>
+					} @if (signedOutDay(); as day) {
+					<!-- After an emergency key change; Bootstrap's own alert, no new CSS. -->
+					<div
+						class="alert alert-info"
+						role="status"
+					>
+						{{ 'signed_out_for_security' | transloco: { date: day } }}
 					</div>
 					}
 					<div class="input-box">

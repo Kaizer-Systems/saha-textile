@@ -4,7 +4,7 @@ wide: true
 description: Practical rules for TanStack Query, SignalStore, classic NgRx, services, and local component state.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-11-07'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/storefront/src/app/core/config/runtime-config.ts
@@ -14,6 +14,7 @@ source_of_truth:
     - apps/storefront/src/app/core/state
     - apps/storefront/src/app/data-access/queries
     - apps/storefront/src/app/data-access/services
+    - apps/storefront/src/app/core/query/query-transfer.server.ts
 ---
 
 # Storefront state and data ownership
@@ -22,13 +23,14 @@ The storefront uses more than one state tool. To choose, ask who owns the value,
 
 ## Decision table
 
-| State shape                      | Default owner                  | Examples                                              |
-| -------------------------------- | ------------------------------ | ----------------------------------------------------- |
-| Server-owned records and lists   | TanStack Angular Query         | Products, categories, countries, orders, reviews      |
-| Small application state          | NgRx SignalStore               | Authentication, account, settings, site configuration |
-| Heavily mutated browser workflow | Classic NgRx store and effects | Cart, wishlist, compare                               |
-| One-component interaction        | Local signal or form state     | Expanded panel, selected tab, form field              |
-| HTTP construction                | Typed service                  | Product, order, page and notification services        |
+| State shape                      | Default owner                  | Examples                                                                              |
+| -------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------- |
+| Server-owned records and lists   | TanStack Angular Query         | Products, categories, countries, orders, reviews                                      |
+| Small application state          | NgRx SignalStore               | Authentication, account, settings, site configuration                                 |
+| Heavily mutated browser workflow | Classic NgRx store and effects | Cart                                                                                  |
+| Saved lists                      | NgRx SignalStore               | Wishlist (API, or the `st_wishlist` cookie for guests), compare (`st_compare` cookie) |
+| One-component interaction        | Local signal or form state     | Expanded panel, selected tab, form field                                              |
+| HTTP construction                | Typed service                  | Product, order, page and notification services                                        |
 
 ## Server-state path
 
@@ -50,12 +52,14 @@ Each server render gets its own query client, so one visitor's data cannot reach
 
 The server also writes finished public queries into the page, and the browser hydrates them. An allow-list of query roots (`isPublicQuery`) decides what is shipped, so a new personal query stays out by default. Queries are fresh for 30 seconds, and a `4xx` answer is not retried. A server render stays open while any query is fetching, so crawlers receive the data.
 
+`provideQueryTransfer()` in `core/query/query-transfer.server.ts` writes that state through `TransferState.onSerialize`, which runs while the page's state is being written. Do not move it to a `BEFORE_APP_SERIALIZED` callback. That callback runs after the write, so the queries never reach the page and the browser renders empty first. To confirm on a product page, view the source and check that the `ng-state` script contains `st-query-state`.
+
 ## Data sources
 
-| Source                       | Services                                                                                                                                                                                                                                                      |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| API                          | `product`, `questions-answers`, `account`, `account-address`, `contact-change`, FAQ in `page`, banners in `banner.queries`, stock alerts, review submission and photo upload, sign-in through `core/auth`                                                     |
-| JSON in `public/assets/data` | `attribute`, `blog`, `cart`, `category`, `compare`, `country`, `coupon`, `currency`, `notification`, `order`, `order-status`, `page`, `payment-details`, `point`, `refund`, `review`, `setting`, `site-config`, `state`, `store`, `tag`, `wallet`, `wishlist` |
+| Source                       | Services                                                                                                                                                                                                                                                                                                                                                                                |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API                          | `product` (listings, home, search, search clicks, trending), `category` (the menu), `blog`, `cart`, `wishlist`, `review`, `questions-answers`, `store-location`, `contact-message`, `account`, `account-address`, `contact-change`, FAQ in `page`, banners in `banner.queries`, launch and sale events in `core/events`, stock alerts, review photo upload, sign-in through `core/auth` |
+| JSON in `public/assets/data` | `attribute`, `country`, `coupon`, `currency`, `notification`, `order`, `order-status`, legal pages in `page`, `payment-details`, `point`, `refund`, `setting`, `site-config`, `state`, `store`, `tag`, `wallet`                                                                                                                                                                         |
 
 Always trace the exact query and service method before you edit a screen.
 
@@ -77,7 +81,7 @@ flowchart LR
     State --> Persistence["Browser persistence meta-reducer"]
 ```
 
-This is a client cart. Ids and totals can originate in the browser, and authoritative price and stock checks belong to the backend.
+The API holds the cart and prices every line from the live catalogue; the effects load and write it through `CartService` at `/cart/current`. The browser copy, kept in `localStorage` by the meta-reducer, is only for drawing the page before the API answers. Its prices are never sent back.
 
 ## SignalStore path
 
@@ -94,6 +98,8 @@ Use it when:
 
 `core/config/runtime-config.ts` loads `/config.json` at startup and fills a mutable `runtimeConfig` singleton, plus the `environment` object that services read for `apiUrl`. Only non-secret values live there. In deployments the edge Nginx serves the real file. The server side reads `SAHA_TEXTILE_PUBLIC_CONFIG`.
 
+On a deployed host the app refuses to start when `apiUrl` or `siteUrl` is missing, unreadable or still a local address (`localhost`, `*.localhost`, `127.0.0.1`, `[::1]`). The browser applies the check when it is online; an installed app that is offline starts from what it has. The server applies it when `DEPLOY_ENV` is `staging` or `production`. `siteUrl` is part of the check because the translations load from it.
+
 ## Session and HTTP behaviour
 
 - The auth interceptor sends `withCredentials: true`, and sends the CSRF token as `x-csrf-token` on unsafe methods. The token comes from the API's reply and is held in memory.
@@ -104,7 +110,7 @@ Use it when:
 
 ## Text and translations
 
-Transloco owns interface text such as actions and status messages, with paired English and French keys. Catalogue option, add-on, attribute, taxonomy and measurement labels are data: render them as the API supplies them, and do not create translation keys for them.
+Transloco owns interface text such as actions and status messages, with paired English and Bengali keys. Catalogue option, add-on, attribute, taxonomy and measurement labels are data: render them as the API supplies them, and do not create translation keys for them.
 
 Repeated templates track stable entity ids. Presentation-only lists with no unique identity use their position.
 

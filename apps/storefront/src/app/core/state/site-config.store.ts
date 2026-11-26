@@ -1,4 +1,4 @@
-import { inject, PLATFORM_ID } from '@angular/core';
+import { inject } from '@angular/core';
 
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
@@ -24,7 +24,7 @@ export const SiteConfigStore = signalStore(
 	withState<SiteConfigStateModel>({
 		siteConfig: null,
 	}),
-	withMethods((store, siteConfigService = inject(SiteConfigService), platformId = inject(PLATFORM_ID)) => ({
+	withMethods((store, siteConfigService = inject(SiteConfigService)) => ({
 		loadSiteConfig: rxMethod<void>(
 			pipe(
 				switchMap(() =>

@@ -1,11 +1,18 @@
-import { Component, computed, inject, input, viewChild } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { Component, ElementRef, afterNextRender, computed, inject, input, signal, viewChild } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { CarouselComponent, CarouselModule } from 'ngx-owl-carousel-o';
 
+import { roleSrcset } from '@core/media/resolved-image';
+import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
+import { IVideo } from '@data-access/interfaces/video.interface';
 import * as data from '@shared/data/owl-carousel';
+import { ShortsModal } from '@shared/ui/video/shorts-modal';
+import { posterFor } from '@shared/ui/video/video-links';
+import { VideoModal } from '@shared/ui/video/video-modal';
 
 import { GalleryFullscreen } from './gallery-fullscreen';
 import { GalleryImage, toGalleryImage } from './gallery-image';
@@ -21,34 +28,112 @@ import { GalleryZoomLens } from './gallery-zoom-lens';
 	selector: 'app-product-gallery',
 	templateUrl: './product-gallery.html',
 	styleUrls: ['./product-gallery.scss'],
-	imports: [CarouselModule, TranslocoModule, GalleryZoomLens],
+	imports: [CarouselModule, NgTemplateOutlet, TranslocoModule, GalleryZoomLens, VideoModal, ShortsModal],
 })
 export class ProductGallery {
 	private readonly modals = inject(NgbModal);
 
 	readonly product = input<IProduct>();
-	/** A variant with its own photos shows those, in its own order. */
+	/** A variant with its own photos shows those, in its own order; else its own picture leads the product's. */
 	readonly variation = input<IVariation | null>(null);
 
 	readonly carousel = viewChild<CarouselComponent>('owlCar');
 
 	readonly frames = computed(() => {
-		const own = this.variation()?.variation_galleries;
-		return own?.length ? own : (this.product()?.product_galleries ?? []);
+		const variation = this.variation();
+		const own = variation?.variation_galleries;
+		if (own?.length) return own;
+		const all = this.product()?.product_galleries ?? [];
+		// The variant's own picture ("Variation image", owner 17 Nov) comes first; the rest keep their order after it.
+		const picture = variation?.variation_image;
+		const lead = picture ? all.findIndex((frame) => frame.id === picture.id) : -1;
+		return lead > 0 ? [...all.slice(lead), ...all.slice(0, lead)] : all;
 	});
 
 	readonly images = computed<GalleryImage[]>(() => this.frames().map(toGalleryImage));
 
+	/** A tile is a fifth of the strip, about 96 px at most; the 200 px `card` file covers it at 2x. */
+	readonly thumbSizes = '96px';
+
+	/** Tiles in view under the photo, as in the Codex renders (owner, 21 Nov). Up to this many need no slider. */
+	readonly thumbsInView = 5;
+
+	/** Photos plus video tiles. One alone gets no row: it would only repeat the photo above. */
+	readonly tileCount = computed(() => this.frames().length + this.videos().length);
+
+	/**
+	 * The strip uses the small `card` file, not the 900 px main photo it used to download three of. A photo sent without
+	 * its card sizes falls back to the gallery's own sizes, so the browser still picks the smallest (600 px), never the
+	 * 900 px main file.
+	 */
+	thumb(image: IAttachment): { src: string; srcset: string | null } {
+		const role = image.image?.roles['card']?.length ? 'card' : 'gallery';
+		return {
+			src: image.image?.roles[role]?.[0]?.url ?? image.original_url,
+			srcset: roleSrcset(image.image, role),
+		};
+	}
+
+	/**
+	 * False in the server's HTML and until the browser has started the carousels: owl cannot measure on the server,
+	 * so it writes every slide (and the loop's copies) at no width. Until then `.st-gallery-started` is missing and
+	 * scss/components/_gallery-before-start.scss lays that HTML out as the started carousels do, so nothing moves.
+	 */
+	readonly started = signal(false);
+	private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+	constructor() {
+		// Owl writes its measured widths a little after Angular's first render in the browser, so the gallery counts as
+		// started only once every carousel's slides carry a pixel width; before that the server's layout stays.
+		afterNextRender(() => {
+			const until = performance.now() + 3000;
+			const check = () => {
+				const slides = [...this.host.nativeElement.querySelectorAll<HTMLElement>('.owl-item')];
+				const measured =
+					slides.length > 0 && slides.every((slide) => /^\d+(\.\d+)?px$/.test(slide.style.width));
+				if (measured || performance.now() > until) this.started.set(true);
+				else requestAnimationFrame(check);
+			};
+			check();
+		});
+	}
+
 	public activeSlide: string = '0';
+
+	/** The product's YouTube videos and Shorts, tiled after the photos. */
+	readonly videos = computed<IVideo[]>(() => this.product()?.videos ?? []);
+	readonly videoModal = viewChild(VideoModal);
+	readonly shortsModal = viewChild(ShortsModal);
+	readonly poster = (video: IVideo) => posterFor(video, 'card');
+
+	/** A video opens the wide popup; a Short opens the vertical one, stepping through this product's Shorts. */
+	playVideo(video: IVideo): void {
+		if (video.kind === 'short') {
+			this.shortsModal()?.open(
+				this.videos().filter((row) => row.kind === 'short'),
+				video,
+			);
+		} else {
+			this.videoModal()?.open(video);
+		}
+	}
 
 	public productMainThumbSlider = data.productMainThumbSlider;
 	public productThumbSlider = data.productThumbSlider;
 
+	/**
+	 * A click (or a tap on phones, which have no hover) opens the full-screen gallery. The slider
+	 * stays on that photo while it is open and moves on again once it closes.
+	 */
 	openFullscreen(index: number): void {
-		const gallery = this.modals.open(GalleryFullscreen, { fullscreen: true })
-			.componentInstance as GalleryFullscreen;
+		const carousel = this.carousel();
+		carousel?.stopAutoplay();
+		const modal = this.modals.open(GalleryFullscreen, { fullscreen: true });
+		const gallery = modal.componentInstance as GalleryFullscreen;
 		gallery.images = this.images();
 		gallery.start = index;
 		gallery.alt = this.product()?.name ?? '';
+		const resume = () => carousel?.startAutoplay();
+		modal.result.then(resume, resume);
 	}
 }

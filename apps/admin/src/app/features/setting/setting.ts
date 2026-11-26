@@ -1,5 +1,5 @@
 import { isPlatformBrowser, AsyncPipe } from '@angular/common';
-import { Component, computed, inject, PLATFORM_ID } from '@angular/core';
+import { Component, computed, inject, PLATFORM_ID, viewChild } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
@@ -18,7 +18,6 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { SettingStore } from '@core/state/setting.store';
-import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { IDayInterval, IValues } from '@data-access/interfaces/setting.interface';
 import { injectCurrenciesQuery } from '@data-access/queries/currency.queries';
 import { SettingService } from '@data-access/services/setting.service';
@@ -27,7 +26,9 @@ import * as data from '@shared/data/time-zone';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload, ImageUploadValue, onePicture } from '@shared/ui/image-upload/image-upload';
+
+import { PaymentRouting } from './payment-routing/payment-routing';
 
 @Component({
 	selector: 'app-setting',
@@ -50,9 +51,16 @@ import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 		HasPermissionDirective,
 		TranslocoModule,
 		AsyncPipe,
+		PaymentRouting,
 	],
 })
 export class Setting {
+	/**
+	 * The theme's gateway key fields in Payment method (shipping rules brief pay01). Keys live in
+	 * server settings and are never typed in the admin, so the fields stay switched off until the
+	 * owner types their removal (end-of-project cleanup list).
+	 */
+	readonly legacyGatewayKeys = false;
 	private settingService = inject(SettingService);
 	private settingStore = inject(SettingStore);
 	private formBuilder = inject(FormBuilder);
@@ -72,32 +80,6 @@ export class Setting {
 	public active_payment = 1;
 	public time_zone = data.time_zone;
 	public active_analytics = 'facebook';
-	public mail_mailer: Select2Data = [
-		{
-			value: 'sendmail',
-			label: 'Sendmail',
-		},
-		{
-			value: 'smtp',
-			label: 'SMTP',
-		},
-		{
-			value: 'mailgun',
-			label: 'Mailgun',
-		},
-	];
-
-	public encryption: Select2Data = [
-		{
-			value: 'ssl',
-			label: 'SSL',
-		},
-		{
-			value: 'tls',
-			label: 'TLS',
-		},
-	];
-
 	public language_direction: Select2Data = [
 		{
 			value: 'ltr',
@@ -155,18 +137,6 @@ export class Setting {
 				min_per_order_amount: new FormControl(100),
 				point_currency_ratio: new FormControl(30),
 				reward_per_order_amount: new FormControl(''),
-			}),
-			email: new FormGroup({
-				mail_host: new FormControl(),
-				mail_port: new FormControl(465),
-				mail_mailer: new FormControl('smtp'),
-				mail_password: new FormControl(),
-				mail_username: new FormControl(),
-				mail_encryption: new FormControl('ssl'),
-				mail_from_name: new FormControl(),
-				mail_from_address: new FormControl(),
-				mailgun_domain: new FormControl(),
-				mailgun_secret: new FormControl(),
 			}),
 			vendor_commissions: new FormGroup({
 				status: new FormControl(true),
@@ -284,18 +254,6 @@ export class Setting {
 						point_currency_ratio: option?.wallet_points?.point_currency_ratio,
 						reward_per_order_amount: option?.wallet_points?.reward_per_order_amount,
 					},
-					email: {
-						mail_host: option?.email?.mail_host,
-						mail_port: option?.email?.mail_port,
-						mail_mailer: option?.email?.mail_mailer,
-						mail_password: option?.email?.mail_password,
-						mail_username: option?.email?.mail_username,
-						mail_encryption: option?.email?.mail_encryption,
-						mail_from_name: option?.email?.mail_from_name,
-						mail_from_address: option?.email?.mail_from_address,
-						mailgun_domain: option?.email?.mailgun_domain,
-						mailgun_secret: option?.email?.mailgun_secret,
-					},
 					vendor_commissions: {
 						status: option?.vendor_commissions?.status,
 						min_withdraw_amount: option?.vendor_commissions?.min_withdraw_amount,
@@ -379,8 +337,9 @@ export class Setting {
 			});
 	}
 
-	selectMaintenance(data: IAttachment) {
-		if (!Array.isArray(data)) {
+	selectMaintenance(value: ImageUploadValue) {
+		const data = onePicture(value);
+		if (!Array.isArray(value)) {
 			(<FormGroup>this.form.controls['maintenance']).controls['maintenance_image_id'].setValue(
 				data ? data?.id : null,
 			);
@@ -402,7 +361,11 @@ export class Setting {
 		this.sameDayIntervals.removeAt(index);
 	}
 
+	/** Settings › Payment method (brief pay01) saves through this page's one Save button. */
+	private readonly paymentRouting = viewChild(PaymentRouting);
+
 	submit() {
+		void this.paymentRouting()?.save();
 		this.form.markAllAsTouched();
 		if (this.form.valid) {
 			// Update has no backend yet — the store's mock update keeps the seam.

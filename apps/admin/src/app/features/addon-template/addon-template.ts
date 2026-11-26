@@ -1,17 +1,18 @@
-import { Component, computed, DOCUMENT, inject, signal } from '@angular/core';
+import { Component, computed, DOCUMENT, effect, inject, signal, untracked } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import {
-	ADMIN_LOCALES,
 	focusField,
 	gapsByLocale,
 	type LanguageGap,
 	LocalizedFields,
 	SOURCE_LOCALE,
 } from '@core/i18n/localized-fields';
+import { injectMissingLanguage, keepMissing } from '@core/i18n/missing-language';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { AddonTemplateRow, AddonTemplateService } from '@data-access/services/addon-template.service';
@@ -19,9 +20,13 @@ import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
+import { MissingLanguageNotice } from '@shared/ui/missing-language-notice/missing-language-notice';
 import { Table } from '@shared/ui/table/table';
+import { omit } from '@shared/util/omit';
 
 type Measure = AddonTemplateRow['fields'][number];
+/** A template as its table shows it: its code stands as the row's id, its source-language label as the name. */
+type AddonTemplateTableRow = AddonTemplateRow & { id: string; name: string };
 
 const codeOf = (text: string): string =>
 	text
@@ -35,7 +40,17 @@ const number = (text: string): number | null => (text.trim() === '' ? null : Num
 @Component({
 	selector: 'app-addon-template',
 	templateUrl: './addon-template.html',
-	imports: [PageWrapper, ReactiveFormsModule, TranslocoModule, FormFields, Table, Button, RouterLink, LanguageSwitch],
+	imports: [
+		MissingLanguageNotice,
+		PageWrapper,
+		ReactiveFormsModule,
+		TranslocoModule,
+		FormFields,
+		Table,
+		Button,
+		RouterLink,
+		LanguageSwitch,
+	],
 })
 export class AddonTemplate {
 	private page = inject<Document>(DOCUMENT);
@@ -54,22 +69,31 @@ export class AddonTemplate {
 		priceINR: [0, Validators.required],
 	});
 
-	readonly locales = ADMIN_LOCALES;
+	readonly locales = inject(ActiveLanguages).list();
+	/** Opened from Settings › Languages: only add-on templates still missing one language's text. */
+	readonly missing = injectMissingLanguage('addon_templates');
+
 	readonly text = new LocalizedFields(this.form, ['label']);
 	private readonly nameGaps = signal<Record<string, LanguageGap[]>>({});
 	/** Name plus every field label, per language, for the Language switch. */
 	readonly gaps = computed(() =>
-		gapsByLocale((locale) => [
+		gapsByLocale(this.locales, (locale) => [
 			...(this.nameGaps()[locale] ?? []).map((gap) => ({ ...gap, label: 'name' })),
 			...this.measures().flatMap((row, index) =>
 				row.label[locale]?.trim()
 					? []
-					: [{ key: `field_${index}`, label: 'measurement_field', name: this.guide(row) || String(index + 1) }],
+					: [
+							{
+								key: `field_${index}`,
+								label: 'measurement_field',
+								name: this.guide(row) || String(index + 1),
+							},
+						],
 			),
 		]),
 	);
 
-	readonly tableConfig = signal<ITableConfig>({
+	readonly tableConfig = signal<ITableConfig<AddonTemplateTableRow>>({
 		columns: [
 			{ title: 'name', dataField: 'name', sortable: true },
 			{ title: 'code', dataField: 'code', sortable: true },
@@ -84,6 +108,10 @@ export class AddonTemplate {
 	});
 
 	constructor() {
+		// The missing ids can arrive after the rows: draw the list again when they do.
+		effect(() => {
+			if (this.missing.ids()) this.show(untracked(this.rows));
+		});
 		this.reload();
 	}
 
@@ -121,7 +149,7 @@ export class AddonTemplate {
 	}
 
 	refreshMissing() {
-		this.nameGaps.set(gapsByLocale((locale) => this.text.gaps(locale)));
+		this.nameGaps.set(gapsByLocale(this.locales, (locale) => this.text.gaps(locale)));
 	}
 
 	guide(row: Measure): string {
@@ -152,7 +180,7 @@ export class AddonTemplate {
 		this.sizeGuide.update((rows) =>
 			rows.map((row, position) => {
 				if (position !== index) return row;
-				const { [code]: _old, ...others } = row.values;
+				const others = omit(row.values, code);
 				return { ...row, values: value ? { ...others, [code]: value } : others };
 			}),
 		);
@@ -231,7 +259,8 @@ export class AddonTemplate {
 			.subscribe({ next: () => void this.router.navigate([this.section]) });
 	}
 
-	private show(rows: AddonTemplateRow[]) {
+	private show(all: AddonTemplateRow[]) {
+		const rows = keepMissing(all, this.missing.ids(), (row) => row.code);
 		const data = rows.map((row) => ({ ...row, id: row.code, name: row.label[SOURCE_LOCALE] ?? row.code }));
 		this.tableConfig.update((config) => ({ ...config, data, total: rows.length }));
 	}

@@ -21,7 +21,16 @@ export interface LegacyResolution {
 	location?: string;
 }
 
-const LOCALES = ['en', 'fr'] as const;
+/**
+ * Whether a path's first segment is a language prefix (`/en/…`, `/bn/…`). The active languages come
+ * from the API: the shop passes its own test (`isLocale`), the API its `ACTIVE_LOCALES`. English
+ * alone until one does.
+ */
+let isLocalePrefix: (segment: string) => boolean = (segment) => segment === 'en';
+
+export function setLocalePrefixTest(test: (segment: string) => boolean): void {
+	isLocalePrefix = test;
+}
 
 function split(pathAndQuery: string): { pathname: string; query: string } {
 	const queryAt = pathAndQuery.indexOf('?');
@@ -37,7 +46,7 @@ function stripSlash(pathname: string): string {
 
 function withoutLocale(pathname: string): string {
 	const parts = stripSlash(pathname).split('/').filter(Boolean);
-	if ((LOCALES as readonly string[]).includes(parts[0] ?? '')) {
+	if (isLocalePrefix(parts[0] ?? '')) {
 		const rest = parts.slice(1);
 		return rest.length ? `/${rest.join('/')}` : '/';
 	}
@@ -59,7 +68,7 @@ function legacyShape(pathname: string): boolean {
 
 function localeOf(pathname: string): string | null {
 	const first = stripSlash(pathname).split('/').filter(Boolean)[0] ?? '';
-	return (LOCALES as readonly string[]).includes(first) ? first : null;
+	return isLocalePrefix(first) ? first : null;
 }
 
 /** Lower case, with any `/page/N` tail gone. */
@@ -201,7 +210,10 @@ export function resolveLegacyAddress(
 	if (isAsset(pathname)) return null;
 
 	const row = findRow(rows, path);
-	if (row) return fromRow(row, locale);
+	// A row is for an old address. When an old WordPress page has been rebuilt at the same path
+	// (`/videos`), the shop's own page in a language (`/en/videos`) is live and the row does not
+	// apply to it: it would send the page to itself, or answer "gone" for it.
+	if (row && !(locale && livePath(path))) return fromRow(row, locale);
 
 	if (legacyShape(path)) return { status: 410 };
 	if (path === '/') return null;

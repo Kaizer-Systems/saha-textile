@@ -11,6 +11,10 @@
 #     Saharanpur, and the town "Saha" (Haryana) in country/state/city data files
 #   - Lines carrying the literal marker `naming-law:allow` — for rule text that
 #     must quote the forbidden token (AGENTS.md, owner-decisions-log)
+#
+# The same law holds in Bengali (owner decision round 2026-11-08, BN-5): the brand is
+# সাহা টেক্সটাইল in full, never a bare সাহা. Words that merely start with those letters,
+# such as সাহায্য (help), are not the brand and pass.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -38,6 +42,23 @@ violations="$(
 		' |
 		grep -i 'saha' || true
 )"
+
+# Bengali: find files holding সাহা at all (a plain byte search), then let Perl apply the word
+# boundaries Bengali needs, since grep's word boundaries only know Latin letters.
+bengali_violations="$(
+	grep -rlI 'সাহা' . \
+		--exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist \
+		--exclude-dir=build --exclude-dir=.docusaurus \
+		--exclude-dir=.turbo --exclude-dir=.angular --exclude-dir=.nx \
+		--exclude-dir=vendor --exclude-dir=nextjs-context \
+		--exclude=check-naming.sh --exclude=check-i18n-parity.mjs \
+		2>/dev/null |
+		while IFS= read -r file; do
+			perl -CSD -ne 'print "$ARGV:$.: $_" if /(?<![\x{0980}-\x{09FF}])\x{09B8}\x{09BE}\x{09B9}\x{09BE}(?![\x{0980}-\x{09FF}])(?!\s*\x{099F}\x{09C7}\x{0995}\x{09CD}\x{09B8}\x{099F}\x{09BE}\x{0987}\x{09B2})/ && !/naming-law:allow/' "$file" 2>/dev/null
+		done || true
+)"
+violations="${violations}${bengali_violations:+$'\n'}${bengali_violations}"
+violations="${violations#$'\n'}"
 
 if [[ -n "$violations" ]]; then
 	echo "Brand naming violations found (use the full 'saha-textile' / 'Saha Textile' brand, never bare 'saha'):" >&2

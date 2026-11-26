@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 
 import { CatalogPublicService } from '../src/catalog/catalog-public.service';
+import { withCatalogLocale } from '../src/catalog/catalog-locale';
 
 type Variant = z.output<typeof ProductVariant>;
 
@@ -27,7 +28,7 @@ const product = Product.parse({
 			requiredSelection: true,
 			terms: [
 				{ code: 's', label: { en: 'S' } },
-				{ code: 'm', label: { en: 'M' } },
+				{ code: 'm', label: { en: 'M' }, subLabel: { en: 'Medium', bn: 'মাঝারি' } },
 			],
 		},
 		{
@@ -108,8 +109,13 @@ describe('product page read', () => {
 		]);
 		expect(page.optionGroups[1]?.defaultTermCode).toBe('no-design');
 		expect(page.optionGroups[1]?.terms[1]).toMatchObject({ priceDeltaINR: 750, requiresMeasurements: true });
+		// The second line comes in the page language; a value without one reads null.
+		expect(page.optionGroups[0]?.terms.map((term) => term.subLabel)).toEqual([null, 'Medium']);
+		const bengali = await withCatalogLocale('bn', () => pageService().page('kurti-palazzo-set'));
+		expect(bengali.optionGroups[0]?.terms[1]?.subLabel).toBe('মাঝারি');
 		expect(page.variants.map((row) => row.selections)).toEqual([{ size: 's' }, { size: 'm' }]);
 		expect(page.measurements?.fields.map((field) => field.code)).toEqual(['chest']);
+		expect(page.measurements?.title).toBe('Blouse measurements');
 		expect(page.selected?.sku).toBe('KPS-1');
 		expect(page.badges.primary).toBe('sale');
 	});
@@ -143,6 +149,7 @@ describe('product page read', () => {
 		const page = await service.page('kurti-palazzo-set');
 		expect(page.measurements).toEqual({
 			templateCode: null,
+			title: null,
 			priceINR: 0,
 			fields: [{ code: 'shoulder', label: 'Shoulder', unit: 'in', min: null, max: null, step: null }],
 			sizeGuide: [],
@@ -224,11 +231,17 @@ describe('category listing read', () => {
 		const placements = {
 			findByPath: async (slugs: string[]) =>
 				slugs.join('/') === 'sarees'
-					? { categoryId: 'cat_sarees', pathLabel: 'Sarees', pathSlugs: ['sarees'] }
+					? {
+							categoryId: 'cat_sarees',
+							pathLabel: 'Sarees',
+							pathSlugs: ['sarees'],
+							pathCategoryIds: ['cat_sarees'],
+						}
 					: null,
 		};
 		const categories = {
 			findBySlug: async (slug: string) => (slug === 'pure-silk' ? { id: 'cat_silk' } : null),
+			findById: async (id: string) => (id === 'cat_sarees' ? { name: { en: 'Sarees', bn: 'শাড়ি' } } : null),
 		};
 		const service = new CatalogPublicService(
 			products as never,
@@ -265,6 +278,17 @@ describe('category listing read', () => {
 		expect(page).toMatchObject({ path: 'sarees', title: 'Sarees' });
 		expect(page.breadcrumb).toEqual([{ name: 'Sarees', path: '/collections/sarees' }]);
 		expect(queries[0]?.categoryId).toBe('cat_sarees');
+	});
+
+	it('names the trail in the page language', async () => {
+		const { service } = listingService();
+
+		const page = await withCatalogLocale('bn', () =>
+			service.placement(CatalogPlacementQuery.parse({ path: 'sarees' })),
+		);
+
+		expect(page).toMatchObject({ title: 'শাড়ি' });
+		expect(page.breadcrumb).toEqual([{ name: 'শাড়ি', path: '/collections/sarees' }]);
 	});
 
 	it('still answers an unknown path as not found', async () => {

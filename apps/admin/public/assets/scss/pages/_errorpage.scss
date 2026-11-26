@@ -37,7 +37,7 @@
 		width: 80%;
 		line-height: 1.6;
 		margin: 10px auto 0;
-		color: $light-text;
+		color: var(--admin-muted);
 		font-size: calc(14px + (18 - 14) * ((100vw - 320px) / (1920 - 320)));
 		@media (max-width: 480px) {
 			width: 100%;

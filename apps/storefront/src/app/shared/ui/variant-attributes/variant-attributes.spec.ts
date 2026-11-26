@@ -136,6 +136,64 @@ describe('variation images', () => {
 		expect(values[1]?.variation_image).toBe(swatch);
 		expect(values[2]?.variation_image).toBeUndefined();
 	});
+
+	it('gives the picture row and picture chip the variant photo too, but not the other looks', () => {
+		for (const [style, gets] of [
+			['picture_row', true],
+			['picture_chip', true],
+			['size_v2', false],
+			['colour_chip', false],
+		] as const) {
+			const { component } = build();
+			const photo = { id: 3 };
+			const item = product({
+				attributes: [{ id: 1, style, attribute_values: [{ ...red }] }],
+				variations: [variation('R', [red], { variation_image: photo })],
+			});
+			component.product = item;
+			component.checkVariantAvailability(item);
+			expect(item.attributes?.[0]?.attribute_values[0]?.variation_image).toBe(gets ? photo : undefined);
+		}
+	});
+});
+
+describe('the four looks from the renders', () => {
+	it('share one item and leave the theme looks to their own markup', () => {
+		const { component } = build();
+		expect(
+			['picture_row', 'picture_chip', 'size_v2', 'colour_chip'].map((style) => component.isRenderLook(style)),
+		).toEqual([true, true, true, true]);
+		expect(
+			['color', 'image', 'rectangle', 'radio', undefined].map((style) => component.isRenderLook(style)),
+		).toEqual([false, false, false, false, false]);
+	});
+
+	it('draws each value with its second line, ticks the chosen one and crosses out a sold-out one', () => {
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({ imports: [VariantAttributes] });
+		const fixture = TestBed.createComponent(VariantAttributes);
+		const component = fixture.componentInstance;
+		const medium = { id: 31, value: 'M', sub_label: 'Medium', attribute_id: 3 };
+		const xl = { id: 32, value: 'XL', sub_label: 'Extra large', attribute_id: 3 };
+		const item = product({
+			attributes: [{ id: 3, name: 'Size', style: 'size_v2', attribute_values: [{ ...medium }, { ...xl }] }],
+			variations: [variation('M', [medium]), variation('XL', [xl], { stock_status: 'out_of_stock' })],
+		});
+		component.product = item;
+		component.attributes = item.attributes ?? [];
+		component.checkVariantAvailability(item);
+		fixture.detectChanges();
+		const host = fixture.nativeElement as HTMLElement;
+		expect(host.querySelector('.st-look-list')?.classList.contains('st-look-sizes')).toBe(true);
+		const boxes = [...host.querySelectorAll('.st-look')];
+		expect(boxes.map((box) => box.querySelector('.st-look-note')?.textContent?.trim())).toEqual([
+			'Medium',
+			'Extra large',
+		]);
+		expect(boxes[0]?.classList.contains('is-on')).toBe(true);
+		expect(boxes[0]?.querySelector('.st-look-check')).not.toBeNull();
+		expect(boxes[1]?.classList.contains('is-off')).toBe(true);
+	});
 });
 
 describe('choosing a value', () => {

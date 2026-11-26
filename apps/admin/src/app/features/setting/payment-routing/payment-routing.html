@@ -1,0 +1,183 @@
+@if (query.data(); as data) { @if (draft(); as current) {
+<h5 class="mb-3">{{ 'pay_which_gateway' | transloco }}</h5>
+<div class="table-responsive datatable-wrapper border-table">
+	<table
+		class="all-package theme-table no-footer table"
+		id="pay_routing_table"
+	>
+		<thead>
+			<tr>
+				<th>{{ 'pay_shopper_pays_in' | transloco }}</th>
+				<th>{{ 'pay_gateway' | transloco }}</th>
+				<th>{{ 'pay_note' | transloco }}</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>₹ {{ 'ship_currency_name_INR' | transloco }}</td>
+				<td>
+					<select
+						class="form-select"
+						id="pay_inr_gateway"
+						[attr.aria-label]="'pay_inr_gateway' | transloco"
+						[disabled]="!canEdit()"
+						[ngModel]="current.activeInrGateway"
+						(ngModelChange)="patch({ activeInrGateway: $event })"
+					>
+						<option [ngValue]="'ccavenue'">{{ 'pay_active_inr' | transloco: { name: 'CCAvenue' } }}</option>
+						<option
+							[ngValue]="'razorpay'"
+							[disabled]="!data.built.razorpay"
+						>
+							{{ (data.built.razorpay ? 'pay_active_inr' : 'pay_not_built') | transloco: { name:
+							'Razorpay' } }}
+						</option>
+						<option [ngValue]="null">{{ 'pay_no_inr_gateway' | transloco }}</option>
+					</select>
+				</td>
+				<td>
+					<small>
+						{{ (data.built.razorpay ? 'pay_inr_note_ready' : 'pay_inr_note_waiting') | transloco }}
+					</small>
+				</td>
+			</tr>
+			<tr>
+				<td>{{ foreignCurrencies }}</td>
+				<td>
+					PayPal @if (!current.paypalTakesNewPayments) {
+					<small class="text-danger">({{ 'pay_switched_off' | transloco }})</small>
+					}
+				</td>
+				<td><small>{{ 'pay_foreign_note' | transloco }}</small></td>
+			</tr>
+		</tbody>
+	</table>
+</div>
+<div class="theme-form theme-form-2 mega-form mt-3">
+	@for (popup of ['paypalChooseCurrency', 'inrCardRefused']; track popup) {
+	<app-form-fields
+		[label]="'pay_popup_' + popup"
+		[for]="'pay_popup_' + popup"
+		[labelClass]="'form-label-title col-sm-3 mb-0'"
+		[gridClass]="'col-sm-9'"
+	>
+		<div class="d-flex align-items-center gap-3">
+			<div class="form-check form-switch ps-0">
+				<label class="switch">
+					<input
+						type="checkbox"
+						[id]="'pay_popup_' + popup"
+						[disabled]="!canEdit()"
+						[checked]="$any(current.popups)[popup]"
+						(change)="setPopup($any(popup), $any($event.target).checked)"
+					/>
+					<span class="switch-state"></span>
+				</label>
+			</div>
+			<span class="small text-muted">{{ 'pay_popup_' + popup + '_help' | transloco }}</span>
+		</div>
+	</app-form-fields>
+	}
+</div>
+<div class="inside-horizontal-tabs mt-4">
+	<ul
+		ngbNav
+		#gatewayNav="ngbNav"
+		class="nav-tabs"
+		[activeId]="tab()"
+		(activeIdChange)="tab.set($event)"
+	>
+		@for (id of gateways; track id) {
+		<li [ngbNavItem]="id">
+			<a ngbNavLink>{{ names[id] }}</a>
+			<ng-template ngbNavContent>
+				<div class="theme-form theme-form-2 mega-form pt-3">
+					<app-form-fields
+						[label]="'status'"
+						[for]="'pay_status_' + id"
+						[labelClass]="'form-label-title col-sm-3 mb-0'"
+						[gridClass]="'col-sm-9'"
+					>
+						<div class="d-flex align-items-center gap-3">
+							<div class="form-check form-switch ps-0">
+								<label class="switch">
+									<input
+										type="checkbox"
+										[id]="'pay_status_' + id"
+										[disabled]="!canEdit() || !$any(data.built)[id]"
+										[checked]="takesNewPayments(id)"
+										(change)="setTakesNewPayments(id, $any($event.target).checked)"
+									/>
+									<span class="switch-state"></span>
+								</label>
+							</div>
+							<span class="small text-muted">
+								{{ ($any(data.built)[id] ? 'pay_takes_new_payments' : 'pay_not_built_yet') | transloco
+								}}
+							</span>
+						</div>
+					</app-form-fields>
+					<app-form-fields
+						[label]="'pay_test_mode'"
+						[for]="'pay_test_' + id"
+						[labelClass]="'form-label-title col-sm-3 mb-0'"
+						[gridClass]="'col-sm-9'"
+					>
+						<div class="form-check form-switch ps-0">
+							<label class="switch">
+								<input
+									type="checkbox"
+									[id]="'pay_test_' + id"
+									[disabled]="!canEdit()"
+									[checked]="$any(current.testMode)[id]"
+									(change)="setTestMode(id, $any($event.target).checked)"
+								/>
+								<span class="switch-state"></span>
+							</label>
+						</div>
+					</app-form-fields>
+					<app-form-fields
+						[label]="'pay_keys'"
+						[labelClass]="'form-label-title col-sm-3 mb-0'"
+						[gridClass]="'col-sm-9'"
+					>
+						@if ($any(data.keysOnServer)[id]) {
+						<span class="pt-1">
+							<i
+								class="ri-shield-check-line text-success"
+								aria-hidden="true"
+							></i>
+							{{ 'pay_keys_set_' + id | transloco }}
+						</span>
+						} @else {
+						<span class="pt-1">
+							<i
+								class="ri-error-warning-line text-warning"
+								aria-hidden="true"
+							></i>
+							{{ 'pay_keys_missing' | transloco }}
+						</span>
+						}
+					</app-form-fields>
+					<app-form-fields
+						[label]="'pay_switched_off_label'"
+						[labelClass]="'form-label-title col-sm-3 mb-0'"
+						[gridClass]="'col-sm-9'"
+					>
+						<span class="small text-muted pt-1">{{ 'pay_switched_off_help' | transloco }}</span>
+					</app-form-fields>
+				</div>
+			</ng-template>
+		</li>
+		}
+	</ul>
+	<div
+		class="tab-content"
+		[ngbNavOutlet]="gatewayNav"
+	></div>
+</div>
+} } @else {
+<div class="table-loader">
+	<span>{{ 'please_wait' | transloco }}...</span>
+</div>
+}

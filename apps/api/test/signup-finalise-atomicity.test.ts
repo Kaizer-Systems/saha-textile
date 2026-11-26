@@ -6,6 +6,7 @@ import { SignupError } from '../src/auth/signup.service';
 import { StorefrontAuthController } from '../src/auth/storefront-auth.controller';
 import { cookieNames } from '../src/common/cookies';
 import { loadConfig } from '../src/config/app-config';
+import { LanguageStore } from '../src/languages/language-store';
 
 /**
  * What signup finalisation spends, and when.
@@ -114,6 +115,7 @@ function harness(
 		{ link: async () => undefined } as never,
 		transactions as never,
 		config,
+		LanguageStore.fixed(['en', 'bn']),
 	);
 	return result;
 }

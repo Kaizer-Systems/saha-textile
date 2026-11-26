@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { PLATFORM_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { TranslocoService } from '@jsverse/transloco';
@@ -6,11 +6,9 @@ import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthStore } from '@core/state/auth.store';
-import { CompareFacade } from '@core/state/compare/compare.store';
+import { CompareStore } from '@core/state/compare/compare.store';
 import { SiteConfigStore } from '@core/state/site-config.store';
-import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
-import { CompareService } from '@data-access/services/compare.service';
-import { WishlistService } from '@data-access/services/wishlist.service';
+import { WishlistStore } from '@core/state/wishlist/wishlist.store';
 
 import { Compare } from './compare/compare';
 import { ProductAction } from './product-detail/widgets/product-action/product-action';
@@ -18,46 +16,107 @@ import { TrendingProducts } from './product-detail/widgets/trending-products/tre
 import { Wishlist } from './wishlist/wishlist';
 
 const related = signal<unknown>(undefined);
-vi.mock('@data-access/queries/product.queries', () => ({ injectRelatedProductsData: () => ({ data: related }) }));
+const trendingSlugs: unknown[] = [];
+vi.mock('@data-access/queries/product.queries', () => ({
+	injectRelatedProductsData: () => ({ data: related }),
+	injectProductTrendingQuery: (slug: () => unknown) => {
+		trendingSlugs.push(slug);
+		return { data: related };
+	},
+}));
 
 const translate = { provide: TranslocoService, useValue: { selectTranslate: () => of('Title') } };
 
 afterEach(() => related.set(undefined));
 
 describe('Compare page', () => {
-	it('loads the list and removes from it', () => {
-		const facade = { compareItems$: of([]), getCompare: vi.fn(), deleteCompare: vi.fn() };
+	it('loads the list in the browser, then shows it', async () => {
+		const store = { loadPage: vi.fn(async () => {}) };
 		TestBed.resetTestingModule();
 		TestBed.configureTestingModule({
 			providers: [
 				translate,
-				{ provide: CompareFacade, useValue: facade },
-				{ provide: CompareService, useValue: {} },
+				{ provide: CompareStore, useValue: store },
+				{ provide: PLATFORM_ID, useValue: 'browser' },
 			],
 		});
 		TestBed.overrideComponent(Compare, { set: { imports: [], template: '' } });
 		const page = TestBed.createComponent(Compare).componentInstance;
-		expect(facade.getCompare).toHaveBeenCalledOnce();
-		page.removeCompare(1);
-		expect(facade.deleteCompare).toHaveBeenCalledWith(1);
+		expect(store.loadPage).toHaveBeenCalledOnce();
+		await Promise.resolve();
+		expect(page.ready()).toBe(true);
 	});
-});
 
-describe('Wishlist page', () => {
-	it('loads the list', () => {
-		const facade = { wishlistItems$: of({ data: [], total: 0 }), getWishlist: vi.fn() };
+	it('lines up the same fact rows in every column', () => {
+		const items = signal([
+			{
+				semantic_attributes: [
+					{ code: 'fabric', label: 'Fabric', value: 'Silk' },
+					{ code: 'color', label: 'Colour', value: 'Red' },
+				],
+			},
+			{
+				semantic_attributes: [
+					{ code: 'fabric', label: 'Fabric', value: 'Cotton' },
+					{ code: 'work', label: 'Work', value: 'Zari' },
+				],
+			},
+			{},
+		]);
 		TestBed.resetTestingModule();
 		TestBed.configureTestingModule({
 			providers: [
 				translate,
-				{ provide: WishlistFacade, useValue: facade },
-				{ provide: WishlistService, useValue: {} },
+				{ provide: CompareStore, useValue: { items, loadPage: vi.fn(async () => {}) } },
+				{ provide: PLATFORM_ID, useValue: 'server' },
 			],
 		});
-		TestBed.overrideComponent(Wishlist, { set: { imports: [], template: '' } });
-		const page = TestBed.createComponent(Wishlist).componentInstance;
-		expect(facade.getWishlist).toHaveBeenCalledOnce();
-		expect(page.skeletonItems).toHaveLength(12);
+		TestBed.overrideComponent(Compare, { set: { imports: [], template: '' } });
+		const page = TestBed.createComponent(Compare).componentInstance;
+		expect(page.factRows()).toEqual([
+			{ code: 'fabric', label: 'Fabric' },
+			{ code: 'color', label: 'Colour' },
+			{ code: 'work', label: 'Work' },
+		]);
+		expect(page.factOf(items()[1] as never, 'color')).toBe('-');
+		expect(page.factOf(items()[1] as never, 'work')).toBe('Zari');
+		expect(page.factOf(items()[2] as never, 'work')).toBe('-');
+	});
+
+	it('waits on the server', () => {
+		const store = { loadPage: vi.fn(async () => {}) };
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [
+				translate,
+				{ provide: CompareStore, useValue: store },
+				{ provide: PLATFORM_ID, useValue: 'server' },
+			],
+		});
+		TestBed.overrideComponent(Compare, { set: { imports: [], template: '' } });
+		expect(TestBed.createComponent(Compare).componentInstance.ready()).toBe(false);
+		expect(store.loadPage).not.toHaveBeenCalled();
+	});
+});
+
+describe('Wishlist page', () => {
+	it('loads the list in the browser only', async () => {
+		const store = { loadPage: vi.fn(async () => {}) };
+		for (const platform of ['browser', 'server']) {
+			TestBed.resetTestingModule();
+			TestBed.configureTestingModule({
+				providers: [
+					translate,
+					{ provide: WishlistStore, useValue: store },
+					{ provide: PLATFORM_ID, useValue: platform },
+				],
+			});
+			TestBed.overrideComponent(Wishlist, { set: { imports: [], template: '' } });
+			const page = TestBed.createComponent(Wishlist).componentInstance;
+			await Promise.resolve();
+			expect(page.ready()).toBe(platform === 'browser');
+		}
+		expect(store.loadPage).toHaveBeenCalledOnce();
 	});
 });
 
@@ -82,15 +141,15 @@ describe('ProductAction', () => {
 });
 
 describe('TrendingProducts', () => {
-	it('keeps the trending cards only', () => {
+	it('lists the trending cards for its product', () => {
 		TestBed.resetTestingModule();
 		TestBed.overrideComponent(TrendingProducts, { set: { imports: [], template: '' } });
 		const fixture = TestBed.createComponent(TrendingProducts);
+		fixture.componentRef.setInput('product', { slug: 'red-saree' });
 		fixture.detectChanges();
-		TestBed.tick();
-		expect(fixture.componentInstance.relatedProducts).toEqual([]);
-		related.set([{ id: 1, is_trending: true }, { id: 2 }]);
-		TestBed.tick();
-		expect(fixture.componentInstance.relatedProducts).toEqual([{ id: 1, is_trending: true }]);
+		expect(fixture.componentInstance.products()).toEqual([]);
+		expect((trendingSlugs.at(-1) as () => unknown)()).toBe('red-saree');
+		related.set([{ id: 1 }, { id: 2 }]);
+		expect(fixture.componentInstance.products()).toEqual([{ id: 1 }, { id: 2 }]);
 	});
 });

@@ -8,11 +8,14 @@ $title-color: #ffffff;
 $content-color: #dddddd;
 $light-gray: #1d1d22;
 $danger-color: #ff4f4f;
+$wishlist-color: #e53935;
 $rating-color: #ffb321;
 $border-color: rgba(119, 119, 119, 0.44);
 
 // font family
-$public-sans: 'Public Sans', sans-serif;
+// 'Public Sans Fallback' is Arial sized to Public Sans (src/font-fallbacks.css), so text keeps its room while
+// Public Sans loads.
+$public-sans: 'Public Sans', 'Public Sans Fallback', 'Noto Sans Bengali', sans-serif;
 $exo-sarif: 'Exo 2', sans-serif;
 $russo-sarif: 'Russo One', sans-serif;
 $pacifico: 'Pacifico', cursive;

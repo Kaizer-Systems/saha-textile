@@ -1,8 +1,15 @@
 import { defineEventHandler, getCookie, sendRedirect, setResponseHeaders } from 'h3';
 
-import { environment } from '../../../public/environments/environment';
+import { productPathForCode, readShortAddress } from '../../app/core/catalog/short-address';
 import { legacyCatalogReady, refreshLegacyCatalog, storefrontAddress } from '../../app/core/i18n/legacy-address';
-import { LOCALE_COOKIE } from '../../app/core/i18n/locale';
+import {
+	DEFAULT_LOCALE,
+	LOCALE_COOKIE,
+	localeOfPath,
+	refreshSupportedLocales,
+	supportedLocales,
+} from '../../app/core/i18n/locale';
+import { serverApiUrl } from '../api-url';
 
 /**
  * Puts every page request under its locale before it reaches the renderer (`DEC-I18N-ROUTES`).
@@ -28,7 +35,20 @@ export default defineEventHandler(async (event) => {
 	const req = event.node.req;
 	const path = 'originalUrl' in req && typeof req.originalUrl === 'string' ? req.originalUrl : event.path;
 
-	await refreshLegacyCatalog(environment.apiUrl);
+	// A short `/p/<code>` address from a caption: straight to the product page, whatever the language.
+	const short = readShortAddress(path);
+	const productPath = short && (await productPathForCode(serverApiUrl(), short.code));
+	if (short && productPath) {
+		setResponseHeaders(event, { 'Cache-Control': 'public, max-age=300' });
+		await sendRedirect(event, `${productPath}${short.query}`, 301);
+		return true;
+	}
+
+	// The shop's languages (from the API, at most once a minute), handed on to the renderer.
+	await refreshSupportedLocales(serverApiUrl());
+	Object.assign(req, { shopLocales: supportedLocales() });
+
+	await refreshLegacyCatalog(serverApiUrl());
 	const redirect = storefrontAddress(path, getCookie(event, LOCALE_COOKIE));
 	if (!redirect) return;
 
@@ -39,7 +59,7 @@ export default defineEventHandler(async (event) => {
 			'X-Robots-Tag': 'noindex',
 		});
 		event.node.res.statusCode = 410;
-		const gone = path.startsWith('/fr') ? '/fr/gone' : '/en/gone';
+		const gone = `/${localeOfPath(path) ?? DEFAULT_LOCALE}/gone`;
 		event.node.req.url = gone;
 		if ('originalUrl' in req) req.originalUrl = gone;
 		return;
@@ -47,6 +67,10 @@ export default defineEventHandler(async (event) => {
 
 	if (redirect.status === 302) {
 		setResponseHeaders(event, { 'Cache-Control': 'private, no-store', Vary: 'Cookie' });
+	}
+	// A switched-off language's 301: kept an hour, so switching it back on brings its pages back.
+	if ('cacheSeconds' in redirect && typeof redirect.cacheSeconds === 'number') {
+		setResponseHeaders(event, { 'Cache-Control': `public, max-age=${redirect.cacheSeconds}` });
 	}
 	const location = redirect.location;
 	if (typeof location !== 'string') return;

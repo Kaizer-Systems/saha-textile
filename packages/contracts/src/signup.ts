@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Id, IsoDateTime } from './common';
+import { EnglishName, Id, IsoDateTime, LatinDigits } from './common';
 import { SessionInfo } from './session';
 import { Customer } from './customer';
 
@@ -111,8 +111,8 @@ export type PendingSignupResponse = z.infer<typeof PendingSignupResponse>;
  */
 export const StartSignupRequest = z.object({
 	email: z.email().optional(),
-	phone: z.string().min(6).max(20).optional(),
-	displayName: z.string().min(1).max(120).optional(),
+	phone: LatinDigits.pipe(z.string().min(6).max(20)).optional(),
+	displayName: EnglishName.optional(),
 	/** Marketing consent is explicit and defaults OFF; social signup never implies it. */
 	marketingOptIn: z.boolean().default(false),
 	/** Carried so the guest cart survives a multi-step signup and merges at creation. */

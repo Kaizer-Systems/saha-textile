@@ -1,0 +1,258 @@
+# Origin Nginx for staging and production. The official image fills in the ${...} values at
+# start; plain $variables stay for Nginx. Security headers sit at server level on purpose: an
+# add_header in a location would silently cancel every one inherited from above.
+
+client_max_body_size 2m;   # media bytes go straight to Spaces, never through here
+server_tokens off;
+
+# Docker's DNS. Upstreams resolve per request, so during a deploy Nginx sees the old and the new
+# container, and soon only the new one. A refused or dead address is retried on the other.
+resolver 127.0.0.11 valid=1s;
+
+map $http_upgrade $connection_upgrade { default upgrade; '' close; }
+
+# Two kinds of caller reach this listener: Cloudflare from outside, and the storefront's server
+# from inside. The gateway address is what Docker shows for a published port, so it is outside.
+geo $from_inside {
+	default        0;
+	${PRIVATE_SUBNET}  1;
+	${PRIVATE_GATEWAY} 0;
+}
+
+# Who may connect from outside, and where the visitor's address comes from: behind Cloudflare
+# (edge-cloudflare.conf) or not (edge-public.conf), chosen by EDGE_TLS.
+include /etc/nginx/snippets/edge-${EDGE_TLS}.conf;
+
+# Which "back in a moment" page to show: the address decides for the storefront (`/bn/` is
+# Bengali), and the browser's language decides where the address cannot.
+map $http_accept_language $fallback_language {
+	default en;
+	~*^bn   bn;
+}
+# The Page Builder's preview pages (/{locale}/__preview/…) may be framed by the admin only; every other shop page
+# by nobody. A map, because an add_header in a location would drop the server's other security headers.
+map $uri $storefront_frame_ancestors {
+	default "'none'";
+	# Quoted: Nginx reads an unquoted `{` as the start of a block.
+	"~^/[a-z]{2,3}(-[a-z]{2})?/__preview/" "https://${ADMIN_HOST}";
+}
+
+map $uri $storefront_fallback_language {
+	default          $fallback_language;
+	~^/bn(/|$)       bn;
+	~^/en(/|$)       en;
+}
+
+# The pages refresh every 15 seconds and must never be cached; their stylesheet and pictures may be.
+map $uri $fallback_expires {
+	default    1h;
+	~\.html$  -1;
+}
+
+# Only a 503 says when to try again; an empty value sends no header. Set per server rather than
+# per location, because an add_header in a location would drop the server's security headers.
+map $status $retry_after {
+	default "";
+	503     15;
+}
+
+# Where the visitor came from, as a host name only (the Release Console's Search engines screen
+# counts "page not found" by referrer). The path and query never reach the log: with
+# strict-origin-when-cross-origin a link inside the site sends its full address, which can carry
+# a sign-in or reset token. Any user:password@ part is dropped too.
+map $http_referer $referer_host {
+	default "";
+	"~*^https?://(?:[^/?#@]*@)?(?<referer_name>[^/?#:]+)" $referer_name;
+}
+
+# The build of the shop or admin that sent the request (header x-client-build, the Release Console's
+# Client versions screen): a short source-tree hash, with -app from the installed app. Anything
+# else is logged as "", so the header can never carry other text into the log.
+map $http_x_client_build $client_build {
+	default "";
+	"~^[a-z0-9]{7,40}(-app)?$" $http_x_client_build;
+}
+
+# --- Secrets in addresses stay out of the request log (owner, 2026-11-21) ---------------------
+# Keep this block identical in docker/stack/nginx/edge.conf and docker/production/nginx/
+# edge.conf.template; apps/api/src/infra/log-masking.ts masks the API's own log the same way, and a
+# test there keeps the three in step. A one-time token, code or key keeps its place in the address
+# but its value becomes a placeholder named after it (`/en/pay/{{token}}`,
+# `?token={{token}}&lang=en`), so the address keeps its shape and nothing logged can be replayed.
+# 1. The payment link carries its token as a path segment: /<locale>/pay/<token>,
+#    /storefront/pay/<token>, and inside another address's query when the shop looks a path up
+#    (/catalog/seo-route?path=/pay/<token>), plain or URL-encoded. Two passes: path and query.
+map $request_uri $log_uri_pay {
+	default $request_uri;
+	"~*^(?<log_p1_head>.*?(?:/|%2F)pay(?:/|%2F))(?!\{\{)[^/?&#%]+(?<log_p1_tail>.*)$" "${log_p1_head}{{token}}${log_p1_tail}";
+}
+map $log_uri_pay $log_uri_path {
+	default $log_uri_pay;
+	"~*^(?<log_p2_head>.*?(?:/|%2F)pay(?:/|%2F))(?!\{\{)[^/?&#%]+(?<log_p2_tail>.*)$" "${log_p2_head}{{token}}${log_p2_tail}";
+}
+# 2. Each secret query value becomes {{its name}}, one per pass; four passes cover any real link.
+map $log_uri_path $log_uri_1 {
+	default $log_uri_path;
+	"~*^(?<log_a_head>[^?]*\?(?:[^#]*&)?)(?<log_a_name>token|code|state|key|secret|signature|sig|password|passwd|pin|otp|access_token|refresh_token|id_token|client_secret|csrf_token|api_key|apikey|auth|authkey|session|payerid)=(?!\{\{)[^&#]*(?<log_a_tail>.*)$" "${log_a_head}${log_a_name}={{${log_a_name}}}${log_a_tail}";
+}
+map $log_uri_1 $log_uri_2 {
+	default $log_uri_1;
+	"~*^(?<log_b_head>[^?]*\?(?:[^#]*&)?)(?<log_b_name>token|code|state|key|secret|signature|sig|password|passwd|pin|otp|access_token|refresh_token|id_token|client_secret|csrf_token|api_key|apikey|auth|authkey|session|payerid)=(?!\{\{)[^&#]*(?<log_b_tail>.*)$" "${log_b_head}${log_b_name}={{${log_b_name}}}${log_b_tail}";
+}
+map $log_uri_2 $log_uri_3 {
+	default $log_uri_2;
+	"~*^(?<log_c_head>[^?]*\?(?:[^#]*&)?)(?<log_c_name>token|code|state|key|secret|signature|sig|password|passwd|pin|otp|access_token|refresh_token|id_token|client_secret|csrf_token|api_key|apikey|auth|authkey|session|payerid)=(?!\{\{)[^&#]*(?<log_c_tail>.*)$" "${log_c_head}${log_c_name}={{${log_c_name}}}${log_c_tail}";
+}
+map $log_uri_3 $log_uri_4 {
+	default $log_uri_3;
+	"~*^(?<log_d_head>[^?]*\?(?:[^#]*&)?)(?<log_d_name>token|code|state|key|secret|signature|sig|password|passwd|pin|otp|access_token|refresh_token|id_token|client_secret|csrf_token|api_key|apikey|auth|authkey|session|payerid)=(?!\{\{)[^&#]*(?<log_d_tail>.*)$" "${log_d_head}${log_d_name}={{${log_d_name}}}${log_d_tail}";
+}
+# 3. A secret no pass could place (a fifth one, an odd spelling) hides the whole query instead.
+map $log_uri_4 $log_uri {
+	default $log_uri_4;
+	"~*^(?<log_s_path>[^?]*)\?(?:[^#]*&)?(?:token|code|state|key|secret|signature|sig|password|passwd|pin|otp|access_token|refresh_token|id_token|client_secret|csrf_token|api_key|apikey|auth|authkey|session|payerid)=(?!\{\{)" "${log_s_path}?{{query}}";
+}
+# --- end of the address masking --------------------------------------------------------------
+
+# One JSON line per request, read by the Release Console's agent. request_id is the id this
+# edge gave the request and passed on in X-Request-ID, so the app's log lines for the same
+# request carry it too. The agent masks emails and phone numbers in the address before it
+# keeps anything for 30 days; Docker keeps only its own 100 MB per container.
+log_format edge escape=json '{"time":"$time_iso8601","kind":"edge","request_id":"$request_id",'
+	'"ip":"$client_ip","method":"$request_method","uri":"$log_uri","status":$status,'
+	'"bytes":$body_bytes_sent,"seconds":$request_time,"upstream_seconds":"$upstream_response_time",'
+	'"host":"$host","country":"$http_cf_ipcountry","cf_ray":"$http_cf_ray","cache":"$http_cf_cache_status",'
+	'"referer_host":"$referer_host","client_build":"$client_build","user_agent":"$http_user_agent"}';
+# Set inside each server block below: at this level it would sit beside the nginx image's default
+# `main` log, and every request would be written twice in two formats.
+
+# Cloudflare's free rule is one coarse layer, and the API has its own limits behind this.
+limit_req_zone $client_ip zone=sign_in:10m rate=30r/m;
+limit_req_status 429;
+
+server {
+	access_log /var/log/nginx/access.log edge;
+	listen ${EDGE_PORT} ssl;
+	http2 on;
+	server_name ${STOREFRONT_HOST};
+	include /etc/nginx/snippets/tls-${EDGE_TLS}.conf;
+	if ($origin_refused) { return 403; }
+
+	add_header Strict-Transport-Security "max-age=31536000" always;
+	add_header Retry-After $retry_after always;
+	add_header X-Content-Type-Options nosniff always;
+	add_header Referrer-Policy strict-origin-when-cross-origin always;
+	add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
+	add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://connect.facebook.net https://www.youtube.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://cdnjs.cloudflare.com; font-src 'self' data: https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://${CDN_HOST} https://cdnjs.cloudflare.com https://*.googleusercontent.com https://i.ytimg.com https://*.fbcdn.net; media-src 'self' https://${CDN_HOST}; connect-src 'self' https://${API_HOST} https://${CDN_HOST} https://accounts.google.com https://*.facebook.com; frame-src https://accounts.google.com https://*.facebook.com https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com; form-action 'self' https://${CCAVENUE_HOST}; base-uri 'self'; object-src 'none'; frame-ancestors $storefront_frame_ancestors" always;
+
+	# Served here, never by the storefront container: its server sends public files at their
+	# build-time size, so a longer config.json is cut off and the app falls back to localhost.
+	location = /config.json {
+		alias /etc/nginx/public/storefront.config.json;
+		default_type application/json;
+		expires -1;
+	}
+
+	# Shown only when no storefront copy answers: a reboot or a crash, never a deploy.
+	error_page 502 503 504 =503 /__fallback/$storefront_fallback_language.html;
+	location /__fallback/ {
+		alias /etc/nginx/fallback/storefront/;
+		expires $fallback_expires;
+	}
+
+	location / {
+		include /etc/nginx/snippets/proxy.conf;
+		set $upstream http://storefront:4200;
+		proxy_pass $upstream;
+	}
+}
+
+server {
+	access_log /var/log/nginx/access.log edge;
+	listen ${EDGE_PORT} ssl;
+	http2 on;
+	server_name ${ADMIN_HOST};
+	include /etc/nginx/snippets/tls-${EDGE_TLS}.conf;
+	if ($origin_refused) { return 403; }
+
+	add_header Strict-Transport-Security "max-age=31536000" always;
+	add_header Retry-After $retry_after always;
+	add_header X-Content-Type-Options nosniff always;
+	add_header Referrer-Policy strict-origin-when-cross-origin always;
+	add_header X-Frame-Options DENY always;
+	add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
+	add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://${CDN_HOST}; media-src 'self' https://${CDN_HOST}; connect-src 'self' https://${API_HOST} https://${SPACES_HOST}; base-uri 'self'; object-src 'none'; frame-ancestors 'none'" always;
+
+	error_page 502 503 504 =503 /__fallback/$fallback_language.html;
+	location /__fallback/ {
+		alias /etc/nginx/fallback/admin/;
+		expires $fallback_expires;
+	}
+
+	location / {
+		include /etc/nginx/snippets/proxy.conf;
+		set $upstream http://admin:8080;
+		proxy_pass $upstream;
+	}
+}
+
+server {
+	access_log /var/log/nginx/access.log edge;
+	listen ${EDGE_PORT} ssl;
+	http2 on;
+	server_name ${API_HOST};
+	include /etc/nginx/snippets/tls-${EDGE_TLS}.conf;
+	if ($origin_refused) { return 403; }
+
+	# Dependency names are for the deploy, not the internet.
+	location = /health/ready {
+		if ($from_inside = 0) { return 404; }
+		include /etc/nginx/snippets/proxy.conf;
+		set $upstream http://api:4000;
+		proxy_pass $upstream;
+	}
+
+	add_header Retry-After $retry_after always;
+
+	# A customer returning from CCAvenue while the API cannot answer sees the storefront's payment
+	# page, never a technical error. Everything else gets a short JSON 503 the apps understand.
+	error_page 502 503 504 =503 @api_unavailable;
+	location @api_unavailable {
+		default_type application/json;
+		return 503 '{"error":"temporarily_unavailable"}';
+	}
+
+	location = ${PAYMENT_RETURN_PATH} {
+		error_page 502 503 504 =503 /__fallback/payment-$fallback_language.html;
+		include /etc/nginx/snippets/proxy.conf;
+		set $upstream http://api:4000;
+		proxy_pass $upstream;
+	}
+
+	location /__fallback/ {
+		alias /etc/nginx/fallback/storefront/;
+		expires $fallback_expires;
+	}
+
+	location /auth/ {
+		limit_req zone=sign_in burst=20 nodelay;
+		include /etc/nginx/snippets/proxy.conf;
+		set $upstream http://api:4000;
+		proxy_pass $upstream;
+	}
+
+	location / {
+		include /etc/nginx/snippets/proxy.conf;
+		set $upstream http://api:4000;
+		proxy_pass $upstream;
+	}
+}
+
+# Anything else: refuse rather than guess.
+server {
+	access_log /var/log/nginx/access.log edge;
+	listen ${EDGE_PORT} ssl default_server;
+	server_name _;
+	include /etc/nginx/snippets/tls-${EDGE_TLS}.conf;
+	return 421;
+}

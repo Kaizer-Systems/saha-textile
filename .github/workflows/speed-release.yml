@@ -1,0 +1,43 @@
+# Page Builder SG-10: PageSpeed Insights on the real domain before a release. Run by hand with the addresses to
+# check (staging before staging goes live, then the shop); report only unless "enforce" is ticked.
+name: PageSpeed Insights (before a release)
+
+on:
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: Addresses to check, separated by spaces (for example the English and বাংলা Home on staging)
+        required: true
+        type: string
+      enforce:
+        description: Fail below the floor (Performance 97, the others 100, layout shift 0)
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  psi:
+    name: PageSpeed Insights
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: PageSpeed Insights
+        env:
+          PSI_API_KEY: ${{ secrets.PSI_API_KEY }}
+          URLS: ${{ inputs.urls }}
+          ENFORCE: ${{ inputs.enforce }}
+        run: |
+          # Addresses come in as one string; each word is one address.
+          read -r -a list <<< "$URLS"
+          if [ "$ENFORCE" = "true" ]; then node scripts/psi-check.mjs --enforce "${list[@]}"; else node scripts/psi-check.mjs "${list[@]}"; fi

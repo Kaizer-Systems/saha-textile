@@ -25,8 +25,7 @@
 		/>
 		@if (!onSourceLanguage) {
 		<p class="help-text mb-0">{{ 'english_guide' | transloco: { text: fields.source('title') } }}</p>
-		}
-		@if (form.controls['title'].touched && form.controls['title'].errors?.['required']) {
+		} @if (form.controls['title'].touched && form.controls['title'].errors?.['required']) {
 		<div class="invalid-feedback">{{ 'title_is_required' | transloco }}</div>
 		}
 	</app-form-fields>
@@ -44,8 +43,7 @@
 		></textarea>
 		@if (!onSourceLanguage) {
 		<p class="help-text mb-0">{{ 'english_guide' | transloco: { text: fields.source('description') } }}</p>
-		}
-		@if (form.controls['description'].touched && form.controls['description'].errors?.['required']) {
+		} @if (form.controls['description'].touched && form.controls['description'].errors?.['required']) {
 		<div class="invalid-feedback">{{ 'description_is_required' | transloco }}</div>
 		}
 	</app-form-fields>
@@ -62,24 +60,34 @@
 	</app-form-fields>
 	@if (form.value.scope === 'category' || form.value.scope === 'mixed') {
 	<app-form-fields
-		[label]="'category_ids'"
+		[label]="'categories'"
 		[for]="'categoryIds'"
 	>
-		<input
-			class="form-control"
-			id="categoryIds"
-			formControlName="categoryIds"
+		<app-advanced-dropdown
+			[position]="'bottom'"
+			[selectedOption]="selectedCategories()"
+			[options]="categoryOptions()"
+			[subArrayKey]="'subcategories'"
+			[id]="'categoryIds'"
+			(selectedItem)="selectCategories($event)"
 		/>
+		<p class="help-text">{{ 'faq_category_scope_help' | transloco }}</p>
 	</app-form-fields>
 	} @if (form.value.scope === 'product' || form.value.scope === 'mixed') {
 	<app-form-fields
-		[label]="'product_ids'"
+		[label]="'products'"
 		[for]="'productIds'"
 	>
-		<input
-			class="form-control"
+		<select2
+			class="custom-select"
 			id="productIds"
 			formControlName="productIds"
+			[data]="productOptions()"
+			[multiple]="true"
+			[customSearchEnabled]="true"
+			[placeholder]="'select_product' | transloco"
+			noResultMessage="{{ 'no_data_found' | transloco }}"
+			(search)="searchProducts($event)"
 		/>
 	</app-form-fields>
 	}

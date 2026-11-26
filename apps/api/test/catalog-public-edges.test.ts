@@ -8,6 +8,9 @@ import { CatalogPublicService } from '../src/catalog/catalog-public.service';
 import { catalogEtag, CatalogEtagInterceptor } from '../src/catalog/catalog-etag.interceptor';
 import { pricedRow, productReadModel, skuView } from '../src/catalog/catalog-read-model';
 import { lastValueFrom, of } from 'rxjs';
+import { LanguageStore } from '../src/languages/language-store';
+import { BundleReader } from '../src/catalog/bundles/bundle-reader';
+import { SEEDED_PRICE_METHODS } from '@saha-textile/core-domain';
 
 type Variant = z.output<typeof ProductVariant>;
 type ProductRow = z.output<typeof Product>;
@@ -58,6 +61,7 @@ interface Options {
 	rows?: ProductRow[];
 	variants?: Variant[];
 	withAll?: boolean;
+	languages?: string[];
 	assets?: unknown[];
 	placement?: unknown;
 	category?: unknown;
@@ -69,6 +73,7 @@ interface Options {
 	retired?: string[];
 	live?: string[];
 	canonical?: unknown;
+	faqs?: unknown;
 }
 
 const build = (options: Options = {}) => {
@@ -84,6 +89,7 @@ const build = (options: Options = {}) => {
 			pageSize: 500,
 		})),
 		listPublicSlugs: vi.fn(async () => rows.map((row) => row.slug)),
+		findPublicSlugBySku: vi.fn(async (sku: string) => rows.find((row) => row.sku === sku)?.slug ?? null),
 	};
 	const variants = {
 		listForProduct: vi.fn(async () => variantRows),
@@ -91,7 +97,7 @@ const build = (options: Options = {}) => {
 	};
 	const placements = {
 		findByPath: vi.fn(async () => options.placement ?? null),
-		findCanonical: vi.fn(async () => options.canonical ?? null),
+		findCanonical: vi.fn(async (_id: string): Promise<unknown> => options.canonical ?? null),
 		listLivePaths: vi.fn(async () => options.live ?? []),
 		listRetiredPaths: vi.fn(async () => options.retired ?? []),
 	};
@@ -100,6 +106,17 @@ const build = (options: Options = {}) => {
 	const relations = { listForProduct: vi.fn(async () => options.relations ?? []) };
 	const templates = { findByCode: vi.fn(async () => options.template ?? null) };
 	const bundles = { findByProductId: vi.fn(async () => options.bundle ?? null) };
+	const methods = {
+		findById: vi.fn(
+			async (id: string) =>
+				SEEDED_PRICE_METHODS.map((seed) => ({
+					...seed,
+					id: `bpm_${seed.code}`,
+					seeded: true,
+					version: 1,
+				})).find((method) => method.id === id) ?? null,
+		),
+	};
 	const categories = {
 		findBySlug: vi.fn(async () => options.category ?? null),
 		findById: vi.fn(async () => options.category ?? null),
@@ -122,9 +139,70 @@ const build = (options: Options = {}) => {
 					bundles as never,
 					categories as never,
 					seo as never,
+					undefined,
+					options.languages ? LanguageStore.fixed(options.languages) : undefined,
+					options.faqs as never,
+					undefined,
+					new BundleReader(products as never, variants as never, methods as never, null),
 				);
 	return { service, products, variants, placements, media, seo };
 };
+
+describe('product page FAQ', () => {
+	const entry = (id: string, productIds: string[], en: string) => ({
+		id,
+		productIds,
+		question: { en: `${en}?`, bn: `${en} বাংলা?` },
+		answer: { en: 'Yes', bn: 'হ্যাঁ' },
+	});
+
+	it('shows the product’s own questions first, then its categories’ and parents’, never shop-wide', async () => {
+		const faqs = {
+			resolveForSurface: vi.fn(async () => [
+				entry('f_cat', [], 'Category'),
+				entry('f_own', ['prd_1'], 'Own'),
+				{ ...entry('f_blank', [], 'Blank'), answer: { en: ' ' } },
+			]),
+		};
+		const page = await build({
+			rows: [product({ faqEnabled: true, categoryIds: ['cat_silk'] })],
+			canonical: { pathCategoryIds: ['cat_saree', 'cat_silk'] },
+			faqs,
+		}).service.page('red-saree');
+		expect(page.faq).toEqual([
+			{ question: 'Own?', answer: 'Yes' },
+			{ question: 'Category?', answer: 'Yes' },
+		]);
+		expect(faqs.resolveForSurface).toHaveBeenCalledWith({
+			productId: 'prd_1',
+			categoryIds: ['cat_silk', 'cat_saree'],
+			includeGlobal: false,
+		});
+	});
+
+	it('is empty while switched off, and without placements reads the product’s own categories', async () => {
+		const faqs = { resolveForSurface: vi.fn(async () => [entry('f_own', ['prd_1'], 'Own')]) };
+		expect((await build({ faqs }).service.page('red-saree')).faq).toEqual([]);
+		expect(faqs.resolveForSurface).not.toHaveBeenCalled();
+		const bare = new CatalogPublicService(
+			{ findBySlug: async () => product({ faqEnabled: true, categoryIds: ['c1'] }) } as never,
+			{ listForProduct: async () => [variant()] } as never,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			faqs as never,
+		);
+		expect((await bare.page('red-saree')).faq).toHaveLength(1);
+		expect(faqs.resolveForSurface).toHaveBeenLastCalledWith(expect.objectContaining({ categoryIds: ['c1'] }));
+	});
+});
 
 describe('product page', () => {
 	it('refuses an unknown product, and finds one by id', async () => {
@@ -192,6 +270,79 @@ describe('product page', () => {
 		expect(page.variants[0]?.selections).toEqual({ colour: 'red' });
 	});
 
+	it('draws a swatch from the version the product stored, not the one the website would pick', async () => {
+		const swatch = {
+			...asset('sw2', 'swatch_image'),
+			versions: [
+				{ id: 'ver_a', state: 'ready' },
+				{ id: 'ver_b', state: 'ready' },
+			],
+			derivatives: ['ver_a', 'ver_b'].map((versionId) => ({
+				role: 'swatch_image',
+				storageKey: `k/sw2-${versionId}`,
+				width: 96,
+				height: 96,
+				byteSize: 1,
+				format: 'image/webp',
+				roleVersion: 1,
+				versionId,
+			})),
+		};
+		const terms = (versionId?: string) => [
+			{
+				code: 'red',
+				label: { en: 'Red' },
+				swatchAssetId: 'sw2',
+				...(versionId ? { swatchVersionId: versionId } : {}),
+			},
+		];
+		const shown = async (versionId?: string) => {
+			const row = product({
+				optionGroups: [
+					{
+						attributeCode: 'colour',
+						label: { en: 'Colour' },
+						semanticRole: 'variation_axis',
+						displayStyle: 'image_swatch',
+						terms: terms(versionId),
+					},
+				],
+			});
+			const page = await build({ rows: [row], assets: [swatch] }).service.page('red-saree');
+			return page.optionGroups[0]?.terms[0]?.image?.roles['swatch_image']?.[0]?.url;
+		};
+		expect(await shown('ver_b')).toBe('https://cdn.test/k/sw2-ver_b');
+		// Without a stored version, the first ready one, as before.
+		expect(await shown()).toBe('https://cdn.test/k/sw2-ver_a');
+	});
+
+	it('shows the photo’s own swatch while its cut is being made, then the cut (brief P11)', async () => {
+		const photoRow = asset('ph1', 'swatch_image');
+		const cut = (state: string) => ({
+			...asset('cut1', 'swatch_image'),
+			cutFrom: { assetId: 'ph1', region: { x: 0, y: 0, width: 0.5, height: 0.375 } },
+			processing: { state, attempts: 0, error: null, processedAt: null },
+		});
+		const shown = async (state: string) => {
+			const row = product({
+				optionGroups: [
+					{
+						attributeCode: 'print',
+						label: { en: 'Print' },
+						semanticRole: 'variation_axis',
+						displayStyle: 'image_swatch',
+						terms: [{ code: 'floral', label: { en: 'Floral' }, swatchAssetId: 'cut1' }],
+					},
+				],
+			});
+			const page = await build({ rows: [row], assets: [photoRow, cut(state)] }).service.page('red-saree');
+			return page.optionGroups[0]?.terms[0]?.image?.roles['swatch_image']?.[0]?.url;
+		};
+		expect(await shown('processing')).toBe('https://cdn.test/k/ph1');
+		expect(await shown('queued')).toBe('https://cdn.test/k/ph1');
+		expect(await shown('ready')).toBe('https://cdn.test/k/cut1');
+	});
+
 	it('finds a variant photo in the gallery, and copes when it is not there', async () => {
 		const row = product({
 			media: { gallery: ['m1', 'gone'] },
@@ -247,7 +398,7 @@ describe('product page', () => {
 describe('shop menu', () => {
 	const category = (id: string, over: Record<string, unknown> = {}) => ({
 		id,
-		name: { en: id, fr: `${id} fr` },
+		name: { en: id, bn: `${id} bn` },
 		slug: id,
 		description: { en: 'About' },
 		...over,
@@ -263,7 +414,7 @@ describe('shop menu', () => {
 	const service = (
 		categories: unknown[],
 		placements: unknown[],
-		locales = ['en', 'fr'],
+		locales = ['en', 'bn'],
 		assets: unknown[] = [],
 		summaries: unknown[] = [],
 	) =>
@@ -279,12 +430,22 @@ describe('shop menu', () => {
 			{ tree: async () => categories } as never,
 			null,
 			null,
-			{ locales } as never,
+			LanguageStore.fixed(locales),
 		);
 
 	it('is empty without its repositories', async () => {
 		expect(await build({ withAll: false }).service.menu()).toEqual([]);
-		const noPlacements = new CatalogPublicService({} as never, {} as never, null, null, null, null, null, null, {} as never);
+		const noPlacements = new CatalogPublicService(
+			{} as never,
+			{} as never,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			{} as never,
+		);
 		expect(await noPlacements.menu()).toEqual([]);
 	});
 
@@ -304,7 +465,7 @@ describe('shop menu', () => {
 
 	it('leaves out a category missing a language, and everything under it', async () => {
 		const rows = await service(
-			[category('a', { name: { en: 'A', fr: ' ' } }), category('b'), category('c', { name: { en: 'C' } })],
+			[category('a', { name: { en: 'A', bn: ' ' } }), category('b'), category('c', { name: { en: 'C' } })],
 			[placement('a'), placement('b', { parentCategoryId: 'a', depth: 1 }), placement('c')],
 		).menu();
 		expect(rows).toEqual([]);
@@ -322,7 +483,7 @@ describe('shop menu', () => {
 		const rows = await service(
 			[category('a'), category('b')],
 			[placement('a'), placement('b', { parentCategoryId: 'a', depth: 1 })],
-			['en', 'fr'],
+			['en', 'bn'],
 			[image],
 			[{ categoryId: 'b', productCount: 3, coverAssetId: 'med' }],
 		).menu();
@@ -333,9 +494,13 @@ describe('shop menu', () => {
 	});
 
 	it('has no photo for a category whose products have none', async () => {
-		const rows = await service([category('a')], [placement('a')], ['en', 'fr'], [], [
-			{ categoryId: 'a', productCount: 2, coverAssetId: null },
-		]).menu();
+		const rows = await service(
+			[category('a')],
+			[placement('a')],
+			['en', 'bn'],
+			[],
+			[{ categoryId: 'a', productCount: 2, coverAssetId: null }],
+		).menu();
 		expect(rows[0]).toMatchObject({ productCount: 2, coverUrl: null });
 	});
 
@@ -360,10 +525,12 @@ describe('shop menu', () => {
 
 	it('resolves images, whichever size the library holds', async () => {
 		const media = { bannerImage: 'm1', iconImage: 'm2' };
-		const rows = await service([category('a', { media })], [placement('a')], ['en', 'fr'], [
-			asset('m1', 'card'),
-			asset('m2', 'category_icon'),
-		]).menu();
+		const rows = await service(
+			[category('a', { media })],
+			[placement('a')],
+			['en', 'bn'],
+			[asset('m1', 'card'), asset('m2', 'category_icon')],
+		).menu();
 		expect(rows[0]).toMatchObject({ imageUrl: 'https://cdn.test/k/m1', iconUrl: 'https://cdn.test/k/m2' });
 	});
 
@@ -414,9 +581,10 @@ describe('measurements', () => {
 				{ code: 'note', label: { en: 'Note' }, type: 'text', required: false },
 			],
 		});
-		const page = await build({ rows: [row], template: { code: 'x', priceINR: 1, fields: [], sizeGuide: [] } }).service.page(
-			'red-saree',
-		);
+		const page = await build({
+			rows: [row],
+			template: { code: 'x', priceINR: 1, fields: [], sizeGuide: [] },
+		}).service.page('red-saree');
 		expect(page.measurements).toMatchObject({ templateCode: null, priceINR: 0 });
 		expect(page.measurements?.fields.map((entry) => entry.unit)).toEqual(['cm', 'in']);
 		const priced = product({ addonPriceINR: 50, addons: row.addons });
@@ -437,11 +605,11 @@ describe('page text and compound photos', () => {
 
 	it('uses each field in the language asked for', async () => {
 		const row = product({
-			shortDescription: { en: 'Short', fr: 'Court' },
-			seo: { title: { fr: 'Titre' }, description: { fr: 'Résumé' } },
+			shortDescription: { en: 'Short', bn: 'Court' },
+			seo: { title: { bn: 'Titre' }, description: { bn: 'সারাংশ' } },
 		});
-		const page = await withCatalogLocale('fr', () => build({ rows: [row] }).service.page('red-saree'));
-		expect(page).toMatchObject({ shortDescription: 'Court', metaTitle: 'Titre', metaDescription: 'Résumé' });
+		const page = await withCatalogLocale('bn', () => build({ rows: [row] }).service.page('red-saree'));
+		expect(page).toMatchObject({ shortDescription: 'Court', metaTitle: 'Titre', metaDescription: 'সারাংশ' });
 	});
 
 	it('gives each variant its own photos in compound mode', async () => {
@@ -523,7 +691,7 @@ describe('add-on prices', () => {
 	const template = {
 		code: 'blouse',
 		priceINR: 600,
-		fields: [{ code: 'bust', label: { en: 'Bust', fr: 'Poitrine' }, unit: 'in', min: null, max: null, step: null }],
+		fields: [{ code: 'bust', label: { en: 'Bust', bn: 'বুক' }, unit: 'in', min: null, max: null, step: null }],
 		sizeGuide: [],
 	};
 
@@ -539,96 +707,150 @@ describe('add-on prices', () => {
 	});
 
 	it('names each measurement in the language asked for', async () => {
-		const page = await withCatalogLocale('fr', () => build({ rows: [stitched], template }).service.page('red-saree'));
-		expect(page.measurements?.fields[0]?.label).toBe('Poitrine');
+		const page = await withCatalogLocale('bn', () =>
+			build({ rows: [stitched], template }).service.page('red-saree'),
+		);
+		expect(page.measurements?.fields[0]?.label).toBe('বুক');
 	});
 });
 
 describe('bundles', () => {
-	const component = (productId: string, extra: Record<string, unknown> = {}) => ({
+	const set = product({ id: 'prd_set', type: 'bundle', slug: 'wedding-set', sku: 'BND-0001', basePriceINR: 0 });
+	const item = (productId: string, extra: Record<string, unknown> = {}) => ({
 		productId,
-		quantity: 2,
-		required: true,
+		variantId: null,
+		quantity: 1,
+		priceInSetINR: null,
 		...extra,
 	});
+	const level = (code: string, take: number, items: unknown[]) => ({
+		code,
+		label: { en: code },
+		take,
+		source: { kind: 'items' },
+		items,
+		priceMode: 'difference',
+	});
 	const bundle = (overrides: Record<string, unknown> = {}) => ({
-		bundleType: 'fixed_kit',
-		pricePolicy: 'sum_components',
-		fixedPriceINR: null,
-		groups: [
-			{ code: 'set', label: { en: 'Set' }, minSelections: 1, maxSelections: 3, components: [component('prd_1')] },
-		],
+		id: 'bnd_1',
+		productId: 'prd_set',
+		levels: [level('piece-1', 1, [item('prd_1', { quantity: 2 })])],
+		extras: [],
+		pricing: {
+			methodId: 'bpm_pieces_added_up',
+			params: {},
+			rules: [],
+			combine: 'all',
+			capAtSeparately: false,
+			roundTo: 'one',
+		},
+		saleWindow: null,
+		styledPhoto: null,
+		dearerReason: null,
+		stock: null,
+		status: 'live',
 		...overrides,
 	});
+	const rows = [
+		set,
+		product(),
+		product({ id: 'prd_2', slug: 'maroon', sku: 'SKU-2', basePriceINR: 1800 }),
+		product({ id: 'prd_3', slug: 'petticoat', sku: 'SKU-3', basePriceINR: 600 }),
+	];
 
-	it('sums the live components', async () => {
-		const page = await build({ bundle: bundle() }).service.page('red-saree');
-		expect(page.bundle).toMatchObject({ priceINR: 2000 });
-		expect(page.bundle?.groups[0]).toMatchObject({ maxSelections: 1 });
-		expect(page.bundle?.groups[0]?.components[0]).toMatchObject({ sku: 'V1', sellingINR: 1000, inStock: true });
+	it('adds up the pieces, each with its photo, price in the set and stock', async () => {
+		const page = await build({ rows, bundle: bundle() }).service.page('wedding-set');
+		expect(page.bundle).toMatchObject({ heading: 'components', priceINR: 2000, fromPrice: false, buyable: true });
+		expect(page.bundle?.levels[0]?.items[0]).toMatchObject({
+			key: 'prd_1',
+			sku: 'V1',
+			sellingINR: 1000,
+			inStock: true,
+			quantity: 2,
+		});
+		expect(page.bundle?.levels[0]?.items[0]).toHaveProperty('image');
+		expect(page.bundle?.stock).toMatchObject({ setsPossible: 1, state: 'low_stock' });
 	});
 
-	it('uses the fixed price, or the sum when none is set', async () => {
-		const fixed = await build({
-			bundle: bundle({ pricePolicy: 'fixed_bundle_price', fixedPriceINR: 900 }),
-		}).service.page('red-saree');
-		expect(fixed.bundle?.priceINR).toBe(900);
-		const missing = await build({ bundle: bundle({ pricePolicy: 'fixed_bundle_price' }) }).service.page(
-			'red-saree',
-		);
-		expect(missing.bundle?.priceINR).toBe(2000);
+	it('uses one fixed price, and adds the difference for a dearer pick (owner, 21 Nov 2026)', async () => {
+		const fixed = bundle({
+			levels: [level('saree', 1, [item('prd_1'), item('prd_2'), item('prd_3')])],
+			extras: [item('prd_3', { priceInSetINR: 0 })].map((row) => ({ ...row, productId: 'prd_2' })),
+			pricing: {
+				methodId: 'bpm_fixed_price',
+				params: { setPrice: 7300 },
+				rules: [],
+				combine: 'all',
+				capAtSeparately: false,
+				roundTo: 'one',
+			},
+		});
+		const page = await build({ rows, variants: [], bundle: fixed }).service.page('wedding-set');
+		expect(page.bundle).toMatchObject({
+			heading: 'choose',
+			priceINR: 7300,
+			fromPrice: true,
+			lowINR: 7300,
+			highINR: 8100,
+		});
+		expect(page.bundle?.levels[0]).toMatchObject({ choice: true, take: 1 });
+		expect(page.bundle?.extras[0]).toMatchObject({ key: 'prd_2', priceInSetINR: 0 });
+		expect(page.bundle?.pricing).toMatchObject({
+			base: { kind: 'fixed', input: 'setPrice' },
+			params: { setPrice: 7300 },
+		});
 	});
 
-	it('leaves out components that are gone, and a bundle with none left', async () => {
+	it('leaves out items that are gone, and a set with nothing left', async () => {
 		const page = await build({
-			bundle: bundle({
-				groups: [
-					{
-						code: 'a',
-						label: { en: 'A' },
-						minSelections: 1,
-						maxSelections: 1,
-						components: [component('gone')],
-					},
-					{
-						code: 'b',
-						label: { en: 'B' },
-						minSelections: 1,
-						maxSelections: 1,
-						components: [component('prd_1')],
-					},
-				],
-			}),
-		}).service.page('red-saree');
-		expect(page.bundle?.groups.map((group) => group.code)).toEqual(['b']);
-		const empty = await build({
-			bundle: bundle({
-				groups: [
-					{
-						code: 'a',
-						label: { en: 'A' },
-						minSelections: 1,
-						maxSelections: 1,
-						components: [component('gone')],
-					},
-				],
-			}),
-		}).service.page('red-saree');
+			rows,
+			bundle: bundle({ levels: [level('a', 1, [item('gone')]), level('b', 1, [item('prd_1')])] }),
+		}).service.page('wedding-set');
+		expect(page.bundle?.levels.map((row) => [row.code, row.items.length])).toEqual([
+			['a', 0],
+			['b', 1],
+		]);
+		expect(page.bundle?.buyable).toBe(false);
+		const empty = await build({ rows, bundle: bundle({ levels: [level('a', 1, [item('gone')])] }) }).service.page(
+			'wedding-set',
+		);
 		expect(empty.bundle).toBeNull();
 	});
 
-	it('falls back to the product when a component has no variants', async () => {
-		const page = await build({ bundle: bundle(), variants: [] }).service.page('red-saree');
-		expect(page.bundle?.groups[0]?.components[0]).toMatchObject({ sku: 'SKU-1', sellingINR: 1000, inStock: false });
+	it('falls back to the product price when an item has no live rows, then it is out of stock', async () => {
+		const page = await build({ rows, bundle: bundle(), variants: [] }).service.page('wedding-set');
+		expect(page.bundle?.levels[0]?.items[0]).toMatchObject({ sku: 'SKU-1', sellingINR: 1000, inStock: false });
+		expect(page.bundle?.stock).toMatchObject({ setsPossible: 0, state: 'out_of_stock', soldOutPieces: ['prd_1'] });
 	});
 
-	it('marks a made-to-order component in stock', async () => {
+	it('marks a made-to-order item in stock', async () => {
 		const page = await build({
 			bundle: bundle(),
-			rows: [product({ madeToOrder: true })],
+			rows: [set, product({ madeToOrder: true })],
 			variants: [variant({ stock: { quantity: 0 } })],
-		}).service.page('red-saree');
-		expect(page.bundle?.groups[0]?.components[0]?.inStock).toBe(true);
+		}).service.page('wedding-set');
+		expect(page.bundle?.levels[0]?.items[0]?.inStock).toBe(true);
+	});
+
+	it("shows a product's free items, and hides a product kept off the shop", async () => {
+		const withFree = product({
+			freeWith: {
+				items: [{ productId: 'prd_3', variantId: null, quantity: 1 }],
+				take: 'all',
+				count: null,
+				from: null,
+				required: true,
+			},
+		});
+		const page = await build({ rows: [withFree, rows[3] as ProductRow] }).service.page('red-saree');
+		expect(page.freeWith).toMatchObject({
+			given: true,
+			min: 1,
+			max: 1,
+			items: [{ productId: 'prd_3', title: 'Red saree' }],
+		});
+		const hidden = product({ showOnShop: false });
+		await expect(build({ rows: [hidden] }).service.page('red-saree')).rejects.toBeInstanceOf(NotFoundException);
 	});
 });
 
@@ -643,10 +865,10 @@ describe('breadcrumbs', () => {
 	const row = product({ categoryIds: ['cat_1'] });
 
 	it('names each step in the language asked for', async () => {
-		const category = { name: { en: 'Sarees', fr: 'Saris' } };
+		const category = { name: { en: 'Sarees', bn: 'শাড়ি' } };
 		const { service } = build({ rows: [row], canonical: placement(), category });
-		const page = await withCatalogLocale('fr', () => service.page('red-saree'));
-		expect(page.breadcrumb.map((step) => step.name)).toEqual(['Saris', 'Saris']);
+		const page = await withCatalogLocale('bn', () => service.page('red-saree'));
+		expect(page.breadcrumb.map((step) => step.name)).toEqual(['শাড়ি', 'শাড়ি']);
 	});
 
 	it('walks the canonical placement, naming a missing label by its slug', async () => {
@@ -654,6 +876,24 @@ describe('breadcrumbs', () => {
 		expect(page.breadcrumb).toEqual([
 			{ name: 'Sarees', path: '/collections/sarees' },
 			{ name: 'silk', path: '/collections/sarees/silk' },
+		]);
+	});
+
+	it('walks to the deepest live category the product sits in', async () => {
+		const deep = product({ categoryIds: ['cat_top', 'cat_deep', 'cat_draft', 'cat_none'] });
+		const { service, placements } = build({ rows: [deep] });
+		placements.findCanonical.mockImplementation(async (id: string) => {
+			if (id === 'cat_top') return placement({ pathSlugs: ['sarees'], pathCategoryIds: ['cat_top'] });
+			if (id === 'cat_deep')
+				return placement({ pathSlugs: ['sarees', 'silk', 'banarasi'], pathCategoryIds: ['a', 'b', 'c'] });
+			if (id === 'cat_draft') return placement({ pathSlugs: ['x', 'y', 'z', 'w'], status: 'draft' });
+			return null;
+		});
+		const page = await service.page('red-saree');
+		expect(page.breadcrumb.map((step) => step.path)).toEqual([
+			'/collections/sarees',
+			'/collections/sarees/silk',
+			'/collections/sarees/silk/banarasi',
 		]);
 	});
 
@@ -692,6 +932,31 @@ describe('placement listings', () => {
 		const page = await build({ placement }).service.placement(query({ path: 'sarees' }));
 		expect(page).toMatchObject({ path: 'sarees', title: 'Sarees' });
 		expect(page.breadcrumb).toEqual([{ name: 'Sarees', path: '/collections/sarees' }]);
+	});
+
+	it('carries the category FAQ on the plain first page only', async () => {
+		const faqs = {
+			resolveForSurface: vi.fn(async () => [
+				{ scope: 'category', question: { en: 'Silk?', bn: 'সিল্ক?' }, answer: { en: 'Yes' } },
+				{ scope: 'product', question: { en: 'Own?' }, answer: { en: 'Yes' } },
+				{ scope: 'mixed', question: { en: 'Blank?' }, answer: { en: ' ' } },
+			]),
+		};
+		const withPath = { ...placement, pathCategoryIds: ['cat_root', 'cat_1'] };
+		const page = await build({ placement: withPath, faqs }).service.placement(query({ path: 'sarees' }));
+		expect(page.faq).toEqual([{ question: 'Silk?', answer: 'Yes' }]);
+		expect(faqs.resolveForSurface).toHaveBeenCalledWith({
+			categoryIds: ['cat_root', 'cat_1'],
+			includeGlobal: false,
+		});
+		const sorted = await build({ placement: withPath, faqs }).service.placement(
+			query({ path: 'sarees', sortBy: 'low-high' } as never),
+		);
+		expect(sorted.faq).toEqual([]);
+		const empty = { ...placement, pathCategoryIds: [] };
+		const noIds = await build({ placement: empty, faqs }).service.placement(query({ path: 'sarees' }));
+		expect(noIds.faq).toEqual([]);
+		expect((await build({ placement: withPath }).service.placement(query({ path: 'sarees' }))).faq).toEqual([]);
 	});
 
 	it('names a crumb by its slug when the label runs out', async () => {
@@ -820,6 +1085,31 @@ describe('gallery and swatches', () => {
 		expect(swatches[0]?.image?.assetId).toBe('s1');
 		expect(swatches[1]).toMatchObject({ hex: null, image: null });
 	});
+
+	it('shows a default picture’s photo while its cut is being made (brief P11)', async () => {
+		const row = product({
+			attributes: [
+				{
+					code: 'print',
+					label: { en: 'Print' },
+					terms: [{ code: 'floral', label: { en: 'Floral' }, swatch: 'cut1' }],
+				},
+			],
+		});
+		const cut = (state: string) => ({
+			...asset('cut1', 'swatch_image'),
+			cutFrom: { assetId: 'ph1', region: { x: 0, y: 0, width: 0.5, height: 0.375 } },
+			processing: { state, attempts: 0, error: null, processedAt: null },
+		});
+		const shown = async (state: string) =>
+			(
+				await build({ rows: [row], assets: [asset('ph1', 'swatch_image'), cut(state)] }).service.swatches(
+					'red-saree',
+				)
+			)[0]?.image?.assetId;
+		expect(await shown('processing')).toBe('ph1');
+		expect(await shown('ready')).toBe('cut1');
+	});
 });
 
 describe('cards', () => {
@@ -899,6 +1189,35 @@ describe('relations', () => {
 		built.products.findById.mockResolvedValue(null);
 		expect((await built.service.relationCards('red-saree')).related).toEqual([]);
 	});
+
+	it("tops related up from the product's own category, deepest first, never itself or a bundle", async () => {
+		const rows = [
+			product({ categoryIds: ['cat_sarees', 'cat_silk'] }),
+			product({ id: 'prd_2', slug: 'b' }),
+			product({ id: 'prd_3', slug: 'c' }),
+			product({ id: 'prd_4', slug: 'd', type: 'bundle' }),
+			product({ id: 'prd_5', slug: 'e' }),
+		];
+		const built = build({ rows, relations: [relation('related', 'prd_3')] });
+		const cards = await built.service.relationCards('red-saree');
+		expect(cards.related.map((card) => card.id)).toEqual(['prd_3', 'prd_2', 'prd_5']);
+		expect(built.products.list).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({ audience: 'public', categoryId: 'cat_silk' }),
+		);
+		expect(built.products.list).toHaveBeenCalledTimes(2);
+	});
+
+	it('leaves related alone once six are picked', async () => {
+		const ids = ['prd_2', 'prd_3', 'prd_4', 'prd_5', 'prd_6', 'prd_7'];
+		const rows = [
+			product({ categoryIds: ['cat_silk'] }),
+			...ids.map((id) => product({ id, slug: id.replace('_', '-') })),
+		];
+		const built = build({ rows, relations: ids.map((id) => relation('related', id)) });
+		expect((await built.service.relationCards('red-saree')).related.map((card) => card.id)).toEqual(ids);
+		expect(built.products.list).not.toHaveBeenCalled();
+	});
 });
 
 describe('addresses', () => {
@@ -911,6 +1230,13 @@ describe('addresses', () => {
 			products: ['red-saree'],
 			collections: [],
 		});
+	});
+
+	it('finds the product behind a short address, as typed or in capitals', async () => {
+		const { service } = build({ rows: [product({ sku: 'KATA-1001' })] });
+		expect(await service.slugForCode('KATA-1001')).toBe('red-saree');
+		expect(await service.slugForCode('kata-1001')).toBe('red-saree');
+		expect(await service.slugForCode('KATA-9')).toBeNull();
 	});
 
 	it('turns a retired collection into a row, unless it is live again', async () => {
@@ -931,21 +1257,38 @@ describe('addresses', () => {
 		expect(await build({ withAll: false }).service.seoRoute('/x', 'en')).toBeNull();
 	});
 
+	const routes = [
+		{ path: '/', locale: 'en', entityType: 'page', canonicalPath: '/en' },
+		{ path: '/about', locale: 'en', entityType: 'page', canonicalPath: '/en/about' },
+		{ path: '/product/red-saree', locale: 'bn', entityType: 'product', canonicalPath: '/bn/product/red-saree' },
+		{ path: '/collections/sarees', locale: 'en', entityType: 'category', canonicalPath: '/en/collections/sarees' },
+		{ path: '/product/gone', locale: 'en', entityType: 'product', canonicalPath: '/en/product/gone' },
+	];
+
 	it('lists only addresses that are still live, with a slash on language homes', async () => {
-		const routes = [
-			{ path: '/', entityType: 'page', canonicalPath: '/en' },
-			{ path: '/about', entityType: 'page', canonicalPath: '/en/about' },
-			{ path: '/product/red-saree', entityType: 'product', canonicalPath: '/fr/product/red-saree' },
-			{ path: '/collections/sarees', entityType: 'category', canonicalPath: '/en/collections/sarees' },
-			{ path: '/product/gone', entityType: 'product', canonicalPath: '/en/product/gone' },
-		];
-		expect(await build({ routes, live: ['sarees'] }).service.sitemapPaths()).toEqual([
+		expect(await build({ routes, live: ['sarees'], languages: ['en', 'bn'] }).service.sitemapPaths()).toEqual([
+			'/bn/',
+			'/bn/about',
+			'/bn/collections/sarees',
+			'/bn/product/red-saree',
 			'/en/',
 			'/en/about',
 			'/en/collections/sarees',
-			'/fr/product/red-saree',
 		]);
 		expect(await build({ withAll: false }).service.sitemapPaths()).toEqual([]);
+	});
+
+	it('follows the shop’s languages: one switched on joins, one switched off leaves', async () => {
+		const paths = await build({ routes, live: ['sarees'], languages: ['en', 'hi'] }).service.sitemapPaths();
+		expect(paths).toEqual([
+			'/en/',
+			'/en/about',
+			'/en/collections/sarees',
+			'/hi/',
+			'/hi/about',
+			'/hi/collections/sarees',
+		]);
+		expect(paths.some((path) => path.startsWith('/bn'))).toBe(false);
 	});
 });
 
@@ -1013,5 +1356,97 @@ describe('CatalogEtagInterceptor', () => {
 		const { reply, result } = run(catalogEtag({ a: 1 }));
 		await result;
 		expect(reply.status).toHaveBeenCalledWith(304);
+	});
+});
+
+describe('variant photos, a set card that cannot be read, and a share picture of any version', () => {
+	const axis = {
+		attributeCode: 'size',
+		label: { en: 'Size' },
+		semanticRole: 'variation_axis',
+		displayStyle: 'rectangle',
+		terms: [
+			{ code: 's', label: { en: 'S' }, isBase: true },
+			{ code: 'm', label: { en: 'M' } },
+			{ code: 'l', label: { en: 'L' } },
+		],
+	};
+	const withPhoto = (id: string, hash: string, media: Record<string, unknown>) =>
+		variant({ id, sku: id.toUpperCase(), optionSelectionHash: hash, isBaseVariant: id === 'var_1', media });
+
+	it('leads a compound variant with its own photo only when its group has photos', async () => {
+		const row = product({
+			optionGroups: [axis],
+			imageMode: 'compound',
+			media: {
+				gallery: ['m1'],
+				compound: [
+					{ selectionHash: 'size:s', gallery: ['m1'] },
+					{ selectionHash: 'size:m', gallery: [] },
+				],
+			},
+		});
+		const page = await build({
+			rows: [row],
+			variants: [
+				withPhoto('var_1', 'size:s', { primaryAssetId: 'm1' }),
+				withPhoto('var_2', 'size:m', { primaryAssetId: 'm1' }),
+				withPhoto('var_3', 'size:l', { primaryAssetId: 'm1' }),
+			],
+			assets: [asset('m1', 'gallery')],
+		}).service.page('red-saree');
+		expect(page.variants.map((entry) => entry.id)).toEqual(['var_1', 'var_2', 'var_3']);
+		expect(page.variants.every((entry) => entry.galleryIndex !== null)).toBe(true);
+	});
+
+	it('shows a variant’s photo at the gallery frame when the versions match, else as a frame of its own', async () => {
+		const row = product({
+			optionGroups: [axis],
+			media: { gallery: ['m1', 'm2'], versions: { m1: 'ver_1' } },
+		});
+		const page = await build({
+			rows: [row],
+			variants: [
+				withPhoto('var_1', 'size:s', { primaryAssetId: 'm1', primaryVersionId: 'ver_1' }),
+				withPhoto('var_2', 'size:m', { primaryAssetId: 'm2', primaryVersionId: 'ver_2' }),
+				withPhoto('var_3', 'size:l', { primaryAssetId: 'm1', primaryVersionId: 'ver_9' }),
+			],
+			assets: [asset('m1', 'gallery'), asset('m2', 'gallery')],
+		}).service.page('red-saree');
+		expect(page.gallery.length).toBe(4);
+		expect(page.variants.map((entry) => entry.galleryIndex)).toEqual([0, 2, 3]);
+	});
+
+	it('draws a set whose pieces cannot be read as a plain card', async () => {
+		const set = product({ id: 'prd_set', type: 'bundle', slug: 'wedding-set', sku: 'BND-0001', basePriceINR: 0 });
+		const built = build({
+			rows: [set],
+			bundle: {
+				id: 'bnd_1',
+				productId: 'prd_set',
+				levels: [
+					{
+						code: 'piece-1',
+						label: { en: 'Piece' },
+						take: 1,
+						source: { kind: 'category', categoryId: 'cat_silk', limit: 3 },
+						items: [],
+						priceMode: 'difference',
+					},
+				],
+				extras: [],
+				pricing: { methodId: 'bpm_pieces_added_up', params: {}, rules: [], combine: 'all' },
+				status: 'live',
+			},
+		});
+		built.products.list.mockRejectedValue(new Error('catalogue down'));
+		const cards = await built.service.cardsForSlugs(['wedding-set']);
+		expect(cards.map((card) => card.id)).toEqual(['prd_set']);
+	});
+
+	it('shares the widest picture of any version when the product names none', async () => {
+		const row = product({ media: { gallery: [], shareImage: { assetId: 'm1', versionId: null } } });
+		const page = await build({ rows: [row], assets: [asset('m1', 'gallery')] }).service.page('red-saree');
+		expect(page.shareImageUrl).toBe('https://cdn.test/k/m1');
 	});
 });

@@ -30,7 +30,11 @@ const CONFIGURED = {
  * service behaves. The stub only has to be deterministic and one-way, so sha256 is both.
  */
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
-const authStub = { hash: digest };
+const authStub = {
+	hash: digest,
+	findByHash: (value: string, lookup: (hash: string) => unknown) => lookup(digest(value)),
+	hashMatches: (value: string, stored: string | null) => digest(value) === stored,
+};
 
 function build(env: NodeJS.ProcessEnv, stateRows: Record<string, Record<string, unknown>> = {}) {
 	const rows = new Map<string, Record<string, unknown>>(Object.entries(stateRows));

@@ -1,5 +1,7 @@
+export type ParamValue = string | number | boolean | readonly (string | number | boolean)[] | null | undefined;
+
 export interface Params {
-	[key: string]: any;
+	[key: string]: ParamValue;
 }
 
 export interface IPaginateModel {

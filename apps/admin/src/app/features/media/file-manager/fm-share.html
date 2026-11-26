@@ -1,0 +1,443 @@
+<div class="modal-header">
+	<h2 id="fm_share_title">{{ 'fm_share' | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div
+	class="modal-body"
+	id="fm_share"
+>
+	@if (file(); as current) {
+	<div class="fm-file mb-3">
+		@if (current.thumbnailUrl) {
+		<div class="fm-type">
+			<img
+				[src]="current.thumbnailUrl"
+				alt=""
+			/>
+		</div>
+		} @else {
+		<div
+			class="fm-type"
+			[class]="kind()?.cls ?? ''"
+		>
+			<i [class]="kind()?.icon ?? ''"></i>
+		</div>
+		}
+		<div>
+			<h6>{{ current.name }}</h6>
+			<p>{{ current.bytes | fileSize }} · {{ current.location || ('fm_my_files' | transloco) }}</p>
+		</div>
+	</div>
+	@if (error(); as message) {
+	<div class="alert alert-danger">{{ message }}</div>
+	} @if (data(); as d) { @if (isPhoto()) { @if (d.publicUrl) {
+	<h6 class="mb-1">
+		{{ 'fm_share_website_picture' | transloco }}
+		<span class="badge bg-success ms-1">{{ 'fm_public' | transloco }}</span>
+	</h6>
+	<p class="small text-muted mb-2">{{ 'fm_share_website_picture_help' | transloco }}</p>
+	<div class="row g-2 mb-4">
+		@if (d.publicPicture; as picture) {
+		<div class="col-md-4">
+			<select
+				class="form-select"
+				disabled
+				[attr.aria-label]="'fm_share_website_picture' | transloco"
+			>
+				<option>{{ 'fm_share_picture_size' | transloco: { width: picture.width } }}</option>
+			</select>
+		</div>
+		}
+		<div [class]="d.publicPicture ? 'col-md-8' : 'col-12'">
+			<div class="input-group">
+				<input
+					class="form-control"
+					readonly
+					id="fm_share_picture_url"
+					[value]="d.publicUrl"
+				/>
+				<button
+					type="button"
+					class="btn btn-theme d-flex align-items-center gap-1"
+					(click)="copy(d.publicUrl)"
+				>
+					<i class="ri-file-copy-line"></i>
+					{{ (copied() === d.publicUrl ? 'fm_copied' : 'fm_copy') | transloco }}
+				</button>
+			</div>
+		</div>
+	</div>
+	}
+	<h6 class="mb-1">
+		{{ 'fm_share_original' | transloco }}
+		<span class="badge bg-warning ms-1">{{ 'fm_private_badge' | transloco }}</span>
+	</h6>
+	<p class="small text-muted mb-2">{{ 'fm_share_original_help' | transloco }}</p>
+	} @else {
+	<div class="d-flex mb-3 flex-wrap gap-4">
+		<div class="form-check">
+			<input
+				class="form-check-input"
+				type="radio"
+				name="fm_share_visibility"
+				id="fm_share_private"
+				[checked]="d.visibility === 'private'"
+				[disabled]="busy()"
+				(change)="setVisibility('private')"
+			/>
+			<label
+				class="form-check-label"
+				for="fm_share_private"
+			>
+				<strong>{{ 'fm_private_badge' | transloco }}</strong>
+				<span class="d-block small text-muted">{{ 'fm_share_private_help' | transloco }}</span>
+			</label>
+		</div>
+		<div class="form-check">
+			<input
+				class="form-check-input"
+				type="radio"
+				name="fm_share_visibility"
+				id="fm_share_public"
+				[checked]="d.visibility === 'public'"
+				[disabled]="busy()"
+				(change)="setVisibility('public')"
+			/>
+			<label
+				class="form-check-label"
+				for="fm_share_public"
+			>
+				<strong>{{ 'fm_public' | transloco }}</strong>
+				<span class="d-block small text-muted">{{ 'fm_share_public_help' | transloco }}</span>
+			</label>
+		</div>
+	</div>
+	} @if (isPublic()) {
+	<label
+		class="form-label-title mb-1"
+		for="fm_share_public_url"
+	>
+		{{ 'fm_share_public_address' | transloco }}
+	</label>
+	<div class="input-group mb-3">
+		<input
+			class="form-control"
+			readonly
+			id="fm_share_public_url"
+			[value]="d.publicUrl"
+		/>
+		<button
+			type="button"
+			class="btn btn-theme d-flex align-items-center gap-1"
+			(click)="copy(d.publicUrl ?? '')"
+		>
+			<i class="ri-file-copy-line"></i>
+			{{ (copied() === d.publicUrl ? 'fm_copied' : 'fm_copy') | transloco }}
+		</button>
+	</div>
+	<div class="fm-warn mb-2">
+		<i class="ri-alert-line"></i>
+		<span>{{ 'fm_share_public_warning' | transloco }}</span>
+	</div>
+	<p class="small text-muted mb-0">{{ 'fm_share_public_note' | transloco }}</p>
+	} @else {
+	<div class="theme-form">
+		<div class="row g-3 align-items-end mb-2">
+			<div class="col-md-5">
+				<label
+					class="form-label-title mb-1"
+					for="fm_share_who"
+				>
+					{{ 'fm_share_who' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="fm_share_who"
+					(change)="who.set($any($event.target).value)"
+				>
+					<option
+						value="anyone"
+						[selected]="who() === 'anyone'"
+					>
+						{{ 'fm_share_anyone' | transloco }}
+					</option>
+					<option
+						value="admins"
+						[selected]="who() === 'admins'"
+					>
+						{{ 'fm_share_admins' | transloco }}
+					</option>
+				</select>
+			</div>
+			<div class="col-md-4">
+				<label
+					class="form-label-title mb-1"
+					for="fm_share_expiry"
+				>
+					{{ 'fm_share_stops' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="fm_share_expiry"
+					(change)="expiry.set($any($event.target).value)"
+				>
+					@for (option of expiries; track option) {
+					<option
+						[value]="option"
+						[selected]="expiry() === option"
+					>
+						{{ 'fm_share_expiry_' + option | transloco }}
+					</option>
+					}
+				</select>
+			</div>
+			<div class="col-md-3">
+				<button
+					type="button"
+					class="btn btn-theme w-100"
+					id="fm_share_create"
+					[disabled]="busy()"
+					(click)="create()"
+				>
+					{{ 'fm_share_create' | transloco }}
+				</button>
+			</div>
+			@if (expiry() === 'date') {
+			<div class="col-md-5 offset-md-5">
+				<input
+					type="date"
+					class="form-control"
+					id="fm_share_date"
+					[attr.aria-label]="'fm_share_expiry_date' | transloco"
+					[value]="date()"
+					(change)="date.set($any($event.target).value)"
+				/>
+			</div>
+			}
+		</div>
+		@if (who() === 'anyone') {
+		<div class="d-flex align-items-center mb-3 gap-2">
+			<div class="form-check form-switch mb-0 ps-0">
+				<label class="switch switch-sm">
+					<input
+						type="checkbox"
+						id="fm_share_ask_password"
+						[attr.aria-label]="'fm_share_ask_password' | transloco"
+						[checked]="askPassword()"
+						(change)="askPassword.set(!askPassword())"
+					/>
+					<span class="switch-state"></span>
+				</label>
+			</div>
+			<span>{{ 'fm_share_ask_password' | transloco }}</span>
+			@if (askPassword()) {
+			<input
+				type="text"
+				class="form-control ms-2"
+				id="fm_share_password"
+				style="max-width: 260px"
+				autocomplete="off"
+				minlength="4"
+				[attr.aria-label]="'fm_share_password' | transloco"
+				[attr.placeholder]="'fm_share_password' | transloco"
+				[value]="password()"
+				(input)="password.set($any($event.target).value)"
+			/>
+			}
+		</div>
+		}
+	</div>
+	@if (made(); as address) {
+	<label
+		class="form-label-title mb-1"
+		for="fm_share_made"
+	>
+		{{ 'fm_share_new_link' | transloco }}
+	</label>
+	<div class="input-group mb-2">
+		<input
+			class="form-control"
+			readonly
+			id="fm_share_made"
+			[value]="address"
+		/>
+		<button
+			type="button"
+			class="btn btn-theme d-flex align-items-center gap-1"
+			(click)="copy(address)"
+		>
+			<i class="ri-file-copy-line"></i>
+			{{ (copied() === address ? 'fm_copied' : 'fm_copy') | transloco }}
+		</button>
+	</div>
+	<p class="help-text mb-3">{{ 'fm_share_shown_once' | transloco }}</p>
+	} @if (d.links.length) {
+	<h6 class="mt-3 mb-2">{{ 'fm_share_links_heading' | transloco: { count: d.links.length } }}</h6>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table
+			class="all-package theme-table no-footer fm-table fm-links table"
+			id="fm_share_links"
+		>
+			<thead>
+				<tr>
+					<th>{{ 'fm_share_link' | transloco }}</th>
+					<th>{{ 'fm_share_who_short' | transloco }}</th>
+					<th>{{ 'fm_share_stops' | transloco }}</th>
+					<th>{{ 'fm_share_opened' | transloco }}</th>
+					<th>{{ 'fm_share_made_by' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (link of d.links; track link.id) {
+				<tr [attr.data-link]="link.state">
+					<td>
+						<code>…/s/…{{ link.codeEnd }}</code>
+						@if (link.hasPassword) {
+						<i
+							class="ri-lock-line ms-1"
+							[title]="'fm_share_has_password' | transloco"
+						></i>
+						}
+					</td>
+					<td>{{ (link.who === 'admins' ? 'fm_share_admins' : 'fm_share_anyone') | transloco }}</td>
+					<td>
+						@if (changing()?.id === link.id) { @if (changing(); as change) {
+						<div class="d-flex gap-2">
+							<select
+								class="form-select form-select-sm"
+								[attr.aria-label]="'fm_share_stops' | transloco"
+								(change)="changing.set({ id: link.id, expiry: $any($event.target).value, date: change.date })"
+							>
+								@for (option of expiries; track option) {
+								<option
+									[value]="option"
+									[selected]="change.expiry === option"
+								>
+									{{ 'fm_share_expiry_' + option | transloco }}
+								</option>
+								}
+							</select>
+							@if (change.expiry === 'date') {
+							<input
+								type="date"
+								class="form-control form-control-sm"
+								[attr.aria-label]="'fm_share_expiry_date' | transloco"
+								(change)="changing.set({ id: link.id, expiry: change.expiry, date: $any($event.target).value })"
+							/>
+							}
+							<button
+								type="button"
+								class="btn btn-theme btn-sm"
+								[disabled]="busy()"
+								(click)="saveEnd()"
+							>
+								{{ 'save' | transloco }}
+							</button>
+						</div>
+						} } @else if (link.state === 'stopped') {
+						<span class="text-muted">{{ 'fm_share_stopped' | transloco }}</span>
+						} @else if (link.state === 'expired') {
+						<span class="text-muted">{{ 'fm_share_expired' | transloco }}</span>
+						} @else if (link.expiresAt) { {{ link.expiresAt | date: 'd MMM y, HH:mm' }} } @else { {{
+						'fm_share_expiry_never' | transloco }} }
+					</td>
+					<td>
+						{{ 'fm_share_times' | plural: link.opens }} @if (link.lastOpenedAt) {
+						<small class="d-block text-muted">{{ link.lastOpenedAt | date: 'd MMM, HH:mm' }}</small>
+						}
+					</td>
+					<td>{{ link.createdByName ?? '—' }}</td>
+					<td>
+						@if (link.state === 'active') {
+						<ul id="actions">
+							<li>
+								<a
+									href="javascript:void(0)"
+									data-action="change-date"
+									[title]="'fm_share_change_date' | transloco"
+									(click)="changing.set({ id: link.id, expiry: '7d', date: '' })"
+								>
+									<i class="ri-calendar-line"></i>
+								</a>
+							</li>
+							<li>
+								<a
+									href="javascript:void(0)"
+									data-action="stop"
+									[title]="'fm_share_stop' | transloco"
+									(click)="stop(link.id)"
+								>
+									<i class="ri-forbid-line"></i>
+								</a>
+							</li>
+						</ul>
+						}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	}
+	<p class="help-text mt-2 mb-0">{{ 'fm_share_links_help' | transloco }}</p>
+	} } @else if (!error()) {
+	<p class="text-muted">{{ 'fm_loading' | transloco }}</p>
+	} }
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part">
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="fm_share_done"
+			(click)="modal.close()"
+		>
+			{{ 'fm_done' | transloco }}
+		</button>
+	</div>
+</div>
+
+<ng-template
+	#fmStopAsk
+	let-ask
+>
+	<div
+		class="modal-body"
+		id="fm_stop_ask"
+	>
+		<i class="ri-forbid-line icon-box wo-bg"></i>
+		<h5
+			class="modal-title"
+			id="fm_stop_title"
+		>
+			{{ 'fm_share_stop_title' | transloco }}
+		</h5>
+		<p>{{ 'fm_share_stop_body' | transloco }}</p>
+		<div class="button-box">
+			<button
+				type="button"
+				class="btn-md fw-bold btn btn-secondary"
+				(click)="ask.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn-md fw-bold btn btn-danger"
+				id="fm_stop_yes"
+				(click)="ask.close('yes')"
+			>
+				{{ 'fm_share_stop' | transloco }}
+			</button>
+		</div>
+	</div>
+</ng-template>

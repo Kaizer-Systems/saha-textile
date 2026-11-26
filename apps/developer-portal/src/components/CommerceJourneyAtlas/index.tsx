@@ -84,7 +84,7 @@ const journeys: Journey[] = [
 		status: 'scaffolded',
 		summary: 'Keep the guest cart fast, with server validation as the authority.',
 		current:
-			'Classic NgRx holds the browser cart, with persistence. The API has a separate cart with user or st_guest ownership, and merges a guest cart at sign-in. The storefront does not call the cart API.',
+			'The API holds the cart, owned by the session or the st_guest cookie, and prices every line from the live catalogue on each read. The storefront writes it through /cart/current, and sign-in merges a guest cart into the account. Classic NgRx mirrors it in the browser.',
 		target: 'An opaque guest cookie owns a 30-day server cart. Sign-in merges guest lines in a transaction before any pending action replays.',
 		recovery:
 			'Unavailable products are line errors, insufficient stock adjusts or blocks quantities, and invalid lines are reported rather than silently discarded.',
@@ -109,7 +109,7 @@ const journeys: Journey[] = [
 		status: 'scaffolded',
 		summary: 'Authenticate without losing the shopper’s origin, cart, or one account-bound action.',
 		current:
-			'Verified signup, password and OTP sign-in, Google and Facebook, refresh, recovery and guest-cart merge work through cookie sessions. Only Notify me replays after sign-in.',
+			"Verified signup, password and OTP sign-in, Google and Facebook, refresh, recovery and guest-cart merge work through cookie sessions. Notify me replays after sign-in, and a guest's saved hearts move into the account.",
 		target: 'After sign-in, the guest cart merges and one server-side pending action resumes.',
 		recovery:
 			'Expired or invalid intent is not replayed. Show a safe explanation and return the user to the most relevant valid screen.',
@@ -134,8 +134,7 @@ const journeys: Journey[] = [
 		status: 'scaffolded',
 		summary:
 			'Turn an authenticated cart, destination, promotions, tax, currency, and shipping quote into an expiring server-calculated total.',
-		current:
-			'Checkout forms exist, but totals are a static client object and placing an order only navigates to a detail page.',
+		current: 'Checkout is closed: the page says so, and no quote or total is calculated.',
 		target: 'The API recalculates INR prices, promotions, tax, exchange rates, gateway gross-up and shipping. The browser only formats returned values.',
 		recovery:
 			'Stale quotes, changed prices, invalid coupons, address failures and unavailable stock return structured corrections before payment.',

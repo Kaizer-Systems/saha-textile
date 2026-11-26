@@ -40,7 +40,8 @@ const addonGroups = [
 
 const bundle = (overrides: Record<string, unknown> = {}) => ({
 	bundle_price: 2000,
-	components: [{ name: 'A', sku: 'A', price: 100 }],
+	levels: [{ code: 'one', take: 1, items: [{ key: 'a', name: 'A', sku: 'A', today: 100 }] }],
+	extras: [{ key: 'pc', name: 'Petticoat', sku: 'PC', today: 450 }],
 	option_groups: [
 		{ code: 'size', label: 'Size', default_term_code: 's', terms: [{ code: 's', label: 'S', price_delta: 0 }] },
 		{ code: 'cut', label: 'Cut', terms: [{ code: 'x', label: 'X', price_delta: 50 }] },
@@ -81,6 +82,14 @@ describe('what a product shows', () => {
 			false,
 		]);
 		expect(render(product({ attributes: [{}], variations: [] })).component.hasVariation()).toBe(false);
+	});
+
+	it('keeps the facts and the option table with the choices unless the host places them itself', () => {
+		const { fixture, component } = render(withVariants());
+		expect([component.showFacts(), component.showTable()]).toEqual([true, true]);
+		fixture.componentRef.setInput('showFacts', false);
+		fixture.componentRef.setInput('showTable', false);
+		expect([component.showFacts(), component.showTable()]).toEqual([false, false]);
 	});
 
 	it('reads the seeds for an edit', () => {
@@ -128,10 +137,12 @@ describe('can it be bought', () => {
 		expect(component.purchasable()).toBe(true);
 	});
 
-	it('never sells a bundle yet, and follows the stock otherwise', () => {
+	it('sells a set once its choices are made, and follows the stock otherwise', () => {
 		const kit = render(product({ bundle: bundle() })).component;
-		kit.onBundleChange({ delta: 0, valid: true } as never);
+		kit.onBundleChange({ delta: 0, valid: false } as never);
 		expect(kit.purchasable()).toBe(false);
+		kit.onBundleChange({ delta: 0, valid: true } as never);
+		expect(kit.purchasable()).toBe(true);
 		expect(render(product({ stock_status: 'out_of_stock' })).component.purchasable()).toBe(false);
 	});
 
@@ -255,7 +266,7 @@ describe('the cart line', () => {
 
 	it('resolves bundle choices and lists the components', () => {
 		const { component } = render(product({ bundle: bundle() }));
-		component.onBundleChange({ delta: 50, valid: true, selections: { cut: 'x' } } as never);
+		component.onBundleChange({ delta: 50, valid: true, selections: { cut: 'x' }, pieces: ['a'] } as never);
 		const config = component.buildParams(1, null).line_config;
 		expect(config?.bundle_options).toEqual([
 			{ group: 'Size', value: 'S', price_delta: 0 },

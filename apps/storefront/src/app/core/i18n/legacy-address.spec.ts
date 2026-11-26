@@ -9,6 +9,7 @@ import {
 	setLiveCatalog,
 	storefrontAddress,
 } from './legacy-address';
+import { resetSupportedLocales, setRetiredLocales, setSupportedLocales } from './locale';
 
 describe('storefrontAddress', () => {
 	afterEach(() => {
@@ -16,8 +17,31 @@ describe('storefrontAddress', () => {
 		setLiveCatalog({ products: [], collections: [] });
 	});
 
+	it('sends a switched-off language’s pages to English before any saved redirect', () => {
+		setSupportedLocales(['en']);
+		setRetiredLocales(['bn']);
+		setLegacyRedirectRows([{ sourcePath: '/bn/old', statusCode: 410 }]);
+		expect(storefrontAddress('/bn/old', undefined)).toEqual({
+			status: 301,
+			location: '/en/old',
+			cacheSeconds: 3600,
+		});
+		resetSupportedLocales();
+		setSupportedLocales(['en', 'bn']);
+	});
+
+	it('opens a share link’s short address in the visitor’s language, never as an old address', () => {
+		const code = 'k7Q2mX9vT3abcdefghijkl';
+		expect(storefrontAddress(`/s/${code}`, undefined)).toEqual({ status: 302, location: `/en/s/${code}` });
+		expect(storefrontAddress(`/s/${code}/?utm=x`, 'bn')).toEqual({ status: 302, location: `/bn/s/${code}?utm=x` });
+		expect(storefrontAddress(`/s/${code}`, 'xx')).toEqual({ status: 302, location: `/en/s/${code}` });
+		// Not a share code: the old-address rules still decide.
+		expect(storefrontAddress('/s/ab', undefined)).toEqual({ status: 410 });
+		expect(storefrontAddress(`/en/s/${code}`, 'bn')).toBeNull();
+	});
+
 	it('sends / to the remembered locale', () => {
-		expect(storefrontAddress('/', 'fr')).toEqual({ location: '/fr/', status: 302 });
+		expect(storefrontAddress('/', 'bn')).toEqual({ location: '/bn/', status: 302 });
 	});
 
 	it('prefixes a live product path and answers a dead category with 410', () => {
@@ -30,7 +54,7 @@ describe('storefrontAddress', () => {
 		expect(storefrontAddress('/product-category/silk', undefined)).toEqual({ status: 410 });
 	});
 
-	it('lets a cached row win and serves a French page as itself', () => {
+	it('lets a cached row win and serves a Bengali page as itself', () => {
 		setLegacyRedirectRows([
 			{ sourcePath: '/product-category/silk', statusCode: 301, targetPath: '/en/collections/silk-sarees' },
 		]);
@@ -38,7 +62,7 @@ describe('storefrontAddress', () => {
 			status: 301,
 			location: '/en/collections/silk-sarees',
 		});
-		expect(storefrontAddress('/fr/cart', 'en')).toBeNull();
+		expect(storefrontAddress('/bn/cart', 'en')).toBeNull();
 	});
 
 	it('answers a locale-prefixed old category with 410 and leaves a new-site typo alone', () => {
@@ -114,5 +138,26 @@ describe('live paths and the catalogue refresh', () => {
 		const calls = fetcher.mock.calls.length;
 		await refreshLegacyCatalog('https://api.test');
 		expect(fetcher.mock.calls.length).toBe(calls);
+	});
+
+	it('holds only the first request back; later retries run without making a visitor wait', async () => {
+		vi.useFakeTimers();
+		let answer: (value: Response) => void = () => {};
+		const fetcher = vi.fn(async () => reply({}, 500));
+		vi.stubGlobal('fetch', fetcher);
+		await refreshLegacyCatalog('https://api.test');
+		expect(legacyCatalogReady()).toBe(false);
+		vi.advanceTimersByTime(2_000);
+		fetcher.mockImplementation(() => new Promise<Response>((resolve) => (answer = resolve)));
+		let returned = false;
+		const second = refreshLegacyCatalog('https://api.test').then(() => (returned = true));
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(returned).toBe(true);
+		expect(fetcher).toHaveBeenCalledTimes(4);
+		answer(reply([]));
+		answer(reply({ products: [], collections: [] }));
+		await second;
+		vi.useRealTimers();
 	});
 });

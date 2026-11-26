@@ -26,4 +26,10 @@ export class MenuStore {
 	readonly badges = signal<null>(null);
 
 	loadBadges(): void {}
+
+	/** The real store sets one menu item's badge (the inbox count); Storybook shows none. */
+	setBadge(_path: string, _value: number): void {}
+
+	/** The real store sets a group's badge (Stock's approvals waiting); Storybook shows none. */
+	setGroupBadge(_id: number, _value: number): void {}
 }

@@ -1,12 +1,11 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import { Observable } from 'rxjs';
+import { from, Observable, switchMap } from 'rxjs';
 
-import { ApiCartView, CartLineChoice } from '@core/state/cart/cart-view';
+import { runtimeConfig, runtimeConfigReady } from '@core/config/runtime-config';
 import { backgroundRequest } from '@core/interceptors/background-request';
-
-import { environment } from '../../../../public/environments/environment';
+import { ApiCartView, CartLineChoice } from '@core/state/cart/cart-view';
 
 /** Failures are answered by the cart effects, in the shopper's language, so none toast here. */
 @Injectable({
@@ -14,11 +13,19 @@ import { environment } from '../../../../public/environments/environment';
 })
 export class CartService {
 	private http = inject(HttpClient);
-	private url = `${environment.apiUrl}/cart/current`;
 	private options = { withCredentials: true, context: backgroundRequest() };
 
+	/**
+	 * Read when called, never when the service is made: the first cart read starts while
+	 * `/config.json` is still loading, and a URL fixed then is the built-in localhost default.
+	 */
+	private get url(): string {
+		return `${runtimeConfig.apiUrl}/cart/current`;
+	}
+
+	/** Waits for the runtime config, because the cart is read as the app starts. */
 	current(): Observable<ApiCartView> {
-		return this.http.get<ApiCartView>(this.url, this.options);
+		return from(runtimeConfigReady).pipe(switchMap(() => this.http.get<ApiCartView>(this.url, this.options)));
 	}
 
 	add(line: CartLineChoice & { productId: string; quantity: number }): Observable<ApiCartView> {

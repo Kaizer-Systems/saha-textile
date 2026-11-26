@@ -28,9 +28,9 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('SaleTimer', () => {
-	it('shows nothing without both dates', () => {
-		expect(render(null, at(DAY)).timer.remainingTime).toBeNull();
+	it('shows nothing without an end, and counts with an end alone (a running sale event)', () => {
 		expect(render(at(-DAY), null).timer.remainingTime).toBeNull();
+		expect(render(null, at(DAY)).timer.remainingTime).toEqual({ days: 1, hours: 0, minutes: 0, seconds: 0 });
 	});
 
 	it('shows nothing before the sale starts or after it ends', () => {
@@ -58,13 +58,13 @@ describe('SaleTimer', () => {
 		expect(timer.remainingTime).toBe(first);
 	});
 
-	it('counts to the start if the clock goes back, and stops ticking with no dates', () => {
+	it('counts to the start if the clock goes back, and stops ticking with no end', () => {
 		const { timer } = render(at(-1000), at(DAY));
 		vi.setSystemTime(NOW - 5000);
 		vi.advanceTimersByTime(1000);
 		expect(timer.remainingTime?.seconds).toBe(3);
 		const held = timer.remainingTime;
-		timer.startDate = null;
+		timer.endDate = null;
 		vi.advanceTimersByTime(1000);
 		expect(timer.remainingTime).toBe(held);
 	});

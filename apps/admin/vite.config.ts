@@ -6,6 +6,8 @@ import { fileURLToPath, URL } from 'node:url';
 import angular from '@analogjs/vite-plugin-angular';
 import { defineConfig } from 'vite';
 
+import { stripDarkRules } from './scripts/dark-theme.mjs';
+
 const appPath = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 /** Machine-local mkcert pair, or `null` when absent — see the storefront config. */
@@ -22,7 +24,14 @@ const localHttps = (() => {
 
 // AnalogJS (Vite) build for the admin. Platform swap only — the app still uses
 // Angular Router config + NGXS + ngx-translate (those migrate in later phases).
+/**
+ * The build this bundle comes from (Release Console, Client versions): `BUILD_ID` from the image
+ * build (a short commit), sent as `x-client-build`; any other value leaves the header off.
+ */
+const clientBuild = /^[a-z0-9]{7,40}$/.test(process.env['BUILD_ID'] ?? '') ? (process.env['BUILD_ID'] ?? '') : '';
+
 export default defineConfig(() => ({
+	define: { __CLIENT_BUILD__: JSON.stringify(clientBuild) },
 	server: {
 		port: 4300,
 		host: 'localhost',
@@ -31,6 +40,9 @@ export default defineConfig(() => ({
 		...(localHttps ? { https: localHttps } : {}),
 	},
 	css: {
+		// Dark mode is its own file (`public/assets/css/theme-dark.gen.css`, built by the `styles`
+		// script and linked only in dark mode), so its rules leave the main stylesheet.
+		postcss: { plugins: [stripDarkRules()] },
 		preprocessorOptions: {
 			scss: {
 				// The Fastkart theme + Bootstrap 5.3 lean on Sass APIs Dart Sass marks

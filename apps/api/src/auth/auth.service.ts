@@ -1,4 +1,4 @@
-import { createHmac, randomInt, randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 
 import { Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import type {
@@ -30,6 +30,7 @@ import type {
 } from '@saha-textile/core-domain';
 
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { TokenHasher } from './token-hasher';
 import {
 	ADMIN_USER_AUTH_REPOSITORY,
 	ADMIN_USER_REPOSITORY,
@@ -86,13 +87,26 @@ export class AuthService {
 		return email.trim().toLowerCase();
 	}
 
-	private pepper(): string {
-		return this.config.cookies.csrfSecret ?? this.config.jwt.refreshSecret;
+	private tokenHasher?: TokenHasher;
+
+	/** The current token key, and the previous one for 30 days after a planned change. */
+	private get tokens(): TokenHasher {
+		return (this.tokenHasher ??= new TokenHasher(this.config));
 	}
 
-	/** HMAC with a server pepper — a database dump alone cannot verify guesses offline. */
+	/** HMAC with the server's token key — a database dump alone cannot verify guesses offline. */
 	hash(value: string): string {
-		return createHmac('sha256', this.pepper()).update(value).digest('hex');
+		return this.tokens.hash(value);
+	}
+
+	/** A lookup by hash under the current token key, then the previous one (see `TokenHasher`). */
+	async findByHash<T>(value: string, lookup: (hash: string) => Promise<T | null>): Promise<T | null> {
+		return (await this.tokens.find(value, lookup))?.found ?? null;
+	}
+
+	/** Whether a stored hash belongs to the value under either token key, in constant time. */
+	hashMatches(value: string, stored: string | null | undefined): boolean {
+		return this.tokens.matches(value, stored);
 	}
 
 	/**
@@ -238,12 +252,12 @@ export class AuthService {
 		purpose: OtpPurpose;
 		code: string;
 	}): Promise<{ userId: string | null } | null> {
-		const challenge = await this.otps.findActive(this.hash(input.identifier), input.purpose);
+		const challenge = await this.findByHash(input.identifier, (hash) => this.otps.findActive(hash, input.purpose));
 		if (!challenge || challenge.attempts >= challenge.maxAttempts) return null;
 
 		const attempts = await this.otps.incrementAttempts(challenge.id);
 		if (attempts > challenge.maxAttempts) return null;
-		if (this.hash(input.code) !== challenge.codeHash) return null;
+		if (!this.hashMatches(input.code, challenge.codeHash)) return null;
 
 		const consumed = await this.otps.consume(challenge.id, new Date().toISOString());
 		if (!consumed) return null;
@@ -339,7 +353,7 @@ export class AuthService {
 		 */
 		assertPasswordAcceptable(newPassword);
 
-		const consumed = await this.resets.consume(this.hash(token), new Date().toISOString());
+		const consumed = await this.findByHash(token, (hash) => this.resets.consume(hash, new Date().toISOString()));
 		if (!consumed) return null;
 
 		// A storefront recovery token must not reset an admin password, or vice versa. The
@@ -412,7 +426,9 @@ export class AuthService {
 	}
 
 	async completeEmailVerification(token: string): Promise<boolean> {
-		const consumed = await this.verifications.consume(this.hash(token), new Date().toISOString());
+		const consumed = await this.findByHash(token, (hash) =>
+			this.verifications.consume(hash, new Date().toISOString()),
+		);
 		if (!consumed) return false;
 		// Storefront-only: tokens are issued at customer registration. Fail closed if a row
 		// ever points at an operator id — email verification has no audience field.

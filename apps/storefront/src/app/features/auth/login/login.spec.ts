@@ -7,13 +7,14 @@ import { TranslocoService } from '@jsverse/transloco';
 import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { StorefrontAuthGateway } from '@core/auth/auth-gateway';
 import { rememberNotifyIntent } from '@core/catalog/notify-intent';
 import { AuthStore } from '@core/state/auth.store';
 import { AuthService } from '@data-access/services/auth.service';
 
 import { Login } from './login';
 
-const render = (platform = 'browser') => {
+const render = (platform = 'browser', notice: string | null = null) => {
 	const store = {
 		error: signal<string | null>(null),
 		pending: signal(false),
@@ -22,6 +23,7 @@ const render = (platform = 'browser') => {
 		verifyLoginOtp: vi.fn(async () => true),
 	};
 	const http = { post: vi.fn(() => of({})) };
+	const gateway = { sessionNotice: vi.fn(() => of(notice)) };
 	const router = { navigateByUrl: vi.fn(async () => true) };
 	const auth: { redirectUrl?: string } = {};
 	TestBed.resetTestingModule();
@@ -29,6 +31,7 @@ const render = (platform = 'browser') => {
 		providers: [
 			{ provide: AuthStore, useValue: store },
 			{ provide: HttpClient, useValue: http },
+			{ provide: StorefrontAuthGateway, useValue: gateway },
 			{ provide: Router, useValue: router },
 			{ provide: AuthService, useValue: auth },
 			{ provide: PLATFORM_ID, useValue: platform },
@@ -37,7 +40,7 @@ const render = (platform = 'browser') => {
 	});
 	TestBed.overrideComponent(Login, { set: { imports: [], template: '' } });
 	const login = TestBed.createComponent(Login).componentInstance;
-	return { login, store, http, router, auth };
+	return { login, store, http, router, auth, gateway };
 };
 
 afterEach(() => {
@@ -251,5 +254,20 @@ describe('Login.submit with a code', () => {
 		login.form.patchValue({ code: '123456' });
 		await login.submit();
 		expect(router.navigateByUrl).not.toHaveBeenCalled();
+	});
+});
+
+describe('Login signed-out notice', () => {
+	it('shows the day everyone was signed out, when the API says this browser was one of them', () => {
+		const { login, gateway } = render('browser', '2026-11-23');
+		expect(gateway.sessionNotice).toHaveBeenCalledTimes(1);
+		expect(login.signedOutDay()).toBe('23/11/2026');
+	});
+
+	it('shows nothing otherwise, and never asks while rendering on the server', () => {
+		expect(render('browser').login.signedOutDay()).toBeNull();
+		const server = render('server');
+		expect(server.gateway.sessionNotice).not.toHaveBeenCalled();
+		expect(server.login.signedOutDay()).toBeNull();
 	});
 });

@@ -1,29 +1,33 @@
-import { Component, output, input } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
+
+import { TranslocoPipe } from '@jsverse/transloco';
+
+import { childrenOf, type DropdownOption, labelOf } from '../dropdown-option';
 
 @Component({
 	selector: 'app-dropdown-list',
 	templateUrl: './dropdown-list.html',
 	styleUrls: ['./dropdown-list.scss'],
-	imports: [],
+	imports: [TranslocoPipe],
 })
-export class DropdownList {
-	// TODO: Skipped for migration because:
-	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
-	//  and migrating would break narrowing currently.
-	readonly data = input<any>(undefined);
-	readonly selectedPillIds = input<number[]>([]);
+export class DropdownList<T extends DropdownOption = DropdownOption> {
+	readonly data = input.required<T>();
+	readonly selectedPillIds = input<readonly unknown[]>([]);
 	readonly key = input<string>('');
 	readonly subArrayKey = input<string>('');
 
-	readonly selected = output<any>();
-	readonly subItemClicked = output<any>();
+	readonly selected = output<T>();
+	readonly subItemClicked = output<T>();
 
-	select(data: any) {
+	readonly label = computed(() => labelOf(this.data(), this.key()));
+	readonly hasChildren = computed(() => childrenOf(this.data(), this.subArrayKey()).length > 0);
+
+	select(data: T) {
 		data.selected = !data.selected;
 		this.selected.emit(data);
 	}
 
-	onArrowClick(event: Event, data: any) {
+	onArrowClick(event: Event, data: T) {
 		event.stopPropagation();
 		this.subItemClicked.emit(data);
 	}

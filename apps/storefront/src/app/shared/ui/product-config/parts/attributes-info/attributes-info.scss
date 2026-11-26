@@ -12,24 +12,29 @@
 			align-items: center;
 			gap: 6px;
 			padding: 8px 14px;
-			border: 1px solid #eee;
+			border: 1px solid var(--st-border);
 			border-radius: 6px;
-			background-color: #f8f8f8;
+			background-color: var(--st-surface-soft);
 			font-size: 14px;
 			line-height: 1;
 
+			// A fixed box: before the icon font arrives the fallback glyph is narrower, and the
+			// wider pills used to wrap onto a new row and shift the buy box (CLS 0.034).
 			i {
-				color: var(--theme-color);
+				flex: none;
+				width: 1em;
+				text-align: center;
+				color: var(--st-accent-text);
 				font-size: 16px;
 			}
 
 			.attr-label {
-				color: #4a5568;
+				color: var(--st-text-body);
 			}
 
 			.attr-value {
 				font-weight: 600;
-				color: var(--theme-color);
+				color: var(--st-accent-text);
 			}
 		}
 	}

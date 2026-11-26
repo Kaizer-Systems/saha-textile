@@ -10,8 +10,8 @@ export interface IFaq {
 	id: number;
 	title: string;
 	description: string;
-	titleFr?: string;
-	descriptionFr?: string;
+	titleBn?: string;
+	descriptionBn?: string;
 	faqId?: string;
 	created_by_id: boolean;
 	status: boolean;

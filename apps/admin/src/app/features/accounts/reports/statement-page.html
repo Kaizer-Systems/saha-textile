@@ -1,0 +1,88 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'reports_title'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">
+				{{ (kind() === 'balanceSheet' ? 'statement_bs_as_at' : 'statement_pl_to') | transloco: { date:
+				day(asAt()) } }}
+			</h5>
+			<small class="text-muted">{{ statement.data()?.name ?? '' }}</small>
+		</div>
+		<div class="d-flex align-items-center flex-wrap gap-2">
+			<input
+				class="form-control w-auto"
+				id="statement_as_at"
+				type="date"
+				[attr.aria-label]="'statement_as_at' | transloco"
+				[ngModel]="asAt()"
+				(ngModelChange)="asAt.set($event)"
+			/>
+			<select
+				class="form-select w-auto"
+				id="statement_location"
+				[attr.aria-label]="'statement_location' | transloco"
+				[ngModel]="locationId()"
+				(ngModelChange)="locationId.set($event)"
+			>
+				<option value="">{{ 'statement_every_location' | transloco }}</option>
+				@for (l of active(); track l.id) {
+				<option [value]="l.id">{{ l.name }}</option>
+				}
+			</select>
+			@if (statement.data(); as s) {
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="statement_pdf"
+				(click)="print()"
+			>
+				<i class="ri-file-pdf-2-line"></i>
+				PDF
+			</button>
+			<app-export-menu
+				id="statement_export"
+				[formats]="['csv', 'xlsx']"
+				[source]="exportSource(s)"
+			/>
+			}
+		</div>
+	</div>
+	@if (statement.error()) {
+	<div class="alert alert-warning py-2">{{ 'statement_problem' | transloco }}</div>
+	} @if (statement.data(); as s) { @if (s.lastAsAt) {
+	<small class="text-muted d-block mb-2">{{ 'statement_compared' | transloco: { date: day(s.lastAsAt) } }}</small>
+	} @for (p of s.problems; track p) {
+	<div class="alert alert-warning py-2">{{ 'statement_source_missing' | transloco: { source: p } }}</div>
+	}
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'statement_particulars' | transloco }}</th>
+					<th>{{ day(s.asAt) }}</th>
+					@if (s.lastAsAt) {
+					<th>{{ day(s.lastAsAt) }}</th>
+					}
+				</tr>
+			</thead>
+			<tbody>
+				@for (r of s.rows; track r.key) {
+				<tr>
+					<td [class]="'text-start ' + indent(r.depth)">
+						@if (r.depth === 0) {
+						<b>{{ r.label }}</b>
+						} @else { {{ r.label }} }
+					</td>
+					<td class="text-nowrap">{{ figure(r.thisYearPaise) }}</td>
+					@if (s.lastAsAt) {
+					<td class="text-nowrap">{{ figure(r.lastYearPaise) }}</td>
+					}
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	}
+</app-page-wrapper>

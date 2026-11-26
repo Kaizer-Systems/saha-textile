@@ -4,13 +4,15 @@ wide: true
 description: How admin guards, layouts, lazy routes, and feature families compose the operator workspace.
 status: implemented
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-15'
 source_of_truth:
     - apps/admin/src/app/app.routes.ts
     - apps/admin/src/app/routes/content.routes.ts
     - apps/admin/src/app/routes/full.routes.ts
     - apps/admin/src/app/layout
     - apps/admin/src/app/core/guards/auth.guard.ts
+    - apps/admin/src/app/features/auth/accept-invite/accept-invite.ts
+    - apps/api/src/auth/admin-invite.service.ts
 ---
 
 # Admin routing and shell
@@ -38,7 +40,13 @@ Route order matters because both shells use an empty parent path. The feature ch
 
 ### Content shell
 
-Used for the operator workspace. It composes navigation, header, content outlet, footer, loader, and page-level wrapper behaviour.
+Used for the operator workspace. It composes navigation, header, content outlet, footer, loader, and page-level wrapper behaviour. The header's icon controls (menu, search, language, light/dark switch) each show their name on hover. The light/dark switch is remembered in the browser and applied before the app starts (see [Admin Styles and Dark Mode](./styles-and-dark-mode.md)).
+
+The header's right side holds the location chip, then the icon controls at one even gap, then the signed-in name, which ends in "…" when it is long (the full name shows on hover); the profile menu opens from the right, inside the screen.
+
+#### Quick add
+
+Add Product and Add Order are not in the header. A round "+" floats at the bottom right of every content-shell page, above the fixed footer, on phones too (`layout/quick-add`). A press opens the two named actions above it; Escape, a click outside, or the × closes them. Each action follows its permission (`product.create`, `order.create`): with only one allowed, the "+" goes straight to that page, and with neither there is no button. On Add Product or Add Order itself, that page's own action is left out. The button sits under popups, side panels and the Media upload tray, and in a right-to-left language it moves to the bottom left. Its corner, round button and opening fan are the shop theme's `.theme-option`, `.setting-box` and `.theme-setting-2`, copied under the `adm-` prefix.
 
 ### Full shell
 
@@ -46,7 +54,7 @@ Used for full-page experiences such as authentication and errors where admin nav
 
 ## Guard behaviour
 
-`AuthGuard` checks the sanitized session state resolved from `/auth/admin/me`. The `/auth` family stays unguarded so login, PIN login and recovery are reachable; both back-office shells use `canActivate` and `canActivateChild`, redirecting anonymous navigation to `/auth/login`. On success the content shell loads the menu badges. Permissions are already in `AuthStore` from `/auth/admin/me`.
+`AuthGuard` checks the sanitized session state resolved from `/auth/admin/me`. The `/auth` family stays unguarded so login, PIN login, recovery and invitation acceptance are reachable; both back-office shells use `canActivate` and `canActivateChild`, redirecting anonymous navigation to `/auth/login`. On success the content shell loads the menu badges. Permissions are already in `AuthStore` from `/auth/admin/me`.
 
 Keep these rules in mind:
 
@@ -54,7 +62,16 @@ Keep these rules in mind:
 - `canActivateChild()` inherits authentication from the protected shell; it does not check permissions.
 - `PermissionGuard` reads `route.data.permission`, which may be one code or a list that must all be held, and sends a missing grant to `/error/403`.
 - Permissions held in the store shape UI only. The API rechecks audience, role, declared permission and current versions.
-- After 15 minutes of inactivity the shell opens the idle lock, which accepts the PIN when configured, otherwise the password, through `POST /auth/admin/resume`.
+- After 15 minutes of inactivity the shell opens the idle lock, which accepts the PIN when configured, otherwise the password, through `POST /auth/admin/resume`. The server holds the lock, so a reload or a new tab shows it again (`/me` returns `session.locked`); see [Admin idle lock](/backend/security-and-identity#admin-idle-lock).
+- `UnsavedChanges` (started in `app.ts`) makes a reload or tab close with unsaved form work ask the browser's "Leave site?" question, locked or not.
+
+### Invitation acceptance
+
+An administrator creates an invite with `POST /auth/admin/invites` (permission `admin_user.create`, audited). The API never returns the link. It sends the token once, through the `admin_invite` MSG91 email template, and the template builds `<admin host>/auth/accept-invite?token=…` for its own environment. The API holds no hostname.
+
+`/auth/accept-invite` reads the token from the URL once and never copies it into the store or browser storage. The invitee sets a password of at least 12 characters and may set a six-digit PIN. "Prefer PIN" is offered only once a PIN exists. The page posts to `POST /auth/admin/invites/accept`. The token is single-use, stored server-side only as a hash, and expires after seven days.
+
+Acceptance issues no session. The new operator then signs in on `/auth/login` with the credential they just chose. The account receives the permissions recorded on the invite, which may be none. An administrator then assigns a role on the user's edit screen.
 
 ## Feature route convention
 

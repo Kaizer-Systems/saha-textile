@@ -306,7 +306,7 @@
 
 							h6 {
 								font-size: 13px;
-								color: #777;
+								color: #666; // #777 was under 4.5 : 1 on the light greys (shop change, 2026-11-10)
 								margin-block: 4px 6px;
 								-webkit-line-clamp: 1;
 								-webkit-box-orient: vertical;
@@ -351,7 +351,7 @@
 
 						h6 {
 							font-size: 13px;
-							color: #777;
+							color: #666; // #777 was under 4.5 : 1 on the light greys (shop change, 2026-11-10)
 							margin: 0;
 						}
 					}
@@ -581,7 +581,8 @@
 
 		.product-label-tag {
 			padding: 5px 13px;
-			background-color: #ff7272;
+			// Same colours as the card labels: deeper red with white text. Shop change, 2026-11-10.
+			background-color: #c62828;
 			font-size: 14px;
 			color: $white;
 			font-weight: 500;
@@ -595,7 +596,7 @@
 				height: 15px;
 				top: 0;
 				right: -15px;
-				border-bottom: solid 15px #ff7272;
+				border-bottom: solid 15px #c62828;
 				border-left: solid 15px transparent;
 				border-right: solid 15px transparent;
 				transform: rotate(180deg);
@@ -608,7 +609,7 @@
 				height: 15px;
 				top: 16px;
 				right: -15px;
-				border-bottom: solid 15px #ff7272;
+				border-bottom: solid 15px #c62828;
 				border-left: solid 15px transparent;
 				border-right: solid 15px transparent;
 				transform: rotate(0);
@@ -621,6 +622,7 @@
 
 			&.warning-label-tag {
 				background-color: #ffba00;
+				color: #1d1d22;
 
 				&::before,
 				&::after {
@@ -858,7 +860,7 @@
 							top: 50%;
 							transform: translateY(-50%) rotate(45deg);
 							left: 0;
-							background-color: #ff7272;
+							background-color: #c62828; // was #ff7272, 2.7 : 1 with white (shop change, 2026-11-10)
 							width: 100%;
 							height: 1px;
 							cursor: default;
@@ -1127,7 +1129,7 @@
 			border-bottom: 1px solid $border-color;
 
 			button {
-				background-color: #ff7272;
+				background-color: #c62828; // was #ff7272, 2.7 : 1 with white (shop change, 2026-11-10)
 			}
 		}
 
@@ -1173,7 +1175,7 @@
 				);
 				font-size: 16px;
 				align-items: center;
-				color: #777;
+				color: #666; // #777 was under 4.5 : 1 on the light greys (shop change, 2026-11-10)
 
 				&:hover {
 					color: #222;
@@ -1277,7 +1279,7 @@
 						width: 100%;
 						font-size: calc(14px + (15 - 14) * ((100vw - 320px) / (1920 - 320)));
 						position: relative;
-						color: #777;
+						color: #666; // #777 was under 4.5 : 1 on the light greys (shop change, 2026-11-10)
 
 						body.rtl & {
 							padding-left: unset;
@@ -1470,7 +1472,7 @@
 
 				&.danger-progress {
 					.progress-bar {
-						background-color: #ff7272;
+						background-color: #c62828; // was #ff7272, 2.7 : 1 with white (shop change, 2026-11-10)
 					}
 				}
 
@@ -1996,7 +1998,7 @@
 		align-items: center;
 		gap: calc(5px + (10 - 5) * ((100vw - 320px) / (1920 - 320)));
 		font-size: calc(14px + (16 - 14) * ((100vw - 320px) / (1920 - 320)));
-		color: #777;
+		color: #666; // #777 was under 4.5 : 1 on the light greys (shop change, 2026-11-10)
 
 		@include mq-max(md) {
 			justify-content: center;

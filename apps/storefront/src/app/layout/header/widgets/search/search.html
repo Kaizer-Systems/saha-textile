@@ -12,6 +12,7 @@
 		[class]="'btn'"
 		[spinner]="false"
 		[id]="'basic_search_btn'"
+		[ariaLabel]="'search' | transloco"
 		(click)="redirectToSearch()"
 	>
 		<i class="ri-search-line"></i>
@@ -23,7 +24,9 @@
 <div class="input-group">
 	<a
 		href="javascript:void(0)"
+		role="button"
 		class="btn"
+		[attr.aria-label]="'search' | transloco"
 		(click)="toggleSearchBox()"
 	>
 		<i class="ri-search-line"></i>
@@ -84,20 +87,40 @@
 	[class.open]="show"
 >
 	<div class="input-group">
-		<span class="input-group-text">
+		<span
+			class="input-group-text"
+			role="button"
+			[attr.aria-label]="'search' | transloco"
+			(click)="redirectToSearch()"
+		>
 			<i class="ri-search-line font-light"></i>
 		</span>
 		<input
+			#field
 			type="text"
+			inputmode="search"
+			enterkeyhint="search"
 			class="form-control search-type"
 			placeholder="{{ 'search_here' | transloco }}"
+			[attr.aria-label]="'search_here' | transloco"
 			[formControl]="term"
 		/>
 		<span
 			class="input-group-text close-search"
+			role="button"
+			[attr.aria-label]="'close' | transloco"
 			(click)="toggleSearchBox()"
 		>
 			<i class="ri-close-line"></i>
 		</span>
+		@if (show) {
+		<app-search-suggest
+			[field]="field"
+			[control]="term"
+			(submitted)="redirectToSearch($event)"
+			(escaped)="toggleSearchBox()"
+			(navigated)="show = false"
+		/>
+		}
 	</div>
 </div>

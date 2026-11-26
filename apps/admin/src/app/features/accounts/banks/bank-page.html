@@ -1,0 +1,190 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'accounts_banks'"
+>
+	@if (account.data(); as a) {
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">{{ a.shortName }}</h5>
+			<small class="text-muted">
+				{{ 'bank_kind_' + a.kind | transloco }} · {{ a.numberShown }} · {{ balance(a.balancePaise) }}
+			</small>
+		</div>
+		<div class="d-flex flex-wrap gap-2">
+			<a
+				class="btn btn-outline"
+				id="bank_statement"
+				[routerLink]="['/accounts/ledgers', a.ledgerId]"
+			>
+				<i class="ri-file-list-3-line"></i>
+				{{ 'bank_statement' | transloco }}
+			</a>
+			<a
+				class="btn btn-outline"
+				id="bank_reconcile"
+				[routerLink]="['/accounts/banks', a.id, 'reconcile']"
+			>
+				<i class="ri-links-line"></i>
+				{{ 'bank_reconcile' | transloco }}@if (a.toMatch) {
+				<span class="ms-1">{{ a.toMatch }}</span>
+				}
+			</a>
+			<button
+				*hasPermission="'accounts.edit'"
+				type="button"
+				class="btn btn-outline"
+				id="bank_import"
+				(click)="importStatement()"
+			>
+				<i class="ri-upload-2-line"></i>
+				{{ 'bank_import' | transloco }}
+			</button>
+			<a
+				*hasPermission="'accounts.edit'"
+				class="btn btn-theme"
+				id="bank_edit"
+				[routerLink]="['/accounts/banks', a.id, 'edit']"
+			>
+				{{ 'bank_edit' | transloco }}
+			</a>
+		</div>
+	</div>
+	<ul class="nav nav-tabs mb-3">
+		@for (t of tabs; track t) {
+		<li class="nav-item">
+			<button
+				type="button"
+				class="nav-link"
+				[id]="'bank_tab_' + t"
+				[class.active]="tab() === t"
+				(click)="tab.set(t)"
+			>
+				{{ 'bank_tab_' + t | transloco }}
+			</button>
+		</li>
+		}
+	</ul>
+	@switch (tab()) { @case ('lines') {
+	<div class="d-flex align-items-center mb-3 flex-wrap gap-2">
+		@for (item of chips; track item) {
+		<button
+			type="button"
+			class="align-items-center btn btn-sm d-flex"
+			[class.btn-theme]="chip() === item"
+			[class.btn-outline]="chip() !== item"
+			[attr.aria-pressed]="chip() === item"
+			(click)="setChip(item)"
+		>
+			{{ 'bank_line_status_' + item | transloco }}@if (item !== 'all' && lines.data()?.counts?.[item] !==
+			undefined) {
+			<span class="ms-1">{{ lines.data()?.counts?.[item] }}</span>
+			}
+		</button>
+		}
+		<app-period-picker
+			[choices]="presets"
+			[start]="'current_quarter'"
+			[labelPrefix]="'period_'"
+			[hint]="hint"
+			(picked)="setPeriod($event)"
+		/>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'date' | transloco }}</th>
+					<th>{{ 'description' | transloco }}</th>
+					<th>{{ 'reference' | transloco }}</th>
+					<th class="text-end">{{ 'bank_col_out' | transloco }}</th>
+					<th class="text-end">{{ 'bank_col_in' | transloco }}</th>
+					<th class="text-end">{{ 'balance' | transloco }}</th>
+					<th>{{ 'status' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (line of lines.data()?.items ?? []; track line.id) {
+				<tr>
+					<td class="text-nowrap">{{ day(line.date) }}</td>
+					<td>{{ line.description }}</td>
+					<td>{{ line.reference || '—' }}</td>
+					<td class="text-end text-nowrap">{{ paise(line.outPaise) }}</td>
+					<td class="text-end text-nowrap">{{ paise(line.inPaise) }}</td>
+					<td class="text-end text-nowrap">
+						{{ line.balancePaise === null ? '—' : balance(line.balancePaise) }}
+					</td>
+					<td>{{ 'bank_line_status_' + line.status | transloco }}</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="7"
+						class="text-muted"
+					>
+						{{ 'bank_lines_empty' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if ((lines.data()?.total ?? 0) > pageSize) {
+	<nav class="custom-pagination">
+		<app-pagination
+			[total]="lines.data()?.total ?? 0"
+			[currentPage]="page()"
+			[pageSize]="pageSize"
+			(setPage)="page.set($event)"
+		/>
+	</nav>
+	} } @case ('details') {
+	<div class="card">
+		<div class="card-body">
+			<ul class="list-unstyled small row g-2 mb-0">
+				<li class="col-md-4">
+					<b>{{ 'bank_bank' | transloco }}</b>
+					<span class="d-block">{{ a.bankName }} · {{ a.branch || '—' }} · {{ a.ifsc }}</span>
+				</li>
+				<li class="col-md-4">
+					<b>{{ 'bank_holder' | transloco }}</b>
+					<span class="d-block">{{ a.holder }}</span>
+				</li>
+				<li class="col-md-4">
+					<b>{{ 'bank_in_books' | transloco }}</b>
+					<span class="d-block">{{ balance(a.balancePaise) }}</span>
+				</li>
+				<li class="col-md-4">
+					<b>{{ 'bank_opening' | transloco }}</b>
+					<span class="d-block">{{ money(a.openingINR) }} · {{ a.openingOn ?? '—' }}</span>
+				</li>
+				@if (a.limitINR !== null) {
+				<li class="col-md-4">
+					<b>{{ 'bank_limit' | transloco }}</b>
+					<span class="d-block">{{ money(a.limitINR) }}</span>
+				</li>
+				} @if (a.ratePercent !== null) {
+				<li class="col-md-4">
+					<b>{{ 'bank_rate' | transloco }}</b>
+					<span class="d-block">{{ a.ratePercent }}% · {{ a.maturesOn ?? '—' }}</span>
+				</li>
+				}
+				<li class="col-md-4">
+					<b>{{ 'bank_cheque_book' | transloco }}</b>
+					<span class="d-block">{{ a.chequeFrom || '—' }} – {{ a.chequeTo || '—' }}</span>
+				</li>
+				<li class="col-md-4">
+					<b>{{ 'bank_upi_ids' | transloco }}</b>
+					<span class="d-block">{{ a.upiIds.join(', ') || '—' }}</span>
+				</li>
+				<li class="col-md-4">
+					<b>{{ 'bank_what_lands' | transloco }}</b>
+					<span class="d-block">
+						@for (key of a.lands; track key) { {{ 'bank_lands_' + key | transloco }}@if (!$last) {, } }
+						@empty { — }
+					</span>
+				</li>
+			</ul>
+		</div>
+	</div>
+	} } }
+</app-page-wrapper>

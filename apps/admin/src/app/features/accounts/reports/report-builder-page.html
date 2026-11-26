@@ -1,0 +1,405 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'reports_title'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">{{ id() ? name() : ('reports_new' | transloco) }}</h5>
+			<small class="text-muted">{{ 'report_builder_help' | transloco }}</small>
+		</div>
+		<div class="d-flex flex-wrap gap-2">
+			@if (id() && definition.data()?.createdBy) {
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="report_delete"
+				[disabled]="busy()"
+				(click)="remove()"
+			>
+				<i class="ri-delete-bin-line"></i>
+				{{ 'delete' | transloco }}
+			</button>
+			}
+			<app-export-menu
+				id="report_export"
+				[disabled]="busy() || !columns().length"
+				[source]="exportSource"
+			/>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="report_save"
+				[disabled]="busy() || !columns().length"
+				(click)="openSave(saveTemplate)"
+			>
+				<i class="ri-bookmark-line"></i>
+				{{ 'report_save_template' | transloco }}
+			</button>
+		</div>
+	</div>
+	<div class="row g-3">
+		<div class="col-xl-7">
+			<div class="card">
+				<div class="card-body theme-form theme-form-2">
+					<div class="title-header">
+						<h5>{{ 'report_step_on' | transloco }}</h5>
+					</div>
+					<div class="row g-3">
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="report_dataset"
+							>
+								{{ 'report_data' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="report_dataset"
+								[ngModel]="dataset()"
+								(ngModelChange)="setDataset($event)"
+							>
+								@for (d of datasets; track d) {
+								<option [value]="d">{{ 'report_dataset_' + d | transloco }}</option>
+								}
+							</select>
+						</div>
+						<div class="col-md-6">
+							<span class="form-label-title d-block">{{ 'report_period' | transloco }}</span>
+							<app-period-picker
+								[choices]="presets"
+								[start]="preset() ?? 'this_month'"
+								[labelPrefix]="'period_'"
+								(picked)="setPeriod($event)"
+							/>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-body theme-form theme-form-2">
+					<div class="title-header">
+						<h5>{{ 'report_step_columns' | transloco }}</h5>
+					</div>
+					<div class="d-flex mb-2 flex-wrap gap-2">
+						@for (c of columns(); track c) {
+						<span class="badge bg-light text-dark d-inline-flex align-items-center gap-1">
+							{{ label(c) }}
+							<button
+								type="button"
+								class="btn btn-sm p-0"
+								[title]="'report_remove_column' | transloco"
+								(click)="removeColumn(c)"
+							>
+								<i class="ri-close-line"></i>
+							</button>
+						</span>
+						}
+					</div>
+					<select
+						class="form-select"
+						id="report_add_column"
+						[attr.aria-label]="'report_add_column' | transloco"
+						[ngModel]="''"
+						(ngModelChange)="addColumn($event)"
+					>
+						<option value="">{{ 'report_add_column' | transloco }}</option>
+						@for (f of fields(); track f.key) { @if (!columns().includes(f.key)) {
+						<option [value]="f.key">{{ label(f.key) }}</option>
+						} }
+					</select>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-body theme-form theme-form-2">
+					<div class="title-header">
+						<h5>{{ 'report_step_filters' | transloco }}</h5>
+					</div>
+					@for (f of filters(); track $index; let i = $index) {
+					<div class="d-flex align-items-center mb-2 flex-wrap gap-2">
+						<select
+							class="form-select w-auto"
+							[attr.aria-label]="'report_filter_field' | transloco"
+							[ngModel]="f.field"
+							(ngModelChange)="setFilter(i, { field: $event })"
+						>
+							@for (field of fields(); track field.key) {
+							<option [value]="field.key">{{ label(field.key) }}</option>
+							}
+						</select>
+						<select
+							class="form-select w-auto"
+							[attr.aria-label]="'report_filter_op' | transloco"
+							[ngModel]="f.op"
+							(ngModelChange)="setFilter(i, { op: $event })"
+						>
+							@for (op of ops; track op) {
+							<option [value]="op">{{ 'report_op_' + op | transloco }}</option>
+							}
+						</select>
+						<input
+							class="form-control w-auto flex-grow-1"
+							[attr.aria-label]="'report_filter_values' | transloco"
+							[placeholder]="(f.op === 'in' || f.op === 'between' ? 'report_values_commas' : 'report_value') | transloco"
+							[ngModel]="f.values.join(', ')"
+							(ngModelChange)="typed(i, $event)"
+						/>
+						<button
+							type="button"
+							class="btn btn-sm p-0"
+							[title]="'report_remove_filter' | transloco"
+							(click)="removeFilter(i)"
+						>
+							<i class="ri-close-line"></i>
+						</button>
+					</div>
+					}
+					<button
+						type="button"
+						class="btn btn-sm btn-outline mb-3"
+						id="report_add_filter"
+						(click)="addFilter()"
+					>
+						<i class="ri-add-line"></i>
+						{{ 'report_add_filter' | transloco }}
+					</button>
+					<div class="row g-3">
+						<div class="col-md-6">
+							<span class="form-label-title d-block">{{ 'report_group_by' | transloco }}</span>
+							@for (n of [0, 1, 2]; track n) { @if (n <= groupBy().length) {
+							<select
+								class="form-select mb-2"
+								[attr.aria-label]="'report_group_by' | transloco"
+								[ngModel]="groupBy()[n] ?? ''"
+								(ngModelChange)="setGroup(n, $event)"
+							>
+								<option value="">
+									{{ n ? ('report_then_nothing' | transloco) : ('report_no_groups' | transloco) }}
+								</option>
+								@for (c of columns(); track c) { @if (typeOf(c) === 'text' || typeOf(c) === 'date') {
+								<option [value]="c">{{ label(c) }}</option>
+								} }
+							</select>
+							} }
+						</div>
+						<div class="col-md-6">
+							<span class="form-label-title d-block">{{ 'report_totals' | transloco }}</span>
+							@for (f of summable(); track f.key) {
+							<div class="form-check">
+								<input
+									class="form-check-input"
+									type="checkbox"
+									[id]="'report_total_' + f.key"
+									[checked]="totals().includes(f.key)"
+									(change)="toggleTotal(f.key)"
+								/>
+								<label
+									class="form-check-label"
+									[for]="'report_total_' + f.key"
+								>
+									{{ label(f.key) }}
+								</label>
+							</div>
+							}
+							<span class="form-label-title d-block mt-2">{{ 'report_sort' | transloco }}</span>
+							<div class="d-flex gap-2">
+								<select
+									class="form-select"
+									[attr.aria-label]="'report_sort' | transloco"
+									[ngModel]="sort()?.field ?? ''"
+									(ngModelChange)="setSort($event, sort()?.direction ?? 'desc')"
+								>
+									<option value="">{{ 'report_sort_none' | transloco }}</option>
+									@for (c of columns(); track c) {
+									<option [value]="c">{{ label(c) }}</option>
+									}
+								</select>
+								<select
+									class="form-select w-auto"
+									[attr.aria-label]="'report_sort_direction' | transloco"
+									[disabled]="!sort()"
+									[ngModel]="sort()?.direction ?? 'desc'"
+									(ngModelChange)="setSort(sort()?.field ?? '', $event)"
+								>
+									<option value="desc">{{ 'report_sort_desc' | transloco }}</option>
+									<option value="asc">{{ 'report_sort_asc' | transloco }}</option>
+								</select>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-5">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'report_preview' | transloco }}</h5>
+					</div>
+					@if (preview.error()) {
+					<div class="alert alert-warning py-2">{{ 'report_problem_failed' | transloco }}</div>
+					} @if (preview.data(); as t) {
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									@for (c of t.columns; track c.key) {
+									<th>{{ label(c.key) }}</th>
+									}
+								</tr>
+							</thead>
+							<tbody>
+								@for (row of t.rows; track $index) {
+								<tr>
+									@for (v of row; track $index; let i = $index) {
+									<td class="text-nowrap">{{ cell(v, t.columns[i]?.type ?? 'text') }}</td>
+									}
+								</tr>
+								} @empty {
+								<tr>
+									<td
+										class="text-muted"
+										[attr.colspan]="t.columns.length"
+									>
+										{{ 'report_no_rows' | transloco }}
+									</td>
+								</tr>
+								}
+								<tr>
+									@for (v of t.totals; track $index; let i = $index) {
+									<td class="fw-bold text-nowrap">
+										{{ v === null ? '' : cell(v, t.columns[i]?.type ?? 'text') }}
+									</td>
+									}
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					@if (t.truncated) {
+					<small class="text-muted d-block mt-2">
+						{{ 'report_preview_first' | transloco: { count: t.count } }}
+					</small>
+					} }
+				</div>
+			</div>
+		</div>
+	</div>
+	<ng-template
+		#saveTemplate
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="modal-title">{{ 'report_save_template' | transloco }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			<label
+				class="form-label-title"
+				for="report_name"
+			>
+				{{ 'report_name' | transloco }}
+			</label>
+			<input
+				class="form-control mb-3"
+				id="report_name"
+				maxlength="80"
+				[ngModel]="name()"
+				(ngModelChange)="name.set($event)"
+			/>
+			<div class="row g-3">
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="report_folder"
+					>
+						{{ 'report_folder' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="report_folder"
+						maxlength="60"
+						[ngModel]="folder()"
+						(ngModelChange)="folder.set($event)"
+					/>
+				</div>
+				<div class="col-md-6">
+					<span class="form-label-title d-block">{{ 'report_who_opens' | transloco }}</span>
+					@for (o of ['me', 'roles', 'all']; track o) {
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="radio"
+							name="report_open_to"
+							[id]="'report_open_' + o"
+							[checked]="openTo() === o"
+							(change)="openTo.set($any(o))"
+						/>
+						<label
+							class="form-check-label"
+							[for]="'report_open_' + o"
+						>
+							{{ 'report_open_' + o | transloco }}
+						</label>
+					</div>
+					} @if (openTo() === 'roles') { @for (r of roleList.data()?.items ?? []; track r.id) {
+					<div class="form-check ms-3">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							[id]="'report_role_' + r.id"
+							[checked]="roleIds().includes(r.id)"
+							(change)="toggleRole(r.id)"
+						/>
+						<label
+							class="form-check-label"
+							[for]="'report_role_' + r.id"
+						>
+							{{ r.label }}
+						</label>
+					</div>
+					} }
+				</div>
+			</div>
+			<div class="form-check form-switch mt-3">
+				<input
+					class="form-check-input"
+					type="checkbox"
+					id="report_moving"
+					[checked]="moving()"
+					[disabled]="!preset()"
+					(change)="moving.set(!moving())"
+				/>
+				<label
+					class="form-check-label"
+					for="report_moving"
+				>
+					{{ 'report_moving' | transloco }}
+				</label>
+			</div>
+			<small class="text-muted d-block">{{ 'report_moving_help' | transloco }}</small>
+			<small class="text-muted d-block mt-2">{{ 'report_template_note' | transloco }}</small>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="report_save_confirm"
+				[disabled]="busy() || !name().trim() || !folder().trim() || (openTo() === 'roles' && !roleIds().length)"
+				(click)="save()"
+			>
+				{{ 'save' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+</app-page-wrapper>

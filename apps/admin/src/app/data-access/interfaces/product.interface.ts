@@ -69,7 +69,6 @@ export interface IProduct {
 	variants: IVariant[];
 	attributes: IAttribute[];
 	attributes_ids: number[];
-	is_random_related_products: boolean;
 	related_products: number[];
 	cross_sell_products: number[];
 	pivot?: IPivotProduct;
@@ -117,8 +116,9 @@ export interface IVariationOption {
 export interface IVariant {
 	id: number | null;
 	attribute_values: number[] | null;
-	options: any;
-	variant_option: any;
+	/** Carried from the old catalogue shape; nothing here reads them. */
+	options: unknown;
+	variant_option: unknown;
 }
 
 export interface IVariationCombination {

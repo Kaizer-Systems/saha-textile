@@ -1,0 +1,866 @@
+/*
+ * The Release Console's loaders (brief N5kmX6DLJv1ECitVUPFHJ8, revision 2, approved 21 Nov 2026):
+ * 29 drawings, one per kind of work, and the overlay that shows them over the content area.
+ * Generated from the approved brief's animations, then scoped to .rc-load-piece; keyframes are rcl-*.
+ */
+/* ===== loader animations (SVG, user units) ===== */
+.rc-load-piece .spin {
+	transform-origin: 100px 100px;
+	animation: rcl-spin 14s linear infinite;
+}
+.rc-load-piece .spin-r {
+	transform-origin: 100px 100px;
+	animation: rcl-spin 22s linear infinite reverse;
+}
+.rc-load-piece .spin-fast {
+	transform-origin: 100px 100px;
+	animation: rcl-spin 2.4s cubic-bezier(0.6, 0.1, 0.4, 0.9) infinite;
+}
+.rc-load-piece .spin-back {
+	transform-origin: 100px 100px;
+	animation: rcl-spin 2.4s cubic-bezier(0.6, 0.1, 0.4, 0.9) infinite reverse;
+}
+@keyframes rcl-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+.rc-load-piece .charge {
+	stroke-dasharray: 26 74;
+	animation: rcl-charge 1.6s ease-in-out infinite;
+	filter: drop-shadow(0 0 6px #5ed6ff);
+}
+.rc-load-piece .charge.back {
+	filter: drop-shadow(0 0 6px #ffb547);
+	animation-direction: reverse;
+}
+@keyframes rcl-charge {
+	0% {
+		stroke-dashoffset: 100;
+		stroke-dasharray: 4 96;
+	}
+	50% {
+		stroke-dasharray: 34 66;
+	}
+	100% {
+		stroke-dashoffset: 0;
+		stroke-dasharray: 4 96;
+	}
+}
+.rc-load-piece .breathe {
+	transform-origin: center;
+	transform-box: fill-box;
+	animation: rcl-breathe 1.6s ease-in-out infinite;
+}
+@keyframes rcl-breathe {
+	50% {
+		transform: scale(0.84);
+		opacity: 0.7;
+	}
+}
+.rc-load-piece .chev {
+	animation: rcl-chev 1s ease-in-out infinite;
+}
+@keyframes rcl-chev {
+	50% {
+		transform: translateX(-6px);
+		opacity: 0.5;
+	}
+}
+.rc-load-piece .b-ring {
+	transform-origin: 100px 82px;
+	animation: rcl-bring 1.8s ease-out infinite;
+	opacity: 0;
+}
+@keyframes rcl-bring {
+	0% {
+		transform: scale(0.6);
+		opacity: 0.9;
+	}
+	100% {
+		transform: scale(3);
+		opacity: 0;
+	}
+}
+.rc-load-piece .b-core {
+	filter: drop-shadow(0 0 8px #5ed6ff);
+}
+.rc-load-piece .b-line {
+	opacity: 0;
+	animation: rcl-fadein 2.4s ease infinite;
+}
+@keyframes rcl-fadein {
+	0%,
+	15% {
+		opacity: 0;
+	}
+	30%,
+	90% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+.rc-load-piece .p-pulse {
+	animation: rcl-ppulse 2.25s linear infinite;
+	filter: drop-shadow(0 0 6px #5ed6ff);
+}
+@keyframes rcl-ppulse {
+	to {
+		transform: translateX(160px);
+	}
+}
+.rc-load-piece .p-node circle {
+	animation: rcl-pnode 2.25s linear infinite;
+	animation-delay: inherit;
+}
+.rc-load-piece .p-node {
+	animation: none;
+}
+@keyframes rcl-pnode {
+	0%,
+	20% {
+		stroke: #7fa3b8;
+		stroke-dasharray: 4 3;
+	}
+	25%,
+	45% {
+		stroke: #ffb547;
+		stroke-dasharray: 0;
+	}
+	50%,
+	100% {
+		stroke: #5dffa8;
+		stroke-dasharray: 0;
+	}
+}
+.rc-load-piece .p-tick {
+	opacity: 0;
+	animation: rcl-ptick 2.25s linear infinite;
+}
+@keyframes rcl-ptick {
+	0%,
+	48% {
+		opacity: 0;
+	}
+	52%,
+	96% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+.rc-load-piece .t-line {
+	transform-box: fill-box;
+	transform-origin: left;
+	animation: rcl-tline 2.6s steps(12) infinite;
+}
+@keyframes rcl-tline {
+	0% {
+		transform: scaleX(0);
+	}
+	40%,
+	90% {
+		transform: scaleX(1);
+	}
+	100% {
+		transform: scaleX(1);
+		opacity: 0;
+	}
+}
+.rc-load-piece .cursor-b {
+	animation: rcl-blink 1s steps(1) infinite;
+}
+@keyframes rcl-blink {
+	50% {
+		opacity: 0;
+	}
+}
+.rc-load-piece .d-row {
+	transform-box: fill-box;
+	transform-origin: left;
+	animation: rcl-drow 2.4s ease infinite;
+}
+@keyframes rcl-drow {
+	0% {
+		transform: scaleX(0);
+		opacity: 0;
+	}
+	25%,
+	90% {
+		transform: scaleX(1);
+		opacity: 0.9;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+.rc-load-piece .d-scan {
+	animation: rcl-dscan 2.4s linear infinite;
+	filter: drop-shadow(0 0 6px #5ed6ff);
+}
+@keyframes rcl-dscan {
+	to {
+		transform: translateY(124px);
+	}
+}
+.rc-load-piece .tl-day {
+	animation: rcl-tlday 2.4s ease infinite;
+}
+.rc-load-piece .tl-day.frz {
+	animation-name: rcl-tlfrz;
+}
+@keyframes rcl-tlday {
+	0%,
+	100% {
+		fill: transparent;
+	}
+	30% {
+		fill: rgba(94, 214, 255, 0.45);
+	}
+	60% {
+		fill: rgba(94, 214, 255, 0.08);
+	}
+}
+@keyframes rcl-tlfrz {
+	0%,
+	100% {
+		fill: transparent;
+	}
+	30%,
+	70% {
+		fill: rgba(255, 93, 93, 0.55);
+	}
+}
+.rc-load-piece .hand {
+	transform-origin: 168px 36px;
+	animation: rcl-spin 2s linear infinite;
+}
+.rc-load-piece .needle {
+	transform-origin: 100px 130px;
+	animation: rcl-needle 3.2s ease-in-out infinite;
+}
+@keyframes rcl-needle {
+	0% {
+		transform: rotate(-80deg);
+	}
+	25% {
+		transform: rotate(-40deg);
+	}
+	50% {
+		transform: rotate(0deg);
+	}
+	75% {
+		transform: rotate(45deg);
+	}
+	85% {
+		transform: rotate(62deg);
+	}
+	100% {
+		transform: rotate(-80deg);
+	}
+}
+.rc-load-piece .pz-bar {
+	transform-box: fill-box;
+	transform-origin: bottom;
+	animation: rcl-pzbar 2.4s ease-in-out infinite;
+}
+@keyframes rcl-pzbar {
+	0%,
+	100% {
+		transform: scaleY(0.2);
+	}
+	50% {
+		transform: scaleY(1);
+		fill: #ffb547;
+	}
+}
+.rc-load-piece .mi-blk {
+	animation: rcl-miblk 2s ease-in-out infinite;
+}
+@keyframes rcl-miblk {
+	0% {
+		transform: translateX(0);
+		opacity: 1;
+	}
+	60% {
+		transform: translateX(92px);
+		opacity: 1;
+	}
+	100% {
+		transform: translateX(92px);
+		opacity: 0;
+	}
+}
+.rc-load-piece .st-blk {
+	animation: rcl-stblk 2.4s cubic-bezier(0.3, 1.4, 0.6, 1) infinite;
+}
+@keyframes rcl-stblk {
+	0% {
+		transform: translateY(-60px);
+		opacity: 0;
+	}
+	20%,
+	85% {
+		transform: translateY(0);
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+.rc-load-piece .sweep {
+	transform-origin: 100px 100px;
+	animation: rcl-spin 2.4s linear infinite;
+}
+.rc-load-piece .blip {
+	opacity: 0;
+	animation: rcl-blip 2.4s ease-out infinite;
+}
+@keyframes rcl-blip {
+	0% {
+		opacity: 0;
+		r: 2;
+	}
+	10% {
+		opacity: 1;
+		r: 6;
+	}
+	60% {
+		opacity: 0.6;
+		r: 5;
+	}
+	100% {
+		opacity: 0;
+		r: 4;
+	}
+}
+.rc-load-piece .wf-bar {
+	transform-box: fill-box;
+	transform-origin: left;
+	animation: rcl-wf 2.6s ease infinite;
+}
+@keyframes rcl-wf {
+	0% {
+		transform: scaleX(0);
+	}
+	30%,
+	88% {
+		transform: scaleX(1);
+	}
+	100% {
+		transform: scaleX(1);
+		opacity: 0;
+	}
+}
+.rc-load-piece .ecg {
+	stroke-dasharray: 100;
+	stroke-dashoffset: 100;
+	animation: rcl-ecg 1.8s linear infinite;
+	filter: drop-shadow(0 0 5px #5dffa8);
+}
+@keyframes rcl-ecg {
+	to {
+		stroke-dashoffset: 0;
+	}
+}
+.rc-load-piece .ping {
+	transform-box: fill-box;
+	transform-origin: center;
+	animation: rcl-ping 1.5s ease-out infinite;
+}
+@keyframes rcl-ping {
+	0% {
+		transform: scale(0.6);
+		opacity: 1;
+	}
+	100% {
+		transform: scale(2.6);
+		opacity: 0;
+	}
+}
+.rc-load-piece .gz {
+	stroke-dasharray: 0 100;
+	animation: rcl-gz 2.8s ease-in-out infinite;
+}
+@keyframes rcl-gz {
+	0% {
+		stroke-dasharray: 0 100;
+	}
+	40% {
+		stroke-dasharray: 92 8;
+	}
+	60%,
+	85% {
+		stroke-dasharray: 64 36;
+	}
+	100% {
+		stroke-dasharray: 0 100;
+	}
+}
+.rc-load-piece .led {
+	animation: rcl-led 1.2s steps(2) infinite;
+}
+@keyframes rcl-led {
+	50% {
+		opacity: 0.2;
+	}
+}
+.rc-load-piece .rk-bar {
+	transform-box: fill-box;
+	transform-origin: left;
+	animation: rcl-rk 2s ease infinite;
+}
+@keyframes rcl-rk {
+	0% {
+		transform: scaleX(0);
+	}
+	50%,
+	100% {
+		transform: scaleX(1);
+	}
+}
+.rc-load-piece .pkt {
+	animation: rcl-pkt 1.5s linear infinite;
+	filter: drop-shadow(0 0 5px #5ed6ff);
+}
+@keyframes rcl-pkt {
+	0% {
+		transform: translate(140px, 86px) rotate(45deg);
+		opacity: 0;
+	}
+	15%,
+	85% {
+		opacity: 1;
+	}
+	100% {
+		transform: translate(52px, 86px) rotate(45deg);
+		opacity: 0;
+	}
+}
+.rc-load-piece .wave {
+	animation: rcl-wave 1.2s linear infinite;
+}
+@keyframes rcl-wave {
+	to {
+		transform: translateX(-40px);
+	}
+}
+.rc-load-piece .tn {
+	transform-origin: 100px 100px;
+	animation: rcl-tn 2.5s linear infinite;
+	opacity: 0;
+}
+@keyframes rcl-tn {
+	0% {
+		transform: rotate(45deg) scale(0.2);
+		opacity: 0;
+	}
+	20% {
+		opacity: 1;
+	}
+	100% {
+		transform: rotate(45deg) scale(3.4);
+		opacity: 0;
+	}
+}
+.rc-load-piece .fill {
+	animation: rcl-cfill 2.6s ease-in-out infinite;
+}
+@keyframes rcl-cfill {
+	0%,
+	100% {
+		transform: translateY(80px);
+	}
+	50% {
+		transform: translateY(0);
+	}
+}
+.rc-load-piece .ring {
+	animation: rcl-ring 1.3s ease infinite alternate;
+}
+@keyframes rcl-ring {
+	to {
+		stroke: #5dffa8;
+	}
+}
+.rc-load-piece .cv {
+	animation: rcl-cv 2.4s linear infinite;
+	opacity: 0;
+}
+@keyframes rcl-cv {
+	0% {
+		transform: translateX(14px);
+		opacity: 0;
+	}
+	10%,
+	85% {
+		opacity: 1;
+	}
+	100% {
+		transform: translateX(132px);
+		opacity: 0;
+	}
+}
+.rc-load-piece .gear {
+	transform-origin: 160px 120px;
+	animation: rcl-spin 1.6s linear infinite;
+}
+.rc-load-piece .px {
+	animation: rcl-px 2.4s ease infinite;
+}
+@keyframes rcl-px {
+	0% {
+		opacity: 0.1;
+		fill: rgba(94, 214, 255, 0.05);
+	}
+	30%,
+	85% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0.2;
+	}
+}
+.rc-load-piece .lens {
+	animation: rcl-lens 3s ease-in-out infinite;
+}
+@keyframes rcl-lens {
+	0%,
+	100% {
+		transform: translate(0, 0);
+	}
+	33% {
+		transform: translate(60px, 18px);
+	}
+	66% {
+		transform: translate(24px, 54px);
+	}
+}
+.rc-load-piece .dial {
+	transform-origin: 100px 88px;
+	animation: rcl-dial 2.4s steps(8) infinite;
+}
+@keyframes rcl-dial {
+	to {
+		transform: rotate(360deg);
+	}
+}
+.rc-load-piece .mask {
+	animation: rcl-mask 2.4s steps(1) infinite;
+}
+@keyframes rcl-mask {
+	0%,
+	49% {
+		fill: #7fa3b8;
+	}
+	50%,
+	100% {
+		fill: #5dffa8;
+	}
+}
+.rc-load-piece .nl {
+	stroke-dasharray: 10 90;
+	animation: rcl-nl 1.4s linear infinite;
+}
+@keyframes rcl-nl {
+	to {
+		stroke-dashoffset: -100;
+	}
+}
+.rc-load-piece .nn {
+	animation: rcl-nn 1.4s ease-in-out infinite;
+}
+@keyframes rcl-nn {
+	50% {
+		fill: rgba(94, 214, 255, 0.4);
+	}
+}
+.rc-load-piece .beam-y {
+	animation: rcl-beamy 1.8s ease-in-out infinite;
+}
+@keyframes rcl-beamy {
+	from {
+		transform: translateY(0);
+	}
+	to {
+		transform: translateY(150px);
+	}
+}
+.rc-load-piece .brk {
+	animation: rcl-brk 1.8s ease-in-out infinite;
+	filter: drop-shadow(0 0 5px #5ed6ff);
+}
+@keyframes rcl-brk {
+	50% {
+		opacity: 0.4;
+	}
+}
+.rc-load-piece .lon {
+	transform-origin: 100px 100px;
+	animation: rcl-lon 3s linear infinite;
+}
+@keyframes rcl-lon {
+	0% {
+		transform: scaleX(1);
+	}
+	50% {
+		transform: scaleX(0.05);
+	}
+	100% {
+		transform: scaleX(1);
+	}
+}
+.rc-load-piece .ep {
+	animation: rcl-ep 1.6s ease-in-out infinite;
+}
+@keyframes rcl-ep {
+	50% {
+		opacity: 0.2;
+	}
+}
+.rc-load-piece .hit {
+	animation: rcl-hit 1.8s ease-in-out infinite;
+}
+@keyframes rcl-hit {
+	0% {
+		transform: translateX(0);
+		opacity: 0;
+	}
+	10% {
+		opacity: 1;
+	}
+	45% {
+		transform: translateX(70px);
+	}
+	90% {
+		transform: translateX(0);
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+.rc-load-piece .miss {
+	animation: rcl-miss 1.8s linear infinite 0.9s;
+	opacity: 0;
+}
+@keyframes rcl-miss {
+	0% {
+		transform: translateX(0);
+		opacity: 0;
+	}
+	10% {
+		opacity: 1;
+	}
+	100% {
+		transform: translateX(148px);
+		opacity: 0.6;
+	}
+}
+.rc-load-piece .lg {
+	opacity: 0;
+	animation: rcl-fadein 2.8s ease infinite;
+}
+.rc-load-piece .sw {
+	animation: rcl-sw 2s ease-in-out infinite;
+}
+@keyframes rcl-sw {
+	0%,
+	30% {
+		transform: translateY(0);
+		fill: #7fa3b8;
+	}
+	45%,
+	85% {
+		transform: translateY(-16px);
+		fill: #5ed6ff;
+	}
+	100% {
+		transform: translateY(0);
+	}
+}
+
+/* ===== the overlay (one per content area, and one over the whole window while the console opens) ===== */
+rc-load-overlay.rc-load {
+	position: absolute;
+	inset: 0;
+	z-index: 6;
+	display: block;
+	pointer-events: none;
+}
+rc-load-overlay.rc-load.full {
+	position: fixed;
+	z-index: 40;
+}
+rc-load-overlay.rc-load.on {
+	background: rgba(5, 11, 20, 0.55);
+	backdrop-filter: blur(3px);
+	-webkit-backdrop-filter: blur(3px);
+	animation: rcl-in 0.25s ease both;
+}
+rc-load-overlay.rc-load.full.on {
+	background: radial-gradient(1000px 520px at 60% 10%, #0c2338 0%, var(--hud-bg) 65%);
+}
+rc-load-overlay.rc-load.on.out {
+	opacity: 0;
+	transition: opacity 0.35s ease;
+}
+@keyframes rcl-in {
+	from {
+		opacity: 0;
+	}
+}
+/* The blurred outline of the layout about to arrive. */
+.rc-load-ghost {
+	position: absolute;
+	inset: 14px 16px;
+	display: grid;
+	gap: 12px;
+	align-content: start;
+}
+.rc-load-ghost .t {
+	display: block;
+	height: 18px;
+	width: 32%;
+	border: 1px dashed rgba(94, 214, 255, 0.18);
+}
+.rc-load-ghost .g {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 12px;
+}
+.rc-load-ghost .g i,
+.rc-load-ghost .b {
+	display: block;
+	height: 64px;
+	border: 1px dashed rgba(94, 214, 255, 0.16);
+}
+.rc-load-ghost .b {
+	height: calc(100dvh - 300px);
+	max-height: 60vh;
+}
+.rc-load-center {
+	/* Centred in the part of the content area that is on screen, not in the whole (possibly tall) area. */
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: min(100%, calc(100dvh - 120px));
+	display: grid;
+	place-items: center;
+	align-content: center;
+	gap: 6px;
+	text-align: center;
+	padding: 16px;
+}
+.rc-load.full .rc-load-center {
+	height: 100%;
+}
+.rc-load-piece {
+	display: block;
+	width: clamp(160px, 18vw, 220px);
+	aspect-ratio: 1;
+}
+.rc-load.full .rc-load-piece {
+	width: clamp(180px, 24vw, 260px);
+}
+.rc-load-piece svg {
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+	display: block;
+}
+.rc-load-title {
+	font: 600 14px var(--font-hud);
+	letter-spacing: 0.32em;
+	text-transform: uppercase;
+	color: var(--hud-text);
+	text-shadow: 0 0 12px rgba(94, 214, 255, 0.6);
+}
+.rc-load-what {
+	font: 11.5px var(--font-mono);
+	color: var(--hud-muted);
+}
+.rc-load-time {
+	font: 500 11.5px var(--font-mono);
+	color: var(--hud-cyan);
+	font-variant-numeric: tabular-nums;
+}
+.rc-load-slow {
+	font: 11.5px var(--font-mono);
+	color: var(--hud-amber);
+}
+.rc-load.slow .rc-load-title {
+	color: var(--hud-amber);
+	text-shadow: 0 0 12px rgba(255, 181, 71, 0.5);
+}
+.rc-load-act {
+	display: flex;
+	gap: 8px;
+	justify-content: center;
+	pointer-events: auto;
+}
+/* A refresh with data on screen: a light along the top of the content and the chip. */
+.rc-load-line {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	height: 2px;
+	overflow: hidden;
+	opacity: 0;
+	transition: opacity 0.2s;
+}
+.rc-load-line::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: -30%;
+	width: 30%;
+	height: 100%;
+	background: linear-gradient(90deg, transparent, var(--hud-cyan), transparent);
+	box-shadow: 0 0 10px var(--hud-cyan);
+	animation: rcl-sweepx 1.2s linear infinite;
+}
+@keyframes rcl-sweepx {
+	to {
+		left: 100%;
+	}
+}
+.rc-load-chip {
+	position: absolute;
+	right: 16px;
+	top: 12px;
+	opacity: 0;
+	transition: opacity 0.2s;
+}
+.rc-load.refreshing .rc-load-line,
+.rc-load.refreshing .rc-load-chip {
+	opacity: 1;
+}
+/* The content area keeps room for the loader while a screen is still empty. */
+.rc-main:has(> rc-load-overlay.on) {
+	min-height: 72vh;
+}
+@media (max-width: 760px) {
+	.rc-load-ghost .g {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.rc-load-piece,
+	.rc-load.full .rc-load-piece {
+		width: 160px;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.rc-load-piece *,
+	.rc-load-line::after,
+	rc-load-overlay.rc-load.on {
+		animation: none !important;
+	}
+}
+.rc.still .rc-load-piece * {
+	animation: none !important;
+}

@@ -6,7 +6,7 @@ describe('locale URL law (DEC-I18N-ROUTES)', () => {
 	describe('localeRedirectFor', () => {
 		// `/` is the only answer that depends on the visitor, so it is the only 302.
 		it('sends / to the remembered locale', () => {
-			expect(localeRedirectFor('/', 'fr')).toEqual({ location: '/fr/', status: 302 });
+			expect(localeRedirectFor('/', 'bn')).toEqual({ location: '/bn/', status: 302 });
 		});
 
 		it('sends / to English when nothing, or nothing valid, is remembered', () => {
@@ -24,7 +24,7 @@ describe('locale URL law (DEC-I18N-ROUTES)', () => {
 		// Today's unprefixed links and surviving legacy paths: permanent, and never to the cookie's
 		// language — a 301 is cached, so it must not depend on who asked first.
 		it('moves an unprefixed page to its English address permanently, whatever is remembered', () => {
-			expect(localeRedirectFor('/cart', 'fr')).toEqual({ location: '/en/cart', status: 301 });
+			expect(localeRedirectFor('/cart', 'bn')).toEqual({ location: '/en/cart', status: 301 });
 			expect(localeRedirectFor('/product/red-katan/', undefined)).toEqual({
 				location: '/en/product/red-katan/',
 				status: 301,
@@ -32,12 +32,12 @@ describe('locale URL law (DEC-I18N-ROUTES)', () => {
 		});
 
 		it('gives the home page one address per language', () => {
-			expect(localeRedirectFor('/fr', undefined)).toEqual({ location: '/fr/', status: 301 });
-			expect(localeRedirectFor('/fr/', undefined)).toBeNull();
+			expect(localeRedirectFor('/bn', undefined)).toEqual({ location: '/bn/', status: 301 });
+			expect(localeRedirectFor('/bn/', undefined)).toBeNull();
 		});
 
 		it('serves a prefixed page as it is', () => {
-			expect(localeRedirectFor('/fr/cart', 'en')).toBeNull();
+			expect(localeRedirectFor('/bn/cart', 'en')).toBeNull();
 			expect(localeRedirectFor('/en/collections/sarees?page=2', undefined)).toBeNull();
 		});
 
@@ -49,7 +49,7 @@ describe('locale URL law (DEC-I18N-ROUTES)', () => {
 		it('leaves assets, the API and dev-server internals alone', () => {
 			for (const path of [
 				'/assets/images/logo.png',
-				'/assets/i18n/fr.json',
+				'/assets/i18n/bn.json',
 				'/api/products?page=1',
 				'/config.json',
 				'/favicon.ico',
@@ -68,20 +68,20 @@ describe('locale URL law (DEC-I18N-ROUTES)', () => {
 
 	describe('withLocale', () => {
 		it('puts an app URL under a language, home with its slash', () => {
-			expect(withLocale('fr', '/')).toBe('/fr/');
-			expect(withLocale('fr', '/cart')).toBe('/fr/cart');
-			expect(withLocale('fr', 'cart')).toBe('/fr/cart');
+			expect(withLocale('bn', '/')).toBe('/bn/');
+			expect(withLocale('bn', '/cart')).toBe('/bn/cart');
+			expect(withLocale('bn', 'cart')).toBe('/bn/cart');
 			expect(withLocale('en', '/collections/sarees?page=2#top')).toBe('/en/collections/sarees?page=2#top');
 		});
 	});
 
 	describe('localeOfPath', () => {
 		it('reads only a supported first segment', () => {
-			expect(localeOfPath('/fr/cart')).toBe('fr');
+			expect(localeOfPath('/bn/cart')).toBe('bn');
 			expect(localeOfPath('/en')).toBe('en');
 			expect(localeOfPath('/de/cart')).toBeNull();
-			expect(localeOfPath('/french-silk')).toBeNull();
-			expect(localeOfPath('/?lang=fr')).toBeNull();
+			expect(localeOfPath('/bengali-silk')).toBeNull();
+			expect(localeOfPath('/?lang=bn')).toBeNull();
 		});
 	});
 
@@ -90,6 +90,7 @@ describe('locale URL law (DEC-I18N-ROUTES)', () => {
 			expect(isPrivatePath('/account/dashboard')).toBe(true);
 			expect(isPrivatePath('/auth/login')).toBe(true);
 			expect(isPrivatePath('/cart')).toBe(true);
+			expect(isPrivatePath('/maintenance')).toBe(true);
 			expect(isPrivatePath('/checkout?step=2')).toBe(true);
 			expect(isPrivatePath('/cartier-silk')).toBe(false);
 			expect(isPrivatePath('/collections/sarees')).toBe(false);

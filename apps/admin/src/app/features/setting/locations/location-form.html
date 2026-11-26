@@ -1,0 +1,358 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="isNew() ? 'location_add' : 'location_edit'"
+>
+	@if (form(); as f) {
+	<div class="d-flex justify-content-end mb-3 gap-2">
+		<a
+			class="btn btn-outline"
+			routerLink="/setting/locations"
+		>
+			{{ 'cancel' | transloco }}
+		</a>
+		@if (!isNew() && canEdit()) {
+		<button
+			type="button"
+			class="btn btn-outline"
+			id="location_toggle_active"
+			(click)="toggleActive()"
+		>
+			{{ (current()?.active ? 'location_switch_off' : 'location_switch_on') | transloco }}
+		</button>
+		} @if (canEdit()) {
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="location_save"
+			[disabled]="saving() || !f.name.trim() || !f.shortCode.trim()"
+			(click)="save()"
+		>
+			{{ 'location_save' | transloco }}
+		</button>
+		}
+	</div>
+	<div class="row g-3">
+		<div class="col-xl-8">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header option-title">
+						<h5>{{ 'location_what_it_is' | transloco }}</h5>
+					</div>
+					<div class="row g-3">
+						<div class="col-md-8">
+							<label
+								class="form-label-title"
+								for="location_name"
+							>
+								{{ 'name' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="location_name"
+								[disabled]="!canEdit()"
+								[ngModel]="f.name"
+								(ngModelChange)="set('name', $event)"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="location_code"
+							>
+								{{ 'location_short_code' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="location_code"
+								maxlength="6"
+								[disabled]="!canEdit()"
+								[ngModel]="f.shortCode"
+								(ngModelChange)="set('shortCode', $event.toUpperCase())"
+							/>
+							<small class="help-text d-block">{{ 'location_short_code_help' | transloco }}</small>
+						</div>
+						@for (toggle of ['warehouse', 'store', 'office', 'courierPickup', 'shipsOnline',
+						'showOnStoresPage']; track toggle) {
+						<div class="col-md-4">
+							<div class="d-flex align-items-center gap-2">
+								<label class="switch mb-0">
+									<input
+										type="checkbox"
+										[id]="'location_' + toggle"
+										[disabled]="!canEdit() || (toggle === 'showOnStoresPage' && !f.store)"
+										[checked]="$any(f)[toggle]"
+										(change)="set($any(toggle), $any($event.target).checked)"
+									/>
+									<span class="switch-state"></span>
+								</label>
+								<span>{{ 'location_toggle_' + toggle | transloco }}</span>
+							</div>
+							@if (toggle === 'store') {
+							<small class="help-text d-block mt-1">{{ 'location_store_help' | transloco }}</small>
+							} @if (toggle === 'showOnStoresPage') {
+							<small class="help-text d-block mt-1">{{ 'location_stores_page_help' | transloco }}</small>
+							}
+						</div>
+						}
+					</div>
+				</div>
+			</div>
+
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header option-title">
+						<h5>{{ 'location_address_contact' | transloco }}</h5>
+					</div>
+					<div class="row g-3">
+						<div class="col-md-8">
+							<label
+								class="form-label-title"
+								for="location_address"
+							>
+								{{ 'address' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="location_address"
+								[disabled]="!canEdit()"
+								[ngModel]="f.address"
+								(ngModelChange)="set('address', $event)"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="location_pin"
+							>
+								{{ 'location_pin' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="location_pin"
+								inputmode="numeric"
+								maxlength="6"
+								[disabled]="!canEdit()"
+								[ngModel]="f.pin"
+								(ngModelChange)="set('pin', $event.trim())"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="location_city"
+							>
+								{{ 'city' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="location_city"
+								[disabled]="!canEdit()"
+								[ngModel]="f.city"
+								(ngModelChange)="set('city', $event)"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="location_state"
+							>
+								{{ 'state' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="location_state"
+								[disabled]="!canEdit()"
+								[ngModel]="f.stateCode"
+								(ngModelChange)="set('stateCode', $event)"
+							>
+								@for (s of states; track s.code) {
+								<option [value]="s.code">{{ s.name }} ({{ s.code }})</option>
+								}
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="location_phone"
+							>
+								{{ 'phone' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="location_phone"
+								[disabled]="!canEdit()"
+								[ngModel]="f.phone"
+								(ngModelChange)="set('phone', $event)"
+							/>
+						</div>
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="location_hours"
+							>
+								{{ 'location_opening_hours' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="location_hours"
+								[disabled]="!canEdit()"
+								[ngModel]="f.openingHours"
+								(ngModelChange)="set('openingHours', $event)"
+							/>
+							<small class="help-text d-block">{{ 'location_hours_help' | transloco }}</small>
+						</div>
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="location_se"
+							>
+								{{ 'location_se_number' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="location_se"
+								[disabled]="!canEdit()"
+								[ngModel]="f.shopsEstablishmentNo"
+								(ngModelChange)="set('shopsEstablishmentNo', $event)"
+							/>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header option-title">
+						<h5>{{ 'location_billing_books' | transloco }}</h5>
+					</div>
+					<div class="row g-3">
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="location_registration"
+							>
+								{{ 'location_gst_registration' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="location_registration"
+								[disabled]="!canEdit()"
+								[ngModel]="f.gstRegistrationId"
+								(ngModelChange)="set('gstRegistrationId', $event || null)"
+							>
+								<option [ngValue]="null">—</option>
+								@for (r of registrationChoices(); track r.id) {
+								<option [ngValue]="r.id">{{ r.gstin }}</option>
+								}
+							</select>
+							<small class="help-text d-block">{{ 'location_registration_help' | transloco }}</small>
+						</div>
+						<div class="col-md-6">
+							<label class="form-label-title d-block">
+								{{ 'location_invoice_identity' | transloco }}
+							</label>
+							@for (option of ['company', 'location']; track option) {
+							<label class="form-check d-block">
+								<input
+									class="form-check-input"
+									type="radio"
+									name="location_identity"
+									[disabled]="!canEdit()"
+									[checked]="f.invoiceIdentity === option"
+									(change)="set('invoiceIdentity', $any(option))"
+								/>
+								{{ 'location_identity_' + option | transloco }}
+							</label>
+							}
+						</div>
+						<div class="col-md-6">
+							<label class="form-label-title d-block">{{ 'location_number_series' | transloco }}</label>
+							@for (option of ['gstin', 'location']; track option) {
+							<label class="form-check d-block">
+								<input
+									class="form-check-input"
+									type="radio"
+									name="location_series"
+									[disabled]="!canEdit()"
+									[checked]="f.numberSeries === option"
+									(change)="set('numberSeries', $any(option))"
+								/>
+								{{ 'location_series_' + option | transloco }}
+							</label>
+							}
+							<small class="help-text d-block">{{ 'location_series_help' | transloco }}</small>
+						</div>
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="location_cost_centre"
+							>
+								{{ 'location_cost_centre' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="location_cost_centre"
+								disabled
+								[value]="f.name || '—'"
+							/>
+							<small class="help-text d-block">{{ 'location_cost_centre_help' | transloco }}</small>
+						</div>
+						<div class="col-md-6">
+							<div class="d-flex align-items-center gap-2">
+								<label class="switch mb-0">
+									<input
+										type="checkbox"
+										id="location_counter_cash"
+										[disabled]="!canEdit()"
+										[checked]="f.counterCashBox"
+										(change)="set('counterCashBox', $any($event.target).checked)"
+									/>
+									<span class="switch-state"></span>
+								</label>
+								<span>{{ 'location_counter_cash' | transloco }}</span>
+							</div>
+						</div>
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="location_float"
+							>
+								{{ 'location_petty_float' | transloco }}
+							</label>
+							<div class="input-group">
+								<span class="input-group-text">₹</span>
+								<input
+									class="form-control"
+									type="number"
+									min="0"
+									id="location_float"
+									[disabled]="!canEdit()"
+									[ngModel]="f.pettyCashFloatINR"
+									(ngModelChange)="set('pettyCashFloatINR', $event)"
+								/>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-4">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header option-title">
+						<h5>{{ 'location_rules' | transloco }}</h5>
+					</div>
+					<ul class="list-unstyled mb-0">
+						@for (rule of ['store', 'gstin', 'never_deleted', 'kinds']; track rule) {
+						<li class="border-bottom py-2">
+							<b>{{ 'location_rule_' + rule | transloco }}</b>
+							<div class="small text-muted">{{ 'location_rule_' + rule + '_body' | transloco }}</div>
+						</li>
+						}
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+	}
+</app-page-wrapper>

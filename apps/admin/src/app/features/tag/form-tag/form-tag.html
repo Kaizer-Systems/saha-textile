@@ -3,6 +3,15 @@
 	[formGroup]="form"
 	(ngSubmit)="submit()"
 >
+	@if (isBlog()) {
+	<app-language-switch
+		[locales]="locales"
+		[active]="fields.locale()"
+		[gaps]="gaps()"
+		(changed)="switchLanguage($event)"
+		(gapChosen)="openLanguageGap($event)"
+	/>
+	}
 	<app-form-fields
 		[label]="'tag_name' | transloco "
 		[for]="'name'"
@@ -10,15 +19,36 @@
 	>
 		<input
 			class="form-control"
+			id="name"
 			type="text"
 			placeholder="{{ 'enter_tag_name' | transloco }}"
 			name="name"
 			formControlName="name"
 		/>
-		@if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
+		@if (fields.source('name'); as guide) {
+		<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+		} @if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
 		<div class="invalid-feedback">{{ 'tag_name_is_required' | transloco }}</div>
 		}
 	</app-form-fields>
+	@if (isBlog()) {
+	<app-form-fields
+		[label]="'url_slug' | transloco"
+		[for]="'slug'"
+		[required]="false"
+	>
+		<input
+			class="form-control"
+			id="slug"
+			type="text"
+			formControlName="slug"
+		/>
+		<p class="help-text">{{ 'blog_term_slug_help' | transloco }}</p>
+		@if (form.controls['slug'].errors?.['pattern']) {
+		<div class="invalid-feedback d-block">{{ 'url_slug_invalid' | transloco }}</div>
+		}
+	</app-form-fields>
+	}
 	<app-form-fields
 		[label]="'description' | transloco"
 		[for]="'description'"
@@ -26,10 +56,14 @@
 	>
 		<textarea
 			class="form-control"
+			id="description"
 			placeholder="{{ 'enter_description' | transloco }}"
 			formControlName="description"
 			rows="3"
 		></textarea>
+		@if (fields.source('description'); as guide) {
+		<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+		}
 	</app-form-fields>
 	<app-form-fields
 		[label]="'status' | transloco"
@@ -46,6 +80,9 @@
 				<span class="switch-state"></span>
 			</label>
 		</div>
+		@if (isBlog()) {
+		<p class="help-text">{{ 'blog_term_status_help' | transloco }}</p>
+		}
 	</app-form-fields>
 	<app-button [id]="'tag_btn'">{{ (type() === 'create' ? 'save_tag' : 'update_tag') | transloco }}</app-button>
 </form>

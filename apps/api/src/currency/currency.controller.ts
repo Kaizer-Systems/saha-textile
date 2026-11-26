@@ -13,9 +13,12 @@ export class CurrencyController {
 	constructor(private readonly currency: CurrencyService) {}
 
 	@Get()
-	@ApiOperation({ operationId: 'listCurrencies', summary: 'List enabled currencies' })
+	@ApiOperation({
+		operationId: 'listCurrencies',
+		summary: 'List enabled currencies, each with the rate the shop shows prices at (PayPal markup included)',
+	})
 	list() {
-		return this.currency.listEnabled();
+		return this.currency.listForShop();
 	}
 
 	@Get('convert')

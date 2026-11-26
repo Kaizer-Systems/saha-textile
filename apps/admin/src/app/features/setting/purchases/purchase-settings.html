@@ -1,0 +1,275 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'purchases_and_stock'"
+>
+	@if (form(); as current) {
+	<div class="theme-form theme-form-2 mega-form">
+		<app-form-fields
+			[label]="'write_offs'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<p class="mb-0">{{ 'write_offs_rule' | transloco }}</p>
+			<p class="help-text">{{ 'write_offs_rule_help' | transloco }}</p>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'purchase_entry_steps'"
+			[class]="'mb-4 row align-items-start g-2'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th style="width: 200px">{{ 'step' | transloco }}</th>
+							<th style="width: 280px">{{ 'who_may_do_it' | transloco }}</th>
+							<th>{{ 'must_be_different_person' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of steps; track row.step) {
+						<tr>
+							<td>{{ row.label | transloco }}</td>
+							<td>
+								<select
+									class="form-select"
+									[id]="'step_role_' + row.step"
+									[attr.aria-label]="(row.label | transloco) + ' · ' + ('who_may_do_it' | transloco)"
+									[disabled]="!canChangeSteps()"
+									[ngModel]="roleOf(row.step)"
+									(ngModelChange)="setRole(row.step, $event)"
+								>
+									<option value="">
+										{{ 'anyone_with_permission' | transloco: { permission: (row.permissionLabel |
+										transloco) } }}
+									</option>
+									@for (role of optionsFor(row.permission); track role.id) {
+									<option [value]="role.id">
+										{{ 'only_role' | transloco: { role: role.label } }}
+									</option>
+									} @if (roleOf(row.step) && !listed(row.permission, roleOf(row.step))) {
+									<option [value]="roleOf(row.step)">
+										{{ 'only_role' | transloco: { role: roleLabel(roleOf(row.step)) } }}
+									</option>
+									}
+								</select>
+							</td>
+							<td>
+								@if (row.differentKey; as key) {
+								<div class="form-check form-switch ps-0">
+									<label class="switch mb-0">
+										<input
+											type="checkbox"
+											[id]="'step_different_' + row.step"
+											[attr.aria-label]="(row.label | transloco) + ' · ' + ('must_be_different_person' | transloco)"
+											[disabled]="!canChangeSteps()"
+											[checked]="differentOn(key)"
+											(change)="setDifferent(key, $any($event.target).checked)"
+										/>
+										<span class="switch-state"></span>
+									</label>
+								</div>
+								} @else {
+								<span class="text-muted">—</span>
+								}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<p class="help-text">
+				{{ (canChangeSteps() ? 'purchase_steps_help' : 'purchase_steps_help_locked') | transloco }}
+			</p>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'price_change_warning'"
+			[for]="'set_price_change'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<div class="input-group">
+				<input
+					class="form-control"
+					id="set_price_change"
+					inputmode="decimal"
+					[class.is-invalid]="invalid().includes('priceChangeWarnPct')"
+					[disabled]="!canEdit()"
+					[ngModel]="typed().priceChangeWarnPct"
+					(ngModelChange)="type('priceChangeWarnPct', $event)"
+				/>
+				<span class="input-group-text">{{ 'pct_above_last_bill' | transloco }}</span>
+			</div>
+			@if (invalid().includes('priceChangeWarnPct')) {
+			<div class="invalid-feedback d-block">{{ 'number_between' | transloco: limits.priceChangeWarnPct }}</div>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'margin_floor'"
+			[for]="'set_margin_floor'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<div class="input-group">
+				<input
+					class="form-control"
+					id="set_margin_floor"
+					inputmode="decimal"
+					[class.is-invalid]="invalid().includes('marginFloorPct')"
+					[disabled]="!canEdit()"
+					[ngModel]="typed().marginFloorPct"
+					(ngModelChange)="type('marginFloorPct', $event)"
+				/>
+				<span class="input-group-text">{{ 'pct_after_gst' | transloco }}</span>
+			</div>
+			@if (invalid().includes('marginFloorPct')) {
+			<div class="invalid-feedback d-block">{{ 'number_between' | transloco: limits.marginFloorPct }}</div>
+			}
+			<p class="help-text">{{ 'margin_floor_help' | transloco }}</p>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'held_stock_reminder'"
+			[for]="'set_held_reminder'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<div class="input-group">
+				<input
+					class="form-control"
+					id="set_held_reminder"
+					inputmode="numeric"
+					[class.is-invalid]="invalid().includes('heldReminderDays')"
+					[disabled]="!canEdit()"
+					[ngModel]="typed().heldReminderDays"
+					(ngModelChange)="type('heldReminderDays', $event)"
+				/>
+				<span class="input-group-text">{{ 'days_word' | transloco }}</span>
+			</div>
+			@if (invalid().includes('heldReminderDays')) {
+			<div class="invalid-feedback d-block">
+				{{ 'whole_number_between' | transloco: limits.heldReminderDays }}
+			</div>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'books_closed_label'"
+			[for]="'set_books_closed'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<input
+				class="form-control"
+				id="set_books_closed"
+				type="date"
+				[max]="today"
+				[class.is-invalid]="booksInFuture()"
+				[disabled]="!canChangeSteps()"
+				[ngModel]="current.booksClosedUpTo ?? ''"
+				(ngModelChange)="setBooks($event)"
+			/>
+			@if (booksInFuture()) {
+			<div class="invalid-feedback d-block">{{ 'books_closed_future' | transloco }}</div>
+			}
+			<p class="help-text">
+				{{ (canChangeSteps() ? 'books_closed_help' : 'books_closed_help_locked') | transloco }}
+			</p>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'unpaid_bill_alert'"
+			[for]="'set_unpaid_alert'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<div class="input-group">
+				<input
+					class="form-control"
+					id="set_unpaid_alert"
+					inputmode="numeric"
+					[class.is-invalid]="invalid().includes('unpaidAlertDays')"
+					[disabled]="!canEdit()"
+					[ngModel]="typed().unpaidAlertDays"
+					(ngModelChange)="type('unpaidAlertDays', $event)"
+				/>
+				<span class="input-group-text">{{ 'days_after_bill_date' | transloco }}</span>
+			</div>
+			@if (invalid().includes('unpaidAlertDays')) {
+			<div class="invalid-feedback d-block">{{ 'whole_number_between' | transloco: limits.unpaidAlertDays }}</div>
+			}
+			<p class="help-text">{{ 'unpaid_bill_alert_help' | transloco }}</p>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'default_payment_terms'"
+			[for]="'set_payment_terms'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<div class="input-group">
+				<input
+					class="form-control"
+					id="set_payment_terms"
+					inputmode="numeric"
+					[class.is-invalid]="invalid().includes('defaultPaymentTermsDays')"
+					[disabled]="!canEdit()"
+					[ngModel]="typed().defaultPaymentTermsDays"
+					(ngModelChange)="type('defaultPaymentTermsDays', $event)"
+				/>
+				<span class="input-group-text">{{ 'days_word' | transloco }}</span>
+			</div>
+			@if (invalid().includes('defaultPaymentTermsDays')) {
+			<div class="invalid-feedback d-block">
+				{{ 'whole_number_between' | transloco: limits.defaultPaymentTermsDays }}
+			</div>
+			}
+			<p class="help-text">{{ 'default_payment_terms_help' | transloco }}</p>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'default_deliver_to'"
+			[for]="'set_deliver_to'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<input
+				class="form-control"
+				id="set_deliver_to"
+				maxlength="200"
+				[disabled]="!canEdit()"
+				[ngModel]="current.defaultDeliverTo"
+				(ngModelChange)="setDeliverTo($event)"
+			/>
+			<p class="help-text">{{ 'default_deliver_to_help' | transloco }}</p>
+		</app-form-fields>
+	</div>
+	@if (error(); as message) {
+	<div
+		class="alert alert-warning"
+		role="alert"
+	>
+		{{ message }}
+	</div>
+	} @if (query.data()?.updatedAt; as at) {
+	<p class="small text-muted mb-3">{{ 'settings_last_changed' | transloco: { date: (at | shortDateTime) } }}</p>
+	}
+	<div
+		class="d-flex justify-content-end flex-wrap gap-2"
+		*hasPermission="'setting.edit'"
+	>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="purchase_settings_save"
+			[disabled]="busy() || invalid().length > 0 || booksInFuture()"
+			(click)="save()"
+		>
+			{{ 'save' | transloco }}
+		</button>
+	</div>
+	} @else if (query.isError()) {
+	<div
+		class="alert alert-warning"
+		role="alert"
+	>
+		{{ 'purchasing_action_failed' | transloco }}
+	</div>
+	}
+</app-page-wrapper>

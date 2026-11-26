@@ -1,0 +1,102 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'ship_orders_abroad'"
+>
+	<p class="text-muted">{{ 'ship_orders_abroad_intro' | transloco: { country: homeCountryName() } }}</p>
+	<div
+		class="row g-3 mb-4"
+		role="radiogroup"
+		[attr.aria-label]="'ship_orders_abroad' | transloco"
+	>
+		@for (policy of policies; track policy) { @let on = chosen() === policy; @let open = available(policy);
+		<div class="col-lg-4">
+			<label
+				class="card mb-0 h-100"
+				[class.opacity-50]="!open"
+				[style.border]="on ? '2px solid var(--theme-color)' : null"
+				[attr.data-policy]="policy"
+			>
+				<div class="card-body">
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="radio"
+							name="abroad_policy"
+							[id]="'abroad_' + policy"
+							[attr.aria-label]="'ship_abroad_' + policy | transloco"
+							[checked]="on"
+							[disabled]="!open || !canEdit()"
+							(change)="chosen.set(policy)"
+						/>
+						<span class="form-check-label fw-semibold">{{ 'ship_abroad_' + policy | transloco }}</span>
+					</div>
+					<div class="small text-muted mt-2">{{ 'ship_abroad_' + policy + '_help' | transloco }}</div>
+				</div>
+			</label>
+		</div>
+		}
+	</div>
+
+	@if (chosen() === 'exportOffIndianInvoice') {
+	<div class="theme-form theme-form-2 mega-form mb-3">
+		@for (option of switches; track option) {
+		<app-form-fields
+			[label]="'ship_abroad_' + option"
+			[for]="'abroad_' + option"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<div class="d-flex align-items-center gap-3">
+				<div class="form-check form-switch ps-0">
+					<label class="switch">
+						<input
+							type="checkbox"
+							[id]="'abroad_' + option"
+							[checked]="isOn(option)"
+							[disabled]="option === 'keepBilling' || !canEdit()"
+							(change)="setOption(option, $any($event.target).checked)"
+						/>
+						<span class="switch-state"></span>
+					</label>
+				</div>
+				<span class="small text-muted">{{ 'ship_abroad_' + option + '_help' | transloco }}</span>
+			</div>
+		</app-form-fields>
+		}
+	</div>
+	<div class="table-responsive datatable-wrapper border-table mb-3">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'ship_case_billing' | transloco }}</th>
+					<th>{{ 'ship_case_delivery' | transloco }}</th>
+					<th>{{ 'ship_case_invoice' | transloco }}</th>
+					<th>{{ 'ship_case_shopper' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of cases; track $index) {
+				<tr>
+					<td>{{ 'ship_case_' + row[0] | transloco }}</td>
+					<td>{{ 'ship_case_' + row[1] | transloco }}</td>
+					<td>{{ 'ship_case_invoice_' + row[2] | transloco }}</td>
+					<td>{{ 'ship_case_sees_' + row[3] | transloco }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	} @if (canEdit()) {
+	<div class="d-flex justify-content-end">
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="ship_abroad_save"
+			[disabled]="saving() || !chosen()"
+			(click)="save()"
+		>
+			{{ 'save' | transloco }}
+		</button>
+	</div>
+	}
+</app-page-wrapper>

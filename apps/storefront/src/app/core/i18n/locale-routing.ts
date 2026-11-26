@@ -5,8 +5,11 @@ import { TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 
 import { runtimeConfigReady } from '@core/config/runtime-config';
+import { manifestPath } from '@core/pwa/web-manifest';
 
 import { ACTIVE_LOCALE } from './active-locale';
+import { supportedLocales } from './locale';
+import { preloadLocaleFonts } from './locale-fonts';
 import { LocaleSeo } from './locale-seo';
 
 /**
@@ -19,7 +22,7 @@ import { LocaleSeo } from './locale-seo';
  *
  * The initializer renders the page IN its language on the server: it waits for the runtime
  * config (the loader needs the real site origin), then loads that locale's dictionary before
- * the first render, so French arrives as French HTML instead of being swapped in on hydration.
+ * the first render, so Bengali arrives as Bengali HTML instead of being swapped in on hydration.
  * Waiting is never allowed to fail the render; see the catch below.
  */
 export function provideLocaleRouting() {
@@ -28,9 +31,18 @@ export function provideLocaleRouting() {
 		provideAppInitializer(async () => {
 			const locale = inject(ACTIVE_LOCALE);
 			const transloco = inject(TranslocoService);
-			inject(DOCUMENT).documentElement.lang = locale;
+			const page = inject(DOCUMENT);
+			page.documentElement.lang = locale;
+			// The language's own text font, preloaded like the English one (no shift when it arrives).
+			preloadLocaleFonts(page, locale);
+			// An installed app opens in the language it was installed from, with no optional cookie.
+			page.head
+				.querySelector<HTMLLinkElement>('link[rel="manifest"]')
+				?.setAttribute('href', manifestPath(locale));
 
 			await runtimeConfigReady;
+			// Transloco may load every active language; `ACTIVE_LOCALE` has adopted the list.
+			transloco.setAvailableLangs([...supportedLocales()]);
 			transloco.setActiveLang(locale);
 			try {
 				await firstValueFrom(transloco.load(locale));

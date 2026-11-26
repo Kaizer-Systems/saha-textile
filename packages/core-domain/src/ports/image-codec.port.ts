@@ -2,8 +2,8 @@
 export interface ImageProbe {
 	width: number;
 	height: number;
-	/** The format the BYTES actually are, whatever the upload claimed. */
-	format: 'jpeg' | 'png' | 'webp' | 'other';
+	/** The format the BYTES actually are, whatever the upload claimed (`PHOTO_FORMATS` names them). */
+	format: 'jpeg' | 'png' | 'webp' | 'avif' | 'gif' | 'tiff' | 'svg' | 'bmp' | 'ico' | 'jxl' | 'jp2' | 'psd' | 'other';
 	hasAlpha: boolean;
 }
 
@@ -13,17 +13,46 @@ export interface ImageProbe {
  * - `inside` scales to `width`, keeping the source shape (`height` ignored);
  * - `cover` fills `width`×`height` exactly with a centre crop;
  * - `pad` fits inside `width`×`height` and letterboxes on white;
- * - `blur` fits inside `width`×`height` over a blurred, darkened enlargement of the same image.
+ * - `blur` fits inside `width`×`height` over a blurred, darkened enlargement of the same image;
+ * - `story` is the tall Status/Story card: the same blurred fill, an empty dark band near the top
+ *   (the shopper's phone writes the name and facts into it, share brief J1), and the whole photo
+ *   below it. The band and photo boxes are `STORY_LAYOUT` fractions of the card.
  */
 export interface ImageRenderSpec {
 	width: number;
 	height: number | null;
-	fit: 'inside' | 'cover' | 'pad' | 'blur';
+	fit: 'inside' | 'cover' | 'pad' | 'blur' | 'story';
 	format: 'image/webp' | 'image/jpeg' | 'image/png';
 	quality: number;
 	/** Logos keep their see-through background. Everything else is flattened onto white. */
 	keepAlpha?: boolean;
+	/** The Brand Kit logo, drawn on a white strip along the bottom of a link-preview card. */
+	stripLogo?: Uint8Array;
+	/** `pad` only: white margin on every side, as a fraction of the box. */
+	inset?: number;
+	/**
+	 * `pad` only: the colour of the bars and of anything see-through, `#rrggbb` (absent: white). Colour bars use
+	 * the photo's own dominant colour; an icon's Brand colour fill uses the Brand Kit colour.
+	 */
+	background?: string;
+	/**
+	 * `cover` only: the point that must stay in the crop (S10), as fractions of the upright photo's width and height
+	 * (0–1). The crop is centred on it as far as the photo allows; absent, the crop is centred on the middle.
+	 */
+	focal?: { x: number; y: number };
 }
+
+/**
+ * Where the tall card's parts sit, as fractions of its height (top, height) and width (side).
+ * The storefront writes into `band` with the same fractions, so the two must stay in step.
+ */
+export const STORY_LAYOUT = {
+	band: { top: 0.078, height: 0.203 },
+	photo: { top: 0.292, bottom: 0.021, side: 0.046 },
+} as const;
+
+/** The white strip along a link-preview card's foot, as a fraction of its height. */
+export const BRAND_STRIP_HEIGHT = 0.1;
 
 export interface RenderedImage {
 	bytes: Uint8Array;
@@ -53,4 +82,12 @@ export interface ImageCodecPort {
 	render(bytes: Uint8Array, spec: ImageRenderSpec): Promise<RenderedImage>;
 	/** ThumbHash (base64) and dominant colour (`#rrggbb`) for the loading placeholder. */
 	placeholder(bytes: Uint8Array): Promise<{ thumbHash: string; dominantColor: string }>;
+}
+
+/**
+ * Cuts a square of a photo at full resolution (swatch cuts, owner 21 Nov 2026, brief P11): the region is in fractions
+ * of the upright photo, the result an upright sRGB JPEG kept as the cut's own original.
+ */
+export interface ImageCutPort {
+	cut(bytes: Uint8Array, region: { x: number; y: number; width: number; height: number }): Promise<RenderedImage>;
 }

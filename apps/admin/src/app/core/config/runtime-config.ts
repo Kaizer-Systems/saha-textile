@@ -14,11 +14,14 @@ export interface RuntimeConfig {
 	apiUrl: string;
 	/** Admin app origin, e.g. https://localhost:4300 */
 	adminUrl: string;
+	/** The shop's origin, e.g. https://localhost:4200: the event popup Preview opens it. */
+	siteUrl: string;
 }
 
 const DEFAULTS: RuntimeConfig = {
 	apiUrl: 'https://localhost:4000',
 	adminUrl: 'https://localhost:4300',
+	siteUrl: 'https://localhost:4200',
 };
 
 /** Mutable singleton — read this (or the legacy `environment`) after app init. */
@@ -32,6 +35,20 @@ function applyConfig(loaded: Partial<RuntimeConfig>): void {
 	environment.URL = `${runtimeConfig.adminUrl}/assets/data`;
 }
 
+/** Local names, including the `*.localhost` hosts of the mode-3 stack. */
+const LOCAL_HOST = /(^|\.)localhost$|^127\.0\.0\.1$|^\[::1\]$/;
+
+/**
+ * Deployed, a missing or broken config must stop the app. Falling back would send every call to
+ * localhost, which looks like a broken site with no visible cause.
+ */
+function assertDeployedConfig(loaded: Partial<RuntimeConfig>): void {
+	const apiUrl = loaded.apiUrl ?? '';
+	if (!URL.canParse(apiUrl) || LOCAL_HOST.test(new URL(apiUrl).hostname)) {
+		throw new Error('Runtime config is missing or points at localhost: check /config.json.');
+	}
+}
+
 let markReady: () => void;
 
 /**
@@ -39,12 +56,24 @@ let markReady: () => void;
  *
  * Angular starts app initializers concurrently, so anything needing the API origin — the
  * admin session bootstrap, for one — must await this rather than assume it ran second. It
- * resolves from a `finally`, so a failed config fetch still unblocks boot with defaults
- * instead of hanging the application.
+ * resolves from a `finally`, so a failed config never hangs the application. On a local host a
+ * failed fetch boots with the defaults; a deployed host refuses to start instead.
  */
 export const runtimeConfigReady: Promise<void> = new Promise<void>((resolve) => {
 	markReady = resolve;
 });
+
+export async function loadServedConfig(hostname = location.hostname): Promise<void> {
+	let served: Partial<RuntimeConfig> = {};
+	try {
+		const res = await fetch('/config.json', { cache: 'no-store' });
+		if (res.ok) served = (await res.json()) as Partial<RuntimeConfig>;
+	} catch {
+		served = {};
+	}
+	if (!LOCAL_HOST.test(hostname)) assertDeployedConfig(served);
+	applyConfig(served);
+}
 
 export async function loadRuntimeConfig(): Promise<void> {
 	try {
@@ -53,13 +82,7 @@ export async function loadRuntimeConfig(): Promise<void> {
 			applyConfig({});
 			return;
 		}
-		try {
-			const res = await fetch('/config.json', { cache: 'no-store' });
-			applyConfig(res.ok ? ((await res.json()) as Partial<RuntimeConfig>) : {});
-		} catch {
-			// Config fetch must never block boot — fall back to localhost defaults.
-			applyConfig({});
-		}
+		await loadServedConfig();
 	} finally {
 		markReady();
 	}

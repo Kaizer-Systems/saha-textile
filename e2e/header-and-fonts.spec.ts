@@ -1,0 +1,101 @@
+import { readsHome } from './home-lock';
+import { buyBoxReady, expect, test } from './support';
+
+/**
+ * The header after its code split (search, cart and account load their code when needed; search itself is covered by
+ * search.spec.ts) and the বাংলা text font (preloaded on বাংলা pages so nothing moves when it arrives), 17 Nov.
+ */
+test.describe('the header and the page fonts', () => {
+	// The বাংলা page is Home, measured as a fresh test database has it.
+	readsHome();
+
+	test('the cart count follows the cart without touching the header', async ({ page }) => {
+		await page.goto('/en/product/katan-banarasi-saree');
+		// A click before Angular has taken over the buy box was lost under a full parallel run.
+		const add = (await buyBoxReady(page)).locator('button', { hasText: /add to cart/i }).first();
+		// Wait for the cart's own answer, as checkout.spec.ts does, so a refusal says why (CI, 24 Nov).
+		const [saved] = await Promise.all([
+			page.waitForResponse((response) => response.url().includes('/cart/current/lines')),
+			add.click(),
+		]);
+		expect(saved.status(), `the cart answered ${saved.status()}: ${await saved.text()}`).toBe(201);
+		await expect(page.locator('app-header-cart .badge').first()).toContainText('1');
+	});
+
+	test('বাংলা pages preload their Bengali text font; English pages do not', async ({ page }) => {
+		const bengali = '/assets/fonts/text/noto-sans-bengali-normal-400-600-bengali.woff2';
+		const bn = await (await page.request.get('/bn/')).text();
+		const en = await (await page.request.get('/en/')).text();
+		expect(bn).toMatch(new RegExp(`<link rel="preload" href="${bengali}" as="font"`));
+		expect(en).not.toContain(`href="${bengali}" as="font"`);
+	});
+
+	// Measured with the বাংলা font already in the browser's cache, as for anyone who has opened a বাংলা page before.
+	// On a slow first visit the font can still arrive after the first paint, and the shop's later stylesheet then
+	// swaps it in (CI, 24 Nov); the owner accepted that, as বাংলা is kept to keep the shop multi-language rather than
+	// for heavy use ("relax this test so that it passes", 24 Nov).
+	test('nothing moves on a বাংলা page while it loads, once its font is cached', async ({ page }) => {
+		await page.goto('/bn/');
+		await page.waitForLoadState('networkidle');
+		await page.addInitScript(() => {
+			const record = window as unknown as { shift: number; moved: string[] };
+			record.shift = 0;
+			record.moved = [];
+			new PerformanceObserver((list) => {
+				for (const entry of list.getEntries() as Array<
+					PerformanceEntry & {
+						value: number;
+						hadRecentInput: boolean;
+						sources?: Array<{
+							node?: Node | null;
+							previousRect: DOMRectReadOnly;
+							currentRect: DOMRectReadOnly;
+						}>;
+					}
+				>) {
+					if (entry.hadRecentInput) continue;
+					record.shift += entry.value;
+					// Which elements moved, and from where to where: CI keeps no screenshots.
+					for (const source of entry.sources ?? []) {
+						const node = source.node as Element | null | undefined;
+						const name = node
+							? `${node.nodeName.toLowerCase()}.${String(node.className ?? '')
+									.trim()
+									.replace(/\s+/g, '.')}`
+							: '?';
+						const rect = (r: DOMRectReadOnly) =>
+							`${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.width)}×${Math.round(r.height)}`;
+						record.moved.push(
+							`@${Math.round(entry.startTime)}ms ${entry.value.toFixed(4)} ${name} ${rect(source.previousRect)} → ${rect(source.currentRect)}`,
+						);
+					}
+				}
+			}).observe({ type: 'layout-shift', buffered: true });
+		});
+		await page.goto('/bn/');
+		await page.waitForLoadState('networkidle');
+		await page.waitForTimeout(1500);
+		const { shift, moved, timing } = await page.evaluate(() => {
+			const record = window as unknown as { shift: number; moved: string[] };
+			// When the বাংলা file arrived against the first paint, and how its faces ended: CI keeps no screenshots.
+			const ms = (value: number | undefined) => (value === undefined ? '?' : `${Math.round(value)}ms`);
+			const paints = performance.getEntriesByType('paint').map((entry) => `${entry.name} ${ms(entry.startTime)}`);
+			const font = performance
+				.getEntriesByType('resource')
+				.filter((entry) => entry.name.includes('noto-sans-bengali'))
+				.map((entry) => {
+					const resource = entry as PerformanceResourceTiming;
+					return `${resource.name.split('/').pop()} ${ms(resource.startTime)}–${ms(resource.responseEnd)}`;
+				});
+			const faces = [...document.fonts]
+				.filter((face) => face.family.includes('Bengali'))
+				.map((face) => `${face.weight}/${face.display}/${face.status}`);
+			return {
+				shift: record.shift,
+				moved: record.moved,
+				timing: `${paints.join(', ')} | font ${font.join(', ') || 'not fetched'} | faces ${faces.join(' ')}`,
+			};
+		});
+		expect(shift, `moved: ${moved.join(' ; ') || 'nothing'} || ${timing}`).toBeLessThan(0.001);
+	});
+});

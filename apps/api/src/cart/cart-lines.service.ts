@@ -8,9 +8,17 @@ import {
 	Cart as CartSchema,
 	CartView,
 	type CartViewLine,
+	type CatalogPageBundleItem,
+	type CatalogProductPage,
 	type UpdateCartLineRequest,
 } from '@saha-textile/contracts';
-import { type CartRepository, type PricedCartLine, priceCartLine } from '@saha-textile/core-domain';
+import {
+	type CartRepository,
+	type PricedCartLine,
+	cartLineTotalINR,
+	cartQuantityProblem,
+	priceCartLine,
+} from '@saha-textile/core-domain';
 
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import { CatalogPublicService } from '../catalog/catalog-public.service';
@@ -29,7 +37,7 @@ export interface CartWrite {
 }
 
 /** Problems that keep a line out of the total. A short line still counts, at what it holds. */
-const UNSELLABLE = new Set<CartViewLine['problem']>(['unavailable', 'out_of_stock']);
+const UNSELLABLE = new Set<CartViewLine['problem']>(['unavailable', 'out_of_stock', 'below_shortest_cut']);
 
 /**
  * The shopper's own cart, always priced here. The browser sends choices, never prices: every read
@@ -55,11 +63,14 @@ export class CartLinesService {
 			variationId: input.variationId ?? null,
 			quantity: input.quantity,
 			addons: input.addons ?? [],
+			bundle: input.bundle ?? null,
+			free: input.free ?? [],
 		};
 		const priced = await this.price(line);
 		line.addons = savedChoices(priced);
 		const same = cart.lines.find((row) => lineKey(row) === lineKey(line));
 		const quantity = line.quantity + (same?.quantity ?? 0);
+		assertQuantity(priced, quantity);
 		assertStock(priced, quantity);
 		if (same) same.quantity = quantity;
 		else cart.lines.push(line);
@@ -76,15 +87,16 @@ export class CartLinesService {
 			quantity: input.quantity,
 			variationId: input.variationId === undefined ? line.variationId : input.variationId,
 			addons: input.addons ?? line.addons,
+			bundle: input.bundle ?? line.bundle ?? null,
+			free: input.free ?? line.free ?? [],
 		};
 		const priced = await this.price(next);
 		next.addons = savedChoices(priced);
 		const twin = cart.lines.find((row) => row.id !== lineId && lineKey(row) === lineKey(next));
 		next.quantity += twin?.quantity ?? 0;
+		assertQuantity(priced, next.quantity);
 		assertStock(priced, next.quantity);
-		cart.lines = cart.lines
-			.filter((row) => row.id !== twin?.id)
-			.map((row) => (row.id === lineId ? next : row));
+		cart.lines = cart.lines.filter((row) => row.id !== twin?.id).map((row) => (row.id === lineId ? next : row));
 		return this.view(await this.carts.save(cart));
 	}
 
@@ -98,7 +110,7 @@ export class CartLinesService {
 	private async find(owner: CartOwner): Promise<Cart | null> {
 		if (owner.principal?.audience === 'storefront') return this.carts.findByUserId(owner.principal.userId);
 		if (!owner.guestToken) return null;
-		return this.carts.findByGuestToken(this.ownership.hashGuestToken(owner.guestToken));
+		return this.ownership.findGuestCart(owner.guestToken);
 	}
 
 	private async findOrStart(owner: CartOwner): Promise<{ cart: Cart; guestTokenRaw: string | null }> {
@@ -139,7 +151,8 @@ export class CartLinesService {
 			subtotalINR: lines
 				.filter((line) => !UNSELLABLE.has(line.problem))
 				.reduce((sum, line) => sum + line.lineTotalINR, 0),
-			count: lines.reduce((sum, line) => sum + line.quantity, 0),
+			// A metre line is one thing in the bag, however long the cut.
+			count: lines.reduce((sum, line) => sum + (line.soldBy === 'metre' ? 1 : line.quantity), 0),
 		});
 	}
 
@@ -154,6 +167,8 @@ export class CartLinesService {
 			title: read?.title ?? '',
 			quantity: line.quantity,
 			addons: line.addons,
+			bundle: line.bundle ?? null,
+			free: line.free ?? [],
 		};
 		if (!page || !priced?.ok) {
 			return {
@@ -163,12 +178,17 @@ export class CartLinesService {
 				variationId: line.variationId,
 				variantLabel: null,
 				available: 0,
+				soldBy: 'piece' as const,
+				shortestCutTenths: null,
 				basePriceINR: 0,
 				unitPriceINR: 0,
 				mrpINR: null,
 				lineTotalINR: 0,
 				options: [],
 				measurements: [],
+				children: [],
+				setHeading: null,
+				setOnSale: false,
 				problem: 'unavailable',
 			};
 		}
@@ -185,12 +205,43 @@ export class CartLinesService {
 			basePriceINR,
 			unitPriceINR,
 			mrpINR,
-			lineTotalINR: unitPriceINR * line.quantity,
+			soldBy: row.soldBy,
+			shortestCutTenths: row.shortestCutTenths,
+			lineTotalINR: cartLineTotalINR(row, line.quantity),
 			options,
 			measurements,
-			problem: lineProblem(row, line.quantity),
+			children: row.children.map((child) => ({
+				role: child.role,
+				key: child.key,
+				parentKey: child.parentKey,
+				level: child.level,
+				productId: child.productId,
+				title: child.title,
+				sku: child.sku,
+				image: imageOf(page, child.productId),
+				variantId: child.variantId,
+				variantLabel: child.variantLabel,
+				quantity: child.quantity,
+				priceINR: child.priceINR,
+				mrpINR: child.mrpINR,
+			})),
+			setHeading: page.bundle?.heading ?? null,
+			setOnSale: row.setOnSale ?? false,
+			problem:
+				cartQuantityProblem(row, line.quantity) === 'below_shortest_cut'
+					? 'below_shortest_cut'
+					: lineProblem(row, line.quantity),
 		};
 	}
+}
+
+/** A child's picture, from the set's items or a free item on the page. */
+export function imageOf(page: CatalogProductPage, productId: string): CatalogPageBundleItem['image'] {
+	const items = [...(page.bundle?.levels.flatMap((level) => level.items) ?? []), ...(page.bundle?.extras ?? [])];
+	const piece = items.find((item) => item.productId === productId);
+	if (piece) return piece.image;
+	const frees = [...items.flatMap((item) => item.freeWith?.items ?? []), ...(page.freeWith?.items ?? [])];
+	return frees.find((item) => item.productId === productId)?.image ?? null;
 }
 
 /** Defaults spelled out, so a line chosen by hand and one left on its default are the same line. */
@@ -211,4 +262,23 @@ function assertStock({ available, buyable }: PricedCartLine, quantity: number): 
 function lineProblem(row: PricedCartLine, quantity: number): CartViewLine['problem'] {
 	if (!row.buyable) return 'out_of_stock';
 	return row.available !== null && quantity > row.available ? 'limited' : null;
+}
+
+/** Too many pieces, or a cut below the product's shortest (M04): refused before the cart changes. */
+function assertQuantity(row: PricedCartLine, quantity: number): void {
+	const problem = cartQuantityProblem(row, quantity);
+	if (!problem) return;
+	throw new BadRequestException({
+		issues: [
+			{
+				path: 'quantity',
+				message:
+					problem === 'below_shortest_cut'
+						? // Only a product with a shortest cut refuses a length below it.
+							`The shortest cut is ${((row.shortestCutTenths as number) / 10).toFixed(1)} m`
+						: 'Up to 99 pieces on one line',
+				code: problem,
+			},
+		],
+	});
 }

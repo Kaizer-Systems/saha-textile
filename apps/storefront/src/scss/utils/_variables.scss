@@ -8,6 +8,9 @@ $title-color: #222222;
 $content-color: #4a5568;
 $light-gray: #f8f8f8;
 $danger-color: #ff4f4f;
+// The saved-to-wishlist heart, on cards and the product page: a true red (Material Red 600), the
+// colour shoppers read as "saved". Not $danger-color, which is lighter and pinker.
+$wishlist-color: #e53935;
 $rating-color: #ffb321;
 $border-color: #ececec;
 $light-semi-gray: #efefef;
@@ -42,7 +45,9 @@ $card-footer-bg-color: $white;
 $card-hover-box-shadow: 0 0 40px rgba(8, 21, 66, 0.05);
 
 // font family
-$public-sans: 'Public Sans', sans-serif;
+// 'Public Sans Fallback' is Arial sized to Public Sans (src/font-fallbacks.css), so text keeps its room while
+// Public Sans loads.
+$public-sans: 'Public Sans', 'Public Sans Fallback', 'Noto Sans Bengali', sans-serif;
 $exo-sarif: 'Exo 2', sans-serif;
 $russo-sarif: 'Russo One', sans-serif;
 $pacifico: 'Pacifico', cursive;

@@ -71,6 +71,8 @@ export class MongoAuditLogRepository implements AuditLogRepository {
 		if (query.actorUserId) filter.actorUserId = query.actorUserId;
 		if (query.targetUserId) filter.targetUserId = query.targetUserId;
 		if (query.action) filter.action = query.action;
+		// Brief 26 AU1: a module is the action's first part (checked as letters by the contract).
+		else if (query.module) filter.action = { $regex: `^${query.module}\\.` };
 		if (query.entityType) filter.entityType = query.entityType;
 		if (query.entityId) filter.entityId = query.entityId;
 		if (query.severity) filter.severity = query.severity;

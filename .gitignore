@@ -39,12 +39,37 @@ Thumbs.db
 
 # Generated: dart-sass precompiled theme css (analog SSR dev sass-importer workaround)
 apps/storefront/src/scss/app.gen.css
+apps/storefront/public/assets/css/theme-dark.gen.css
+apps/storefront/src/scss/dark-copy.gen.css
 apps/admin/public/assets/scss/app.gen.css
+apps/admin/public/assets/css/theme-dark.gen.css
 
 # Local HTTPS certificates (mkcert). Regenerate with scripts/setup-local-https.sh —
 # never commit a private key, even a locally-trusted development one.
 certs/
 
-# Mode-3 stack runtime env (secrets copied from apps/api/.env) — never commit.
+# Throwaway root of scripts/production-proof.sh: it holds generated secrets and certificates.
+.production-proof/
+
+# pnpm pipeline:local: release folders made from the dev project's real values, image digests, run log — never commit.
+.local-release/
+
+# Mode-3 stack runtime env (written by pnpm stack:env from the Infisical dev project) — never commit.
 docker/stack/env/*.env
 docker/stack/env/*.config.json
+docker/stack/env/redis-password
+docker/stack/env/meilisearch.toml
+docker/stack/env/*.tmp
+# Every file there, including the MongoDB login files (keyfile, administrator, app password) and any added later.
+docker/stack/env/*
+
+# This Mac's own service secrets (pnpm secrets:setup-local): the dev project's /infrastructure files — never commit.
+docker/dev-secrets/
+
+# Release Console key file (pnpm console:env), real secrets
+docker/release-console/env/
+docker/release-console/runner.log
+
+# Geo data working folder and the last published index (scripts/geo/build.mjs, upload.mjs); the data lives in Spaces
+.geo-data/
+.geo-previous-manifest.json

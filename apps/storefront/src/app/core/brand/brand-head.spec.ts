@@ -1,18 +1,21 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { NO_BRAND } from '@data-access/queries/brand.queries';
+
 import { applyBrandHead } from './brand-head';
 
 const brand = {
+	...NO_BRAND,
 	shopName: 'Shop',
-	logo: null,
-	seal: null,
 	icons: { '32': 'https://cdn.test/32.png', '180': 'https://cdn.test/180.png', '512': 'https://cdn.test/512.png' },
 };
 
 const head = () => document.head;
 
 afterEach(() => {
-	head().querySelectorAll('link, script').forEach((node) => node.remove());
+	head()
+		.querySelectorAll('link, meta, script')
+		.forEach((node) => node.remove());
 });
 
 describe('applyBrandHead', () => {
@@ -28,6 +31,22 @@ describe('applyBrandHead', () => {
 			url: 'https://shop.test/',
 			logo: 'https://cdn.test/512.png',
 		});
+	});
+
+	it('names the app for an iPhone home screen, once', () => {
+		applyBrandHead(document, brand, 'https://shop.test/');
+		applyBrandHead(document, { ...brand, shopName: 'Renamed' }, 'https://shop.test/');
+		const titles = head().querySelectorAll<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]');
+		expect(titles).toHaveLength(1);
+		expect(titles[0].content).toBe('Renamed');
+	});
+
+	it('names the shop on every link preview, once', () => {
+		applyBrandHead(document, brand, 'https://shop.test/');
+		applyBrandHead(document, { ...brand, shopName: 'Renamed' }, 'https://shop.test/');
+		const names = head().querySelectorAll<HTMLMetaElement>('meta[property="og:site_name"]');
+		expect(names).toHaveLength(1);
+		expect(names[0].content).toBe('Renamed');
 	});
 
 	it('reuses what is there on a second run', () => {
@@ -49,5 +68,42 @@ describe('applyBrandHead', () => {
 	it('leaves the logo out of the card when no seal is set', () => {
 		applyBrandHead(document, { ...brand, icons: {} }, 'https://shop.test/');
 		expect(JSON.parse(document.getElementById('brand-organization')?.textContent ?? '').logo).toBeUndefined();
+	});
+
+	it('adds a dark-browser tab icon only while the Brand Kit has one, and the bar colour', () => {
+		applyBrandHead(
+			document,
+			{ ...brand, iconsDark: { '32': 'https://cdn.test/dark-32.png' } },
+			'https://shop.test/',
+		);
+		const dark = head().querySelector<HTMLLinkElement>('link[rel="icon"][media="(prefers-color-scheme: dark)"]');
+		expect(dark?.href).toBe('https://cdn.test/dark-32.png');
+		expect(head().querySelector<HTMLLinkElement>('link[rel="icon"]:not([media])')?.href).toBe(
+			'https://cdn.test/32.png',
+		);
+		expect(head().querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.content).toBe('#417394');
+		applyBrandHead(document, { ...brand, themeColor: '#112233' }, 'https://shop.test/');
+		expect(head().querySelector('link[media="(prefers-color-scheme: dark)"]')).toBeNull();
+		expect(head().querySelectorAll('meta[name="theme-color"]')).toHaveLength(1);
+		expect(head().querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.content).toBe('#112233');
+	});
+
+	it("tells Google the shop's own profiles, and leaves them out when there are none", () => {
+		applyBrandHead(
+			document,
+			{
+				...brand,
+				socials: { facebook: 'https://www.facebook.com/shop', x: '', youtube: 'https://www.youtube.com/@Shop' },
+			},
+			'https://shop.test/',
+		);
+		expect(JSON.parse(document.getElementById('brand-organization')?.textContent ?? '').sameAs).toEqual([
+			'https://www.facebook.com/shop',
+			'https://www.youtube.com/@Shop',
+		]);
+		applyBrandHead(document, brand, 'https://shop.test/');
+		expect(JSON.parse(document.getElementById('brand-organization')?.textContent ?? '')).not.toHaveProperty(
+			'sameAs',
+		);
 	});
 });

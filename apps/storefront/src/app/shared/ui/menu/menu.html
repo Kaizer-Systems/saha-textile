@@ -20,6 +20,7 @@
 			<a
 				class="nav-link dropdown-toggle"
 				[routerLink]="isMobileView() ? null : menu.path"
+				[attr.role]="isMobileView() || !menu.path ? 'button' : null"
 				(click)="toggle(menu)"
 			>
 				{{ menu.i18nTitle === false ? menu.title : (menu.title | transloco: menu.titleParams) }} @if
@@ -79,12 +80,17 @@
 					<div class="dropdown-column col-xl-3 d-xl-block d-none">
 						<div class="menu-img-banner">
 							<a
-								routerLink="/product/deliciously-sweet-watermelon"
+								[routerLink]="featuredProductPath()"
 								class="text-title"
 							>
+								<!-- Lazy: the menu is hidden until opened, so the picture waits until then. -->
 								<img
 									src="assets/images/mega-menu.png"
 									alt="banner"
+									width="389"
+									height="741"
+									loading="lazy"
+									decoding="async"
 								/>
 							</a>
 						</div>
@@ -96,6 +102,10 @@
 								src="assets/images/mega-menu2.png"
 								class="img-fluid"
 								alt="img"
+								width="954"
+								height="190"
+								loading="lazy"
+								decoding="async"
 							/>
 						</div>
 					</div>
@@ -111,9 +121,11 @@
 											class="blog-image"
 										>
 											<img
-												[src]="blog.blog_thumbnail ? blog?.blog_thumbnail?.original_url : 'assets/images/product.png'"
+												[src]="blog.blog_thumbnail?.original_url || 'assets/images/product.png'"
 												class="img-fluid"
-												[alt]="blog.title"
+												[alt]="blog.blog_thumbnail?.alt || blog.title"
+												loading="lazy"
+												decoding="async"
 											/>
 										</a>
 									</div>
@@ -122,7 +134,7 @@
 										class="blog-detail"
 										tabindex="0"
 									>
-										<h6>{{ blog.created_at | date: 'dd MMM yyyy hh:mm:a' }}</h6>
+										<h6>{{ blog.published_at | shopDate }}</h6>
 										<h5>{{ blog.title }}</h5>
 									</a>
 								</div>
@@ -141,7 +153,6 @@
 				<div class="dropdown-column">
 					@for (imageMenu of menu.children; track $index) {
 					<a
-						href="javascript:void(0)"
 						class="dropdown-item text-center"
 						[routerLink]="imageMenu.path"
 					>
@@ -149,6 +160,8 @@
 							[src]="imageMenu.image"
 							class="img-fluid"
 							[alt]="imageMenu.title"
+							loading="lazy"
+							decoding="async"
 						/>
 						<span>
 							{{ imageMenu.i18nTitle === false ? imageMenu.title : (imageMenu.title | transloco:

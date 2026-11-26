@@ -44,6 +44,11 @@ const DECLARED_TAGS = [
 	'privacy',
 	'media',
 	'reviews',
+	'blog',
+	'events',
+	'stores',
+	'mailboxes',
+	'wishlist',
 ];
 
 const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'];

@@ -1,0 +1,207 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'accounts_vouchers'"
+>
+	@if (fromVoucherTabs) {
+	<!-- The voucher lists' own tabs (accounts-list-page), with Drafts chosen. -->
+	<ul class="nav nav-tabs mb-3">
+		@for (t of voucherTabs; track t) {
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				[routerLink]="['/accounts/vouchers', t]"
+			>
+				{{ 'al_tab_' + t | transloco }}
+			</a>
+		</li>
+		}
+		<li class="nav-item">
+			<a
+				class="nav-link active"
+				id="vouchers_tab_drafts"
+			>
+				{{ 'accounts_tab_drafts' | transloco }}
+			</a>
+		</li>
+	</ul>
+	} @else {
+	<ul class="nav nav-tabs mb-3">
+		@if (canPost()) { @for (t of ['posted', 'drafts']; track t) {
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				href="javascript:void(0)"
+				[id]="'vouchers_tab_' + t"
+				[class.active]="tab() === t"
+				(click)="tab.set($any(t))"
+			>
+				{{ 'accounts_tab_' + t | transloco }} @if (t === 'drafts' && drafts.data()?.length) {
+				<span class="badge bg-light text-dark ms-1">{{ drafts.data()?.length }}</span>
+				}
+			</a>
+		</li>
+		} }
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				routerLink="/accounts/payment-vouchers"
+			>
+				{{ 'pv_list_title' | transloco }}
+			</a>
+		</li>
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				routerLink="/accounts/self-invoices"
+			>
+				{{ 'si_list_title' | transloco }}
+			</a>
+		</li>
+	</ul>
+	} @if (tab() === 'drafts') {
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'date' | transloco }}</th>
+					<th>{{ 'accounts_kind' | transloco }}</th>
+					<th>{{ 'accounts_narration' | transloco }}</th>
+					<th class="text-end">{{ 'accounts_amount' | transloco }}</th>
+					<th>{{ 'accounts_saved_by' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (d of drafts.data() ?? []; track d.id) {
+				<tr>
+					<td class="text-nowrap">
+						<a [routerLink]="['/accounts/vouchers/drafts', d.id]">{{ d.date | shortDate }}</a>
+					</td>
+					<td>{{ 'accounts_kind_' + d.kind | transloco }}</td>
+					<td>{{ d.narration || '—' }}</td>
+					<td class="text-end text-nowrap">{{ rupees(draftTotal(d.lines)) }}</td>
+					<td>{{ d.createdByName || '—' }}</td>
+					<td class="text-end">
+						<a
+							href="javascript:void(0)"
+							[title]="'accounts_delete_draft' | transloco"
+							(click)="deleteDraft(d.id)"
+						>
+							<i class="ri-delete-bin-line"></i>
+						</a>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="6"
+						class="text-muted py-4 text-center"
+					>
+						{{ 'accounts_no_drafts' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	} @else {
+	<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+		<div class="d-flex flex-wrap gap-2">
+			<input
+				class="form-control w-auto"
+				type="search"
+				id="vouchers_search"
+				[placeholder]="'accounts_search_voucher' | transloco"
+				[ngModel]="search()"
+				(ngModelChange)="search.set($event); page.set(1)"
+			/>
+			<select
+				class="form-select w-auto"
+				id="vouchers_kind"
+				[ngModel]="kind()"
+				(ngModelChange)="kind.set($event); page.set(1)"
+			>
+				<option value="">{{ 'accounts_every_kind' | transloco }}</option>
+				@for (k of kinds; track k) {
+				<option [value]="k">{{ 'accounts_kind_' + k | transloco }}</option>
+				}
+			</select>
+			<app-period-picker (changed)="setPeriod($event)" />
+		</div>
+		@if (canPost()) {
+		<a
+			class="btn btn-theme"
+			id="vouchers_new"
+			routerLink="/accounts/vouchers/new"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'accounts_voucher_new' | transloco }}
+		</a>
+		}
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'date' | transloco }}</th>
+					<th>{{ 'accounts_voucher' | transloco }}</th>
+					<th>{{ 'accounts_kind' | transloco }}</th>
+					<th>{{ 'accounts_narration' | transloco }}</th>
+					<th class="text-end">{{ 'accounts_amount' | transloco }}</th>
+					<th>{{ 'status' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (v of query.data()?.items ?? []; track v.id) {
+				<tr>
+					<td class="text-nowrap">{{ v.date }}</td>
+					<td class="text-nowrap">
+						<a [routerLink]="['/accounts/vouchers', v.id]">{{ v.number }}</a>
+					</td>
+					<td>{{ 'accounts_kind_' + v.kind | transloco }}</td>
+					<td>{{ v.narration || '—' }}</td>
+					<td class="text-end text-nowrap">{{ rupees(v.totalPaise) }}</td>
+					<td>
+						@if (v.reversedById) {
+						<span class="badge bg-light text-dark">{{ 'accounts_reversed' | transloco }}</span>
+						} @else if (v.reversalOfId) {
+						<span class="badge bg-light text-dark">{{ 'accounts_reversal' | transloco }}</span>
+						} @else {
+						<span class="badge bg-light text-dark">{{ 'accounts_posted' | transloco }}</span>
+						}
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="6"
+						class="text-muted py-4 text-center"
+					>
+						{{ 'accounts_no_vouchers' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if (pages() > 1) {
+	<nav class="custom-pagination">
+		<ul class="pagination justify-content-center">
+			@for (p of [].constructor(pages()); track $index) {
+			<li
+				class="page-item"
+				[class.active]="page() === $index + 1"
+			>
+				<a
+					class="page-link"
+					href="javascript:void(0)"
+					(click)="page.set($index + 1)"
+				>
+					{{ $index + 1 }}
+				</a>
+			</li>
+			}
+		</ul>
+	</nav>
+	} }
+</app-page-wrapper>

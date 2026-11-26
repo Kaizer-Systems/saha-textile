@@ -1,0 +1,35 @@
+// The shop's named colours, for the screens built for this shop (not the vendor theme). Each name
+// has a light value here, the value those screens always used, and a dark value in
+// scss/shop-dark.scss, which loads only in dark mode. Use these names instead of typing a colour, so
+// every new screen works in both modes.
+:root {
+	--st-surface: #ffffff;
+	--st-surface-soft: #f8f8f8;
+	--st-surface-subtle: #fafafa;
+	--st-surface-hover: #f5f5f5;
+	--st-text: #222222;
+	--st-text-body: #4a5568;
+	--st-text-muted: #666666;
+	--st-text-soft: #555555;
+	--st-text-faint: #888888;
+	--st-text-faint-2: #999999;
+	--st-text-disabled: #b0b0b0;
+	--st-text-disabled-2: #d0d0d0;
+	// Words on something that can't be chosen but must still be read, such as an out-of-stock option (5.3 : 1 on white;
+	// accessibility decision D3, 17 Nov 2026). The theme's darker grey, as on the sort and filter pickers.
+	--st-text-unavailable: #6b6b6b;
+	--st-border: #eeeeee;
+	--st-border-soft: #e6e6e6;
+	--st-border-strong: #c9c9c9;
+	--st-border-line: #ececec;
+	--st-border-cool: #f0f3f8;
+	--st-success: #237032;
+	--st-warning: #e8590c;
+	--st-danger: #e03131;
+	// Red words on the page, such as "Out of Stock" (4.98 : 1 on white; decision D3).
+	--st-danger-text: #d32f2f;
+	// The shop colour as text: the real colour in light mode, a lighter tint in dark mode.
+	--st-accent-text: var(--theme-color);
+	// The sort and filter pickers read this; their own default (#999) was 2.7 : 1.
+	--select2-placeholder-color: #6b6b6b;
+}

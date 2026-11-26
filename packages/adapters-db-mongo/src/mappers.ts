@@ -1,3 +1,4 @@
+import { LEGACY_ORDER_STATUS } from '@saha-textile/contracts';
 import type { AdminUser, Cart, Category, Currency, Customer, Order, Product, Promotion } from '@saha-textile/contracts';
 
 import type {
@@ -41,6 +42,9 @@ export function toCategory(doc: CategoryDoc): Category {
 		depth: doc.depth ?? 0,
 		isBannerCollection: doc.isBannerCollection ?? false,
 		displayOrder: doc.displayOrder ?? 0,
+		hsnCode: doc.hsnCode ?? null,
+		returnable: doc.returnable ?? true,
+		...(doc.shipping ? { shipping: { ...doc.shipping } } : {}),
 		description: doc.description ?? {},
 		seo: doc.seo as Category['seo'],
 		media: doc.media as Category['media'],
@@ -60,7 +64,7 @@ export function toProduct(doc: ProductDoc): Product {
 		categoryIds: doc.categoryIds ?? [],
 		tags: doc.tags ?? [],
 		basePriceINR: doc.basePriceINR,
-		media: { compound: [], altOverrides: {}, ...(doc.media ?? { gallery: [] }) } as Product['media'],
+		media: { compound: [], altOverrides: {}, versions: {}, ...(doc.media ?? { gallery: [] }) } as Product['media'],
 		attributes: (doc.attributes ?? []) as Product['attributes'],
 		optionGroups: (doc.optionGroups ?? []) as Product['optionGroups'],
 		variations: (doc.variations ?? []) as Product['variations'],
@@ -77,6 +81,10 @@ export function toProduct(doc: ProductDoc): Product {
 		lowStockThreshold: doc.lowStockThreshold ?? null,
 		lifetimeUnitsReceived: doc.lifetimeUnitsReceived ?? 0,
 		featured: doc.featured ?? false,
+		showOnShop: doc.showOnShop !== false,
+		freeWith: (doc.freeWith ?? null) as Product['freeWith'],
+		faqEnabled: doc.faqEnabled ?? false,
+		videos: doc.videos ?? [],
 		insightBadges: doc.insightBadges ?? [],
 		pinnedBadges: doc.pinnedBadges ?? [],
 		hiddenBadges: doc.hiddenBadges ?? [],
@@ -88,7 +96,15 @@ export function toProduct(doc: ProductDoc): Product {
 		addonPriceINR: doc.addonPriceINR ?? null,
 		onSale: doc.onSale ?? false,
 		shippingDefaults: doc.shippingDefaults ?? { weightGrams: null, lengthCm: null, widthCm: null, heightCm: null },
+		...(doc.shippingCharges ? { shippingCharges: { ...doc.shippingCharges } } : {}),
+		...(doc.freeShipping ? { freeShipping: true } : {}),
 		hsnCode: doc.hsnCode ?? null,
+		soldBy: doc.soldBy ?? 'piece',
+		returnable: doc.returnable ?? null,
+		shortestCutTenths: doc.shortestCutTenths ?? null,
+		quickLengths: doc.quickLengths ?? [],
+		widthInches: doc.widthInches ?? null,
+		weightPerMetreGrams: doc.weightPerMetreGrams ?? null,
 		createdAt: iso(doc.createdAt),
 		updatedAt: iso(doc.updatedAt),
 	};
@@ -103,6 +119,9 @@ export function toCurrency(doc: CurrencyDoc): Currency {
 		paypalActive: doc.paypalActive ?? false,
 		paypalPct: doc.paypalPct ?? 0,
 		paypalFixed: doc.paypalFixed ?? 0,
+		rateSetBy: doc.rateSetBy ?? null,
+		rateSetById: doc.rateSetById ?? null,
+		rateSetAt: doc.rateSetAt ? new Date(doc.rateSetAt).toISOString() : null,
 		updatedAt: iso(doc.updatedAt),
 	};
 }
@@ -137,13 +156,48 @@ export function toCart(doc: CartDoc): Cart {
 	};
 }
 
+/** An older row's status read in today's words (pending → awaiting_payment, paid → placed, refunded → cancelled). */
+const orderStatusOf = (status: unknown): Order['status'] =>
+	(typeof status === 'string' && status in LEGACY_ORDER_STATUS
+		? LEGACY_ORDER_STATUS[status]
+		: status) as Order['status'];
+
+/**
+ * Fills what an older row lacks and maps its first-list status, without rewriting the row. Not a
+ * full parse: a row that predates a field must still read, so a malformed old row is not refused here.
+ */
 export function toOrder(doc: OrderDoc): Order {
+	const row = doc as OrderDoc & Partial<Record<keyof Order, unknown>>;
+	const lines = (doc.lines ?? []).map((line) =>
+		line && typeof line === 'object'
+			? {
+					couponINR: 0,
+					categoryIds: [],
+					held: false,
+					// Lines saved before sets existed read as products on their own (bundle builder brief E05).
+					role: 'product',
+					parentLineId: null,
+					set: null,
+					// A line saved without options (a staff order of a plain product) reads with none, so every
+					// screen that lists a line's options can read them.
+					attributes: {},
+					addons: [],
+					...(line as Record<string, unknown>),
+				}
+			: line,
+	);
+	const timeline = (doc.statusTimeline ?? []).map((event) =>
+		event && typeof event === 'object'
+			? { ...(event as Record<string, unknown>), status: orderStatusOf((event as { status?: unknown }).status) }
+			: event,
+	);
 	return {
 		id: doc._id,
 		orderNumber: doc.orderNumber,
 		userId: doc.userId ?? null,
 		currency: doc.currency,
-		lines: (doc.lines ?? []) as Order['lines'],
+		locale: doc.locale ?? 'en',
+		lines: lines as Order['lines'],
 		subtotalINR: doc.subtotalINR,
 		subtotalPaid: doc.subtotalPaid,
 		shipping: doc.shipping as Order['shipping'],
@@ -151,8 +205,30 @@ export function toOrder(doc: OrderDoc): Order {
 		totalINR: doc.totalINR,
 		totalPaid: doc.totalPaid,
 		gateway: doc.gateway as Order['gateway'],
-		status: doc.status as Order['status'],
-		statusTimeline: (doc.statusTimeline ?? []) as Order['statusTimeline'],
+		status: orderStatusOf(doc.status),
+		statusTimeline: timeline as Order['statusTimeline'],
+		channel: (row.channel ?? 'shop') as Order['channel'],
+		createdBy: (row.createdBy ?? null) as Order['createdBy'],
+		buyer: row.buyer as Order['buyer'],
+		addresses: row.addresses as Order['addresses'],
+		currencyRecord: row.currencyRecord as Order['currencyRecord'],
+		zone: (row.zone ?? null) as Order['zone'],
+		coupons: (row.coupons ?? []) as Order['coupons'],
+		balance: row.balance as Order['balance'],
+		paymentStatus: (row.paymentStatus ?? 'unpaid') as Order['paymentStatus'],
+		placedWith: (row.placedWith ?? null) as Order['placedWith'],
+		onAccountDueOn: (row.onAccountDueOn ?? null) as Order['onAccountDueOn'],
+		holdUntil: (row.holdUntil ?? null) as Order['holdUntil'],
+		paymentReview: (row.paymentReview ?? null) as Order['paymentReview'],
+		openedAt: (row.openedAt ?? null) as Order['openedAt'],
+		closedAt: (row.closedAt ?? null) as Order['closedAt'],
+		eInvoice: (row.eInvoice ?? null) as Order['eInvoice'],
+		eWayBill: (row.eWayBill ?? null) as Order['eWayBill'],
+		/** Where the order ships from (accounts brief M1); null = not assigned. */
+		shipsFromLocationId: (row.shipsFromLocationId ?? null) as Order['shipsFromLocationId'],
+		history: (row.history ?? []) as Order['history'],
+		packTicks: (row.packTicks ?? []) as Order['packTicks'],
+		revision: (row.revision ?? 0) as number,
 		createdAt: iso(doc.createdAt),
 		updatedAt: iso(doc.updatedAt),
 	};
@@ -173,6 +249,7 @@ export function toCustomer(doc: CustomerDoc, identities: Customer['identities'] 
 		savedSizes: (doc.savedSizes ?? []) as Customer['savedSizes'],
 		measurementProfiles: (doc.measurementProfiles ?? []) as Customer['measurementProfiles'],
 		guestCartId: doc.guestCartId ?? null,
+		preferredLocale: doc.preferredLocale ?? 'en',
 		consent: doc.consent as Customer['consent'],
 		createdAt: iso(doc.createdAt),
 		updatedAt: iso(doc.updatedAt),
@@ -190,7 +267,10 @@ export function toAdminUser(doc: AdminUserDoc, pinConfigured = false): AdminUser
 		role: doc.role,
 		status: (doc.status as AdminUser['status']) ?? 'active',
 		pinConfigured,
-		preferredLoginMethod: (doc.preferredLoginMethod as AdminUser['preferredLoginMethod']) ?? 'password',
+		// A preference for a PIN means nothing without a PIN, so nothing reads it that way.
+		preferredLoginMethod: pinConfigured
+			? ((doc.preferredLoginMethod as AdminUser['preferredLoginMethod']) ?? 'password')
+			: 'password',
 		adminProfile: doc.adminProfile as AdminUser['adminProfile'],
 		lastLoginAt: doc.lastLoginAt ? new Date(doc.lastLoginAt).toISOString() : null,
 		createdAt: iso(doc.createdAt),

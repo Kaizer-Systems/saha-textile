@@ -1,0 +1,371 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'languages'"
+>
+	<div
+		button
+		*hasPermission="'language.manage'"
+	>
+		<a
+			href="javascript:void(0)"
+			class="align-items-center btn btn-theme d-flex"
+			id="add_language_btn"
+			(click)="openAdd()"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'add_language' | transloco }}
+		</a>
+	</div>
+	<p class="help-text">{{ 'lang_intro' | transloco }}</p>
+	<div class="table-responsive datatable-wrapper border-table">
+		@if (settingsQuery.isPending()) {
+		<div class="table-loader">
+			<span>{{ 'please_wait' | transloco }}...</span>
+		</div>
+		}
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'language' | transloco }}</th>
+					<th>{{ 'lang_admin' | transloco }}</th>
+					<th>{{ 'lang_shop' | transloco }}</th>
+					<th>{{ 'lang_to_do' | transloco }}</th>
+					<th>{{ 'lang_added' | transloco }}</th>
+					<th>{{ 'actions' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of rows(); track row.code) { @let english = row.code === settingsQuery.data()?.default;
+				<tr [attr.data-language]="row.code">
+					<td>
+						<div class="fw-semibold">{{ name(row.code) }}</div>
+						<div class="help-text mb-0">{{ row.code }}</div>
+					</td>
+					<td>
+						@if (english) {
+						<i
+							class="ri-lock-line"
+							[title]="'lang_english_fixed' | transloco"
+							[attr.aria-label]="'lang_english_fixed' | transloco"
+							role="img"
+						></i>
+						} @else {
+						<div class="form-check form-switch ps-0">
+							<label class="switch switch-sm">
+								<input
+									type="checkbox"
+									[id]="'language_admin_' + row.code"
+									[checked]="row.admin"
+									[disabled]="saving()"
+									[attr.aria-label]="('lang_admin' | transloco) + ' · ' + name(row.code)"
+									(change)="onAdminToggle(row, $event)"
+								/>
+								<span class="switch-state"></span>
+							</label>
+						</div>
+						}
+					</td>
+					<td>
+						<div class="d-flex align-items-center gap-2">
+							@if (!english) {
+							<div class="form-check form-switch ps-0">
+								<label class="switch switch-sm">
+									<input
+										type="checkbox"
+										[id]="'language_shop_' + row.code"
+										[checked]="row.shop === 'on'"
+										[disabled]="saving()"
+										[attr.aria-label]="('lang_shop' | transloco) + ' · ' + name(row.code)"
+										(change)="onShopToggle(row, $event)"
+									/>
+									<span class="switch-state"></span>
+								</label>
+							</div>
+							} @if (row.shop === 'on') {
+							<span class="badge bg-success">{{ 'lang_state_on' | transloco }}</span>
+							} @else if (row.shop === 'draft') {
+							<span class="badge bg-warning">{{ 'language_draft' | transloco }}</span>
+							} @else {
+							<span class="badge bg-secondary">{{ 'lang_state_off' | transloco }}</span>
+							}
+						</div>
+					</td>
+					<td>
+						@if (row.todo > 0) {
+						<a
+							href="javascript:void(0)"
+							class="badge bg-danger"
+							[id]="'language_todo_' + row.code"
+							(click)="openTodo(row)"
+						>
+							{{ 'language_left' | transloco: { count: row.todo } }}
+						</a>
+						} @else {
+						<span class="badge bg-success">{{ 'language_done' | transloco }}</span>
+						} @if (!english && !row.adminFileComplete) {
+						<div class="help-text mb-0">{{ 'lang_admin_text_missing' | transloco }}</div>
+						}
+					</td>
+					<td>{{ english ? '—' : (row.addedAt | date: 'd MMM y') }}</td>
+					<td>
+						@if (!english) {
+						<ul id="actions">
+							<li>
+								<a
+									[title]="'delete' | transloco"
+									href="javascript:void(0)"
+									[attr.aria-label]="'delete' | transloco"
+									[id]="'language_delete_' + row.code"
+									(click)="openDelete(row)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</a>
+							</li>
+						</ul>
+						}
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td colspan="6">
+						<div class="no-data-added">
+							<h4>{{ 'no_records_found' | transloco }}</h4>
+						</div>
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+</app-page-wrapper>
+
+<ng-template
+	#languageDialog
+	let-modal
+>
+	@if (dialog(); as d) {
+	<div class="modal-body">
+		@switch (d.kind) { @case ('add') {
+		<i class="ri-translate-2 icon-box wo-bg"></i>
+		<h5
+			class="modal-title"
+			id="language-dialog-title"
+		>
+			{{ 'add_language' | transloco }}
+		</h5>
+		@if (addable().length) {
+		<div class="theme-form theme-form-2 text-start">
+			<app-form-fields
+				[label]="'language' | transloco"
+				[for]="'language_add_select'"
+			>
+				<select
+					class="form-select"
+					id="language_add_select"
+					[formControl]="addControl"
+				>
+					@for (row of addable(); track row.code) {
+					<option
+						[value]="row.code"
+						[disabled]="!row.inBoth"
+					>
+						{{ name(row.code) }} · {{ row.code }}
+					</option>
+					}
+				</select>
+			</app-form-fields>
+			<ul class="list-group list-group-flush mb-3">
+				@for (row of addable(); track row.code) {
+				<li class="list-group-item d-flex justify-content-between px-0">
+					<span>{{ name(row.code) }} · {{ row.code }}</span>
+					@if (row.inBoth) {
+					<span class="badge bg-success">{{ 'lang_in_release' | transloco }}</span>
+					} @else {
+					<span class="text-muted small">{{ 'lang_not_in_release' | transloco }}</span>
+					}
+				</li>
+				}
+			</ul>
+			<p class="help-text">{{ 'lang_add_help' | transloco }}</p>
+		</div>
+		} @else {
+		<p class="text-content">{{ 'lang_none_to_add' | transloco }}</p>
+		} } @case ('todo') {
+		<i class="ri-list-check-2 icon-box wo-bg"></i>
+		<h5
+			class="modal-title"
+			id="language-dialog-title"
+		>
+			{{ 'lang_todo_title' | transloco: { language: name(d.row.code) } }}
+		</h5>
+		@if (d.todo; as todo) {
+		<ul class="list-group list-group-flush text-start">
+			@for (line of todo.lines; track line.area) {
+			<li class="list-group-item d-flex justify-content-between align-items-center px-0">
+				<span>{{ 'lang_area_' + line.area | transloco }}</span>
+				<span class="d-flex align-items-center gap-2">
+					@if (line.count) {
+					<span class="badge bg-danger">{{ 'language_left' | transloco: { count: line.count } }}</span>
+					@if (areaLists[line.area]) {
+					<a
+						href="javascript:void(0)"
+						[id]="'language_open_' + line.area"
+						(click)="openArea(line.area, d.row.code)"
+					>
+						{{ 'lang_open' | transloco }}
+					</a>
+					} } @else {
+					<span class="badge bg-success">{{ 'language_done' | transloco }}</span>
+					}
+				</span>
+			</li>
+			}
+		</ul>
+		<p class="help-text mt-3 text-start">{{ 'lang_admin_text_note' | transloco }}</p>
+		} @else {
+		<p class="text-content">{{ 'please_wait' | transloco }}...</p>
+		} } @case ('shop_blocked') {
+		<i class="ri-error-warning-line icon-box wo-bg text-warning"></i>
+		<h5
+			class="modal-title"
+			id="language-dialog-title"
+		>
+			{{ 'lang_shop_blocked_title' | transloco: { language: name(d.row.code) } }}
+		</h5>
+		<div class="alert alert-warning text-start">
+			{{ 'lang_shop_blocked_body' | plural: d.row.todo : { language: name(d.row.code) } }}
+		</div>
+		@if (d.todo; as todo) {
+		<ul class="list-group list-group-flush text-start">
+			@for (line of todo.lines; track line.area) { @if (line.count && line.blocksShop) {
+			<li class="list-group-item d-flex justify-content-between px-0">
+				<span>{{ 'lang_area_' + line.area | transloco }}</span>
+				<span class="badge bg-danger">{{ 'language_left' | transloco: { count: line.count } }}</span>
+			</li>
+			} }
+		</ul>
+		} } @case ('shop_on') {
+		<i class="ri-global-line icon-box wo-bg"></i>
+		<h5
+			class="modal-title"
+			id="language-dialog-title"
+		>
+			{{ 'lang_shop_on_title' | transloco: { language: name(d.row.code) } }}
+		</h5>
+		<p class="text-content">
+			{{ 'lang_shop_on_body' | transloco: { language: name(d.row.code), code: d.row.code } }}
+		</p>
+		} @case ('shop_off') {
+		<i class="ri-error-warning-line icon-box wo-bg text-warning"></i>
+		<h5
+			class="modal-title"
+			id="language-dialog-title"
+		>
+			{{ 'lang_shop_off_title' | transloco: { language: name(d.row.code) } }}
+		</h5>
+		<div class="alert alert-warning text-start">
+			{{ 'lang_shop_off_body' | plural: d.row.addresses : { code: d.row.code } }}
+		</div>
+		<p class="text-content">{{ 'lang_shop_off_keep' | transloco }}</p>
+		} @case ('delete') {
+		<i class="ri-delete-bin-line icon-box wo-bg text-danger"></i>
+		<h5
+			class="modal-title"
+			id="language-dialog-title"
+		>
+			{{ 'lang_delete_title' | transloco: { language: name(d.row.code) } }}
+		</h5>
+		<p class="text-content">
+			{{ 'lang_delete_body' | plural: d.row.itemsWithText : { language: name(d.row.code) } }}
+		</p>
+		<div class="alert alert-warning text-start">{{ 'lang_delete_reminder' | transloco }}</div>
+		} @case ('erase') {
+		<i class="ri-error-warning-line icon-box wo-bg text-danger"></i>
+		<h5
+			class="modal-title"
+			id="language-dialog-title"
+		>
+			{{ 'lang_erase_title' | transloco: { language: name(d.row.code) } }}
+		</h5>
+		<p class="text-content">
+			{{ 'lang_erase_body' | plural: d.row.itemsWithText : { language: name(d.row.code), date: (d.row.deletedAt |
+			date: 'd MMM y') } }}
+		</p>
+		<div class="alert alert-warning text-start">{{ 'lang_erase_warning' | transloco }}</div>
+		<div class="theme-form theme-form-2 text-start">
+			<app-form-fields
+				[label]="'lang_erase_type' | transloco: { language: name(d.row.code) }"
+				[for]="'language_erase_input'"
+			>
+				<input
+					class="form-control"
+					id="language_erase_input"
+					autocomplete="off"
+					[placeholder]="name(d.row.code)"
+					[formControl]="eraseControl"
+				/>
+			</app-form-fields>
+		</div>
+		} } @if (error()) {
+		<div class="invalid-feedback d-block mb-3">{{ error() | transloco }}</div>
+		}
+		<div class="button-box">
+			@switch (d.kind) { @case ('todo') {
+			<app-button
+				[class]="'btn-theme btn-md fw-bold btn'"
+				[spinner]="false"
+				[type]="'button'"
+				[id]="'language_dialog_close_btn'"
+				(click)="cancel()"
+			>
+				{{ 'close' | transloco }}
+			</app-button>
+			} @case ('erase') {
+			<app-button
+				[class]="'btn-md fw-bold btn btn-secondary'"
+				[spinner]="false"
+				[type]="'button'"
+				[id]="'language_keep_btn'"
+				[disabled]="saving()"
+				(click)="keep()"
+			>
+				{{ 'lang_keep_it' | transloco }}
+			</app-button>
+			<app-button
+				[class]="'btn-theme btn-md fw-bold btn'"
+				[spinner]="false"
+				[type]="'button'"
+				[id]="'language_erase_btn'"
+				[disabled]="saving() || !eraseControl.value.trim()"
+				(click)="confirm()"
+			>
+				{{ 'lang_erase_button' | transloco }}
+			</app-button>
+			} @default {
+			<app-button
+				[class]="'btn-md fw-bold btn btn-secondary'"
+				[spinner]="false"
+				[type]="'button'"
+				[id]="'language_dialog_cancel_btn'"
+				(click)="cancel()"
+			>
+				{{ 'cancel' | transloco }}
+			</app-button>
+			@if (d.kind !== 'add' || addable().length) {
+			<app-button
+				[class]="'btn-theme btn-md fw-bold btn'"
+				[spinner]="false"
+				[type]="'button'"
+				[id]="'language_dialog_confirm_btn'"
+				[disabled]="saving() || (d.kind === 'add' && !addControl.value)"
+				(click)="confirm()"
+			>
+				@switch (d.kind) { @case ('add') { {{ 'lang_add_button' | transloco }} } @case ('shop_blocked') { {{
+				'lang_see_everything' | transloco }} } @case ('shop_on') { {{ 'lang_switch_on' | transloco }} } @case
+				('shop_off') { {{ 'lang_switch_off' | transloco }} } @default { {{ 'delete' | transloco }} } }
+			</app-button>
+			} } }
+		</div>
+	</div>
+	}
+</ng-template>

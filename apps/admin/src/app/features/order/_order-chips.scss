@@ -1,0 +1,19 @@
+// Shared by the order page and Create order (bundle builder brief E07/E09, approved 2026-11-22). Each component
+// `@use`s this file, so both draw a set's, a free item's and an extra's chip the same way from one source.
+.badge.ord-chip-set {
+	margin-right: 4px;
+	background-color: color-mix(in srgb, var(--theme-color) 12%, transparent);
+	color: var(--theme-color);
+}
+
+.badge.ord-chip-free {
+	margin-right: 4px;
+	background-color: color-mix(in srgb, var(--admin-ok) 12%, transparent);
+	color: var(--admin-ok);
+}
+
+.badge.ord-chip-extra {
+	margin-right: 4px;
+	background-color: var(--bs-secondary-bg, #eef3f8);
+	color: var(--admin-ink-2);
+}

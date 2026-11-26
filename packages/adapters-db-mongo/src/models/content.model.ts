@@ -125,6 +125,8 @@ ReviewSchema.index({ productId: 1, userId: 1, orderId: 1 }, { unique: true });
 /** The PDP read and the aggregate recompute both scan approved reviews of one product. */
 ReviewSchema.index({ productId: 1, status: 1, createdAt: -1 });
 ReviewSchema.index({ status: 1, createdAt: 1 });
+/** The admin home page's newest reviews, in any moderation state. */
+ReviewSchema.index({ createdAt: -1 });
 /** Admin customer view: one customer's reviews, newest first (owner lock 2026-08-23). */
 ReviewSchema.index({ userId: 1, createdAt: -1 });
 /** Reverse lookup from a photo to its review — required by media reference counting. */

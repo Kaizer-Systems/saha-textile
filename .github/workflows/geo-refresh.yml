@@ -1,0 +1,101 @@
+# Monthly refresh of the country, State, phone and PIN code data (owner decision DEC-GEO-REFRESH, 2026-11-20, as
+# amended the same day: "move all that data to spaces" and publish there directly, with no pull request).
+#
+# Runs on GitHub's machines, never on our servers. It rebuilds the data from the pinned official sources
+# (scripts/geo/build.mjs) and, when something changed, publishes it to every environment whose Spaces keys GitHub
+# holds (scripts/geo/upload.mjs): the new files as geo/<sha256>.json, then the index as geo/manifest.json. Safety
+# checks refuse to publish data that looks broken (far fewer countries or PIN codes, an Indian State without its
+# GST code). The API re-reads the index every few hours, so there is no code change and no release. Every index
+# stays under geo/manifests/<version>.json; going back is `node scripts/geo/upload.mjs --rollback <version>`.
+#
+# Secrets (repository level):
+# - DATA_GOV_IN_API_KEY: India Post's PIN directory on data.gov.in. Without it the PIN step is skipped and the PIN
+#   files the current index names are kept.
+# - SPACES_KEY_<ENV>, SPACES_SECRET_<ENV>, SPACES_BUCKET_<ENV> for ENV = DEV, STAGING, PRODUCTION: copies of that
+#   environment's /api SPACES_KEY, SPACES_SECRET and SPACES_BUCKET (owner, 2026-11-20: reuse the API's keys). An
+#   environment without them is skipped and named in the run's summary.
+name: Geo data refresh
+
+on:
+  schedule:
+    # 03:30 UTC on the 2nd of each month (09:00 IST).
+    - cron: '30 3 2 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geo-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SPACES_KEY_DEV: ${{ secrets.SPACES_KEY_DEV }}
+      SPACES_SECRET_DEV: ${{ secrets.SPACES_SECRET_DEV }}
+      SPACES_BUCKET_DEV: ${{ secrets.SPACES_BUCKET_DEV }}
+      SPACES_KEY_STAGING: ${{ secrets.SPACES_KEY_STAGING }}
+      SPACES_SECRET_STAGING: ${{ secrets.SPACES_SECRET_STAGING }}
+      SPACES_BUCKET_STAGING: ${{ secrets.SPACES_BUCKET_STAGING }}
+      SPACES_KEY_PRODUCTION: ${{ secrets.SPACES_KEY_PRODUCTION }}
+      SPACES_SECRET_PRODUCTION: ${{ secrets.SPACES_SECRET_PRODUCTION }}
+      SPACES_BUCKET_PRODUCTION: ${{ secrets.SPACES_BUCKET_PRODUCTION }}
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: dev
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install the geo and storage packages
+        run: pnpm install --frozen-lockfile --filter @saha-textile/adapters-geo --filter @saha-textile/adapters-storage-spaces
+
+      - name: Fetch the index that is live now
+        run: |
+          for env in DEV STAGING PRODUCTION; do
+            key="SPACES_KEY_${env}"; secret="SPACES_SECRET_${env}"; bucket="SPACES_BUCKET_${env}"
+            [ -n "${!key}" ] && [ -n "${!secret}" ] && [ -n "${!bucket}" ] || continue
+            SPACES_KEY="${!key}" SPACES_SECRET="${!secret}" SPACES_BUCKET="${!bucket}" node scripts/geo/upload.mjs --pull-previous
+            break
+          done
+
+      - name: Rebuild the data
+        id: build
+        env:
+          DATA_GOV_IN_API_KEY: ${{ secrets.DATA_GOV_IN_API_KEY }}
+        run: node scripts/geo/build.mjs
+
+      - name: Publish to each environment
+        if: steps.build.outputs.changed == 'true'
+        run: |
+          published=""
+          skipped=""
+          for env in DEV STAGING PRODUCTION; do
+            key="SPACES_KEY_${env}"; secret="SPACES_SECRET_${env}"; bucket="SPACES_BUCKET_${env}"
+            if [ -z "${!key}" ] || [ -z "${!secret}" ] || [ -z "${!bucket}" ]; then
+              skipped="$skipped ${env,,}"
+              continue
+            fi
+            SPACES_KEY="${!key}" SPACES_SECRET="${!secret}" SPACES_BUCKET="${!bucket}" node scripts/geo/upload.mjs
+            published="$published ${env,,}"
+          done
+          {
+            echo "### Geo data refresh"
+            echo "Published to:${published:- none}"
+            echo "Skipped (no Spaces keys in GitHub yet):${skipped:- none}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Nothing changed
+        if: steps.build.outputs.changed != 'true'
+        run: echo "No change in the country, State, phone or PIN data." >> "$GITHUB_STEP_SUMMARY"

@@ -1,6 +1,9 @@
 <app-breadcrumb [breadcrumb]="breadcrumb()" />
 <section>
 	<div class="container-fluid-lg">
+		<div class="title">
+			<h1>{{ breadcrumb().title }}</h1>
+		</div>
 		<div class="row">
 			<div class="col-12">
 				<app-collection-categories
@@ -31,3 +34,18 @@
 		</div>
 	</div>
 </section>
+
+<!-- Category FAQ (questions for this category and its parents): theme title and the FAQ page's
+     accordion, every answer in the page source. Plain first page only. -->
+@if (faq().length) {
+<section class="section-b-space">
+	<div class="container-fluid-lg">
+		<div class="faq-box-contain">
+			<div class="title">
+				<h2>{{ 'frequently_asked_questions' | transloco }}</h2>
+			</div>
+			<app-faq-accordion [items]="faq()" />
+		</div>
+	</div>
+</section>
+}

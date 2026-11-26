@@ -1,0 +1,16 @@
+<div class="modal-header">
+	<h2 id="ship_tester_title">{{ 'ship_try_any_cart' | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		[attr.aria-label]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body">
+	<p class="text-muted small">{{ 'ship_try_any_cart_help' | transloco }}</p>
+	<app-srb-try [mode]="'live'" />
+</div>

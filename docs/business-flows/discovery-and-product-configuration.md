@@ -4,7 +4,7 @@ wide: true
 description: Category, search, product-detail, semantic option, variant, add-on, bundle, pricing, and stock journey.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/storefront/src/app/pages/collections
     - apps/storefront/src/app/pages/product/[slug].page.ts
@@ -40,7 +40,7 @@ sequenceDiagram
     Catalog-->>SF: Validated line identity + computed display values
 ```
 
-Category pages, cards, product pages and search read the catalogue API. The cart is a client-side store.
+Category pages, cards, product pages and search read the catalogue API. The API holds the cart and prices it.
 
 ## Semantic option roles
 
@@ -125,12 +125,14 @@ The price policy is `sum_components`, `fixed_bundle_price` or `discounted_compon
 
 A relation links a product to another product for discovery, and changes neither price nor stock. The types are `related`, `upsell`, `cross_sell`, `bought_together`, `complete_the_look`, `substitute` and `same_collection`.
 
-`related` and `upsell` are always curated by hand. `cross_sell` and `bought_together` can also come from the weekly insight job, which replaces its rows as one set. Public reads return only live relations inside their schedule, in rank order.
+`related` and `upsell` are always curated by hand. `cross_sell` and `bought_together` can also come from the weekly insight job, which replaces its rows as one set. Public reads return only live relations inside their schedule, in rank order. Discontinuing a product disables every relation that points to it, in the same transaction as the product change.
+
+When fewer than six related products are picked, the product page tops **You may also like** up with live products from the product's own category, then its parents. **Trending** beside each product comes from `GET /catalog/products/:idOrSlug/trending`: trending items in the product's categories, topped up with its bestsellers.
 
 ## Reviews, questions and FAQ
 
-- **Reviews.** A customer can review a product they received. There is one review per customer, product and order, with up to five photos. A review stays pending until an operator decides. Approve publishes it and its photos. Reject deletes the photos. Public ratings count approved reviews only.
-- **Questions.** Anyone can ask, with a name and email. The email stays in the admin view, and "stay anonymous" hides the name in public. A repeat of a pending question returns the first one. Only answered questions are public, and answering sends the `product_question_answered` email.
+- **Reviews.** A customer can review a product they received. There is one review per customer, product and order, with up to five photos. A review stays pending until an operator decides; an edit by its author sends it back to pending. Approve publishes it and its photos. Reject deletes the photos. Public ratings count approved reviews only, and the decision and the rating recount commit in one transaction. Only an order with status `delivered` counts as a purchase.
+- **Questions.** Anyone can ask, with a name and email. The email stays in the admin view, and "stay anonymous" hides the name in public. A repeat of a pending question returns the first one. Only answered questions are public, and answering sends the `product_question_answered` email. An operator can also reject or delete a question.
 - **FAQ.** An entry is global, or targets categories, products or both. A page shows the global entries plus those matching it, each once.
 
 ## Cart-line signature
@@ -148,6 +150,8 @@ product id
 
 Quantity applies after identity matching and is subject to stock.
 
+A product sold by the metre takes its quantity in whole tenths of a metre (2.5 m is 25). The shop starts at the product's shortest cut (1.0 m unless set), steps by 0.5 m, snaps a typed length to the nearest 0.1 m and says so, and refuses a length below the shortest cut or above what is free to sell. Its price is per metre: the line total is the price × metres, rounded to the paisa, with add-ons charged once per line. A metre line counts once in the bag, whatever its length. A cut that would leave a scrap shorter than the shortest cut is still allowed; what the shop should do then is an open owner question (`DEC-METRE-SCRAP`).
+
 Catalogue option, add-on, attribute and taxonomy labels are data, and the storefront renders them as returned. Interface text such as "View all" uses Transloco keys.
 
 ## Price and stock ownership
@@ -159,15 +163,17 @@ Catalogue option, add-on, attribute and taxonomy labels are data, and the storef
 
 ## Failure and edge cases
 
-| Condition               | Expected behaviour                                                  |
-| ----------------------- | ------------------------------------------------------------------- |
-| Unknown slug            | A real 404 with helpful navigation                                  |
-| Discontinued product    | `410`, or a `301` when an operator names a live replacement         |
-| Variant does not exist  | Disable the combination and keep prior valid selections             |
-| Required add-on missing | Keep the product visible and block add-to-cart with a field message |
-| Measurement required    | Render data-defined fields and validate them                        |
-| Variant sold out        | Offer **Notify me**                                                 |
-| Currency changed        | Refetch server-computed prices                                      |
+| Condition                           | Expected behaviour                                                                       |
+| ----------------------------------- | ---------------------------------------------------------------------------------------- |
+| Unknown slug                        | A real 404 with helpful navigation                                                       |
+| Discontinued product                | `410`, or a `301` when an operator names a live replacement                              |
+| Variant does not exist              | Disable the combination and keep prior valid selections                                  |
+| Required add-on missing             | Keep the product visible and block add-to-cart with a field message                      |
+| Measurement required                | Render data-defined fields and validate them                                             |
+| Variant sold out                    | Offer **Notify me**                                                                      |
+| Currency changed                    | Refetch server-computed prices                                                           |
+| Metre length below the shortest cut | Show the shortest cut in red and turn Buy now and Add to cart off                        |
+| Shortest cut raised after adding    | The cart keeps the line, marks it below the shortest cut, and leaves it out of the total |
 
 ## Debugging checkpoints
 

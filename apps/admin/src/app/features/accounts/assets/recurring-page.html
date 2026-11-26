@@ -1,0 +1,362 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'recurring_title'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">{{ 'recurring_title' | transloco }}</h5>
+			<small class="text-muted">{{ 'recurring_sub' | transloco }}</small>
+		</div>
+		<button
+			*hasPermission="'accounts.edit'"
+			type="button"
+			class="btn btn-theme"
+			id="recurring_add"
+			(click)="open(form, null)"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'recurring_add' | transloco }}
+		</button>
+	</div>
+	<div class="d-flex mb-3 flex-wrap gap-2">
+		@for (c of ['all', 'week']; track c) {
+		<button
+			type="button"
+			class="align-items-center btn btn-sm d-flex"
+			[id]="'recurring_chip_' + c"
+			[class.btn-theme]="chip() === c"
+			[class.btn-outline]="chip() !== c"
+			(click)="chip.set($any(c))"
+		>
+			{{ 'recurring_chip_' + c | transloco }}
+			<span class="ms-1">{{ c === 'all' ? (entries.data()?.length ?? 0) : weekCount() }}</span>
+		</button>
+		}
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'recurring_col_what' | transloco }}</th>
+					<th>{{ 'recurring_col_party' | transloco }}</th>
+					<th>{{ 'recurring_col_every' | transloco }}</th>
+					<th>{{ 'recurring_col_amount' | transloco }}</th>
+					<th>{{ 'recurring_col_makes' | transloco }}</th>
+					<th>{{ 'recurring_col_next' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (e of rows(); track e.id) {
+				<tr [class.text-muted]="!e.active">
+					<td>{{ e.what }}</td>
+					<td>{{ e.party || '—' }}</td>
+					<td>
+						{{ (e.every === 'monthEnd' ? 'recurring_every_end' : 'recurring_every_day') | transloco: { day:
+						e.day } }}
+					</td>
+					<td class="text-nowrap">
+						{{ amount(e) ? money(amount(e)) : ('recurring_filled_later' | transloco) }}
+					</td>
+					<td>{{ 'recurring_makes_' + e.kind + (e.reverseNextDay ? '_reversed' : '') | transloco }}</td>
+					<td class="text-nowrap">{{ e.active ? dateText(e.nextOn) : ('recurring_paused' | transloco) }}</td>
+					<td class="text-nowrap">
+						<button
+							*hasPermission="'accounts.edit'"
+							type="button"
+							class="btn btn-sm me-2 p-0"
+							[title]="'edit' | transloco"
+							(click)="open(form, e)"
+						>
+							<i class="ri-pencil-line"></i>
+						</button>
+						<button
+							*hasPermission="'accounts.edit'"
+							type="button"
+							class="btn btn-sm p-0"
+							[disabled]="busy()"
+							[title]="'delete' | transloco"
+							(click)="remove(e)"
+						>
+							<i class="ri-delete-bin-line"></i>
+						</button>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="7"
+						class="text-muted"
+					>
+						{{ 'recurring_none' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<ng-template
+		#form
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="modal-title">{{ (editing() ? 'recurring_change' : 'recurring_add') | transloco }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			<div class="row g-3">
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="rec_what"
+					>
+						{{ 'recurring_col_what' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="rec_what"
+						maxlength="120"
+						[ngModel]="what()"
+						(ngModelChange)="what.set($event)"
+					/>
+				</div>
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="rec_party"
+					>
+						{{ 'recurring_col_party' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="rec_party"
+						maxlength="120"
+						[ngModel]="party()"
+						(ngModelChange)="party.set($event)"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="rec_kind"
+					>
+						{{ 'recurring_col_makes' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="rec_kind"
+						[ngModel]="kind()"
+						(ngModelChange)="kind.set($event)"
+					>
+						<option value="journal">{{ 'recurring_makes_journal' | transloco }}</option>
+						<option value="payment">{{ 'recurring_makes_payment' | transloco }}</option>
+					</select>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="rec_every"
+					>
+						{{ 'recurring_col_every' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="rec_every"
+						[ngModel]="every()"
+						(ngModelChange)="every.set($event)"
+					>
+						<option value="monthDay">{{ 'recurring_every_month_day' | transloco }}</option>
+						<option value="monthEnd">{{ 'recurring_every_month_end' | transloco }}</option>
+					</select>
+				</div>
+				@if (every() === 'monthDay') {
+				<div class="col-md-2">
+					<label
+						class="form-label-title"
+						for="rec_day"
+					>
+						{{ 'recurring_day' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="rec_day"
+						type="number"
+						min="1"
+						max="28"
+						[ngModel]="day()"
+						(ngModelChange)="day.set(+$event)"
+					/>
+				</div>
+				}
+				<div class="col-md-2">
+					<label
+						class="form-label-title"
+						for="rec_start"
+					>
+						{{ 'recurring_from' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="rec_start"
+						type="date"
+						[ngModel]="startOn()"
+						(ngModelChange)="startOn.set($event)"
+					/>
+				</div>
+				<div class="col-md-2">
+					<label
+						class="form-label-title"
+						for="rec_end"
+					>
+						{{ 'recurring_until' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="rec_end"
+						type="date"
+						[ngModel]="endOn()"
+						(ngModelChange)="endOn.set($event)"
+					/>
+				</div>
+			</div>
+			<div class="table-responsive mt-3">
+				<table class="table">
+					<thead>
+						<tr>
+							<th>{{ 'accounts_ledger' | transloco }}</th>
+							<th>{{ 'statement_location' | transloco }}</th>
+							<th>{{ 'accounts_debit' | transloco }}</th>
+							<th>{{ 'accounts_credit' | transloco }}</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (l of lines(); track $index; let i = $index) {
+						<tr>
+							<td>
+								<select
+									class="form-select"
+									[attr.aria-label]="'accounts_ledger' | transloco"
+									[ngModel]="l.ledgerId"
+									(ngModelChange)="setLine(i, { ledgerId: $event })"
+								>
+									<option value="">—</option>
+									@for (ledger of ledgers(); track ledger.id) {
+									<option [value]="ledger.id">{{ ledger.name }}</option>
+									}
+								</select>
+							</td>
+							<td>
+								<select
+									class="form-select"
+									[attr.aria-label]="'statement_location' | transloco"
+									[ngModel]="l.locationId"
+									(ngModelChange)="setLine(i, { locationId: $event })"
+								>
+									<option value="">—</option>
+									@for (loc of locations.data() ?? []; track loc.id) {
+									<option [value]="loc.id">{{ loc.name }}</option>
+									}
+								</select>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									inputmode="decimal"
+									[attr.aria-label]="'accounts_debit' | transloco"
+									[ngModel]="l.debit"
+									(ngModelChange)="setLine(i, { debit: $event })"
+								/>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									inputmode="decimal"
+									[attr.aria-label]="'accounts_credit' | transloco"
+									[ngModel]="l.credit"
+									(ngModelChange)="setLine(i, { credit: $event })"
+								/>
+							</td>
+							<td>
+								<button
+									type="button"
+									class="btn btn-sm p-0"
+									[title]="'recurring_remove_line' | transloco"
+									(click)="removeLine(i)"
+								>
+									<i class="ri-close-line"></i>
+								</button>
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<button
+				type="button"
+				class="btn btn-sm btn-outline"
+				id="rec_add_line"
+				(click)="addLine()"
+			>
+				<i class="ri-add-line"></i>
+				{{ 'recurring_add_line' | transloco }}
+			</button>
+			<small class="text-muted d-block mt-2">{{ 'recurring_lines_help' | transloco }}</small>
+			@if (kind() === 'journal') {
+			<div class="form-check mt-2">
+				<input
+					class="form-check-input"
+					type="checkbox"
+					id="rec_reverse"
+					[checked]="reverseNextDay()"
+					(change)="reverseNextDay.set(!reverseNextDay())"
+				/>
+				<label
+					class="form-check-label"
+					for="rec_reverse"
+				>
+					{{ 'recurring_reverse' | transloco }}
+				</label>
+			</div>
+			}
+			<div class="form-check form-switch mt-2">
+				<input
+					class="form-check-input"
+					type="checkbox"
+					id="rec_active"
+					[checked]="active()"
+					(change)="active.set(!active())"
+				/>
+				<label
+					class="form-check-label"
+					for="rec_active"
+				>
+					{{ 'recurring_active' | transloco }}
+				</label>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="rec_save"
+				[disabled]="busy() || !ready()"
+				(click)="save()"
+			>
+				{{ 'save' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+</app-page-wrapper>

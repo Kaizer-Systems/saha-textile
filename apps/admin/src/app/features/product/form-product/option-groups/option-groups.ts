@@ -1,17 +1,25 @@
-import { Component, computed, inject, input, model, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, model, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { NgbAccordionModule } from '@ng-bootstrap/ng-bootstrap';
-import type { AttributeDefinition, ProductOptionGroup, ProductOptionTerm } from '@saha-textile/contracts';
+import { NgbAccordionModule, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { Select2, type Select2UpdateEvent } from 'ng-select2-component';
 
-import type { AddonTemplateRow } from '@data-access/services/addon-template.service';
+import { OPTION_LOOKS, usesPicture } from '@core/catalog/option-looks';
+import { SwatchPictures } from '@core/catalog/swatch-pictures';
+import { MediaGateway } from '@core/media/media.gateway';
+import { FmPicker, type FmPicked } from '@features/media/file-manager/fm-picker';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
+import { LookPreview, type LookPreviewValue } from '@shared/ui/look-preview/look-preview';
+import { SwatchCut, type SwatchCutResult } from '@shared/ui/swatch-cut/swatch-cut';
+import { omit } from '@shared/util/omit';
+
+import type { IAttachment } from '@data-access/interfaces/attachment.interface';
+import type { AddonTemplateRow } from '@data-access/services/addon-template.service';
+import type { AttributeDefinition, ProductOptionGroup, ProductOptionTerm } from '@saha-textile/contracts';
 
 const ROLES = ['variation_axis', 'named_add_on', 'filter_only', 'bundle_component_option'] as const;
-const STYLES = ['rectangle', 'circle', 'image_swatch', 'color_swatch', 'radio', 'dropdown'] as const;
 
 const labelIn = (label: Readonly<Record<string, string>>, locale: string): string => label[locale] ?? '';
 
@@ -19,14 +27,18 @@ function termFrom(term: AttributeDefinition['terms'][number], position: number):
 	return {
 		code: term.code,
 		label: term.label,
+		...(term.subLabel ? { subLabel: term.subLabel } : {}),
 		isBase: term.isBase,
 		...(term.hex ? { hex: term.hex } : {}),
 		...(term.swatchAssetId ? { swatchAssetId: term.swatchAssetId } : {}),
+		...(term.swatchAssetId && term.swatchVersionId ? { swatchVersionId: term.swatchVersionId } : {}),
 		addonTemplateIds: [],
 		requiresMeasurements: false,
 		sortOrder: position,
 	};
 }
+
+const PLACEHOLDER = 'assets/images/product.png';
 
 /**
  * The product's option groups. The role decides behaviour, the style only the look. A value is one
@@ -36,7 +48,9 @@ function termFrom(term: AttributeDefinition['terms'][number], position: number):
 @Component({
 	selector: 'app-option-groups',
 	templateUrl: './option-groups.html',
-	imports: [FormsModule, TranslocoModule, NgbAccordionModule, Select2, FormFields],
+	// The Images tab's tile and badge, reused as they are for the swatch pictures.
+	styleUrls: ['../product-images/product-images.scss'],
+	imports: [FormsModule, TranslocoModule, NgbAccordionModule, Select2, FormFields, LookPreview],
 })
 export class OptionGroups {
 	readonly groups = model.required<ProductOptionGroup[]>();
@@ -50,6 +64,66 @@ export class OptionGroups {
 	private transloco = inject(TranslocoService);
 	/** One measurement template per product, asked for by any option that measures. */
 	readonly templateCode = model<string | null>(null);
+	/** The product's photos in Images-tab order: the tiles a swatch picture is chosen from. */
+	readonly photos = input<readonly string[]>([]);
+	/** Preview address of each image, shared with the Images tab. */
+	readonly tiles = model<ReadonlyMap<string, string>>(new Map());
+	/** The version the product shows of each of its photos (Images tab); a swatch made from one draws that version. */
+	readonly versions = input<Readonly<Record<string, string>>>({});
+
+	private readonly swatches = inject(SwatchPictures);
+
+	/**
+	 * Each group's live preview (brief A5): this product's own values, prices and swatch pictures, each the very square
+	 * the shop draws (the value's own version, else the product's version of that photo); none draws grey. Without the
+	 * Media Library permission the photo's versions cannot be read, so the preview crops the photo's thumbnail to its
+	 * middle square: exactly the shop's square for an "as is" version, the centre rather than the focus for a Crop one.
+	 */
+	readonly previews = computed<LookPreviewValue[][]>(() =>
+		this.groups().map((group) =>
+			group.terms.map((term) => ({
+				label: this.termLabel(term),
+				subLabel: term.subLabel?.[this.locale()] || term.subLabel?.['en'] || null,
+				hex: term.hex ?? null,
+				picture: term.swatchAssetId
+					? (this.swatches.url(
+							term.swatchAssetId,
+							term.swatchVersionId ?? this.versions()[term.swatchAssetId],
+						) ??
+						this.tiles().get(term.swatchAssetId) ??
+						null)
+					: null,
+				price: term.priceDeltaINR ?? null,
+			})),
+		),
+	);
+
+	private media = inject(MediaGateway);
+	private readonly modals = inject(NgbModal);
+	/** The value the media library is choosing a picture for. */
+	private target: { index: number; code: string } | null = null;
+	private requested = new Set<string>();
+
+	constructor() {
+		effect(() =>
+			this.swatches.need(
+				this.groups().flatMap((group) => group.terms.flatMap((term) => term.swatchAssetId ?? [])),
+			),
+		);
+		// A value brings its default picture from Settings › Attributes; fetch any preview not yet known.
+		effect(() => {
+			const known = this.tiles();
+			const chosen = this.groups().flatMap((group) => group.terms.flatMap((term) => term.swatchAssetId ?? []));
+			const missing = [...new Set(chosen)].filter((id) => !known.has(id) && !this.requested.has(id));
+			for (const id of missing) {
+				this.requested.add(id);
+				this.media.get(id).subscribe({
+					next: (row) => this.tiles.update((tiles) => new Map([...tiles, [id, row.original_url]])),
+					error: () => undefined,
+				});
+			}
+		});
+	}
 
 	readonly templateOptions = computed(() =>
 		this.templates().map((row) => ({ value: row.code, label: labelIn(row.label, this.locale()) || row.code })),
@@ -60,7 +134,10 @@ export class OptionGroups {
 		this.translations();
 		return ROLES.map((value) => ({ value, label: this.transloco.translate(`role_name_${value}`) }));
 	});
-	readonly styleOptions = STYLES.map((value) => ({ value, label: value }));
+	/** Every look the shop draws, the same list as Admin › Attributes (the picture tiles and the four looks from the renders included). */
+	readonly styleOptions = OPTION_LOOKS.map((value) => ({ value, label: value }));
+	/** Picture looks take a swatch picture per value. */
+	readonly usesPicture = usesPicture;
 	readonly attributeOptions = computed(() =>
 		this.definitions()
 			.filter((row) => !this.groups().some((group) => group.attributeCode === row.code))
@@ -98,9 +175,10 @@ export class OptionGroups {
 	add(event: Select2UpdateEvent): void {
 		const definition = this.definitions().find((row) => row.code === event.value);
 		if (!definition) return;
-		const role = definition.defaultRole === 'descriptive' || definition.defaultRole === 'search'
-			? 'filter_only'
-			: definition.defaultRole;
+		const role =
+			definition.defaultRole === 'descriptive' || definition.defaultRole === 'search'
+				? 'filter_only'
+				: definition.defaultRole;
 		const group = {
 			attributeCode: definition.code,
 			label: definition.label,
@@ -155,9 +233,110 @@ export class OptionGroups {
 		const amount = value === '' ? undefined : Math.max(0, Math.round(Number(value)));
 		const terms = group.terms.map((term) => {
 			if (term.code !== code) return term;
-			const { priceDeltaINR: _dropped, ...rest } = term;
+			const rest = omit(term, 'priceDeltaINR');
 			return amount === undefined ? rest : { ...rest, priceDeltaINR: amount };
 		});
 		this.update(index, { terms });
+	}
+
+	termLabel(term: ProductOptionTerm): string {
+		return labelIn(term.label, this.locale()) || term.code;
+	}
+
+	/** The product's photos, then a library picture already chosen that is not one of them. */
+	swatchTiles(term: ProductOptionTerm): { id: string; url: string }[] {
+		const ids = [...this.photos()];
+		if (term.swatchAssetId && !ids.includes(term.swatchAssetId)) ids.push(term.swatchAssetId);
+		return ids.map((id) => ({ id, url: this.tiles().get(id) ?? PLACEHOLDER }));
+	}
+
+	/**
+	 * Tapping a photo makes it the value's swatch; tapping the chosen one again clears it. One of the product's own
+	 * photos stores no version of its own: the shop draws the version the product's gallery stores.
+	 */
+	chooseSwatch(index: number, group: ProductOptionGroup, code: string, assetId: string): void {
+		const terms = group.terms.map((term) => {
+			if (term.code !== code) return term;
+			const rest = omit(term, 'swatchAssetId', 'swatchVersionId');
+			return term.swatchAssetId === assetId ? rest : { ...rest, swatchAssetId: assetId };
+		});
+		this.update(index, { terms });
+	}
+
+	/**
+	 * Cut (brief P11): a square of the value's chosen picture, made a picture of its own; or the whole photo again. A cut
+	 * keeps its own version (Swatch cut 1:1); the whole photo draws the version the product's gallery stores.
+	 */
+	async openCut(index: number, group: ProductOptionGroup, term: ProductOptionTerm): Promise<void> {
+		const chosen = term.swatchAssetId;
+		if (!chosen) return;
+		const popup = this.modals.open(SwatchCut, {
+			size: 'xl',
+			centered: true,
+			scrollable: true,
+			ariaLabelledBy: 'swatch_cut_title',
+			windowClass: 'theme-modal',
+		});
+		void (popup.componentInstance as SwatchCut).start({
+			pictureId: chosen,
+			valueName: this.termLabel(term),
+			price: term.priceDeltaINR ?? null,
+		});
+		const result = (await popup.result.catch(() => null)) as SwatchCutResult | null;
+		if (!result) return;
+		const id = result.kind === 'cut' ? result.id : result.photoId;
+		// Until the cut's own files are made, its tile shows the picture it was cut from.
+		const shown = this.tiles().get(chosen);
+		if (shown && !this.tiles().has(id)) this.tiles.update((tiles) => new Map([...tiles, [id, shown]]));
+		const terms = group.terms.map((row) => {
+			if (row.code !== term.code) return row;
+			const rest = omit(row, 'swatchVersionId');
+			return {
+				...rest,
+				swatchAssetId: id,
+				...(result.kind === 'cut' ? { swatchVersionId: result.versionId } : {}),
+			};
+		});
+		this.update(index, { terms });
+	}
+
+	/** The Media picker (media step 4d): any photo, one at a time. */
+	async openLibrary(index: number, code: string): Promise<void> {
+		this.target = { index, code };
+		const popup = this.modals.open(FmPicker, {
+			size: 'xl',
+			windowClass: 'theme-modal media-modal fm-picker',
+			scrollable: true,
+		});
+		(popup.componentInstance as FmPicker).start({
+			title: 'fm_pick_title_swatch',
+			accept: 'image',
+			max: 1,
+			already: 0,
+			profile: null,
+		});
+		const picked = (await popup.result.catch(() => null)) as FmPicked[] | null;
+		const row = picked?.[0];
+		if (row)
+			this.fromLibrary({ id: row.assetId, original_url: row.thumbnailUrl ?? '' } as IAttachment, row.versionId);
+	}
+
+	/**
+	 * A picture from the library: any image, such as a fabric close-up, or one just uploaded. It keeps the version
+	 * chosen in the picker, so the swatch never silently changes version.
+	 */
+	fromLibrary(picked: IAttachment | IAttachment[], versionId: string | null = null): void {
+		const row = Array.isArray(picked) ? picked[0] : picked;
+		const target = this.target;
+		const group = target ? this.groups()[target.index] : undefined;
+		if (!row || !target || !group) return;
+		const id = String(row.id);
+		this.tiles.update((tiles) => new Map([...tiles, [id, row.original_url]]));
+		const terms = group.terms.map((term) => {
+			if (term.code !== target.code) return term;
+			const rest = omit(term, 'swatchVersionId');
+			return { ...rest, swatchAssetId: id, ...(versionId ? { swatchVersionId: versionId } : {}) };
+		});
+		this.update(target.index, { terms });
 	}
 }

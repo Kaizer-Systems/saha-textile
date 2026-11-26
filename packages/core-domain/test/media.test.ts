@@ -1,8 +1,9 @@
 import type { AuditLog, MediaAsset, MediaRoleDefinition } from '@saha-textile/contracts';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
 	ImageDecodeError,
+	SEEDED_MEDIA_PROFILES,
 	SEEDED_MEDIA_ROLES,
 	checkIngest,
 	checkReviewPhotos,
@@ -57,13 +58,21 @@ describe('checkIngest — the locked caps', () => {
 		expect(checkIngest({ ...base, width: 1600, height: 2133 })).toEqual({ refusal: null, warnings: [] });
 	});
 	it('refuses types, bytes, pixels and the product floor', () => {
-		expect(checkIngest({ ...base, contentType: 'image/webp', width: 1600, height: 2133 }).refusal?.code).toBe(
-			'type_not_accepted',
-		);
+		// WebP, GIF and AVIF are read since media step 5 (AVIF as an upload only, owner 16 Nov); TIFF waits.
+		for (const contentType of ['image/tiff', 'image/bmp']) {
+			expect(checkIngest({ ...base, contentType, width: 1600, height: 2133 }).refusal?.code).toBe(
+				'type_not_accepted',
+			);
+		}
+		for (const contentType of ['image/webp', 'image/gif', 'image/avif']) {
+			expect(checkIngest({ ...base, contentType, width: 1600, height: 2133 }).refusal).toBeNull();
+		}
 		expect(checkIngest({ ...base, byteSize: 26 * 1024 * 1024, width: 1600, height: 2133 }).refusal?.code).toBe(
 			'too_large',
 		);
-		expect(checkIngest({ ...base, width: 8001, height: 6000 }).refusal?.code).toBe('too_many_pixels');
+		// 8192 px since decision 8 (a 48 MP iPhone photo is 8064 × 6048); the 50 MP cap stays.
+		expect(checkIngest({ ...base, width: 8064, height: 6048 }).refusal).toBeNull();
+		expect(checkIngest({ ...base, width: 8193, height: 6000 }).refusal?.code).toBe('too_many_pixels');
 		expect(checkIngest({ ...base, width: 7900, height: 7000 }).refusal?.code).toBe('too_many_pixels');
 		expect(checkIngest({ ...base, width: 1500, height: 2000 }).refusal?.code).toBe('below_minimum');
 	});
@@ -84,7 +93,7 @@ describe('planDerivatives — the locked ladder', () => {
 			roles: SEEDED_MEDIA_ROLES,
 			servesAsPrimary: false,
 		});
-		expect(widthsOf(plan, 'card')).toEqual([200, 400, 700, 960]);
+		expect(widthsOf(plan, 'card')).toEqual([200, 400, 600, 700, 960]);
 		expect(widthsOf(plan, 'gallery')).toEqual([600, 900, 1200, 1600]);
 		expect(widthsOf(plan, 'zoom')).toEqual([2000]);
 		expect(widthsOf(plan, 'swatch_image')).toEqual([80, 160, 240]);
@@ -150,18 +159,20 @@ describe('planDerivatives — the locked ladder', () => {
 });
 
 describe('planDerivatives — the Brand Kit', () => {
-	it('keeps a logo see-through, with PNG icons', () => {
+	it('keeps a logo see-through, with square PNG icons on white', () => {
 		const plan = planDerivatives({
 			asset: asset({ purpose: 'brand' }),
-			source: { width: 1200, height: 1200 },
+			source: { width: 960, height: 957 },
 			roles: SEEDED_MEDIA_ROLES,
 			servesAsPrimary: false,
 		});
 		expect(widthsOf(plan, 'brand_icon')).toEqual([32, 48, 180, 192, 512]);
-		expect(plan.derivatives.find((row) => row.role === 'brand_icon')?.spec).toMatchObject({
-			format: 'image/png',
-			keepAlpha: true,
-		});
+		const icons = plan.derivatives.filter((row) => row.role === 'brand_icon').map((row) => row.spec);
+		for (const icon of icons) {
+			expect(icon).toMatchObject({ format: 'image/png', fit: 'pad', height: icon.width });
+			expect(icon).not.toHaveProperty('keepAlpha');
+		}
+		expect(plan.derivatives.find((row) => row.role === 'brand_logo')?.spec).toMatchObject({ keepAlpha: true });
 	});
 });
 
@@ -206,6 +217,33 @@ class FakeAssets implements MediaAssetRepository {
 	constructor(seed: MediaAsset[]) {
 		for (const row of seed) this.rows.set(row.id, row);
 	}
+	/** Reprocess, Replace and focal point (media step 3) are not exercised here. */
+	async addVersions() {
+		return null;
+	}
+	async removeVersion() {
+		return null;
+	}
+	async startReplace() {
+		return null;
+	}
+	async moveReplace() {
+		return null;
+	}
+	async finishReplace() {
+		return null;
+	}
+	async setFocal() {}
+	async listWithOlderVersions() {
+		return [];
+	}
+	async refreshCounts() {
+		return { older: 0, running: 0, failed: 0 };
+	}
+	async listKeptDue() {
+		return [];
+	}
+	async dropKept() {}
 	async findById(id: string) {
 		return this.rows.get(id) ?? null;
 	}
@@ -240,6 +278,19 @@ class FakeAssets implements MediaAssetRepository {
 	async listStaleForRole() {
 		return [];
 	}
+	async settleVersions(input: Parameters<MediaAssetRepository['settleVersions']>[0]) {
+		const row = this.rows.get(input.assetId);
+		if (!row) return null;
+		const byId = new Map(input.versions.map((version) => [version.id, version]));
+		const next = {
+			...row,
+			...input.set,
+			derivatives: [...row.derivatives, ...input.addDerivatives],
+			versions: row.versions?.map((version) => byId.get(version.id) ?? version),
+		};
+		this.rows.set(row.id, next);
+		return next;
+	}
 	async listLiveCreatedBefore(input: { createdBefore: string; afterId: string | null; limit: number }) {
 		return [...this.rows.values()]
 			.filter(
@@ -271,6 +322,11 @@ class FakeAssets implements MediaAssetRepository {
 const storage = (bytes = new Uint8Array([1, 2, 3])) => {
 	const uploads: { key: string; visibility?: string; cacheControl?: string }[] = [];
 	const port: StoragePort = {
+		listKeys: async function* () {},
+		readStream: async function* () {
+			yield bytes;
+		},
+		uploadStream: async () => ({ bytes: 0 }),
 		upload: async (input) => {
 			uploads.push(input);
 			return { key: input.key, url: `https://cdn.test/${input.key}` };
@@ -282,6 +338,11 @@ const storage = (bytes = new Uint8Array([1, 2, 3])) => {
 		setVisibility: async () => {},
 		createSignedDownloadUrl: async ({ key }) => `https://signed.test/${key}`,
 		createSignedUploadUrl: async ({ key }) => ({ url: `https://upload.test/${key}` }),
+		startMultipartUpload: async () => ({ uploadId: 'upload_1' }),
+		createSignedPartUrl: async ({ partNumber }) => `https://upload.test/part/${partNumber}`,
+		listUploadedParts: async () => [],
+		completeMultipartUpload: async () => undefined,
+		abortMultipartUpload: async () => undefined,
 	};
 	return { port, uploads };
 };
@@ -345,6 +406,97 @@ describe('processMediaAsset', () => {
 		).toBe(true);
 		expect(store.uploads.every((upload) => upload.cacheControl?.includes('immutable'))).toBe(true);
 		expect(jobs.jobs).toEqual([]);
+	});
+
+	it('names each new file under the version it is, keeping per-photo pictures apart (media step 2a)', async () => {
+		const assets = new FakeAssets([asset({ servesAsPrimary: true })]);
+		const profiles = {
+			list: async () =>
+				SEEDED_MEDIA_PROFILES.map((row) => (row.key === 'product_3x4' ? { ...row, version: 3 } : row)),
+		};
+		const deps = {
+			assets,
+			roles,
+			storage: storage().port,
+			// A square photo: today's plan pads it on white to 3:4.
+			codec: codec({ width: 3000, height: 3000, format: 'jpeg', hasAlpha: false }),
+			queue: queue().port,
+			now,
+			profiles,
+		};
+		await processMediaAsset(deps, { assetId: 'med_1', reprocess: false });
+		const saved = assets.rows.get('med_1');
+		expect(saved?.versions).toEqual([
+			{
+				id: 'product_3x4.white',
+				profileKey: 'product_3x4',
+				profileVersion: 3,
+				fill: 'white',
+				state: 'ready',
+				createdAt: '2026-11-02T00:00:00.000Z',
+			},
+		]);
+		const perPhoto = saved?.derivatives.filter((row) => row.versionId === null).map((row) => row.role);
+		expect(new Set(perPhoto)).toEqual(new Set(['share', 'story', 'feed_square', 'email_thumb']));
+		expect(
+			saved?.derivatives
+				.filter((row) => row.role === 'gallery')
+				.every((row) => row.versionId === 'product_3x4.white'),
+		).toBe(true);
+
+		// Run again later: the version keeps its first date.
+		await processMediaAsset(
+			{ ...deps, now: () => new Date('2026-12-01T00:00:00.000Z') },
+			{ assetId: 'med_1', reprocess: true },
+		);
+		expect(assets.rows.get('med_1')?.versions?.[0]?.createdAt).toBe('2026-11-02T00:00:00.000Z');
+	});
+
+	it('puts the Brand Kit logo on the preview card only, reading it once, and draws the tall card', async () => {
+		const assets = new FakeAssets([asset({ servesAsPrimary: true })]);
+		const specs: Parameters<ImageCodecPort['render']>[1][] = [];
+		const base = codec({ width: 3000, height: 4000, format: 'jpeg', hasAlpha: false });
+		const logo = new Uint8Array([9]);
+		const brandLogo = vi.fn(async () => logo);
+		await processMediaAsset(
+			{
+				assets,
+				roles,
+				storage: storage().port,
+				codec: { ...base, render: (bytes, spec) => (specs.push(spec), base.render(bytes, spec)) },
+				queue: queue().port,
+				now,
+				brandLogo,
+			},
+			{ assetId: 'med_1', reprocess: false },
+		);
+		expect(specs.filter((spec) => spec.stripLogo).map((spec) => [spec.fit, spec.width])).toEqual([['blur', 1200]]);
+		expect(specs.find((spec) => spec.fit === 'story')).toMatchObject({ width: 1080, height: 1920 });
+		expect(brandLogo).toHaveBeenCalledOnce();
+		expect(assets.rows.get('med_1')?.derivatives.some((row) => row.role === 'story')).toBe(true);
+	});
+
+	it('leaves the preview card plain when the shop has no logo', async () => {
+		const assets = new FakeAssets([asset({ servesAsPrimary: true })]);
+		const specs: Parameters<ImageCodecPort['render']>[1][] = [];
+		const base = codec({ width: 3000, height: 4000, format: 'jpeg', hasAlpha: false });
+		const deps = {
+			assets,
+			roles,
+			storage: storage().port,
+			codec: {
+				...base,
+				render: (bytes: Uint8Array, spec: Parameters<ImageCodecPort['render']>[1]) => (
+					specs.push(spec),
+					base.render(bytes, spec)
+				),
+			},
+			queue: queue().port,
+			now,
+		};
+		await processMediaAsset({ ...deps, brandLogo: async () => null }, { assetId: 'med_1', reprocess: false });
+		await processMediaAsset(deps, { assetId: 'med_1', reprocess: true });
+		expect(specs.some((spec) => spec.stripLogo)).toBe(false);
 	});
 
 	it('deletes an upload that is not really an image', async () => {
@@ -427,7 +579,7 @@ describe('resolveImage', () => {
 			asset: asset({
 				width: 3000,
 				height: 4000,
-				text: { alt: { en: 'Red saree', fr: 'Sari rouge' }, title: {}, caption: {} },
+				text: { alt: { en: 'Red saree', bn: 'লাল শাড়ি' }, title: {}, caption: {} },
 				derivatives: [
 					{
 						role: 'card',
@@ -450,12 +602,12 @@ describe('resolveImage', () => {
 				],
 			}),
 			getUrl: (key) => `https://cdn.test/${key}`,
-			locale: 'fr',
+			locale: 'bn',
 			fallbackLocale: 'en',
 			altOverride: { en: 'Override' },
 		});
 		expect(resolved?.roles.card?.map((source) => source.width)).toEqual([200, 400]);
-		expect(resolved?.alt).toBe('Sari rouge');
+		expect(resolved?.alt).toBe('লাল শাড়ি');
 
 		const cardOnly = resolveImage({
 			asset: asset({
@@ -583,6 +735,22 @@ describe('runMediaGarbageCollection', () => {
 		expect(log.entries[0]?.action).toBe('media.gc.run');
 	});
 
+	it('leaves the files kept on the Media page alone: plain files, named, in a folder or in Trash', async () => {
+		const old = '2026-09-01T00:00:00.000Z';
+		const assets = new FakeAssets([
+			asset({ id: 'form_orphan', createdAt: old }),
+			asset({ id: 'plain_file', kind: 'file', originalFormat: 'application/pdf', createdAt: old }),
+			asset({ id: 'named', displayName: 'red-banarasi.jpg', createdAt: old }),
+			asset({ id: 'in_folder', folderId: 'fld_1', createdAt: old }),
+			asset({ id: 'in_trash', trashedAt: '2026-10-01T00:00:00.000Z', createdAt: old }),
+		]);
+		const report = await runMediaGarbageCollection(
+			{ assets, storage: storage().port, queue: queue().port, audit: audit().port, now, newId: () => 'aud_1' },
+			{ dryRun: false },
+		);
+		expect(report.softDeleted).toEqual(['form_orphan']);
+	});
+
 	it('writes nothing in a dry run', async () => {
 		const assets = new FakeAssets([asset({ id: 'orphan', createdAt: '2026-09-01T00:00:00.000Z' })]);
 		const report = await runMediaGarbageCollection(
@@ -617,5 +785,21 @@ describe('reconcileSeededRoles', () => {
 		expect(stored.get('share')).toMatchObject({ fit: 'blur', version: 2 });
 		expect(stored.get('card')).toMatchObject({ widths: [200, 400, 800], quality: 75 });
 		expect(stored.size).toBe(SEEDED_MEDIA_ROLES.length);
+	});
+
+	it('redraws only the preview card when the logo strip arrives, not roles stored before the field existed', async () => {
+		const { reconcileSeededRoles } = await import('../src/index.js');
+		const stored = new Map<string, MediaRoleDefinition>(
+			SEEDED_MEDIA_ROLES.filter((role) => role.key !== 'story').map((role) => {
+				const { brandStrip: _strip, ...older } = role;
+				return [role.key, older as MediaRoleDefinition];
+			}),
+		);
+		const changed = await reconcileSeededRoles({
+			list: async () => [...stored.values()],
+			save: async (role: MediaRoleDefinition) => (stored.set(role.key, role), role),
+		});
+		expect(changed.sort()).toEqual(['share', 'story']);
+		expect(stored.get('share')).toMatchObject({ brandStrip: true, version: 2 });
 	});
 });

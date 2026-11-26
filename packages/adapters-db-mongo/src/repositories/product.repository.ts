@@ -27,6 +27,15 @@ function statusClause(audience: CatalogAudience | undefined, requested?: Product
 	return statuses === undefined ? {} : { status: { $in: statuses } };
 }
 
+/**
+ * What shoppers may find: live AND shown on the shop (D5). Lists, slugs and the sitemap use this; a read by id
+ * does not, because a hidden product is still sold as a set piece, an extra or a free item.
+ */
+function shopClause(audience: CatalogAudience | undefined, requested?: Product['status']) {
+	const base = statusClause(audience, requested);
+	return (audience ?? 'public') === 'public' ? { ...base, showOnShop: { $ne: false } } : base;
+}
+
 export class MongoProductRepository implements ProductRepository {
 	async findById(id: string, audience: CatalogAudience = 'public'): Promise<Product | null> {
 		const doc = await ProductModel.findOne({ _id: id, ...statusClause(audience) })
@@ -36,7 +45,7 @@ export class MongoProductRepository implements ProductRepository {
 	}
 
 	async findBySlug(slug: string, audience: CatalogAudience = 'public'): Promise<Product | null> {
-		const doc = await ProductModel.findOne({ slug, ...statusClause(audience) })
+		const doc = await ProductModel.findOne({ slug, ...shopClause(audience) })
 			.lean<ProductDoc>()
 			.exec();
 		return doc ? toProduct(doc) : null;
@@ -44,7 +53,7 @@ export class MongoProductRepository implements ProductRepository {
 
 	async categorySummaries(): Promise<CategorySummary[]> {
 		const rows = await ProductModel.aggregate<{ _id: string; count: number; cover: string | null }>([
-			{ $match: statusClause('public') },
+			{ $match: shopClause('public') },
 			{ $sort: { _id: 1 } },
 			{ $unwind: '$categoryIds' },
 			{
@@ -59,13 +68,17 @@ export class MongoProductRepository implements ProductRepository {
 	}
 
 	async list(filter: ProductFilter): Promise<Paginated<Product>> {
-		const query: Record<string, unknown> = { ...statusClause(filter.audience, filter.status) };
+		const query: Record<string, unknown> = { ...shopClause(filter.audience, filter.status) };
+		if (filter.type) query.type = filter.type;
+		if (filter.shop === 'hidden') query.showOnShop = false;
+		if (filter.shop === 'shown') query.showOnShop = { $ne: false };
 		if (filter.categoryId) query.categoryIds = filter.categoryId;
 		if (filter.categoryIds && filter.categoryIds.length > 0) query.categoryIds = { $in: filter.categoryIds };
 		if (filter.featured) query.featured = true;
 		if (filter.onSale) query.onSale = true;
 		if (filter.insight) query.insightBadges = filter.insight;
 		if (filter.tag) query.tags = filter.tag;
+		if (filter.ids) query._id = { $in: [...filter.ids] };
 		if (filter.search) {
 			const rx = new RegExp(escapeRegex(filter.search), 'i');
 			query.$or = [{ slug: rx }, { sku: rx }, { 'title.en': rx }, { tags: rx }];
@@ -100,6 +113,18 @@ export class MongoProductRepository implements ProductRepository {
 		return toProduct(doc as ProductDoc);
 	}
 
+	async listByMainCategory(categoryId: string): Promise<Product[]> {
+		const docs = await ProductModel.find({ 'categoryIds.0': categoryId }).lean<ProductDoc[]>().exec();
+		return docs.map(toProduct);
+	}
+
+	async listWithVideos(): Promise<Product[]> {
+		const docs = await ProductModel.find({ 'videos.0': { $exists: true } })
+			.lean<ProductDoc[]>()
+			.exec();
+		return docs.map(toProduct);
+	}
+
 	async deleteById(id: string): Promise<void> {
 		await ProductModel.deleteOne({ _id: id }).exec();
 	}
@@ -119,7 +144,18 @@ export class MongoProductRepository implements ProductRepository {
 	}
 
 	async listPublicSlugs(): Promise<string[]> {
-		const docs = await ProductModel.find({ status: 'live' }).select('slug').lean<Array<{ slug: string }>>().exec();
+		const docs = await ProductModel.find({ status: 'live', showOnShop: { $ne: false } })
+			.select('slug')
+			.lean<Array<{ slug: string }>>()
+			.exec();
 		return docs.map((doc) => doc.slug);
+	}
+
+	async findPublicSlugBySku(sku: string): Promise<string | null> {
+		const doc = await ProductModel.findOne({ sku, status: 'live', showOnShop: { $ne: false } })
+			.select('slug')
+			.lean<{ slug: string } | null>()
+			.exec();
+		return doc?.slug ?? null;
 	}
 }

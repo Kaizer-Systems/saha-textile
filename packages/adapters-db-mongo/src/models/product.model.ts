@@ -37,6 +37,19 @@ export interface ProductDoc {
 	lowStockThreshold?: number | null;
 	lifetimeUnitsReceived?: number;
 	featured?: boolean;
+	/** Show on shop (D5); absent on rows written before 22 Nov 2026 means shown. */
+	showOnShop?: boolean;
+	freeWith?: unknown;
+	faqEnabled?: boolean;
+	videos?: Array<{
+		videoId: string;
+		title: string;
+		thumbnailUrl: string;
+		kind: 'video' | 'short';
+		durationSeconds: number;
+		publishedAt?: string;
+		unavailableSince?: string | null;
+	}>;
 	insightBadges?: Array<'bestseller' | 'trending'>;
 	pinnedBadges?: string[];
 	hiddenBadges?: string[];
@@ -53,7 +66,19 @@ export interface ProductDoc {
 		widthCm: number | null;
 		heightCm: number | null;
 	} | null;
+	shippingCharges?: {
+		domesticINR: number | null;
+		internationalFirstINR: number | null;
+		internationalFurtherINR: number | null;
+	} | null;
+	freeShipping?: boolean;
 	hsnCode?: string | null;
+	soldBy?: 'piece' | 'metre';
+	returnable?: boolean | null;
+	shortestCutTenths?: number | null;
+	quickLengths?: Array<{ tenths: number; label: Record<string, string> }>;
+	widthInches?: number | null;
+	weightPerMetreGrams?: number | null;
 	createdAt?: Date;
 	updatedAt?: Date;
 }
@@ -88,6 +113,10 @@ const ProductSchema = new Schema<ProductDoc>(
 		lowStockThreshold: { type: Number, default: null },
 		lifetimeUnitsReceived: { type: Number, default: 0 },
 		featured: { type: Boolean, default: false },
+		showOnShop: { type: Boolean, default: true },
+		freeWith: { type: Schema.Types.Mixed, default: null },
+		faqEnabled: { type: Boolean, default: false },
+		videos: { type: [Schema.Types.Mixed], default: [] },
 		insightBadges: { type: [String], default: [] },
 		pinnedBadges: { type: [String], default: [] },
 		hiddenBadges: { type: [String], default: [] },
@@ -99,7 +128,26 @@ const ProductSchema = new Schema<ProductDoc>(
 		addonPriceINR: { type: Number, default: null },
 		onSale: { type: Boolean, default: false },
 		shippingDefaults: { type: Schema.Types.Mixed, default: null },
+		shippingCharges: {
+			type: new Schema(
+				{
+					domesticINR: { type: Number, default: null },
+					internationalFirstINR: { type: Number, default: null },
+					internationalFurtherINR: { type: Number, default: null },
+				},
+				{ _id: false },
+			),
+			default: null,
+		},
+		freeShipping: { type: Boolean, default: false },
 		hsnCode: { type: String, default: null },
+		soldBy: { type: String, enum: ['piece', 'metre'], default: 'piece' },
+		returnable: { type: Boolean, default: null },
+		// Fabric by the metre (shop brief A01): quantities in tenths of a metre.
+		shortestCutTenths: { type: Number, default: null },
+		quickLengths: { type: [Schema.Types.Mixed], default: [] },
+		widthInches: { type: Number, default: null },
+		weightPerMetreGrams: { type: Number, default: null },
 	},
 	{ collection: 'products', timestamps: true },
 );

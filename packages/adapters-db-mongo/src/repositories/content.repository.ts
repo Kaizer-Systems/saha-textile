@@ -16,6 +16,7 @@ import {
 	FaqEntryModel,
 	type FaqEntryDoc,
 	OrderModel,
+	ProductModel,
 	ProductQuestionModel,
 	type ProductQuestionDoc,
 	RatingAggregateModel,
@@ -53,6 +54,7 @@ export class MongoFaqRepository implements FaqRepository {
 		if (filter.audience !== 'admin') query.status = 'live';
 		if (filter.categoryId) query.categoryIds = filter.categoryId;
 		if (filter.productId) query.productIds = filter.productId;
+		if (filter.ids) query._id = { $in: [...filter.ids] };
 
 		const page = filter.page && filter.page > 0 ? filter.page : 1;
 		const pageSize = filter.pageSize && filter.pageSize > 0 ? filter.pageSize : 50;
@@ -77,17 +79,30 @@ export class MongoFaqRepository implements FaqRepository {
 	 * DEDUPED by id, because an entry with `mixed` scope can match through both its category
 	 * and its product target and would otherwise render twice on the same page.
 	 */
-	async resolveForSurface(input: { categoryIds?: readonly string[]; productId?: string }): Promise<FaqEntry[]> {
-		const or: Array<Record<string, unknown>> = [{ scope: 'global' }];
+	async resolveForSurface(input: {
+		categoryIds?: readonly string[];
+		productId?: string;
+		includeGlobal?: boolean;
+	}): Promise<FaqEntry[]> {
+		const or: Array<Record<string, unknown>> = input.includeGlobal === false ? [] : [{ scope: 'global' }];
 		if (input.categoryIds?.length) or.push({ categoryIds: { $in: [...input.categoryIds] } });
 		if (input.productId) or.push({ productIds: input.productId });
 
+		if (!or.length) return [];
 		const docs = await FaqEntryModel.find({ status: 'live', $or: or })
 			.sort({ displayOrder: 1 })
 			.lean<FaqEntryDoc[]>()
 			.exec();
 
 		return dedupeById(docs.map(toFaq));
+	}
+
+	async listForProduct(productId: string): Promise<FaqEntry[]> {
+		const docs = await FaqEntryModel.find({ scope: 'product', productIds: productId })
+			.sort({ displayOrder: 1, _id: 1 })
+			.lean<FaqEntryDoc[]>()
+			.exec();
+		return docs.map(toFaq);
 	}
 
 	async save(entry: FaqEntry): Promise<FaqEntry> {
@@ -153,6 +168,14 @@ export class MongoProductQuestionRepository implements ProductQuestionRepository
 		const query: Record<string, unknown> = {};
 		if (filter.productId) query.productId = filter.productId;
 		if (filter.status) query.status = filter.status;
+		// Every word must appear somewhere: in the question, the asker's name or their email.
+		const words = (filter.search ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 8);
+		if (words.length) {
+			query.$and = words.map((word) => {
+				const pattern = new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+				return { $or: [{ question: pattern }, { askerName: pattern }, { askerEmail: pattern }] };
+			});
+		}
 
 		const page = filter.page && filter.page > 0 ? filter.page : 1;
 		const pageSize = filter.pageSize && filter.pageSize > 0 ? filter.pageSize : 20;
@@ -224,9 +247,13 @@ export class MongoProductQuestionRepository implements ProductQuestionRepository
 	async updateStatus(questionId: string, status: ProductQuestion['status']): Promise<void> {
 		await ProductQuestionModel.updateOne({ _id: questionId }, { $set: { status } }).exec();
 	}
+
+	async deleteById(questionId: string): Promise<void> {
+		await ProductQuestionModel.deleteOne({ _id: questionId }).exec();
+	}
 }
 
-const toReview = (doc: ReviewDoc): Review =>
+export const toReview = (doc: ReviewDoc): Review =>
 	({
 		id: doc._id,
 		productId: doc.productId,
@@ -300,9 +327,62 @@ export class MongoReviewRepository implements ReviewRepository {
 		const count = await OrderModel.countDocuments({
 			userId: input.userId,
 			'lines.productId': input.productId,
-			status: { $in: ['delivered', 'completed'] },
+			status: 'delivered',
 		}).exec();
 		return count > 0;
+	}
+
+	async findReviewableOrderId(input: { userId: string; productId: string }): Promise<string | null> {
+		const order = await OrderModel.findOne({
+			userId: input.userId,
+			'lines.productId': input.productId,
+			status: 'delivered',
+		})
+			.sort({ createdAt: -1 })
+			.select('_id')
+			.lean<{ _id: string }>()
+			.exec();
+		return order ? String(order._id) : null;
+	}
+
+	async findByUserAndProduct(input: { userId: string; productId: string }): Promise<Review | null> {
+		const doc = await ReviewModel.findOne({ userId: input.userId, productId: input.productId })
+			.sort({ createdAt: -1 })
+			.lean<ReviewDoc>()
+			.exec();
+		return doc ? toReview(doc) : null;
+	}
+
+	async updateByAuthor(
+		input: {
+			reviewId: string;
+			userId: string;
+			rating: number;
+			title: string | null;
+			body: string;
+			imageAssetIds: string[];
+		},
+		context?: TransactionContext,
+	): Promise<Review | null> {
+		const doc = await ReviewModel.findOneAndUpdate(
+			{ _id: input.reviewId, userId: input.userId },
+			{
+				$set: {
+					rating: input.rating,
+					title: input.title,
+					body: input.body,
+					imageAssetIds: input.imageAssetIds,
+					status: 'pending',
+					moderatedByUserId: null,
+					moderatedAt: null,
+					moderationNote: null,
+				},
+			},
+			{ returnDocument: 'after', session: sessionFrom(context) },
+		)
+			.lean<ReviewDoc>()
+			.exec();
+		return doc ? toReview(doc) : null;
 	}
 
 	async create(review: Review): Promise<Review> {
@@ -387,6 +467,12 @@ export class MongoReviewRepository implements ReviewRepository {
 			productId,
 			{ $set: { average, count, buckets } },
 			{ upsert: true, setDefaultsOnInsert: true, session },
+		).exec();
+		// Cards, listings and search read the product's own summary; it must say the same.
+		await ProductModel.updateOne(
+			{ _id: productId },
+			{ $set: { ratingsSummary: { avg: Number(average.toFixed(1)), count } } },
+			{ session },
 		).exec();
 
 		return { productId, average, count, buckets, updatedAt: new Date().toISOString() };

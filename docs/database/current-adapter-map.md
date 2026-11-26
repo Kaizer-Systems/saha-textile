@@ -4,7 +4,7 @@ description: Mongoose models, repositories, mappers, seed tools and local replic
 search_keywords: 'mongo rs0 replica set connection uri directConnection models indexes repositories'
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-16'
 source_of_truth:
     - packages/adapters-db-mongo/src/models
     - packages/adapters-db-mongo/src/repositories
@@ -25,21 +25,28 @@ This page maps the models, repositories and mappers in `packages/adapters-db-mon
 
 ## Model inventory
 
-| Family                   | Physical collections                                                                                                                                                          | Used by                                         |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| Catalogue                | `categories`, `products`, `productVariants`, `categoryPlacements`, `categoryFacetConfigs`, `attributeDefinitions`, `productBundles`, `productRelations`                       | Public catalogue and admin product form         |
-| Catalogue operations     | `addonTemplates`, `seoRedirects`, `seoRoutes`                                                                                                                                 | Admin catalogue routes and storefront head data |
-| Merchandising            | `stockAlerts`, `productInsightSets`                                                                                                                                           | Stock alert route and weekly worker jobs        |
-| Commerce                 | `carts`, `orders`, `promotions`, `currencies`                                                                                                                                 | Cart, order, promotion and currency routes      |
-| Accounts                 | `customers`, `adminUsers`                                                                                                                                                     | Storefront and admin                            |
-| Credentials and identity | `passwordCredentials`, `pinCredentials`, `authIdentities`                                                                                                                     | Sign-in and identity linking                    |
-| Auth runtime             | `authSessions`, `otpChallenges`, `oauthStates`, `passwordResetTokens`, `emailVerificationTokens`, `adminInvites`, `authRateLimits`, `pendingSignups`, `pendingContactChanges` | Session, recovery, signup and contact flows     |
-| Authorization            | `roles`, `adminUserRoleAssignments`                                                                                                                                           | Admin authority routes                          |
-| Privacy                  | `consentEvents`                                                                                                                                                               | Consent routes                                  |
-| Governance               | `auditLogs`, `notificationChannelSettings`, `notificationTemplates`, `messageOutbox`                                                                                          | Audit, notification settings, MSG91 adapter     |
-| Media and settings       | `mediaAssets`, `mediaRoles`, `contentBlocks`, `siteSettings`                                                                                                                  | Media library, banners, YouTube settings        |
-| Content                  | `faqEntries`, `productQuestions`, `reviews`, `ratingAggregates`                                                                                                               | FAQ, questions and reviews                      |
-| Inventory                | `inventoryLedger`, `inventoryCostLayers`                                                                                                                                      | Repository only; no HTTP workflow               |
+| Family                   | Physical collections                                                                                                                                                          | Used by                                                 |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Catalogue                | `categories`, `products`, `productVariants`, `categoryPlacements`, `categoryFacetConfigs`, `attributeDefinitions`, `productBundles`, `productRelations`                       | Public catalogue and admin product form                 |
+| Catalogue operations     | `addonTemplates`, `seoRedirects`, `seoRoutes`                                                                                                                                 | Admin catalogue routes and storefront head data         |
+| Merchandising            | `stockAlerts`, `productInsightSets`                                                                                                                                           | Stock alert route and weekly worker jobs                |
+| Commerce                 | `carts`, `orders`, `promotions`, `currencies`                                                                                                                                 | Cart, order, promotion and currency routes              |
+| Accounts                 | `customers`, `adminUsers`                                                                                                                                                     | Storefront and admin                                    |
+| Credentials and identity | `passwordCredentials`, `pinCredentials`, `authIdentities`                                                                                                                     | Sign-in and identity linking                            |
+| Auth runtime             | `authSessions`, `otpChallenges`, `oauthStates`, `passwordResetTokens`, `emailVerificationTokens`, `adminInvites`, `authRateLimits`, `pendingSignups`, `pendingContactChanges` | Session, recovery, signup and contact flows             |
+| Authorization            | `roles`, `adminUserRoleAssignments`                                                                                                                                           | Admin authority routes                                  |
+| Privacy                  | `consentEvents`                                                                                                                                                               | Consent routes                                          |
+| Governance               | `auditLogs`, `notificationChannelSettings`, `communicationSwitches`, `notificationTemplates`, `messageOutbox`                                                                 | Audit, notification settings, MSG91 adapter             |
+| Media and settings       | `mediaAssets`, `mediaRoles`, `mediaProfiles`, `contentBlocks`, `siteSettings`                                                                                                 | Media library, banners, YouTube settings                |
+| Content                  | `faqEntries`, `productQuestions`, `reviews`, `ratingAggregates`                                                                                                               | FAQ, questions and reviews                              |
+| Inventory                | `inventoryLedger`, `inventoryCostLayers`                                                                                                                                      | Repository only; no HTTP workflow                       |
+| Search                   | `searchQueryAggregates`, `analyticsDailyAggregates`, `searchDictionary`                                                                                                       | Search totals, Trending and admin search words          |
+| Blog                     | `blogPosts`, `blogCategories`, `blogTags`                                                                                                                                     | Admin blog screens and the shop's blog                  |
+| Events                   | `shopEvents`                                                                                                                                                                  | Launch and sale events and their sale prices            |
+| Stores                   | `storeLocations`                                                                                                                                                              | Settings › Stores and Contact Us                        |
+| Mailboxes                | `mailboxes`, `mailboxAccess`, `contactMessages`, `mailboxOutbox`, `savedReplies`                                                                                              | Settings › Mailboxes, the admin inbox and Contact Us    |
+| Shipping                 | `shippingRuleSets`, `shippingRuleSetVersions`, `shippingExceptions`, `shippingProviderConfigs`                                                                                | Shipping rule sets, where they apply, and zone settings |
+| Wishlist                 | `wishlistItems`                                                                                                                                                               | A signed-in customer's saved products                   |
 
 ### Declared collection names
 
@@ -75,15 +82,20 @@ A manual adjustment needs a reason code, and `other` also needs a note. FIFO cos
 
 ## Index rules
 
-| Collection                 | Rule                                                                          |
-| -------------------------- | ----------------------------------------------------------------------------- |
-| `customers`                | Email and phone are unique among statuses other than `deleted`                |
-| `adminUserRoleAssignments` | One active row per operator and role. A revoked role can be granted again     |
-| `otpChallenges`            | One unconsumed challenge per identifier and purpose                           |
-| `adminInvites`             | One open invite per address. Accepted invites have no TTL and stay as records |
-| `categoryPlacements`       | A joined `pathKey` is unique, and each category has one canonical placement   |
-| `reviews`                  | One review per product, customer and order                                    |
-| `messageOutbox`            | One row per idempotency key                                                   |
+| Collection                                | Rule                                                                                                                                                        |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `customers`                               | Email and phone are unique among statuses other than `deleted`. A soft delete keeps the previous status in `statusBeforeDelete` and the time in `deletedAt` |
+| `adminUserRoleAssignments`                | One active row per operator and role. A revoked role can be granted again                                                                                   |
+| `otpChallenges`                           | One unconsumed challenge per identifier and purpose                                                                                                         |
+| `adminInvites`                            | One open invite per address. Accepted invites have no TTL and stay as records                                                                               |
+| `categoryPlacements`                      | A joined `pathKey` is unique, and each category has one canonical placement                                                                                 |
+| `reviews`                                 | One review per product, customer and order                                                                                                                  |
+| `messageOutbox`                           | One row per idempotency key                                                                                                                                 |
+| `blogPosts`, `blogCategories`, `blogTags` | The address (`slug`) is unique                                                                                                                              |
+| `mailboxes`                               | One row per mailbox address                                                                                                                                 |
+| `wishlistItems`                           | The id is `customerId:productId`, so saving twice is one row                                                                                                |
+| `contactMessages`                         | A TTL index deletes each message twelve months after it arrives                                                                                             |
+| `mailboxOutbox`                           | One row per queued Inbox message, claimed in one atomic step; a TTL index deletes each row seven days after it was written                                  |
 
 Sessions expire on their absolute limit. Audit logs, consent events and the stock ledger have no TTL.
 
@@ -121,16 +133,19 @@ The definition is in `docker/mongo/docker-compose.yml`. The default host port is
 
 ## Seed and migration tools
 
-| Command (in `@saha-textile/adapters-db-mongo`) | Effect                                                                                                                |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `seed`                                         | Base categories, products, currencies, a promotion and 70 sample customers                                            |
-| `seed:demo-catalogue`                          | The demo catalogue, placements, variants, templates and old addresses. Refuses a database without `local` in its name |
-| `seed:system-roles`                            | System roles. Run after adding a permission                                                                           |
-| `reconcile:indexes`                            | Bring database indexes in line with the models. Drops any index a model does not declare, and has a dry run           |
-| `align:collections`                            | Move data to declared collection names                                                                                |
-| `split:admin-users`                            | Move operators out of `customers` and rewrite their ids                                                               |
-| `extract:credentials`                          | Move embedded hashes into the credential collections                                                                  |
-| `rename:admin-user-permissions`                | Rewrite retired permission codes in stored grants                                                                     |
+| Command (in `@saha-textile/adapters-db-mongo`) | Effect                                                                                                                             |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `seed`                                         | Base categories, products, currencies, a promotion and 70 sample customers                                                         |
+| `seed:demo-catalogue`                          | The demo catalogue, placements, variants, templates and old addresses. Refuses a database without `local` in its name              |
+| `seed:system-roles`                            | System roles. Run after adding a permission                                                                                        |
+| `reconcile:indexes`                            | Bring database indexes in line with the models. Drops any index a model does not declare, and has a dry run                        |
+| `align:collections`                            | Move data to declared collection names                                                                                             |
+| `split:admin-users`                            | Move operators out of `customers` and rewrite their ids                                                                            |
+| `extract:credentials`                          | Move embedded hashes into the credential collections                                                                               |
+| `rename:admin-user-permissions`                | Rewrite retired permission codes in stored grants                                                                                  |
+| `migrate:french-to-bengali`                    | Count stored French text and addresses; with `-- --write`, fill Bengali and remove French. See [Languages](/maintenance/languages) |
+| `ratings:recompute`                            | Recompute every product's rating from its approved reviews. Safe to re-run; rebuild the search index afterwards                    |
+| `align:filter-values`                          | Local only: make the showcase catalogue's filter values agree with product titles and attribute lists                              |
 
 Old-address rows are in `src/seed/legacy-addresses.ts`. The seed writes only approved rows, and an unapproved row fails the seed. The first administrator is created by a [separate command](/api/route-inventory#admin-authorization-routes), not by seed data.
 

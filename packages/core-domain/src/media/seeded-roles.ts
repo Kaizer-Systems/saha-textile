@@ -2,7 +2,14 @@ import type { MediaRoleDefinition } from '@saha-textile/contracts';
 
 import type { MediaRoleRepository } from '../ports/media-role.repository';
 
-const role = (definition: Omit<MediaRoleDefinition, 'seeded' | 'version' | 'updatedAt'>): MediaRoleDefinition => ({
+const role = (
+	definition: Omit<MediaRoleDefinition, 'seeded' | 'version' | 'updatedAt' | 'brandStrip' | 'inset'> & {
+		brandStrip?: boolean;
+		inset?: number;
+	},
+): MediaRoleDefinition => ({
+	brandStrip: false,
+	inset: 0,
 	...definition,
 	seeded: true,
 	version: 1,
@@ -30,7 +37,9 @@ export const SEEDED_MEDIA_ROLES: readonly MediaRoleDefinition[] = [
 		key: 'card',
 		label: 'Product card and PDP thumbnail strip',
 		purposes: ['product', 'category'],
-		widths: [200, 400, 700, 960],
+		// 600 covers a phone's two-up card (about 175-195 px at 2.6-3x) and a computer card at 2x; before it, those
+		// took the 700 file (17 Nov 2026, shop speed round 4; release step 0006 adds it to stored profiles).
+		widths: [200, 400, 600, 700, 960],
 		aspect: null,
 		fit: 'inside',
 		format: 'image/webp',
@@ -78,7 +87,8 @@ export const SEEDED_MEDIA_ROLES: readonly MediaRoleDefinition[] = [
 		key: 'swatch_image_v2',
 		label: 'Image tile swatch',
 		purposes: ['product'],
-		widths: [120, 240],
+		// 360 keeps the Image V2 tile sharp on 3× phones (owner, 21 Nov 2026, brief section 8).
+		widths: [120, 240, 360],
 		aspect: { width: 1, height: 1 },
 		fit: 'cover',
 		format: 'image/webp',
@@ -96,6 +106,21 @@ export const SEEDED_MEDIA_ROLES: readonly MediaRoleDefinition[] = [
 		fit: 'blur',
 		format: 'image/jpeg',
 		quality: 84,
+		primaryOnly: true,
+		respectSlotMaxWidth: false,
+		// The Brand Kit logo along the foot, so a forwarded link still names the shop (share brief J2).
+		brandStrip: true,
+	}),
+	role({
+		key: 'story',
+		label: 'Status and Story card',
+		purposes: ['product'],
+		widths: [1080],
+		aspect: { width: 1080, height: 1920 },
+		// The phone writes the name and facts into the empty band when the shopper shares (share brief J1).
+		fit: 'story',
+		format: 'image/jpeg',
+		quality: 82,
 		primaryOnly: true,
 		respectSlotMaxWidth: false,
 	}),
@@ -164,12 +189,28 @@ export const SEEDED_MEDIA_ROLES: readonly MediaRoleDefinition[] = [
 		label: 'Browser and home screen icon',
 		purposes: ['brand'],
 		widths: [32, 48, 180, 192, 512],
-		aspect: null,
-		fit: 'inside',
+		aspect: { width: 1, height: 1 },
+		fit: 'pad',
 		format: 'image/png',
 		quality: 90,
 		primaryOnly: false,
 		respectSlotMaxWidth: false,
+	}),
+	role({
+		// The Brand Kit's link preview picture (owner, 2026-11-10): pages shared without their own
+		// picture. Padded on white, so with no picture chosen the computer logo makes a clean card.
+		key: 'site_share',
+		label: 'Shop link preview',
+		purposes: ['brand'],
+		widths: [1200],
+		aspect: { width: 1200, height: 630 },
+		fit: 'pad',
+		format: 'image/jpeg',
+		quality: 84,
+		primaryOnly: false,
+		respectSlotMaxWidth: false,
+		// Chat apps crop the edges of previews: keep a white margin round the logo.
+		inset: 0.12,
 	}),
 	role({
 		key: 'banner',
@@ -188,6 +229,18 @@ export const SEEDED_MEDIA_ROLES: readonly MediaRoleDefinition[] = [
 		label: 'Blog image',
 		purposes: ['blog'],
 		widths: [480, 800, 1200, 1600, 2400],
+		aspect: null,
+		fit: 'inside',
+		format: 'image/webp',
+		quality: 82,
+		primaryOnly: false,
+		respectSlotMaxWidth: false,
+	}),
+	role({
+		key: 'store_photo',
+		label: 'Store photo',
+		purposes: ['store'],
+		widths: [400, 800, 1200, 1600],
 		aspect: null,
 		fit: 'inside',
 		format: 'image/webp',
@@ -225,7 +278,22 @@ export const SEEDED_MEDIA_ROLES: readonly MediaRoleDefinition[] = [
 export const PUBLISH_REQUIRED_ROLES: readonly string[] = ['thumb', 'card', 'gallery'];
 
 /** The fields operators cannot edit: a change in code is applied to existing databases. */
-const FIXED_FIELDS = ['purposes', 'aspect', 'fit', 'format', 'primaryOnly', 'respectSlotMaxWidth'] as const;
+const FIXED_FIELDS = [
+	'purposes',
+	'aspect',
+	'fit',
+	'format',
+	'primaryOnly',
+	'respectSlotMaxWidth',
+	'brandStrip',
+	'inset',
+] as const;
+
+/** A stored role from before a fixed field existed reads as that field's default, not as a change. */
+const fixedValue = (role: MediaRoleDefinition, field: (typeof FIXED_FIELDS)[number]): string =>
+	JSON.stringify(
+		field === 'brandStrip' ? Boolean(role.brandStrip) : field === 'inset' ? (role.inset ?? 0) : role[field],
+	);
 
 /**
  * Brings stored seeded roles in line with the code. Missing seeds are inserted; a seed whose
@@ -243,7 +311,7 @@ export const reconcileSeededRoles = async (roles: Pick<MediaRoleRepository, 'lis
 			changed.push(seed.key);
 			continue;
 		}
-		const drifted = FIXED_FIELDS.some((field) => JSON.stringify(current[field]) !== JSON.stringify(seed[field]));
+		const drifted = FIXED_FIELDS.some((field) => fixedValue(current, field) !== fixedValue(seed, field));
 		if (!drifted) continue;
 		const next = { ...current, version: current.version + 1 } as MediaRoleDefinition;
 		for (const field of FIXED_FIELDS) (next as Record<string, unknown>)[field] = seed[field];

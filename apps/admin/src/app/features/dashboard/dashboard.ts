@@ -14,7 +14,7 @@ import {
 import { toObservable } from '@angular/core/rxjs-interop';
 import { Router, RouterModule } from '@angular/router';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbRating, NgbRatingConfig } from '@ng-bootstrap/ng-bootstrap';
 import {
 	ApexAxisChartSeries,
@@ -34,25 +34,48 @@ import {
 import { Select2Data, Select2, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 
+import { intlLocale } from '@core/i18n/localized-fields';
+import { ORDER_STATUS_PILL } from '@core/orders/order-format';
+import { pill } from '@core/purchasing/purchasing-format';
 import { AuthStore } from '@core/state/auth.store';
-import { Params } from '@data-access/interfaces/core.interface';
-import { IRevenueChart, IStatisticsCount } from '@data-access/interfaces/dashboard.interface';
-import { IOrder, IOrderModel } from '@data-access/interfaces/order.interface';
-import { IProduct, IProductModel } from '@data-access/interfaces/product.interface';
-import { IReviewModel } from '@data-access/interfaces/review.interface';
-import { IStoresModel } from '@data-access/interfaces/store.interface';
-import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
+import { injectStoreLocationsQuery } from '@core/stores/store-location.gateway';
+import { IBaseRow, ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { injectBlogsQuery } from '@data-access/queries/blog.queries';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
-import { injectRevenueChartQuery, injectStatisticsQuery } from '@data-access/queries/dashboard.queries';
-import { injectOrdersQuery } from '@data-access/queries/order.queries';
-import { injectProductsQuery } from '@data-access/queries/product.queries';
-import { injectReviewsQuery } from '@data-access/queries/review.queries';
-import { injectStoresQuery } from '@data-access/queries/store.queries';
+import {
+	injectDashboardCustomersQuery,
+	injectDashboardMonthlyRevenueQuery,
+	injectDashboardOrdersQuery,
+	injectDashboardRecentOrdersQuery,
+	injectDashboardReviewsQuery,
+	injectDashboardRevenueQuery,
+	injectDashboardStockQuery,
+	injectDashboardTopProductsQuery,
+	injectRevenueChartQuery,
+} from '@data-access/queries/dashboard.queries';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { CurrencySymbolPipe as CurrencySymbolPipe_1, CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
+import { PeriodPicker } from '@shared/ui/period-picker/period-picker';
 import { Table } from '@shared/ui/table/table';
+
+import type { DashboardPeriodQuery, DashboardStockState, I18nString, PermissionCode } from '@saha-textile/contracts';
+
+/**
+ * What each widget needs, in one place so the template, the queries and the empty-page message
+ * cannot disagree. The Stores tile counts the shop's active stores (Settings › Stores, so super
+ * admin only). The `blog.index` widget lists the two newest blog posts from the blog API.
+ */
+const WIDGET_PERMISSIONS: readonly PermissionCode[] = [
+	'dashboard.revenue',
+	'dashboard.orders',
+	'dashboard.customers',
+	'dashboard.top_products',
+	'dashboard.stock',
+	'dashboard.reviews',
+	'setting.index',
+	'blog.index',
+];
 
 export interface ChartOptions {
 	series: ApexAxisChartSeries;
@@ -76,6 +99,7 @@ export interface ChartOptions {
 	providers: [CurrencySymbolPipe],
 	imports: [
 		PageWrapper,
+		PeriodPicker,
 		HasPermissionDirective,
 		Select2,
 		Table,
@@ -86,8 +110,6 @@ export interface ChartOptions {
 		TranslocoModule,
 		CurrencySymbolPipe_1,
 		AsyncPipe,
-		DatePipe,
-		SlicePipe,
 	],
 })
 export class Dashboard {
@@ -96,36 +118,75 @@ export class Dashboard {
 	private document = inject<Document>(DOCUMENT);
 	private router = inject(Router);
 	private authStore = inject(AuthStore);
+	private transloco = inject(TranslocoService);
 
-	private readonly blogsQuery = injectBlogsQuery(() => ({ status: 1, paginate: 2 }));
-	readonly blogs = computed(() => this.blogsQuery.data()?.data ?? []);
-	private readonly statisticsQuery = injectStatisticsQuery();
-	statistics$: Observable<IStatisticsCount | undefined> = toObservable(this.statisticsQuery.data);
-	private readonly revenueChartQuery = injectRevenueChartQuery();
-	revenueChart$: Observable<IRevenueChart | undefined> = toObservable(this.revenueChartQuery.data);
-	private readonly orderParams = signal<Params>({});
-	private readonly ordersQuery = injectOrdersQuery(() => this.orderParams());
-	order$: Observable<IOrderModel | undefined> = toObservable(this.ordersQuery.data);
+	/** Hides nothing by itself: the template and queries read it, and the API decides. */
+	private can(code: PermissionCode): boolean {
+		return this.authStore.permissions().includes(code);
+	}
 
-	private readonly productParams = signal<Params>({});
-	private readonly productsQuery = injectProductsQuery(() => this.productParams());
-	product$: Observable<IProductModel | undefined> = toObservable(this.productsQuery.data);
+	readonly hasAnyWidget = computed(() => WIDGET_PERMISSIONS.some((code) => this.can(code)));
 
-	private readonly topProductParams = signal<Params>({
-		status: 1,
-		top_selling: 1,
-		filter_by: 'this_year',
-		paginate: 5,
+	/** Brief 26 AT-D1: a shop-floor login (Staff: no dashboard, its own attendance) lands on My attendance. */
+	private readonly staffHome = effect(() => {
+		if (!this.hasAnyWidget() && this.can('attendance.use'))
+			void this.router.navigateByUrl('/payroll/my-attendance', { replaceUrl: true });
 	});
-	private readonly topProductsQuery = injectProductsQuery(() => this.topProductParams());
-	topProduct$: Observable<IProduct[]> = toObservable(
-		computed(() => this.topProductsQuery.data()?.data.slice(0, 7) ?? []),
+
+	readonly revenuePeriod = signal<DashboardPeriodQuery>({ period: 'last_12_months' });
+	readonly ordersPeriod = signal<DashboardPeriodQuery>({ period: 'last_12_months' });
+	private readonly topProductPeriod = signal<DashboardPeriodQuery>({ period: 'this_year' });
+	private readonly stockCategory = signal<string | undefined>(undefined);
+
+	private readonly revenueQuery = injectDashboardRevenueQuery(
+		() => this.revenuePeriod(),
+		() => this.can('dashboard.revenue'),
+	);
+	readonly revenue = computed(() => this.revenueQuery.data()?.revenueINR);
+
+	private readonly ordersQuery = injectDashboardOrdersQuery(
+		() => this.ordersPeriod(),
+		() => this.can('dashboard.orders'),
+	);
+	readonly orderCount = computed(() => this.ordersQuery.data()?.orders);
+
+	private readonly customersQuery = injectDashboardCustomersQuery(() => this.can('dashboard.customers'));
+	readonly customerCount = computed(() => this.customersQuery.data()?.customers);
+
+	private readonly monthlyRevenueQuery = injectDashboardMonthlyRevenueQuery(() => this.can('dashboard.revenue'));
+	private readonly recentOrdersQuery = injectDashboardRecentOrdersQuery(() => this.can('dashboard.orders'));
+
+	private readonly topProductsQuery = injectDashboardTopProductsQuery(
+		() => this.topProductPeriod(),
+		() => this.can('dashboard.top_products'),
+	);
+	readonly topProducts = computed(() => this.topProductsQuery.data()?.items ?? []);
+
+	private readonly stockQuery = injectDashboardStockQuery(
+		() => this.stockCategory(),
+		() => this.can('dashboard.stock'),
 	);
 
-	private readonly reviewsQuery = injectReviewsQuery(() => ({ paginate: 5 }));
-	review$: Observable<IReviewModel | undefined> = toObservable(this.reviewsQuery.data);
+	private readonly reviewsQuery = injectDashboardReviewsQuery(() => this.can('dashboard.reviews'));
+	readonly reviews = computed(() => this.reviewsQuery.data()?.items ?? []);
 
-	private readonly categoriesQuery = injectCategoriesQuery(() => ({ type: 'product', status: 1 }));
+	private readonly blogsQuery = injectBlogsQuery(
+		() => ({ status: 1, paginate: 2 }),
+		() => this.can('blog.index'),
+	);
+	readonly blogs = computed(() => this.blogsQuery.data()?.data ?? []);
+
+	/** The Stores tile: how many stores show on Contact Us. */
+	private readonly storesQuery = injectStoreLocationsQuery(() => this.can('setting.index'));
+	readonly activeStores = computed(() => (this.storesQuery.data() ?? []).filter((row) => row.store.active).length);
+
+	/** Demo data for the commission line, kept until that line is replaced. */
+	private readonly commissionQuery = injectRevenueChartQuery();
+
+	private readonly categoriesQuery = injectCategoriesQuery(
+		() => ({ type: 'product', status: 1 }),
+		() => this.can('category.index'),
+	);
 	category$: Observable<Select2Data> = toObservable(
 		computed(
 			() =>
@@ -141,22 +202,13 @@ export class Dashboard {
 		),
 	);
 
-	private readonly sellerParams = signal<Params>({ paginate: 6, top_vendor: 1, filter_by: 'this_year' });
-	readonly storesQuery = injectStoresQuery(() => this.sellerParams());
-	store$: Observable<IStoresModel | undefined> = toObservable(this.storesQuery.data);
-
-	/** Operators are never Fastkart vendors — keep template branches on live role. */
-	readonly isVendor = computed(() => this.authStore.user()?.role === 'vendor');
-	readonly chart = viewChild.required<ElementRef>('chart');
+	readonly chart = viewChild<ElementRef>('chart');
 	public chartOptions!: Partial<ChartOptions>;
-	// Revenue is no longer persisted, so it arrives asynchronously. We create the chart once BOTH the
-	// view is ready AND the options are built, then updateOptions() on any later revenue change.
+	// The chart sits behind a permission, so its element may arrive after the data or never.
 	private chartInstance?: { updateOptions: (o: unknown) => void; render: () => void };
-	private viewReady = false;
 
-	public topProductLoader: boolean = false;
-	public productStockLoader: boolean = false;
-	public topSellerLoader: boolean = false;
+	readonly topProductLoader = computed(() => this.topProductsQuery.isFetching());
+	readonly productStockLoader = computed(() => this.stockQuery.isFetching());
 	public isBrowser: boolean;
 
 	public filter: Select2Data = [
@@ -178,17 +230,12 @@ export class Dashboard {
 		},
 	];
 
-	public sellerTableConfig: ITableConfig = {
-		columns: [
-			{ title: 'store_name', dataField: 'store_name' },
-			{ title: 'orders', dataField: 'orders_count' },
-			{ title: 'earning', dataField: 'order_amount' },
-		],
-		data: [],
-		total: 0,
-	};
-
-	public orderTableConfig: ITableConfig = {
+	/**
+	 * Signals, not plain objects: the query answers outside the render cycle, so a mutated object
+	 * never reached a table when no other widget on the page happened to redraw it. Each update
+	 * carries `rowActions` over because the table clears them for a role without the action.
+	 */
+	readonly orderTableConfig = signal<ITableConfig<IBaseRow & { order_number: string }>>({
 		columns: [
 			{ title: 'number', dataField: 'order_id' },
 			{ title: 'date', dataField: 'created_at', type: 'date', date_format: 'dd MMM yyyy' },
@@ -196,12 +243,12 @@ export class Dashboard {
 			{ title: 'amount', dataField: 'total', type: 'price' },
 			{ title: 'payment', dataField: 'order_payment_status' },
 		],
-		rowActions: [{ label: 'View', actionToPerform: 'view', icon: 'ri-eye-line', permission: 'order.edit' }],
+		rowActions: [{ label: 'view', actionToPerform: 'view', icon: 'ri-eye-line', permission: 'order.edit' }],
 		data: [],
 		total: 0,
-	};
+	});
 
-	public productStockTableConfig: ITableConfig = {
+	readonly productStockTableConfig = signal<ITableConfig<IBaseRow & { id: string }>>({
 		columns: [
 			{
 				title: 'image',
@@ -216,15 +263,15 @@ export class Dashboard {
 		],
 		rowActions: [
 			{
-				label: 'Edit',
+				label: 'edit',
 				actionToPerform: 'edit',
 				icon: 'ri-pencil-line',
 				permission: 'product.edit',
 			},
 		],
-		data: [] as IProduct[],
+		data: [],
 		total: 0,
-	};
+	});
 
 	constructor() {
 		const config = inject(NgbRatingConfig);
@@ -234,19 +281,22 @@ export class Dashboard {
 		config.max = 5;
 		config.readonly = true;
 
-		// Revenue & Commision Chart
-		this.revenueChart$.subscribe((revenue) => {
-			if (revenue) {
+		// Revenue is real. The commission line is demo data kept by owner decision, drawn by
+		// position against the same twelve months until it is replaced.
+		effect(() => {
+			const monthly = this.monthlyRevenueQuery.data();
+			const commissions = this.commissionQuery.data()?.commissions ?? [];
+			if (monthly) {
 				this.chartOptions = {
 					series: [
 						{
 							name: 'Revenue',
-							data: revenue.revenues,
-							color: '#0da487',
+							data: monthly.months.map((row) => row.revenueINR),
+							color: this.themeColor(),
 						},
 						{
 							name: 'Comission',
-							data: revenue.commissions,
+							data: commissions.slice(0, monthly.months.length),
 							color: '#FFA53B',
 						},
 					],
@@ -336,7 +386,7 @@ export class Dashboard {
 						},
 					],
 					xaxis: {
-						categories: revenue.months,
+						categories: monthly.months.map((row) => this.monthLabel(row.month)),
 						range: undefined,
 						axisBorder: {
 							offsetX: 0,
@@ -356,151 +406,112 @@ export class Dashboard {
 			}
 		});
 
-		// For Order
-		this.order$.subscribe((order) => {
-			this.orderTableConfig.data = order ? order?.data.slice(0, 5) : [];
-			this.orderTableConfig.total = order ? order?.total : 0;
-		});
-
-		this.order$.subscribe((order) => {
-			let orders = order?.data?.filter((element: IOrder) => {
-				element.order_id = `<span class="fw-bolder">#${element.order_number}</span>`;
-				element.order_payment_status = element.payment_status
-					? `<div class="status-${element.payment_status.toLowerCase()}"><span>${element.payment_status.replace(/_/g, ' ')}</span></div>`
-					: '-';
-				element.consumer_name = `<span class="text-capitalize">${element.consumer.name}</span>`;
-				return element;
-			});
-			this.orderTableConfig.data = order ? orders?.slice(0, 5) : [];
-			this.orderTableConfig.total = order ? order?.total : 0;
-		});
-
-		// For Product
-		this.product$.subscribe((product) => {
-			let products = product?.data?.filter((element: IProduct) => {
-				element.stock = element.stock_status
-					? `<div class="status-${element.stock_status}"><span>${element.stock_status.replace(/_/g, ' ')}</span></div>`
-					: '-';
-				return element;
-			});
-			this.productStockTableConfig.data = product ? products.slice(0, 8) : [];
-			this.productStockTableConfig.total = product ? product?.total : 0;
-		});
-
-		// For Store
-		this.store$.subscribe((store) => {
-			this.sellerTableConfig.data = store ? store?.data?.slice(0, 6) : [];
-			this.sellerTableConfig.total = store ? store?.total : 0;
+		// The chart element may appear after the data, when the permission arrives later.
+		effect(() => {
+			if (this.chart()) void this.renderChart();
 		});
 
 		effect(() => {
-			this.topSellerLoader = this.storesQuery.isFetching();
+			const items = this.recentOrdersQuery.data()?.items ?? [];
+			const data = items.map((order) => ({
+				id: order.id,
+				order_number: order.orderNumber,
+				order_id: `<span class="fw-bolder">#${order.orderNumber}</span>`,
+				created_at: order.placedAt,
+				consumer_name: order.customerName ?? '-',
+				total: order.totalINR,
+				// The orders list's own pill and wording for each status (brief ol02), so the two never differ.
+				order_payment_status: pill(
+					ORDER_STATUS_PILL[order.status],
+					this.transloco.translate(`ord_status_${order.status}`),
+				),
+			}));
+			this.orderTableConfig.update((config) => ({ ...config, data, total: items.length }));
 		});
+
 		effect(() => {
-			this.topProductLoader = this.topProductsQuery.isFetching();
-		});
-		effect(() => {
-			this.productStockLoader = this.productsQuery.isFetching();
+			const items = this.stockQuery.data()?.items ?? [];
+			const data = items.map((row) => ({
+				id: row.productId,
+				product_thumbnail: row.thumbnailUrl ? { original_url: row.thumbnailUrl } : null,
+				name: `${this.localized(row.title)} (${row.sku})`,
+				quantity: row.quantity,
+				stock: this.stockBadge(row.state),
+			}));
+			this.productStockTableConfig.update((config) => ({ ...config, data, total: items.length }));
 		});
 	}
 
-	ngAfterViewInit() {
-		this.viewReady = true;
-		void this.renderChart();
+	/** A product name in the language the admin is using, falling back to English. */
+	localized(title: I18nString): string {
+		return title[this.transloco.getActiveLang()] ?? title.en;
 	}
 
-	// Creates + renders the ApexChart exactly once, only when the view is ready AND options are built.
+	/** `2026-11` as "Nov '26", in the language the admin is using. */
+	/**
+	 * The chart library needs a real colour, so the revenue line reads the admin's theme colour
+	 * (`--theme-color`, Brand Kit) when it draws; the theme's green until one is set.
+	 */
+	private themeColor(): string {
+		const value = this.document.defaultView
+			?.getComputedStyle(this.document.documentElement)
+			.getPropertyValue('--theme-color')
+			.trim();
+		return value || '#0da487';
+	}
+
+	private monthLabel(month: string): string {
+		const name = new Intl.DateTimeFormat(intlLocale(this.transloco.getActiveLang()), {
+			month: 'short',
+			timeZone: 'UTC',
+		});
+		return `${name.format(new Date(`${month}-01T00:00:00Z`))} '${month.slice(2, 4)}`;
+	}
+
+	private stockBadge(state: DashboardStockState): string {
+		return `<div class="status-${state}"><span>${this.transloco.translate(state)}</span></div>`;
+	}
+
+	// Creates + renders the ApexChart exactly once, only when the element AND options exist.
 	private async renderChart() {
+		const element = this.chart()?.nativeElement;
 		if (!isPlatformBrowser(this.platformId)) return;
-		if (this.chartInstance || !this.viewReady || !this.chartOptions) return;
+		if (this.chartInstance || !element || !this.chartOptions) return;
 		const ApexCharts = (await import('apexcharts')).default;
-		const element = this.chart().nativeElement;
+		// The data and the view can both request a chart while the chunk is loading.
+		if (this.chartInstance || this.chart()?.nativeElement !== element) return;
 		this.chartInstance = new ApexCharts(element, this.chartOptions);
 		void this.chartInstance.render();
 	}
 
 	filterTopProduct(data: Select2UpdateEvent) {
 		this.renderer.addClass(this.document.body, 'loader-none');
-		let params: Params = { status: 1, top_selling: 1, filter_by: 'this_year', paginate: 5 };
-		if (data.value) {
-			params['filter_by'] = data.value;
-		}
-		this.topProductParams.set({ ...params });
+		this.topProductPeriod.set({ period: (data.value as DashboardPeriodQuery['period']) || 'this_year' });
 	}
 
 	// For Order
 
-	onOrderTableChange(data?: Params) {
-		if (data) {
-			data['paginate'] = 7;
-		}
-		this.orderParams.set({ ...data });
-	}
-
 	onOrderActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform == 'view') this.orderView(action.data);
+		if (action.actionToPerform == 'view') this.orderView(action.data as { order_number: string });
 	}
 
-	orderView(data: IOrder) {
+	orderView(data: { order_number: string }) {
 		void this.router.navigateByUrl(`/order/details/${data.order_number}`);
 	}
 
 	// For Products
 
-	onProductTableChange(data?: Params) {
-		if (data) {
-			data['paginate'] = 8;
-			data['field'] = 'quantity';
-			data['sort'] = 'asc';
-		}
-		this.productParams.set({ ...data });
-	}
-
 	filterProduct(data: Select2UpdateEvent) {
 		this.renderer.addClass(this.document.body, 'loader-none');
-		let params: Params = {
-			paginate: 8,
-			field: 'quantity',
-			sort: 'asc',
-		};
-		if (data.value) {
-			params['category_ids'] = data.value;
-		}
-		this.productStockLoader = true;
-		this.onProductTableChange(params);
+		this.stockCategory.set(data.value ? String(data.value) : undefined);
 	}
 
 	onProductActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform == 'edit') this.productEdit(action.data);
+		if (action.actionToPerform == 'edit') this.productEdit(action.data as { id: string });
 	}
 
-	productEdit(data: IProduct) {
+	productEdit(data: { id: string }) {
 		void this.router.navigateByUrl(`/product/edit/${data.id}`);
-	}
-
-	// For Seller
-
-	onSellerTableChange(data?: Params) {
-		if (data && !data['filter_by']) {
-			data['paginate'] = 6;
-			data['top_vendor'] = 1;
-			data['filter_by'] = 'this_year';
-		}
-		this.sellerParams.set({ ...data });
-	}
-
-	filterSeller(data: Select2UpdateEvent) {
-		this.renderer.addClass(this.document.body, 'loader-none');
-		let params: Params = {
-			paginate: 6,
-			top_vendor: 1,
-			filter_by: 'this_year',
-		};
-		if (data.value) {
-			params['filter_by'] = data.value;
-		}
-		this.topSellerLoader = true;
-		this.onSellerTableChange(params);
 	}
 
 	ngOnDestroy() {

@@ -14,7 +14,7 @@ Custom rebuild of [sahatextile.com](https://sahatextile.com) (Kolkata saree/text
 - DB: **self-hosted Docker MongoDB 9.0.4** — single-node replica set `rs0` for transactions (not Atlas); Search: **Meilisearch** behind `SearchPort`
 - Media: **DigitalOcean Spaces (SGP / `sgp1`)**; Notifications: **MSG91** (SMS/WhatsApp/Email) behind `NotificationPort`
 - Payments: INR gateway role (CCAvenue now / Razorpay later, adapter-swappable) + PayPal for non-INR; Shipping: Shiprocket behind `ShippingPort`
-- Validation: **zod** (shared `packages/contracts`); i18n: **Transloco** (current app locales: English + French)
+- Validation: **zod** (shared `packages/contracts`); i18n: **Transloco** (current app locales: English + Bengali)
 - Node: pinned via [`.nvmrc`](./.nvmrc) (**24.22.1**)
 
 ## Layout
@@ -24,7 +24,7 @@ apps/        storefront (Angular + Analog PWA, :4200) · admin (Angular, :4300) 
              api (NestJS + Fastify, :4000) · developer-portal (Docusaurus)
 packages/    contracts · core-domain · config · adapters-db-mongo · (more adapters as built)
 vendor/      Fastkart (Angular storefront + admin reference — UI/behaviour only, never forked)
-docker/      mongo/ — local MongoDB 8.3 single-node replica set (rs0)
+docker/      mongo/ — local MongoDB 9.0.4 single-node replica set (rs0)
 docs/        developer-portal content, including engineering-live-context/ (canonical live KB)
 project-context/   nextjs-context/ (superseded — ignore)
 ```
@@ -37,7 +37,7 @@ nvm use            # reads .nvmrc (Node 24)
 corepack enable    # activates the pinned pnpm
 
 pnpm install
-pnpm mongo:up      # local Docker MongoDB 8.3 replica set (rs0); needs Docker running
+pnpm mongo:up      # local Docker MongoDB 9.0.4 replica set (rs0); needs Docker running
 pnpm lint          # includes the brand naming guard (scripts/check-naming.sh)
 pnpm typecheck
 pnpm test
@@ -50,7 +50,7 @@ it in `apps/api/.env` (`MONGODB_PORT`).
 
 ### Environment & config (locked model)
 
-- **Server secrets → API only.** `cp apps/api/.env.example apps/api/.env` and fill. In deploys, secrets are injected via GitHub Actions encrypted secrets → droplet env / Compose secrets. Secrets never reach the Angular apps or the browser bundle.
+- **Server secrets → API only.** Values live in Infisical, one project per tier (`docker/infisical/README.md`). Locally, `pnpm secrets:pull` writes `apps/api/.env` from the dev project, and `pnpm dev` refreshes it before each run; without Infisical access, `cp apps/api/.env.example apps/api/.env` and fill. Deploys receive the same values as root-only files mounted read-only. Secrets never reach the Angular apps or the browser bundle.
 - **Public runtime config → Angular `config.json`.** Storefront and admin fetch `public/config.json` at app init (`runtime-config.ts` + `provideAppInitializer`) — no build-time `fileReplacements` for deploy URLs. Committed `config.json` holds localhost defaults only; deploys write the real one at container start.
 - MCP credentials (Cursor tooling): `cp .env.mcp.example .env.mcp`, fill the LOCAL block, restart Cursor. See [`.cursor/rules/mcp-tools.mdc`](./.cursor/rules/mcp-tools.mdc).
 - Full variable catalogue: [`docs/engineering-live-context/environment-variables.mdx`](./docs/engineering-live-context/environment-variables.mdx).

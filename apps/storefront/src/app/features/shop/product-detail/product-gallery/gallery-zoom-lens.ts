@@ -1,5 +1,18 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, ElementRef, PLATFORM_ID, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import {
+	Component,
+	ElementRef,
+	OnInit,
+	PLATFORM_ID,
+	computed,
+	inject,
+	input,
+	output,
+	signal,
+	viewChild,
+} from '@angular/core';
+
+import { HeadPreload } from '@core/media/head-preload';
 
 import { GALLERY_SIZES, GalleryImage } from './gallery-image';
 
@@ -61,8 +74,9 @@ const MAGNIFICATION = 3;
 		</div>
 	`,
 })
-export class GalleryZoomLens {
+export class GalleryZoomLens implements OnInit {
 	private readonly platformId = inject(PLATFORM_ID);
+	private readonly headPreload = inject(HeadPreload);
 
 	readonly image = input.required<GalleryImage>();
 	readonly alt = input('');
@@ -105,6 +119,16 @@ export class GalleryZoomLens {
 			top: `${LENS / 2 - y * MAGNIFICATION}px`,
 		};
 	});
+
+	/**
+	 * The first slide is the product page's largest picture: the server asks for it from the head, so the browser
+	 * fetches it while still reading the page (as Home's first picture; HeadPreload does nothing in the browser).
+	 */
+	ngOnInit(): void {
+		const image = this.image();
+		if (!this.priority() || !image.src) return;
+		this.headPreload.picture({ href: image.src, srcset: image.srcset, sizes: this.sizes, media: null });
+	}
 
 	enter(event: PointerEvent): void {
 		if (!this.canHover || event.pointerType !== 'mouse') return;

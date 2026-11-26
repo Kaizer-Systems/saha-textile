@@ -4,7 +4,7 @@ wide: true
 description: Guest cart, authenticated cart, pending-action replay, merge, expiry, and reconnect behavior.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/storefront/src/app/core/state/cart
     - apps/api/src/cart
@@ -17,7 +17,7 @@ source_of_truth:
 
 This page describes how carts work for guests and signed-in customers, and how an action interrupted by sign-in resumes. It also covers the planned offline behaviour.
 
-The storefront's cart is classic NgRx state with browser persistence. The API exposes a separate server cart with guest and user ownership. In the target design the server cart is authoritative, and browser state provides immediate UI and an offline queue.
+The server cart is authoritative. The API holds it with guest or user ownership and prices every line from the live catalogue on each read; the storefront writes it through `/cart/current`. Classic NgRx keeps a browser copy for drawing the page before the API answers. In the target design browser state also holds an offline queue.
 
 ## Time and ownership model
 
@@ -50,6 +50,8 @@ sequenceDiagram
 ```
 
 Add-to-cart never requires sign-in. Checkout does.
+
+A line holds at most 99 pieces. For fabric sold by the metre the quantity is whole tenths of a metre (up to 999.9 m); the API refuses a length below the product's shortest cut (`below_shortest_cut`), and the cart's steppers and boxes show the length with its unit ("2.5 m"). See [Cart-line signature](/business-flows/discovery-and-product-configuration#cart-line-signature) for how metre lines are priced.
 
 ## Proceed-to-checkout journey
 
@@ -86,16 +88,16 @@ Duplicate lines merge when product, variant, add-ons and configuration match. Qu
 
 ## Account-bound intent matrix
 
-| Action              | Guest behaviour               | Replay rule                                            |
-| ------------------- | ----------------------------- | ------------------------------------------------------ |
-| Wishlist            | Save one intent, authenticate | Revalidate the product, add it, return to origin       |
-| Save for later      | Authenticate from the cart    | Revalidate the line, then move it                      |
-| Notify me           | Authenticate                  | Replays the alert request for the selected variant     |
-| Review              | Authenticate                  | Recheck verified-purchase eligibility                  |
-| Proceed to checkout | Authenticate                  | Merge the cart first, then resume checkout             |
-| Product question    | No sign-in needed             | Accept name and email; keep identity private in public |
-| Reorder             | Already signed in             | Revalidate every item; allow partial success           |
-| Public track order  | Not offered                   | Not applicable                                         |
+| Action              | Guest behaviour                           | Replay rule                                            |
+| ------------------- | ----------------------------------------- | ------------------------------------------------------ |
+| Wishlist            | Saved in the `st_wishlist` session cookie | Sign-in moves the guest list into the account          |
+| Save for later      | Authenticate from the cart                | Revalidate the line, then move it                      |
+| Notify me           | Authenticate                              | Replays the alert request for the selected variant     |
+| Review              | Authenticate                              | Recheck verified-purchase eligibility                  |
+| Proceed to checkout | Authenticate                              | Merge the cart first, then resume checkout             |
+| Product question    | No sign-in needed                         | Accept name and email; keep identity private in public |
+| Reorder             | Already signed in                         | Revalidate every item; allow partial success           |
+| Public track order  | Not offered                               | Not applicable                                         |
 
 ## Offline reconciliation
 
@@ -112,9 +114,8 @@ Never cache auth tokens, payment data, account or order personal data, admin res
 
 ## Limitations
 
-- The storefront does not call the cart API.
-- Only **Notify me** replays after sign-in. Wishlist, save-for-later and checkout intent do not.
-- Server cart lines are not validated against product, price or stock.
+- Checkout is closed, so checkout intent has nothing to resume.
+- **Notify me** replays after sign-in and a guest's wishlist merges into the account. Save-for-later does not exist.
 - Offline support is not in the build.
 
 ## Debugging checkpoints

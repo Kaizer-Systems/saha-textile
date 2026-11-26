@@ -1,12 +1,16 @@
 <div [class]="class()">
-	<div class="logo-wrapper logo-wrapper-center">
+	<!-- Brand Kit (admin's own logos, else the shop's). With a dark logo, dark mode drops the white band. -->
+	<div
+		class="logo-wrapper logo-wrapper-center"
+		[class.has-dark-logo]="!!logos()?.logoDark"
+	>
 		<a
 			class="sidebar-logo"
 			[routerLink]="['/dashboard']"
 		>
-			@if (brand.data()?.logo; as logo) {
+			@if (logos()?.logo; as logo) {
 			<img
-				class="img-fluid for-white"
+				class="img-fluid for-light"
 				[src]="logo.url"
 				[attr.srcset]="logo.srcset"
 				sizes="216px"
@@ -14,13 +18,29 @@
 			/>
 			} @else {
 			<h2>{{ brand.data()?.shopName }}</h2>
+			} @if (logos()?.logoDark; as dark) {
+			<img
+				class="img-fluid for-dark"
+				[src]="dark.url"
+				[attr.srcset]="dark.srcset"
+				sizes="216px"
+				[alt]="brand.data()?.shopName"
+			/>
 			}
 		</a>
-		@if (brand.data()?.seal; as seal) {
+		@if (logos()?.seal; as seal) {
 		<img
-			class="img-fluid logo-sm"
+			class="img-fluid logo-sm for-light"
 			[src]="seal.url"
 			[attr.srcset]="seal.srcset"
+			sizes="58px"
+			[alt]="brand.data()?.shopName"
+		/>
+		} @if (logos()?.sealDark; as dark) {
+		<img
+			class="img-fluid logo-sm for-dark"
+			[src]="dark.url"
+			[attr.srcset]="dark.srcset"
 			sizes="58px"
 			[alt]="brand.data()?.shopName"
 		/>
@@ -29,6 +49,7 @@
 			<i class="fa fa-angle-left"></i>
 		</div>
 		<div
+			[title]="'toggle_menu' | transloco"
 			class="toggle-sidebar"
 			(click)="sidebarToggle()"
 		>
@@ -77,7 +98,12 @@
 									<div class="sidebar-main-link">{{ menu.title.replace(' ', '_') | transloco }}</div>
 								</div>
 								@if (menu?.badgeType && menu?.badgeValue !== '0' && menu?.badgeValue) {
-								<span [class]="menu?.badgeType">{{ menu?.badgeValue }}</span>
+								<span
+									[class]="menu?.badgeType"
+									[attr.title]="menu?.path === '/inbox' ? ('inbox_badge_title' | transloco: { count: menu?.badgeValue }) : null"
+								>
+									{{ menu?.badgeValue }}
+								</span>
 								}
 							</span>
 							@if (menu.children) {
@@ -99,7 +125,12 @@
 						>
 							<div>{{ menu.title.replace(' ', '_') | transloco }}</div>
 							@if (menu?.badgeType && menu?.badgeValue !== '0' && menu?.badgeValue) {
-							<span [class]="menu?.badgeType">{{ menu?.badgeValue }}</span>
+							<span
+								[class]="menu?.badgeType"
+								[attr.title]="menu?.path === '/inbox' ? ('inbox_badge_title' | transloco: { count: menu?.badgeValue }) : null"
+							>
+								{{ menu?.badgeValue }}
+							</span>
 							}
 						</a>
 						}

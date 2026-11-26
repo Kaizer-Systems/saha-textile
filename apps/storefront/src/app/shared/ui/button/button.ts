@@ -17,6 +17,8 @@ export class Button {
 	readonly iconClass = input<string | null>();
 	readonly id = input<string>();
 	readonly label = input<string>();
+	/** What a screen reader says for a button that shows only an icon. */
+	readonly ariaLabel = input<string | null>(null);
 	readonly type = input<string>('submit');
 	readonly spinner = input<boolean>(true);
 	readonly disabled = input<boolean>(false);

@@ -1,0 +1,32 @@
+/**=====================
+    Bengali pages
+==========================**/
+// Owner decision round 2026-11-08 (Bengali replaces French). Bengali letters join, and their
+// vowel signs sit above and below the line, so on a Bengali page: no letter spacing (it pulls
+// joined letters apart), taller lines on headings, buttons and labels (tight heights clip the
+// signs), and semibold where the theme leaned on capitals, which Bengali does not have. The font
+// comes from the font stack: Public Sans for Latin letters and digits, Noto Sans Bengali for the
+// rest, so English words and numbers inside Bengali text keep the shop's own font.
+:lang(bn) {
+	*,
+	*::before,
+	*::after {
+		letter-spacing: 0 !important;
+	}
+
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6,
+	.btn,
+	button,
+	label {
+		line-height: 1.45;
+	}
+
+	.text-uppercase {
+		font-weight: 600;
+	}
+}

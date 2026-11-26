@@ -6,6 +6,7 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { ConsentStore } from '@core/consent/consent.store';
 import { ILink } from '@data-access/interfaces/site-config.interface';
 import { TitleCasePipe } from '@shared/pipes/title-case.pipe';
+import { InstallApp } from '@shared/ui/modal/install-help-modal/install-app';
 
 @Component({
 	selector: 'app-footer-links',
@@ -15,7 +16,8 @@ import { TitleCasePipe } from '@shared/pipes/title-case.pipe';
 })
 export class Links {
 	readonly links = input<ILink[]>([]);
-	/** Adds the link that reopens Cookie settings. */
-	readonly cookieSettings = input(false);
+	/** Adds the links that only Customer Service has: Cookie settings and Get the App. */
+	readonly customerService = input(false);
 	readonly consent = inject(ConsentStore);
+	readonly install = inject(InstallApp);
 }

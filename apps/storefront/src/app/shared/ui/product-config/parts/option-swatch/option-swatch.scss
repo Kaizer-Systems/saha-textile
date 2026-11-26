@@ -8,19 +8,19 @@
 		gap: 10px;
 		margin-bottom: 10px;
 
-		h4 {
+		.h4 {
 			margin: 0;
 			font-size: 16px;
 			font-weight: 600;
 
 			.req {
-				color: #e03131;
+				color: var(--st-danger);
 			}
 		}
 
 		.selected-hint {
 			font-size: 13px;
-			color: var(--theme-color);
+			color: var(--st-accent-text);
 			font-weight: 600;
 		}
 	}
@@ -41,7 +41,7 @@
 			align-items: center;
 			gap: 4px;
 			padding: 10px;
-			border: 1.5px solid #e6e6e6;
+			border: 1.5px solid var(--st-border-soft);
 			border-radius: 8px;
 			cursor: pointer;
 			transition:
@@ -50,7 +50,7 @@
 			text-align: center;
 
 			&:hover {
-				border-color: #c9c9c9;
+				border-color: var(--st-border-strong);
 			}
 
 			&.active {
@@ -62,9 +62,9 @@
 				position: absolute;
 				top: 4px;
 				right: 4px;
-				color: var(--theme-color);
+				color: var(--st-accent-text);
 				font-size: 16px;
-				background: #fff;
+				background: var(--st-surface);
 				border-radius: 50%;
 			}
 
@@ -82,7 +82,7 @@
 
 			.tile-delta {
 				font-size: 12px;
-				color: #666;
+				color: var(--st-text-muted);
 			}
 		}
 	}
@@ -98,7 +98,7 @@
 			align-items: center;
 			gap: 10px;
 			padding: 10px 14px;
-			border: 1.5px solid #e6e6e6;
+			border: 1.5px solid var(--st-border-soft);
 			border-radius: 8px;
 			cursor: pointer;
 
@@ -113,8 +113,20 @@
 
 			.opt-delta {
 				font-size: 13px;
-				color: #666;
+				color: var(--st-text-muted);
 			}
 		}
 	}
+}
+
+// Picture rows fold to three on tablets and phones (bundle builder brief HX-3, approved 2026-11-22): the rest hide
+// until "Show all N options"; laptops show every row.
+@media (max-width: 991.98px) {
+	.st-look-rows:not(.is-open) > li.st-look-more {
+		display: none;
+	}
+}
+
+.st-look-all {
+	padding: 6px 0 0;
 }

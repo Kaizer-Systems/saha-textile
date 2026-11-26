@@ -11,8 +11,9 @@
 				@if (selectedPills.length) { @for (pills of selectedPills; track pills) {
 				<li class="breadcrumb-pills">
 					<span class="badge badge-pill badge-primary">
-						{{ pills[displayKey()] }}
+						{{ label(pills) }}
 						<i
+							[title]="'remove' | transloco"
 							class="ri-close-line"
 							(click)="removeItem(pills); $event.stopPropagation()"
 						></i>
@@ -41,6 +42,7 @@
 			</ol>
 		</nav>
 		<a
+			[title]="'open_list' | transloco"
 			class="cateogry-close-btn d-inline-block"
 			[class.show]="isOpen"
 			(click)="toggleDropdown($event)"
@@ -82,7 +84,7 @@
 								href="javascript:void(0)"
 								(click)="changeTo(breadCrumb)"
 							>
-								{{ breadCrumb[displayKey()] }}
+								{{ label(breadCrumb) }}
 							</a>
 						</li>
 						}

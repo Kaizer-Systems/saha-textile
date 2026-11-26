@@ -10,10 +10,9 @@ import { filter } from 'rxjs';
 import { runtimeConfig } from '@core/config/runtime-config';
 import { backgroundRequest } from '@core/interceptors/background-request';
 
-import { environment } from '../../../../public/environments/environment';
-
 import { ACTIVE_LOCALE } from './active-locale';
-import { SUPPORTED_LOCALES, isPrivatePath, withLocale } from './locale';
+import { DEFAULT_LOCALE, isPrivatePath, openGraphLocale, supportedLocales, withLocale } from './locale';
+import { environment } from '../../../../public/environments/environment';
 
 const NOT_FOUND_KEY = 'notFound';
 
@@ -26,6 +25,13 @@ const plainText = (html: string): string =>
 		.slice(0, 160);
 
 const GONE_KEY = 'gone';
+
+/** One step of a page's breadcrumb trail for search engines; the home page comes first on its own. */
+export interface SeoCrumb {
+	name: string;
+	/** Locale-free app path, e.g. `/contact-us`. */
+	path: string;
+}
 
 /**
  * The `routeMeta` of a page that stands for "nothing here": the catch-all and `/404`, which the
@@ -40,9 +46,11 @@ export const goneRouteMeta = { data: { [GONE_KEY]: true } };
  * The language-aware head of every page: canonical, `hreflang` alternates and the private-route
  * `noindex` (`DEC-I18N-ROUTES`).
  *
- * Every public page names itself in each language plus `x-default` → `/`, reciprocally, which is
- * what lets a search engine show the French page to a French searcher without the site ever
- * redirecting on a guess. Private pages (account, cart, checkout, sign-in…) get `noindex` and no
+ * Every public page names itself in each language, reciprocally, which is what lets a search
+ * engine show the Bengali page to a Bengali searcher without the site ever redirecting on a guess.
+ * Its `x-default`, the version for a searcher whose language the shop does not have, is the
+ * English version of the same page, never the home page. Every page also carries `og:locale`, and
+ * a public page its other languages as `og:locale:alternate`, for link previews. Private pages (account, cart, checkout, sign-in…) get `noindex` and no
  * alternates — they are locale-prefixed so a customer stays in their language, not to be found.
  *
  * A not-found page ({@link notFoundRouteMeta}) is treated the same way, and on the server it also
@@ -62,6 +70,10 @@ export class LocaleSeo {
 	/** Present only while rendering on the server. */
 	private response = inject(RESPONSE, { optional: true });
 	private http = inject(HttpClient);
+	/** The theme's share picture, put back on every page that has none of its own. */
+	private defaultImage: string | null = null;
+	/** True while the description is a generated stand-in that stored head data may replace. */
+	private fallbackDescription = false;
 
 	constructor() {
 		this.router.events
@@ -80,6 +92,113 @@ export class LocaleSeo {
 		script.textContent = JSON.stringify(data);
 	}
 
+	/** Takes a page's structured data away when the page goes, so the next page does not inherit it. */
+	removeJsonLd(id: string): void {
+		this.doc.getElementById(id)?.remove();
+	}
+
+	/**
+	 * Marks the page as an article for link previews (`og:type`), with its dates. Every navigation
+	 * resets the type to `website` and drops the dates, so only the article page itself carries them.
+	 */
+	applyArticle(input: { publishedTime: string; modifiedTime: string; section?: string; tags?: string[] }): void {
+		this.meta.updateTag({ property: 'og:type', content: 'article' });
+		this.meta.updateTag({ property: 'article:published_time', content: input.publishedTime });
+		this.meta.updateTag({ property: 'article:modified_time', content: input.modifiedTime });
+		this.removeArticleTags(['article:section', 'article:tag']);
+		if (input.section) this.meta.addTag({ property: 'article:section', content: input.section });
+		for (const tag of input.tags ?? []) this.meta.addTag({ property: 'article:tag', content: tag });
+	}
+
+	private removeArticleTags(properties: readonly string[]): void {
+		for (const property of properties) {
+			this.meta.getTags(`property='${property}'`).forEach((tag) => this.meta.removeTagElement(tag));
+		}
+	}
+
+	/**
+	 * Marks the page as a product for link previews: `og:type product`, its price in rupees and the
+	 * image's alt text. Every navigation resets these, so only the product page carries them.
+	 */
+	applyProduct(input: {
+		priceINR: number;
+		imageAlt?: string;
+		/** Link previews only: the name with its price. The page's own title for search engines is untouched. */
+		shareTitle?: string;
+		shareDescription?: string;
+		inStock?: boolean;
+		/** The share picture's own size and type, when known, so link previews can draw it before fetching it. */
+		imageSize?: { width: number; height: number; type: string };
+	}): void {
+		this.meta.updateTag({ property: 'og:type', content: 'product' });
+		this.meta.updateTag({ property: 'product:price:amount', content: String(input.priceINR) });
+		this.meta.updateTag({ property: 'product:price:currency', content: 'INR' });
+		// Pinterest reads the og: price names; Facebook and Pinterest read the availability.
+		this.meta.updateTag({ property: 'og:price:amount', content: String(input.priceINR) });
+		this.meta.updateTag({ property: 'og:price:currency', content: 'INR' });
+		if (input.inStock !== undefined) {
+			this.meta.updateTag({
+				property: 'product:availability',
+				content: input.inStock ? 'in stock' : 'out of stock',
+			});
+		}
+		if (input.imageAlt) this.meta.updateTag({ property: 'og:image:alt', content: input.imageAlt });
+		if (input.shareTitle) this.meta.updateTag({ property: 'og:title', content: input.shareTitle });
+		const description = input.shareDescription && plainText(input.shareDescription);
+		if (description) this.meta.updateTag({ property: 'og:description', content: description });
+		if (input.imageSize) {
+			this.meta.updateTag({ property: 'og:image:width', content: String(input.imageSize.width) });
+			this.meta.updateTag({ property: 'og:image:height', content: String(input.imageSize.height) });
+			this.meta.updateTag({ property: 'og:image:type', content: input.imageSize.type });
+		}
+	}
+
+	/**
+	 * Clears what the previous page said about itself, at the start of every navigation, so a page
+	 * that sets less than the last one never shows the last one's description or share picture.
+	 */
+	resetDocument(title: string): void {
+		this.doc.title = title;
+		this.fallbackDescription = false;
+		this.meta.removeTag("name='description'");
+		this.meta.removeTag("name='robots'");
+		this.meta.removeTag("property='og:title'");
+		this.meta.removeTag("property='og:description'");
+		if (this.defaultImage) this.meta.updateTag({ property: 'og:image', content: this.defaultImage });
+	}
+
+	/** The share picture for pages without their own. A page's own picture is left alone. */
+	setDefaultImage(url: string): void {
+		const image = this.absoluteAsset(url);
+		const current = this.meta.getTag("property='og:image'")?.content;
+		if (!current || current === this.defaultImage) this.meta.updateTag({ property: 'og:image', content: image });
+		this.defaultImage = image;
+	}
+
+	/**
+	 * A generated description for a page whose stored one is empty. It never replaces a real one,
+	 * and a stored description that arrives later replaces it.
+	 */
+	applyFallbackDescription(description: string): void {
+		if (this.meta.getTag("name='description'")?.content && !this.fallbackDescription) return;
+		this.applyDocument({ description });
+		this.fallbackDescription = true;
+	}
+
+	/** schema.org `BreadcrumbList` for the page: Home, then `crumbs`, each a full address. */
+	applyBreadcrumbList(id: string, homeName: string, crumbs: readonly SeoCrumb[]): void {
+		this.applyJsonLd(id, {
+			'@context': 'https://schema.org',
+			'@type': 'BreadcrumbList',
+			itemListElement: [{ name: homeName, path: '/' }, ...crumbs].map((crumb, index) => ({
+				'@type': 'ListItem',
+				position: index + 1,
+				name: crumb.name,
+				item: this.absoluteUrl(crumb.path),
+			})),
+		});
+	}
+
 	applyDocument(input: { title?: string; description?: string; robots?: string; image?: string }): void {
 		if (input.title) {
 			this.doc.title = input.title;
@@ -87,6 +206,7 @@ export class LocaleSeo {
 		}
 		const description = input.description && plainText(input.description);
 		if (description) {
+			this.fallbackDescription = false;
 			this.meta.updateTag({ name: 'description', content: description });
 			this.meta.updateTag({ property: 'og:description', content: description });
 		}
@@ -97,6 +217,11 @@ export class LocaleSeo {
 	/** A page address in this language, in full. */
 	absoluteUrl(appPath: string): string {
 		return this.absolute(withLocale(this.locale, appPath));
+	}
+
+	/** An address outside the language folders (such as `/p/<code>`), in full. */
+	absoluteAddress(path: string): string {
+		return this.absolute(path);
 	}
 
 	/** A stored file reference in full. Search engines and social cards ignore relative ones. */
@@ -111,11 +236,25 @@ export class LocaleSeo {
 	 * URLs, and a filtered or extra-placement URL is not one of them.
 	 */
 	setCanonicalPath(appPath: string): void {
-		this.setLink('canonical', null, this.absolute(withLocale(this.locale, appPath)));
-		for (const locale of SUPPORTED_LOCALES) {
+		const canonical = this.absolute(withLocale(this.locale, appPath));
+		this.setLink('canonical', null, canonical);
+		this.meta.updateTag({ property: 'og:url', content: canonical });
+		for (const locale of supportedLocales()) {
 			this.setLink('alternate', locale, this.absolute(withLocale(locale, appPath)));
 		}
-		this.setLink('alternate', 'x-default', this.absolute('/'));
+		this.setLink('alternate', 'x-default', this.absolute(withLocale(DEFAULT_LOCALE, appPath)));
+	}
+
+	/** `og:locale` for this page's language; the other languages only on a page meant to be found. */
+	private setOpenGraphLocales(publicPage: boolean): void {
+		this.meta.updateTag({ property: 'og:locale', content: openGraphLocale(this.locale) });
+		this.meta.getTags("property='og:locale:alternate'").forEach((tag) => this.meta.removeTagElement(tag));
+		if (!publicPage) return;
+		for (const locale of supportedLocales()) {
+			if (locale !== this.locale) {
+				this.meta.addTag({ property: 'og:locale:alternate', content: openGraphLocale(locale) });
+			}
+		}
 	}
 
 	private applyDefaults(appUrl: string): void {
@@ -125,14 +264,36 @@ export class LocaleSeo {
 		// The address middleware may already have ruled this address gone; that answer stands.
 		if (notFound && this.response && this.response.statusCode !== 410) this.response.statusCode = 404;
 		if (gone && this.response) this.response.statusCode = 410;
-		if (notFound || gone || isPrivatePath(path)) {
+		const hidden = notFound || gone || isPrivatePath(path);
+		this.setOpenGraphLocales(!hidden);
+		this.meta.updateTag({ property: 'og:type', content: 'website' });
+		// X reads the Open Graph tags but needs this one to show the large picture card.
+		this.meta.updateTag({ name: 'twitter:card', content: 'summary_large_image' });
+		this.removeArticleTags([
+			'article:published_time',
+			'article:modified_time',
+			'article:section',
+			'article:tag',
+			'product:price:amount',
+			'product:price:currency',
+			'og:price:amount',
+			'og:price:currency',
+			'product:availability',
+			'og:image:alt',
+			'og:image:width',
+			'og:image:height',
+			'og:image:type',
+		]);
+		if (hidden) {
+			this.meta.removeTag("property='og:url'");
 			this.meta.updateTag({ name: 'robots', content: 'noindex,follow' });
 			this.doc.head
 				.querySelectorAll("link[rel='canonical'], link[rel='alternate'][hreflang]")
 				.forEach((link) => link.remove());
 			return;
 		}
-		this.meta.removeTag("name='robots'");
+		// The last page's robots tag went at the start of this navigation (`resetDocument`); one the
+		// new page has set already stands.
 		this.setCanonicalPath(path);
 		this.applySeoRoute(path);
 	}
@@ -147,7 +308,8 @@ export class LocaleSeo {
 			.subscribe({
 				next: ({ route }) => {
 					if (!route) return;
-					if (!this.meta.getTag("name='description'")?.content) {
+					const current = this.meta.getTag("name='description'")?.content;
+					if (route.description && (!current || this.fallbackDescription)) {
 						this.applyDocument({ description: route.description });
 					}
 					if (!this.meta.getTag("name='robots'")) this.applyDocument({ robots: route.robots });

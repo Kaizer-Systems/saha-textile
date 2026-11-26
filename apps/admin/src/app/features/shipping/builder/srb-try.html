@@ -1,0 +1,268 @@
+<div [class.card]="mode() === 'ruleSet'">
+	<div [class.card-body]="mode() === 'ruleSet'">
+		@if (mode() === 'ruleSet') {
+		<div class="title-header">
+			<div class="d-flex align-items-center">
+				<h5>{{ 'ship_try_it' | transloco }}</h5>
+			</div>
+		</div>
+		}
+		<div class="row g-2 mb-3">
+			<div class="col-6">
+				<label
+					class="form-label small mb-1"
+					for="ship_try_destination"
+				>
+					{{ 'ship_deliver_to' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="ship_try_destination"
+					[ngModel]="destination()"
+					(ngModelChange)="destination.set($event)"
+				>
+					@for (place of destinations; track place.key) {
+					<option [value]="place.key">{{ destinationLabel(place) }}</option>
+					}
+					<option value="other">{{ 'ship_try_other_address' | transloco }}</option>
+				</select>
+			</div>
+			<div class="col-6">
+				<label
+					class="form-label small mb-1"
+					for="ship_try_currency"
+				>
+					{{ 'ship_shopper_pays_in' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="ship_try_currency"
+					[ngModel]="currency()"
+					(ngModelChange)="currency.set($event)"
+				>
+					<option value="INR">₹ {{ 'ship_currency_name_INR' | transloco }}</option>
+					@for (option of shopperCurrencies(); track option.code) {
+					<option [value]="option.code">{{ option.symbol }} {{ currencyName(option.code) }}</option>
+					}
+				</select>
+			</div>
+		</div>
+		@if (destination() === 'other') {
+		<div class="row g-2 mb-3">
+			<div class="col-6">
+				<label
+					class="form-label small mb-1"
+					for="ship_try_country"
+				>
+					{{ 'country' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="ship_try_country"
+					[ngModel]="otherCountry()"
+					(ngModelChange)="otherCountry.set($event)"
+				>
+					@for (code of countries; track code) {
+					<option [value]="code">{{ countryName(code) }}</option>
+					}
+				</select>
+			</div>
+			@if (otherCountry() === 'IN') {
+			<div class="col-3">
+				<label
+					class="form-label small mb-1"
+					for="ship_try_state"
+				>
+					{{ 'state' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="ship_try_state"
+					[ngModel]="otherState()"
+					(ngModelChange)="otherState.set($event)"
+				/>
+			</div>
+			<div class="col-3">
+				<label
+					class="form-label small mb-1"
+					for="ship_try_pin"
+				>
+					{{ 'pincode' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="ship_try_pin"
+					inputmode="numeric"
+					[ngModel]="otherPincode()"
+					(ngModelChange)="otherPincode.set($event)"
+				/>
+			</div>
+			}
+		</div>
+		} @if (editing()) {
+		<input
+			class="form-control mb-2"
+			type="search"
+			id="ship_try_search"
+			autocomplete="off"
+			#searchBox
+			[placeholder]="'ship_try_add_product' | transloco"
+			(input)="search($any($event.target).value)"
+		/>
+		@if (results().length) {
+		<div class="list-group mb-2">
+			@for (row of results(); track row.id) {
+			<button
+				type="button"
+				class="list-group-item list-group-item-action"
+				(click)="pick(row)"
+			>
+				{{ row.title }}
+				<small class="text-muted">{{ row.sku }}</small>
+			</button>
+			}
+		</div>
+		} }
+		<ul class="srb-trace mb-3">
+			@for (line of lines(); track line.productId; let i = $index) { @let view = views()[i];
+			<li>
+				<span class="d-flex align-items-center gap-2">
+					@if (view?.imageUrl) {
+					<img
+						class="rounded"
+						width="30"
+						height="38"
+						style="object-fit: cover"
+						alt=""
+						[src]="view?.imageUrl"
+					/>
+					}
+					<span>
+						<b>{{ view?.title ?? line.title }}</b>
+						× @if (editing()) {
+						<input
+							class="form-control d-inline-block srb-amt"
+							type="number"
+							min="1"
+							max="99"
+							[attr.aria-label]="'quantity' | transloco"
+							[ngModel]="line.quantity"
+							(ngModelChange)="setQuantity(i, $event)"
+						/>
+						} @else { {{ line.quantity }} } @if (view) {
+						<br />
+						<small class="text-muted">{{ subline(view) }}</small>
+						}
+					</span>
+				</span>
+				<span class="d-flex align-items-center gap-2">
+					{{ view ? lineAmount(view) : '' }} @if (editing()) {
+					<a
+						href="javascript:void(0)"
+						[title]="'remove' | transloco"
+						[attr.aria-label]="'remove' | transloco"
+						(click)="removeLine(i)"
+					>
+						<i class="ri-close-line"></i>
+					</a>
+					}
+				</span>
+			</li>
+			} @empty {
+			<li class="text-muted small">
+				{{ (mode() === 'live' ? 'ship_tester_empty' : 'ship_try_empty') | transloco }}
+			</li>
+			} @if (lines().length) {
+			<li>
+				<span><b>{{ 'shipping' | transloco }}</b></span>
+				<span>
+					<b>{{ total() === null || blocked() || pending() ? '—' : rupees(total() ?? 0) }}</b>
+				</span>
+			</li>
+			}
+		</ul>
+		@if (problem(); as key) {
+		<div class="text-danger small mb-2">{{ key | transloco }}</div>
+		} @if (lines().length && pending() && mode() === 'ruleSet') {
+		<p
+			class="text-muted small mb-0"
+			id="ship_try_result"
+		>
+			{{ 'ship_try_pending' | transloco }}
+		</p>
+		} @else if (lines().length && blocked() && mode() === 'ruleSet') {
+		<div
+			class="srb-result"
+			id="ship_try_result"
+		>
+			<span>{{ 'ship_try_blocked' | transloco }}</span>
+			<strong>—</strong>
+		</div>
+		} @else if (outcome(); as result) {
+		<div
+			class="srb-result"
+			id="ship_try_result"
+		>
+			<span>
+				@if (mode() === 'live') {
+				<small class="d-block text-muted">
+					{{ 'ship_zone_is' | transloco: { zone: ('ship_zone_' + result.zone | transloco) } }}
+				</small>
+				} {{ why() }} @if (shownAs(); as shown) { {{ 'ship_shown_as' | transloco: { amount: shown } }} } @if
+				(result.moreLines) {
+				<br />
+				<small class="text-muted">{{ 'ship_try_more_lines' | transloco: { count: result.moreLines } }}</small>
+				}
+			</span>
+			<strong>{{ result.amountINR === null ? '—' : rupees(result.amountINR) }}</strong>
+		</div>
+		}
+		<div class="d-flex align-items-center mt-3 flex-wrap gap-2">
+			@if (lines().length) {
+			<button
+				type="button"
+				class="btn btn-outline btn-sm"
+				id="ship_try_edit"
+				(click)="editing.set(!editing())"
+			>
+				<i
+					class="ri-shopping-bag-line me-1"
+					aria-hidden="true"
+				></i>
+				{{ (editing() ? 'ship_try_done' : 'ship_edit_cart') | transloco }}
+			</button>
+			} @if (mode() === 'ruleSet' && !readOnly() && lines().length) { @if (naming()) {
+			<input
+				class="form-control w-auto"
+				maxlength="80"
+				[placeholder]="'ship_test_cart_name' | transloco"
+				[attr.aria-label]="'ship_test_cart_name' | transloco"
+				[ngModel]="cartName()"
+				(ngModelChange)="cartName.set($event)"
+				(keydown.enter)="keep()"
+			/>
+			<button
+				type="button"
+				class="btn btn-theme btn-sm"
+				[disabled]="!cartName().trim()"
+				(click)="keep()"
+			>
+				{{ 'save' | transloco }}
+			</button>
+			} @else {
+			<button
+				type="button"
+				class="btn btn-outline btn-sm"
+				id="ship_try_keep"
+				(click)="naming.set(true)"
+			>
+				<i
+					class="ri-bookmark-line me-1"
+					aria-hidden="true"
+				></i>
+				{{ 'ship_save_test_cart' | transloco }}
+			</button>
+			} }
+		</div>
+	</div>
+</div>

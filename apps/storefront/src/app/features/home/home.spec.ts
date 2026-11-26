@@ -1,9 +1,11 @@
-import { signal } from '@angular/core';
+import { PLATFORM_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
+import { TranslocoService } from '@jsverse/transloco';
 import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { LocaleSeo } from '@core/i18n/locale-seo';
 import { ProductService } from '@data-access/services/product.service';
 
 import { Home } from './home';
@@ -12,6 +14,8 @@ const held = vi.hoisted(() => ({ options: null as null | { queryFn: () => Promis
 const homeData = signal<unknown>(undefined);
 const pending = signal(true);
 const bannerData = signal<unknown>(undefined);
+const railData = signal<unknown>(undefined);
+const railPlacement = vi.hoisted(() => ({ value: '' }));
 
 vi.mock('@tanstack/angular-query-experimental', async (original) => ({
 	...(await original<object>()),
@@ -27,6 +31,19 @@ vi.mock('@data-access/queries/banner.queries', () => ({
 	},
 	bannerSrc: (image: { url: string }) => image.url,
 }));
+const layoutData = signal<unknown>(undefined);
+vi.mock('@data-access/queries/page-layout.queries', () => ({
+	injectPageLayoutQuery: (key: () => string) => {
+		key();
+		return { data: layoutData };
+	},
+}));
+vi.mock('@data-access/queries/youtube.queries', () => ({
+	injectVideoRailQuery: (placement: () => string) => {
+		railPlacement.value = placement();
+		return { data: railData };
+	},
+}));
 
 const banner = (position: string, slot: string, url: string) => ({
 	position,
@@ -34,11 +51,20 @@ const banner = (position: string, slot: string, url: string) => ({
 	images: { desktop: { url } },
 });
 
-const render = (cards = vi.fn(() => of<unknown[]>([{ id: 1 }]))) => {
+const seo = { applyDocument: vi.fn() };
+const transloco = { selectTranslate: (key: string) => of(`t:${key}`) };
+
+const render = (cards = vi.fn(() => of<unknown[]>([{ id: 1 }])), platform = 'browser') => {
 	const home = vi.fn(() => of({ newArrivals: [] }));
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
-		providers: [{ provide: ProductService, useValue: { home, cardsFor: cards } }],
+		providers: [
+			// The rails query asks for the lean cards; `home` stands in for that call.
+			{ provide: ProductService, useValue: { home, homeCards: home, cardsFor: cards } },
+			{ provide: PLATFORM_ID, useValue: platform },
+			{ provide: LocaleSeo, useValue: seo },
+			{ provide: TranslocoService, useValue: transloco },
+		],
 	});
 	TestBed.overrideComponent(Home, { set: { imports: [], template: '' } });
 	const fixture = TestBed.createComponent(Home);
@@ -47,10 +73,57 @@ const render = (cards = vi.fn(() => of<unknown[]>([{ id: 1 }]))) => {
 };
 
 afterEach(() => {
+	layoutData.set(undefined);
 	homeData.set(undefined);
 	bannerData.set(undefined);
+	railData.set(undefined);
 	pending.set(true);
 	localStorage.clear();
+});
+
+describe('Home head', () => {
+	it('sends the search title and description in the page language', () => {
+		render();
+		expect(seo.applyDocument).toHaveBeenCalledWith({
+			title: 't:home_page_title',
+			description: 't:home_page_description',
+		});
+	});
+
+	it("uses the page's own settings from Page Builder when it has them, the fixed page too (P3)", () => {
+		layoutData.set({
+			pageType: 'home',
+			revisionId: null,
+			sections: [],
+			refreshAt: null,
+			settings: {
+				title: 'Sarees from Kolkata | Saha Textile',
+				description: null,
+				heading: 'Saha Textile sarees',
+				headingShown: true,
+				shareImageUrl: 'https://cdn/share.jpg',
+			},
+		});
+		const { fixture, page } = render();
+		fixture.detectChanges();
+		expect(page.builderSections()).toBeNull();
+		expect(page.pageSettings()?.heading).toBe('Saha Textile sarees');
+		expect(seo.applyDocument).toHaveBeenLastCalledWith({
+			title: 'Sarees from Kolkata | Saha Textile',
+			description: 't:home_page_description',
+			image: 'https://cdn/share.jpg',
+		});
+	});
+});
+
+describe('Home YouTube rail', () => {
+	it('reads the home placement, and is empty until the API answers', () => {
+		const { page } = render();
+		expect(railPlacement.value).toBe('home');
+		expect(page.railVideos()).toEqual([]);
+		railData.set([{ videoId: 'v1' }]);
+		expect(page.railVideos()).toEqual([{ videoId: 'v1' }]);
+	});
 });
 
 describe('Home rails', () => {
@@ -90,6 +163,33 @@ describe('Home rails', () => {
 		expect(seen.cards).toHaveBeenCalledWith(['red-saree']);
 		expect(seen.page.recentRail()).toEqual([{ id: 1 }]);
 	});
+
+	it('leaves the recently viewed rail to the browser when rendering on the server', async () => {
+		localStorage.setItem('st_recent', JSON.stringify([{ slug: 'red-saree', at: Date.now() }]));
+		const server = render(undefined, 'server');
+		await server.fixture.whenStable();
+		expect(server.cards).not.toHaveBeenCalled();
+		expect(server.page.recentRail()).toEqual([]);
+	});
+});
+
+describe('Home promo banners', () => {
+	it('stays away until one is live', () => {
+		const { page } = render();
+		expect(page.promoBanners()).toBeNull();
+		bannerData.set({ heroLayout: 'hero_full', banners: [banner('hero', 'main', 'x')] });
+		expect(page.promoBanners()).toBeNull();
+	});
+
+	it('places each banner in its own slot', () => {
+		const { page } = render();
+		const second = banner('promo_wide', 'item_2', 'https://cdn/2.webp');
+		bannerData.set({ heroLayout: 'hero_full', banners: [second] });
+		expect(page.promoBanners()).toEqual({
+			first: null,
+			second: { image_url: 'https://cdn/2.webp', resolved: second },
+		});
+	});
 });
 
 describe('Home hero', () => {
@@ -111,6 +211,32 @@ describe('Home hero', () => {
 		expect(page.heroSlides()).toEqual([{ image_url: 'https://cdn/1.webp', resolved: main }]);
 	});
 
+	it('plays the slides in order, whatever order they arrive in', () => {
+		const { page } = render();
+		const first = banner('hero', 'main', 'https://cdn/1.webp');
+		const second = banner('hero', 'slide_2', 'https://cdn/2.webp');
+		const third = banner('hero', 'slide_3', 'https://cdn/3.webp');
+		bannerData.set({ heroLayout: 'hero_full', banners: [third, first, second] });
+		expect(page.heroSlides()?.map((slide) => slide.resolved)).toEqual([first, second, third]);
+	});
+
+	it('reads only the tiles of the chosen layout when every slot is live', () => {
+		const { page } = render();
+		const left = banner('hero', 'left', 'https://cdn/l.webp');
+		const right = banner('hero', 'right', 'https://cdn/r.webp');
+		const side = banner('hero', 'side', 'https://cdn/s.webp');
+		const top = banner('hero', 'side_top', 'https://cdn/t.webp');
+		const bottom = banner('hero', 'side_bottom', 'https://cdn/b.webp');
+		const banners = [left, right, side, bottom, top];
+		bannerData.set({ heroLayout: 'hero_main_stack', banners });
+		expect(page.heroThemeData()).toMatchObject({
+			sub_banner_1: { resolved: top },
+			sub_banner_2: { resolved: bottom },
+		});
+		bannerData.set({ heroLayout: 'hero_main_side', banners });
+		expect(page.heroThemeData()).toMatchObject({ sub_banner_1: { resolved: side }, sub_banner_2: null });
+	});
+
 	it('maps the other layouts onto the theme hero, filling each slot', () => {
 		const { page } = render();
 		const main = banner('hero', 'main', 'https://cdn/m.webp');
@@ -124,5 +250,17 @@ describe('Home hero', () => {
 			sub_banner_1: { image_url: 'https://cdn/l.webp', resolved: left },
 			sub_banner_2: { image_url: 'https://cdn/r.webp', resolved: right },
 		});
+	});
+});
+
+describe('Home and the Page Builder switch', () => {
+	it('draws the live layout only when the API answers one with sections', () => {
+		const { page } = render();
+		expect(page.builderSections()).toBeNull();
+		layoutData.set({ pageType: 'home', revisionId: null, sections: [], refreshAt: null });
+		expect(page.builderSections()).toBeNull();
+		const sections = [{ id: 'news', type: 'newsletter' }];
+		layoutData.set({ pageType: 'home', revisionId: 'rev_1', sections, refreshAt: null });
+		expect(page.builderSections()).toEqual(sections);
 	});
 });

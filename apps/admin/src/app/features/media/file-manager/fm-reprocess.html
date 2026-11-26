@@ -1,0 +1,218 @@
+<div class="modal-header">
+	<h2 id="fm_rp_title">{{ 'fm_reprocess_title' | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div
+	class="modal-body"
+	id="fm_reprocess"
+>
+	<div class="d-flex align-items-center mb-3 gap-3">
+		<img
+			[src]="picture()"
+			style="width: 120px; height: 60px; object-fit: cover; border-radius: 6px"
+			alt=""
+		/>
+		<div>
+			@if (many()) {
+			<strong>{{ 'fm_rp_photos' | plural: photos().length }}</strong>
+			<span class="text-muted">· {{ photos()[0]?.bytes ?? 0 | fileSize }}…</span>
+			} @else if (photo(); as one) {
+			<strong>{{ one.name }}</strong>
+			<span class="text-muted">
+				@if (one.width && one.height) { · {{ one.width }} × {{ one.height }} · {{ photoShape() }} } · {{
+				one.bytes | fileSize }}
+			</span>
+			}
+			<div class="text-muted small">{{ 'fm_rp_intro' | transloco }}</div>
+		</div>
+	</div>
+	<div class="fm-checklist">
+		@for (line of lines(); track line.profile.key) {
+		<div
+			class="fm-checkitem"
+			[class.is-done]="line.made.size > 0 && !line.ticked.size"
+			[class.is-on]="line.ticked.size > 0"
+			[class.is-wide]="!line.fits"
+			[attr.data-profile]="line.profile.key"
+		>
+			<div class="form-check">
+				<input
+					class="form-check-input"
+					type="checkbox"
+					[id]="'fm_rp_' + line.profile.key"
+					[checked]="lineChecked(line)"
+					[disabled]="lineLocked(line)"
+					(change)="toggleLine(line)"
+				/>
+				<label
+					class="form-check-label"
+					[for]="'fm_rp_' + line.profile.key"
+				>
+					<span
+						class="fm-shape"
+						[style.width.px]="shape(line.profile).width"
+						[style.height.px]="shape(line.profile).height"
+					></span>
+					{{ name(line.profile) }} @if (line.fits && line.made.get('as_is'); as state) {
+					<span class="badge bg-success">
+						{{ (state === 'making' ? 'fm_making_versions' : 'fm_rp_done') | transloco }}
+					</span>
+					} @if (line.ticked.size) {
+					<span class="badge badge-theme">{{ 'fm_rp_new' | transloco }}</span>
+					}
+				</label>
+			</div>
+			@if (line.refusal) {
+			<small class="text-danger">{{ line.refusal }}</small>
+			} @else {
+			<small>{{ lineNote(line) }}</small>
+			} @if (!line.fits && !line.refusal && (line.ticked.size || line.made.size)) {
+			<div class="fm-fit-demo fm-fills">
+				@for (fill of line.fills; track fill) {
+				<label
+					[class.is-done]="line.made.has(fill)"
+					[class.on]="line.ticked.has(fill)"
+				>
+					<div
+						class="fm-fit-box"
+						[class.white]="fill === 'white'"
+						[class.dom]="fill === 'colour'"
+						[style.aspect-ratio]="ratio(line.profile)"
+						[style.background]="fill === 'brand' ? brandColour() : null"
+					>
+						@if (fill === 'blur') {
+						<img
+							class="bg"
+							[src]="picture()"
+							alt=""
+						/>
+						}
+						<img
+							[class.crop]="fill === 'crop'"
+							[src]="picture()"
+							alt=""
+						/>
+					</div>
+					<span class="d-flex align-items-center justify-content-center flex-wrap gap-1">
+						<input
+							class="form-check-input mt-0"
+							type="checkbox"
+							[id]="'fm_rp_' + line.profile.key + '_' + fill"
+							[attr.aria-label]="name(line.profile) + ' · ' + fillName(line.profile, fill)"
+							[checked]="line.made.has(fill) || line.ticked.has(fill)"
+							[disabled]="line.made.has(fill)"
+							(change)="toggleFill(line, fill)"
+						/>
+						{{ fillName(line.profile, fill) }} @if (line.made.get(fill); as state) {
+						<span class="badge bg-success">
+							{{ (state === 'making' ? 'fm_making_versions' : 'fm_rp_done') | transloco }}
+						</span>
+						} @if (line.ticked.has(fill)) {
+						<span class="badge badge-theme">{{ 'fm_rp_new' | transloco }}</span>
+						}
+					</span>
+				</label>
+				}
+			</div>
+			} @for (note of line.notes; track note) {
+			<div class="fm-warn">
+				<i class="ri-alert-line"></i>
+				<span>{{ note }}</span>
+			</div>
+			}
+		</div>
+		}
+	</div>
+	@if (many()) {
+	<p class="help-text mt-2 mb-0">{{ 'fm_rp_many_help' | transloco }}</p>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part">
+		@if (count()) {
+		<span
+			class="fm-footer-note"
+			[class.warn]="noted().length > 0"
+			[class.info]="!noted().length"
+		>
+			<i [class]="noted().length ? 'ri-alert-line' : 'ri-information-line'"></i>
+			{{ footer() }} · {{ 'fm_about' | transloco: { value: (bytes() | fileSize) } }}
+		</span>
+		}
+	</div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="fm_rp_make"
+			[disabled]="!count()"
+			(click)="make()"
+		>
+			{{ count() ? ('fm_rp_make' | plural: count()) : ('fm_rp_make_none' | transloco) }}
+		</button>
+	</div>
+</div>
+
+<ng-template
+	#fmReprocessNotes
+	let-confirm
+>
+	<div
+		class="modal-body"
+		id="fm_rp_notes"
+	>
+		<i class="ri-alert-line icon-box"></i>
+		<h5
+			class="modal-title"
+			id="fm_rp_notes_title"
+		>
+			{{ 'fm_rp_notes_title' | transloco }}
+		</h5>
+		<p>{{ 'fm_rp_notes_body' | plural: noted().length : { total: count() } }}</p>
+		<div
+			class="mx-auto mb-3 text-start"
+			style="max-width: 440px"
+		>
+			@for (line of noted(); track line.profile.key) { @for (note of line.notes; track note) {
+			<div class="fm-warn mb-2">
+				<i class="ri-alert-line"></i>
+				<span>
+					<strong>{{ name(line.profile) }}</strong>
+					· {{ note }}
+				</span>
+			</div>
+			} }
+		</div>
+		<div class="button-box">
+			<button
+				type="button"
+				class="btn-md fw-bold btn btn-secondary"
+				(click)="confirm.dismiss()"
+			>
+				{{ 'fm_go_back' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn-theme btn-md fw-bold btn"
+				id="fm_rp_notes_yes"
+				(click)="confirm.close('yes')"
+			>
+				{{ 'fm_rp_notes_yes' | transloco }}
+			</button>
+		</div>
+	</div>
+</ng-template>

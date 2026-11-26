@@ -1,0 +1,1039 @@
+<form
+	class="theme-form theme-form-2 mega-form"
+	[formGroup]="form"
+	(ngSubmit)="submit()"
+>
+	@if (event(); as current) {
+	<p class="help-text">
+		{{ 'status' | transloco }}: {{ 'event_status_' + current.status | transloco }} @if (current.status !== 'draft')
+		{ · {{ 'event_published_help' | transloco }} }
+	</p>
+	}
+	<app-language-switch
+		[locales]="locales"
+		[active]="fields.locale()"
+		[gaps]="gaps()"
+		(changed)="switchLanguage($event)"
+		(gapChosen)="openLanguageGap($event)"
+	/>
+	<div class="vertical-tabs">
+		<div class="row">
+			<div class="col-xl-3 col-lg-4">
+				<ul
+					ngbNav
+					#nav="ngbNav"
+					[(activeId)]="active"
+					class="nav-pills coupon-tab"
+					orientation="vertical"
+				>
+					<li ngbNavItem="general">
+						<a ngbNavLink>
+							<i class="ri-settings-line"></i>
+							{{ 'general' | transloco }}
+						</a>
+						<ng-template ngbNavContent>
+							<div class="tab">
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'event_name'"
+									[for]="'name'"
+									[required]="true"
+								>
+									<input
+										class="form-control"
+										id="name"
+										type="text"
+										formControlName="name"
+									/>
+									<p class="help-text">{{ 'event_name_help' | transloco }}</p>
+									@if (form.controls.name.touched && form.controls.name.errors?.['required']) {
+									<div class="invalid-feedback">{{ 'title_is_required' | transloco }}</div>
+									}
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'event_shop_title'"
+									[for]="'title'"
+									[required]="true"
+								>
+									<input
+										class="form-control"
+										id="title"
+										type="text"
+										formControlName="title"
+									/>
+									<p class="help-text">{{ 'event_shop_title_help' | transloco }}</p>
+									@if (fields.source('title'); as guide) {
+									<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+									}
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'event_starts_at'"
+									[for]="'starts_at'"
+									[required]="true"
+								>
+									<input
+										class="form-control"
+										id="starts_at"
+										type="datetime-local"
+										formControlName="starts_at"
+										[readonly]="!editable()"
+									/>
+									<p class="help-text">
+										{{ 'event_ist_help' | transloco }} {{ istText(form.controls.starts_at.value) }}
+									</p>
+								</app-form-fields>
+								@if (type() === 'sale') {
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'event_ends_at'"
+									[for]="'ends_at'"
+									[required]="true"
+								>
+									<input
+										class="form-control"
+										id="ends_at"
+										type="datetime-local"
+										formControlName="ends_at"
+									/>
+									<p class="help-text">
+										{{ 'event_ist_help' | transloco }} {{ istText(form.controls.ends_at.value) }}
+									</p>
+								</app-form-fields>
+								}
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'event_link'"
+									[for]="'link_href'"
+									[required]="false"
+								>
+									<!-- The admin link picker's pattern (shared app-link): pick what to link, then the item. -->
+									@if (isBrowser) {
+									<select2
+										class="custom-select"
+										id="link_kind"
+										[data]="linkKindOptions()"
+										[value]="linkKind()"
+										[disabled]="readOnly()"
+										(update)="pickLinkKind($event)"
+									/>
+									<!-- Drawn once the categories have loaded: select2 matches a saved value only against options it already has. -->
+									@if (linkKind() === 'category' && categoryLinks().length) {
+									<select2
+										class="custom-select mt-2"
+										id="link_category"
+										[data]="categoryLinks()"
+										[value]="form.controls.link_href.value"
+										[placeholder]="'select_categories' | transloco"
+										noResultMessage="{{ 'no_data_found' | transloco }}"
+										[disabled]="readOnly()"
+										(update)="pickLink($event)"
+									/>
+									} @else if (linkKind() === 'product') {
+									<select2
+										class="custom-select mt-2"
+										id="link_product"
+										[data]="productLinks()"
+										[value]="form.controls.link_href.value"
+										[placeholder]="'select_product' | transloco"
+										noResultMessage="{{ 'no_data_found' | transloco }}"
+										[customSearchEnabled]="true"
+										[disabled]="readOnly()"
+										(search)="searchProduct($event)"
+										(update)="pickLink($event)"
+									/>
+									} @else if (linkKind() === 'page') {
+									<select2
+										class="custom-select mt-2"
+										id="link_page"
+										[data]="pageLinks()"
+										[value]="form.controls.link_href.value"
+										[disabled]="readOnly()"
+										(update)="pickLink($event)"
+									/>
+									} } @if (linkKind() === 'path') {
+									<input
+										class="form-control mt-2"
+										id="link_href"
+										type="text"
+										placeholder="/collections/durga-puja"
+										formControlName="link_href"
+									/>
+									}
+									<p class="help-text">
+										{{ 'event_link_help' | transloco }} @if (form.controls.link_href.value) { · {{
+										form.controls.link_href.value }} }
+									</p>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'event_show_countdown'"
+									[for]="'show_countdown'"
+									[required]="false"
+								>
+									<div class="form-check form-switch ps-0">
+										<label class="switch">
+											<input
+												type="checkbox"
+												id="show_countdown"
+												formControlName="show_countdown"
+											/>
+											<span class="switch-state"></span>
+										</label>
+									</div>
+								</app-form-fields>
+								@if (type() === 'launch') {
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'event_now_live_days'"
+									[for]="'now_live_days'"
+									[required]="false"
+								>
+									<input
+										class="form-control"
+										id="now_live_days"
+										type="number"
+										min="0"
+										max="60"
+										formControlName="now_live_days"
+									/>
+									<p class="help-text">{{ 'event_now_live_days_help' | transloco }}</p>
+								</app-form-fields>
+								}
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'event_show_popup'"
+									[for]="'show_popup'"
+									[required]="false"
+								>
+									<div class="form-check form-switch ps-0">
+										<label class="switch">
+											<input
+												type="checkbox"
+												id="show_popup"
+												formControlName="show_popup"
+											/>
+											<span class="switch-state"></span>
+										</label>
+									</div>
+									<p class="help-text">
+										{{ (type() === 'sale' ? 'event_popup_help_sale' : 'event_popup_help_launch') |
+										transloco }}
+									</p>
+								</app-form-fields>
+								@if (form.controls.show_popup.value) {
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'event_popup_pictures'"
+									[for]="'popup_image'"
+									[required]="false"
+								>
+									<!-- Several pictures, as on the store form: they slide in this order (owner, 2026-11-10). -->
+									<div id="popup_image">
+										<app-image-upload
+											[profile]="'phone_banner_4x5'"
+											[max]="maxPopupPictures"
+											[pickTitle]="'fm_pick_title_event_popup'"
+											[multipleImage]="true"
+											[purpose]="'banner'"
+											[images]="popupImages()"
+											[helpText]="'event_popup_pictures_help' | transloco"
+											(selectedFiles)="selectPopupImages($event)"
+										/>
+									</div>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'event_picture_side'"
+									[for]="'popup_image_side'"
+									[required]="false"
+								>
+									<select
+										class="form-select"
+										id="popup_image_side"
+										formControlName="popup_image_side"
+									>
+										<option value="right">{{ 'event_picture_right' | transloco }}</option>
+										<option value="left">{{ 'event_picture_left' | transloco }}</option>
+									</select>
+									<p class="help-text">{{ 'event_picture_side_help' | transloco }}</p>
+								</app-form-fields>
+								@if (event()) {
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'event_preview'"
+									[for]="'preview_desktop_btn'"
+									[required]="false"
+								>
+									<div class="d-flex flex-wrap gap-2">
+										<button
+											type="button"
+											id="preview_desktop_btn"
+											class="btn btn-outline"
+											(click)="preview('desktop')"
+										>
+											<i class="ri-computer-line"></i>
+											{{ 'event_preview_desktop' | transloco }}
+										</button>
+										<button
+											type="button"
+											id="preview_phone_btn"
+											class="btn btn-outline"
+											(click)="preview('phone')"
+										>
+											<i class="ri-smartphone-line"></i>
+											{{ 'event_preview_phone' | transloco }}
+										</button>
+									</div>
+									<p class="help-text">
+										{{ 'event_preview_help' | transloco: { language: (fields.locale() |
+										languageName) } }}
+									</p>
+								</app-form-fields>
+								} }
+							</div>
+						</ng-template>
+					</li>
+					@if (type() === 'launch') {
+					<li ngbNavItem="items">
+						<a ngbNavLink>
+							<i class="ri-list-check-2"></i>
+							{{ 'event_items' | transloco }}
+						</a>
+						<ng-template ngbNavContent>
+							<div class="tab">
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'categories'"
+									[for]="'launch_categories'"
+									[required]="false"
+								>
+									<div id="launch_categories">
+										<app-advanced-dropdown
+											[position]="'top'"
+											[selectedOption]="launchCategoryIds()"
+											[options]="categoryOptions()"
+											[subArrayKey]="'subcategories'"
+											(selectedItem)="pickLaunchCategories($event)"
+										/>
+									</div>
+									<p class="help-text">{{ 'event_launch_categories_help' | transloco }}</p>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'products'"
+									[for]="'launch_products'"
+									[required]="false"
+								>
+									@if (isBrowser) {
+									<select2
+										class="custom-select"
+										id="launch_products"
+										[data]="productOptions()"
+										[value]="launchProductIds()"
+										[placeholder]="'select_product' | transloco"
+										noResultMessage="{{ 'no_data_found' | transloco }}"
+										[customSearchEnabled]="true"
+										[multiple]="true"
+										(search)="searchProduct($event)"
+										(update)="pickLaunchProducts($event)"
+									/>
+									}
+									<p class="help-text">{{ 'event_launch_products_help' | transloco }}</p>
+								</app-form-fields>
+								@if (review(); as data) {
+								<div class="table-responsive">
+									<table class="all-package theme-table no-footer table">
+										<thead>
+											<tr>
+												<th>{{ 'product' | transloco }}</th>
+												<th>{{ 'event_came_from' | transloco }}</th>
+												<th>{{ 'event_readiness' | transloco }}</th>
+												<th>{{ 'event_goes_live' | transloco }}</th>
+											</tr>
+										</thead>
+										<tbody>
+											@for (item of data.items; track item.productId) {
+											<tr>
+												<td class="text-start">{{ item.title }} · {{ item.sku }}</td>
+												<td>
+													{{ item.categoryId ? categoryName(item.categoryId) :
+													('event_picked_alone' | transloco) }}
+												</td>
+												<td>
+													@if (item.gaps.length) {
+													<div class="status-danger">
+														<span>
+															{{ problemText({ code: 'not_ready', target: item.productId,
+															locale: null, gaps: item.gaps, detail: ('event_gaps' |
+															transloco) }) }}
+														</span>
+													</div>
+													} @else {
+													<div class="status-completed">
+														<span>{{ 'event_ready' | transloco }}</span>
+													</div>
+													}
+												</td>
+												<td>
+													@if (item.categoryId) {
+													<div class="form-check form-switch ps-0">
+														<label class="switch">
+															<input
+																type="checkbox"
+																[checked]="!isHeld(item.productId)"
+																[disabled]="!editable()"
+																(change)="toggleHeld(item.productId, !$any($event.target).checked)"
+															/>
+															<span class="switch-state"></span>
+														</label>
+													</div>
+													} @else { {{ 'yes' | transloco }} }
+												</td>
+											</tr>
+											} @empty {
+											<tr>
+												<td colspan="4">{{ 'event_no_draft_items' | transloco }}</td>
+											</tr>
+											}
+										</tbody>
+									</table>
+								</div>
+								} @else {
+								<p class="help-text">{{ 'event_save_to_check' | transloco }}</p>
+								}
+							</div>
+						</ng-template>
+					</li>
+					} @else {
+					<li ngbNavItem="discounts">
+						<a ngbNavLink>
+							<i class="ri-percent-line"></i>
+							{{ 'event_discounts' | transloco }}
+						</a>
+						<ng-template ngbNavContent>
+							<div class="tab">
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'categories'"
+									[for]="'sale_categories'"
+									[required]="false"
+								>
+									<div id="sale_categories">
+										<app-advanced-dropdown
+											[position]="'top'"
+											[selectedOption]="saleCategoryIds()"
+											[options]="categoryOptions()"
+											[subArrayKey]="'subcategories'"
+											(selectedItem)="pickSaleCategories($event)"
+										/>
+									</div>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'products'"
+									[for]="'sale_products'"
+									[required]="false"
+								>
+									@if (isBrowser) {
+									<select2
+										class="custom-select"
+										id="sale_products"
+										[data]="productOptions()"
+										[value]="saleProductIds()"
+										[placeholder]="'select_product' | transloco"
+										noResultMessage="{{ 'no_data_found' | transloco }}"
+										[customSearchEnabled]="true"
+										[multiple]="true"
+										(search)="searchProduct($event)"
+										(update)="pickSaleProducts($event)"
+									/>
+									}
+									<p class="help-text">{{ 'event_sale_products_help' | transloco }}</p>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'event_sale_sets'"
+									[for]="'sale_include_sets'"
+									[required]="false"
+								>
+									<div class="form-check form-switch ps-0">
+										<label class="switch">
+											<input
+												type="checkbox"
+												id="sale_include_sets"
+												[checked]="saleIncludeSets()"
+												(change)="saleIncludeSets.set($any($event.target).checked)"
+											/>
+											<span class="switch-state"></span>
+										</label>
+									</div>
+									<p class="help-text">{{ 'event_sale_sets_help' | transloco }}</p>
+								</app-form-fields>
+								<!-- Brief 4d: cells never wrap; on a narrow screen the table scrolls inside its box. -->
+								<div class="table-responsive">
+									<table
+										class="all-package theme-table no-footer table text-nowrap"
+										style="min-width: 760px"
+									>
+										<thead>
+											<tr>
+												<th class="text-start">{{ 'event_applies_to' | transloco }}</th>
+												<th [style.width.px]="190">{{ 'event_rule' | transloco }}</th>
+												<th [style.width.px]="190">{{ 'event_value' | transloco }}</th>
+												<th [style.width.px]="170">{{ 'event_exceptions' | transloco }}</th>
+												<th [style.width.px]="64"></th>
+											</tr>
+										</thead>
+										<tbody>
+											@for (line of saleCategories(); track line.categoryId) {
+											<tr>
+												<td class="text-start text-wrap">
+													{{ categoryName(line.categoryId) }}
+												</td>
+												<td>
+													<select
+														class="form-select"
+														[value]="line.rule.kind"
+														[disabled]="readOnly()"
+														(change)="setCategoryRule(line.categoryId, { kind: ruleKind($any($event.target).value) })"
+													>
+														<option value="percent">
+															{{ 'event_rule_percent' | transloco }}
+														</option>
+														<option value="amount">
+															{{ 'event_rule_amount' | transloco }}
+														</option>
+														<option value="fixed">
+															{{ 'event_rule_fixed' | transloco }}
+														</option>
+													</select>
+												</td>
+												<td>
+													<div class="input-group">
+														<span class="input-group-text">
+															{{ line.rule.kind === 'percent' ? '%' : '₹' }}
+														</span>
+														<input
+															class="form-control"
+															type="number"
+															min="0"
+															[value]="line.rule.value"
+															[readonly]="readOnly()"
+															(change)="setCategoryRule(line.categoryId, { value: +$any($event.target).value })"
+														/>
+													</div>
+												</td>
+												<td>
+													<button
+														type="button"
+														class="btn btn-sm btn-outline"
+														[disabled]="readOnly()"
+														(click)="openExceptions(line)"
+													>
+														{{ 'event_exceptions' | transloco }} ({{ exceptionCount(line)
+														}})
+													</button>
+												</td>
+												<td>
+													@if (!readOnly()) {
+													<a
+														[title]="'delete' | transloco"
+														href="javascript:void(0)"
+														[attr.aria-label]="'delete' | transloco"
+														(click)="removeCategoryLine(line.categoryId)"
+													>
+														<i class="ri-delete-bin-line"></i>
+													</a>
+													}
+												</td>
+											</tr>
+											} @for (line of saleProducts(); track line.productId) {
+											<tr>
+												<td class="text-start text-wrap">{{ productName(line.productId) }}</td>
+												<td>
+													<select
+														class="form-select"
+														[value]="line.rule.kind"
+														[disabled]="readOnly()"
+														(change)="setProductRule(line.productId, { kind: ruleKind($any($event.target).value) })"
+													>
+														<option value="percent">
+															{{ 'event_rule_percent' | transloco }}
+														</option>
+														<option value="amount">
+															{{ 'event_rule_amount' | transloco }}
+														</option>
+														<option value="fixed">
+															{{ 'event_rule_fixed' | transloco }}
+														</option>
+													</select>
+												</td>
+												<td>
+													@if (skuPrices(line).length) { @for (row of skuPrices(line); track
+													row.sku) {
+													<div class="input-group input-group-sm mb-1">
+														<span
+															class="input-group-text"
+															[title]="row.sku"
+														>
+															₹
+														</span>
+														<input
+															class="form-control"
+															type="number"
+															min="0"
+															[attr.aria-label]="row.sku"
+															[title]="row.sku"
+															[value]="row.price"
+															[readonly]="readOnly()"
+															(change)="setProductSkuPrice(line.productId, row.sku, +$any($event.target).value)"
+														/>
+													</div>
+													} } @else {
+													<div class="input-group">
+														<span class="input-group-text">
+															{{ line.rule.kind === 'percent' ? '%' : '₹' }}
+														</span>
+														<input
+															class="form-control"
+															type="number"
+															min="0"
+															[value]="line.rule.value"
+															[readonly]="readOnly()"
+															(change)="setProductRule(line.productId, { value: +$any($event.target).value })"
+														/>
+													</div>
+													}
+												</td>
+												<td>
+													{{ 'event_own_rule' | transloco }} @if (skuPrices(line).length) {
+													<span class="help-text d-block">
+														{{ 'sale_colours' | transloco: { count: skuPrices(line).length }
+														}}
+													</span>
+													}
+												</td>
+												<td>
+													@if (!readOnly()) {
+													<a
+														[title]="'delete' | transloco"
+														href="javascript:void(0)"
+														[attr.aria-label]="'delete' | transloco"
+														(click)="removeProductLine(line.productId)"
+													>
+														<i class="ri-delete-bin-line"></i>
+													</a>
+													}
+												</td>
+											</tr>
+											} @if (!saleCategories().length && !saleProducts().length) {
+											<tr>
+												<td colspan="5">{{ 'event_no_discounts' | transloco }}</td>
+											</tr>
+											}
+										</tbody>
+									</table>
+								</div>
+								<p class="help-text">{{ 'event_rule_order_help' | transloco }}</p>
+							</div>
+						</ng-template>
+					</li>
+					}
+					<li ngbNavItem="message">
+						<a ngbNavLink>
+							<i class="ri-mail-send-line"></i>
+							{{ 'event_message' | transloco }}
+						</a>
+						<ng-template ngbNavContent>
+							<div class="tab">
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'event_message'"
+									[for]="'message'"
+									[required]="true"
+								>
+									<!-- The blog form's rich editor (owner brief: message body ngx-editor). -->
+									<div
+										class="custom-editor"
+										id="message"
+									>
+										@if (isBrowser && editor) {
+										<ngx-editor-menu [editor]="editor" />
+										<ngx-editor
+											[editor]="editor"
+											[disabled]="readOnly()"
+											formControlName="message"
+										/>
+										}
+									</div>
+									<p class="help-text">{{ 'event_message_help' | transloco }}</p>
+									@if (fields.source('message'); as guide) {
+									<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+									}
+								</app-form-fields>
+								@if (event()) {
+								<button
+									*hasPermission="'event.edit'"
+									type="button"
+									class="btn btn-outline mb-4"
+									(click)="sendTest()"
+								>
+									{{ 'event_send_test' | transloco }}
+								</button>
+								}
+							</div>
+						</ng-template>
+					</li>
+					<li ngbNavItem="review">
+						<a ngbNavLink>
+							<i class="ri-file-list-3-line"></i>
+							{{ 'event_review' | transloco }}
+						</a>
+						<ng-template ngbNavContent>
+							<div class="tab">
+								@if (problems().length) {
+								<div class="alert alert-danger">
+									<strong>{{ 'event_publish_blocked' | transloco }}</strong>
+									<ul class="mt-2 mb-0">
+										@for (problem of problems(); track $index) {
+										<li>{{ problemText(problem) }}</li>
+										}
+									</ul>
+								</div>
+								} @if (review(); as data) { @if (status() === 'draft') {
+								<p class="help-text">{{ 'event_reach' | plural: data.recipients }}</p>
+								} @if (type() === 'sale' && data.prices.length) {
+								<div class="table-responsive">
+									<table class="all-package theme-table no-footer table">
+										<thead>
+											<tr>
+												<th class="text-start">{{ 'product' | transloco }}</th>
+												<th>SKU</th>
+												<th>{{ 'event_normal_price' | transloco }}</th>
+												<th>{{ 'event_sale_price' | transloco }}</th>
+												<th>{{ 'event_rule_from' | transloco }}</th>
+											</tr>
+										</thead>
+										<tbody>
+											@for (row of data.prices; track row.sku) {
+											<tr>
+												<td class="text-start">{{ row.productTitle }}</td>
+												<td>{{ row.sku }}</td>
+												<td>₹ {{ row.normalINR }}</td>
+												<td>
+													@if (row.saleINR !== null) { ₹ {{ row.saleINR }} @if (row.warning) {
+													<div class="status-pending">
+														<span>{{ 'event_over_60' | transloco }}</span>
+													</div>
+													} } @else if (row.refused) {
+													<div class="status-danger">
+														<span>{{ 'event_rule_refused' | transloco }}</span>
+													</div>
+													} @else { — }
+												</td>
+												<td>
+													{{ 'event_source_' + row.source | transloco }} @if (row.categoryId)
+													{ · {{ categoryName(row.categoryId) }} }
+												</td>
+											</tr>
+											}
+										</tbody>
+									</table>
+								</div>
+								} } @if (event()?.saleRecord; as record) {
+								<h5 class="mt-4">{{ 'event_results' | transloco }}</h5>
+								<!-- The admin home dashboard's stat tiles (dashboard-tiles, card-tiles), as the brief asks. -->
+								<section class="dashboard-tiles mt-3">
+									<div class="row g-3">
+										<div class="col-sm-6">
+											<div class="card-tiles h-100">
+												<div>
+													<h6>{{ 'event_orders' | transloco }}</h6>
+													<h3>{{ record.orders }}</h3>
+												</div>
+												<div class="icon-box">
+													<i class="ri-file-text-line"></i>
+												</div>
+											</div>
+										</div>
+										<div class="col-sm-6">
+											<div class="card-tiles h-100">
+												<div>
+													<h6>{{ 'event_units_sold' | transloco }}</h6>
+													<h3>{{ record.unitsSold }}</h3>
+												</div>
+												<div class="icon-box">
+													<i class="ri-shopping-bag-line"></i>
+												</div>
+											</div>
+										</div>
+										<div class="col-sm-6">
+											<div class="card-tiles h-100">
+												<div>
+													<h6>{{ 'event_revenue' | transloco }}</h6>
+													<h3>₹ {{ record.revenueINR }}</h3>
+												</div>
+												<div class="icon-box">
+													<i class="ri-wallet-line"></i>
+												</div>
+											</div>
+										</div>
+										<div class="col-sm-6">
+											<div class="card-tiles h-100">
+												<div>
+													<h6>{{ 'event_discount_given' | transloco }}</h6>
+													<h3>₹ {{ record.discountINR }}</h3>
+												</div>
+												<div class="icon-box">
+													<i class="ri-price-tag-3-line"></i>
+												</div>
+											</div>
+										</div>
+									</div>
+								</section>
+								@if (record.rows.length) {
+								<div class="table-responsive mt-3">
+									<table class="all-package theme-table no-footer table">
+										<thead>
+											<tr>
+												<th class="text-start">{{ 'product' | transloco }}</th>
+												<th>SKU</th>
+												<th>{{ 'event_normal_price' | transloco }}</th>
+												<th>{{ 'event_sale_price' | transloco }}</th>
+												<th>{{ 'event_units_sold' | transloco }}</th>
+												<th>{{ 'event_revenue' | transloco }}</th>
+												<th>{{ 'event_discount_given' | transloco }}</th>
+											</tr>
+										</thead>
+										<tbody>
+											@for (row of record.rows; track row.productId + row.sku) {
+											<tr>
+												<td class="text-start">
+													{{ row.productTitle || productName(row.productId) }}
+												</td>
+												<td>{{ row.sku }}</td>
+												<td>₹ {{ row.normalINR }}</td>
+												<td>₹ {{ row.saleINR }}</td>
+												<td>{{ row.unitsSold }}</td>
+												<td>₹ {{ row.revenueINR }}</td>
+												<td>₹ {{ row.discountINR }}</td>
+											</tr>
+											}
+										</tbody>
+									</table>
+								</div>
+								} } @if (event()?.launchReport; as report) {
+								<h5 class="mt-4">{{ 'event_launch_report' | transloco }}</h5>
+								<p>
+									{{ 'event_launch_counts' | transloco: { live: report.liveProductIds.length, skipped:
+									report.skippedProductIds.length } }}
+								</p>
+								@if (report.failed.length) {
+								<div class="alert alert-danger">
+									<strong>{{ 'event_launch_failed' | transloco }}</strong>
+									<ul class="mt-2 mb-0">
+										@for (row of report.failed; track row.productId) {
+										<li>
+											{{ problemText({ code: 'not_ready', target: row.productId, locale: null,
+											gaps: row.gaps, detail: productName(row.productId) }) }}
+										</li>
+										}
+									</ul>
+								</div>
+								} }
+								<div class="d-flex mt-3 flex-wrap gap-2">
+									@if (event() && status() === 'draft') {
+									<button
+										*hasPermission="'event.publish'"
+										type="button"
+										id="publish_btn"
+										class="btn btn-theme"
+										(click)="askPublish()"
+									>
+										{{ 'event_publish' | transloco }}
+									</button>
+									} @if (status() === 'scheduled') {
+									<button
+										*hasPermission="'event.publish'"
+										type="button"
+										class="btn btn-outline"
+										(click)="ask('unpublish')"
+									>
+										{{ 'event_unpublish' | transloco }}
+									</button>
+									} @if (runningSale()) {
+									<button
+										*hasPermission="'event.cancel'"
+										type="button"
+										class="btn btn-outline"
+										(click)="ask('end_now')"
+									>
+										{{ 'event_end_now' | transloco }}
+									</button>
+									} @if (status() === 'scheduled' || status() === 'live') {
+									<button
+										*hasPermission="'event.cancel'"
+										type="button"
+										class="btn btn-outline"
+										(click)="ask('cancel')"
+									>
+										{{ 'event_cancel' | transloco }}
+									</button>
+									}
+								</div>
+							</div>
+						</ng-template>
+					</li>
+				</ul>
+			</div>
+			<!-- Brief 4d: the tabs' content takes the rest of the row, so the Discounts table fits. -->
+			<div class="col-xl-9 col-lg-8">
+				<div [ngbNavOutlet]="nav"></div>
+			</div>
+		</div>
+		@if (!readOnly()) {
+		<app-button [id]="'event_btn'">{{ 'event_save' | transloco }}</app-button>
+		}
+	</div>
+</form>
+<app-confirmation-modal (confirmed)="confirmed($event)" />
+
+<ng-template
+	#exceptionsModal
+	let-modal
+>
+	<div class="modal-header">
+		<h3 class="fw-semibold mb-1">
+			{{ 'event_exceptions' | transloco }} · {{ categoryName(exceptionsFor()?.line?.categoryId ?? '') }}
+		</h3>
+		<app-button
+			[title]="'close' | transloco"
+			[class]="'btn btn-close'"
+			[spinner]="false"
+			[id]="'exceptions_close_btn'"
+			(click)="modal.dismiss('Cross click')"
+		>
+			<i class="ri-close-line"></i>
+		</app-button>
+	</div>
+	<div class="modal-body">
+		@if (exceptionsFor(); as state) {
+		<div class="table-responsive">
+			<table class="all-package theme-table no-footer table">
+				<thead>
+					<tr>
+						<th class="text-start">{{ 'product' | transloco }}</th>
+						<th>{{ 'event_in_sale' | transloco }}</th>
+						<th>{{ 'event_rule' | transloco }}</th>
+						<th>{{ 'event_value' | transloco }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					@for (product of state.products.products; track product.productId) { @let row =
+					exception(product.productId);
+					<tr>
+						<td class="text-start">{{ product.title }} · {{ product.sku }}</td>
+						<td>
+							<div class="form-check form-switch ps-0">
+								<label class="switch">
+									<input
+										type="checkbox"
+										[checked]="row?.mode !== 'held'"
+										(change)="toggleInSale(product.productId, $any($event.target).checked)"
+									/>
+									<span class="switch-state"></span>
+								</label>
+							</div>
+						</td>
+						@if (row?.mode === 'held') {
+						<td colspan="2">{{ 'event_held_back' | transloco }}</td>
+						} @else {
+						<td>
+							<select
+								class="form-select"
+								[value]="row?.mode === 'own' ? (row?.rule?.kind ?? 'percent') : 'category'"
+								(change)="pickExceptionRule(product.productId, $any($event.target).value)"
+							>
+								<option value="category">{{ 'event_category_rule' | transloco }}</option>
+								<option value="percent">{{ 'event_rule_percent' | transloco }}</option>
+								<option value="amount">{{ 'event_rule_amount' | transloco }}</option>
+								<option value="fixed">{{ 'event_rule_fixed' | transloco }}</option>
+							</select>
+						</td>
+						<td>
+							@if (row?.mode === 'own' && row?.rule; as rule) { @if (rule.kind === 'fixed' &&
+							product.skus.length > 1) { @for (sku of product.skus; track sku.sku) {
+							<div class="input-group mb-1">
+								<span class="input-group-text">{{ sku.sku }} ₹</span>
+								<input
+									class="form-control"
+									type="number"
+									min="0"
+									[placeholder]="sku.normalINR"
+									[value]="rule.skuPrices[sku.sku] ?? ''"
+									(change)="setSkuPrice(product.productId, sku.sku, $any($event.target).value)"
+								/>
+							</div>
+							} } @else {
+							<div class="input-group">
+								<span class="input-group-text">{{ rule.kind === 'percent' ? '%' : '₹' }}</span>
+								<input
+									class="form-control"
+									type="number"
+									min="0"
+									[value]="rule.value"
+									(change)="setExceptionRule(product.productId, { value: +$any($event.target).value })"
+								/>
+							</div>
+							} } @else { {{ 'event_category_rule' | transloco }} }
+						</td>
+						}
+					</tr>
+					} @empty {
+					<tr>
+						<td colspan="4">{{ 'no_records_found' | transloco }}</td>
+					</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+		}
+		<div class="button-box">
+			<app-button
+				[class]="'btn-md fw-bold btn btn-secondary'"
+				[spinner]="false"
+				[id]="'exceptions_cancel_btn'"
+				(click)="modal.dismiss('Cancel')"
+			>
+				{{ 'cancel' | transloco }}
+			</app-button>
+			<app-button
+				[class]="'btn-theme btn-md fw-bold btn'"
+				[spinner]="false"
+				[id]="'exceptions_save_btn'"
+				(click)="saveExceptions(); modal.close()"
+			>
+				{{ 'save' | transloco }}
+			</app-button>
+		</div>
+	</div>
+</ng-template>

@@ -1,0 +1,146 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'communications'"
+>
+	<div
+		class="theme-form theme-form-2 mega-form"
+		*hasPermission="'setting.index'"
+	>
+		<p class="text-content mb-4">{{ 'communications_intro' | transloco }}</p>
+
+		<div class="table-responsive mb-4">
+			<!-- The message column stays put while the channel columns scroll on narrow screens. -->
+			<table class="table-sticky-first table">
+				<thead>
+					<tr>
+						<th>{{ 'message' | transloco }}</th>
+						@for (channel of channels(); track channel) {
+						<th class="text-center">{{ channel | transloco }}</th>
+						}
+					</tr>
+				</thead>
+				@for (group of groups(); track group) {
+				<tbody>
+					<tr>
+						<th class="pt-4">
+							<h5 class="mb-0">{{ 'comm_group_' + group | transloco }}</h5>
+						</th>
+						<td
+							colspan="3"
+							class="pt-4"
+						></td>
+					</tr>
+					@for (use of usesIn(group); track use.key) {
+					<tr>
+						<td>{{ 'comm_use_' + use.key | transloco }}</td>
+						@for (channel of channels(); track channel) { @let cell = use.cells[channel];
+						<td class="text-center align-middle">
+							@if (cell.available) {
+							<!-- Every switch gets the same side room, so the i mark never shifts its own switch. -->
+							<div class="form-check form-switch position-relative d-inline-block mx-3 mb-0 ps-0">
+								<label class="switch mb-0">
+									<input
+										type="checkbox"
+										[id]="'comm_' + use.key + '_' + channel"
+										[checked]="cell.on"
+										[disabled]="cell.locked"
+										(change)="onToggle(use, channel, $event)"
+										[attr.aria-label]="('comm_use_' + use.key | transloco) + ' · ' + (channel | transloco)"
+									/>
+									<span class="switch-state"></span>
+								</label>
+								@if (cell.risk !== 'none' && cell.reasonKey) {
+								<sup class="position-absolute lh-1 start-100 top-0 ms-1">
+									<i
+										class="ri-information-fill fs-6"
+										[class.text-danger]="cell.risk === 'danger'"
+										[class.text-warning]="cell.risk === 'warning'"
+										[title]="cell.reasonKey | transloco"
+										[attr.aria-label]="cell.reasonKey | transloco"
+										role="img"
+									></i>
+								</sup>
+								}
+							</div>
+							} @else {
+							<span
+								class="text-muted"
+								[title]="(cell.reasonKey ?? '') | transloco"
+							>
+								—
+							</span>
+							}
+						</td>
+						}
+					</tr>
+					}
+				</tbody>
+				}
+			</table>
+		</div>
+	</div>
+</app-page-wrapper>
+
+<ng-template
+	#confirmChannelModal
+	let-modal
+>
+	@if (pending(); as target) {
+	<div class="modal-body">
+		<i class="ri-error-warning-line icon-box wo-bg text-warning"></i>
+		<h5
+			class="modal-title"
+			id="confirm-channel-title"
+		>
+			{{ 'comm_confirm_warning_title' | transloco }}
+		</h5>
+		<p class="mb-1">
+			<strong>{{ 'comm_use_' + target.use.key | transloco }} · {{ target.channel | transloco }}</strong>
+		</p>
+		<p class="text-content">{{ (target.use.cells[target.channel].reasonKey ?? '') | transloco }}</p>
+
+		<form
+			class="theme-form theme-form-2 text-start"
+			[formGroup]="passwordForm"
+			(ngSubmit)="confirm()"
+		>
+			<app-form-fields
+				[label]="'password' | transloco"
+				[for]="'comm_confirm_password'"
+				[required]="true"
+			>
+				<input
+					class="form-control"
+					id="comm_confirm_password"
+					type="password"
+					formControlName="password"
+					autocomplete="current-password"
+					placeholder="{{ 'enter_password' | transloco }}"
+				/>
+			</app-form-fields>
+			@if (error()) {
+			<div class="invalid-feedback d-block mb-3">{{ error() | transloco }}</div>
+			}
+			<p class="small text-muted">{{ 'comm_confirm_password_only' | transloco }}</p>
+			<div class="button-box">
+				<app-button
+					[class]="'btn-md fw-bold btn btn-secondary'"
+					[spinner]="false"
+					[type]="'button'"
+					[id]="'comm_confirm_cancel_btn'"
+					(click)="cancel()"
+				>
+					{{ 'cancel' | transloco }}
+				</app-button>
+				<app-button
+					[class]="'btn-theme btn-md fw-bold btn'"
+					[id]="'comm_confirm_turn_on_btn'"
+					[disabled]="saving()"
+				>
+					{{ 'comm_turn_on' | transloco }}
+				</app-button>
+			</div>
+		</form>
+	</div>
+	}
+</ng-template>

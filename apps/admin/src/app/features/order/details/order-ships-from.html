@@ -1,0 +1,150 @@
+@if (view.data(); as v) { @if (v.locations.length) {
+<div class="card">
+	<div class="card-body">
+		<div class="title-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+			<h5>{{ 'ships_from_title' | transloco }}</h5>
+			@if (canAssign() && v.open) {
+			<button
+				type="button"
+				class="btn btn-theme btn-sm"
+				id="ships_from_assign"
+				(click)="open(assignModal)"
+			>
+				<i class="ri-map-pin-2-line"></i>
+				{{ 'ships_from_assign' | transloco }}
+			</button>
+			}
+		</div>
+		@if (currentName(); as name) {
+		<p class="mb-2">
+			<i class="ri-map-pin-2-line me-1"></i>
+			<b>{{ name }}</b>
+		</p>
+		} @else {
+		<div class="alert alert-warning py-2">
+			<i class="ri-information-line me-1"></i>
+			{{ 'ships_from_not_assigned' | transloco }}
+		</div>
+		}
+		<div class="table-responsive datatable-wrapper border-table">
+			<table class="all-package theme-table no-footer table">
+				<thead>
+					<tr>
+						<th>{{ 'ships_from_item' | transloco }}</th>
+						@for (l of v.locations; track l.id) {
+						<th>{{ l.name }}</th>
+						}
+					</tr>
+				</thead>
+				<tbody>
+					@for (line of v.lines; track line.lineId) {
+					<tr>
+						<td>
+							{{ line.title }}
+							<small class="d-block text-muted">{{ line.sku }} · × {{ line.quantity }}</small>
+						</td>
+						@for (l of v.locations; track l.id) {
+						<td [class.text-success]="(line.free[l.id] ?? 0) >= line.quantity">
+							{{ 'ships_from_free' | transloco: { count: line.free[l.id] ?? 0 } }}
+						</td>
+						}
+					</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+} }
+
+<ng-template
+	#assignModal
+	let-modal
+>
+	<div class="modal-header">
+		<h5 class="mb-0">{{ 'ships_from_modal_title' | transloco: { number: orderNumber() } }}</h5>
+		<button
+			type="button"
+			class="btn btn-close"
+			[title]="'close' | transloco"
+			(click)="modal.dismiss()"
+		></button>
+	</div>
+	<div class="modal-body">
+		@if (view.data(); as v) {
+		<b class="d-block mb-1">{{ 'ships_from_ship_from' | transloco }}</b>
+		@for (l of v.locations; track l.id) {
+		<label class="form-check d-block">
+			<input
+				class="form-check-input"
+				type="radio"
+				name="ships_from_choice"
+				[checked]="choice() === l.id"
+				(change)="choice.set(l.id)"
+			/>
+			{{ 'ships_from_option' | transloco: { name: l.name, has: has(l.id).has, of: has(l.id).of } }}
+		</label>
+		}
+		<label class="form-check d-block">
+			<input
+				class="form-check-input"
+				type="radio"
+				name="ships_from_choice"
+				[checked]="choice() === ''"
+				(change)="choice.set('')"
+			/>
+			{{ 'ships_from_not_assigned_option' | transloco }}
+		</label>
+		<label class="form-check d-block text-muted">
+			<input
+				class="form-check-input"
+				type="radio"
+				name="ships_from_choice"
+				disabled
+			/>
+			{{ 'ships_from_split' | transloco }}
+		</label>
+		<label class="form-check d-block text-muted">
+			<input
+				class="form-check-input"
+				type="radio"
+				name="ships_from_choice"
+				disabled
+			/>
+			{{ 'ships_from_after_transfer' | transloco }}
+		</label>
+		<small class="help-text d-block mb-2">{{ 'ships_from_waits_transfers' | transloco }}</small>
+		<b class="d-block small mt-2">{{ 'accounts_what_changes' | transloco }}</b>
+		<ul class="list-unstyled small mb-0">
+			<li class="border-bottom py-2">
+				<i class="ri-stack-line me-1"></i>
+				<b>{{ 'ships_from_change_stock' | transloco }}</b>
+				<div class="text-muted">{{ 'ships_from_change_stock_body' | transloco }}</div>
+			</li>
+			<li class="border-bottom py-2">
+				<i class="ri-history-line me-1"></i>
+				<b>{{ 'accounts_gst_change_log' | transloco }}</b>
+				<div class="text-muted">{{ 'ships_from_change_log_body' | transloco }}</div>
+			</li>
+		</ul>
+		}
+	</div>
+	<div class="modal-footer">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="ships_from_confirm"
+			[disabled]="saving() || choice() === (view.data()?.current ?? '')"
+			(click)="assign()"
+		>
+			{{ 'ships_from_assign_button' | transloco }}
+		</button>
+	</div>
+</ng-template>

@@ -249,6 +249,17 @@ accept-invitation page and the browser PIN proof.
 - Listing responses include configured facet counts/ranges.
 - Locale routes follow the 2026-10-31 locale URL law (G-I18N-ROUTES resolved): every route locale-prefixed, same slug across locales at launch.
 
+#### Open items carried into this chunk
+
+- **Product categories have no draft or live status in the admin (found 2026-11-09).** The
+  category form has no status switch that is saved: `AdminCategoryWrite` carries no status and
+  the admin's category rows are always drawn as live. A launch event is meant to put **draft
+  categories** live at its start (owner log § launch and sale events), and the brief's Items tab
+  lists only draft categories. Until categories can be saved as drafts, a launch can only
+  carry draft products; its category picker lists every category. Add the status to the
+  category write and row, the form's switch, the Go Live check a category needs, and then
+  limit the launch picker to draft categories.
+
 ---
 
 ### Chunk G — Cart, pricing, checkout, orders, payments, shipping
@@ -267,14 +278,14 @@ accept-invitation page and the browser PIN proof.
 
 - `DEC-TAX-HSN`
 - `DEC-SHIPPING`
-- `DEC-PROMO-STACK`
-- `DEC-STOCK-RESERVE`
-- `DEC-BACKORDER`
+- ~~`DEC-PROMO-STACK`~~ — resolved 2026-11-20 (owner log § orders brief answers)
+- ~~`DEC-STOCK-RESERVE`~~ — resolved 2026-11-17 (owner log § orders round)
+- ~~`DEC-BACKORDER`~~ — resolved 2026-11-04, replaced 2026-11-17 (owner log § orders round)
 - `DEC-ORDER-SNAPSHOT`
-- `DEC-ADDRESS`
+- ~~`DEC-ADDRESS`~~ — resolved 2026-11-20 (owner log § orders brief answers)
 - `DEC-RETURNS`
-- `DEC-PAYPAL-FX`
-- `DEC-INR-GATEWAY-TIMING`
+- ~~`DEC-PAYPAL-FX`~~ — resolved 2026-11-19 (owner log § 2026-11-19)
+- ~~`DEC-INR-GATEWAY-TIMING`~~ — resolved 2026-11-17 (owner log § orders round)
 
 #### Definition of Done
 
@@ -292,6 +303,14 @@ accept-invitation page and the browser PIN proof.
   filtered page. Past the first page, totals, search and date filters are wrong. Fix by moving
   `q`/`startDate`/`endDate` into the repository query (index-backed) and returning the
   repository's own count. Owner: do it here, when real orders exist to page through.
+- **Coupons on sale items (launch and sale events, 2026-11-09; answered 2026-11-20).** `DEC-PROMO-STACK` is
+  answered (owner log § orders brief answers): a coupon skips lines whose price comes from a running sale
+  (`SalePriceBook`) unless that coupon is set to include sale items; coupons that allow stacking combine.
+  Build it with checkout.
+- **A cart whose sale ended (2026-11-09).** The cart is priced by the server, so a line re-prices
+  by itself when its sale ends. The brief also asks the cart to **say** the price changed; it
+  doesn't yet. Add the notice with checkout. A payment already started keeps the price it started
+  with for as long as that payment session lasts (order snapshot, `DEC-ORDER-SNAPSHOT`).
 
 ---
 
@@ -364,6 +383,25 @@ review-photo upload and 3:4 cards. The demo catalogue now shows real photos thro
 of that matrix. Until then those two sends record `lastError` and the alert stays pending. The
 reply to `leopard@msg91.com` is still unsent and is the owner's to send.
 
+**Open item: event messages on SMS and WhatsApp (2026-11-08).** Launch and sale events
+(built 2026-11-09) send a customer message when the owner presses Publish.
+Email carries the owner's own wording. SMS needs a DLT-registered template and WhatsApp a
+Meta-approved marketing template, so neither can carry free text. The owner asked to keep this
+open and settle it when MSG91 is discussed in depth: whether events use SMS and WhatsApp at all,
+and if so which approved line (event name, time, link) each sends.
+
+**Open items from launch and sale events (2026-11-09).**
+
+- The email goes out on the `shop_event_announcement` template, which isn't registered in MSG91
+  yet. It is listed with its variables in `codex-msg91-console-setup-plan-prompt.mdx` § 6.
+  Until it exists, each send fails and is logged, and the event still runs.
+- The message reaches customers whose saved consent includes marketing. The brief also names
+  newsletter subscribers; newsletter sign-up isn't built, so add them when it is.
+- The events clock runs inside the API (a sweep every minute plus a timer for the next start or
+  end), which meets the brief's within-a-minute rule. The brief listed BullMQ delayed jobs; move
+  to them only if the API runs as several instances and the conditional state writes prove not
+  enough.
+
 **Optional, owner's call (not blocking):** a hero text-colour option for banners with text, and
 whether unapproved review photos should appear in the admin media library at all (today they
 show as a placeholder tile; the review page shows them via signed URLs).
@@ -390,6 +428,100 @@ show as a placeholder tile; the review page shows them via signed URLs).
 - Staging E2E covers auth, checkout, webhook, notification, and rollback paths.
 - Human approval precedes production promotion.
 
+#### OPEN — Google integrations at deployment (J-GOOGLE-DEPLOY, 2026-11-18)
+
+Credential gathering is complete for company projects `saha-textile-staging` and
+`saha-textile-production`: each Credentials list shows its environment's YouTube key and
+Storefront Auth Web client. Staging consent is External / Testing; production is External /
+In production. **This deployment checklist remains OPEN until the deployed checks pass.**
+The staging droplet still waits until full development is complete; no deployed provider
+E2E proof or production brand verification is claimed by credential creation.
+
+- [ ] **Deliver each environment's configuration.** Have the owner populate the matching
+      Infisical project's `/api` entries `YOUTUBE_API_KEY`, `GOOGLE_OAUTH_CLIENT_ID` and
+      `GOOGLE_OAUTH_CLIENT_SECRET`; use the owner's replacement staging OAuth secret,
+      not the disabled original. Complete the authorized identity/fetch/runtime-file
+      delivery described in `production-deployment-plan.mdx`. Keep secrets server-side;
+      deliver the matching public `googleClientId` through edge-served `/config.json`
+      and storefront SSR `SAHA_TEXTILE_PUBLIC_CONFIG`. Verify effective configuration
+      without printing secrets or baking them into images/browser bundles.
+- [ ] **Restrict YouTube callers after server addresses exist.** Record the actual public
+      outbound IPs of each environment's API and media worker, then apply IP-address
+      application restrictions to that environment's YouTube key while retaining its
+      YouTube Data API v3 API restriction. Application restrictions are currently None.
+      Use outbound server addresses, not website/referrer restrictions, Cloudflare proxy
+      addresses or private addresses; prove both API Validate and worker refresh still work.
+- [ ] **Prove the deployed hosts and OAuth origin configuration.** Bring up DNS/HTTPS and
+      the staging Access protection from the deployment plan. Staging sign-in must use
+      `https://staging.sahatextile.com`; production must use `https://sahatextile.com`, with
+      `www` redirecting to the apex. Production has no localhost or staging origin. The
+      current Google JavaScript-callback flow has no redirect URIs; re-evaluate only if
+      that flow changes. Check CSP, CORS and cookie/session behavior on the real hosts.
+- [ ] **Complete launch branding and public-policy checks.** Once the rebuilt shop is
+      live, validate the configured homepage, `/en/privacy-policy` and
+      `/en/terms-conditions` on each environment's storefront. Cross-reference Chunk K's
+      open privacy rewrite for accurate Google identity-data disclosures. For production,
+      confirm the company account's Search Console ownership association, finalize the
+      customer-facing name/logo and complete Google's applicable brand-verification steps;
+      record their outcome. Production publishing is already done; brand verification is
+      not. Keep staging in Testing and keep its access wall separate from consent status.
+- [ ] **Record real-provider release evidence.** Exercise Google sign-in, token audience
+      and nonce validation, session/CSRF behavior and wrong-environment rejection; exercise
+      YouTube Validate and scheduled worker refresh with each environment's own key.
+      Record sanitized results and outstanding failures in `project-progress.mdx`.
+      Close this checklist only after the relevant staging/deployment proofs pass and
+      retain Chunk J's human approval before production promotion.
+
+#### OPEN — Gmail mailboxes at deployment (J-GMAIL-DEPLOY, 2026-11-19)
+
+The owner approved separate company-owned Internal Mail projects for dev, staging and
+production after discussing project-wide consent and environment isolation. Credential
+generation/storage remains a private owner action; setup does not prove mailbox access.
+
+- [ ] **Finish environment-specific Gmail setup and runtime delivery.** Use the matching
+      Internal Mail project's Web client for `GOOGLE_MAIL_CLIENT_ID` and
+      `GOOGLE_MAIL_CLIENT_SECRET`, with its exact API callback in
+      `GOOGLE_MAIL_REDIRECT_URI`. Supply each environment's own `MAILBOX_TOKEN_KEY`,
+      matching `ADMIN_APP_URL` and `MAILBOX_DOMAIN=sahatextile.com` through the API's
+      server-side runtime configuration. Keep the customer-sign-in clients separate.
+- [ ] **Verify callback routing before mailbox connection.** Register and exercise
+      `/admin/mailboxes/oauth/callback` on the actual API host: development localhost,
+      staging `api-staging.sahatextile.com`, production `api.sahatextile.com`. Confirm the
+      chosen local execution mode's callback routing too; the Docker stack uses a different
+      API hostname from direct local development. On 2026-11-19 Google accepted the prepared
+      direct-dev callback `https://localhost:4000/admin/mailboxes/oauth/callback` but rejected
+      `https://api-local.saha-textile.localhost/admin/mailboxes/oauth/callback` because its
+      hostname does not end in a public top-level domain. The rejected entry was removed;
+      Docker-mode routing is built (2026-11-19, owner log § admin Inbox upgrade): the stack edge answers
+      only the registered `https://localhost:4000/admin/mailboxes/oauth/callback` and `pnpm stack:env`
+      points `GOOGLE_MAIL_REDIRECT_URI` and `ADMIN_APP_URL` at the stack; it still needs one live
+      connect on the dev mailbox. Production must have only its own callback.
+- [ ] **Resolve Workspace approval and authorize each mailbox privately.** Check the
+      organization's Gmail API app-access policy, obtain any required administrator
+      approval, then have the owner authorize each intended mailbox through Settings >
+      Mailboxes. Internal consent does not grant domain-wide mailbox access. Keep real
+      production mailboxes out of development/staging unless the owner explicitly approves.
+- [ ] **Prove mailbox isolation and ongoing operation.** On staging, verify allowed-domain
+      connection, rejection of outside-domain addresses, per-admin Read/Read-and-send
+      permissions, verified aliases, refresh after access-token expiry and reconnect after
+      revocation. Prove Contact Us import and approved send/reply behavior with designated
+      test mailboxes; retain sanitized evidence and the production connection/runbook steps
+      before human-approved promotion. No mailbox messages or tokens belong in evidence.
+- [ ] **Implement and prove the approved Gmail capability extensions before claiming parity.**
+      Owner decision on 2026-11-19: normal mailbox actions plus basic settings (for example,
+      filters and vacation replies); Delete outside Bin moves to Bin, and Delete inside Bin
+      permanently deletes only after confirmation. Automatic-forwarding administration stays
+      in Gmail/Workspace; retain individual mailbox authorization and no domain-wide delegation.
+      All three Mail projects declare `gmail.modify`, `https://mail.google.com/` and
+      `gmail.settings.basic`; **the adapter still requests only `gmail.modify`**, with no new
+      app functionality implemented by this credential task. Add permanent-delete and basic
+      settings support through the normal ports/contracts/adapters and approved UI brief,
+      define/enforce the relevant per-mailbox admin rights, and prove confirmation, denial and
+      audit behavior with test mailboxes. Change runtime scope requests only as the matching
+      features are implemented; have owners reauthorize existing mailbox connections for new
+      scopes. Server-side Gmail drafts and custom label management remain part of the broader
+      parity review; do not claim an entire Gmail dashboard from scope declarations alone.
+
 #### Current developer-portal status — 2026-07-26
 
 - **DONE:** canonical Engineering Live Context, dynamic LIVE/search indexing, shared theme, one Angular Storybook, scoped TypeDoc, and the verified persistent composite local runner.
@@ -398,15 +530,32 @@ show as a placeholder tile; the review page shows them via signed URLs).
 - **BLOCKED — deployment:** `DEC-PORTAL-PRIVATE-ACCESS` is unanswered; whole-host default-deny identity and origin protection must be implemented and probed before promotion.
 - **PARTIAL — follow-up debt:** repository-level pnpm/peer/formatting issues and Storybook bundle/shell warnings remain tracked separately from the completed local portal foundation.
 
+#### Open item from launch and sale events (2026-11-09)
+
+At a sale's start and end the API re-reads its prices at once and re-indexes search, but shop
+pages and public catalogue reads may be cached for up to about a minute, so a price can show
+the old value that long. When the production cache rules are set (Cloudflare and Nginx), keep
+catalogue pages and reads at that short lifetime, or purge them at an event's start and end.
+The privacy policy's cookie section, when it is rewritten from the real cookie list, must also
+list `st_events` (Functional; remembers closed event popups until that event's popup ends) in
+English and Bengali; the cookie settings popup already lists it.
+
+#### Agreed plan (2026-11-08)
+
+The full design and build order are in `production-deployment-plan.mdx`.
+
+- **The staging droplet waits until full development is complete.** All staging proofs listed in the plan wait with it.
+- **Kubernetes is deferred**; see `kubernetes-evaluation.mdx` before raising it again.
+
 #### Open items carried into this chunk (2026-11-07)
 
-- **Every deploy runs `pnpm --filter @saha-textile/api release:prepare` after the API image
-  starts.** It applies the Meilisearch settings and rebuilds the index from Mongo, and it is safe
+- **Every deploy runs `node dist/rebuild-search-index.js` in the API container after it
+  starts** (the image has no pnpm or tsx, so `release:prepare` cannot run there). It applies the Meilisearch settings and rebuilds the index from Mongo, and it is safe
   to repeat. Until it has run, listings answer from Mongo automatically, so nothing breaks, but
   typeahead search answers 503. Set `MEILISEARCH_HOST`, `MEILISEARCH_API_KEY` and, on a shared
   server, `MEILISEARCH_INDEX` first.
-- **The first deployed database is built from seeds, plus hand entry.** No deployed database
-  exists yet, so the local data edits of 2026-11-06 need no migration. Real products are entered
+- **The first deployed database is built by `node dist/first-run-setup.js`, plus hand entry.** The
+  general seed is not used: it adds demo customers and promotions. No deployed database exists yet, so the local data edits of 2026-11-06 need no migration. Real products are entered
   by hand in admin. Do not run the demo catalogue seed on staging or production.
 - **Deep review of all URL work before the DNS switch.** The redirect rows, the 410 rules and the
   old-address logic were designed as if WordPress were a working shop. It is not: nobody maintains
@@ -439,13 +588,235 @@ show as a placeholder tile; the review page shows them via signed URLs).
   throwaway work. Do it as a late pre-launch pass, then raise `--max-warnings` to 0 in CI so
   they cannot return.
 
+#### OPEN — Server deploy path at deployment (J-SERVER-DEPLOY, 2026-11-20)
+
+The code is built with no account touched (owner, 2026-11-20: "Build it, touch no cloud";
+commits ec660b08 and e851f10a): `pnpm server:plan|create|destroy` with
+`docker/production/first-boot.yaml`, `docker/production/bin/receive-release.sh`,
+`.github/workflows/deploy.yml`, and the Release Console's server Live deploy, which starts the
+workflow and approves its wait with the PIN. **It stays OPEN until a staging deploy passes end to
+end.** Each step changes an account, so each needs the owner's yes at the time;
+`docker/production/README.md`, "A new server", has the detail.
+
+- [ ] **Merge the workflow where GitHub reads it.** `deploy.yml` (and `publish-images.yml`'s new
+      `workflow_call`) must be on the default branch, on `staging` and on `main`, through the
+      normal `dev → staging → main` pull requests. Until then the console's Live deploy says so.
+- [ ] **Keys made on the Mac.** A deploy key pair (`ssh-keygen -t ed25519`), the admin
+      password's `openssl passwd -6` hash for the Recovery Console (the password in NordPass),
+      and a Cloudflare tunnel token for the server. Values never enter the repository.
+- [ ] **Create the server.** `pnpm server:create -- staging --yes` with
+      `SERVER_ADMIN_SSH_KEY_FILE`, `SERVER_DEPLOY_SSH_KEY_FILE`, `SERVER_ADMIN_PASSWORD_HASH`
+      and `SERVER_TUNNEL_TOKEN` set: droplet, metrics agent, first boot, and a Cloud Firewall
+      with 443 from Cloudflare's ranges only. The staging droplet still waits until full
+      development is complete (owner, 2026-11-08) unless the owner moves that date.
+- [ ] **Cloudflare.** The tunnel's SSH hostname (`ssh://localhost:22`), an Access application on
+      it with a Service Auth policy and a service token, the DNS records for
+      `staging.`, `admin-staging.` and `api-staging.sahatextile.com`, the Origin Certificate in
+      `/opt/saha-textile/certs/`, Authenticated Origin Pulls, and the Access wall on `staging.` and
+      `admin-staging.` (plan §9).
+- [ ] **The GitHub environment `staging`.** Variables `INFISICAL_IDENTITY_ID` (the
+      `github-deploy-staging` identity), `SERVER_SSH_HOST`, `SERVER_SSH_KNOWN_HOSTS`,
+      `API_HOST`; secrets `DEPLOY_SSH_KEY`, `CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET`.
+      The console's set-up banner lists whichever are still missing.
+- [ ] **First deploy and its proofs.** Start it from the console's Live deploy (Staging tab),
+      approve with the PIN, then create the first administrator over SSH. Prove: the GHCR
+      sign-in with the job's token on the droplet (plan §3; fallback: stream the images through
+      the tunnel), no host, address or value in the Actions log, a deliberate bad release
+      refused before the switch, rollback, and the other "Staging must prove" items.
+- [ ] **Production.** The same steps with the `production` GitHub environment and
+      `github-deploy-production`, after the DNS switch decisions (plan §16 steps 7 and 9).
+- [ ] **A development server (only if one is wanted).** Needs a `github-deploy-dev` Infisical
+      identity (the fifth of five free ones), a `development` GitHub environment, the API's own
+      `DEPLOY_ENV` value with its hardening rules, and the release renderer's dev tier
+      (the Infisical chat does the renderer side). Until then the console's Dev server tab
+      explains this and offers no deploy.
+- [ ] **Not built yet.** Scripted Cloudflare setup (tunnel, Access, records), saving staging's
+      data before `server:destroy` and restoring it on create (plan §11), and the Rollback
+      workflow (plan §10).
+
+### Chunk K — Privacy policy rewrite and data-rights workflows
+
+**Marker:** OPEN — parked by the owner on 2026-11-10 for later review; needs more briefs before any build.
+
+The full draft policy and its critical review (legal, architecture, security) are the privacy
+section of the Safe Releases Brief, version 5, kept as its own page:
+[https://claude.ai/artifact/XJ2RvmdEEFkmf3k9j1FdnX](https://claude.ai/artifact/XJ2RvmdEEFkmf3k9j1FdnX) (private to the owner), with a copy in the
+side-session notes folder as `privacy-policy-brief-2026-11-10.html`. Nothing in it is on the
+website; the live policy is still the old template plus the 2026-11-07 Cookies section.
+
+#### What the draft covers
+
+Thirteen sections: who we are; data collected (account, Google/Facebook sign-in, orders,
+payments, questions, reviews, contact messages, choices, technical and security records,
+cookies, page-speed measurement); purposes with their legal basis; service providers
+(DigitalOcean, Cloudflare, CCAvenue, PayPal, Shiprocket, MSG91, Google Workspace, Google and
+Meta sign-in, YouTube, Google Maps); storage outside India; cookies by category; retention;
+security; rights under the DPDP Act and the GDPR; children; Grievance Officer; changes; contact.
+Paragraphs for features that are not live (real user monitoring, 30-day server logs) are marked
+"add when live".
+
+#### Facts only the owner can give
+
+Legal name and registered address (tied to tax question `B9.1`), Grievance Officer name, role
+email, phone and hours, a privacy email, retention for contact-form messages, consent records and
+backups (suggested 3 years, 3 years, 30 days), whether backups are encrypted, and whether to add
+an "I am 18 or over" tick at registration and checkout.
+
+#### Review findings that block launch
+
+- The live policy is a generic template; replace it whole (L1).
+- Legal name, address and a named Grievance Officer are required on the site (L2, L3).
+- "Download my data" and a privacy purge across the database, logs, review photos and the Gmail
+  thread are promised by the draft but not built (A2).
+- Emails, phone numbers and tokens must be masked in server logs before the 30-day log store
+  ships (S1); this part is built with the logging upgrade, not parked.
+
+#### Review findings to confirm before launch
+
+GDPR representative (L4, lawyer), under-18 consent (L6), proof of marketing consent per channel
+(L7), the Terms and Conditions rewrite (L9), backup rotation period (A3), Meta's data-deletion
+setting for Facebook Login (A4), the category of `st_events` and the YouTube player after play
+(A5), backup encryption (S2), and adding Anthropic as a provider if "Ask Claude" is ever built (S5).
+
+#### Before work resumes
+
+More briefs, per the owner: one for the policy text, one for the data-rights workflows
+(download and purge), and one for the Grievance Officer and contact details on the site. The
+English is finalised first, then Bengali under the glossary rules, then the owner's lawyer or CA
+reads both.
+
+### Chunk L — Release Console ideas held for a later decision
+
+**Marker:** OPEN — the owner asked on 2026-11-10 to keep these for later review. None is planned.
+
+From the Safe Releases Brief, version 5, Part 6. Each idea was considered and is not
+recommended now; the reason is the current opinion, not a final answer.
+
+| Idea                                                           | Current status                           | Why not, for now                                                                                                                                           |
+| -------------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Session replay (recording shoppers' screens)                   | Not recommended                          | Records everything a shopper types and sees; heavy under the DPDP Act and the GDPR and needs its own consent. Real user monitoring covers the useful part. |
+| Chaos testing in production (breaking things on purpose)       | Not in production; acceptable on staging | One server, so any test is a real outage. A monthly drill on staging is fine.                                                                              |
+| Fixes applied automatically by AI                              | No                                       | Nothing changes production without the owner. "Ask Claude" may explain and suggest only.                                                                   |
+| Canary releases sending part of the traffic to the new version | Later, if needed                         | Possible with the blue and green copies, but both share one droplet's CPU. Feature switches give gradual rollout per feature more simply.                  |
+| A public status page for shoppers                              | Not now                                  | The back-in-a-moment page already covers outages, and a list of every hiccup can worry shoppers for no reason.                                             |
+
+Also held here: "Ask Claude" itself (A22) is amber, because masked log lines would leave the Mac
+and Anthropic would become a service provider in the privacy policy (Chunk K, finding S5).
+
+### Chunk M — Offline shop for the installed app
+
+**Marker:** OPEN — held by the owner on 2026-11-07; starts only when the owner asks, in the installable-app chat. Decision: `DEC-PWA-OFFLINE`.
+
+Built so far: the manifest from the Brand Kit, a service worker with no `fetch` listener, hourly
+update checks, and Get the App with its how-to popup (portal: Storefront Orientation,
+§ Installable app).
+
+When it starts:
+
+- Answer `DEC-PWA-OFFLINE` first; each offline feature is its own route in `sw.ts`.
+- Keep the never-cached list from `DEC-PWA-OFFLINE` as a test.
+- Revisit `skipWaiting` once the worker keeps files.
+- Check on real phones, which the installable app has not had yet: Android Chrome and its own
+  install bar, iPhone Safari Add to Home Screen, and Safari and Firefox on a desktop.
+
+### Chunk N — Share, Brand Kit and admin search follow-ups
+
+**Marker:** OPEN — recorded on 2026-11-10 after the share button, the general Brand Kit, the admin
+theme colour and the admin search were built. Each row names what it waits on; nothing here is
+planned until the owner picks it up.
+
+| Item                                                       | Waits on                  | Notes                                                                                           |
+| ---------------------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------- |
+| Instagram Stories from the share sheet                     | A real-phone check        | Emulators cannot show whether Instagram offers Stories for a shared picture.                    |
+| Share and save (M5)                                        | Owner, later              | Left out of the share brief on purpose.                                                         |
+| Shorts linked to products                                  | `DEC-SHORTS-PRODUCT-LINK` | See `pending-decisions.mdx` § 26.                                                               |
+| The shop's own theme colour from the Brand Kit             | Owner brief               | Only the admin follows Brand Kit › Admin theme colour; the shop theme still has its own colour. |
+| Footer X icon                                              | Owner choice              | The footer still draws the old bird for X.                                                      |
+| Theme file's unused footer links, app links and `og_image` | Owner's written say-so    | The Brand Kit replaced them; they stay in `site-config.json` until removal is approved.         |
+| Old `storefront.share.xHandle` setting                     | Owner's written say-so    | Kept for compatibility; the X account now lives in `brand.socials.x`.                           |
+| Old `app-youtube-video-field` component                    | Owner's written say-so    | Replaced by the videos field; kept until removal is approved.                                   |
+| New picture sizes for existing brand pictures              | First deployment          | Run a reprocess of the brand pictures so the `site_share` and Story sizes exist.                |
+| Brand Kit changes take up to 60 seconds to show            | Accepted for now          | The API caches the brand for 60 seconds.                                                        |
+| Editing the X account on two screens at once               | Accepted for now          | Brand Kit and Sharing in two open tabs can overwrite each other's X value; the last save wins.  |
+| Newsletter popup with no banner picture                    | Owner choice              | The picture half of the popup is blank until a banner is set.                                   |
+| Pinterest row on phones                                    | Owner choice              | It sits under the phone's bottom bar until the share list is scrolled.                          |
+| Share popover in the Android emulator                      | A real-phone check        | It sometimes took a few taps in the emulator.                                                   |
+| iOS Simulator runtime (about 8–10 GB)                      | Owner, later              | Needed only to emulate iPhones on this Mac.                                                     |
+| Admin search: orders by number, customers by phone         | Owner, later              | Would use the existing APIs; product search stays on Meilisearch.                               |
+| Admin search: Bengali typed while the admin shows English  | Owner, later              | Today the search reads the language on screen, plus page names and common English words.        |
+
+### Chunk O — Shop speed, accessibility and product page follow-ups
+
+**Marker:** OPEN — recorded on 2026-11-10 after the product page overhaul, the Lighthouse audit
+of every public shop page and the theme removal audit. The speed plan was agreed on 2026-11-10;
+each round below starts with the owner's go-ahead, and nothing in it removes a style, icon, font
+or file (`DEC-PERF-TRIM`).
+
+| Item                                                                                                           | Waits on                                    | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dark mode and contrast: done 2026-11-10                                                                        | Nothing                                     | D1–D7, badges, red buttons, statuses, greys and the empty Bestsellers section are fixed; a full audit (160 page-and-state combinations, both modes) passes; `e2e/dark-mode.spec.ts` guards contrast and light/dark layout on every pull request. Its first run is in CI. Report https://claude.ai/artifact/UTqDgo5TpVrvRrZebQkWYz.                                                                                                                                                                                                                                                                       |
+| In-zone timers keep the storefront from ever counting as settled                                               | Speed plan                                  | About 25 timers run inside Angular's zone: TanStack Query's 5-minute cache clean-up and refresh timers (about 20), the event countdown every second (`core/events/shop-events.ts`), the recent-purchase popup every 20 s, the top-bar message rotation, the carousel autoplay. The only shop behaviour that waited for the settled state was router scrolling, now done by `ScrollMemory`; nothing else in `apps/storefront/src` waits for it (checked 2026-11-10). What remains is speed: the once-a-second countdown wakes Angular's change detection every second, so it should run outside the zone. |
+| Split the global stylesheet into a shared base, route styles and component styles                              | Owner go-ahead (first round)                | The same rules move; none are deleted. Largest phone gain together with critical CSS.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Build-generated critical CSS for the first screen                                                              | After the split                             | Generated from the same stylesheets at build time, with CSP nonces; hand-written `style=""` stays banned.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Incremental hydration for below-the-fold blocks                                                                | Owner go-ahead                              | Angular `@defer` with hydrate triggers.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Main image priority on product, category and home pages                                                        | Owner go-ahead                              | `fetchpriority="high"` and preload for the largest picture; no lazy loading above the fold.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Edge caching rules for HTML, styles and pictures                                                               | First deployment                            | Cloudflare in front of Nginx; measured on the live domain.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Lighthouse CI budgets in pull requests                                                                         | Owner go-ahead                              | Fails a pull request that breaks the agreed scores or byte budgets.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Home blog photo sizes, start-up JavaScript, a 700 px gallery size                                              | Owner go-ahead                              | Found in the 2026-11-09 audit.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Icon font to SVG icons, or a glyph subset                                                                      | Owner's written say-so                      | Remix Icon publishes the same drawings as SVG; candidates under `DEC-PERF-TRIM`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Measuring on the live domain                                                                                   | Staging, or the owner's OK for a tunnel     | Local runs stand in for Cloudflare with a Brotli front.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Underlined article links, larger banner-dot targets                                                            | Owner approval of the accessibility brief   | Text contrast is done (2026-11-10 full audit); these two remain.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Heading order on shop pages                                                                                    | Next accessibility round                    | Some sections skip a heading level.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Where the Russo One display font is used                                                                       | `DEC-DISPLAY-FONT`                          | Served from the shop's own address and used nowhere until decided.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Star ratings on product cards and pages                                                                        | Checkout (Chunk G)                          | Owner chose to show ratings once reviews come from real orders.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Bundle prices far below their contents                                                                         | Owner answer                                | For example ₹2,600 for ₹26,600 of sarees in the demo catalogue.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Back-in-stock dates that have passed                                                                           | An admin field, owner brief                 | Four demo products show a date that has passed; the admin has no field for it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Admin FAQ list stops at 200 rows                                                                               | A fix in the admin FAQ list                 | No paging or type filter yet.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Product list's Duplicate action does nothing                                                                   | Owner brief                                 | The theme's action is shown but not wired.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| "Your question was answered" and back-in-stock emails                                                          | Notifications (Chunk I)                     | They go to the console adapter; their MSG91 templates are not registered.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Descriptions for the remaining demo products                                                                   | Owner, later                                | 102 product pages have full English and Bengali content; the rest were deferred by the owner.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Speed gate's first runs in GitHub: the pull-request job with layouts, `speed-nightly.yml`, `speed-release.yml` | A push or pull request (owner's say-so)     | Built 2026-11-17 (`a35748bc`) and checked locally only: `speed:layouts` ran on the e2e database and its refusal of other databases was tested; neither workflow has run in GitHub. Check the job summaries on the first run.                                                                                                                                                                                                                                                                                                                                                                             |
+| PageSpeed Insights before each release                                                                         | Staging                                     | `scripts/psi-check.mjs` needs a public address. Run "PageSpeed Insights (before a release)" on staging's English and বাংলা Home and a heavy product page, then on the live domain.                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Nightly full table on every live and scheduled layout                                                          | Staging                                     | Today the nightly measures Home as seeded and the stress layout on the CI stack (brief SG-10 asks for staging's live and scheduled layouts too).                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Enforcing the speed gate                                                                                       | Owner's GitHub setting `SPEED_GATE_ENFORCE` | Report only until phone scores reach the floor (local 2026-11-17: Performance 42/76 English, 46/76 বাংলা, the rest 100, layout shift 0).                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+
+### Chunk P — Release Console connections the owner tests
+
+**Marker:** OPEN — recorded on 2026-11-10; brought up to date on 2026-11-20 when keys moved to Infisical and the console
+became one Docker image, and again on 2026-11-23 (brief `MTo5HZTUH13ySALXGd2qWh`, Part 8). The console runs, Saha Textile
+is added, its keys are linked and every Cloudflare, DigitalOcean and GitHub screen reads live. What still needs the
+owner's own keys, accounts or go-ahead waits here; the console never makes a token or signs in for the owner.
+
+| Item                                                              | State                                  | Notes                                                                                                                                                                       |
+| ----------------------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| First real `pnpm console:up` from the main folder                 | DONE                                   | The Docker console runs with its own database and the owner's PIN.                                                                                                          |
+| Add Saha Textile with the wizard                                  | DONE                                   | Local on this computer, Staging and Production on DigitalOcean, Cloudflare with `sahatextile.com`, Infisical per environment.                                               |
+| Keys in Infisical (`saha-textile-local · dev · /release-console`) | DONE                                   | The project was renamed from `saha-textile-dev` on 2026-11-21. The Cloudflare change key `CONSOLE_CF_WRITE_TOKEN` is the owner's personal token `release-console-personal`. |
+| Link each key on Connections and see its screens fill             | DONE                                   | Every Cloudflare, DigitalOcean and GitHub screen reads live.                                                                                                                |
+| A real deploy to local from the console                           | Owner's PIN                            | Ship › Live deploy, Local tab: start once and watch every stage.                                                                                                            |
+| Expiring and expired keys in Attention                            | A real key near its end                | Covered by unit tests only. A throwaway GitHub token that ends in 7 days proves it; unlink and delete it afterwards.                                                        |
+| Browser sign-in instead of a pasted token                         | OAuth applications the owner registers | GitHub App, DigitalOcean, Google Cloud (then GitLab, Bitbucket, AWS, Azure when used). The owner then signs in once with each real account. Cloudflare stays a token.       |
+| Wizard finds `.release-console.json` on GitHub                    | The file reaching the default branch   | It lives on `feat/combined-after-pr6` until the merge.                                                                                                                      |
+| Database monitor (item 23)                                        | Owner's call (brief Q9)                | Needs a read-only Mongo login for the console.                                                                                                                              |
+
+### Chunk Q — INR gateway account questions held for later
+
+**Marker:** OPEN — held by the owner on 2026-11-21 ("not to proceed anything for the CC Avenue to Razor Pay Switch").
+Neither item is raised with HDFC again until the owner reopens it. The CCAvenue adapter, its tests and its go-live
+work do not depend on either.
+
+| Item                                | Where it stood when held                                                                                                                                     | Open points                                                                                                                                                                      |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Moving the INR gateway to Razorpay  | First asked 2026-08-20. HDFC's relationship manager answered on 2026-11-20 that the move is possible and that the current payment-gateway rates would apply. | No steps and no timeline. In code a move is a new adapter plus one DI binding behind `PaymentGatewayPort`; core and UI do not change.                                            |
+| Account status and applicable rates | First asked 2026-09-30. Account status was never answered. A rate card arrived on 2026-11-20; its figures are kept outside this public repository.           | Whether the card is the account's present rates or the rates after a move, and whether its one-time integration fee and yearly maintenance charge apply to the existing account. |
+
 ## Owner lock order
 
 Recommended order for the fastest reduction of blocked behavior:
 
 1. `DEC-NUMBERING`
-2. `DEC-STOCK-RESERVE`
-3. `DEC-BACKORDER`
+2. ~~`DEC-STOCK-RESERVE`~~ — resolved 2026-11-17 (owner log § orders round)
+3. ~~`DEC-BACKORDER`~~ — resolved 2026-11-04, replaced 2026-11-17 (owner log § orders round)
 4. `DEC-TAX-HSN`
 5. `DEC-SHIPPING`
 6. `DEC-RETURNS`

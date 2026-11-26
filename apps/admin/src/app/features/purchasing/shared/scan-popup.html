@@ -1,0 +1,68 @@
+<div class="modal-header">
+	<h2 id="scan_popup_title">{{ 'scan_a_label' | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body theme-form">
+	@if (camera()) {
+	<video
+		#scanVideo
+		class="mb-3 w-100 rounded border"
+		playsinline
+		muted
+		[attr.aria-label]="'scan_camera_view' | transloco"
+	></video>
+	<button
+		type="button"
+		class="btn btn-theme mb-3 w-100"
+		(click)="startCamera()"
+	>
+		<i class="ri-camera-line me-1"></i>
+		{{ 'scan_start_camera' | transloco }}
+	</button>
+	} @else if (cameraError()) {
+	<p class="small text-muted">{{ 'scan_camera_unavailable' | transloco }}</p>
+	}
+	<label
+		class="form-label-title mb-1"
+		for="scan_typed"
+	>
+		{{ 'scan_or_type_sku' | transloco }}
+	</label>
+	<input
+		class="form-control"
+		id="scan_typed"
+		autocomplete="off"
+		spellcheck="false"
+		ngbAutofocus
+		[value]="typed()"
+		(input)="typed.set($any($event.target).value)"
+		(keydown.enter)="done(typed())"
+	/>
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			[disabled]="!typed().trim()"
+			(click)="done(typed())"
+		>
+			{{ 'find' | transloco }}
+		</button>
+	</div>
+</div>

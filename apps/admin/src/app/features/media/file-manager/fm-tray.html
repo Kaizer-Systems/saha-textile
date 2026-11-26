@@ -1,0 +1,241 @@
+@if (soloZip(); as zip) {
+<!-- A30 / A30B: a .zip alone shows as its own box; beside anything else it is a row of the tray (A48). -->
+<div
+	class="fm-toast"
+	id="fm_zip_box"
+	role="status"
+	[attr.data-zip]="zip.state"
+>
+	@if (zip.state === 'done') {
+	<div class="d-flex align-items-center gap-2">
+		<i class="ri-checkbox-circle-line text-success fs-5"></i>
+		<strong>{{ zip.label }}</strong>
+	</div>
+	<div class="small text-muted my-2">{{ zip.note }}</div>
+	<div class="d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-theme btn-sm"
+			id="fm_zip_box_download"
+			(click)="zip.action?.run()"
+		>
+			{{ 'fm_download' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-outline btn-sm"
+			id="fm_zip_box_dismiss"
+			(click)="uploads.dismissOperation(zip.id)"
+		>
+			{{ 'fm_zip_dismiss' | transloco }}
+		</button>
+	</div>
+	} @else if (zip.state === 'failed') {
+	<div class="d-flex align-items-center gap-2">
+		<i class="ri-error-warning-line text-danger fs-5"></i>
+		<strong>{{ zip.label }}</strong>
+	</div>
+	<div class="small text-danger my-2">{{ zip.error }}</div>
+	<button
+		type="button"
+		class="btn btn-outline btn-sm"
+		(click)="uploads.dismissOperation(zip.id)"
+	>
+		{{ 'fm_zip_dismiss' | transloco }}
+	</button>
+	} @else {
+	<div class="d-flex align-items-center gap-2">
+		<i class="ri-file-zip-line text-warning fs-5"></i>
+		<strong>{{ 'fm_zip_preparing_title' | transloco: { name: zip.label } }}</strong>
+	</div>
+	<div class="progress">
+		<div
+			class="progress-bar"
+			[style.width.%]="zip.total ? (zip.done / zip.total) * 100 : 0"
+		></div>
+	</div>
+	<div class="d-flex justify-content-between small text-muted">
+		<span>
+			{{ 'fm_zip_box_count' | transloco: { done: zip.done, total: zip.total, size: (zip.bytes ?? 0 | fileSize) }
+			}}
+		</span>
+		@if (zip.action; as action) {
+		<a
+			href="javascript:void(0)"
+			id="fm_zip_box_cancel"
+			(click)="action.run()"
+		>
+			{{ 'cancel' | transloco }}
+		</a>
+		}
+	</div>
+	<div class="small text-muted mt-1">{{ 'fm_zip_keep_working' | transloco }}</div>
+	}
+</div>
+} @else if (uploads.jobs().length || uploads.operations().length) {
+<div
+	class="fm-tray"
+	id="fm_tray"
+>
+	<div class="fm-tray-head">
+		<i
+			[class]="busy() ? 'ri-loader-4-line' : uploads.failedCount() ? 'ri-error-warning-line' : 'ri-checkbox-circle-line'"
+		></i>
+		{{ head() }}
+		<span>
+			<i
+				class="ri-arrow-down-s-line"
+				role="button"
+				[title]="(open() ? 'fm_tray_hide' : 'fm_tray_show') | transloco"
+				(click)="open.set(!open())"
+			></i>
+			@if (!busy()) {
+			<i
+				class="ri-close-line"
+				role="button"
+				id="fm_tray_close"
+				[title]="'close' | transloco"
+				(click)="uploads.dismiss()"
+			></i>
+			}
+		</span>
+	</div>
+	@if (open()) {
+	<ul class="overflow-auto">
+		@for (op of uploads.operations(); track op.id) {
+		<li [attr.data-operation]="op.state">
+			<div
+				class="fm-type"
+				[class]="op.kind ?? 'k-other'"
+			>
+				<i [class]="op.icon"></i>
+			</div>
+			<div class="fm-tray-name">
+				<div>{{ op.label }}</div>
+				@if (op.state === 'failed') {
+				<small class="text-danger">{{ op.error }}</small>
+				} @else {
+				<div class="fm-phase">
+					<div>
+						<span>
+							{{ (op.state === 'done' ? 'fm_op_done' : (op.phase ?? 'fm_op_working')) | transloco }}
+						</span>
+						<small>
+							{{ 'fm_op_count' | transloco: { done: op.done, total: op.total } }} @if (op.state ===
+							'done') {
+							<i class="ri-check-line"></i>
+							}
+						</small>
+					</div>
+					<div class="progress">
+						<div
+							class="progress-bar"
+							[class.bg-success]="op.state === 'done'"
+							[style.width.%]="op.total ? (op.done / op.total) * 100 : 100"
+						></div>
+					</div>
+				</div>
+				} @if (op.note) {
+				<small class="text-muted d-block">{{ op.note }}</small>
+				} @if (op.action; as action) {
+				<small>
+					<a
+						href="javascript:void(0)"
+						class="text-decoration-underline"
+						[attr.data-op-action]="action.label"
+						(click)="action.run()"
+					>
+						{{ action.label | transloco }}
+					</a>
+				</small>
+				}
+			</div>
+		</li>
+		} @for (job of uploads.jobs(); track job.id) {
+		<li [attr.data-upload]="job.state">
+			<div
+				class="fm-type"
+				[class]="kind(job).cls"
+			>
+				<i [class]="kind(job).icon"></i>
+			</div>
+			<div class="fm-tray-name">
+				<div>{{ job.savedAs ?? job.name }}</div>
+				@switch (job.state) { @case ('waiting') {
+				<small class="text-muted">{{ 'fm_waiting_to_upload' | transloco }}</small>
+				} @case ('uploading') { @if (job.paused) {
+				<small class="text-warning">{{ 'fm_upload_paused' | transloco }}</small>
+				}
+				<div class="fm-phase">
+					<div>
+						<span>{{ 'fm_uploading' | transloco }}</span>
+						<small>
+							{{ 'fm_sent_of' | transloco: { sent: (job.sent | fileSize), total: (job.bytes | fileSize) }
+							}} @if (secondsLeft(job); as left) { · {{ timeLeft(left).key | plural: timeLeft(left).count
+							}} }
+						</small>
+					</div>
+					<div class="progress">
+						<div
+							class="progress-bar"
+							[style.width.%]="percent(job)"
+						></div>
+					</div>
+				</div>
+				<small class="text-muted">{{ (job.photo ? 'fm_versions_next' : 'fm_stored_as_is') | transloco }}</small>
+				} @case ('making') {
+				<div class="fm-phase">
+					<div>
+						<span>{{ 'fm_uploaded' | transloco }}</span>
+						<small>
+							{{ job.bytes | fileSize }}
+							<i class="ri-check-line"></i>
+						</small>
+					</div>
+				</div>
+				<div class="fm-phase">
+					<div>
+						<span>{{ 'fm_making_versions' | transloco }}</span>
+					</div>
+					<div class="progress">
+						<div
+							class="progress-bar progress-bar-striped progress-bar-animated"
+							style="width: 100%"
+						></div>
+					</div>
+				</div>
+				} @case ('done') {
+				<div class="fm-phase">
+					<div>
+						<span>{{ 'fm_uploaded' | transloco }}</span>
+						<small>
+							{{ job.bytes | fileSize }}
+							<i class="ri-check-line"></i>
+						</small>
+					</div>
+					<div class="progress">
+						<div
+							class="progress-bar bg-success"
+							style="width: 100%"
+						></div>
+					</div>
+				</div>
+				} @case ('failed') {
+				<small class="text-danger">
+					{{ job.error }} ·
+					<a
+						href="javascript:void(0)"
+						class="text-decoration-underline"
+						(click)="uploads.retry(job.id)"
+					>
+						{{ 'fm_retry' | transloco }}
+					</a>
+				</small>
+				} }
+			</div>
+		</li>
+		}
+	</ul>
+	}
+</div>
+}

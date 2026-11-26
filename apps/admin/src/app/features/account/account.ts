@@ -19,6 +19,7 @@ import { AdminAuthGateway, type AdminSecurityState, type AdminSessionSummary } f
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { translateCount } from '@shared/pipes/language.pipes';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
@@ -213,7 +214,7 @@ export class Account {
 			next: (result) => {
 				this.sessionsBusy.set(false);
 				this.notificationService.showSuccess(
-					this.transloco.translate('other_sessions_revoked', { count: result.revoked }),
+					translateCount(this.transloco, 'other_sessions_revoked', result.revoked),
 				);
 				this.loadSecurity();
 			},

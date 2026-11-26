@@ -47,6 +47,11 @@ export const SessionInfo = z.object({
 	audience: SessionAudience,
 	expiresAt: IsoDateTime,
 	refreshExpiresAt: IsoDateTime,
+	/**
+	 * Admin only: the 15-minute lock is up for this session. Held by the server, so a reload or a
+	 * new tab shows the lock again until the PIN or password is entered. Absent means unlocked.
+	 */
+	locked: z.boolean().optional(),
 });
 export type SessionInfo = z.infer<typeof SessionInfo>;
 
@@ -102,6 +107,14 @@ export const AuthSession = z.object({
 	absoluteExpiresAt: IsoDateTime,
 	revokedAt: IsoDateTime.nullable().default(null),
 	revokeReason: SessionRevokeReason.nullable().default(null),
+	/**
+	 * Admin only: the last time the operator was actually present (typing, clicking, scrolling),
+	 * from the admin's activity signal. Background calls never move it. Null on storefront
+	 * sessions and on rows written before the server held the lock.
+	 */
+	lastActiveAt: IsoDateTime.nullable().optional(),
+	/** Admin only: when the 15-minute lock came up. Cleared only by the PIN or password. */
+	lockedAt: IsoDateTime.nullable().optional(),
 });
 export type AuthSession = z.infer<typeof AuthSession>;
 

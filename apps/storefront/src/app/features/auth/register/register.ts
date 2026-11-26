@@ -17,6 +17,7 @@ import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { Button } from '@shared/ui/button/button';
 import { SocialSignIn } from '@shared/ui/social-sign-in/social-sign-in';
 import { translatedBreadcrumb } from '@shared/util/breadcrumb-i18n';
+import { englishLetters } from '@shared/validators/english-letters';
 import { CustomValidators } from '@shared/validators/password-match';
 
 import * as data from '../../../shared/data/country-code';
@@ -215,7 +216,7 @@ export class Register {
 		this.isBrowser = isPlatformBrowser(this.platformId);
 		this.form = this.formBuilder.group(
 			{
-				name: new FormControl('', [Validators.required]),
+				name: new FormControl('', [Validators.required, englishLetters('name')]),
 				email: new FormControl('', [Validators.required, Validators.email]),
 				// Phone is now collected AND verified at registration — the earlier
 				// collect-at-checkout lock was superseded by `DEC-SIGNUP-VERIFICATION`, because

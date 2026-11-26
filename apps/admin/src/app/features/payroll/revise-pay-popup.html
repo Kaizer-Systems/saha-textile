@@ -1,0 +1,311 @@
+@let e = employee(); @let p = preview.data();
+<div class="modal-header">
+	<h5
+		class="modal-title"
+		id="rev_title"
+	>
+		{{ 'rev_title' | transloco: { name: e?.name ?? '' } }}
+	</h5>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="active.dismiss()"
+	></button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	<div class="row g-4">
+		<div class="col-lg-5">
+			<h6 class="mb-2">{{ 'rev_how' | transloco }}</h6>
+			<div class="form-check mb-2">
+				<input
+					class="form-check-input"
+					type="radio"
+					name="rev_kind"
+					id="rev_kind_percent"
+					[checked]="kind() === 'percent'"
+					(change)="setKind('percent')"
+				/>
+				<label
+					class="form-check-label"
+					for="rev_kind_percent"
+				>
+					{{ 'rev_by_pct' | transloco }}
+				</label>
+				<input
+					class="form-control mt-1"
+					type="number"
+					step="0.5"
+					id="rev_pct"
+					[attr.aria-label]="'rev_by_pct' | transloco"
+					[disabled]="kind() !== 'percent'"
+					[ngModel]="pct()"
+					(ngModelChange)="pct.set(+$event)"
+				/>
+				<small class="text-muted">{{ 'rev_by_pct_help' | transloco }}</small>
+			</div>
+			<div class="form-check mb-2">
+				<input
+					class="form-check-input"
+					type="radio"
+					name="rev_kind"
+					id="rev_kind_amount"
+					[checked]="kind() === 'amount'"
+					(change)="setKind('amount')"
+				/>
+				<label
+					class="form-check-label"
+					for="rev_kind_amount"
+				>
+					{{ 'rev_by_amount' | transloco }}
+				</label>
+				<div class="d-flex mt-1 gap-2">
+					<input
+						class="form-control"
+						type="number"
+						id="rev_amount"
+						[attr.aria-label]="'rev_by_amount' | transloco"
+						[disabled]="kind() !== 'amount'"
+						[ngModel]="amount()"
+						(ngModelChange)="amount.set(+$event)"
+					/>
+					<select
+						class="form-select w-auto"
+						id="rev_per"
+						[attr.aria-label]="'rev_by_amount' | transloco"
+						[disabled]="kind() !== 'amount'"
+						[ngModel]="per()"
+						(ngModelChange)="per.set($event)"
+					>
+						<option value="month">{{ 'rev_per_month' | transloco }}</option>
+						<option value="year">{{ 'rev_per_year' | transloco }}</option>
+					</select>
+				</div>
+			</div>
+			<div class="form-check mb-2">
+				<input
+					class="form-check-input"
+					type="radio"
+					name="rev_kind"
+					id="rev_kind_ctc"
+					[checked]="kind() === 'ctc'"
+					(change)="setKind('ctc')"
+				/>
+				<label
+					class="form-check-label"
+					for="rev_kind_ctc"
+				>
+					<i class="ri-lock-line"></i>
+					{{ 'rev_to_ctc' | transloco }}
+				</label>
+				<input
+					class="form-control mt-1"
+					type="number"
+					min="0"
+					id="rev_ctc"
+					[attr.aria-label]="'rev_to_ctc' | transloco"
+					[disabled]="kind() !== 'ctc'"
+					[ngModel]="ctcYear()"
+					(ngModelChange)="ctcYear.set(+$event)"
+				/>
+				<small class="text-muted">{{ 'rev_to_ctc_help' | transloco }}</small>
+			</div>
+			<div class="form-check mb-3">
+				<input
+					class="form-check-input"
+					type="radio"
+					name="rev_kind"
+					id="rev_kind_heads"
+					[checked]="kind() === 'heads'"
+					(change)="setKind('heads')"
+				/>
+				<label
+					class="form-check-label"
+					for="rev_kind_heads"
+				>
+					{{ 'rev_heads' | transloco }}
+				</label>
+				<small class="text-muted d-block">{{ 'rev_heads_help' | transloco }}</small>
+			</div>
+			<div class="row g-2">
+				<div class="col-6">
+					<label
+						class="form-label-title"
+						for="rev_from"
+					>
+						{{ 'rev_from' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						type="date"
+						id="rev_from"
+						[ngModel]="from()"
+						(ngModelChange)="from.set($event)"
+					/>
+				</div>
+				<div class="col-12">
+					<label
+						class="form-label-title"
+						for="rev_why"
+					>
+						{{ 'rev_why' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="rev_why"
+						maxlength="300"
+						[ngModel]="reason()"
+						(ngModelChange)="reason.set($event)"
+					/>
+				</div>
+			</div>
+			<small class="text-muted d-block mt-2">{{ 'rev_note' | transloco }}</small>
+		</div>
+		<div class="col-lg-7">
+			<h6 class="mb-2">{{ 'rev_breakup' | transloco }}</h6>
+			<!-- A breakup kept from before what is typed now can be worked out is shown dimmed. -->
+			<div
+				class="table-responsive"
+				[class.opacity-50]="preview.isPlaceholderData() || !ready()"
+			>
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'rev_col_head' | transloco }}</th>
+							<th class="text-end">{{ 'rev_col_now' | transloco }}</th>
+							<th class="text-end">{{ 'rev_col_new' | transloco }}</th>
+							<th class="text-end">{{ 'rev_col_change' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (l of p?.lines ?? []; track l.head) {
+						<tr>
+							<td>{{ 'payroll_head_' + l.head | transloco }}</td>
+							<td class="text-end">{{ l.nowINR.toLocaleString('en-IN') }}</td>
+							<td class="text-end">
+								<input
+									class="form-control text-end"
+									type="number"
+									min="0"
+									[id]="'rev_new_' + l.head"
+									[attr.aria-label]="'payroll_head_' + l.head | transloco"
+									[ngModel]="l.nextINR"
+									(ngModelChange)="setHead(l.head, $event)"
+								/>
+							</td>
+							<td class="text-end">{{ l.changeINR.toLocaleString('en-IN') }}</td>
+						</tr>
+						} @if (p) {
+						<tr>
+							<td>{{ 'rev_gross' | transloco }}</td>
+							<td class="text-end">{{ p.now.grossINR.toLocaleString('en-IN') }}</td>
+							<td class="text-end">{{ p.next.grossINR.toLocaleString('en-IN') }}</td>
+							<td class="text-end">{{ (p.next.grossINR - p.now.grossINR).toLocaleString('en-IN') }}</td>
+						</tr>
+						<tr>
+							<td>{{ 'rev_employer' | transloco }}</td>
+							<td class="text-end">{{ p.now.employerINR.toLocaleString('en-IN') }}</td>
+							<td class="text-end">{{ p.next.employerINR.toLocaleString('en-IN') }}</td>
+							<td class="text-end">
+								{{ (p.next.employerINR - p.now.employerINR).toLocaleString('en-IN') }}
+							</td>
+						</tr>
+						<tr>
+							<td><b>{{ 'rev_ctc' | transloco }}</b></td>
+							<td class="text-end">{{ p.now.ctcMonthINR.toLocaleString('en-IN') }}</td>
+							<td
+								class="text-end"
+								id="rev_ctc_new"
+							>
+								<b>{{ p.next.ctcMonthINR.toLocaleString('en-IN') }}</b>
+							</td>
+							<td class="text-end">
+								{{ (p.next.ctcMonthINR - p.now.ctcMonthINR).toLocaleString('en-IN') }} ({{ p.changePct
+								}}%)
+							</td>
+						</tr>
+						<tr>
+							<td>{{ 'rev_take_home' | transloco }}</td>
+							<td class="text-end">{{ p.now.takeHomeINR.toLocaleString('en-IN') }}</td>
+							<td class="text-end">{{ p.next.takeHomeINR.toLocaleString('en-IN') }}</td>
+							<td class="text-end">
+								{{ (p.next.takeHomeINR - p.now.takeHomeINR).toLocaleString('en-IN') }}
+							</td>
+						</tr>
+						@if (p.arrears; as a) {
+						<tr>
+							<td colspan="3">
+								{{ 'rev_arrears' | transloco: { months: a.months.join(', '), month: a.paidIn } }}
+							</td>
+							<td
+								class="text-end"
+								id="rev_arrears"
+							>
+								{{ a.inr.toLocaleString('en-IN') }}
+							</td>
+						</tr>
+						} }
+					</tbody>
+				</table>
+			</div>
+			@if (kind() !== 'heads') {
+			<div class="form-check mt-2">
+				<input
+					class="form-check-input"
+					type="checkbox"
+					id="rev_lock"
+					[checked]="lockCtc()"
+					(change)="lockCtc.set(!lockCtc())"
+				/>
+				<label
+					class="form-check-label"
+					for="rev_lock"
+				>
+					{{ 'rev_lock' | transloco }}
+				</label>
+			</div>
+			} @for (c of p?.checks ?? []; track c.code) {
+			<div
+				[class]="'alert mt-2 mb-0 ' + (c.blocking ? 'alert-danger' : 'alert-warning')"
+				[id]="'rev_check_' + c.code"
+			>
+				{{ 'rev_check_' + c.code | transloco: { amount: c.inr.toLocaleString('en-IN') } }}
+			</div>
+			} @if (p?.decrease) {
+			<div class="form-check mt-2">
+				<input
+					class="form-check-input"
+					type="checkbox"
+					id="rev_agreed"
+					[checked]="agreed()"
+					(change)="agreed.set(!agreed())"
+				/>
+				<label
+					class="form-check-label"
+					for="rev_agreed"
+				>
+					{{ 'rev_agreed' | transloco }}
+				</label>
+			</div>
+			}
+		</div>
+	</div>
+</div>
+<div class="modal-footer">
+	<button
+		type="button"
+		class="btn btn-outline"
+		(click)="active.dismiss()"
+	>
+		{{ 'cancel' | transloco }}
+	</button>
+	<button
+		type="button"
+		class="btn btn-theme"
+		id="rev_accept"
+		[disabled]="busy() || !p || !ready() || preview.isFetching() || preview.isPlaceholderData() || blocking() || reason().trim().length < 3"
+		(click)="accept()"
+	>
+		{{ 'rev_accept' | transloco }}
+	</button>
+</div>

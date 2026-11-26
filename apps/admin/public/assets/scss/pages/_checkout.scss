@@ -68,7 +68,7 @@
 				position: relative;
 				font-size: 18px;
 				line-height: 20px;
-				color: var(--theme-color);
+				color: var(--theme-ink);
 				font-weight: 400;
 				width: 35%;
 				float: right;
@@ -212,11 +212,11 @@
 										line-height: 1;
 									}
 									h5 {
-										color: #898989;
+										color: var(--admin-muted);
 									}
 									&.active {
 										border-color: var(--theme-color);
-										color: var(--theme-color);
+										color: var(--theme-ink);
 										i {
 											color: var(--theme-color);
 										}
@@ -745,7 +745,7 @@
 
 												a {
 													&:hover {
-														color: var(--theme-color);
+														color: var(--theme-ink);
 													}
 												}
 											}
@@ -792,7 +792,7 @@
 		.product-details {
 			.cart-listing {
 				.text-theme {
-					color: var(--theme-color);
+					color: var(--theme-ink);
 				}
 				li {
 					padding-bottom: 15px;
@@ -840,7 +840,7 @@
 		width: 100%;
 		border: 1px dashed rgba(26, 164, 136, 0.2);
 		a {
-			color: var(--theme-color);
+			color: var(--theme-ink);
 		}
 		h4 {
 			span {
@@ -894,7 +894,7 @@
 .promocode-title {
 	cursor: pointer;
 	h4 {
-		color: var(--theme-color) !important;
+		color: var(--theme-ink) !important;
 	}
 }
 

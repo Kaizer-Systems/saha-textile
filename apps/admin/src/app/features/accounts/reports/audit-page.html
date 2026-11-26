@@ -1,0 +1,100 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'reports_title'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">{{ 'report_audit_report' | transloco }}</h5>
+			<small class="text-muted">{{ 'audit_sub' | transloco }}</small>
+		</div>
+		<app-export-menu
+			id="audit_export"
+			[source]="exportSource"
+		/>
+	</div>
+	<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+		<div class="d-flex flex-wrap gap-2">
+			@for (c of chips; track c) {
+			<button
+				type="button"
+				class="align-items-center btn btn-sm d-flex"
+				[id]="'audit_chip_' + c"
+				[class.btn-theme]="chip() === c"
+				[class.btn-outline]="chip() !== c"
+				[attr.aria-pressed]="chip() === c"
+				(click)="pick(c)"
+			>
+				{{ 'audit_chip_' + c | transloco }}
+				<span class="ms-1">{{ report.data()?.counts?.[c] ?? 0 }}</span>
+			</button>
+			}
+		</div>
+		<div class="d-flex align-items-center flex-wrap gap-2">
+			<app-period-picker
+				[choices]="presets"
+				[start]="'this_month'"
+				[labelPrefix]="'period_'"
+				(picked)="setPeriod($event)"
+			/>
+			<input
+				class="form-control w-auto"
+				id="audit_find"
+				[placeholder]="'audit_find' | transloco"
+				[attr.aria-label]="'audit_find' | transloco"
+				[ngModel]="q()"
+				(ngModelChange)="q.set($event); page.set(1)"
+			/>
+		</div>
+	</div>
+	@if (report.error()) {
+	<div class="alert alert-warning py-2">{{ 'statement_problem' | transloco }}</div>
+	} @if (report.data(); as r) {
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'audit_when' | transloco }}</th>
+					<th>{{ 'audit_who' | transloco }}</th>
+					<th>{{ 'audit_document' | transloco }}</th>
+					<th>{{ 'audit_what' | transloco }}</th>
+					<th>{{ 'audit_detail' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of r.rows; track row.id) {
+				<tr>
+					<td class="text-nowrap">{{ when(row.at) }}</td>
+					<td>{{ row.who || '—' }}</td>
+					<td>{{ row.entityType ?? '' }} {{ row.entityId ?? '' }}</td>
+					<td>{{ row.action }}</td>
+					<td>{{ row.detail || '—' }}</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="5"
+						class="text-muted"
+					>
+						{{ 'audit_none' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if (r.total > 50) {
+	<div class="d-flex justify-content-center mt-3 gap-2">
+		@for (p of pages(r.total); track p) {
+		<button
+			type="button"
+			class="btn btn-sm"
+			[class.btn-theme]="page() === p"
+			[class.btn-outline]="page() !== p"
+			(click)="page.set(p)"
+		>
+			{{ p }}
+		</button>
+		}
+	</div>
+	} }
+</app-page-wrapper>

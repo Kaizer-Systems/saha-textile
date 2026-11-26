@@ -84,6 +84,7 @@
 									@if (!form.controls['confirmPassword'].errors?.['required']) {
 									<div>
 										<div
+											[title]="'show_password' | transloco"
 											class="show-hide"
 											(click)="showPassword()"
 										>

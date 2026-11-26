@@ -23,7 +23,10 @@
 				<h5 class="fw-500">{{ store()?.store_name }}</h5>
 			</a>
 			<div class="product-rating">
-				<ngb-rating [rate]="store()?.rating_count!" />
+				<ngb-rating
+					[attr.aria-label]="'rating' | transloco"
+					[rate]="store()?.rating_count!"
+				/>
 				<span class="rating-content">({{ store()?.reviews_count }} {{ 'review' | transloco }})</span>
 			</div>
 		</div>

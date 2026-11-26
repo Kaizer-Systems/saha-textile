@@ -1,8 +1,11 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { signal, type Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { BehaviorSubject, firstValueFrom, of } from 'rxjs';
+import { TranslocoService } from '@jsverse/transloco';
+import { QueryClient } from '@tanstack/angular-query-experimental';
+import { BehaviorSubject, firstValueFrom, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AdminNotificationsGateway } from '@core/admin-notifications/admin-notifications.gateway';
@@ -10,10 +13,11 @@ import { AdminRolesGateway } from '@core/admin-roles/admin-roles.gateway';
 import { AdminUsersGateway } from '@core/admin-users/admin-users.gateway';
 import { AdminAuthGateway } from '@core/auth/auth-gateway';
 import { SettingStore } from '@core/state/setting.store';
+import { BlogService } from '@data-access/services/blog.service';
 import { FaqService } from '@data-access/services/faq.service';
+import { NotificationService } from '@data-access/services/notification.service';
 import { PointService } from '@data-access/services/point.service';
 import { SettingService } from '@data-access/services/setting.service';
-import { StoreService } from '@data-access/services/store.service';
 
 import { CustomerLedger } from './customer-ledger/customer-ledger';
 import { FormFaq } from './faq/form-faq/form-faq';
@@ -22,7 +26,6 @@ import { FormRole } from './role/form-role/form-role';
 import { Permissions } from './role/permissions/permissions';
 import { NotificationSettings } from './setting/notification-settings/notification-settings';
 import { Setting } from './setting/setting';
-import { FormStore } from './store/form-store/form-store';
 import { FormTag } from './tag/form-tag/form-tag';
 import { FormAdminUser } from './user/form-user/form-user';
 
@@ -42,7 +45,10 @@ const q = {
 	provider: signal<unknown>(undefined),
 	channels: signal<unknown>(undefined),
 	templates: signal<unknown>(undefined),
+	categories: signal<unknown>(undefined),
+	products: signal<unknown>(undefined),
 };
+const productSearches: unknown[] = [];
 const call = (...getters: (undefined | (() => unknown))[]) => getters.forEach((getter) => getter?.());
 
 vi.mock('@tanstack/angular-query-experimental', async (original) => ({
@@ -76,6 +82,12 @@ vi.mock('@data-access/queries/admin-customers.queries', () => ({
 		call(id, params),
 		{ data: q.orders }
 	),
+}));
+vi.mock('@data-access/queries/category.queries', () => ({
+	injectCategoriesQuery: (params: () => unknown) => (call(params), { data: q.categories }),
+}));
+vi.mock('@data-access/queries/product.queries', () => ({
+	injectCatalogProductsQuery: (params: () => unknown) => (productSearches.push(params), { data: q.products }),
 }));
 vi.mock('@data-access/queries/admin-notifications.queries', () => ({
 	injectNotificationProviderQuery: () => ({ data: q.provider }),
@@ -438,26 +450,93 @@ describe('FormAdminUser', () => {
 });
 
 describe('FormTag', () => {
+	const tagProviders = (save = () => of({ id: 'btag_1' }) as never) => {
+		const blogs = { saveTerm: vi.fn(save) };
+		const toasts = { showSuccess: vi.fn(), showError: vi.fn() };
+		return {
+			blogs,
+			toasts,
+			providers: [
+				{ provide: BlogService, useValue: blogs },
+				{ provide: QueryClient, useValue: { invalidateQueries: vi.fn() } },
+				{ provide: NotificationService, useValue: toasts },
+				{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+			],
+		};
+	};
+
+	afterEach(() => q.tag.set(undefined));
+
 	it('fills from a saved tag', () => {
-		const { page } = render(FormTag, [], { type: 'edit' }, { id: '3' });
+		const { page } = render(FormTag, tagProviders().providers, { type: 'edit' }, { id: '3' });
 		q.tag.set({ name: 'New', description: 'D', status: false });
 		TestBed.tick();
 		expect(page.form.value).toMatchObject({ name: 'New', status: false });
 		expect(page.tag).toMatchObject({ name: 'New' });
 	});
 
-	it('tracks the tag type and goes back to the right list', () => {
-		const { fixture, page, router } = render(FormTag);
+	it('fills a blog tag in every language', () => {
+		const blog = { id: 'btag_1', slug: 'silk', name: { en: 'Silk', bn: 'রেশম' }, description: {}, status: 'live' };
+		const { page } = render(FormTag, tagProviders().providers, { type: 'edit', tagType: 'post' }, { id: 'btag_1' });
+		q.tag.set({ name: 'Silk', slug: 'silk', status: '0', blog });
+		TestBed.tick();
+		expect(page.form.value.status).toBe(false);
+		q.tag.set({ name: 'Silk', slug: 'silk', status: '1', blog });
+		TestBed.tick();
+		expect(page.form.value.status).toBe(true);
+		page.switchLanguage('bn');
+		expect(page.form.value).toMatchObject({ name: 'রেশম', slug: 'silk' });
+		page.openLanguageGap({ key: 'name', locale: 'en' });
+		expect(page.fields.locale()).toBe('en');
+	});
+
+	it('keeps theme tags on their list', () => {
+		const { page, router } = render(FormTag, tagProviders().providers);
 		page.submit();
 		expect(router.navigateByUrl).not.toHaveBeenCalled();
 		page.form.patchValue({ name: 'New' });
 		page.submit();
 		expect(router.navigateByUrl).toHaveBeenLastCalledWith('/tag');
+	});
+
+	it('saves a blog tag through the blog API and goes back to the blog tags', () => {
+		const setup = tagProviders();
+		const { fixture, page, router } = render(FormTag, setup.providers);
 		fixture.componentRef.setInput('tagType', 'post');
 		page.ngOnChanges();
 		expect(page.form.value.type).toBe('post');
+		page.form.patchValue({ name: 'Wedding Wear' });
 		page.submit();
+		expect(setup.blogs.saveTerm).toHaveBeenCalledWith('tags', null, {
+			name: { en: 'Wedding Wear' },
+			description: { en: '' },
+			slug: 'wedding-wear',
+			status: 'live',
+		});
 		expect(router.navigateByUrl).toHaveBeenLastCalledWith('/blog/tag');
+	});
+
+	it('shows the missing language when a blog tag cannot go live', () => {
+		const refusal = new HttpErrorResponse({
+			status: 400,
+			error: { error: { issues: [{ path: ['name', 'bn'], code: 'go_live_blocked', message: 'x' }] } },
+		});
+		const setup = tagProviders(() => throwError(() => refusal) as never);
+		const { page } = render(FormTag, setup.providers, { tagType: 'post' });
+		page.form.patchValue({ name: 'Silk' });
+		page.submit();
+		expect(setup.toasts.showError).toHaveBeenCalledWith('blog_go_live_blocked বাংলা: blog_gap_name');
+		expect(page.fields.locale()).toBe('bn');
+		page.form.patchValue({ name: '' });
+		page.switchLanguage('en');
+		page.form.patchValue({ name: '' });
+		page.submit();
+		expect(setup.blogs.saveTerm).toHaveBeenCalledTimes(1);
+		const failing = tagProviders(() => throwError(() => new Error('x')) as never);
+		const other = render(FormTag, failing.providers, { tagType: 'post' });
+		other.page.form.patchValue({ name: 'Silk' });
+		other.page.submit();
+		expect(failing.toasts.showError).toHaveBeenCalledWith('blog_rejected');
 	});
 });
 
@@ -469,8 +548,8 @@ describe('FormFaq', () => {
 
 	it('jumps to a field from the language to-do list', () => {
 		const { page } = setup();
-		page.openLanguageGap({ key: 'title', locale: 'fr' });
-		expect(page.fields.locale()).toBe('fr');
+		page.openLanguageGap({ key: 'title', locale: 'bn' });
+		expect(page.fields.locale()).toBe('bn');
 	});
 
 	it('fills from a saved question', () => {
@@ -485,46 +564,72 @@ describe('FormFaq', () => {
 				productIds: ['p', 'q'],
 			},
 		]);
-		expect(page.form.value).toMatchObject({ title: 'Q', scope: 'product', categoryIds: 'c', productIds: 'p, q' });
+		expect(page.form.value).toMatchObject({
+			title: 'Q',
+			scope: 'product',
+			categoryIds: ['c'],
+			productIds: ['p', 'q'],
+		});
+		expect(page.selectedCategories()).toEqual(['c']);
+		q.products.set({ items: [{ id: 'p', title: 'Red saree' }] });
+		expect(page.productOptions()).toEqual([
+			{ value: 'q', label: 'q' },
+			{ value: 'p', label: 'Red saree' },
+		]);
+		q.products.set(undefined);
 	});
 
 	it('fills the defaults for a sparse or missing row', () => {
 		expect(setup({ id: 1 }, [{ id: 1 }]).page.form.value).toMatchObject({
 			scope: 'global',
-			categoryIds: '',
-			productIds: '',
+			categoryIds: [],
+			productIds: [],
 		});
 		expect(setup({ id: 9 }, []).page.faq).toBeNull();
+	});
+
+	it('does not read without an id, and searches products as typed', () => {
+		const { page } = setup();
+		expect(page.categoryOptions()).toEqual([]);
+		q.categories.set({ data: [{ id: 'c1', name: 'Sarees' }] });
+		expect(page.categoryOptions()).toEqual([{ id: 'c1', name: 'Sarees' }]);
+		q.categories.set(undefined);
+		page.searchProducts({ search: 'silk' } as never);
+		expect((productSearches.at(-1) as () => unknown)()).toEqual({ search: 'silk', pageSize: 50 });
+		page.searchProducts({} as never);
+		expect((productSearches.at(-1) as () => unknown)()).toEqual({ search: undefined, pageSize: 50 });
 	});
 
 	it('does not read without an id', () => {
 		expect(setup().service.getFaqs).not.toHaveBeenCalled();
 	});
 
-	it('saves, splitting the id lists, and returns to the list', () => {
+	it('saves the chosen lists and returns to the list', () => {
 		const { page, service, router } = setup();
-		page.switchLanguage('fr');
+		page.switchLanguage('bn');
 		page.submit();
 		expect(service.save).not.toHaveBeenCalled();
 		expect(page.fields.locale()).toBe('en');
 		expect(page.form.get('title')?.errors).toEqual({ required: true });
 		expect(page.form.get('description')?.errors).toEqual({ required: true });
-		page.form.patchValue({ title: 'Q', categoryIds: ' c1, ,c2 ', productIds: '' });
+		page.selectCategories(['c1', 'c2']);
+		page.selectCategories('not a list' as never);
+		page.form.patchValue({ title: 'Q', productIds: null });
 		page.submit();
 		expect(page.form.get('title')?.errors).toBeNull();
 		expect(service.save).not.toHaveBeenCalled();
 		page.form.patchValue({ description: 'A' });
-		page.switchLanguage('fr');
+		page.switchLanguage('bn');
 		expect(page.onSourceLanguage).toBe(false);
 		page.form.patchValue({ title: 'Question' });
 		page.refreshMissing();
-		expect(page.gaps()['fr']?.length).toBe(1);
+		expect(page.gaps()['bn']?.length).toBe(1);
 		page.submit();
 		expect((service.save.mock.lastCall as unknown[])[0]).toMatchObject({
 			title: 'Q',
 			description: 'A',
-			titleFr: 'Question',
-			descriptionFr: '',
+			titleBn: 'Question',
+			descriptionBn: '',
 			categoryIds: ['c1', 'c2'],
 			productIds: [],
 			faqId: undefined,
@@ -540,104 +645,17 @@ describe('FormFaq', () => {
 		expect(page.form.get('description')?.errors).toBeNull();
 		page.form.patchValue({ title: 'Q' });
 		page.submit();
-		expect((service.save.mock.lastCall as unknown[])[0]).toMatchObject({ titleFr: '', descriptionFr: '' });
+		expect((service.save.mock.lastCall as unknown[])[0]).toMatchObject({ titleBn: '', descriptionBn: '' });
 	});
 
-	it('keeps the French text of a saved question', () => {
-		const { page } = setup({ id: 1 }, [{ id: 1, title: 'Q', titleFr: 'Question', description: 'A', descriptionFr: 'R' }]);
-		page.switchLanguage('fr');
+	it('keeps the Bengali text of a saved question', () => {
+		const { page } = setup({ id: 1 }, [
+			{ id: 1, title: 'Q', titleBn: 'Question', description: 'A', descriptionBn: 'R' },
+		]);
+		page.switchLanguage('bn');
 		expect(page.form.value).toMatchObject({ title: 'Question', description: 'R' });
 		expect(page.fields.source('title')).toBe('Q');
 		expect(page.onSourceLanguage).toBe(false);
-	});
-});
-
-describe('FormStore', () => {
-	const setup = (
-		inputs: Record<string, unknown> = {},
-		params: Record<string, unknown> = {},
-		rows: unknown[] = [],
-	) => {
-		const service = { getStores: vi.fn(() => of({ data: rows })) };
-		return { ...render(FormStore, [{ provide: StoreService, useValue: service }], inputs, params), service };
-	};
-	const complete = {
-		store_name: 's',
-		description: 'd',
-		country_id: 1,
-		state_id: 2,
-		city: 'c',
-		address: 'a',
-		pincode: 'p',
-		name: 'n',
-		email: 'a@b.co',
-		phone: '1',
-		password: 'pw',
-		password_confirmation: 'pw',
-	};
-
-	it('fills from a saved store', () => {
-		const { page } = setup({ type: 'edit' }, { id: 1 }, [{ id: 1, store_name: 'S', vendor: { name: 'V' } }]);
-		expect(page.form.value).toMatchObject({ store_name: 'S', name: 'V' });
-		expect(page.id).toBe(1);
-	});
-
-	it('copes with a store it cannot find, and an empty address', () => {
-		expect(setup({}, { id: 9 }).page.store).toBeNull();
-		expect(setup().service.getStores).not.toHaveBeenCalled();
-	});
-
-	it('lists countries and the states of the chosen one', async () => {
-		q.countries.set([{ id: 1, name: 'India' }]);
-		q.states.set([
-			{ id: 2, name: 'Bengal', country_id: 1 },
-			{ id: 3, name: 'Texas', country_id: 9 },
-		]);
-		const { page } = setup();
-		expect(await firstValueFrom(page.countries$)).toEqual([{ label: 'India', value: 1 }]);
-		expect(await firstValueFrom(page.states$)).toHaveLength(2);
-		page.countryChange({ value: 1 } as never);
-		TestBed.tick();
-		expect(await firstValueFrom(page.states$)).toHaveLength(1);
-		page.form.patchValue({ state_id: 2 });
-		page.countryChange(undefined as never);
-		expect(page.form.value.state_id).toBe('');
-	});
-
-	it('shows empty lists before they load', async () => {
-		const { page } = setup();
-		expect(await firstValueFrom(page.countries$)).toEqual([]);
-		expect(await firstValueFrom(page.states$)).toEqual([]);
-	});
-
-	it('takes a single logo only', () => {
-		const { page } = setup();
-		page.selectStoreLogo({ id: 5 } as never);
-		expect(page.form.value.store_logo_id).toBe(5);
-		page.selectStoreLogo(null as never);
-		expect(page.form.value.store_logo_id).toBe('');
-		page.selectStoreLogo([] as never);
-		expect(page.form.value.store_logo_id).toBe('');
-	});
-
-	it('flags a mismatch after the confirmation is touched', () => {
-		const { page } = setup();
-		page.form.patchValue({ password: 'a', password_confirmation: 'b' });
-		expect(page.passwordMatchError).toBeFalsy();
-		page.form.get('password_confirmation')?.markAsTouched();
-		expect(page.passwordMatchError).toBe(true);
-	});
-
-	it('goes to the list from a valid form, dropping the password when editing', () => {
-		const { page, router } = setup();
-		page.submit();
-		expect(router.navigateByUrl).not.toHaveBeenCalled();
-		page.form.patchValue(complete);
-		page.submit();
-		expect(router.navigateByUrl).toHaveBeenCalledWith('/store');
-		const editing = setup({ type: 'edit' }, { id: 1 }, [{ id: 1, vendor: {} }]);
-		editing.page.submit();
-		expect(editing.page.form.get('password')).toBeNull();
 	});
 });
 
@@ -676,18 +694,19 @@ describe('Setting', () => {
 		expect(page.currencies()).toEqual([{ label: 'INR', value: 1 }]);
 	});
 
-	it.each([
-		['selectMaintenance', 'maintenance', 'maintenance_image_id'],
-	] as const)('%s stores one image', (method, group, field) => {
-		const { page } = setup();
-		const value = () => (page.form.value[group] as Record<string, unknown>)[field];
-		page[method]({ id: 5 } as never);
-		expect(value()).toBe(5);
-		page[method](null as never);
-		expect(value()).toBeNull();
-		page[method]([] as never);
-		expect(value()).toBeNull();
-	});
+	it.each([['selectMaintenance', 'maintenance', 'maintenance_image_id']] as const)(
+		'%s stores one image',
+		(method, group, field) => {
+			const { page } = setup();
+			const value = () => (page.form.value[group] as Record<string, unknown>)[field];
+			page[method]({ id: 5 } as never);
+			expect(value()).toBe(5);
+			page[method](null as never);
+			expect(value()).toBeNull();
+			page[method]([] as never);
+			expect(value()).toBeNull();
+		},
+	);
 
 	it('adds and removes intervals, keeping at least one', () => {
 		const { page } = setup();

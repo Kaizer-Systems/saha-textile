@@ -22,13 +22,39 @@ export default defineConfig({
 		screenshot: 'only-on-failure',
 	},
 	projects: [
-		{ name: 'desktop', testIgnore: /admin/, use: { ...devices['Desktop Chrome'], channel: 'chrome' } },
-		{ name: 'phone', testIgnore: /admin/, use: { ...devices['Pixel 7'], channel: 'chrome' } },
+		// A test that only applies to one screen carries `@desktop-only` or `@phone-only`, and the other project leaves it
+		// out, so every test listed runs (none reports as skipped).
+		{
+			name: 'desktop',
+			testIgnore: /admin/,
+			grepInvert: /@phone-only/,
+			use: { ...devices['Desktop Chrome'], channel: 'chrome' },
+		},
+		{
+			name: 'phone',
+			// proof.spec.ts checks data and server behaviour, proven once on the laptop project.
+			testIgnore: [/admin/, /proof\.spec\.ts/],
+			grepInvert: /@desktop-only/,
+			use: { ...devices['Pixel 7'], channel: 'chrome' },
+		},
 		{ name: 'admin-setup', testMatch: /admin\.setup\.ts/, use: { channel: 'chrome' } },
 		{
 			name: 'admin',
 			testMatch: /admin\.spec\.ts/,
+			testIgnore: /dark-mode\.admin\.spec\.ts/,
 			dependencies: ['admin-setup'],
+			use: {
+				...devices['Desktop Chrome'],
+				channel: 'chrome',
+				storageState: 'node_modules/.cache/playwright/admin-state.json',
+			},
+		},
+		// The light/dark comparison loads each screen twice; it runs after every other project, when no test is placing
+		// orders or changing products, so both loads read the same data.
+		{
+			name: 'admin-visual',
+			testMatch: /dark-mode\.admin\.spec\.ts/,
+			dependencies: ['admin', 'desktop', 'phone'],
 			use: {
 				...devices['Desktop Chrome'],
 				channel: 'chrome',

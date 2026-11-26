@@ -32,7 +32,7 @@ describe('SemanticRole — business meaning, never display', () => {
 });
 
 describe('display styles are visual only', () => {
-	it('carries the canonical six plus the storefront/admin parity pair', () => {
+	it('carries the canonical six, the storefront/admin parity pair and the four looks from the renders', () => {
 		expect(OptionDisplayStyle.options).toEqual([
 			'rectangle',
 			'circle',
@@ -42,6 +42,10 @@ describe('display styles are visual only', () => {
 			'dropdown',
 			'image_tile',
 			'radio_bar',
+			'picture_row',
+			'picture_chip',
+			'size_v2',
+			'colour_chip',
 		]);
 	});
 
@@ -61,6 +65,14 @@ describe('AttributeDefinitionTerm', () => {
 		});
 		expect(term.isBase).toBe(false);
 		expect(term.aliases).toEqual([]);
+	});
+
+	it('keeps an optional second line in each language', () => {
+		const base = { code: 'm', label: { en: 'M' }, slug: 'm' };
+		expect(AttributeDefinitionTerm.parse(base).subLabel).toBeUndefined();
+		const term = AttributeDefinitionTerm.parse({ ...base, subLabel: { en: 'Medium', bn: 'মাঝারি' } });
+		expect(term.subLabel).toEqual({ en: 'Medium', bn: 'মাঝারি' });
+		expect(AttributeDefinitionTerm.safeParse({ ...base, subLabel: 'Medium' }).success).toBe(false);
 	});
 
 	it('rejects a non-hex colour and a non-slug', () => {

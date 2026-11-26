@@ -1,0 +1,357 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'at_title'"
+>
+	<div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+		<p class="text-muted mb-0">{{ 'at_intro' | transloco }}</p>
+		<span class="d-flex gap-2">
+			<a
+				class="btn btn-outline"
+				id="at_roles"
+				routerLink="/setting/accounts-templates/roles"
+			>
+				{{ 'ar_title' | transloco }}
+			</a>
+		</span>
+		@if (canEdit()) {
+		<span class="d-flex gap-2">
+			<label
+				class="btn btn-outline mb-0"
+				for="at_import"
+			>
+				{{ 'at_import' | transloco }}
+			</label>
+			<input
+				type="file"
+				class="d-none"
+				id="at_import"
+				accept=".json,application/json"
+				(change)="importFile($any($event.target))"
+			/>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="at_new"
+				(click)="openNew(newTemplate)"
+			>
+				<i class="ri-add-line"></i>
+				{{ 'at_new' | transloco }}
+			</button>
+		</span>
+		}
+	</div>
+	<div class="theme-form theme-form-2 d-flex align-items-end mb-3 flex-wrap gap-3">
+		<div>
+			<label
+				class="form-label-title"
+				for="at_kind"
+			>
+				{{ 'at_filter_kind' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="at_kind"
+				[ngModel]="kind()"
+				(ngModelChange)="kind.set($event)"
+			>
+				<option value="">{{ 'at_all' | transloco }}</option>
+				@for (k of kinds; track k) {
+				<option [value]="k">{{ 'co_kind_' + k | transloco }}</option>
+				}
+			</select>
+		</div>
+		<div>
+			<label
+				class="form-label-title"
+				for="at_type"
+			>
+				{{ 'at_filter_type' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="at_type"
+				[ngModel]="type()"
+				(ngModelChange)="type.set($event)"
+			>
+				<option value="">{{ 'at_all' | transloco }}</option>
+				@for (t of types; track t) {
+				<option [value]="t">{{ 'at_type_' + t | transloco }}</option>
+				}
+			</select>
+		</div>
+		@if (profile.data(); as p) {
+		<span class="text-muted pb-2">
+			{{ 'at_this_company' | transloco: { kind: ('co_kind_' + p.kind | transloco) } }}
+		</span>
+		}
+	</div>
+	@if (updateProblem(); as problem) {
+	<div class="alert alert-danger py-2">{{ problem }}</div>
+	} @if (updating() && update.data(); as u) {
+	<div
+		class="box mb-3 rounded border p-3"
+		id="au_box"
+	>
+		<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+			<h6 class="mb-0">
+				{{ 'au_title' | transloco: { code: u.code, version: u.version, installed: u.installedVersion } }}
+			</h6>
+			<span class="d-flex gap-2">
+				<button
+					type="button"
+					class="btn btn-outline"
+					id="au_later"
+					(click)="updating.set(null)"
+				>
+					{{ 'au_later' | transloco }}
+				</button>
+				@if (canEdit()) {
+				<button
+					type="button"
+					class="btn btn-theme"
+					id="au_install"
+					[disabled]="installing()"
+					(click)="install(u)"
+				>
+					{{ 'au_install' | transloco: { date: day(u.validFrom) } }}
+				</button>
+				}
+			</span>
+		</div>
+		@for (a of u.changes.added; track $index) {
+		<span class="text-success d-block">+ {{ a }}</span>
+		} @for (r of u.changes.removed; track $index) {
+		<span class="text-danger d-block"><del>{{ r }}</del></span>
+		} @for (n of u.changes.renamed; track $index) {
+		<span class="d-block">~ {{ n }}</span>
+		} @for (c of u.changes.changed; track $index) {
+		<span class="d-block">~ {{ c }}</span>
+		} @for (k of u.kept; track $index) {
+		<span class="d-block">{{ keptWords(k) }}</span>
+		}
+		<span class="d-block text-muted">{{ 'au_documents_keep' | transloco }}</span>
+	</div>
+	}
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'at_code' | transloco }}</th>
+					<th>{{ 'at_template' | transloco }}</th>
+					<th>{{ 'at_type' | transloco }}</th>
+					<th>{{ 'at_applies_to' | transloco }}</th>
+					<th>{{ 'at_version' | transloco }}</th>
+					<th>{{ 'at_state' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of rows(); track row.code) { @let s = state(row);
+				<tr [class.opacity-50]="row.locked">
+					<td class="text-nowrap">
+						<a
+							[routerLink]="
+								row.kind === 'taxRules'
+									? ['/setting/accounts-templates/rules', row.code]
+									: row.kind === 'report'
+										? ['/setting/accounts-templates/reports', row.code]
+										: ['/setting/accounts-templates', row.code]
+							"
+						>
+							{{ row.code }}
+						</a>
+					</td>
+					<td>{{ row.name }}</td>
+					<td>{{ 'at_type_' + row.kind | transloco }}</td>
+					<td>{{ appliesTo(row) }}</td>
+					<td class="text-nowrap">
+						@if (row.latestVersion !== null && row.validFrom) { {{ 'at_version_from' | transloco: { version:
+						row.latestVersion, date: day(row.validFrom) } }} } @if (row.caReview === 'pending') {
+						<span class="badge bg-light text-dark ms-1">{{ 'at_ca_review' | transloco }}</span>
+						} @if (row.hasDraft) {
+						<span class="badge bg-light text-dark ms-1">{{ 'at_has_draft' | transloco }}</span>
+						}
+					</td>
+					<td>
+						<div
+							[class.status-success]="s.key === 'at_state_installed'"
+							[class.status-pending]="
+								s.key === 'at_state_update' || s.key === 'at_state_not_installed' || s.key === 'at_state_draft'
+							"
+							[class.status-danger]="s.key === 'at_state_locked'"
+						>
+							@if (s.key === 'at_state_update') {
+							<a
+								href="javascript:void(0)"
+								[id]="'au_open_' + row.code"
+								(click)="updating.set(row.code)"
+							>
+								{{ s.key | transloco: { version: s.version } }}
+							</a>
+							} @else {
+							<span>{{ s.key | transloco: { version: s.version } }}</span>
+							}
+						</div>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="6"
+						class="text-muted py-4 text-center"
+					>
+						{{ 'at_empty' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+</app-page-wrapper>
+
+<ng-template
+	#newTemplate
+	let-modal
+>
+	<div class="modal-header">
+		<h5 class="modal-title">{{ 'at_new' | transloco }}</h5>
+		<button
+			type="button"
+			class="btn-close"
+			[title]="'close' | transloco"
+			(click)="modal.dismiss()"
+		></button>
+	</div>
+	<div class="modal-body theme-form theme-form-2">
+		@let f = fresh();
+		<div class="row g-3">
+			<div class="col-md-6">
+				<label
+					class="form-label-title"
+					for="at_new_code"
+				>
+					{{ 'at_code' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="at_new_code"
+					placeholder="CH-FIRM-DEED"
+					[ngModel]="f.code"
+					(ngModelChange)="patchNew({ code: $event.toUpperCase() })"
+				/>
+			</div>
+			<div class="col-md-6">
+				<label
+					class="form-label-title"
+					for="at_new_type"
+				>
+					{{ 'at_type' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="at_new_type"
+					[ngModel]="f.kind"
+					(ngModelChange)="patchNew({ kind: $event, startFrom: null })"
+				>
+					@for (t of types; track t) {
+					<option [value]="t">{{ 'at_type_' + t | transloco }}</option>
+					}
+				</select>
+			</div>
+			<div class="col-12">
+				<label
+					class="form-label-title"
+					for="at_new_name"
+				>
+					{{ 'at_template' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="at_new_name"
+					maxlength="120"
+					[ngModel]="f.name"
+					(ngModelChange)="patchNew({ name: $event })"
+				/>
+			</div>
+			<div class="col-12">
+				<span class="form-label-title d-block">{{ 'at_applies_to' | transloco }}</span>
+				<label class="me-3">
+					<input
+						type="checkbox"
+						id="at_new_all"
+						[checked]="f.appliesTo.all"
+						(change)="patchNew({ appliesTo: { all: $any($event.target).checked, kinds: [] } })"
+					/>
+					{{ 'at_all_kinds' | transloco }}
+				</label>
+				@if (!f.appliesTo.all) { @for (k of kinds; track k) {
+				<label class="me-3">
+					<input
+						type="checkbox"
+						[id]="'at_new_kind_' + k"
+						[checked]="f.appliesTo.kinds.includes(k)"
+						(change)="toggleKind(k, $any($event.target).checked)"
+					/>
+					{{ 'co_kind_' + k | transloco }}
+				</label>
+				} }
+			</div>
+			@if (f.kind === 'taxRules' && !f.startFrom) {
+			<div class="col-12">
+				<label
+					class="form-label-title"
+					for="at_new_list"
+				>
+					{{ 'at_new_list' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="at_new_list"
+					[ngModel]="f.list"
+					(ngModelChange)="patchNew({ list: $event })"
+				>
+					<option value="reverseCharge">{{ 'rs_list_reverseCharge' | transloco }}</option>
+					<option value="tds">{{ 'rs_list_tds' | transloco }}</option>
+					<option value="limits">{{ 'rs_list_limits' | transloco }}</option>
+				</select>
+			</div>
+			}
+			<div class="col-12">
+				<label
+					class="form-label-title"
+					for="at_new_start"
+				>
+					{{ 'at_start_from' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="at_new_start"
+					[ngModel]="f.startFrom ?? ''"
+					(ngModelChange)="patchNew({ startFrom: $event || null })"
+				>
+					<option value="">{{ 'at_start_empty' | transloco }}</option>
+					@for (o of startOptions(); track o.code) {
+					<option [value]="o.code">{{ o.code }} · {{ o.name }}</option>
+					}
+				</select>
+			</div>
+		</div>
+	</div>
+	<div class="modal-footer">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="at_new_save"
+			[disabled]="!canCreate()"
+			(click)="create()"
+		>
+			{{ 'at_new_save' | transloco }}
+		</button>
+	</div>
+</ng-template>

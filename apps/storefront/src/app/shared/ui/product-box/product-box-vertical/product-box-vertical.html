@@ -11,9 +11,11 @@
 			[attr.fetchpriority]="imagePriority() === 'high' ? 'high' : imagePriority() === 'low' ? 'low' : null"
 			[alt]="product()?.name || 'product'"
 		/>
-		@if (offer(product()!).primary) {
-		<div class="product-label-tag"><span>{{ offer(product()!).primary! | transloco }}</span></div>
-		} @if (offer(product()!).chip; as chip) {
+		<!--
+			No Sale or New tag on this small card (owner, 2026-11-10): the theme has no style for it on an
+			80px picture, so it fell below the picture; the price line's "% Off" already says it.
+		-->
+		@if (offer(product()!).chip; as chip) {
 		<span
 			class="stock-chip"
 			[class]="'stock-chip-' + chip.tone"
@@ -28,15 +30,20 @@
 				[routerLink]="['/product/', product()?.slug]"
 				class="text-title"
 			>
-				<h6 class="name">{{ product()?.name }}</h6>
+				<h4 class="h6 name">{{ product()?.name }}</h4>
 			</a>
-			<div class="vertical-price">
+			<!-- The price line wraps inside the box (Bootstrap flex-wrap, text-wrap); the theme keeps it on one row. -->
+			<div class="vertical-price flex-wrap text-wrap">
 				@if (offer(product()!).kind === 'range') {
-				<h5 class="price theme-color">
+				<p class="h5 price theme-color">
 					{{ offer(product()!).min | currencySymbol }} – {{ offer(product()!).max | currencySymbol }}
-				</h5>
+				</p>
 				} @else {
-				<h5 class="price theme-color">{{ offer(product()!).selling | currencySymbol }}</h5>
+				<p class="h5 price theme-color">
+					{{ offer(product()!).selling | currencySymbol }}@if (product()?.sold_by === 'metre') {
+					<span class="text-content">{{ 'per_m_short' | transloco }}</span>
+					}
+				</p>
 				@if (offer(product()!).percentOff) {
 				<del class="text-content">{{ (offer(product()!).mrp ?? 0) | currencySymbol }}</del>
 				<span class="offer-top">{{ offer(product()!).percentOff }}% {{ 'off' | transloco }}</span>

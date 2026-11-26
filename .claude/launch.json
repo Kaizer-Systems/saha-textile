@@ -55,6 +55,40 @@
 				"--no-open"
 			],
 			"port": 3211
+		},
+		{
+			"name": "release-console-api",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": [
+				"--filter",
+				"@saha-textile/release-console-api",
+				"exec",
+				"sh",
+				"-c",
+				"nest build -p tsconfig.build.json && node dist/main.js"
+			],
+			"port": 4410
+		},
+		{
+			"name": "release-console",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": ["--filter", "@saha-textile/release-console", "dev"],
+			"port": 4400
+		},
+		{
+			"name": "dev-portal-snapshot",
+			"runtimeExecutable": "node",
+			"runtimeArgs": [
+				"apps/developer-portal/node_modules/@docusaurus/core/bin/docusaurus.mjs",
+				"start",
+				".generated/portal-snap/apps/developer-portal",
+				"--port",
+				"3211",
+				"--host",
+				"127.0.0.1",
+				"--no-open"
+			],
+			"port": 3211
 		}
 	]
 }

@@ -1,103 +1,187 @@
-import { isPlatformBrowser } from '@angular/common';
-import { Component, PLATFORM_ID, inject, input } from '@angular/core';
-import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { DOCUMENT, DatePipe, isPlatformBrowser } from '@angular/common';
+import { Component, PLATFORM_ID, inject, input, signal } from '@angular/core';
+import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { languageName } from '@saha-textile/core-domain/languages';
+import { readApiErrorMessage } from '@saha-textile/http-transport';
 import { Editor, NgxEditorModule } from 'ngx-editor';
-import { Subject, of } from 'rxjs';
-import { map, switchMap, takeUntil } from 'rxjs/operators';
+import { lastValueFrom } from 'rxjs';
 
-import { IAttachment } from '@data-access/interfaces/attachment.interface';
-import { IPage } from '@data-access/interfaces/page.interface';
-import { PageService } from '@data-access/services/page.service';
+import { ActiveLanguages } from '@core/i18n/active-languages';
+import { focusField, gapsByLocale, type LanguageGap, LocalizedFields } from '@core/i18n/localized-fields';
+import { type AdminLegalPage, LegalPagesGateway } from '@core/legal-pages/legal-pages.gateway';
+import { NotificationService } from '@data-access/services/notification.service';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { PickedAttachment, ImageUpload, ImageUploadValue, onePicture } from '@shared/ui/image-upload/image-upload';
+import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 
+const LANGUAGE_FIELDS = ['title', 'content', 'meta_title', 'meta_description'];
+/** The search title and description may stay empty: the shop then uses the title and the opening words. */
+const OPTIONAL_FIELDS = ['meta_title', 'meta_description'];
+/** The API's field names for the controls a refused save names. */
+const CONTROL_FOR: Readonly<Record<string, string>> = { title: 'title', content: 'content' };
+
+/** One field a save was refused for: a language the shop shows with Title or Content empty (P6). */
+export interface PageGap {
+	locale: string;
+	field: string;
+}
+
+/**
+ * Admin › Pages › a legal page (Legal Pages brief, P3–P6). One Language switch changes Title, Content, Meta Title
+ * and Meta Description; the address is fixed (choice A) and the share picture is shared by every language. A save
+ * needs Title and Content in every language the shop shows; anything missing comes back as a red alert whose lines
+ * open that language and field. The page is always on the shop, so there is no Status switch (owner, 16 Nov).
+ */
 @Component({
 	selector: 'app-form-page',
 	templateUrl: './form-page.html',
 	styleUrls: ['./form-page.scss'],
-	imports: [ReactiveFormsModule, FormFields, NgxEditorModule, ImageUpload, Button, TranslocoModule],
+	imports: [
+		ReactiveFormsModule,
+		FormFields,
+		NgxEditorModule,
+		ImageUpload,
+		Button,
+		LanguageSwitch,
+		TranslocoModule,
+		DatePipe,
+	],
 })
 export class FormPage {
-	private pageService = inject(PageService);
-	private route = inject(ActivatedRoute);
-	private router = inject(Router);
-	private formBuilder = inject(FormBuilder);
+	private readonly gateway = inject(LegalPagesGateway);
+	private readonly route = inject(ActivatedRoute);
+	private readonly notifications = inject(NotificationService);
+	private readonly transloco = inject(TranslocoService);
+	private readonly page = inject(DOCUMENT);
 
-	readonly type = input<string>(undefined);
-
-	public form: FormGroup;
-	public id: number;
-	public page: IPage | null;
-
-	public editor: Editor;
-	public html = '';
-	public isBrowser: boolean;
-
-	private destroy$ = new Subject<void>();
+	/** The earlier Add Page screen (create-page, on the end-of-project cleanup list) still passes `create`. */
+	readonly type = input<string>('edit');
+	readonly locales = inject(ActiveLanguages).list();
+	readonly form = new FormGroup({
+		title: new FormControl(''),
+		content: new FormControl(''),
+		meta_title: new FormControl(''),
+		meta_description: new FormControl(''),
+	});
+	readonly fields = new LocalizedFields(this.form, LANGUAGE_FIELDS, OPTIONAL_FIELDS);
+	readonly gaps = signal<Record<string, LanguageGap[]>>({});
+	readonly refused = signal<PageGap[]>([]);
+	readonly row = signal<AdminLegalPage | null>(null);
+	readonly saving = signal(false);
+	readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+	readonly editor: Editor | null = this.isBrowser ? new Editor() : null;
+	private metaImageAssetId: string | null = null;
+	/** The version chosen in the picker; the shop shows exactly this one (media brief). */
+	private metaImageVersionId: string | null = null;
 
 	constructor() {
-		const platformId = inject(PLATFORM_ID);
-
-		this.isBrowser = isPlatformBrowser(platformId);
-		this.form = this.formBuilder.group({
-			title: new FormControl('', [Validators.required]),
-			content: new FormControl(),
-			meta_title: new FormControl(),
-			meta_description: new FormControl(),
-			page_meta_image_id: new FormControl(),
-			status: new FormControl(1),
-		});
+		const slug = this.route.snapshot.params['id'] as string | undefined;
+		if (slug) void this.load(slug);
 	}
 
-	ngOnInit() {
-		this.route.params
-			.pipe(
-				switchMap((params) => {
-					if (!params['id']) return of();
-					return this.pageService
-						.getPages()
-						.pipe(map((res) => res.data.find((page) => page.id == params['id']) ?? null));
-				}),
-				takeUntil(this.destroy$),
-			)
-			.subscribe((page) => {
-				this.page = page;
-				this.id = page?.id!;
-				this.form.patchValue({
-					title: page?.title,
-					content: page?.content,
-					meta_title: page?.meta_title,
-					meta_description: page?.meta_description,
-					status: page?.status,
-				});
+	private async load(slug: string): Promise<void> {
+		try {
+			const row = await lastValueFrom(this.gateway.get(slug));
+			this.row.set(row);
+			this.metaImageAssetId = row.page.metaImageAssetId;
+			this.metaImageVersionId = row.page.metaImageVersionId ?? null;
+			this.fields.load({
+				title: row.page.title,
+				content: row.page.content,
+				meta_title: row.page.metaTitle,
+				meta_description: row.page.metaDescription,
 			});
-
-		if (this.isBrowser) {
-			this.editor = new Editor();
+			this.refreshGaps();
+			const missing = this.route.snapshot.queryParams['missing'] as string | undefined;
+			if (missing && this.locales.includes(missing)) this.switchLanguage(missing);
+		} catch (error) {
+			this.notifications.showError(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
 		}
 	}
 
-	selectMetaImage(data: IAttachment) {
-		if (!Array.isArray(data)) {
-			this.form.controls['page_meta_image_id'].setValue(data ? data.id : null);
+	metaImage(): PickedAttachment | null {
+		const row = this.row();
+		return row?.metaImageUrl && this.metaImageAssetId
+			? ({
+					id: this.metaImageAssetId,
+					original_url: row.metaImageUrl,
+					versionId: this.metaImageVersionId,
+				} as unknown as PickedAttachment)
+			: null;
+	}
+
+	selectMetaImage(value: ImageUploadValue): void {
+		const data = onePicture(value);
+		this.metaImageAssetId = data ? String(data.id) : null;
+		this.metaImageVersionId = data?.versionId ?? null;
+	}
+
+	switchLanguage(locale: string): void {
+		this.fields.switchTo(locale);
+		this.refreshGaps();
+	}
+
+	openLanguageGap({ key, locale }: { key: string; locale: string }): void {
+		this.switchLanguage(locale);
+		focusField(this.page, key);
+	}
+
+	/** A line of the red alert opens the language, and the field, where the text is missing (P6). */
+	openGap(gap: PageGap): void {
+		this.switchLanguage(gap.locale);
+		focusField(this.page, CONTROL_FOR[gap.field] ?? 'title');
+	}
+
+	gapLabel(gap: PageGap): string {
+		// Language names in their own script (owner, 15 Nov).
+		const language = languageName(gap.locale);
+		return `${language}: ${this.transloco.translate(gap.field === 'content' ? 'content' : 'title')}`;
+	}
+
+	async submit(): Promise<void> {
+		const row = this.row();
+		if (!row || this.saving()) return;
+		this.saving.set(true);
+		this.refused.set([]);
+		try {
+			const saved = await lastValueFrom(
+				this.gateway.save(row.page.slug, {
+					title: this.fields.text('title'),
+					content: this.fields.text('content'),
+					metaTitle: this.fields.text('meta_title'),
+					metaDescription: this.fields.text('meta_description'),
+					metaImageAssetId: this.metaImageAssetId,
+					metaImageVersionId: this.metaImageVersionId,
+				}),
+			);
+			this.row.set(saved);
+			this.notifications.showSuccess(this.transloco.translate('page_saved'));
+		} catch (error) {
+			const missing = refusedFields(error);
+			if (missing.length) this.refused.set(missing);
+			else
+				this.notifications.showError(
+					readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'),
+				);
+		} finally {
+			this.saving.set(false);
 		}
 	}
 
-	submit() {
-		this.form.markAllAsTouched();
-
-		if (this.form.valid) {
-			// Create/update have no backend yet — just navigate.
-			void this.router.navigateByUrl('/page');
-		}
+	private refreshGaps(): void {
+		this.gaps.set(gapsByLocale(this.locales, (locale) => this.fields.gaps(locale)));
 	}
+}
 
-	ngOnDestroy() {
-		this.destroy$.next();
-		this.destroy$.complete();
-	}
+/** The fields a refused save names (`legal_page_incomplete`), or none for any other answer. */
+export function refusedFields(error: unknown): PageGap[] {
+	// The API's error envelope: `{ error: { code, message, issues } }`; each issue's path is [field, locale].
+	const body = (error as { error?: { error?: { issues?: { code?: string; path?: unknown[] }[] } } })?.error;
+	return (body?.error?.issues ?? [])
+		.filter((issue) => issue.code === 'legal_page_incomplete')
+		.map((issue) => ({ field: String(issue.path?.[0] ?? ''), locale: String(issue.path?.[1] ?? '') }));
 }

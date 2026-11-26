@@ -1,4 +1,4 @@
-import { API, expect, test } from './support';
+import { API, buyBoxReady, expect, test } from './support';
 
 test.describe('a product page', () => {
 	test('shows its options and changes price with a choice', async ({ page, problems }) => {
@@ -26,11 +26,19 @@ test.describe('a product page', () => {
 
 	test('adds to the cart', async ({ page }) => {
 		await page.goto('/en/product/katan-banarasi-saree');
-		const add = page.locator('app-buy-box button', { hasText: /add to cart/i }).first();
-		await expect(add).toBeVisible();
-		await add.click();
+		const buyBox = await buyBoxReady(page);
+		// The cart lives on the server and the browser keeps its answer: wait for that answer, which a busy machine
+		// gives late, before reading the browser's copy (as cart.spec.ts does).
+		const [saved] = await Promise.all([
+			page.waitForResponse((response) => response.url().includes('/cart/current/lines'), { timeout: 30_000 }),
+			buyBox
+				.getByRole('button', { name: /add to cart/i })
+				.first()
+				.click(),
+		]);
+		expect(saved.status()).toBe(201);
 		await expect
-			.poll(() => page.evaluate(() => localStorage.getItem('ngrx_cart') ?? ''))
+			.poll(() => page.evaluate(() => localStorage.getItem('ngrx_cart') ?? ''), { timeout: 15_000 })
 			.toContain('katan-banarasi-saree');
 	});
 

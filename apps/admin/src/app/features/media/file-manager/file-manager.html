@@ -1,0 +1,1084 @@
+<app-page-wrapper
+	[gridClass]="'col-12'"
+	[title]="'media'"
+>
+	<div
+		class="fm-wrap"
+		id="fm_page"
+	>
+		<app-fm-sidebar
+			[nav]="nav()"
+			[category]="category()"
+			[folderId]="folderId()"
+			[folders]="tree.data()?.folders ?? []"
+			[storage]="storage.data() ?? null"
+			(navigate)="openNav($event)"
+			(pickCategory)="openCategory($event)"
+			(openFolder)="openFolder($event)"
+			(upload)="uploadChoice($event)"
+			(storageDetails)="openStorageDetails()"
+		/>
+		@if (nav() === 'clean') {
+		<section
+			class="fm-main position-relative"
+			id="fm_clean"
+		>
+			<app-fm-clean-up (trash)="trashFromCleanUp($event)" />
+		</section>
+		}
+		<section
+			class="fm-main position-relative"
+			[class.d-none]="nav() === 'clean'"
+			#fmMain
+			(dragenter)="dropEnter($event)"
+			(dragover)="dropOver($event)"
+			(dragleave)="dropLeave()"
+			(drop)="dropFiles($event)"
+		>
+			<input
+				type="file"
+				multiple
+				hidden
+				id="fm_pick_files"
+				#fmPickFiles
+				(change)="filesPicked(fmPickFiles)"
+			/>
+			<input
+				type="file"
+				multiple
+				hidden
+				webkitdirectory
+				id="fm_pick_folder"
+				#fmPickFolder
+				(change)="folderPicked(fmPickFolder)"
+			/>
+			<input
+				type="file"
+				hidden
+				id="fm_resume_file"
+				#fmResumeFile
+				(change)="resumePicked(fmResumeFile)"
+			/>
+			<!-- Settings › Languages, Photos to-do: the theme's amber line with Show all, as on every other list. -->
+			<app-missing-language-notice [code]="missing()" />
+			@if (storageAlert(); as summary) {
+			<!-- A45: storage at 85% of the plan or past it. -->
+			<div
+				class="alert alert-warning d-flex align-items-center mb-3 gap-2"
+				id="fm_storage_alert"
+			>
+				<i class="ri-alert-line fs-5"></i>
+				<div>
+					<strong>
+						{{ (summary.onDemandBytes ? 'fm_storage_alert_over_title' : 'fm_storage_alert_title') |
+						transloco: { percent: summary.percent } }}
+					</strong>
+					@if (summary.onDemandBytes) { {{ 'fm_storage_alert_over' | transloco: { used: (summary.usedBytes |
+					fileSize), plan: (summary.planBytes | fileSize), extra: (summary.onDemandBytes | fileSize), usd:
+					summary.onDemandMonthlyUsd } }} } @else { {{ 'fm_storage_alert' | transloco: { used:
+					(summary.usedBytes | fileSize), plan: (summary.planBytes | fileSize) } }} }
+					<a
+						href="javascript:void(0)"
+						class="text-decoration-underline"
+						(click)="openNav('clean')"
+					>
+						{{ 'fm_clean_up' | transloco }}
+					</a>
+				</div>
+			</div>
+			} @if (missingPictures(); as check) {
+			<!-- R5-5: the nightly check found pictures the website uses with files gone. -->
+			<div
+				class="alert alert-warning d-flex align-items-center mb-3 gap-2"
+				id="fm_missing_alert"
+			>
+				<i class="ri-image-line fs-5"></i>
+				<div>
+					<strong>{{ 'fm_missing_title' | plural: check.missingCount }}</strong>
+					{{ 'fm_missing_body' | transloco: { date: (check.checkedAt | date: 'd MMM y, h:mm a') } }}
+					<ul class="mt-1 mb-0 ps-3">
+						@for (photo of check.missing.slice(0, 5); track photo.assetId) {
+						<li>
+							<strong>{{ photo.name }}</strong>
+							@if (photo.usedOn.length) { · {{ photo.usedOn.join(', ') }} }
+						</li>
+						}
+					</ul>
+				</div>
+			</div>
+			} @for (entry of uploads.cutOff(); track entry.assetId) {
+			<div
+				class="alert alert-warning d-flex align-items-center mb-3 gap-3"
+				data-cut-off
+			>
+				<i class="ri-upload-cloud-2-line fs-4"></i>
+				<div class="flex-grow-1">
+					<strong>{{ 'fm_cut_off_title' | transloco: { name: entry.name } }}</strong>
+					<div class="small">
+						{{ 'fm_cut_off_body' | transloco: { sent: (entry.sent | fileSize), total: (entry.bytes |
+						fileSize) } }} @if (resumeRefused() === entry.assetId) { {{ 'fm_cut_off_wrong_file' | transloco
+						}} }
+					</div>
+				</div>
+				<button
+					type="button"
+					class="btn btn-theme btn-sm"
+					(click)="chooseResume(entry, fmResumeFile)"
+				>
+					{{ 'fm_cut_off_choose' | transloco }}
+				</button>
+				<button
+					type="button"
+					class="btn btn-outline btn-sm"
+					(click)="uploads.discard(entry)"
+				>
+					{{ 'fm_cut_off_discard' | transloco }}
+				</button>
+			</div>
+			}
+			<div class="fm-toolbar">
+				<div class="fm-search">
+					<i class="ri-search-line"></i>
+					<input
+						class="form-control"
+						type="search"
+						id="fm_search"
+						[value]="search()"
+						[attr.placeholder]="searchScope() ? ('fm_search_in' | transloco: { folder: searchScope() }) : ('fm_search_all' | transloco)"
+						(input)="typed($any($event.target).value)"
+					/>
+					@if (searchScope() && search()) {
+					<span class="fm-scope fm-chip muted">
+						<i class="ri-folder-3-line"></i>
+						{{ searchScope() }}
+					</span>
+					}
+				</div>
+				<div class="dropdown fm-menu-host">
+					<button
+						type="button"
+						class="btn btn-outline d-flex align-items-center gap-2"
+						id="fm_filters"
+						(click)="toggleFilters()"
+					>
+						<i class="ri-filter-3-line"></i>
+						{{ 'fm_filters' | transloco }} @if (filterCount()) {
+						<span class="badge rounded-pill badge-theme">{{ filterCount() }}</span>
+						}
+					</button>
+					@if (filtersOpen()) {
+					<div
+						class="dropdown-menu show fm-ctx p-3"
+						id="fm_filters_menu"
+						style="top: 46px; left: 0; width: 520px; max-width: 90vw"
+					>
+						<div class="row g-3">
+							<div class="col-6">
+								<h6 class="mb-2">{{ 'type' | transloco }}</h6>
+								@for (item of categoryOptions; track item.key) {
+								<div class="form-check">
+									<input
+										class="form-check-input"
+										type="checkbox"
+										[id]="'fm_f_' + item.key"
+										[checked]="draft().cats.includes(item.key)"
+										(change)="toggleDraftCategory(item.key)"
+									/>
+									<label
+										class="form-check-label"
+										[for]="'fm_f_' + item.key"
+									>
+										{{ item.label | transloco }}
+									</label>
+								</div>
+								}
+							</div>
+							<div class="d-grid align-content-start col-6 gap-3">
+								<div>
+									<h6 class="mb-2">{{ 'status' | transloco }}</h6>
+									<select
+										class="form-select"
+										id="fm_f_state"
+										(change)="setDraft('state', $any($event.target).value)"
+									>
+										<option value="">{{ 'fm_any_status' | transloco }}</option>
+										@for (option of filterOptions.state; track option) {
+										<option
+											[value]="option"
+											[selected]="draft().state === option"
+										>
+											{{ 'fm_state_' + option | transloco }}
+										</option>
+										}
+									</select>
+								</div>
+								<div>
+									<h6 class="mb-2">{{ 'fm_uploaded' | transloco }}</h6>
+									<select
+										class="form-select"
+										id="fm_f_up"
+										(change)="setDraft('up', $any($event.target).value)"
+									>
+										<option value="">{{ 'fm_any_time' | transloco }}</option>
+										@for (option of filterOptions.up; track option) {
+										<option
+											[value]="option"
+											[selected]="draft().up === option"
+										>
+											{{ 'fm_up_' + option | transloco }}
+										</option>
+										}
+									</select>
+								</div>
+							</div>
+							<div class="col-6">
+								<h6 class="mb-2">{{ 'size' | transloco }}</h6>
+								<select
+									class="form-select"
+									id="fm_f_size"
+									(change)="setDraft('size', $any($event.target).value)"
+								>
+									<option value="">{{ 'fm_any_size' | transloco }}</option>
+									@for (option of filterOptions.size; track option) {
+									<option
+										[value]="option"
+										[selected]="draft().size === option"
+									>
+										{{ 'fm_size_' + option | transloco }}
+									</option>
+									}
+								</select>
+							</div>
+							<div class="col-6">
+								<h6 class="mb-2">{{ 'fm_used_filter' | transloco }}</h6>
+								<select
+									class="form-select"
+									id="fm_f_used"
+									(change)="setDraft('used', $any($event.target).value)"
+								>
+									<option value="">{{ 'fm_any' | transloco }}</option>
+									@for (option of filterOptions.used; track option) {
+									<option
+										[value]="option"
+										[selected]="draft().used === option"
+									>
+										{{ 'fm_used_' + option | transloco }}
+									</option>
+									}
+								</select>
+							</div>
+						</div>
+						<div class="d-flex justify-content-between mt-3">
+							<button
+								type="button"
+								class="btn btn-outline btn-sm"
+								id="fm_f_clear"
+								(click)="clearFilters()"
+							>
+								{{ 'fm_clear_all' | transloco }}
+							</button>
+							<button
+								type="button"
+								class="btn btn-theme btn-sm"
+								id="fm_f_apply"
+								(click)="applyFilters()"
+							>
+								{{ 'fm_show_results' | transloco }}
+							</button>
+						</div>
+					</div>
+					}
+				</div>
+				<div class="ms-auto">
+					<select
+						class="form-select"
+						id="fm_sort"
+						[attr.aria-label]="'fm_sort' | transloco"
+						(change)="setSort($any($event.target).value)"
+					>
+						@for (item of sorts; track item.key) {
+						<option
+							[value]="item.key"
+							[selected]="item.key === sortKey()"
+						>
+							{{ item.label | transloco }}
+						</option>
+						}
+					</select>
+					<div class="btn-group fm-view">
+						<button
+							type="button"
+							class="btn btn-outline"
+							id="fm_show_list"
+							[class.active]="display() === 'list'"
+							[title]="'list_view' | transloco"
+							(click)="setDisplay('list')"
+						>
+							<i class="ri-list-check-2"></i>
+						</button>
+						<button
+							type="button"
+							class="btn btn-outline"
+							id="fm_show_grid"
+							[class.active]="display() === 'grid'"
+							[title]="'grid_view' | transloco"
+							(click)="setDisplay('grid')"
+						>
+							<i class="ri-layout-grid-line"></i>
+						</button>
+					</div>
+				</div>
+			</div>
+
+			@if (filterCount()) {
+			<div
+				class="fm-chips"
+				id="fm_chips"
+			>
+				@for (key of filters().cats; track key) {
+				<span class="fm-chip">
+					{{ 'type' | transloco }}: {{ ('fm_cat_' + key) | transloco }}
+					<i
+						class="ri-close-line"
+						role="button"
+						[title]="'fm_remove_filter' | transloco"
+						(click)="removeFilter('cats', key)"
+					></i>
+				</span>
+				} @if (filters().state; as value) {
+				<span class="fm-chip">
+					{{ 'status' | transloco }}: {{ 'fm_state_' + value | transloco }}
+					<i
+						class="ri-close-line"
+						role="button"
+						[title]="'fm_remove_filter' | transloco"
+						(click)="removeFilter('state')"
+					></i>
+				</span>
+				} @if (filters().up; as value) {
+				<span class="fm-chip">
+					{{ 'fm_uploaded' | transloco }}: {{ 'fm_up_' + value | transloco }}
+					<i
+						class="ri-close-line"
+						role="button"
+						[title]="'fm_remove_filter' | transloco"
+						(click)="removeFilter('up')"
+					></i>
+				</span>
+				} @if (filters().size; as value) {
+				<span class="fm-chip">
+					{{ 'size' | transloco }}: {{ 'fm_size_' + value | transloco }}
+					<i
+						class="ri-close-line"
+						role="button"
+						[title]="'fm_remove_filter' | transloco"
+						(click)="removeFilter('size')"
+					></i>
+				</span>
+				} @if (filters().used; as value) {
+				<span class="fm-chip">
+					{{ 'fm_used_' + value | transloco }}
+					<i
+						class="ri-close-line"
+						role="button"
+						[title]="'fm_remove_filter' | transloco"
+						(click)="removeFilter('used')"
+					></i>
+				</span>
+				}
+				<a
+					href="javascript:void(0)"
+					class="small ms-1"
+					id="fm_chips_clear"
+					(click)="clearFilters()"
+				>
+					{{ 'fm_clear_all' | transloco }}
+				</a>
+			</div>
+			} @if (nav() === 'favourites') {
+			<ul class="nav nav-tabs mb-3">
+				<li class="nav-item">
+					<a
+						class="nav-link"
+						href="javascript:void(0)"
+						id="fm_fav_mine"
+						[class.active]="who() === 'mine'"
+						(click)="setWho('mine')"
+					>
+						{{ 'fm_fav_mine' | transloco }}
+					</a>
+				</li>
+				<li class="nav-item">
+					<a
+						class="nav-link"
+						href="javascript:void(0)"
+						id="fm_fav_everyone"
+						[class.active]="who() === 'everyone'"
+						(click)="setWho('everyone')"
+					>
+						{{ 'fm_fav_everyone' | transloco }}
+					</a>
+				</li>
+			</ul>
+			}
+
+			<div class="fm-crumbs">
+				<nav>
+					<ol
+						class="breadcrumb"
+						id="fm_crumbs"
+					>
+						@switch (nav()) { @case ('folder') { @if (folderId() || category() || search()) {
+						<li class="breadcrumb-item">
+							<a
+								href="javascript:void(0)"
+								(click)="openFolder(null)"
+							>
+								<i class="ri-home-4-line me-1"></i>
+								{{ 'fm_my_files' | transloco }}
+							</a>
+						</li>
+						} @else {
+						<li class="breadcrumb-item active">
+							<i class="ri-home-4-line me-1"></i>
+							{{ 'fm_my_files' | transloco }}
+						</li>
+						} @for (step of result()?.breadcrumb ?? []; track step.id; let last = $last) { @if (last &&
+						!search()) {
+						<li class="breadcrumb-item active">{{ step.name }}</li>
+						} @else {
+						<li class="breadcrumb-item">
+							<a
+								href="javascript:void(0)"
+								(click)="openFolder(step.id)"
+							>
+								{{ step.name }}
+							</a>
+						</li>
+						} } } @case ('recent') {
+						<li class="breadcrumb-item active">
+							<i class="ri-history-line me-1"></i>
+							{{ 'fm_recent' | transloco }}
+						</li>
+						} @case ('favourites') {
+						<li class="breadcrumb-item active">
+							<i class="ri-star-line me-1"></i>
+							{{ 'fm_favourites' | transloco }}
+						</li>
+						} @case ('trash') {
+						<li class="breadcrumb-item active">
+							<i class="ri-delete-bin-line me-1"></i>
+							{{ 'fm_trash' | transloco }}
+						</li>
+						} }
+					</ol>
+				</nav>
+				@if (nav() === 'folder' && !search() && !category() && !filterCount()) {
+				<div class="fm-crumb-actions">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm d-flex align-items-center gap-1"
+						id="fm_new_folder"
+						(click)="openNewFolder()"
+					>
+						<i class="ri-folder-add-line"></i>
+						{{ 'fm_new_folder' | transloco }}
+					</button>
+					<button
+						type="button"
+						class="btn btn-outline btn-sm d-flex align-items-center gap-1"
+						id="fm_upload_here"
+						(click)="uploadChoice('files')"
+					>
+						<i class="ri-upload-cloud-2-line"></i>
+						{{ 'fm_upload_here' | transloco }}
+					</button>
+				</div>
+				}
+			</div>
+
+			@if (chosenCount() && nav() !== 'trash') {
+			<div
+				class="fm-bulk"
+				id="fm_bulk"
+			>
+				<i class="ri-checkbox-multiple-line"></i>
+				<strong>{{ 'fm_selected' | transloco: { what: chosenWhat() } }}</strong>
+				<button
+					type="button"
+					class="btn btn-sm btn-outline d-flex align-items-center gap-1"
+					id="fm_bulk_zip"
+					(click)="downloadZip()"
+				>
+					<i class="ri-download-2-line"></i>
+					{{ 'fm_zip_bulk' | transloco }}
+				</button>
+				<button
+					type="button"
+					class="btn btn-sm btn-outline d-flex align-items-center gap-1"
+					id="fm_bulk_move"
+					(click)="openMoveMenu($event)"
+				>
+					<i class="ri-drag-move-2-line"></i>
+					{{ 'fm_move_to' | transloco }}
+				</button>
+				@if (chosenPhotos().length) {
+				<button
+					type="button"
+					class="btn btn-sm btn-outline d-flex align-items-center gap-1"
+					id="fm_bulk_versions"
+					(click)="openReprocess(chosenPhotos())"
+				>
+					<i class="ri-refresh-line"></i>
+					{{ 'fm_add_a_version' | transloco }}
+				</button>
+				}
+				<button
+					type="button"
+					class="btn btn-sm btn-outline d-flex align-items-center gap-1"
+					id="fm_bulk_trash"
+					(click)="trashChosen(false)"
+				>
+					<i class="ri-delete-bin-line"></i>
+					{{ 'fm_move_to_trash' | transloco }}
+				</button>
+				<a
+					href="javascript:void(0)"
+					class="fm-bulk-x"
+					id="fm_bulk_clear"
+					(click)="clearSelection()"
+				>
+					<i class="ri-close-line"></i>
+					{{ 'clear' | transloco }}
+				</a>
+			</div>
+			} @if (nav() === 'trash' && !empty() && result()) {
+			<div class="fm-crumb-actions mb-3">
+				<span class="text-muted small align-self-center me-2">{{ 'fm_trash_note' | transloco }}</span>
+				<button
+					type="button"
+					class="btn btn-outline btn-sm"
+					id="fm_empty_trash"
+					(click)="emptyTrash()"
+				>
+					{{ 'fm_empty_trash' | transloco }}
+				</button>
+			</div>
+			} @if (empty()) {
+			<div
+				class="no-data-added py-5 text-center"
+				id="fm_empty"
+			>
+				<img
+					src="assets/svg/no-media.svg"
+					alt=""
+					style="max-width: 220px"
+				/>
+				@if (search()) {
+				<h5 class="mt-3">{{ 'fm_no_results' | transloco: { q: search() } }}</h5>
+				} @else if (nav() === 'trash') {
+				<h5 class="mt-3">{{ 'fm_trash_empty' | transloco }}</h5>
+				} @else if (nav() === 'favourites') {
+				<h5 class="mt-3">{{ 'fm_no_favourites' | transloco }}</h5>
+				} @else if (nav() === 'folder' && !category() && !filterCount()) {
+				<h5 class="mt-3">{{ (folderId() ? 'fm_empty_folder' : 'fm_no_files_yet') | transloco }}</h5>
+				<p class="text-muted">{{ 'fm_empty_hint' | transloco }}</p>
+				<div class="d-flex justify-content-center gap-2">
+					<button
+						type="button"
+						class="btn btn-theme d-flex align-items-center gap-2"
+						id="fm_empty_upload"
+						(click)="uploadChoice('files')"
+					>
+						<i class="ri-upload-cloud-2-line"></i>
+						{{ 'fm_upload_here' | transloco }}
+					</button>
+					<button
+						type="button"
+						class="btn btn-outline d-flex align-items-center gap-2"
+						(click)="openNewFolder()"
+					>
+						<i class="ri-folder-add-line"></i>
+						{{ 'fm_new_folder' | transloco }}
+					</button>
+				</div>
+				} @else {
+				<h5 class="mt-3">{{ 'fm_no_files_yet' | transloco }}</h5>
+				}
+			</div>
+			} @else if (result(); as data) { @if (data.folders.length && nav() !== 'trash') {
+			<div class="fm-heading">
+				<span>
+					{{ 'fm_folders' | transloco }}
+					<small>· {{ data.folders.length }}</small>
+				</span>
+			</div>
+			<div
+				class="fm-folders"
+				id="fm_folders"
+			>
+				@for (folder of data.folders; track folder.id) {
+				<div
+					class="fm-folder"
+					role="button"
+					tabindex="0"
+					draggable="true"
+					[class.is-uploading]="cardProgress().has(folder.id)"
+					[class.is-selected]="selectedFolders().has(folder.id)"
+					[class.is-drop]="dropOn() === folder.id"
+					[attr.data-folder]="folder.id"
+					(click)="pick({ type: 'folder', id: folder.id }, $event)"
+					(dblclick)="openFolder(folder.id)"
+					(keydown.enter)="openFolder(folder.id)"
+					(contextmenu)="openMenu({ item: { type: 'folder', id: folder.id }, event: $event, anchor: null })"
+					(dragstart)="dragStart({ type: 'folder', id: folder.id }, $event)"
+					(dragend)="dragEnd()"
+					(dragover)="dragOver(folder, $event)"
+					(dragleave)="dragLeave(folder, $event)"
+					(drop)="drop(folder, $event)"
+				>
+					<div class="fm-folder-icon"><i class="ri-folder-3-fill"></i></div>
+					<div style="min-width: 0">
+						<h6>{{ folder.name }}</h6>
+						<p>{{ folder.bytes | fileSize }} · {{ 'fm_files' | plural: folder.files }}</p>
+						@if (cardProgress().get(folder.id); as sent) {
+						<div class="progress">
+							<div
+								class="progress-bar"
+								style="background: var(--theme-color)"
+								[style.width.%]="sent"
+							></div>
+						</div>
+						}
+					</div>
+					@if (folder.starred) {
+					<i class="ri-star-fill fm-star"></i>
+					}
+					<i
+						class="ri-more-2-fill fm-more"
+						role="button"
+						[title]="'fm_more_actions' | transloco"
+						(click)="openMenu({ item: { type: 'folder', id: folder.id }, event: $event, anchor: $any($event.currentTarget) })"
+					></i>
+				</div>
+				}
+			</div>
+			} @if (data.files.length || (nav() === 'trash' && data.folders.length)) {
+			<div class="fm-heading">
+				<span>
+					@if (nav() === 'folder' && !search() && !category()) { {{ 'fm_files_in' | transloco: { folder:
+					folderName() ?? ('fm_my_files' | transloco) } }} } @else { {{ 'fm_files_heading' | transloco }} }
+					<small>· {{ 'fm_files' | plural: data.total }}</small>
+				</span>
+			</div>
+			<app-fm-file-list
+				[files]="data.files"
+				[folders]="nav() === 'trash' ? data.folders : []"
+				[display]="nav() === 'trash' ? 'list' : display()"
+				[trash]="nav() === 'trash'"
+				[showLocation]="showLocation()"
+				[selected]="selected()"
+				[dragging]="draggedFiles()"
+				[uploads]="uploads.byAsset()"
+				(retryUpload)="uploads.retry($event)"
+				(toggleSelect)="toggleSelect($event)"
+				(toggleAll)="toggleAll($event)"
+				(star)="star($event)"
+				(restore)="restoreItem($event)"
+				(deleteForever)="deleteItem($event)"
+				(pick)="pick($event.item, $event.event)"
+				(activate)="activate({ type: 'file', id: $event.id })"
+				(menu)="openMenu($event)"
+				(dragStart)="dragStart($event.item, $event.event)"
+				(dragEnd)="dragEnd()"
+			/>
+			} } @if (dropping()) {
+			<div
+				class="fm-dropover"
+				id="fm_dropover"
+			>
+				<div>
+					<i class="ri-upload-cloud-2-line"></i>
+					<h4>{{ 'fm_drop_to_upload' | transloco: { place: uploadPlace() } }}</h4>
+					<p class="text-muted mb-0">{{ 'fm_drop_hint' | transloco }}</p>
+				</div>
+			</div>
+			} @if (menu(); as open) {
+			<app-fm-menu
+				[lines]="open.lines"
+				[at]="open.at"
+				[moveOnly]="open.moveOnly"
+				[flip]="open.flip"
+				[folders]="tree.data()?.folders ?? []"
+				[blocked]="moveBlocked()"
+				[here]="moveHere()"
+				(choose)="menuChoose($event)"
+				(moveTo)="moveChosen($event)"
+			/>
+			} @if (dragging(); as drag) { @if (ghostAt(); as at) {
+			<div
+				class="fm-ghost"
+				id="fm_ghost"
+				style="pointer-events: none"
+				[style.top.px]="at.y"
+				[style.left.px]="at.x"
+			>
+				@if (drag.thumb) {
+				<img
+					[src]="drag.thumb"
+					alt=""
+				/>
+				}
+				<span>
+					{{ dropName() ? ('fm_drag_to' | transloco: { what: drag.what, folder: dropName() }) : drag.what }}
+				</span>
+			</div>
+			} }
+		</section>
+	</div>
+</app-page-wrapper>
+
+<ng-template
+	#fmConfirm
+	let-modal
+>
+	<div
+		class="modal-body"
+		id="fm_confirm"
+	>
+		@switch (ask()?.kind) { @case ('restore') {
+		<i class="ri-arrow-go-back-line icon-box wo-bg"></i>
+		<h5
+			class="modal-title"
+			id="fm_confirm_title"
+		>
+			{{ 'fm_restore_title' | transloco }}
+		</h5>
+		@if (ask(); as current) { @if (current.kind === 'restore') {
+		<p>
+			<strong>{{ current.item.name }}</strong>
+		</p>
+		<p>{{ 'fm_restore_folder_gone' | transloco: { folder: current.folderName } }}</p>
+		<div
+			class="mx-auto text-start"
+			style="max-width: 360px"
+		>
+			<div class="form-check mb-2">
+				<input
+					class="form-check-input"
+					type="radio"
+					name="fm_restore_choice"
+					id="fm_restore_folder"
+					[checked]="restoreChoice() === 'restore_folder'"
+					(change)="restoreChoice.set('restore_folder')"
+				/>
+				<label
+					class="form-check-label"
+					for="fm_restore_folder"
+				>
+					{{ 'fm_restore_with_folder' | transloco }}
+				</label>
+			</div>
+			<div class="form-check">
+				<input
+					class="form-check-input"
+					type="radio"
+					name="fm_restore_choice"
+					id="fm_restore_mine"
+					[checked]="restoreChoice() === 'my_files'"
+					(change)="restoreChoice.set('my_files')"
+				/>
+				<label
+					class="form-check-label"
+					for="fm_restore_mine"
+				>
+					{{ 'fm_restore_to_my_files' | transloco }}
+				</label>
+			</div>
+		</div>
+		} } } @case ('delete') {
+		<i class="ri-delete-bin-line icon-box wo-bg"></i>
+		<h5
+			class="modal-title"
+			id="fm_confirm_title"
+		>
+			{{ 'fm_delete_title' | transloco }}
+		</h5>
+		@if (ask(); as current) { @if (current.kind === 'delete') {
+		<p>
+			<strong>{{ current.item.name }}</strong>
+		</p>
+		} }
+		<p>{{ 'fm_delete_body' | transloco }}</p>
+		} @case ('trash') {
+		<i class="ri-delete-bin-line icon-box wo-bg"></i>
+		@if (ask(); as current) { @if (current.kind === 'trash') {
+		<h5
+			class="modal-title"
+			id="fm_confirm_title"
+		>
+			{{ (current.folder ? 'fm_trash_title_folder' : current.fileName ? 'fm_trash_title_file' :
+			'fm_trash_title_many') | transloco: { count: current.count } }}
+		</h5>
+		@if (current.folder; as folder) {
+		<p>
+			<strong>{{ folder.name }}</strong>
+			{{ 'fm_trash_folder_body' | transloco: { files: ('fm_files' | plural: folder.files), size: (folder.bytes |
+			fileSize) } }}
+		</p>
+		} @else if (current.fileName) {
+		<p>
+			<strong>{{ current.fileName }}</strong>
+		</p>
+		}
+		<p>{{ 'fm_trash_body' | transloco }}</p>
+		} } } @case ('empty') {
+		<i class="ri-delete-bin-line icon-box wo-bg"></i>
+		<h5
+			class="modal-title"
+			id="fm_confirm_title"
+		>
+			{{ 'fm_empty_title' | transloco }}
+		</h5>
+		@if (ask(); as current) { @if (current.kind === 'empty') {
+		<p>{{ 'fm_empty_body' | plural: current.count }}</p>
+		} } } }
+		<div class="button-box">
+			<app-button
+				[class]="'btn-md fw-bold btn btn-secondary'"
+				[spinner]="false"
+				[id]="'fm_confirm_no'"
+				(click)="modal.dismiss('cancel')"
+			>
+				{{ 'cancel' | transloco }}
+			</app-button>
+			<app-button
+				[class]="ask()?.kind === 'restore' || ask()?.kind === 'trash' ? 'btn-theme btn-md fw-bold btn' : 'btn-md fw-bold btn btn-danger'"
+				[spinner]="false"
+				[id]="'fm_confirm_yes'"
+				(click)="modal.close('yes')"
+			>
+				{{ (ask()?.kind === 'restore' ? 'restore' : ask()?.kind === 'trash' ? 'fm_move_to_trash' :
+				'fm_delete_forever') | transloco }}
+			</app-button>
+		</div>
+	</div>
+</ng-template>
+
+<ng-template
+	#fmRename
+	let-modal
+>
+	<div class="modal-header">
+		<h2 id="fm_rename_title">{{ 'rename' | transloco }}</h2>
+		<button
+			type="button"
+			class="btn btn-close"
+			[title]="'close' | transloco"
+			(click)="modal.dismiss()"
+		>
+			<i class="ri-close-line"></i>
+		</button>
+	</div>
+	@if (renaming(); as current) {
+	<div class="modal-body">
+		<div class="theme-form">
+			<label
+				class="form-label-title mb-2"
+				for="fm_rename_name"
+			>
+				{{ 'name' | transloco }}
+			</label>
+			<div class="input-group">
+				<input
+					class="form-control"
+					id="fm_rename_name"
+					maxlength="120"
+					ngbAutofocus
+					[value]="current.base"
+					[class.is-invalid]="!!renameError()"
+					(input)="renaming.set({ ...current, base: $any($event.target).value }); renameError.set(null)"
+					(keydown.enter)="saveRename(modal.close)"
+				/>
+				@if (current.extension) {
+				<span class="input-group-text">{{ current.extension }}</span>
+				}
+			</div>
+			@if (renameError(); as error) {
+			<div class="invalid-feedback d-block">{{ error }}</div>
+			}
+			<p class="help-text mt-2">
+				{{ (current.type === 'file' ? 'fm_rename_file_help' : 'fm_folder_name_help') | transloco }}
+			</p>
+		</div>
+	</div>
+	<div class="modal-footer">
+		<div class="left-part"></div>
+		<div class="right-part d-flex gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="fm_rename_save"
+				[disabled]="!current.base.trim() || saving()"
+				(click)="saveRename(modal.close)"
+			>
+				{{ 'save' | transloco }}
+			</button>
+		</div>
+	</div>
+	}
+</ng-template>
+
+<ng-template
+	#fmInUse
+	let-modal
+>
+	@if (inUse(); as check) {
+	<div
+		class="modal-body"
+		id="fm_in_use"
+	>
+		<i class="ri-error-warning-line icon-box wo-bg"></i>
+		<h5
+			class="modal-title"
+			id="fm_in_use_title"
+		>
+			{{ check.total === 1 ? ('fm_in_use_title_one' | transloco) : ('fm_in_use_title' | transloco: { used:
+			check.inUse.length, total: check.total }) }}
+		</h5>
+		<p>{{ (check.inUse.length === 1 ? 'fm_in_use_body_one' : 'fm_in_use_body') | transloco }}</p>
+		@if (check.keptFolders) {
+		<p>{{ 'fm_in_use_kept_folders' | transloco }}</p>
+		}
+		<div
+			class="mx-auto mb-3 text-start"
+			style="max-width: 440px"
+		>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer fm-table table">
+					<thead>
+						<tr>
+							<th class="fm-namecol">{{ 'name' | transloco }}</th>
+							<th>{{ 'fm_used_on' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of check.inUse; track row.id) {
+						<tr [attr.data-file]="row.id">
+							<td class="fm-namecol">
+								<div class="fm-file">
+									@if (row.thumbnailUrl) {
+									<div class="fm-type">
+										<img
+											[src]="row.thumbnailUrl"
+											alt=""
+										/>
+									</div>
+									} @else {
+									<div
+										class="fm-type"
+										[class]="imageKind.cls"
+									>
+										<i [class]="imageKind.icon"></i>
+									</div>
+									}
+									<div style="min-width: 0">
+										<h6>{{ row.name }}</h6>
+										<p>{{ row.bytes | fileSize }}</p>
+									</div>
+								</div>
+							</td>
+							<td class="fm-used">
+								@for (place of row.usedOn; track $index) {
+								<div>{{ place }}</div>
+								}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+		<div class="button-box">
+			<app-button
+				[class]="'btn-md fw-bold btn btn-secondary'"
+				[spinner]="false"
+				[id]="'fm_in_use_no'"
+				(click)="modal.dismiss('cancel')"
+			>
+				{{ (check.moving ? 'cancel' : 'close') | transloco }}
+			</app-button>
+			@if (check.moving) {
+			<app-button
+				[class]="'btn-theme btn-md fw-bold btn'"
+				[spinner]="false"
+				[id]="'fm_in_use_yes'"
+				(click)="modal.close('yes')"
+			>
+				{{ 'fm_move_others' | plural: check.moving }}
+			</app-button>
+			}
+		</div>
+	</div>
+	}
+</ng-template>
+
+<ng-template
+	#fmKeys
+	let-modal
+>
+	<div class="modal-header">
+		<h2 id="fm_keys_title">{{ 'fm_keys_title' | transloco }}</h2>
+		<button
+			type="button"
+			class="btn btn-close"
+			[title]="'close' | transloco"
+			(click)="modal.dismiss()"
+		>
+			<i class="ri-close-line"></i>
+		</button>
+	</div>
+	<div class="modal-body">
+		<table
+			class="mb-0 table"
+			id="fm_keys"
+		>
+			<tbody>
+				@for (row of keyRows; track row.does) {
+				<tr>
+					<td style="width: 46%; white-space: nowrap">
+						@for (part of row.keys; track $index; let last = $last) { @if (part === 'click') { {{
+						'fm_key_click_word' | transloco }} } @else {
+						<kbd>{{ part }}</kbd>
+						} @if (!last) { + } }
+					</td>
+					<td>{{ row.does | transloco }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+		<p class="help-text mt-2 mb-0">{{ 'fm_keys_note' | transloco }}</p>
+	</div>
+	<div class="modal-footer">
+		<div class="left-part"></div>
+		<div class="right-part">
+			<button
+				type="button"
+				class="btn btn-theme"
+				(click)="modal.close()"
+			>
+				{{ 'fm_got_it' | transloco }}
+			</button>
+		</div>
+	</div>
+</ng-template>
+
+<!-- The upload popups (B03–B21, B12, B13), shared with the Media picker. -->
+<app-fm-upload-popups #fmUploadPopups />

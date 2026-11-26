@@ -87,6 +87,17 @@ describe.skipIf(!hasMongoEnv())('RBAC persistence (integration, rs0)', () => {
 			expect(await roles.findByKey(role.key)).toMatchObject({ id: role.id });
 		});
 
+		it('drops a retired permission code when reading an older role', async () => {
+			const role = roleFixture();
+			await roles.create(role);
+			await RoleModel.updateOne(
+				{ _id: role.id },
+				{ $set: { permissions: ['product.index', 'store.index'] } },
+			).exec();
+
+			expect((await roles.findById(role.id))?.permissions).toEqual(['product.index']);
+		});
+
 		it('refuses a second role with the same key', async () => {
 			const first = roleFixture();
 			await roles.create(first);
@@ -262,6 +273,13 @@ describe.skipIf(!hasMongoEnv())('RBAC persistence (integration, rs0)', () => {
 			expect(second.updated).toContain('administrator');
 			expect(after?.createdAt).toBe(before?.createdAt);
 			expect(after?.updatedAt).not.toBe(before?.updatedAt);
+		});
+
+		it('creates the staff role holding only marking one’s own attendance (brief 26 AT-D1)', async () => {
+			const seeded = await ensureSystemRoles();
+			const staff = await roles.findByKey('staff_attendance');
+			expect(seeded.created.concat(seeded.updated)).toContain('staff_attendance');
+			expect(staff).toMatchObject({ isSystem: true, baseRole: 'staff', permissions: ['attendance.use'] });
 		});
 
 		/** A seeded role must be exactly as unremovable as an authored system role. */

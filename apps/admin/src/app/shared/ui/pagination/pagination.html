@@ -5,6 +5,7 @@
 		[class.disabled]="paginate.currentPage === 1"
 	>
 		<a
+			[title]="'previous_page' | transloco"
 			class="page-link"
 			href="javascript:void(0)"
 			tabindex="-1"
@@ -33,6 +34,7 @@
 		[class.disabled]="paginate.currentPage === paginate.totalPages"
 	>
 		<a
+			[title]="'next_page' | transloco"
 			class="page-link"
 			href="javascript:void(0)"
 			(click)="pageSet(paginate.currentPage + 1)"

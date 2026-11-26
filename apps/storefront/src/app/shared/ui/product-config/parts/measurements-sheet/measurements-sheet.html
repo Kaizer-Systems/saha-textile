@@ -1,0 +1,47 @@
+<div class="modal-content">
+	<div class="modal-header">
+		<h2
+			class="h5 modal-title"
+			id="measurements_sheet_title"
+		>
+			{{ heading() }}
+		</h2>
+		<button
+			type="button"
+			class="btn btn-close"
+			[attr.aria-label]="'close' | transloco"
+			(click)="modal.dismiss()"
+		>
+			<i class="ri-close-line"></i>
+		</button>
+	</div>
+	<div class="modal-body">
+		<app-measurements-form
+			[fields]="fields()"
+			[title]="'measurements_required_for_selection'"
+			[forName]="forName()"
+			[initialValues]="initial()"
+			(valueChange)="onValue($event)"
+			(validChange)="onValid($event)"
+		/>
+	</div>
+	<div class="modal-footer st-sheet-footer">
+		@if (sizeGuide()) {
+		<p class="text-content mb-0">
+			<i
+				class="ri-error-warning-line me-1"
+				aria-hidden="true"
+			></i>
+			{{ 'size_guide_hint' | transloco }}
+		</p>
+		}
+		<button
+			type="button"
+			class="btn st-sheet-save"
+			[disabled]="!valid()"
+			(click)="save()"
+		>
+			{{ 'save_measurements' | transloco }}
+		</button>
+	</div>
+</div>

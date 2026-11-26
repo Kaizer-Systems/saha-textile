@@ -1,118 +1,102 @@
-import { inject, Injectable } from '@angular/core';
-import { Router } from '@angular/router';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
+import { PLATFORM_ID, computed, inject } from '@angular/core';
 
-import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { EntityState, createEntityAdapter } from '@ngrx/entity';
-import {
-	createActionGroup,
-	createFeatureSelector,
-	createReducer,
-	createSelector,
-	emptyProps,
-	on,
-	props,
-	Store,
-} from '@ngrx/store';
-import { catchError, EMPTY, map, Observable, switchMap, tap } from 'rxjs';
+import { ToastrService } from '@damjantonkli/ngx-toastr';
+import { TranslocoService } from '@jsverse/transloco';
+import { patchState, signalStore, withComputed, withHooks, withMethods, withState } from '@ngrx/signals';
+import { firstValueFrom } from 'rxjs';
 
-import { Params } from '@data-access/interfaces/core.interface';
+import { readCookieList, writeCookieList } from '@core/state/lists/session-cookie-list';
 import { IProduct } from '@data-access/interfaces/product.interface';
-import { CompareService } from '@data-access/services/compare.service';
+import { ProductService } from '@data-access/services/product.service';
+
+export const COMPARE_COOKIE = 'st_compare';
+export const COMPARE_LIMIT = 4;
+
+interface CompareState {
+	/** Product slugs in the order they were added. */
+	slugs: string[];
+	/** Full product reads for the compare page. */
+	items: IProduct[];
+	loading: boolean;
+}
 
 /**
- * Compare — classic NgRx with @ngrx/entity (matches admin's cart). Same shape as
- * wishlist: a server read + filter-delete + a no-op add that routes to /compare.
- * Not persisted.
+ * The compare list (owner decision 2026-11-08): up to four products for this browser session,
+ * guest or signed in, kept in the `st_compare` session cookie and never stored on the server.
+ * The compare page reads each product from the live catalogue, so prices and stock are current.
  */
-export const COMPARE_FEATURE_KEY = 'compare';
-
-export const compareAdapter = createEntityAdapter<IProduct>();
-
-export interface CompareStateModel extends EntityState<IProduct> {
-	total: number;
-}
-
-const initialState: CompareStateModel = compareAdapter.getInitialState({ total: 0 });
-
-export const CompareActions = createActionGroup({
-	source: 'Compare',
-	events: {
-		'Get Compare': emptyProps(),
-		'Load Compare Success': props<{ items: IProduct[]; total: number }>(),
-		'Add To Compare': props<{ payload: Params }>(),
-		'Delete Compare': props<{ id: number | string }>(),
-	},
-});
-
-export const compareReducer = createReducer(
-	initialState,
-	on(CompareActions.loadCompareSuccess, (state, { items, total }) => ({
-		...compareAdapter.setAll(items, state),
-		total,
+export const CompareStore = signalStore(
+	{ providedIn: 'root' },
+	withState<CompareState>({ slugs: [], items: [], loading: false }),
+	withComputed((store) => ({
+		count: computed(() => store.slugs().length),
+		chosen: computed(() => new Set(store.slugs())),
 	})),
-	on(CompareActions.deleteCompare, (state, { id }) => ({
-		...(typeof id === 'string' ? compareAdapter.removeOne(id, state) : compareAdapter.removeOne(id, state)),
-		total: state.total - 1,
-	})),
+	withMethods(
+		(
+			store,
+			products = inject(ProductService),
+			toastr = inject(ToastrService),
+			transloco = inject(TranslocoService),
+			document = inject(DOCUMENT),
+			platformId = inject(PLATFORM_ID),
+		) => {
+			const browser = isPlatformBrowser(platformId);
+			const keep = (slugs: string[]) => {
+				patchState(store, {
+					slugs,
+					items: store.items().filter((item) => slugs.includes(item.slug)),
+				});
+				if (browser) document.cookie = writeCookieList(COMPARE_COOKIE, slugs);
+			};
+			return {
+				has(slug: string | undefined): boolean {
+					return !!slug && store.chosen().has(slug);
+				},
+
+				read(): void {
+					if (browser)
+						patchState(store, { slugs: readCookieList(document.cookie, COMPARE_COOKIE, COMPARE_LIMIT) });
+				},
+
+				toggle(product: Pick<IProduct, 'slug'> | null | undefined): void {
+					const slug = product?.slug;
+					if (!slug) return;
+					if (store.chosen().has(slug)) {
+						keep(store.slugs().filter((chosen) => chosen !== slug));
+						toastr.success(transloco.translate('compare_removed'));
+						return;
+					}
+					if (store.slugs().length >= COMPARE_LIMIT) {
+						toastr.warning(transloco.translate('compare_full', { count: COMPARE_LIMIT }));
+						return;
+					}
+					keep([...store.slugs(), slug]);
+					toastr.success(transloco.translate('compare_added'));
+				},
+
+				remove(slug: string): void {
+					keep(store.slugs().filter((chosen) => chosen !== slug));
+				},
+
+				/** Each chosen product from the catalogue; one that left the shop drops out of the list. */
+				async loadPage(): Promise<void> {
+					const slugs = store.slugs();
+					patchState(store, { loading: true });
+					const reads = await Promise.all(
+						slugs.map((slug) => firstValueFrom(products.getProductPage(slug)).catch(() => null)),
+					);
+					const items = reads.filter((item): item is IProduct => item !== null);
+					keep(items.map((item) => item.slug));
+					patchState(store, { items, loading: false });
+				},
+			};
+		},
+	),
+	withHooks({
+		onInit(store) {
+			store.read();
+		},
+	}),
 );
-
-const selectCompareState = createFeatureSelector<CompareStateModel>(COMPARE_FEATURE_KEY);
-const { selectAll } = compareAdapter.getSelectors();
-export const selectCompareItems = createSelector(selectCompareState, selectAll);
-export const selectCompareTotal = createSelector(selectCompareState, (state) => state.total);
-
-@Injectable()
-export class CompareEffects {
-	private actions$ = inject(Actions);
-	private router = inject(Router);
-	private compareService = inject(CompareService);
-
-	getCompare$ = createEffect(() =>
-		this.actions$.pipe(
-			ofType(CompareActions.getCompare),
-			tap(() => (this.compareService.skeletonLoader = true)),
-			switchMap(() =>
-				this.compareService.getCompareItems().pipe(
-					map((result) => {
-						this.compareService.skeletonLoader = false;
-						return CompareActions.loadCompareSuccess({
-							items: result.data,
-							total: result?.total ? result.total : result.data ? result.data.length : 0,
-						});
-					}),
-					catchError(() => {
-						this.compareService.skeletonLoader = false;
-						return EMPTY;
-					}),
-				),
-			),
-		),
-	);
-
-	addToCompare$ = createEffect(
-		() =>
-			this.actions$.pipe(
-				ofType(CompareActions.addToCompare),
-				tap(() => void this.router.navigate(['/compare'])),
-			),
-		{ dispatch: false },
-	);
-}
-
-@Injectable({ providedIn: 'root' })
-export class CompareFacade {
-	private store = inject(Store);
-
-	readonly compareItems$: Observable<IProduct[]> = this.store.select(selectCompareItems);
-	readonly compareTotal$: Observable<number> = this.store.select(selectCompareTotal);
-
-	getCompare(): void {
-		this.store.dispatch(CompareActions.getCompare());
-	}
-	addToCompare(payload: Params): void {
-		this.store.dispatch(CompareActions.addToCompare({ payload }));
-	}
-	deleteCompare(id: number | string): void {
-		this.store.dispatch(CompareActions.deleteCompare({ id }));
-	}
-}

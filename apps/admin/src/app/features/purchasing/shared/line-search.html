@@ -1,0 +1,98 @@
+<div class="position-relative">
+	<input
+		#lineSearchBox
+		class="form-control"
+		type="search"
+		autocomplete="off"
+		spellcheck="false"
+		role="combobox"
+		aria-autocomplete="list"
+		[attr.aria-expanded]="open()"
+		[disabled]="disabled()"
+		[placeholder]="placeholder() | transloco"
+		[value]="text()"
+		(input)="onInput($any($event.target).value)"
+		(keydown)="onKey($event)"
+		(focus)="results().length && open.set(true)"
+		(blur)="blur()"
+	/>
+	@if (open()) {
+	<ul
+		class="dropdown-menu show w-100"
+		role="listbox"
+		style="top: 44px; left: 0; max-height: 420px; overflow-y: auto"
+	>
+		<li>
+			<h6 class="dropdown-header">
+				@if (searching()) { {{ 'searching' | transloco }} } @else { {{ 'line_search_found' | transloco: { count:
+				results().length } }} }
+			</h6>
+		</li>
+		@for (option of results(); track option.variantId; let i = $index) {
+		<li>
+			<a
+				href="javascript:void(0)"
+				class="dropdown-item"
+				role="option"
+				[class.active]="i === active()"
+				[class.text-muted]="option.blocked || option.disabled"
+				[class.pe-none]="!!option.blocked"
+				[attr.aria-disabled]="!!option.blocked"
+				[attr.aria-selected]="i === active()"
+				(mousedown)="$event.preventDefault(); choose(option)"
+			>
+				<div class="d-flex align-items-center gap-2 text-start">
+					@if (option.imageUrl) {
+					<img
+						[src]="option.imageUrl"
+						alt=""
+						width="40"
+						height="52"
+						class="rounded"
+						style="object-fit: cover"
+					/>
+					} @else {
+					<div
+						class="user-round"
+						style="width: 40px; height: 52px"
+					>
+						<h4>{{ option.title.charAt(0).toUpperCase() }}</h4>
+					</div>
+					}
+					<div>
+						<h6 class="mb-0">{{ option.title }}</h6>
+						<small class="text-muted">
+							{{ option.sku }} @if (option.variantCount > 1) { · {{ 'line_search_pick_variants' |
+							transloco: { count: option.variantCount } }} } @else { @if (option.optionsLabel) { · {{
+							option.optionsLabel }} } @if (option.supplierItemCode) { · {{ 'their_code' | transloco: {
+							code: option.supplierItemCode } }} } @if (option.lastCostINR !== null) { · {{
+							'last_bought_at' | transloco: { price: (option.lastCostINR | rupees) } }} } · {{
+							'on_hand_count' | transloco: { count: (option.onHand | stockQty: option.soldBy) } }} } @if
+							(option.blocked === 'discontinued') { · {{ 'line_blocked_discontinued' | transloco }} } @if
+							(option.blocked === 'bundle') { · {{ 'line_blocked_bundle' | transloco }} } @if
+							(option.disabled && !option.blocked) { · {{ 'line_disabled_product' | transloco }} }
+						</small>
+					</div>
+				</div>
+			</a>
+		</li>
+		} @if (!searching() && !results().length) {
+		<li>
+			<span class="dropdown-item-text small text-muted">{{ 'line_search_nothing' | transloco }}</span>
+		</li>
+		} @if (allowDraftProduct()) {
+		<li><hr class="dropdown-divider" /></li>
+		<li>
+			<a
+				href="javascript:void(0)"
+				class="dropdown-item"
+				(mousedown)="$event.preventDefault(); draft()"
+			>
+				<i class="ri-add-circle-line me-1"></i>
+				{{ 'make_draft_product_link' | transloco }}
+			</a>
+		</li>
+		}
+	</ul>
+	}
+</div>

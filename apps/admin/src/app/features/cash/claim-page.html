@@ -1,0 +1,189 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'cash_expense_claims'"
+>
+	@if (claim.data(); as c) {
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">
+				{{ 'cash_claim_title' | transloco: { name: c.staffName } }}
+				<div
+					class="d-inline-block ms-2"
+					[class]="pill[c.status]"
+				>
+					<span>{{ 'cash_claim_state_' + c.status | transloco }}</span>
+				</div>
+			</h5>
+			<small class="text-muted">
+				{{ 'cash_claim_line' | transloco: { number: c.number, place: c.locationName, date: c.spentOn } }}
+			</small>
+		</div>
+		@if (canDecide()) {
+		<div class="d-flex flex-wrap gap-2">
+			<button
+				type="button"
+				class="btn btn-outline text-danger"
+				id="claim_reject_open"
+				[disabled]="busy()"
+				(click)="rejecting.set(!rejecting())"
+			>
+				{{ 'cash_reject' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="claim_approve"
+				[disabled]="busy() || !ready()"
+				(click)="approve()"
+			>
+				{{ 'cash_approve' | transloco }}
+			</button>
+		</div>
+		}
+	</div>
+	<div class="row g-3">
+		<div class="col-xl-8">
+			<div class="card">
+				<div class="card-body">
+					<div class="row g-3">
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'cash_head' | transloco }}</span>
+							<b>{{ c.headName }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'amount' | transloco }}</span>
+							<b>{{ inr(c.amountPaise) }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'cash_what_for' | transloco }}</span>
+							<b>{{ c.whatFor }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'cash_bill' | transloco }}</span>
+							<b>{{ c.billName ?? '—' }}</b>
+						</div>
+						@if (c.rejectReason) {
+						<div class="col-12">
+							<span class="text-muted d-block">{{ 'cash_rejected_because' | transloco }}</span>
+							<b>{{ c.rejectReason }}</b>
+						</div>
+						}
+					</div>
+				</div>
+			</div>
+			@if (canDecide()) { @if (rejecting()) {
+			<div class="card">
+				<div class="card-body theme-form theme-form-2">
+					<label
+						class="form-label-title"
+						for="claim_reason"
+					>
+						{{ 'cash_reject_why' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="claim_reason"
+						maxlength="300"
+						[ngModel]="reason()"
+						(ngModelChange)="reason.set($event)"
+					/>
+					<button
+						type="button"
+						class="btn btn-outline text-danger mt-2"
+						id="claim_reject"
+						[disabled]="busy() || !reason().trim()"
+						(click)="reject()"
+					>
+						{{ 'cash_reject' | transloco }}
+					</button>
+				</div>
+			</div>
+			}
+			<div class="card">
+				<div class="card-body theme-form theme-form-2">
+					<div class="title-header">
+						<h5>{{ 'cash_pay_it_back' | transloco }}</h5>
+					</div>
+					<span class="form-label-title d-block">{{ 'cash_how' | transloco }}</span>
+					@for (way of ways; track way) {
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="radio"
+							name="claim_pay"
+							[id]="'claim_pay_' + way"
+							[checked]="payBack() === way"
+							(change)="payBack.set(way)"
+						/>
+						<label
+							class="form-check-label"
+							[for]="'claim_pay_' + way"
+						>
+							{{ 'cash_pay_' + way + '_long' | transloco: { place: c.locationName } }}
+						</label>
+					</div>
+					} @if (payBack() === 'petty') {
+					<select
+						class="form-select mt-2"
+						id="claim_box"
+						[attr.aria-label]="'cash_box' | transloco"
+						[ngModel]="boxId()"
+						(ngModelChange)="boxId.set($event)"
+					>
+						<option value="">—</option>
+						@for (b of boxes(); track b.id) {
+						<option [value]="b.id">{{ b.name }}</option>
+						}
+					</select>
+					} @if (payBack() === 'bank') {
+					<select
+						class="form-select mt-2"
+						id="claim_bank"
+						[attr.aria-label]="'cash_move_bank' | transloco"
+						[ngModel]="bankId()"
+						(ngModelChange)="bankId.set($event)"
+					>
+						<option value="">—</option>
+						@for (b of choices.data()?.banks ?? []; track b.id) {
+						<option [value]="b.id">{{ b.name }}</option>
+						}
+					</select>
+					}
+				</div>
+			</div>
+			}
+		</div>
+		<div class="col-xl-4">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'cash_on_approval' | transloco }}</h5>
+					</div>
+					<ul class="list-unstyled small mb-0">
+						<li class="d-flex align-items-start border-bottom gap-2 py-2">
+							<i class="ri-file-list-3-line"></i>
+							<div>
+								<b>{{ 'cash_does_books' | transloco }}</b>
+								<span class="d-block">
+									{{ 'cash_claim_books' | transloco: { head: c.headName, amount: inr(c.amountPaise),
+									name: c.staffName } }}
+								</span>
+							</div>
+						</li>
+						<li class="d-flex align-items-start border-bottom gap-2 py-2">
+							<i class="ri-team-line"></i>
+							<div>
+								<b>{{ ('cash_claim_after_' + payBack()) | transloco }}</b>
+								<span class="d-block">
+									{{ 'cash_claim_after_' + payBack() + '_body' | transloco: { amount:
+									inr(c.amountPaise), name: c.staffName } }}
+								</span>
+							</div>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+	}
+</app-page-wrapper>

@@ -4,20 +4,19 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { Meta, Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { cleanListingParams } from '@saha-textile/core-domain/listing';
-import { TranslocoService } from '@jsverse/transloco';
-
 import { combineLatest, Observable } from 'rxjs';
 
-import { LocaleSeo } from '@core/i18n/locale-seo';
 import { listingRobots } from '@core/catalog/listing-robots';
+import { LocaleSeo } from '@core/i18n/locale-seo';
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
 import { ICatalogResponse } from '@data-access/interfaces/catalog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { injectCatalogQuery } from '@data-access/queries/product.queries';
 import { AttributeService } from '@data-access/services/attribute.service';
-import * as data from '@shared/data/owl-carousel';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
+import { FaqAccordion } from '@shared/ui/faq-accordion/faq-accordion';
 
 import { CollectionCategories } from './widgets/collection-categories/collection-categories';
 import { CollectionProducts } from './widgets/collection-products/collection-products';
@@ -27,7 +26,7 @@ import { CollectionSidebar } from './widgets/sidebar/sidebar';
 	selector: 'app-collection',
 	templateUrl: './collection.html',
 	styleUrls: ['./collection.scss'],
-	imports: [Breadcrumb, CollectionCategories, CollectionSidebar, CollectionProducts],
+	imports: [Breadcrumb, CollectionCategories, CollectionSidebar, CollectionProducts, FaqAccordion, TranslocoModule],
 })
 export class Collection {
 	private route = inject(ActivatedRoute);
@@ -52,6 +51,8 @@ export class Collection {
 
 	private readonly productsQuery = injectCatalogQuery(() => this.filter());
 	product$: Observable<ICatalogResponse | undefined> = toObservable(computed(() => this.productsQuery.data()));
+	/** The category FAQ; the API sends it only for the plain first page of a category. */
+	readonly faq = computed(() => this.productsQuery.data()?.faq ?? []);
 
 	public breadcrumb = signal<IBreadcrumb>({
 		title: this.collectionsLabel,
@@ -64,6 +65,24 @@ export class Collection {
 	private meta = inject(Meta);
 	private title = inject(Title);
 	private seo = inject(LocaleSeo);
+
+	/** FAQPage structured data mirrors the visible category FAQ, and goes when it does. */
+	private readonly faqJsonLd = effect(() => {
+		const faq = this.faq();
+		if (!faq.length) {
+			this.seo.removeJsonLd('category-faq');
+			return;
+		}
+		this.seo.applyJsonLd('category-faq', {
+			'@context': 'https://schema.org',
+			'@type': 'FAQPage',
+			mainEntity: faq.map((entry) => ({
+				'@type': 'Question',
+				name: entry.question,
+				acceptedAnswer: { '@type': 'Answer', text: entry.answer },
+			})),
+		});
+	});
 
 	constructor() {
 		// Base category = the URL PATH after /collections/ (named-category pages,
@@ -118,6 +137,13 @@ export class Collection {
 			title: `${cat?.name ?? this.collectionsLabel} | Saha Textile`,
 			robots: listingRobots(this.filter()),
 		});
+		// Until a category has its own description, a generated one in the page language. A stored
+		// description replaces it when it arrives.
+		this.seo.applyFallbackDescription(
+			cat
+				? this.transloco.translate('category_meta_description', { name: cat.name })
+				: this.transloco.translate('collections_meta_description'),
+		);
 		this.seo.applyJsonLd('collection-jsonld', {
 			'@context': 'https://schema.org',
 			'@type': 'ItemList',
@@ -128,18 +154,14 @@ export class Collection {
 				url: this.seo.absoluteUrl(`/product/${product.slug}`),
 			})),
 		});
-		this.seo.applyJsonLd('collection-crumbs', {
-			'@context': 'https://schema.org',
-			'@type': 'BreadcrumbList',
-			itemListElement: (trail.length ? trail : [{ name: this.collectionsLabel, path: '' }]).map(
-				(crumb, index) => ({
-					'@type': 'ListItem',
-					position: index + 1,
-					name: crumb.name,
-					item: this.seo.absoluteUrl(`/collections${crumb.path ? `/${crumb.path}` : ''}`),
-				}),
-			),
-		});
+		this.seo.applyBreadcrumbList(
+			'collection-crumbs',
+			this.transloco.translate('home'),
+			(trail.length ? trail : [{ name: this.collectionsLabel, path: '' }]).map((crumb) => ({
+				name: crumb.name,
+				path: `/collections${crumb.path ? `/${crumb.path}` : ''}`,
+			})),
+		);
 		this.breadcrumb.set(
 			trail.length
 				? {

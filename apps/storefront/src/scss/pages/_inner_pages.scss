@@ -2104,6 +2104,8 @@
 			margin-bottom: calc(30px + (50 - 30) * ((100vw - 320px) / (1920 - 320)));
 		}
 
+		// h1 on the FAQ page, h2 in a category's FAQ: the same look.
+		h1,
 		h2 {
 			font-weight: 700;
 			font-size: calc(28px + (56 - 28) * ((100vw - 320px) / (1920 - 320)));
@@ -2288,7 +2290,7 @@
 							font-weight: 400;
 							font-size: 15px;
 							margin-left: 4px;
-							color: #777;
+							color: #666; // #777 was under 4.5 : 1 on the light greys (shop change, 2026-11-10)
 						}
 
 						span {
@@ -2314,7 +2316,7 @@
 				}
 
 				.summary {
-					color: #777;
+					color: #666; // #777 was under 4.5 : 1 on the light greys (shop change, 2026-11-10)
 					line-height: 1.5;
 					margin-bottom: 0;
 					font-size: 15px;
@@ -2766,7 +2768,7 @@
 												font-size: 15px;
 												padding: 4px 5px 3px;
 												border-radius: 100%;
-												color: #787878;
+												color: #666; // #787878 was 4.2 : 1 (shop change, 2026-11-10)
 											}
 										}
 									}
@@ -3281,17 +3283,21 @@
 				}
 			}
 
-			h2 {
+			// The post's title is its page's main heading (h1) with the theme's h2 look: the
+			// line height is set because the base h1's 1.1 would differ. Brief "Headings and
+			// Deep Trails" (H2).
+			h1 {
 				margin: calc(10px + (14 - 10) * ((100vw - 320px) / (1920 - 320))) 0;
 				font-weight: 700;
 				font-size: calc(22px + (34 - 22) * ((100vw - 320px) / (1920 - 320)));
+				line-height: 1;
 			}
 
 			.contain-comment-list {
 				@include flex_common;
 				flex-wrap: wrap;
 				gap: calc(10px + (23 - 10) * ((100vw - 320px) / (1920 - 320)));
-				color: #777;
+				color: #666; // #777 was under 4.5 : 1 on the light greys (shop change, 2026-11-10)
 
 				li {
 					.user-list {
@@ -3437,7 +3443,7 @@
 
 						i {
 							margin: -3px 9px 0 0;
-							color: #777;
+							color: #666; // #777 was under 4.5 : 1 on the light greys (shop change, 2026-11-10)
 
 							body.rtl & {
 								margin: -3px 0 0 9px;
@@ -4298,7 +4304,7 @@
 					calc(12px + (20 - 12) * ((100vw - 320px) / (1920 - 320)));
 				font-size: calc(15px + (17 - 15) * ((100vw - 320px) / (1920 - 320)));
 				min-width: 160px;
-				color: #777;
+				color: #666; // #777 was under 4.5 : 1 on the light greys (shop change, 2026-11-10)
 			}
 		}
 	}
@@ -4358,7 +4364,7 @@
 							calc(12px + (20 - 12) * ((100vw - 320px) / (1920 - 320)));
 						font-size: calc(15px + (17 - 15) * ((100vw - 320px) / (1920 - 320)));
 						min-width: 160px;
-						color: #777;
+						color: #666; // #777 was under 4.5 : 1 on the light greys (shop change, 2026-11-10)
 					}
 				}
 			}
@@ -5229,7 +5235,7 @@
 						}
 
 						&.delete {
-							color: #ff7272;
+							color: #c62828; // was #ff7272, 2.7 : 1 on white (shop change, 2026-11-10)
 							margin-left: 10px;
 
 							body.rtl & {
@@ -5303,7 +5309,7 @@
 
 					&.danger {
 						background-color: rgba(255, 114, 114, 0.1);
-						color: #ff7272;
+						color: #c62828; // was #ff7272, 2.7 : 1 on white (shop change, 2026-11-10)
 					}
 				}
 
@@ -5406,6 +5412,12 @@
 
 .apexcharts-toolbar {
 	z-index: 0;
+}
+
+// A saved product's heart is red wherever it shows: the card's hover bar and corner button, and
+// the product page's wishlist button.
+.ri-heart-fill {
+	color: $wishlist-color;
 }
 
 .product-header-top {

@@ -116,6 +116,13 @@ describe('HttpStorefrontAuthGateway calls', () => {
 		await expect(firstValueFrom(gateway.requestPasswordReset('a'))).resolves.toBeUndefined();
 	});
 
+	it('reads the signed-out notice, and treats any failure as none', async () => {
+		get.mockReturnValueOnce(of({ signedOutAt: '2026-11-23' }));
+		await expect(firstValueFrom(gateway.sessionNotice())).resolves.toBe('2026-11-23');
+		get.mockReturnValueOnce(throwError(() => new Error('500')));
+		await expect(firstValueFrom(gateway.sessionNotice())).resolves.toBeNull();
+	});
+
 	it('reads the login methods', async () => {
 		get.mockReturnValueOnce(of({ hasPassword: true }));
 		await expect(firstValueFrom(gateway.loginMethods())).resolves.toEqual({ hasPassword: true });

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { CatalogProductPage } from '@saha-textile/contracts';
 
-import { priceCartLine } from '../src/catalog/cart-line';
+import { cartLineTotalINR, cartQuantityProblem, priceCartLine } from '../src/catalog/cart-line';
 
 const term = (code: string, over: Record<string, unknown> = {}) => ({
 	code,
@@ -128,7 +128,9 @@ describe('priceCartLine', () => {
 		const product = page({ optionGroups: [group('blouse', 'named_add_on', [term('plain')])] });
 		const refused = { ok: false, reason: 'unknown_option' };
 		expect(priceCartLine(product, { variationId: null, addons: [{ code: 'other', value: 'x' }] })).toEqual(refused);
-		expect(priceCartLine(product, { variationId: null, addons: [{ code: 'blouse', value: 'x' }] })).toEqual(refused);
+		expect(priceCartLine(product, { variationId: null, addons: [{ code: 'blouse', value: 'x' }] })).toEqual(
+			refused,
+		);
 		const bare = page({ optionGroups: [group('blouse', 'named_add_on', [])] });
 		expect(priceCartLine(bare, { variationId: null, addons: [] })).toEqual(refused);
 	});
@@ -150,7 +152,11 @@ describe('priceCartLine', () => {
 					term('tailored', { priceDeltaINR: 500, requiresMeasurements: true }),
 				]),
 			],
-			measurements: { templateCode: 't', priceINR: 0, fields: [field('bust'), field('waist', { min: null, max: null })] },
+			measurements: {
+				templateCode: 't',
+				priceINR: 0,
+				fields: [field('bust'), field('waist', { min: null, max: null })],
+			},
 		});
 		const stitched = (bust: unknown, waist: unknown = 30) => ({
 			variationId: null,
@@ -182,9 +188,56 @@ describe('priceCartLine', () => {
 	});
 
 	it('refuses a bundle until it can be priced', () => {
-		expect(priceCartLine(page({ bundle: { priceINR: 700, groups: [] } }), { variationId: null, addons: [] })).toEqual({
+		expect(
+			priceCartLine(page({ bundle: { priceINR: 700, groups: [] } }), { variationId: null, addons: [] }),
+		).toEqual({
 			ok: false,
 			reason: 'bundle_not_on_sale',
 		});
+	});
+});
+
+describe('fabric by the metre on a cart line (M02–M04, M08)', () => {
+	const fabric = (over: Record<string, unknown> = {}) =>
+		page({
+			soldBy: 'metre',
+			metre: { shortestCutTenths: 10, stepTenths: 5, quickLengths: [], widthInches: 44 },
+			selected: { sku: 'ST-FAB-0007', sellingINR: 180, mrpINR: null, quantity: 45, buyable: true },
+			...over,
+		});
+
+	it('prices length × price per metre to the paisa, and add-ons once per line', () => {
+		const plain = line(priceCartLine(fabric(), { variationId: null, addons: [] }));
+		expect(plain).toMatchObject({ soldBy: 'metre', shortestCutTenths: 10, basePriceINR: 180, available: 45 });
+		expect(cartLineTotalINR(plain, 25)).toBe(450);
+		const odd = line(
+			priceCartLine(
+				fabric({ selected: { sku: 'X', sellingINR: 175.5, mrpINR: null, quantity: 45, buyable: true } }),
+				{ variationId: null, addons: [] },
+			),
+		);
+		expect(cartLineTotalINR(odd, 23)).toBe(403.65);
+		const stitched = line(
+			priceCartLine(
+				fabric({ optionGroups: [group('stitch', 'named_add_on', [term('yes', { priceDeltaINR: 650 })])] }),
+				{ variationId: null, addons: [{ code: 'stitch', value: 'yes' }] },
+			),
+		);
+		expect(cartLineTotalINR(stitched, 25)).toBe(450 + 650);
+	});
+
+	it('keeps pieces as they were: unit price × pieces, at most 99', () => {
+		const piece = line(priceCartLine(page(), { variationId: null, addons: [] }));
+		expect(piece).toMatchObject({ soldBy: 'piece', shortestCutTenths: null });
+		expect(cartLineTotalINR(piece, 3)).toBe(2400);
+		expect(cartQuantityProblem(piece, 99)).toBeNull();
+		expect(cartQuantityProblem(piece, 100)).toBe('too_many_pieces');
+	});
+
+	it('refuses a cut below the shortest, and takes any 0.1 m length at or above it', () => {
+		const plain = line(priceCartLine(fabric(), { variationId: null, addons: [] }));
+		expect(cartQuantityProblem(plain, 5)).toBe('below_shortest_cut');
+		expect(cartQuantityProblem(plain, 10)).toBeNull();
+		expect(cartQuantityProblem(plain, 9999)).toBeNull();
 	});
 });

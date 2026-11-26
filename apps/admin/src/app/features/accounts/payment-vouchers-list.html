@@ -1,0 +1,154 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'pv_list_title'"
+>
+	<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+		<small class="text-muted">{{ 'pv_list_subtitle' | transloco }}</small>
+		<app-export-menu
+			id="pv_export"
+			[disabled]="busy()"
+			[source]="exportSource"
+		/>
+	</div>
+	<ul class="nav nav-tabs mb-3">
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				routerLink="/accounts/vouchers"
+			>
+				{{ 'accounts_vouchers' | transloco }}
+			</a>
+		</li>
+		<li class="nav-item">
+			<a class="nav-link active">{{ 'pv_list_title' | transloco }}</a>
+		</li>
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				routerLink="/accounts/self-invoices"
+			>
+				{{ 'si_list_title' | transloco }}
+			</a>
+		</li>
+	</ul>
+	<div class="d-flex align-items-center mb-3 flex-wrap gap-2">
+		@for (c of chips; track c) {
+		<button
+			type="button"
+			class="btn"
+			[id]="'pv_chip_' + c"
+			[class.btn-theme]="filter() === c"
+			[class.btn-outline]="filter() !== c"
+			(click)="setFilter(c)"
+		>
+			{{ 'pv_chip_' + c | transloco }}
+			<span class="ms-1">{{ list.data()?.counts?.[c] ?? 0 }}</span>
+		</button>
+		}
+		<div class="d-flex ms-auto flex-wrap gap-2">
+			<app-period-picker (changed)="setPeriod($event)" />
+			<input
+				class="form-control w-auto"
+				type="search"
+				id="pv_search"
+				[placeholder]="'pv_search' | transloco"
+				[ngModel]="search()"
+				(ngModelChange)="search.set($event); page.set(1)"
+			/>
+		</div>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'pv_number' | transloco }}</th>
+					<th>{{ 'date' | transloco }}</th>
+					<th>{{ 'rf_paid_to' | transloco }}</th>
+					<th>{{ 'pv_against' | transloco }}</th>
+					<th>{{ 'payment_how' | transloco }}</th>
+					<th>{{ 'payment_reference' | transloco }}</th>
+					<th class="text-end">{{ 'doc_amount' | transloco }}</th>
+					<th class="text-end">{{ 'pv_rcm_we_pay' | transloco }}</th>
+					<th>{{ 'status' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (v of list.data()?.items ?? []; track v.id) {
+				<tr>
+					<td class="text-nowrap">{{ v.number }}</td>
+					<td class="text-nowrap">{{ day(v.date) }}</td>
+					<td>{{ payee(v) }}</td>
+					<td>{{ against(v) }}</td>
+					<td>{{ 'payment_mode_' + v.mode | transloco }}</td>
+					<td>{{ v.reference ?? '—' }}</td>
+					<td class="text-end text-nowrap">{{ inr(v.amountINR) }}</td>
+					<td class="text-end text-nowrap">
+						{{ v.reverseChargeTaxINR === null ? '—' : inr(v.reverseChargeTaxINR) }}
+					</td>
+					<td>
+						<div
+							[class.status-success]="v.status === 'paid'"
+							[class.status-danger]="v.status === 'cancelled'"
+						>
+							<span>{{ 'pv_status_' + v.status | transloco }}</span>
+						</div>
+					</td>
+					<td>
+						<ul id="actions">
+							<li>
+								<a
+									[routerLink]="['/accounts/payment-vouchers', v.id]"
+									[title]="'view' | transloco"
+									[attr.aria-label]="'view' | transloco"
+								>
+									<i class="ri-eye-line"></i>
+								</a>
+							</li>
+							<li>
+								<a
+									href="javascript:void(0)"
+									[title]="'inv_print' | transloco"
+									[attr.aria-label]="'inv_print' | transloco"
+									(click)="print(v)"
+								>
+									<i class="ri-printer-line"></i>
+								</a>
+							</li>
+						</ul>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="10"
+						class="text-muted py-4 text-center"
+					>
+						{{ 'pv_list_empty' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if (pages() > 1) {
+	<nav class="custom-pagination">
+		<ul class="pagination justify-content-center">
+			@for (p of [].constructor(pages()); track $index) {
+			<li
+				class="page-item"
+				[class.active]="page() === $index + 1"
+			>
+				<a
+					class="page-link"
+					href="javascript:void(0)"
+					(click)="page.set($index + 1)"
+				>
+					{{ $index + 1 }}
+				</a>
+			</li>
+			}
+		</ul>
+	</nav>
+	}
+</app-page-wrapper>

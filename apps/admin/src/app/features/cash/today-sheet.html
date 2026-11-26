@@ -1,0 +1,321 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'cash_today'"
+>
+	@if (today.data(); as data) {
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">
+				{{ 'cash_sheet_title' | transloco: { box: data.box.name, date: (view()?.sheet?.date ?? data.today) } }}
+				@if (view(); as v) {
+				<div
+					class="d-inline-block ms-2"
+					[class]="pill[v.sheet.status]"
+				>
+					<span>{{ 'cash_status_' + v.sheet.status | transloco }}</span>
+				</div>
+				}
+			</h5>
+			@if (view(); as v) {
+			<small class="text-muted">
+				{{ (v.amounts ? 'cash_manager_view' : 'cash_opened_line') | transloco: { place: v.locationName, time:
+				time(v.sheet.openedAt), name: v.openedByName ?? '—' } }}
+			</small>
+			}
+		</div>
+		<div class="d-flex align-items-center flex-wrap gap-2">
+			@if (data.boxes.length > 1) {
+			<select
+				class="form-select w-auto"
+				id="cash_box"
+				[attr.aria-label]="'cash_box' | transloco"
+				[ngModel]="data.box.id"
+				(ngModelChange)="chooseBox($event)"
+			>
+				@for (b of data.boxes; track b.id) {
+				<option [value]="b.id">{{ b.name }}</option>
+				}
+			</select>
+			} @if (view(); as v) { @if (v.sheet.status === 'open') {
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="cash_petty_open"
+				[disabled]="busy()"
+				(click)="petty(data)"
+			>
+				<i class="ri-add-line"></i>
+				{{ 'cash_petty_expense' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="cash_move_open"
+				[disabled]="busy()"
+				(click)="move(data, v.sheet.id)"
+			>
+				<i class="ri-bank-line"></i>
+				{{ 'cash_bank_deposit' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="cash_close_open"
+				[disabled]="busy()"
+				(click)="close(v.sheet.id, data)"
+			>
+				<i class="ri-lock-line"></i>
+				{{ 'cash_close_day' | transloco }}
+			</button>
+			} } @else {
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="cash_open_again"
+				[disabled]="busy()"
+				(click)="prompt(data)"
+			>
+				{{ 'cash_open_action' | transloco }}
+			</button>
+			}
+		</div>
+	</div>
+	@if (view(); as v) {
+	<div class="row g-3">
+		<div [class]="v.amounts ? 'col-12' : 'col-xl-8'">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ (v.amounts ? 'cash_entries' : 'cash_todays_entries') | transloco }}</h5>
+					</div>
+					@if (!v.amounts) {
+					<div class="alert alert-info d-flex align-items-start gap-2">
+						<i class="ri-eye-off-line"></i>
+						<span>{{ 'cash_blind_note' | transloco }}</span>
+					</div>
+					}
+					<div class="table-responsive datatable-wrapper border-table">
+						<table
+							class="all-package theme-table no-footer table"
+							id="cash_rows"
+						>
+							<thead>
+								<tr>
+									<th>{{ 'cash_time' | transloco }}</th>
+									<th>{{ 'cash_what' | transloco }}</th>
+									@if (v.amounts) {
+									<th class="text-end">{{ 'cash_in' | transloco }}</th>
+									<th class="text-end">{{ 'cash_out' | transloco }}</th>
+									<th class="text-end">{{ 'cash_expected' | transloco }}</th>
+									} @else {
+									<th>{{ 'cash_ref' | transloco }}</th>
+									<th>{{ 'cash_by' | transloco }}</th>
+									}
+								</tr>
+							</thead>
+							<tbody>
+								@for (row of v.rows; track row.id) {
+								<tr>
+									<td>{{ time(row.at) }}</td>
+									<td>
+										@if (rowWhat(row); as w) { @if (w.key) { {{ w.key | transloco: { date: w.text }
+										}} } @if (!w.key) { {{ w.text }} } } @if (row.kind === 'opening' && v.amounts) {
+										({{ inr(v.sheet.opening.totalPaise) }}) } @if (row.kind === 'carried' &&
+										row.expectedPaise !== null) {
+										<small class="d-block text-muted">
+											{{ (row.expectedPaise < 0 ? 'cash_row_carried_short' :
+											'cash_row_carried_over') | transloco: { amount: inr(row.expectedPaise < 0 ?
+											-row.expectedPaise : row.expectedPaise) } }}
+										</small>
+										} @if (row.addedOnReview) {
+										<small class="d-block text-muted">
+											{{ 'cash_added_on_review' | transloco }}
+										</small>
+										}
+									</td>
+									@if (v.amounts) {
+									<td class="text-end">@if (row.inPaise) { {{ inr(row.inPaise) }} }</td>
+									<td class="text-end">@if (row.outPaise) { {{ inr(row.outPaise) }} }</td>
+									<td class="text-end">
+										@if (row.expectedPaise !== null) { {{ signed(row.expectedPaise) }} }
+									</td>
+									} @else {
+									<td>{{ row.ref ?? '—' }}</td>
+									<td>{{ row.by ?? '—' }}</td>
+									}
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					@if (v.amounts) {
+					<p class="small text-muted mt-2 mb-0">{{ 'cash_manager_note' | transloco }}</p>
+					}
+				</div>
+			</div>
+		</div>
+		@if (!v.amounts) {
+		<div class="col-xl-4">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'cash_arrives' | transloco }}</h5>
+					</div>
+					<ul class="list-unstyled small mb-0">
+						@for (item of arrives; track item.key) {
+						<li class="d-flex align-items-start border-bottom gap-2 py-2">
+							<i [class]="item.icon"></i>
+							<div>
+								<b>{{ 'cash_arrives_' + item.key | transloco }}</b>
+								<span class="d-block text-muted">
+									{{ 'cash_arrives_' + item.key + '_body' | transloco }}
+								</span>
+							</div>
+						</li>
+						}
+					</ul>
+				</div>
+			</div>
+		</div>
+		}
+	</div>
+	} }
+	<ng-template
+		#stillOpen
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="mb-0">{{ 'cash_blocked_title' | transloco }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body">
+			<div class="alert alert-danger d-flex align-items-start gap-2">
+				<i class="ri-lock-line"></i>
+				<span>
+					{{ 'cash_blocked_alert' | transloco: { box: today.data()?.box?.name ?? '', date:
+					today.data()?.stillOpen?.date ?? '' } }}
+				</span>
+			</div>
+			<p class="mb-1">{{ 'cash_blocked_body' | transloco: { date: today.data()?.stillOpen?.date ?? '' } }}</p>
+			<p class="text-muted mb-0">{{ 'cash_blocked_manager' | transloco }}</p>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="cash_close_earlier"
+				(click)="modal.close('close')"
+			>
+				{{ 'cash_blocked_action' | transloco: { date: today.data()?.stillOpen?.date ?? '' } }}
+			</button>
+		</div>
+	</ng-template>
+	<ng-template
+		#unsettled
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="mb-0">{{ 'cash_unsettled_title' | transloco }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body">
+			<div class="alert alert-warning d-flex align-items-start gap-2">
+				<i class="ri-error-warning-line"></i>
+				<span>
+					{{ 'cash_unsettled_alert' | transloco: { box: today.data()?.box?.name ?? '', date:
+					today.data()?.unsettled?.[0]?.date ?? '' } }}
+				</span>
+			</div>
+			<p class="mb-0">{{ 'cash_unsettled_body' | transloco }}</p>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="cash_wait_manager"
+				(click)="modal.close('wait')"
+			>
+				{{ 'cash_wait_manager' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="cash_open_anyway"
+				(click)="modal.close('open')"
+			>
+				{{ 'cash_open_anyway' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+	<ng-template
+		#difference
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="mb-0">{{ 'cash_difference_title' | transloco }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body">
+			<div class="alert alert-danger d-flex align-items-start gap-2">
+				<i class="ri-error-warning-line"></i>
+				<span>{{ 'cash_difference_alert' | transloco }}</span>
+			</div>
+			<div class="form-check">
+				<input
+					class="form-check-input"
+					type="checkbox"
+					id="cash_difference_tick"
+					[checked]="confirmed()"
+					(change)="confirmed.set($any($event.target).checked)"
+				/>
+				<label
+					class="form-check-label"
+					for="cash_difference_tick"
+				>
+					{{ 'cash_difference_tick' | transloco }}
+				</label>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="cash_count_again"
+				(click)="modal.close('again')"
+			>
+				{{ 'cash_count_again' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-outline text-danger"
+				id="cash_submit_difference"
+				[disabled]="!confirmed()"
+				(click)="modal.close('submit')"
+			>
+				{{ 'cash_submit_difference' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+</app-page-wrapper>

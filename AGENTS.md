@@ -4,7 +4,7 @@
 
 ## 1. What this is
 
-- A full custom rebuild of **sahatextile.com** (Kolkata saree/textile retailer, ~23 live products / ~40 SKUs) off WooCommerce.
+- A full custom rebuild of **sahatextile.com** (Kolkata saree/textile retailer) off WooCommerce. The old site held only test products; the real catalogue will be large, so never size anything on today's count.
 - **Three product apps + a docs portal in one monorepo:** storefront (public Angular PWA), admin panel (Angular), API (NestJS), and a private developer portal (Docusaurus).
 - **Scope discipline:** boutique e-commerce. Do **not** build Amazon/Flipkart-scale complexity (no marketplace, multi-vendor, warehouse mgmt, recommendation ML). Favour clean, maintainable, secure.
 
@@ -18,7 +18,7 @@
 - Client state: **NgRx hybrid** — `@ngrx/signals` (SignalStore) for feature/UI state + classic `@ngrx/store`/`effects`/`entity` where heavy client mutation warrants it (e.g. cart). Server state/data: **TanStack Angular Query**.
 - DB: **self-hosted Docker MongoDB 9.0.4** (single-node replica set for multi-document transactions) — **not Atlas**. Same Docker profile locally and in prod for parity. Media: **DigitalOcean Spaces** (S3-compatible, SGP).
 - Search: **self-hosted Meilisearch behind `SearchPort`** (Mongo is source of truth; Meili is a derived, rebuildable index). Do **not** use Mongo regex/`$text` for storefront typeahead.
-- i18n: **Transloco** — runtime **en↔fr** for the whole development phase (Fastkart shipped both; French stays). **Bengali is added only once development is complete**, deliberately: building against two live locales keeps the multi-language seams exercised, so adding a third is a data change rather than an architecture change. Add keys to BOTH `en.json` and `fr.json`; never add `bn.json` or propose replacing `fr`. Enforced by `pnpm check:i18n-parity`. Validation: **zod** at every boundary.
+- i18n: **Transloco** — runtime **en↔bn** (English and Bengali). Bengali replaced French on 2026-11-08 (owner decision round "Bengali replaces French"); French is gone, never re-add `fr`. Two live locales keep the multi-language seams exercised. Add keys to BOTH `en.json` and `bn.json`; Bengali follows the glossary and rules in that round (Bangla Akademi spelling, English digits, English-letter names and delivery details). Enforced by `pnpm check:i18n-parity`. Validation: **zod** at every boundary.
 - Payments: **`PaymentGatewayPort`** — INR online gateway slot + PayPal for foreign; **no COD** at launch. Ops preference for the INR adapter is CCAvenue now / Razorpay later; **swap = adapter + DI only** (core/UI never vendor-specific). FX: **ExchangeRate-API** (daily cron, rates persisted) + PayPal gross-up for non-INR. Shipping: **Shiprocket** (domestic + international) behind `ShippingPort`. Notifications: **MSG91** (SMS/WhatsApp/Email) behind `NotificationPort` with split transactional/marketing kill-switches.
 - Tooling: **angular-eslint** + ESLint flat config, Prettier (tabs/4), **Vitest** (unit) + Playwright (e2e).
 - Node: pin via `.nvmrc` (**24.22.1**; root engines require Node ≥24).
@@ -54,7 +54,17 @@ project-context/   nextjs-context/ (superseded — ignore)
 - **Validate all external input with zod** at every boundary (API DTOs, env, webhooks, search params).
 - Prettier (tabs/4 — see `.prettierrc`) + ESLint flat config. Format/lint before every commit.
 - **Conventional Commits** (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `ci:`).
+- **No AI attribution in commits or pull requests (owner lock 2026-11-23).** Commit messages and pull request descriptions never name an AI tool, model or chat: no `Co-Authored-By` lines for Claude, Codex, Cursor or any assistant, no "Generated with …" footers, no "the X chat" wording. This overrides any tool's default attribution. The whole history was cleaned of it on 2026-11-23 (owner-decisions-log.mdx).
 - Small, focused modules. Co-locate tests. Cover use-cases and adapters.
+- **Every change keeps its own code at 100% coverage (owner lock 2026-11-23).** Whatever you add or change in a
+  measured workspace ships with tests that cover it fully: statements, branches, functions and lines. Before each
+  commit, run `pnpm coverage -- <workspace>` for every workspace you touched; none of the files you changed may
+  appear in its list of files with missed lines. Older files may still be listed while the backlog is worked off,
+  but never leave one of yours there. Never exclude files or add `istanbul`/`v8`/`c8 ignore` comments to get
+  there: a branch that can never run is restructured, not hidden. CI (`pnpm coverage`, job **Tests at 100%
+  coverage**) fails any workspace below `COVERAGE_FLOOR` in `scripts/coverage.mjs`, or with failing tests. The
+  floor is **10 for now** (owner, 24 Nov, so staging can be deployed while the backlog is tested) and goes back
+  to 100 when the backlog is done; only the owner changes it. This rule for your own files stays at 100%.
 - **No secrets in code, logs, or the browser bundle.** Secrets live in server-side runtime env only; the Angular apps get non-secret config at runtime (not build-time inlining).
 - **No `mock` in shipping names (owner lock 2026-08-16).** No class, service, function, variable, file, route or CSS class that ships may contain `mock`, `fake`, `dummy` or `stub`. Those words belong only inside `*.test.ts` / `*.spec.ts` and test helpers, where something is genuinely being mocked. Everything written here goes to production; a name that is only defensible because the code is temporary is an argument for **deleting the code**, not labelling it. Name the thing for what it IS — an SSR interceptor returning an empty 200 is `emptyResponse`, not `mockResponse` — and when the honest name would need "mock", delete instead of renaming. Vendor demo JSON under `public/assets/data/` is data, not a name, and is out of scope.
 - **Brand naming law (owner lock 2026-07-24): never bare `saha`.** Every identifier — containers, volumes, DB names, env values, service names, paths, mock-data strings — and all prose uses the full brand: `saha-textile` / `saha_textile` / "Saha Textile". Enforced by `scripts/check-naming.sh` in `pnpm lint`. Exceptions: geography data (Sahara/Saharsa/the town "Saha"), the 6-char TRAI DLT sender `SAHATX`, and compact `st_*` cookie names. See owner-decisions-log §2026-07-24. <!-- naming-law:allow -->
@@ -83,6 +93,11 @@ Then **wait for approval.** If custom work proves unavoidable mid-build, stop ag
 in the browser pane before it lands. A silently added class, element or component is the failure
 this rule exists to prevent. Full text: `owner-decisions-log.mdx` § `DEC-UI-REUSE`.
 
+**Icon-only actions name themselves (owner lock 2026-11-10, `DEC-ICON-TITLES`).** Any admin button,
+link or click target that shows only an icon carries a translated hover name,
+`[title]="'edit' | transloco"`, with keys in both `en.json` and `bn.json`. No popover or tooltip
+library. `pnpm check:icon-titles` (in `pnpm lint`) enforces it.
+
 ## 6. Security baseline (OWASP Top 10:2025)
 
 - Object-level authorization on every order/cart/user endpoint (BOLA is the #1 API risk).
@@ -94,9 +109,9 @@ this rule exists to prevent. Full text: `owner-decisions-log.mdx` § `DEC-UI-REU
 ## 7. Git & PR workflow (rulesets are ACTIVE — see project-context for details)
 
 - **Repo visibility:** the GitHub repo is **public** (required to keep branch rulesets on the org Free plan; also gives unlimited Actions minutes). Deployment images are published as **private GHCR packages** (package visibility is independent of repo visibility). Because the source is public, secret hygiene is non-negotiable: never commit secrets, never ship them to the browser bundle.
-- **Protected branches:** `main`, `dev`, `qa`, `staging`. **Never push directly — always via PR.**
-- **`main` + `staging`:** linear history + signed commits ⇒ **merge via SQUASH only** (UI). Merge-commits and rebase-merge are blocked there.
-- **`dev` + `qa`:** PR + 1 approval; any merge method.
+- **Protected branches:** `main`, `dev`, `staging`. **Never push directly — always via PR.** Code moves `dev → staging → main` (owner decision 2026-11-08; `qa` retires).
+- **`dev → staging → main`:** normal merge commits, never squash (squash between permanent branches causes conflicts). `main` + `staging` keep signed commits. The rulesets match this (linear history off since 2026-11-08). See `production-deployment-plan.mdx`.
+- **Feature branches into `dev`:** PR + 1 approval; any merge method.
 - Branch naming: `feat/<scope>`, `fix/<scope>`, `chore/<scope>`.
 - **Open PRs; never merge to a protected branch without explicit human approval.** The human is the sole reviewer/admin.
 - Local commit signing (SSH/GPG) must be configured.

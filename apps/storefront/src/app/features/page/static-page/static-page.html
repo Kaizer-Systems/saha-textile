@@ -1,6 +1,16 @@
 <app-breadcrumb [breadcrumb]="breadcrumb()" />
 <section class="section-b-space">
 	<div class="container-fluid-lg">
+		@if (breadcrumb(); as crumb) {
+		<div class="title">
+			<h1>{{ crumb.title }}</h1>
+		</div>
+		} @if (updatedAt(); as date) {
+		<p id="page_last_updated">
+			<i class="ri-time-line"></i>
+			{{ 'page_last_updated' | transloco: { date: (date | shopDate) } }}
+		</p>
+		}
 		<div
 			class="ckeditor-content"
 			[innerHTML]="content()"

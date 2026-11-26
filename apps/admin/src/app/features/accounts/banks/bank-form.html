@@ -1,0 +1,297 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="id() ? 'bank_edit' : 'bank_add'"
+>
+	<div class="theme-form theme-form-2">
+		<h5 class="mb-3">{{ 'bank_the_account' | transloco }}</h5>
+		<div class="row g-3 mb-4">
+			<div class="col-md-4">
+				<label
+					class="form-label-title"
+					for="bank_ifsc"
+				>
+					IFSC
+				</label>
+				<input
+					class="form-control"
+					id="bank_ifsc"
+					maxlength="11"
+					[ngModel]="form().ifsc"
+					(ngModelChange)="ifsc($event)"
+				/>
+				<p class="help-text mb-0">{{ 'bank_ifsc_help' | transloco }}</p>
+			</div>
+			<div class="col-md-4">
+				<label
+					class="form-label-title"
+					for="bank_name"
+				>
+					{{ 'bank_bank' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="bank_name"
+					maxlength="80"
+					[ngModel]="form().bankName"
+					(ngModelChange)="set('bankName', $event)"
+				/>
+			</div>
+			<div class="col-md-4">
+				<label
+					class="form-label-title"
+					for="bank_branch"
+				>
+					{{ 'bank_branch' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="bank_branch"
+					maxlength="80"
+					[ngModel]="form().branch"
+					(ngModelChange)="set('branch', $event)"
+				/>
+			</div>
+			<div class="col-md-4">
+				<label
+					class="form-label-title"
+					for="bank_kind"
+				>
+					{{ 'bank_kind' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="bank_kind"
+					[ngModel]="form().kind"
+					(ngModelChange)="set('kind', $event)"
+				>
+					@for (k of kinds; track k) {
+					<option [value]="k">{{ 'bank_kind_' + k | transloco }}</option>
+					}
+				</select>
+			</div>
+			<div class="col-md-8">
+				<label
+					class="form-label-title"
+					for="bank_holder"
+				>
+					{{ 'bank_holder' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="bank_holder"
+					maxlength="120"
+					[ngModel]="form().holder"
+					(ngModelChange)="set('holder', $event)"
+				/>
+			</div>
+			<div class="col-md-6">
+				<label
+					class="form-label-title"
+					for="bank_number"
+				>
+					{{ 'bank_number' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="bank_number"
+					maxlength="20"
+					[ngModel]="form().number"
+					(ngModelChange)="set('number', $event.trim().toUpperCase())"
+				/>
+				<p class="help-text mb-0">{{ 'bank_number_help' | transloco }}</p>
+			</div>
+			<div class="col-md-6">
+				<label
+					class="form-label-title"
+					for="bank_short"
+				>
+					{{ 'bank_short_name' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="bank_short"
+					maxlength="60"
+					[ngModel]="form().shortName"
+					(ngModelChange)="set('shortName', $event)"
+				/>
+			</div>
+			@if (credit()) {
+			<div class="col-md-4">
+				<label
+					class="form-label-title"
+					for="bank_limit"
+				>
+					{{ 'bank_limit' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="bank_limit"
+					type="number"
+					min="0"
+					[ngModel]="form().limitINR"
+					(ngModelChange)="set('limitINR', $event === null || $event === '' ? null : +$event)"
+				/>
+			</div>
+			} @if (deposit()) {
+			<div class="col-md-4">
+				<label
+					class="form-label-title"
+					for="bank_rate"
+				>
+					{{ 'bank_rate' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="bank_rate"
+					type="number"
+					min="0"
+					step="0.01"
+					[ngModel]="form().ratePercent"
+					(ngModelChange)="set('ratePercent', $event === null || $event === '' ? null : +$event)"
+				/>
+			</div>
+			<div class="col-md-4">
+				<label
+					class="form-label-title"
+					for="bank_matures"
+				>
+					{{ 'bank_matures_on' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="bank_matures"
+					type="date"
+					[ngModel]="form().maturesOn"
+					(ngModelChange)="set('maturesOn', $event || null)"
+				/>
+			</div>
+			}
+		</div>
+		<h5 class="mb-3">{{ 'bank_in_the_books' | transloco }}</h5>
+		<div class="row g-3">
+			<div class="col-md-4">
+				<label
+					class="form-label-title"
+					for="bank_opening"
+				>
+					{{ 'bank_opening' | transloco }}
+				</label>
+				<div class="input-group">
+					<span class="input-group-text">₹</span>
+					<input
+						class="form-control"
+						id="bank_opening"
+						type="number"
+						[disabled]="!!id()"
+						[ngModel]="form().openingINR"
+						(ngModelChange)="set('openingINR', +$event || 0)"
+					/>
+				</div>
+				<p class="help-text mb-0">{{ (id() ? 'bank_opening_posted' : 'bank_opening_help') | transloco }}</p>
+			</div>
+			<div class="col-md-4">
+				<label
+					class="form-label-title"
+					for="bank_opening_on"
+				>
+					{{ 'bank_as_on' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="bank_opening_on"
+					type="date"
+					[disabled]="!!id()"
+					[ngModel]="form().openingOn"
+					(ngModelChange)="set('openingOn', $event || null)"
+				/>
+			</div>
+			<div class="col-md-4">
+				<label
+					class="form-label-title"
+					for="bank_location"
+				>
+					{{ 'location' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="bank_location"
+					[ngModel]="form().locationId ?? ''"
+					(ngModelChange)="set('locationId', $event || null)"
+				>
+					<option value="">—</option>
+					@for (place of locations.data() ?? []; track place.id) {
+					<option [value]="place.id">{{ place.name }}</option>
+					}
+				</select>
+			</div>
+			<div class="col-md-4">
+				<label
+					class="form-label-title"
+					for="bank_cheque_from"
+				>
+					{{ 'bank_cheque_book' | transloco }}
+				</label>
+				<div class="d-flex gap-2">
+					<input
+						class="form-control"
+						id="bank_cheque_from"
+						maxlength="12"
+						[attr.aria-label]="'bank_cheque_from' | transloco"
+						[ngModel]="form().chequeFrom"
+						(ngModelChange)="set('chequeFrom', $event)"
+					/>
+					<input
+						class="form-control"
+						id="bank_cheque_to"
+						maxlength="12"
+						[attr.aria-label]="'bank_cheque_to' | transloco"
+						[ngModel]="form().chequeTo"
+						(ngModelChange)="set('chequeTo', $event)"
+					/>
+				</div>
+			</div>
+			<div class="col-md-8">
+				<label
+					class="form-label-title"
+					for="bank_upi"
+				>
+					{{ 'bank_upi_ids' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="bank_upi"
+					maxlength="400"
+					[ngModel]="upiText()"
+					(ngModelChange)="upiText.set($event)"
+				/>
+				<p class="help-text mb-0">{{ 'bank_lands_help' | transloco }}</p>
+			</div>
+		</div>
+		@if (problem(); as p) {
+		<div
+			class="alert alert-danger mt-3 mb-0"
+			role="alert"
+		>
+			{{ p | transloco }}
+		</div>
+		}
+		<div class="d-flex justify-content-end mt-4 gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="cancel()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="bank_save"
+				[disabled]="!ready()"
+				(click)="save()"
+			>
+				{{ 'save' | transloco }}
+			</button>
+		</div>
+	</div>
+</app-page-wrapper>

@@ -31,6 +31,10 @@ export interface AuthSessionDoc {
 	absoluteExpiresAt: Date;
 	revokedAt: Date | null;
 	revokeReason: string | null;
+	/** Admin only: last real operator activity; background calls never move it. */
+	lastActiveAt?: Date | null;
+	/** Admin only: when the 15-minute lock came up; null once the PIN or password clears it. */
+	lockedAt?: Date | null;
 }
 
 const AuthSessionSchema = new Schema<AuthSessionDoc>(
@@ -72,6 +76,8 @@ const AuthSessionSchema = new Schema<AuthSessionDoc>(
 		absoluteExpiresAt: { type: Date, required: true },
 		revokedAt: { type: Date, default: null },
 		revokeReason: { type: String, default: null },
+		lastActiveAt: { type: Date, default: null },
+		lockedAt: { type: Date, default: null },
 	},
 	{ collection: 'authSessions', timestamps: { createdAt: true, updatedAt: false } },
 );

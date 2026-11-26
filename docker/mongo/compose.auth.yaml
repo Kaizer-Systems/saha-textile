@@ -1,0 +1,51 @@
+# =============================================================================
+#  Local MongoDB with logins required — laid over docker-compose.yml
+# =============================================================================
+#  Used by `pnpm mongo:up` only when the gitignored docker/mongo/.env says
+#  MONGO_AUTH=on. The same shape as the droplet (docker/production/compose.yaml):
+#  a replica-set keyfile, `--auth`, the administrator from mounted files, and the
+#  app's own login with readWrite on its database only.
+#
+#  The files come from the gitignored docker/dev-secrets/, which
+#  `pnpm secrets:setup-local` writes (later kept in step with the Infisical dev
+#  project's /infrastructure folder). Run it before turning the switch on: it
+#  also creates both logins in the running database, so existing data keeps
+#  working the moment logins become required.
+# =============================================================================
+
+services:
+  mongo:
+    # mongod refuses a keyfile unless it is mode 400 and owned by its user, which a bind mount
+    # cannot promise, so the keyfile is copied in with the right owner first (as on the droplet).
+    entrypoint:
+      - sh
+      - -c
+      - install -o mongodb -g mongodb -m 400 /run/secrets/mongo-keyfile /data/configdb/keyfile && exec docker-entrypoint.sh "$$@"
+      - --
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all', '--auth', '--keyFile', '/data/configdb/keyfile']
+    environment:
+      # Only read on an empty data folder: a fresh machine gets its administrator from these.
+      MONGO_INITDB_ROOT_USERNAME_FILE: /run/secrets/mongo-root-username
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongo-root-password
+    secrets:
+      - mongo-keyfile
+      - mongo-root-username
+      - mongo-root-password
+    healthcheck:
+      # Logged in as the administrator: with --auth, neither rs.status() nor rs.initiate() answers
+      # an anonymous caller.
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet --username "$$(cat /run/secrets/mongo-root-username)"
+          --password "$$(cat /run/secrets/mongo-root-password)" --authenticationDatabase admin
+          --eval "try { rs.status().ok } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27017' }] }).ok }"
+          | grep -q 1
+
+secrets:
+  mongo-keyfile:
+    file: ../dev-secrets/mongo-keyfile
+  mongo-root-username:
+    file: ../dev-secrets/mongo-root-username
+  mongo-root-password:
+    file: ../dev-secrets/mongo-root-password

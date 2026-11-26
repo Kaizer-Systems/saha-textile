@@ -3,7 +3,7 @@ title: CCAvenue web integration kit (non-seamless)
 description: The CCAvenue Integration Document v3.1 and the seven-language non-seamless sample kit, transcribed, with the encryption scheme the kit code implements.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-24'
 search_keywords: CCAvenue non-seamless initiateTransaction encRequest encResp working key AES-128-CBC MD5 IV redirect_url cancel_url Direct Connect initiatePayloadTransaction vault standing instruction
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts
@@ -20,7 +20,7 @@ The archive holds one PDF, **CCAvenue Integration Document, Version 3.1** (47 pa
 
 Every merchant ID, access code, and working key that appears in the kit or the PDF has been replaced with a placeholder on this page. The real values were not copied into this repository.
 
-No CCAvenue adapter exists, and `PaymentGatewayPort` defines only `createPayment` and `verifyCallback`.
+The adapter that implements this flow is described on [CCAvenue](/payments/ccavenue#2-endpoints-we-use).
 
 ## 1. Introduction
 

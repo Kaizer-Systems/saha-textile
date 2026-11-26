@@ -7,20 +7,26 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { CartFacade } from '@core/state/cart/cart.facade';
 import { OnlineStatus } from '@core/state/online-status';
-import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
+import { WishlistStore } from '@core/state/wishlist/wishlist.store';
 
 import { Cart } from './cart';
 
 const render = () => {
-	const cart = { cartItems$: of([]), cartTotal$: of(0), getCartItems: vi.fn(), updateCart: vi.fn(), deleteCart: vi.fn() };
-	const wishlist = { addToWishlist: vi.fn() };
+	const cart = {
+		cartItems$: of([]),
+		cartTotal$: of(0),
+		getCartItems: vi.fn(),
+		updateCart: vi.fn(),
+		deleteCart: vi.fn(),
+	};
+	const wishlist = { has: vi.fn((id: unknown) => id === 9), toggle: vi.fn(async () => {}) };
 	const online = signal(true);
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: CartFacade, useValue: cart },
 			{ provide: OnlineStatus, useValue: { online } },
-			{ provide: WishlistFacade, useValue: wishlist },
+			{ provide: WishlistStore, useValue: wishlist },
 			{ provide: TranslocoService, useValue: { selectTranslate: () => of('Cart') } },
 		],
 	});
@@ -29,6 +35,15 @@ const render = () => {
 };
 
 describe('Cart page', () => {
+	it('draws neither the cart nor "No Items Added" until the browser has rendered once', async () => {
+		render();
+		const fixture = TestBed.createComponent(Cart);
+		expect(fixture.componentInstance.ready()).toBe(false);
+		fixture.detectChanges();
+		await fixture.whenStable();
+		expect(fixture.componentInstance.ready()).toBe(true);
+	});
+
 	it('re-reads prices and stock when the connection returns', () => {
 		const { cart, online } = render();
 		TestBed.tick();
@@ -67,7 +82,9 @@ describe('Cart page', () => {
 		const { page, cart, wishlist } = render();
 		page.delete('l4');
 		page.addToWishlist(7);
+		page.addToWishlist(9);
 		expect(cart.deleteCart).toHaveBeenCalledWith('l4');
-		expect(wishlist.addToWishlist).toHaveBeenCalledWith({ product_id: 7 });
+		expect(wishlist.toggle).toHaveBeenCalledOnce();
+		expect(wishlist.toggle).toHaveBeenCalledWith({ id: 7 });
 	});
 });

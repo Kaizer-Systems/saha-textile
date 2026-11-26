@@ -1,0 +1,43 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'suppliers'"
+>
+	<div
+		*hasPermission="'supplier.create'"
+		button
+	>
+		<a
+			[routerLink]="['/suppliers/create']"
+			class="align-items-center btn btn-theme d-flex"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'add_supplier' | transloco }}
+		</a>
+	</div>
+	<app-table
+		[tableConfig]="tableConfig()"
+		[searchPlaceholder]="'supplier_search_placeholder'"
+		[deleteMessage]="'supplier_delete_message'"
+		(tableChanged)="onTableChange($event)"
+		(rowClicked)="view($event)"
+		(action)="onAction($event)"
+	>
+		<div
+			tableFilters
+			class="d-flex flex-wrap gap-2"
+		>
+			@for (item of filters; track item.key) {
+			<button
+				type="button"
+				class="align-items-center btn btn-sm d-flex"
+				[class.btn-theme]="filter() === item.key"
+				[class.btn-outline]="filter() !== item.key"
+				[attr.aria-pressed]="filter() === item.key"
+				(click)="setFilter(item.key)"
+			>
+				{{ item.label | transloco }} {{ counts()[item.key] }}
+			</button>
+			}
+		</div>
+	</app-table>
+</app-page-wrapper>

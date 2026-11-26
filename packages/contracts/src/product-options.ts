@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { OptionDisplayStyle, SemanticRole } from './attribute';
-import { CatalogRupee, I18nString, Id } from './common';
+import { CatalogRupee, I18nString, Id, LocalizedText } from './common';
 
 /**
  * One selectable term of a per-product option group.
@@ -13,6 +13,8 @@ import { CatalogRupee, I18nString, Id } from './common';
 export const ProductOptionTerm = z.object({
 	code: z.string().min(1),
 	label: I18nString,
+	/** Optional second line under the name, copied from the attribute's value (`size_v2` draws it). */
+	subLabel: LocalizedText.optional(),
 	/** Material-only / opt-out term ("No Stitching", "No Blouse", "No Design"). */
 	isBase: z.boolean().default(false),
 	hex: z
@@ -20,6 +22,8 @@ export const ProductOptionTerm = z.object({
 		.regex(/^#([0-9a-fA-F]{6})$/, 'must be a 6-digit hex colour')
 		.optional(),
 	swatchAssetId: Id.optional(),
+	/** The version of the swatch picture (media brief: a place stores the photo and its version). */
+	swatchVersionId: Id.optional(),
 	priceDeltaINR: CatalogRupee.optional(),
 	/** Seam — `DEC-ADDON-MEASUREMENTS`: which template collects the measurements. */
 	addonTemplateIds: z.array(Id).default([]),

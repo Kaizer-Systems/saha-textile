@@ -3,9 +3,9 @@
 	class="web-logo nav-logo"
 	[attr.aria-label]="brand()?.shopName"
 >
-	@if (brand()?.logo; as logo) {
+	@if (logo(); as logo) {
 	<picture>
-		@if (brand()?.seal; as seal) {
+		@if (seal(); as seal) {
 		<source
 			media="(max-width: 767.98px)"
 			[attr.srcset]="seal.srcset"
@@ -21,7 +21,6 @@
 			[attr.width]="logo.width"
 			[attr.height]="logo.height"
 			[alt]="brand()?.shopName"
-			fetchpriority="high"
 		/>
 	</picture>
 	} @else {

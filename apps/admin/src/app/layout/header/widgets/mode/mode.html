@@ -1,6 +1,17 @@
 <div
-	(click)="customizeLayoutDark()"
 	class="mode"
+	role="button"
+	tabindex="0"
+	id="mode_switch_btn"
+	[title]="(themeMode.dark() ? 'switch_to_light' : 'switch_to_dark') | transloco"
+	[attr.aria-label]="(themeMode.dark() ? 'switch_to_light' : 'switch_to_dark') | transloco"
+	[attr.aria-pressed]="themeMode.dark()"
+	(click)="themeMode.toggle()"
+	(keydown.enter)="themeMode.toggle()"
+	(keydown.space)="$event.preventDefault(); themeMode.toggle()"
 >
-	<i class="ri-moon-line"></i>
+	<i
+		[class]="themeMode.dark() ? 'ri-sun-line' : 'ri-moon-line'"
+		aria-hidden="true"
+	></i>
 </div>

@@ -6,6 +6,7 @@ import { NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
 import { CarouselComponent } from 'ngx-owl-carousel-o';
 
 import { IAttribute, IAttributeValue } from '@data-access/interfaces/attribute.interface';
+import { LOOKS_FROM_RENDERS, PICTURE_LOOKS } from '@data-access/interfaces/product-detail.interface';
 import { IProduct, ISelectedVariant, IVariation } from '@data-access/interfaces/product.interface';
 
 import { Button } from '../button/button';
@@ -31,6 +32,11 @@ export class VariantAttributes {
 	public soldOutAttributesIds: number[] = [];
 	public selectedOptions: ISelectedVariant[] = [];
 	public selectedVariation: IVariation | null;
+
+	/** Picture row, picture chip, Size V2 and colour chip share one item (brief P6). */
+	isRenderLook(style: string | undefined): boolean {
+		return LOOKS_FROM_RENDERS.includes(style as never);
+	}
 
 	ngOnChanges(changes: SimpleChanges) {
 		setTimeout(() => {
@@ -84,7 +90,7 @@ export class VariantAttributes {
 		product?.variations?.forEach((variation) => {
 			const attrValues = (variation?.attribute_values ?? []).map((attribute_value) => attribute_value?.id);
 			(product?.attributes ?? []).forEach((attribute) => {
-				if (attribute.style !== 'image') return;
+				if (!PICTURE_LOOKS.includes(attribute.style)) return;
 				attribute.attribute_values.forEach((attribute_value) => {
 					// A term with its own square swatch keeps it; otherwise it shows the variant's photo.
 					if (attribute_value.variation_image) return;

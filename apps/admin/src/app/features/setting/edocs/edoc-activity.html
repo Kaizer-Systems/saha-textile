@@ -1,0 +1,86 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'edoc_activity_title'"
+>
+	<p class="text-muted">{{ 'edoc_activity_intro' | transloco }}</p>
+	@if (down(); as call) {
+	<div
+		class="alert alert-danger d-flex align-items-start gap-2"
+		id="edoc_down"
+	>
+		<i
+			class="ri-wifi-off-line"
+			aria-hidden="true"
+		></i>
+		<div>{{ 'edoc_activity_down' | transloco: { when: (call.at | date: 'd MMM, h:mm a') } }}</div>
+	</div>
+	}
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'edoc_col_when' | transloco }}</th>
+					<th>GSTIN</th>
+					<th>{{ 'edoc_path' | transloco }}</th>
+					<th>{{ 'edoc_col_action' | transloco }}</th>
+					<th>{{ 'edoc_col_document' | transloco }}</th>
+					<th>{{ 'edoc_col_result' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of rows(); track row.id) {
+				<tr>
+					<td class="text-nowrap">{{ row.at | date: 'd MMM, h:mm a' }}</td>
+					<td class="text-nowrap">{{ row.gstin }}</td>
+					<td>{{ 'edoc_path_' + row.path + '_name' | transloco }}</td>
+					<td>{{ 'edoc_action_' + row.action | transloco }}</td>
+					<td class="text-nowrap">{{ row.documentNumber ?? '—' }}</td>
+					<td>
+						<div
+							class="d-inline-block"
+							[class.status-success]="row.ok"
+							[class.status-danger]="!row.ok"
+						>
+							<span>{{ (row.ok ? 'edoc_result_ok' : 'edoc_result_failed') | transloco }}</span>
+						</div>
+						@if (row.code || row.message) {
+						<small class="d-block text-muted">
+							{{ row.code }}{{ row.message ? ' · ' + row.message : '' }}
+						</small>
+						}
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="6"
+						class="text-muted py-4 text-center"
+					>
+						{{ 'edoc_activity_empty' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if (pages() > 1) {
+	<nav class="custom-pagination">
+		<ul class="pagination justify-content-center">
+			@for (p of [].constructor(pages()); track $index) {
+			<li
+				class="page-item"
+				[class.active]="page() === $index + 1"
+			>
+				<a
+					class="page-link"
+					href="javascript:void(0)"
+					(click)="page.set($index + 1)"
+				>
+					{{ $index + 1 }}
+				</a>
+			</li>
+			}
+		</ul>
+	</nav>
+	}
+</app-page-wrapper>

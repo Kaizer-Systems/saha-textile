@@ -1,0 +1,213 @@
+// A sketch, not the shop: plain admin colours (named admin colours and the theme colour, so dark mode follows) and
+// each look's shape only. Lines are drawn from the text colour, so they hold on light and dark cards alike.
+.look-preview {
+	margin-top: 10px;
+	padding: 10px 12px;
+	border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+	border-radius: 8px;
+	background-color: color-mix(in srgb, var(--theme-color) 4%, transparent);
+	font-size: 13px;
+}
+
+.look-preview.is-compact {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+}
+
+.look-preview-head {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	gap: 4px 12px;
+	margin-bottom: 8px;
+}
+
+.look-preview-title {
+	font-weight: 600;
+}
+
+.look-preview-note,
+.look-preview-help {
+	color: var(--admin-muted);
+	font-size: 12px;
+}
+
+.look-preview-help {
+	margin: 8px 0 0;
+}
+
+.lp-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.lp-item {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 30px;
+	padding: 3px 10px;
+	border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+	border-radius: 6px;
+
+	&.is-on {
+		border-color: var(--theme-color);
+		box-shadow: 0 0 0 1px var(--theme-color);
+	}
+}
+
+.lp-text {
+	display: grid;
+	line-height: 1.2;
+}
+
+.lp-note {
+	color: var(--admin-muted);
+	font-size: 11.5px;
+}
+
+.lp-pic {
+	flex: none;
+	width: 26px;
+	height: 26px;
+	border-radius: 50%;
+	object-fit: cover;
+}
+
+// A square of the picture drawn by its background (the swatch cut pop-up): no image cut is made in the browser.
+.lp-cut {
+	display: inline-block;
+	background-repeat: no-repeat;
+}
+
+.lp-blank {
+	display: inline-block;
+	background-color: color-mix(in srgb, currentColor 16%, transparent);
+}
+
+.lp-dot {
+	flex: none;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	background-color: color-mix(in srgb, currentColor 16%, transparent);
+	box-shadow: inset 0 0 0 1px rgb(0 0 0 / 15%);
+}
+
+.lp-ring {
+	flex: none;
+	width: 14px;
+	height: 14px;
+	border: 2px solid color-mix(in srgb, currentColor 40%, transparent);
+	border-radius: 50%;
+
+	.is-on & {
+		border-color: var(--theme-color);
+		background: radial-gradient(circle, var(--theme-color) 0 3px, transparent 3.5px);
+	}
+}
+
+.lp-select {
+	display: inline-flex;
+	justify-content: space-between;
+	gap: 24px;
+	min-width: 180px;
+	padding: 5px 10px;
+	border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+	border-radius: 6px;
+}
+
+// Each look's shape.
+.lp-circle .lp-item {
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	border-radius: 50%;
+}
+
+.lp-color_swatch .lp-item {
+	padding: 3px;
+	border-radius: 50%;
+
+	.lp-dot {
+		width: 24px;
+		height: 24px;
+	}
+}
+
+.lp-image_swatch .lp-item {
+	padding: 3px;
+
+	.lp-pic {
+		width: 40px;
+		height: 40px;
+		border-radius: 4px;
+	}
+}
+
+.lp-radio .lp-item {
+	min-height: 0;
+	padding: 0;
+	border: 0;
+	box-shadow: none;
+}
+
+.lp-radio,
+.lp-radio_bar {
+	flex-direction: column;
+	align-items: stretch;
+}
+
+.lp-radio_bar .lp-item .lp-text {
+	display: flex;
+	flex: 1;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.lp-image_tile .lp-item {
+	flex-direction: column;
+	padding: 6px;
+	text-align: center;
+
+	.lp-pic {
+		width: 56px;
+		height: 56px;
+		border-radius: 4px;
+	}
+}
+
+.lp-picture_row {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+
+	.lp-pic {
+		width: 32px;
+		height: 32px;
+		border-radius: 4px;
+	}
+}
+
+.lp-picture_chip .lp-item,
+.lp-colour_chip .lp-item {
+	padding: 2px 10px 2px 2px;
+	border-radius: 999px;
+}
+
+.lp-colour_chip .lp-dot {
+	margin: 2px 0 2px 4px;
+}
+
+.lp-size_v2 .lp-item {
+	flex-direction: column;
+	justify-content: center;
+	min-width: 52px;
+	text-align: center;
+}

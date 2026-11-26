@@ -1,0 +1,16 @@
+/**=====================
+    Choice box CSS Start
+==========================**/
+// A box picked with its radio: an address, a payment method, a standing, a coupon (orders and
+// checkout brief ck01, ad07, bz05, cp06; owner, 2026-11-20). The chosen one carries `is-chosen`, a
+// ring in the theme colour. An outline draws it, so nothing moves or resizes when the choice
+// changes, and it follows the box's own rounded corners. A line needs only 3 : 1, so the bright
+// theme colour serves in both light and dark mode, and there is no dark twin.
+.is-chosen {
+	outline: 2px solid var(--theme-color);
+	outline-offset: -2px;
+}
+
+/**=====================
+    Choice box CSS End
+==========================**/

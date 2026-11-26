@@ -14,7 +14,9 @@ export function injectProductsQuery(params: () => Params) {
 	}));
 }
 
-export function injectCatalogProductsQuery(query: () => { search?: string; page?: number; pageSize?: number }) {
+export function injectCatalogProductsQuery(
+	query: () => { search?: string; page?: number; pageSize?: number; missing?: string | null },
+) {
 	const productService = inject(ProductService);
 	return injectQuery(() => ({
 		queryKey: ['catalog-products', query()],

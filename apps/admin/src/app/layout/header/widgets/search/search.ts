@@ -1,99 +1,223 @@
-import { Component, ElementRef, Renderer2, inject, viewChild } from '@angular/core';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
+import { Component, ElementRef, PLATFORM_ID, computed, inject, signal, viewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router } from '@angular/router';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { filter, map } from 'rxjs';
 
-import { IMenu } from '@data-access/interfaces/menu.interface';
+import {
+	AdminSearchEntry,
+	QUICK_LINKS,
+	canOpen,
+	entryForUrl,
+	indexEntry,
+	searchAdmin,
+	searchEntries,
+} from '@core/admin-search/admin-search';
+import { AuthStore } from '@core/state/auth.store';
 import { NavService } from '@data-access/services/nav.service';
 import * as data from '@shared/data/menu';
 import { ClickOutsideDirective } from '@shared/directives/out-side-directive';
 
+/** Recently opened places, kept in this browser only. */
+const RECENT_KEY = 'st_admin_recent_pages';
+const RECENT_MAX = 5;
+
+interface ResultGroup {
+	titleKey: string;
+	entries: AdminSearchEntry[];
+}
+
+/**
+ * The header search (owner brief, approved 2026-11-10). The theme's own search box, with a
+ * dropdown of admin places drawn from Bootstrap's card and list classes and the theme colour
+ * classes, so it follows the Brand Kit colour and dark mode with no styles of its own.
+ */
 @Component({
 	selector: 'app-search',
 	templateUrl: './search.html',
 	styleUrls: ['./search.scss'],
-	imports: [ReactiveFormsModule, FormsModule, ClickOutsideDirective, RouterModule, TranslocoModule],
+	imports: [ClickOutsideDirective, TranslocoModule],
+	host: { '(document:keydown)': 'onDocumentKey($event)' },
 })
 export class Search {
-	navServices = inject(NavService);
-	private renderer = inject(Renderer2);
+	readonly navServices = inject(NavService);
+	private readonly router = inject(Router);
+	private readonly transloco = inject(TranslocoService);
+	private readonly authStore = inject(AuthStore);
+	private readonly page = inject(DOCUMENT);
+	private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
-	public menuItems: IMenu[];
-	public items: IMenu[] = data.menu;
+	readonly input = viewChild<ElementRef<HTMLInputElement>>('searchInput');
+	readonly form = viewChild<ElementRef<HTMLFormElement>>('searchForm');
 
-	public searchResult: boolean = false;
-	public searchResultEmpty: boolean = false;
-	public text: string;
-	public open = false;
+	private readonly entries = searchEntries(data.menu);
+	private readonly language = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+	/** Fires once a language file has loaded, so hints are indexed in the language shown. */
+	private readonly loaded = toSignal(
+		this.transloco.events$.pipe(filter((event) => event.type === 'translationLoadSuccess')),
+	);
 
-	readonly toggleButton = viewChild<ElementRef>('toggleButton');
-	readonly menu = viewChild<ElementRef>('menu');
-	readonly dropdownContainer = viewChild<ElementRef>('dropdownContainer');
+	readonly query = signal('');
+	readonly open = signal(false);
+	readonly active = signal(0);
+	readonly place = signal({ left: 0, top: 0, width: 600 });
+	private readonly recentIds = signal<string[]>(this.readRecent());
 
-	closeSearch() {
+	private readonly allowed = computed(() => {
+		const held = this.authStore.permissions();
+		return this.entries.filter((entry) => canOpen(entry, held));
+	});
+
+	private readonly index = computed(() => {
+		this.language();
+		this.loaded();
+		return this.allowed().map((entry) => indexEntry(entry, (key) => this.transloco.translate(key)));
+	});
+
+	readonly outcome = computed(() => searchAdmin(this.index(), this.query()));
+
+	readonly groups = computed<ResultGroup[]>(() => {
+		const query = this.query().trim();
+		const byId = new Map(this.allowed().map((entry) => [entry.id, entry]));
+		const recent = this.recentIds()
+			.map((id) => byId.get(id))
+			.filter((entry): entry is AdminSearchEntry => !!entry);
+		if (query) {
+			const found = this.outcome().entries;
+			const shown = new Set(found.map((entry) => entry.id));
+			const groups: ResultGroup[] = [];
+			if (found.length) groups.push({ titleKey: 'search_group_pages', entries: found });
+			const alsoRecent = found.length ? recent.filter((entry) => !shown.has(entry.id)).slice(0, 1) : [];
+			if (alsoRecent.length) groups.push({ titleKey: 'search_group_recent', entries: alsoRecent });
+			return groups;
+		}
+		const quick = QUICK_LINKS.map((id) => byId.get(id)).filter(
+			(entry): entry is AdminSearchEntry => !!entry && !recent.slice(0, 3).includes(entry),
+		);
+		return [
+			{ titleKey: 'search_group_recent', entries: recent.slice(0, 3) },
+			{ titleKey: 'search_group_go_to', entries: quick },
+		].filter((group) => group.entries.length);
+	});
+
+	/** Every row in display order, for the arrow keys. */
+	readonly rows = computed(() => this.groups().flatMap((group) => group.entries));
+
+	constructor() {
+		this.router.events
+			.pipe(
+				filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+				map((event) => entryForUrl(this.entries, event.urlAfterRedirects)),
+			)
+			.subscribe((entry) => entry && this.remember(entry.id));
+	}
+
+	/** Trail of a row: its menu path, in the language shown. */
+	trail(entry: AdminSearchEntry): string[] {
+		return entry.trailKeys.length ? entry.trailKeys : ['search_home'];
+	}
+
+	isActive(entry: AdminSearchEntry): boolean {
+		return this.rows()[this.active()] === entry;
+	}
+
+	focusRow(entry: AdminSearchEntry): void {
+		this.active.set(Math.max(0, this.rows().indexOf(entry)));
+	}
+
+	type(value: string): void {
+		this.query.set(value);
+		this.active.set(0);
+		this.show();
+	}
+
+	show(): void {
+		this.open.set(true);
+		this.measure();
+		// Opening can move the box (the theme animates it), so measure again once it has settled.
+		if (this.isBrowser) this.page.defaultView?.requestAnimationFrame(() => this.measure());
+	}
+
+	/**
+	 * Places the dropdown under the box, at least 600 px wide and inside the window. It is
+	 * positioned inside the theme's form, which can carry a transform, so the numbers are relative to it.
+	 */
+	private measure(): void {
+		const box = this.input()?.nativeElement.getBoundingClientRect();
+		const frame = this.form()?.nativeElement.getBoundingClientRect();
+		if (!box || !frame || !this.isBrowser) return;
+		const viewport = this.page.defaultView?.innerWidth ?? 1200;
+		const width = Math.min(Math.max(600, box.width + 24), viewport - 16);
+		const left = Math.min(Math.max(8, box.left - 12), viewport - width - 8);
+		this.place.set({ left: left - frame.left, top: box.bottom + 8 - frame.top, width });
+	}
+
+	close(): void {
+		this.open.set(false);
+	}
+
+	closeSearch(): void {
+		this.close();
 		this.navServices.search = false;
 	}
 
-	openDropDown(text: string) {
-		text && (this.searchResult = !this.searchResult);
-		var element = document.getElementsByTagName('body')[0];
-		element.classList.toggle('overlay-search');
-	}
-
-	searchTerm(term?: string) {
-		// if (!term) return (this.menuItems = []);
-		if (term) {
-			this.addFix();
-			let items: IMenu[] = [];
-			term = term.toLowerCase();
-			this.items.filter((menuItems) => {
-				if (!menuItems?.title) return false;
-
-				if (menuItems.title.toLowerCase().includes(term!) && menuItems.type === 'link') {
-					items.push(menuItems);
-				}
-				if (!menuItems.children) return false;
-				menuItems.children.filter((subItems: IMenu) => {
-					if (subItems.title?.toLowerCase().includes(term!) && subItems.type === 'link') {
-						subItems.icon = menuItems.icon;
-						items.push(subItems);
-					}
-					if (!subItems.children) return false;
-					subItems.children.filter((suSubItems: IMenu) => {
-						if (suSubItems.title?.toLowerCase().includes(term!)) {
-							suSubItems.icon = menuItems.icon;
-							items.push(suSubItems);
-						}
-					});
-					return items;
-				});
-				return (this.checkSearchResultEmpty(items), (this.menuItems = items));
-			});
-		} else {
-			this.removeFix();
-			return (this.menuItems = []);
+	onKey(event: KeyboardEvent): void {
+		const count = this.rows().length;
+		if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+			event.preventDefault();
+			if (!this.open()) this.show();
+			if (count) this.active.set((this.active() + (event.key === 'ArrowDown' ? 1 : count - 1)) % count);
+		} else if (event.key === 'Enter') {
+			event.preventDefault();
+			const entry = this.rows()[this.active()];
+			if (entry) this.go(entry);
+		} else if (event.key === 'Escape') {
+			this.close();
+			this.input()?.nativeElement.blur();
 		}
-		return this.menuItems;
 	}
 
-	checkSearchResultEmpty(items: IMenu[]) {
-		if (!items.length) this.searchResultEmpty = true;
-		else this.searchResultEmpty = false;
+	/** ⌘K or Ctrl K from any admin page. */
+	onDocumentKey(event: KeyboardEvent): void {
+		if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+			event.preventDefault();
+			this.navServices.search = true;
+			this.input()?.nativeElement.focus();
+			this.show();
+		}
 	}
 
-	addFix() {
-		this.searchResult = true;
-		document.getElementsByTagName('body')[0].classList.add('overlay-search');
+	go(entry: AdminSearchEntry): void {
+		this.remember(entry.id);
+		this.query.set('');
+		this.closeSearch();
+		this.input()?.nativeElement.blur();
+		void this.router.navigate([entry.path], {
+			...(entry.queryParams ? { queryParams: entry.queryParams } : {}),
+			...(entry.fragment ? { fragment: entry.fragment } : {}),
+		});
 	}
 
-	removeFix() {
-		this.searchResult = false;
-		this.text = '';
-		document.getElementsByTagName('body')[0].classList.remove('overlay-search');
+	private remember(id: string): void {
+		const next = [id, ...this.recentIds().filter((seen) => seen !== id)].slice(0, RECENT_MAX);
+		this.recentIds.set(next);
+		if (!this.isBrowser) return;
+		try {
+			this.page.defaultView?.localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+		} catch {
+			// A browser that refuses storage keeps the list for this visit only.
+		}
 	}
 
-	clickOutside(): void {
-		this.searchResult = false;
+	private readRecent(): string[] {
+		if (!this.isBrowser) return [];
+		try {
+			const stored: unknown = JSON.parse(this.page.defaultView?.localStorage.getItem(RECENT_KEY) ?? '[]');
+			return Array.isArray(stored) ? stored.filter((id): id is string => typeof id === 'string') : [];
+		} catch {
+			return [];
+		}
 	}
 }

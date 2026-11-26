@@ -1,0 +1,14 @@
+// Named admin colours, dark mode: the twins of utils/_admin-colours.scss, from the theme's own dark
+// palette (#0b141d page, #1c2128 card, #1d3436 lines, #98a6ad secondary). Under `body.dark-only`,
+// so the build moves them to the dark file and light pages never download them.
+body.dark-only {
+	// Bright teal reads on the dark card (5.2 : 1); fills keep the deeper teal under white text.
+	--theme-ink: var(--theme-color);
+	--theme-ink-on-tint: color-mix(in srgb, var(--theme-color) 70%, #fff);
+	--admin-ink-2: #c3cad1;
+	--admin-muted: #98a6ad;
+	--admin-ok: #4cc38a;
+	--admin-warn: #f2c66d;
+	--admin-bad: #ff9b93;
+	--admin-info: #7dc4f0;
+}

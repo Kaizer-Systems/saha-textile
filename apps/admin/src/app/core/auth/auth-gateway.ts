@@ -1,4 +1,4 @@
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
 
 /**
  * The admin application's authentication boundary.
@@ -34,6 +34,8 @@ export interface AdminSessionInfo {
 	audience: string;
 	expiresAt: string;
 	refreshExpiresAt: string;
+	/** The 15-minute lock is up on the server: show it before anything else, even after a reload. */
+	locked?: boolean;
 }
 
 export interface AdminMe {
@@ -133,6 +135,15 @@ export interface AdminInviteAcceptInput {
 }
 
 export abstract class AdminAuthGateway {
+	/**
+	 * The day everyone was signed out after a key leak (`yyyy-mm-dd`), when this browser's session was
+	 * one of them and it happened within 30 days; otherwise null (Release Path brief, 2026-11-23).
+	 * Nothing to say by default; the HTTP gateway asks the API.
+	 */
+	sessionNotice(): Observable<string | null> {
+		return of(null);
+	}
+
 	/** Resolves the signed-in operator plus current permissions, or `null` when anonymous. */
 	abstract currentUser(): Observable<AdminMe | null>;
 
@@ -248,6 +259,15 @@ export abstract class AdminAuthGateway {
 	 */
 	abstract refreshSession(): Observable<void>;
 
+	/** Puts the server-held 15-minute lock up for this session (idempotent). */
+	abstract lockSession(): Observable<void>;
+
+	/**
+	 * Tells the server the operator is present. Sent at most once a minute while someone types,
+	 * clicks or scrolls; background reads never send it, so they cannot keep a session unlocked.
+	 */
+	abstract markActivity(): Observable<void>;
+
 	/**
 	 * True when a `401` from this URL means "these credentials were refused" rather than
 	 * "this session expired".
@@ -276,4 +296,15 @@ export abstract class AdminAuthGateway {
 	 * a new one, and a successful resume is direct evidence that session is alive.
 	 */
 	abstract isSessionEstablishingEndpoint(url: string): boolean;
+
+	/**
+	 * True when a `401` from this URL refuses a proof of presence on a session that stays alive:
+	 * the PIN or password typed on the 15-minute lock. The server keeps the session (and its
+	 * lock), so a typo there must not sign the operator out and throw away the form behind the
+	 * lock; the store asks the server whether the session lives instead. The server's attempt
+	 * limits and PIN lockout still apply.
+	 */
+	isPresenceProofEndpoint(_url: string): boolean {
+		return false;
+	}
 }

@@ -1,0 +1,156 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'payroll_statutory'"
+>
+	<div class="d-flex align-items-baseline mb-3 flex-wrap gap-2">
+		<h5 class="mb-0">{{ 'payroll_statutory' | transloco }}</h5>
+		<small class="text-muted">{{ 'payroll_statutory_sub' | transloco }}</small>
+	</div>
+	<div class="d-flex mb-3 gap-2">
+		<button
+			type="button"
+			class="btn btn-sm"
+			[class.btn-theme]="tab() === 'due'"
+			[class.btn-outline]="tab() !== 'due'"
+			(click)="tab.set('due')"
+		>
+			{{ 'payroll_statutory_due' | transloco }} {{ split().due.length }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-sm"
+			[class.btn-theme]="tab() === 'filed'"
+			[class.btn-outline]="tab() !== 'filed'"
+			(click)="tab.set('filed')"
+		>
+			{{ 'payroll_statutory_filed' | transloco }} {{ split().filed.length }}
+		</button>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'payroll_col_return' | transloco }}</th>
+					<th>{{ 'payroll_col_for' | transloco }}</th>
+					<th>{{ 'payroll_col_due' | transloco }}</th>
+					<th>{{ 'payroll_col_amount' | transloco }}</th>
+					<th>{{ 'payroll_col_file' | transloco }}</th>
+					<th>{{ 'payroll_col_status' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (r of shown(); track r.kind + r.period + (r.stateCode ?? '')) {
+				<tr>
+					<td>
+						{{ 'payroll_return_' + r.kind | transloco }} @if (r.stateCode) {
+						<small class="d-block text-muted">{{ stateName(r.stateCode) }}</small>
+						}
+					</td>
+					<td>{{ period(r) }}</td>
+					<td>{{ day(r.due) }}</td>
+					<td class="text-nowrap">{{ money(r.amountPaise) }}</td>
+					<td>
+						<button
+							type="button"
+							class="btn btn-link p-0"
+							(click)="download(r)"
+						>
+							{{ 'payroll_file_' + r.kind | transloco }}
+						</button>
+					</td>
+					<td>
+						@if (r.status === 'filed') {
+						<span class="badge bg-light text-dark border">
+							{{ 'payroll_statutory_status_filed' | transloco: { date: day(r.filedOn), ref: r.reference }
+							}}
+						</span>
+						} @else {
+						<span class="badge bg-light text-dark border">
+							{{ 'payroll_statutory_status_' + r.status | transloco }}
+						</span>
+						@if (r.status === 'ready') {
+						<button
+							*hasPermission="'accounts.post'"
+							type="button"
+							class="btn btn-sm btn-outline ms-2"
+							(click)="open(fileModal, r)"
+						>
+							{{ 'payroll_mark_filed' | transloco }}
+						</button>
+						} }
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="6"
+						class="text-muted"
+					>
+						{{ 'payroll_statutory_none' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<ng-template
+		#fileModal
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="modal-title">{{ 'payroll_mark_filed_title' | transloco: { what: filingName() } }}</h5>
+			<button
+				type="button"
+				class="btn-close"
+				[attr.aria-label]="'close' | transloco"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			<label
+				class="form-label-title"
+				for="stat_ref"
+			>
+				{{ 'payroll_filed_reference' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="stat_ref"
+				maxlength="60"
+				[ngModel]="reference()"
+				(ngModelChange)="reference.set($event)"
+			/>
+			<label
+				class="form-label-title mt-3"
+				for="stat_on"
+			>
+				{{ 'payroll_filed_on' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="stat_on"
+				type="date"
+				[ngModel]="filedOn()"
+				(ngModelChange)="filedOn.set($event)"
+			/>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				[disabled]="busy() || !reference().trim()"
+				(click)="markFiled()"
+			>
+				{{ 'payroll_mark_filed' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+</app-page-wrapper>

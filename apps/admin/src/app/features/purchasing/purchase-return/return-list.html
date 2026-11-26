@@ -1,0 +1,42 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'purchase_returns'"
+>
+	<div
+		*hasPermission="'purchase_return.create'"
+		button
+	>
+		<a
+			[routerLink]="['/purchase-returns/create']"
+			class="align-items-center btn btn-theme d-flex"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'new_purchase_return' | transloco }}
+		</a>
+	</div>
+	<app-table
+		[tableConfig]="tableConfig()"
+		[searchPlaceholder]="'pr_search_placeholder'"
+		(tableChanged)="onTableChange($event)"
+		(rowClicked)="open($event)"
+		(action)="onAction($event)"
+	>
+		<div
+			tableFilters
+			class="d-flex flex-wrap gap-2"
+		>
+			@for (item of filters; track item.key) {
+			<button
+				type="button"
+				class="align-items-center btn btn-sm d-flex"
+				[class.btn-theme]="filter() === item.key"
+				[class.btn-outline]="filter() !== item.key"
+				[attr.aria-pressed]="filter() === item.key"
+				(click)="setFilter(item.key)"
+			>
+				{{ item.label | transloco }} @if (item.key !== 'all' && counts()[item.key]) { {{ counts()[item.key] }} }
+			</button>
+			}
+		</div>
+	</app-table>
+</app-page-wrapper>

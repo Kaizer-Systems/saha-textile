@@ -5,6 +5,8 @@
  *   pnpm e2e:stack                     build, seed, start everything, test, stop
  *   pnpm e2e:stack -- --keep           leave the stack running afterwards, for inspection
  *   pnpm e2e:stack -- --serve          start the stack and wait; no tests
+ *   pnpm e2e:stack -- --speed          the speed gate (scripts/speed-gate.mjs) instead of the tests;
+ *                                      SPEED_GATE_ENFORCE=true makes a score below the floor fail
  *   pnpm e2e:stack -- e2e/admin.spec.ts --project=desktop
  *
  * Everything lands in `saha_textile_e2e` and the `products_e2e` search index, never in the
@@ -18,6 +20,8 @@ import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { testDatabaseUri } from '../../scripts/secrets/test-login.mjs';
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const DATABASE = 'saha_textile_e2e';
 const SEARCH_INDEX = 'products_e2e';
@@ -27,14 +31,27 @@ const STOREFRONT_PORT = '4210';
 const args = process.argv.slice(2).filter((arg) => arg !== '--');
 const keep = args.includes('--keep');
 const serveOnly = args.includes('--serve');
-const playwrightArgs = args.filter((arg) => arg !== '--keep' && arg !== '--serve');
+const speed = args.includes('--speed');
+const playwrightArgs = args.filter((arg) => arg !== '--keep' && arg !== '--serve' && arg !== '--speed');
 
 const envFile = resolve(ROOT, 'apps/api/.env');
 if (existsSync(envFile)) process.loadEnvFile(envFile);
 
+// The shop's own database login (apps/api/.env) reaches only its own database. This one is reached
+// with this Mac's test login, when there is one (scripts/secrets/test-login.mjs).
+const DATABASE_URI = testDatabaseUri({
+	host: process.env.MONGODB_HOST,
+	port: process.env.MONGODB_PORT,
+	replicaSet: process.env.MONGODB_REPLICA_SET,
+	database: DATABASE,
+});
+
 const env = {
 	...process.env,
 	MONGODB_DB_NAME: DATABASE,
+	MONGODB_URI: DATABASE_URI,
+	MONGODB_USERNAME: '',
+	MONGODB_PASSWORD: '',
 	MEILISEARCH_INDEX: SEARCH_INDEX,
 	OTP_LOCAL_FIXED_CODE: process.env.OTP_LOCAL_FIXED_CODE || '123456',
 	NOTIFICATION_PROVIDER: 'console',
@@ -91,12 +108,7 @@ async function waitFor(label, url) {
 async function resetDatabase() {
 	const require = createRequire(resolve(ROOT, 'packages/adapters-db-mongo/package.json'));
 	const mongoose = require('mongoose');
-	const host = env.MONGODB_HOST || '127.0.0.1';
-	const port = env.MONGODB_PORT || '27017';
-	const replicaSet = env.MONGODB_REPLICA_SET || 'rs0';
-	const connection = await mongoose
-		.createConnection(`mongodb://${host}:${port}/${DATABASE}?replicaSet=${replicaSet}&directConnection=true`)
-		.asPromise();
+	const connection = await mongoose.createConnection(DATABASE_URI).asPromise();
 	await connection.dropDatabase();
 	await connection.close();
 }
@@ -123,12 +135,19 @@ process.on('SIGINT', () => {
 // Node reads the local CA from the system store, as the storefront's server-side fetches need.
 env.NODE_OPTIONS = '--use-system-ca';
 
-run('Build the apps', 'pnpm', ['build:product-apps']);
+// apps/api/.env says NODE_ENV=development, which would build the shop in Angular's development
+// mode and leave the service worker off. Only the build is forced: a production API refuses the
+// fixed test OTP.
+run('Build the apps', 'pnpm', ['build:product-apps'], { env: { ...env, NODE_ENV: 'production' } });
 await resetDatabase();
 run('Seed reference data', 'pnpm', ['--filter', '@saha-textile/adapters-db-mongo', 'seed']);
 run('Seed the demo catalogue', 'pnpm', ['--filter', '@saha-textile/adapters-db-mongo', 'seed:demo-catalogue']);
+// Home's blog section and the blog pages need live posts; covers are made once, as this stack runs no image worker.
+run('Seed the blog posts', 'pnpm', ['--filter', '@saha-textile/api', 'seed:e2e-blog']);
 const adminPassword = createTestAdmin();
 run('Fill the search index', 'pnpm', ['--filter', '@saha-textile/api', 'search:rebuild']);
+// The same release steps a deployment runs (legal pages, Today's home page, picture versions…), each once.
+run('Release steps', 'node', ['dist/release-steps.js'], { cwd: resolve(ROOT, 'apps/api') });
 
 start('API', 'node', ['dist/main.js'], { cwd: resolve(ROOT, 'apps/api') });
 start('Storefront', 'node', ['dist/analog/server/index.mjs'], {
@@ -151,12 +170,31 @@ await waitFor('Storefront', 'https://localhost:4200/en');
 await waitFor('Admin', 'https://localhost:4300/');
 delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
 
-const playwrightEnv = { ...env, E2E_ADMIN_EMAIL: ADMIN_EMAIL, E2E_ADMIN_PASSWORD: adminPassword };
+const playwrightEnv = {
+	...env,
+	E2E_PRODUCTION_BUILDS: '1',
+	E2E_ADMIN_EMAIL: ADMIN_EMAIL,
+	E2E_ADMIN_PASSWORD: adminPassword,
+};
 
 if (serveOnly) {
 	process.stdout.write(`Stack is up on ${DATABASE}. Press Ctrl+C to stop.\n`);
 	process.stdout.write(`E2E_ADMIN_EMAIL=${ADMIN_EMAIL}\nE2E_ADMIN_PASSWORD=${adminPassword}\n`);
 	await new Promise(() => {});
+}
+
+if (speed) {
+	const gate = spawnSync(
+		'node',
+		[
+			'scripts/speed-gate.mjs',
+			'https://localhost:4200',
+			...(env.SPEED_GATE_ENFORCE === 'true' ? ['--enforce'] : []),
+		],
+		{ cwd: ROOT, env, stdio: 'inherit' },
+	);
+	stopAll();
+	process.exit(gate.status ?? 1);
 }
 
 const tests = spawnSync('pnpm', ['exec', 'playwright', 'test', ...playwrightArgs], {

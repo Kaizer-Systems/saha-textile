@@ -1,0 +1,111 @@
+@let o = order();
+<ul class="st-order-lines">
+	@for (group of groups(); track group.line.lineId) { @let line = group.line;
+	<li
+		class="st-order-line"
+		[class.is-set]="line.role === 'bundle'"
+		[class.has-kids]="group.children.length > 0"
+	>
+		<div class="st-order-line-main">
+			<img
+				class="st-order-line-photo"
+				[src]="line.imageUrl ?? 'assets/images/product.png'"
+				alt=""
+				width="64"
+				height="84"
+				loading="lazy"
+				decoding="async"
+			/>
+			<div class="st-order-line-text">
+				@if (line.role === 'bundle') {
+				<span class="st-piece-chip is-set">{{ 'cart_set_chip' | transloco }}</span>
+				}
+				<h6 class="st-order-line-name">{{ line.title }}</h6>
+				@if (line.details.length) {
+				<div class="st-order-line-tags">
+					@for (detail of line.details; track $index) {
+					<span>{{ detail }}</span>
+					}
+				</div>
+				} @if (line.role === 'bundle' && line.set) {
+				<small class="st-order-line-sub">
+					{{ (line.set.heading === 'choose' ? 'choose_your_set' : 'bundle_components') | transloco }} · {{
+					(group.counts.pieces === 1 ? 'cart_set_pieces_one' : 'cart_set_pieces') | transloco: { count:
+					group.counts.pieces } }}@if (group.counts.extras) { {{ 'cart_set_extras' | transloco: { count:
+					group.counts.extras } }} }
+				</small>
+				} @else if (group.counts.free) {
+				<small class="st-order-line-sub is-free">
+					<i
+						class="ri-gift-line"
+						aria-hidden="true"
+					></i>
+					{{ (group.counts.free === 1 ? 'cart_set_free_one' : 'cart_set_free') | transloco: { count:
+					group.counts.free } }}
+				</small>
+				} @if (line.set?.saved) {
+				<span class="st-order-line-saved">
+					<i
+						class="ri-price-tag-3-line"
+						aria-hidden="true"
+					></i>
+					{{ 'my_order_saved_pill' | transloco: { amount: money(line.set.saved, o.currency) } }}
+				</span>
+				}
+			</div>
+		</div>
+		<div class="st-order-line-money">
+			<span>{{ money(line.unitPrice, o.currency) }} × {{ line.quantity }}</span>
+			<b>{{ money(line.lineTotal, o.currency) }}</b>
+		</div>
+		@if (group.children.length) {
+		<ol class="st-order-kids">
+			@for (child of group.children; track child.line.lineId) { @let kid = child.line;
+			<li
+				class="st-order-kid"
+				[class.is-free]="kid.role === 'free'"
+				[class.is-depth-2]="child.depth === 2"
+				[class.has-rail]="child.rail"
+			>
+				<span class="st-order-kid-photo">
+					<img
+						[src]="kid.imageUrl ?? 'assets/images/product.png'"
+						alt=""
+						width="40"
+						height="52"
+						loading="lazy"
+						decoding="async"
+					/>
+					@if (child.number) {
+					<span class="st-order-kid-no">{{ child.number }}</span>
+					}
+				</span>
+				<span class="st-order-kid-text">
+					@if (kid.role === 'free') {
+					<span class="st-piece-chip is-free">{{ 'free' | transloco }}</span>
+					} @else if (kid.role === 'extra') {
+					<span class="st-piece-chip">{{ 'cart_extra' | transloco }}</span>
+					}
+					<span class="st-order-kid-name">{{ kid.title }}</span>
+					<span class="st-order-kid-sub">
+						@if (kid.details.length) { {{ kid.details.join(' · ') }} · } × {{ kid.quantity }}
+					</span>
+				</span>
+				<span class="st-order-kid-price">
+					@if (kid.role === 'free') { @if (kid.mrp) {
+					<del>{{ money(kid.mrp, o.currency) }}</del>
+					}
+					<b class="is-free">{{ 'free' | transloco }}</b>
+					} @else if (kid.role === 'extra') {
+					<b>+{{ money(kid.lineTotal, o.currency) }}</b>
+					} @else {
+					<span>{{ 'included' | transloco }}</span>
+					}
+				</span>
+			</li>
+			}
+		</ol>
+		}
+	</li>
+	}
+</ul>

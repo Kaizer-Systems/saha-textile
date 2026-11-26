@@ -1,2 +1,4 @@
 /* You can add global styles to this file, and also import other style files */
+// Self-hosted text fonts (fonts.css, written by scripts/self-host-fonts.mjs), then the theme.
+@import 'fonts';
 @import '../public/assets/scss/app.scss';

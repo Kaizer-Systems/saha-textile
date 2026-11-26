@@ -1,12 +1,19 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { PLATFORM_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
-import { BehaviorSubject, of, throwError } from 'rxjs';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ConsentStore } from '@core/consent/consent.store';
+import { ACTIVE_LOCALE } from '@core/i18n/active-locale';
+import { LocaleSeo } from '@core/i18n/locale-seo';
 import { SiteConfigStore } from '@core/state/site-config.store';
+import { ContactMessageService, type ContactMessageRequest } from '@data-access/services/contact-message.service';
+import { NotificationService } from '@data-access/services/notification.service';
 import { ProductService } from '@data-access/services/product.service';
 
 import { ContactUs } from './contact-us/contact-us';
@@ -30,9 +37,28 @@ vi.mock('@data-access/queries/product.queries', () => ({
 	},
 }));
 
+const stores = signal<unknown>(undefined);
+const brand = signal<unknown>(undefined);
+vi.mock('@data-access/queries/store-location.queries', () => ({ injectStoreLocationsQuery: () => ({ data: stores }) }));
+vi.mock('@data-access/queries/brand.queries', () => ({ injectBrandQuery: () => ({ data: brand }) }));
+const photo = {
+	assetId: 'p1',
+	width: 1600,
+	height: 1200,
+	dominantColor: null,
+	roles: {
+		store_photo: [
+			{ url: 'https://cdn.test/400.webp', width: 400, height: 300 },
+			{ url: 'https://cdn.test/800.webp', width: 800, height: 600 },
+		],
+	},
+};
+
 const translate = { provide: TranslocoService, useValue: { selectTranslate: () => of('Title') } };
 
 afterEach(() => {
+	stores.set(undefined);
+	brand.set(undefined);
 	page.set(undefined);
 	catalog.set(undefined);
 	fetching.set(false);
@@ -40,23 +66,128 @@ afterEach(() => {
 });
 
 describe('ContactUs', () => {
-	const render = () => {
+	const motion = { reduce: false };
+	beforeEach(() => {
+		motion.reduce = false;
+		window.matchMedia = vi.fn(() => ({ matches: motion.reduce })) as never;
+	});
+	const render = (locale = 'en') => {
 		const siteConfig = signal<unknown>(null);
+		const contact = {
+			answer: new Subject<{ accepted: boolean }>(),
+			send: vi.fn((_body: ContactMessageRequest) => contact.answer),
+		};
+		const modals = { open: vi.fn() };
+		const notifications = { showError: vi.fn() };
+		const seo = {
+			applyJsonLd: vi.fn(),
+			removeJsonLd: vi.fn(),
+			applyDocument: vi.fn(),
+			applyBreadcrumbList: vi.fn(),
+		};
 		TestBed.resetTestingModule();
 		TestBed.configureTestingModule({
-			providers: [translate, { provide: SiteConfigStore, useValue: { siteConfig } }],
+			providers: [
+				{
+					provide: TranslocoService,
+					useValue: { selectTranslate: () => of('Contact Us'), translate: (key: string) => `t:${key}` },
+				},
+				{ provide: Router, useValue: { url: '/contact-us' } },
+				{ provide: SiteConfigStore, useValue: { siteConfig } },
+				{ provide: LocaleSeo, useValue: seo },
+				{ provide: ContactMessageService, useValue: contact },
+				{ provide: NgbModal, useValue: modals },
+				{ provide: NotificationService, useValue: notifications },
+				{ provide: ACTIVE_LOCALE, useValue: locale },
+			],
 		});
 		TestBed.overrideComponent(ContactUs, { set: { imports: [], template: '' } });
 		const form = TestBed.createComponent(ContactUs).componentInstance;
 		TestBed.tick();
-		return { form, siteConfig };
+		return { form, siteConfig, seo, contact, modals, notifications };
 	};
 
-	it('keeps the map back until there is consent or a click', () => {
+	it('names and describes itself, with its Home › Contact Us trail', () => {
+		const { form, seo } = render();
+		expect(form.breadcrumb()?.title).toBe('Contact Us');
+		// The page draws its own "Contact Us" h1, so no hidden one is added.
+		expect(form.breadcrumb()?.hiddenHeading).toBeUndefined();
+		expect(seo.applyDocument).toHaveBeenCalledWith({
+			title: 'Contact Us | Saha Textile',
+			description: 't:contact_us_meta_description',
+			robots: undefined,
+		});
+		expect(seo.applyBreadcrumbList).toHaveBeenCalledWith('page-crumbs', 't:home', [
+			{ name: 'Contact Us', path: '/contact-us' },
+		]);
+		TestBed.resetTestingModule();
+		expect(seo.removeJsonLd).toHaveBeenCalledWith('page-crumbs');
+	});
+
+	it('shows the active stores, writes their structured data and takes it away on leaving', () => {
+		const { form, seo } = render();
+		expect(form.stores()).toEqual([]);
+		expect(seo.applyJsonLd).not.toHaveBeenCalled();
+		stores.set([
+			{
+				name: 'Barasat',
+				address: 'KB Basu Rd',
+				pinCode: '700124',
+				mapUrl: 'https://maps.google.com/?cid=1',
+				phone: '+913325521595',
+				geo: { lat: 22.7, lng: 88.4 },
+				hours: [
+					{ day: 'mon', open: true, opens: '10:00', closes: '21:00' },
+					{ day: 'tue', open: true, opens: '10:00', closes: '21:00' },
+					{ day: 'sun', open: false, opens: null, closes: null },
+				],
+				photos: [photo],
+			},
+			{
+				name: 'Agartala',
+				address: 'Colonel Chowmuhani',
+				pinCode: '799001',
+				mapUrl: 'u',
+				phone: null,
+				geo: null,
+				hours: [],
+				photos: [],
+			},
+		]);
+		TestBed.tick();
+		expect(form.stores()).toHaveLength(2);
+		const data = seo.applyJsonLd.mock.calls.at(-1)?.[1] as { '@graph': Record<string, unknown>[] };
+		expect(data['@graph'][0]).toMatchObject({
+			name: 'Barasat',
+			telephone: '+913325521595',
+			image: 'https://cdn.test/800.webp',
+			geo: { latitude: 22.7, longitude: 88.4 },
+			openingHoursSpecification: [{ dayOfWeek: ['Monday', 'Tuesday'], opens: '10:00', closes: '21:00' }],
+		});
+		expect(data['@graph'][1]).not.toHaveProperty('telephone');
+		expect(data['@graph'][1]).not.toHaveProperty('image');
+		form.ngOnDestroy();
+		expect(seo.removeJsonLd).toHaveBeenCalledWith('stores-jsonld');
+	});
+
+	it('picks photo sizes and the seal', () => {
 		const { form } = render();
-		expect(form.mapShown()).toBe(false);
-		form.mapRequested.set(true);
-		expect(form.mapShown()).toBe(true);
+		expect(form.src(photo as never)).toBe('https://cdn.test/800.webp');
+		expect(form.src({ roles: { store_photo: [{ url: 'small', width: 400, height: 300 }] } } as never)).toBe(
+			'small',
+		);
+		expect(form.src({ roles: {} } as never)).toBe('');
+		expect(form.srcset(photo as never)).toContain('800w');
+		expect(form.seal()).toBeNull();
+		brand.set({ seal: { url: 's.png' } });
+		TestBed.tick();
+		expect(form.seal()).toEqual({ url: 's.png' });
+		expect(form.interval).toBe(4000);
+	});
+
+	it('keeps the photos still for visitors who ask for less motion', () => {
+		motion.reduce = true;
+		expect(render().form.interval).toBe(0);
 	});
 
 	it('reads the contact details', () => {
@@ -67,24 +198,87 @@ describe('ContactUs', () => {
 		expect(form.contactData).toEqual({ title: 'Hi' });
 	});
 
-	it('clears only a complete message', () => {
-		const { form } = render();
+	it('sends nothing until the form is complete, then sends once and thanks the customer', () => {
+		const { form, contact, modals } = render();
 		form.form.patchValue({ name: 'A' });
 		form.submit();
-		expect(form.form.value.name).toBe('A');
-		form.form.patchValue({ email: 'a@b.co', phone: '1', subject: 's', message: 'm' });
+		expect(contact.send).not.toHaveBeenCalled();
+		form.form.patchValue({
+			name: 'Rina',
+			email: 'rina@x.test',
+			subject: 'Blouse',
+			message: 'Do you stitch blouses?',
+		});
 		form.submit();
+		form.submit();
+		expect(contact.send).toHaveBeenCalledTimes(1);
+		expect(contact.send.mock.calls[0]?.[0]).toMatchObject({ name: 'Rina', phone: '', locale: 'en', website: '' });
+		expect(contact.send.mock.calls[0]?.[0].elapsedMs).toBeGreaterThanOrEqual(0);
+		contact.answer.next({ accepted: true });
+		contact.answer.complete();
+		expect(form.sending()).toBe(false);
 		expect(form.form.value.name).toBeNull();
+		expect(modals.open).toHaveBeenCalledTimes(1);
+	});
+
+	it('tells the customer when they sent too many, or when sending failed', () => {
+		const { form, contact, notifications } = render('bn');
+		const fill = () =>
+			form.form.patchValue({
+				name: 'Rina',
+				email: 'rina@x.test',
+				subject: 'Blouse',
+				message: 'Do you stitch blouses?',
+			});
+		fill();
+		form.submit();
+		expect(contact.send.mock.calls[0]?.[0].locale).toBe('bn');
+		contact.answer.error(new HttpErrorResponse({ status: 429 }));
+		expect(notifications.showError).toHaveBeenLastCalledWith('t:contact_too_many');
+		expect(form.form.value.name).toBe('Rina');
+		contact.answer = new Subject();
+		form.submit();
+		contact.answer.error(new Error('offline'));
+		expect(notifications.showError).toHaveBeenLastCalledWith('t:contact_not_sent');
+		expect(form.sending()).toBe(false);
 	});
 });
 
 describe('StaticPage', () => {
+	const seo = { applyDocument: vi.fn(), applyBreadcrumbList: vi.fn(), removeJsonLd: vi.fn() };
 	const render = (url: string) => {
+		vi.clearAllMocks();
 		TestBed.resetTestingModule();
-		TestBed.configureTestingModule({ providers: [{ provide: Router, useValue: { url } }] });
+		TestBed.configureTestingModule({
+			providers: [
+				{ provide: Router, useValue: { url } },
+				{ provide: LocaleSeo, useValue: seo },
+				{
+					provide: TranslocoService,
+					useValue: { translate: (key: string) => (key === 'home' ? 'Home' : key) },
+				},
+			],
+		});
 		TestBed.overrideComponent(StaticPage, { set: { imports: [], template: '' } });
 		return TestBed.createComponent(StaticPage).componentInstance;
 	};
+
+	it('names itself, describes itself and gives its trail once the page arrives, and takes the trail away', () => {
+		render('/terms-conditions');
+		TestBed.tick();
+		expect(seo.applyDocument).not.toHaveBeenCalled();
+		page.set({ title: 'Terms', content: '<p>These terms apply.</p>' });
+		TestBed.tick();
+		expect(seo.applyDocument).toHaveBeenCalledWith({
+			title: 'Terms | Saha Textile',
+			description: '<p>These terms apply.</p>',
+		});
+		expect(seo.applyBreadcrumbList).toHaveBeenCalledWith('page-crumbs', 'Home', [
+			{ name: 'Terms', path: '/terms-conditions' },
+		]);
+		TestBed.resetTestingModule();
+		expect(seo.removeJsonLd).toHaveBeenCalledWith('page-crumbs');
+	});
 
 	it('takes the slug from the address', () => {
 		expect(render('/privacy-policy/?x=1#top').slug).toBe('privacy-policy');
@@ -134,8 +328,12 @@ describe('Search page', () => {
 	const render = (query: Record<string, string> = {}, platform = 'browser') => {
 		const params = new BehaviorSubject<Record<string, string>>(query);
 		const router = { navigate: vi.fn() };
-		const service = { search: vi.fn(() => of<unknown[]>([{ id: 1 }])) };
+		const service = {
+			search: vi.fn(() => of<{ items: unknown[]; total: number }>({ items: [{ id: 1 }], total: 30 })),
+			searchClick: vi.fn(),
+		};
 		const route = { queryParams: params };
+		const consent = { allows: vi.fn(() => true) };
 		TestBed.resetTestingModule();
 		TestBed.configureTestingModule({
 			providers: [
@@ -143,31 +341,49 @@ describe('Search page', () => {
 				{ provide: ActivatedRoute, useValue: route },
 				{ provide: Router, useValue: router },
 				{ provide: ProductService, useValue: service },
+				{ provide: ConsentStore, useValue: consent },
 				{ provide: PLATFORM_ID, useValue: platform },
 			],
 		});
 		TestBed.overrideComponent(Search, { set: { imports: [], template: '' } });
 		const fixture = TestBed.createComponent(Search);
 		fixture.detectChanges();
-		return { view: fixture.componentInstance, params, router, service, route };
+		return { view: fixture.componentInstance, params, router, service, route, consent };
 	};
 
-	it('shows the catalogue with no term', () => {
-		const { view, service } = render();
+	afterEach(() => localStorage.clear());
+
+	it('shows the catalogue, a page at a time, with no term', () => {
+		const { view, service } = render({ page: '2' });
 		fetching.set(true);
 		expect(view.loading()).toBe(true);
 		expect(view.products()).toEqual([]);
-		catalog.set({ data: [{ id: 9 }] });
+		catalog.set({ data: [{ id: 9 }], total: 50 });
 		expect(view.products()).toEqual([{ id: 9 }]);
+		expect(view.total()).toBe(50);
+		expect(view.page()).toBe(2);
 		expect(service.search).not.toHaveBeenCalled();
 	});
 
-	it('searches in the browser for a term in the address', () => {
-		const { view, service } = render({ search: 'silk' });
-		expect(service.search).toHaveBeenCalledWith('silk');
+	it('searches the page in the address as a committed search', () => {
+		const { view, service } = render({ search: ' silk ', page: '3' });
+		expect(service.search).toHaveBeenCalledWith('silk', { page: 3, pageSize: 24, source: 'page' });
 		expect(view.products()).toEqual([{ id: 1 }]);
+		expect(view.total()).toBe(30);
 		expect(view.loading()).toBe(false);
 		expect(view.search.value).toBe('silk');
+	});
+
+	it('does not count a search again when Back or Forward returns to it', () => {
+		const { service, params, router } = render();
+		Object.assign(router, { currentNavigation: () => ({ trigger: 'popstate' }) });
+		params.next({ search: 'silk' });
+		expect(service.search).toHaveBeenLastCalledWith('silk', { page: 1, pageSize: 24, source: 'typeahead' });
+	});
+
+	it('treats a broken page number as page 1', () => {
+		const { service } = render({ search: 'silk', page: 'two' });
+		expect(service.search).toHaveBeenCalledWith('silk', expect.objectContaining({ page: 1 }));
 	});
 
 	it('waits for the browser on the server', () => {
@@ -185,23 +401,46 @@ describe('Search page', () => {
 		expect(parts.view.products()).toEqual([]);
 	});
 
-	it('updates the address on submit', () => {
-		const { view, router, route } = render();
-		view.search.setValue('cotton');
+	it('puts new words in the address from page 1, and remembers them with consent', () => {
+		const { view, router, route, consent } = render();
+		view.search.setValue('  red   silk ');
 		view.searchProduct();
-		expect(router.navigate).toHaveBeenCalledWith([], { relativeTo: route, queryParams: { search: 'cotton' } });
-		expect(view.filter()['search']).toBe('cotton');
+		expect(router.navigate).toHaveBeenLastCalledWith([], {
+			relativeTo: route,
+			queryParams: { search: 'red silk', page: null },
+		});
+		expect(localStorage.getItem('st_search')).toContain('red silk');
+		view.searchProduct('jamdani');
+		expect(router.navigate.mock.lastCall?.[1].queryParams).toEqual({ search: 'jamdani', page: null });
+		consent.allows.mockReturnValue(false);
+		view.searchProduct('tant');
+		expect(localStorage.getItem('st_search')).not.toContain('tant');
+		view.searchProduct('   ');
+		expect(router.navigate.mock.lastCall?.[1].queryParams).toEqual({ search: null, page: null });
 	});
 
-	it('clears the search when the box is emptied, and ignores typing', () => {
-		vi.useFakeTimers();
-		const { view, router, route } = render({ search: 'silk' });
-		view.search.setValue('co');
-		vi.advanceTimersByTime(300);
-		expect(router.navigate).not.toHaveBeenCalled();
-		view.search.setValue('');
-		vi.advanceTimersByTime(300);
-		expect(router.navigate).toHaveBeenCalledWith([], { relativeTo: route, queryParams: { search: '' } });
-		expect(view.filter()['search']).toBe('');
+	it('moves between pages in the address', () => {
+		const { view, router } = render({ search: 'silk' });
+		view.setPage(2);
+		expect(router.navigate).toHaveBeenLastCalledWith(
+			[],
+			expect.objectContaining({ queryParams: { page: 2 }, queryParamsHandling: 'merge' }),
+		);
+		view.setPage(1);
+		expect(router.navigate.mock.lastCall?.[1].queryParams).toEqual({ page: null });
+	});
+
+	it('counts a product opened from the results, and only from its link', () => {
+		const { view, service } = render({ search: 'silk' });
+		const product = { id: 7, slug: 'red-silk' } as never;
+		const link = document.createElement('a');
+		link.setAttribute('href', '/en/product/red-silk');
+		const inner = document.createElement('img');
+		link.append(inner);
+		view.openedFromResults({ target: document.createElement('button') } as never, product);
+		expect(service.searchClick).not.toHaveBeenCalled();
+		view.openedFromResults({ target: inner } as never, product);
+		expect(service.searchClick).toHaveBeenCalledWith('silk', 7);
+		expect(localStorage.getItem('st_search')).toContain('red-silk');
 	});
 });

@@ -16,13 +16,19 @@ export interface PricedRow {
 	quantity: number;
 }
 
+/** Free to sell: on hand less held pieces and pieces kept for orders. The only stock number the shop uses. */
+export function freeToSellOf(row: ProductVariant): number {
+	return row.stock.quantity - (row.stock.held ?? 0) - (row.stock.reserved ?? 0);
+}
+
 export function pricedRow(row: ProductVariant, madeToOrder: boolean): PricedRow {
+	const free = freeToSellOf(row);
 	return {
 		sellingINR: sellingPriceINR(row.priceINR, row.salePriceINR),
 		mrpINR: mrpPriceINR(row.priceINR, row.compareAtPriceINR, row.salePriceINR),
-		buyable: row.status === 'live' && (row.stock.quantity > 0 || madeToOrder),
+		buyable: row.status === 'live' && (free > 0 || madeToOrder),
 		live: row.status === 'live',
-		quantity: row.stock.quantity,
+		quantity: free,
 	};
 }
 

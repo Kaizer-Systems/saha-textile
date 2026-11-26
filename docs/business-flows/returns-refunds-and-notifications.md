@@ -4,7 +4,7 @@ wide: true
 description: Item return, financial reversal, shipment consequences, and multi-channel communication boundaries.
 status: planned
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-21'
 source_of_truth:
     - apps/storefront/src/app/shared/ui/modal/refund-modal
     - apps/admin/src/app/features/refund
@@ -12,6 +12,9 @@ source_of_truth:
     - apps/api/.env.example
     - apps/api/src/config/app-config.ts
     - packages/contracts/src/notification.ts
+    - packages/core-domain/src/orders/order-notices.ts
+    - apps/api/src/admin-orders/order-notices.service.ts
+    - apps/api/src/shop-checkout/shop-payments.service.ts
     - packages/contracts/src/consent.ts
     - packages/contracts/src/audit.ts
     - docs/engineering-live-context/codex-catalog-db-architecture-assessment-and-plan.mdx
@@ -20,7 +23,9 @@ source_of_truth:
 
 # Returns, refunds, and notifications
 
-This page describes how returns, refunds and customer messages work together. Notifications are built. Returns and refunds are planned: the storefront and admin have refund screens, but no backend.
+This page describes how returns, refunds and customer messages work together. Notifications are built, and order changes send their messages as listed in [Customer messages](/business-flows/admin-ordering-and-zones#customer-messages).
+
+Refunds the shop makes by itself are built: a shop payment that arrives after its pieces sold, or that reaches an order already cancelled, is refunded in full through the gateway with our own refund reference (`R` and the attempt id), so a repeated refund can't pay twice. The attempt keeps the refund's outcome, the payment is marked refunded once the gateway accepts it, and the customer gets `order_refunded_sold_out` or `refund_processed`. Returns, and refunds started by staff, are planned: the storefront and admin refund screens have no backend.
 
 ## Separate lifecycles
 
@@ -80,11 +85,13 @@ The MSG91 adapter applies channel kill-switches, plan limits and marketing conse
 | Transactional | OTP, order status, shipment, refund, security | Sent subject to legal and provider rules                    |
 | Marketing     | Campaigns, promotions, abandoned cart         | Needs explicit consent, with its own caps and kill-switches |
 
+A launch or sale event's message is a marketing message. Publishing the event sends it by email only, to customers who agreed to marketing. SMS and WhatsApp wait for approved MSG91 templates. Contact Us messages do not use `NotificationPort`: they go to the shop's connected Gmail mailbox.
+
 ## Channel settings
 
 Each channel and category pair has one settings row, held in the database and changed only by holders of `setting.edit`. A row can record a plan limit and a warning threshold, which defaults to 80%. With `autoDisableAtLimit` on, reaching the limit stops the pair. Settings hold no provider secrets.
 
-Every attempt writes an outbox row with a hashed destination. A suppressed send is an expected outcome, not an error. Its status is `suppressed_channel_disabled`, `suppressed_no_consent` or `suppressed_plan_limit`.
+Every attempt writes an outbox row with a hashed destination. A suppressed send is an expected outcome, not an error. Its status is `suppressed_channel_disabled`, `suppressed_use_disabled`, `suppressed_no_consent` or `suppressed_plan_limit`. `suppressed_use_disabled` means Settings › Communications has that message switched off on that channel; the channel kill switch is checked first and still wins. See [Communications](../admin/communications.md).
 
 ## Delivery rules
 
@@ -118,6 +125,6 @@ Every attempt writes an outbox row with a hashed destination. A suppressed send 
 
 ## Limitations
 
-- No return or refund collection, route or provider call exists.
+- No return collection or route exists, and staff can't start a refund; the only refunds are the shop's automatic full refunds.
 - Optional email fallback providers are configuration values only; no fallback adapter exists.
 - The SMS adapter sends the Flow id as both `template_id` and `flow_id`, until a live send confirms which field MSG91 uses.

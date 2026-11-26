@@ -1,5 +1,15 @@
-import type { MediaAsset } from '@saha-textile/contracts';
-import type { MediaAssetFilter, MediaAssetRepository, Paginated } from '@saha-textile/core-domain';
+import type { MediaAsset, MediaReplacement, SpotLuminance } from '@saha-textile/contracts';
+import {
+	type MediaAssetFilter,
+	type MediaAssetRepository,
+	type MediaCutRepository,
+	type WordSpotsRepository,
+	type MediaBrowseFilter,
+	type MediaBrowseRepository,
+	type Paginated,
+	mediaCategory,
+	searchWords,
+} from '@saha-textile/core-domain';
 
 import { MediaAssetModel, type MediaAssetDoc } from '../models/index';
 import { MEDIA_OWNER_REGISTRY } from './media-owner-registry';
@@ -21,6 +31,11 @@ const toAsset = (doc: MediaAssetDoc): MediaAsset =>
 		height: doc.height ?? null,
 		slug: doc.slug ?? 'image',
 		derivatives: doc.derivatives ?? [],
+		versions: doc.versions ?? [],
+		replacing: doc.replacing ?? null,
+		focal: doc.focal ?? null,
+		cutFrom: doc.cutFrom ?? null,
+		keptFiles: doc.keptFiles ?? [],
 		dominantColor: doc.dominantColor ?? null,
 		thumbHash: doc.thumbHash ?? null,
 		visibility: doc.visibility ?? 'public',
@@ -40,21 +55,58 @@ const toAsset = (doc: MediaAssetDoc): MediaAsset =>
 		status: doc.status,
 		uploadedBy: doc.uploadedBy ?? null,
 		deletedAt: isoOrNull(doc.deletedAt),
+		folderId: doc.folderId ?? null,
+		displayName: doc.displayName ?? null,
+		sha256: doc.sha256 ?? null,
+		trashedAt: isoOrNull(doc.trashedAt),
+		trashedFrom: doc.trashedFrom ?? null,
 		createdAt: iso(doc.createdAt),
 		updatedAt: iso(doc.updatedAt),
 	}) as MediaAsset;
 
 /** The persisted shape of an asset, minus the id and timestamps Mongo owns. */
 const toDoc = (asset: MediaAsset) => {
-	const { id: _id, deletedAt, createdAt: _createdAt, updatedAt: _updatedAt, processing, ...rest } = asset;
+	const { id: _id, deletedAt, createdAt: _createdAt, updatedAt: _updatedAt, processing, trashedAt, ...rest } = asset;
 	return {
 		...rest,
 		processing: { ...processing, processedAt: dateOrNull(processing.processedAt) },
 		deletedAt: dateOrNull(deletedAt),
+		folderId: asset.folderId ?? null,
+		displayName: asset.displayName ?? null,
+		sha256: asset.sha256 ?? null,
+		trashedAt: dateOrNull(trashedAt ?? null),
+		trashedFrom: asset.trashedFrom ?? null,
+		// Stored so the Media page can filter by it with an index.
+		category: mediaCategory(asset.originalFormat, asset.displayName ?? asset.slug),
 	};
 };
 
-export class MongoMediaAssetRepository implements MediaAssetRepository {
+/** The bytes an asset takes, for the size sort. */
+const sizeField = {
+	$add: [
+		{ $ifNull: ['$originalByteSize', 0] },
+		{ $sum: { $map: { input: { $ifNull: ['$derivatives', []] }, as: 'd', in: { $ifNull: ['$$d.byteSize', 0] } } } },
+	],
+};
+
+/** Photos (not deleted, not in Trash) holding a ready version of this profile made with settings before `version`. */
+const olderVersionsFilter = (profileKey: string, version: number) => ({
+	deletedAt: null,
+	trashedAt: null,
+	versions: { $elemMatch: { profileKey, state: 'ready', profileVersion: { $lt: version } } },
+});
+
+export class MongoMediaAssetRepository
+	implements MediaAssetRepository, MediaBrowseRepository, WordSpotsRepository, MediaCutRepository
+{
+	/** The words check's measurement on one version (Page Builder SG-1); the rest of the photo is left as it is. */
+	async setWordSpots(assetId: string, versionId: string, spots: SpotLuminance[]): Promise<void> {
+		await MediaAssetModel.collection.updateOne(
+			{ _id: assetId as never, 'versions.id': versionId },
+			{ $set: { 'versions.$.wordSpots': spots } },
+		);
+	}
+
 	async findById(assetId: string): Promise<MediaAsset | null> {
 		const doc = await MediaAssetModel.findById(assetId).lean<MediaAssetDoc>().exec();
 		return doc ? toAsset(doc) : null;
@@ -110,6 +162,27 @@ export class MongoMediaAssetRepository implements MediaAssetRepository {
 	 * (`MEDIA_OWNER_REGISTRY`). Assets are REUSABLE, so detaching one owner must never delete
 	 * bytes another still renders.
 	 */
+	/** A photo's swatch cuts (brief P11), oldest first; not ones in Trash or deleted. */
+	async findCutsOf(photoId: string): Promise<MediaAsset[]> {
+		const docs = await MediaAssetModel.find({ 'cutFrom.assetId': photoId, deletedAt: null, trashedAt: null })
+			.sort({ createdAt: 1 })
+			.lean<MediaAssetDoc[]>()
+			.exec();
+		return docs.map(toAsset);
+	}
+
+	/** Swatch cuts made before this moment and not deleted (the daily sweep checks each one's uses). */
+	async findCutsMadeBefore(before: Date): Promise<MediaAsset[]> {
+		const docs = await MediaAssetModel.find({
+			'cutFrom.assetId': { $type: 'string' },
+			deletedAt: null,
+			createdAt: { $lt: before },
+		})
+			.lean<MediaAssetDoc[]>()
+			.exec();
+		return docs.map(toAsset);
+	}
+
 	async countReferences(assetId: string): Promise<number> {
 		const counts = await Promise.all(
 			MEDIA_OWNER_REGISTRY.map((owner) => owner.model.countDocuments({ [owner.path]: assetId }).exec()),
@@ -129,10 +202,197 @@ export class MongoMediaAssetRepository implements MediaAssetRepository {
 		return doc ? toAsset(doc) : null;
 	}
 
+	async settleVersions(input: Parameters<MediaAssetRepository['settleVersions']>[0]): Promise<MediaAsset | null> {
+		const { processing, ...facts } = input.set;
+		const $set: Record<string, unknown> = {
+			...facts,
+			'processing.state': processing.state,
+			'processing.error': processing.error,
+			'processing.processedAt': dateOrNull(processing.processedAt),
+		};
+		const arrayFilters = input.versions.map((version, index) => ({ [`v${index}.id`]: version.id }));
+		input.versions.forEach((version, index) => {
+			$set[`versions.$[v${index}]`] = version;
+		});
+		const doc = await MediaAssetModel.findOneAndUpdate(
+			{ _id: input.assetId },
+			{
+				$set,
+				...(input.addDerivatives.length
+					? { $push: { derivatives: { $each: [...input.addDerivatives] } } }
+					: {}),
+			},
+			{ arrayFilters, returnDocument: 'after' },
+		)
+			.lean<MediaAssetDoc>()
+			.exec();
+		return doc ? toAsset(doc) : null;
+	}
+
+	/**
+	 * One write for Reprocess: new versions must still be missing and retried ones still failed, or nothing changes
+	 * (another admin got there first; the caller reads the photo again). A pipeline update, because a push and an
+	 * in-place change to the same list can't share one ordinary update.
+	 */
+	async addVersions(input: Parameters<MediaAssetRepository['addVersions']>[0]): Promise<MediaAsset | null> {
+		if (!input.add.length && !input.retry.length) return this.findById(input.assetId);
+		const guards: Record<string, unknown>[] = [];
+		if (input.add.length) guards.push({ 'versions.id': { $nin: input.add.map((version) => version.id) } });
+		for (const version of input.retry)
+			guards.push({ versions: { $elemMatch: { id: version.id, state: 'failed' } } });
+		const current = { $ifNull: ['$versions', []] };
+		const kept = input.retry.length
+			? {
+					$map: {
+						input: current,
+						as: 'v',
+						in: {
+							$switch: {
+								branches: input.retry.map((version) => ({
+									case: { $eq: ['$$v.id', version.id] },
+									then: { $literal: version },
+								})),
+								default: '$$v',
+							},
+						},
+					},
+				}
+			: current;
+		// Not while a Replace runs: its swap writes every version at once (step 3b).
+		guards.push({ $or: [{ replacing: null }, { 'replacing.phase': 'failed' }] });
+		const doc = await MediaAssetModel.findOneAndUpdate(
+			{ _id: input.assetId, deletedAt: null, $and: guards },
+			[{ $set: { versions: { $concatArrays: [kept, { $literal: [...input.add] }] } } }],
+			{ returnDocument: 'after', updatePipeline: true },
+		)
+			.lean<MediaAssetDoc>()
+			.exec();
+		return doc ? toAsset(doc) : null;
+	}
+
+	async startReplace(assetId: string, replacing: MediaReplacement): Promise<MediaAsset | null> {
+		const doc = await MediaAssetModel.findOneAndUpdate(
+			{
+				_id: assetId,
+				deletedAt: null,
+				$or: [{ replacing: null }, { 'replacing.phase': 'failed' }],
+				'versions.state': { $ne: 'making' },
+			},
+			{ $set: { replacing } },
+			{ returnDocument: 'after' },
+		)
+			.lean<MediaAssetDoc>()
+			.exec();
+		return doc ? toAsset(doc) : null;
+	}
+
+	async moveReplace(
+		assetId: string,
+		from: readonly MediaReplacement['phase'][],
+		change: Partial<MediaReplacement> | null,
+	): Promise<MediaAsset | null> {
+		const $set: Record<string, unknown> = {};
+		if (change === null) $set['replacing'] = null;
+		else for (const [field, value] of Object.entries(change)) $set[`replacing.${field}`] = value;
+		const doc = await MediaAssetModel.findOneAndUpdate(
+			{ _id: assetId, 'replacing.phase': { $in: [...from] } },
+			{ $set },
+			{ returnDocument: 'after' },
+		)
+			.lean<MediaAssetDoc>()
+			.exec();
+		return doc ? toAsset(doc) : null;
+	}
+
+	async finishReplace(input: Parameters<MediaAssetRepository['finishReplace']>[0]): Promise<MediaAsset | null> {
+		const doc = await MediaAssetModel.findOneAndUpdate(
+			{ _id: input.assetId, 'replacing.phase': 'making' },
+			{
+				$set: {
+					...input.set,
+					derivatives: [...input.derivatives],
+					versions: [...input.versions],
+					keptFiles: [...input.keptFiles],
+					replacing: null,
+				},
+			},
+			{ returnDocument: 'after' },
+		)
+			.lean<MediaAssetDoc>()
+			.exec();
+		return doc ? toAsset(doc) : null;
+	}
+
+	async listWithOlderVersions(input: {
+		profileKey: string;
+		version: number;
+		after: string | null;
+		limit: number;
+	}): Promise<MediaAsset[]> {
+		const docs = await MediaAssetModel.find({
+			...olderVersionsFilter(input.profileKey, input.version),
+			...(input.after ? { _id: { $gt: input.after } } : {}),
+		})
+			.sort({ _id: 1 })
+			.limit(input.limit)
+			.lean<MediaAssetDoc[]>()
+			.exec();
+		return docs.map(toAsset);
+	}
+
+	async refreshCounts(
+		profileKey: string,
+		version: number,
+	): Promise<{ older: number; running: number; failed: number }> {
+		const mine = { 'replacing.reason': 'refresh', 'replacing.profileKey': profileKey, deletedAt: null };
+		const [older, running, failed] = await Promise.all([
+			MediaAssetModel.countDocuments(olderVersionsFilter(profileKey, version)).exec(),
+			MediaAssetModel.countDocuments({ ...mine, 'replacing.phase': { $in: ['queued', 'making'] } }).exec(),
+			MediaAssetModel.countDocuments({ ...mine, 'replacing.phase': 'failed' }).exec(),
+		]);
+		return { older, running, failed };
+	}
+
+	async setFocal(assetId: string, focal: { x: number; y: number } | null): Promise<void> {
+		await MediaAssetModel.updateOne({ _id: assetId }, { $set: { focal } }).exec();
+	}
+
+	async listKeptDue(before: string, limit: number): Promise<MediaAsset[]> {
+		const docs = await MediaAssetModel.find({ 'keptFiles.deleteAfter': { $lte: before } })
+			.limit(limit)
+			.lean<MediaAssetDoc[]>()
+			.exec();
+		return docs.map(toAsset);
+	}
+
+	async dropKept(assetId: string, before: string): Promise<void> {
+		await MediaAssetModel.updateOne(
+			{ _id: assetId },
+			{ $pull: { keptFiles: { deleteAfter: { $lte: before } } } },
+		).exec();
+	}
+
+	async removeVersion(assetId: string, versionId: string): Promise<MediaAsset | null> {
+		const doc = await MediaAssetModel.findOneAndUpdate(
+			{ _id: assetId, versions: { $elemMatch: { id: versionId, state: { $ne: 'making' } } } },
+			{ $pull: { versions: { id: versionId }, derivatives: { versionId } } },
+			{ returnDocument: 'before' },
+		)
+			.lean<MediaAssetDoc>()
+			.exec();
+		return doc ? toAsset(doc) : null;
+	}
+
+	/**
+	 * Files made before photo versions existed, older than their role's settings. Files of a version are written
+	 * once (Media brief R4-1): a ladder edit applies to versions made afterwards, never to these.
+	 */
 	async listStaleForRole(input: { role: string; version: number; limit: number }): Promise<MediaAsset[]> {
 		const docs = await MediaAssetModel.find({
 			deletedAt: null,
-			derivatives: { $elemMatch: { role: input.role, roleVersion: { $lt: input.version } } },
+			derivatives: {
+				$elemMatch: { role: input.role, roleVersion: { $lt: input.version }, versionId: { $exists: false } },
+			},
 		})
 			.limit(input.limit)
 			.lean<MediaAssetDoc[]>()
@@ -182,5 +442,264 @@ export class MongoMediaAssetRepository implements MediaAssetRepository {
 	 */
 	async hardDelete(assetId: string): Promise<void> {
 		await MediaAssetModel.deleteOne({ _id: assetId }).exec();
+	}
+	// --- The Media page (step 1) ------------------------------------------------------------
+
+	async browse(filter: MediaBrowseFilter): Promise<Paginated<MediaAsset>> {
+		const query: Record<string, unknown> = { deletedAt: null, trashedAt: filter.trashed ? { $ne: null } : null };
+		if (filter.folderId !== undefined) query.folderId = filter.folderId;
+		if (filter.withinFolders) query.folderId = { $in: [...filter.withinFolders] };
+		if (filter.categories?.length) {
+			const wanted = filter.category
+				? filter.categories.filter((one) => one === filter.category)
+				: filter.categories;
+			query.category = { $in: [...wanted] };
+		} else if (filter.category) query.category = filter.category;
+		if (filter.ids || filter.excludeIds) {
+			query._id = {
+				...(filter.ids ? { $in: [...filter.ids] } : {}),
+				...(filter.excludeIds ? { $nin: [...filter.excludeIds] } : {}),
+			};
+		}
+		if (filter.states?.length) query['processing.state'] = { $in: [...filter.states] };
+		if (filter.minBytes !== undefined || filter.maxBytes !== undefined) {
+			query.originalByteSize = {
+				...(filter.minBytes !== undefined ? { $gte: filter.minBytes } : {}),
+				...(filter.maxBytes !== undefined ? { $lt: filter.maxBytes } : {}),
+			};
+		}
+		if (filter.createdSince || filter.createdBefore) {
+			query.createdAt = {
+				...(filter.createdSince ? { $gte: new Date(filter.createdSince) } : {}),
+				...(filter.createdBefore ? { $lt: new Date(filter.createdBefore) } : {}),
+			};
+		}
+		if (filter.kinds?.length) query.kind = { $in: [...filter.kinds] };
+		if (filter.withVersionOf) {
+			query.versions = { $elemMatch: { profileKey: filter.withVersionOf, state: 'ready' } };
+		} else if (filter.withoutVersionOf) {
+			query.versions = { $not: { $elemMatch: { profileKey: filter.withoutVersionOf, state: 'ready' } } };
+		}
+		// Search (4e): every word must be in the name, the web file name, the alt text or caption in any language,
+		// or the name of the file's folder or a folder above it.
+		const words = searchWords(filter.search);
+		if (words.length) {
+			// Language codes become field names, so only plain codes are read (“en”, “bn”, “pt-BR”).
+			const locales = (filter.searchLocales?.length ? filter.searchLocales : ['en', 'bn']).filter((code) =>
+				/^[a-z]{2,8}(?:-[a-z0-9]{2,8})*$/i.test(code),
+			);
+			query.$and = words.map((word) => {
+				const pattern = new RegExp(escapeRegex(word), 'i');
+				const folders = filter.searchFolders?.[word.toLowerCase()] ?? [];
+				return {
+					$or: [
+						{ displayName: pattern },
+						{ slug: pattern },
+						...locales.flatMap((locale) => [
+							{ [`text.alt.${locale}`]: pattern },
+							{ [`text.caption.${locale}`]: pattern },
+						]),
+						...(folders.length ? [{ folderId: { $in: [...folders] } }] : []),
+					],
+				};
+			});
+		}
+		const direction = filter.direction === 'desc' ? -1 : 1;
+		const page = Math.max(1, filter.page);
+		const pageSize = Math.max(1, filter.pageSize);
+		const sort: Record<string, 1 | -1> =
+			filter.sort === 'created'
+				? { createdAt: direction, _id: direction }
+				: filter.sort === 'size'
+					? { size: direction, _id: 1 }
+					: { sortName: direction, _id: 1 };
+		const [rows, total] = await Promise.all([
+			MediaAssetModel.aggregate<MediaAssetDoc>([
+				{ $match: query },
+				{ $addFields: { size: sizeField, sortName: { $toLower: { $ifNull: ['$displayName', '$slug'] } } } },
+				{ $sort: sort },
+				{ $skip: (page - 1) * pageSize },
+				{ $limit: pageSize },
+			]).exec(),
+			MediaAssetModel.countDocuments(query).exec(),
+		]);
+		return { items: rows.map(toAsset), total, page, pageSize };
+	}
+
+	async findBySha256(hashes: readonly string[]): Promise<MediaAsset[]> {
+		if (!hashes.length) return [];
+		const docs = await MediaAssetModel.find({ sha256: { $in: [...hashes] }, deletedAt: null, trashedAt: null })
+			.lean<MediaAssetDoc[]>()
+			.exec();
+		return docs.map(toAsset);
+	}
+
+	async namesIn(folderId: string | null): Promise<string[]> {
+		const docs = await MediaAssetModel.find({ folderId, deletedAt: null, trashedAt: null })
+			.select({ displayName: 1, slug: 1 })
+			.lean<Pick<MediaAssetDoc, 'displayName' | 'slug'>[]>()
+			.exec();
+		return docs.map((doc) => doc.displayName ?? doc.slug);
+	}
+
+	async findNamedIn(folderId: string | null, names: readonly string[]): Promise<MediaAsset[]> {
+		if (!names.length) return [];
+		const list = [...names];
+		// A file shows its Media name, or its web file name when it has none (older photos).
+		const docs = await MediaAssetModel.find({
+			folderId,
+			deletedAt: null,
+			trashedAt: null,
+			$or: [{ displayName: { $in: list } }, { displayName: null, slug: { $in: list } }],
+		})
+			.collation({ locale: 'en', strength: 2 })
+			.lean<MediaAssetDoc[]>()
+			.exec();
+		return docs.map(toAsset);
+	}
+
+	async moveTo(ids: readonly string[], folderId: string | null): Promise<void> {
+		await MediaAssetModel.updateMany({ _id: { $in: [...ids] } }, { $set: { folderId } }).exec();
+	}
+
+	async rename(id: string, name: string): Promise<void> {
+		await MediaAssetModel.updateOne({ _id: id }, { $set: { displayName: name } }).exec();
+	}
+
+	async setTrashed(
+		ids: readonly string[],
+		at: string | null,
+		from: ReadonlyMap<string, string | null>,
+		restoreTo?: ReadonlyMap<string, string | null>,
+	): Promise<void> {
+		for (const id of ids) {
+			const set = at
+				? { trashedAt: new Date(at), trashedFrom: from.get(id) ?? null }
+				: {
+						trashedAt: null,
+						trashedFrom: null,
+						...(restoreTo?.has(id) ? { folderId: restoreTo.get(id) ?? null } : {}),
+					};
+			await MediaAssetModel.updateOne({ _id: id }, { $set: set }).exec();
+		}
+	}
+
+	async usage(): Promise<{ originals: number; versions: number; files: number; trash: number }> {
+		const rows = await MediaAssetModel.aggregate<{
+			_id: { trashed: boolean; kind: string };
+			originals: number;
+			versions: number;
+		}>([
+			{ $match: { deletedAt: null } },
+			{
+				$group: {
+					_id: { trashed: { $ne: [{ $ifNull: ['$trashedAt', null] }, null] }, kind: '$kind' },
+					originals: { $sum: { $ifNull: ['$originalByteSize', 0] } },
+					versions: { $sum: { $subtract: [sizeField, { $ifNull: ['$originalByteSize', 0] }] } },
+				},
+			},
+		]).exec();
+		const total = { originals: 0, versions: 0, files: 0, trash: 0 };
+		for (const row of rows) {
+			if (row._id.trashed) total.trash += row.originals + row.versions;
+			else if (row._id.kind === 'file') total.files += row.originals;
+			else {
+				total.originals += row.originals;
+				total.versions += row.versions;
+			}
+		}
+		return total;
+	}
+
+	async listTrashedBefore(cutoff: string, limit: number): Promise<MediaAsset[]> {
+		const docs = await MediaAssetModel.find({ trashedAt: { $ne: null, $lte: new Date(cutoff) }, deletedAt: null })
+			.sort({ trashedAt: 1 })
+			.limit(limit)
+			.lean<MediaAssetDoc[]>()
+			.exec();
+		return docs.map(toAsset);
+	}
+
+	async listUnfinishedBefore(cutoff: string, limit: number): Promise<MediaAsset[]> {
+		const docs = await MediaAssetModel.find({
+			'processing.state': 'awaiting_upload',
+			deletedAt: null,
+			createdAt: { $lt: new Date(cutoff) },
+		})
+			.sort({ createdAt: 1 })
+			.limit(limit)
+			.lean<MediaAssetDoc[]>()
+			.exec();
+		return docs.map(toAsset);
+	}
+
+	async totalsByFolder(folderIds: readonly string[]): Promise<{ folderId: string; files: number; bytes: number }[]> {
+		const rows = await MediaAssetModel.aggregate<{ _id: string; files: number; bytes: number }>([
+			{ $match: { folderId: { $in: [...folderIds] }, deletedAt: null, trashedAt: null } },
+			{ $group: { _id: '$folderId', files: { $sum: 1 }, bytes: { $sum: sizeField } } },
+		]).exec();
+		return rows.map((row) => ({ folderId: row._id, files: row.files, bytes: row.bytes }));
+	}
+
+	async referencedIds(): Promise<string[]> {
+		const found = new Set<string>();
+		for (const entry of MEDIA_OWNER_REGISTRY) {
+			for (const value of await entry.model.collection.distinct(entry.path)) {
+				if (typeof value === 'string' && value.startsWith('med_')) found.add(value);
+			}
+		}
+		return [...found];
+	}
+
+	async sameFileGroups(limit: number): Promise<{ sha256: string; ids: string[] }[]> {
+		const groups = await MediaAssetModel.aggregate<{ _id: string; ids: string[] }>([
+			{ $match: { sha256: { $type: 'string' }, deletedAt: null, trashedAt: null } },
+			{ $sort: { createdAt: 1, _id: 1 } },
+			{ $group: { _id: '$sha256', ids: { $push: '$_id' } } },
+			{ $match: { 'ids.1': { $exists: true } } },
+			{ $addFields: { copies: { $size: '$ids' } } },
+			{ $sort: { copies: -1, _id: 1 } },
+			{ $limit: Math.max(1, limit) },
+		]).exec();
+		return groups.map((group) => ({ sha256: group._id, ids: group.ids }));
+	}
+
+	async whereUsed(ids: readonly string[]): Promise<Map<string, string[]>> {
+		const found = new Map<string, string[]>();
+		if (!ids.length) return found;
+		const wanted = new Set(ids);
+		for (const entry of MEDIA_OWNER_REGISTRY) {
+			const owners = await entry.model.collection
+				.find({ [entry.path]: { $in: [...ids] } } as never, {
+					projection: { [entry.path]: 1, title: 1, name: 1, key: 1, slug: 1 },
+				})
+				.toArray();
+			for (const owner of owners) {
+				const name =
+					(owner['title'] as Record<string, string> | undefined)?.['en'] ??
+					(owner['name'] as Record<string, string> | undefined)?.['en'] ??
+					(owner['key'] as string | undefined) ??
+					(owner['slug'] as string | undefined) ??
+					String(owner['_id']);
+				const label = `${entry.owner} · ${name}`;
+				// The owner was found by one of these ids at this path, so its JSON always holds at least one.
+				const values = JSON.stringify(owner).match(/"(med_[^"]+)"/g) as RegExpMatchArray;
+				for (const quoted of new Set(values)) {
+					const id = quoted.slice(1, -1);
+					if (!wanted.has(id)) continue;
+					const list = found.get(id) ?? [];
+					if (!list.includes(label)) list.push(label);
+					found.set(id, list);
+				}
+			}
+		}
+		return found;
+	}
+
+	async listInFolders(folderIds: readonly string[]): Promise<MediaAsset[]> {
+		const docs = await MediaAssetModel.find({ folderId: { $in: [...folderIds] }, deletedAt: null })
+			.lean<MediaAssetDoc[]>()
+			.exec();
+		return docs.map(toAsset);
 	}
 }

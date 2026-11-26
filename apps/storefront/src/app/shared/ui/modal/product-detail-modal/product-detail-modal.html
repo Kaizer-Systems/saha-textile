@@ -88,7 +88,10 @@
 							}
 						</h4>
 						<div class="product-rating">
-							<ngb-rating [rate]="product()!.rating_count" />
+							<ngb-rating
+								[attr.aria-label]="'rating' | transloco"
+								[rate]="product()!.rating_count"
+							/>
 							<div class="fs-14 ms-2">{{ product()?.reviews_count }} {{ 'review' | transloco }}</div>
 						</div>
 						<div class="product-detail mb-2">
@@ -131,6 +134,7 @@
 										[id]="'add-to-cart'+product()?.id"
 										[spinner]="false"
 										(click)="updateQuantity(-1)"
+										[ariaLabel]="'decrease_quantity' | transloco"
 									>
 										<i class="ri-subtract-fill"></i>
 									</app-button>
@@ -140,12 +144,14 @@
 										name="quantity"
 										value="{{productQty}}"
 										readonly
+										[attr.aria-label]="'quantity' | transloco"
 									/>
 									<app-button
 										[class]="'btn qty-left-minus'"
 										[id]="'qty-left-minus'+product()?.id"
 										[spinner]="false"
 										(click)="updateQuantity(1)"
+										[ariaLabel]="'increase_quantity' | transloco"
 									>
 										<i class="ri-add-line"></i>
 									</app-button>

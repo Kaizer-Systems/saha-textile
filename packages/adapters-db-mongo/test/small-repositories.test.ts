@@ -198,7 +198,7 @@ describe.skipIf(!hasMongoEnv())('small repositories (integration, rs0)', () => {
 
 		const field = {
 			code: 'chest',
-			label: { en: 'Chest', fr: 'Poitrine' },
+			label: { en: 'Chest', bn: 'বুক' },
 			unit: 'in' as const,
 			min: 24,
 			max: 50,
@@ -207,16 +207,34 @@ describe.skipIf(!hasMongoEnv())('small repositories (integration, rs0)', () => {
 
 		it('saves every field and every language', async () => {
 			await repo.save({ code: code('plain'), label: { en: 'Plain' }, priceINR: 1, fields: [], sizeGuide: [] });
-			await repo.save({ code: code('full'), label: { en: 'Full', fr: 'Complet' }, priceINR: 2, fields: [field], sizeGuide: [] });
+			await repo.save({
+				code: code('full'),
+				label: { en: 'Full', bn: 'Complet' },
+				priceINR: 2,
+				fields: [field],
+				sizeGuide: [],
+			});
 			const list = await repo.list();
-			expect(row(list, 'plain')).toEqual({ code: code('plain'), label: { en: 'Plain' }, priceINR: 1, fields: [], sizeGuide: [] });
-			expect(row(list, 'full')?.label).toEqual({ en: 'Full', fr: 'Complet' });
+			expect(row(list, 'plain')).toEqual({
+				code: code('plain'),
+				label: { en: 'Plain' },
+				priceINR: 1,
+				fields: [],
+				sizeGuide: [],
+			});
+			expect(row(list, 'full')?.label).toEqual({ en: 'Full', bn: 'Complet' });
 			expect(row(list, 'full')?.fields).toEqual([field]);
 		});
 
 		it('leaves an open range open, and replaces the fields on a later save', async () => {
 			const open = { ...field, min: null, max: null, step: null };
-			await repo.save({ code: code('full'), label: { en: 'Renamed' }, priceINR: 7, fields: [open], sizeGuide: [] });
+			await repo.save({
+				code: code('full'),
+				label: { en: 'Renamed' },
+				priceINR: 7,
+				fields: [open],
+				sizeGuide: [],
+			});
 			const found = await repo.findByCode(code('full'));
 			expect(found).toMatchObject({ label: { en: 'Renamed' }, priceINR: 7 });
 			expect(found?.fields).toEqual([open]);
@@ -231,7 +249,7 @@ describe.skipIf(!hasMongoEnv())('small repositories (integration, rs0)', () => {
 				fields: [
 					{ label: 'Skipped, no code' },
 					{ code: 'text', label: 'Text label', unit: 'cm', validation: { min: 1, max: 2, step: 1 } },
-					{ code: 'french', label: { fr: 'Seulement' } },
+					{ code: 'bengali', label: { bn: 'Seulement' } },
 					{ code: 'none' },
 				],
 			});
@@ -240,7 +258,7 @@ describe.skipIf(!hasMongoEnv())('small repositories (integration, rs0)', () => {
 			expect(found?.label).toEqual({ en: 'Raw' });
 			expect(found?.fields).toEqual([
 				{ code: 'text', label: { en: 'Text label' }, unit: 'cm', min: 1, max: 2, step: 1 },
-				{ code: 'french', label: { fr: 'Seulement' }, unit: 'in', min: null, max: null, step: null },
+				{ code: 'bengali', label: { bn: 'Seulement' }, unit: 'in', min: null, max: null, step: null },
 				{ code: 'none', label: { en: 'none' }, unit: 'in', min: null, max: null, step: null },
 			]);
 			expect((await repo.findByCode(code('bare')))?.fields).toEqual([]);
@@ -280,7 +298,8 @@ describe.skipIf(!hasMongoEnv())('small repositories (integration, rs0)', () => {
 
 		it('saves inside a transaction', async () => {
 			await new MongoTransactionManager().withTransaction((context) => repo.save(order('o2'), context));
-			expect((await repo.findById(`${P}o2`))?.status).toBe('paid');
+			// A row stored with the first status list reads in today's words (paid → placed).
+			expect((await repo.findById(`${P}o2`))?.status).toBe('placed');
 		});
 
 		it('pages by user with and without a page', async () => {
@@ -461,6 +480,8 @@ describe.skipIf(!hasMongoEnv())('small repositories (integration, rs0)', () => {
 		it('lists public slugs and deletes', async () => {
 			expect(await repo.categorySummaries()).toEqual(expect.any(Array));
 			expect(await repo.listPublicSlugs()).toContain(`${P}filtered`.toLowerCase());
+			expect(await repo.findPublicSlugBySku(`${P}filtered`)).toBe(`${P}filtered`.toLowerCase());
+			expect(await repo.findPublicSlugBySku(`${P}missing`)).toBeNull();
 			await repo.deleteById(`${P}filtered`);
 			expect(await repo.findById(`${P}filtered`)).toBeNull();
 		});
@@ -494,7 +515,19 @@ describe.skipIf(!hasMongoEnv())('small repositories (integration, rs0)', () => {
 
 		it('reads a row with no shape or date', async () => {
 			await insertRaw(MediaRoleModel, { _id: `${P}bare`, label: 'bare' });
-			expect(await repo.findByKey(`${P}bare`)).toMatchObject({ aspect: null, updatedAt: undefined });
+			expect(await repo.findByKey(`${P}bare`)).toMatchObject({
+				aspect: null,
+				updatedAt: undefined,
+				brandStrip: false,
+				inset: 0,
+			});
+		});
+
+		it('keeps the logo-strip flag, so the preview cards are not redrawn on every start', async () => {
+			await repo.save({ ...(role('strip') as object), brandStrip: true } as never);
+			expect(await repo.findByKey(`${P}strip`)).toMatchObject({ brandStrip: true });
+			await repo.save({ ...(role('margin') as object), inset: 0.12 } as never);
+			expect(await repo.findByKey(`${P}margin`)).toMatchObject({ inset: 0.12 });
 		});
 
 		it('inserts only what is missing', async () => {
@@ -670,7 +703,7 @@ describe.skipIf(!hasMongoEnv())('small repositories (integration, rs0)', () => {
 			await repo.save(route('entity', { entityType: 'product', entityId: 'p1', indexable: false }));
 			expect(await repo.find(`/${P}plain`, 'en')).not.toHaveProperty('entityType');
 			expect(await repo.find(`/${P}entity`, 'en')).toMatchObject({ entityType: 'product', entityId: 'p1' });
-			expect(await repo.find(`/${P}plain`, 'fr')).toBeNull();
+			expect(await repo.find(`/${P}plain`, 'bn')).toBeNull();
 			const indexable = (await repo.listIndexable()).map((row) => row.id);
 			expect(indexable).toContain(`${P}plain`);
 			expect(indexable).not.toContain(`${P}entity`);

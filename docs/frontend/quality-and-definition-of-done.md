@@ -4,7 +4,7 @@ wide: true
 description: Testing approach and completion checks for storefront and admin changes.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-15'
 source_of_truth:
     - apps/storefront/vite.config.ts
     - apps/admin/package.json
@@ -48,6 +48,17 @@ Use Playwright for a small number of business-critical paths rather than duplica
 - admin list → create or edit, for features with real writes; and
 - authorization denial for privileged operations.
 
+### Light and dark mode
+
+`e2e/dark-mode.spec.ts` runs on every pull request with the rest of the suite. On the home, category, sign-in, blog list, contact, FAQ and cart pages, at desktop and phone size, it checks two things:
+
+- **Contrast.** Every visible piece of text reaches WCAG AA against the colour behind it (4.5 : 1, or 3 : 1 for large text) in light and in dark mode. A gradient is measured against each of its colour stops. Text over a photograph and the decorative rating stars are skipped.
+- **Layout parity.** Every element on the first screen has the same position, size, font, padding and margin in both modes. Dark mode may only change colours.
+
+A new shop screen passes both when it uses the shop's named colours (`--st-*`, see [Styles, Dark Mode and Fonts](../storefront/styles-and-fonts.md)) instead of typed colour values.
+
+`e2e/dark-mode.admin.spec.ts` does the same for the admin: layout parity and contrast on every admin screen and on sign-in, contrast at phone size and in the menus and popups people open, plus checks that light pages never download the dark stylesheet, that the header's switch is remembered, and that a reload is dark before the app starts (see [Admin Styles and Dark Mode](../admin/styles-and-dark-mode.md)). Both specs share their page functions from `e2e/colour-checks.ts`. A new admin screen passes when it uses the admin's named colours (`--theme-ink`, `--admin-muted` and the rest) instead of typed colour values.
+
 ## Definition of done
 
 A change is done when it passes these checks, not when it renders once.
@@ -72,6 +83,7 @@ A change is done when it passes these checks, not when it renders once.
 - [ ] Storefront direct SSR navigation and hydration were checked.
 - [ ] Admin deep-link refresh reaches the correct shell.
 - [ ] Keyboard, focus, touch target, screen-reader label, and reduced-motion behaviour were checked.
+- [ ] Every icon-only admin action shows a translated name on hover (`pnpm check:icon-titles`).
 - [ ] Dense tables/forms remain usable at supported widths.
 
 ### Verification

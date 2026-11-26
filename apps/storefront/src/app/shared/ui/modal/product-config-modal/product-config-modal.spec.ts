@@ -19,7 +19,10 @@ const render = (platform = 'browser') => {
 		providers: [
 			{ provide: NgbModal, useValue: { open, dismissAll } },
 			{ provide: CartFacade, useValue: cart },
-			{ provide: ProductService, useValue: { getProductPage: () => of({ id: 7, name: 'Whole', attributes: [] }) } },
+			{
+				provide: ProductService,
+				useValue: { getProductPage: () => of({ id: 7, name: 'Whole', attributes: [] }) },
+			},
 			{ provide: PLATFORM_ID, useValue: platform },
 		],
 	});

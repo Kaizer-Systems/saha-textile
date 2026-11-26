@@ -4,9 +4,10 @@ import https from 'node:https';
 
 /**
  * Puts the production storefront behind https://localhost:4200, the only shop origin the API's
- * CORS list allows. Usage: node e2e/stack/tls-proxy.mjs <key.pem> <cert.pem> <target port>.
+ * CORS list allows. Usage: node e2e/stack/tls-proxy.mjs <key.pem> <cert.pem> <target port> [listen port].
+ * The listen port defaults to 4200; another one serves a second copy beside the local servers.
  */
-const [keyPath, certPath, targetPort] = process.argv.slice(2);
+const [keyPath, certPath, targetPort, listenPort = '4200'] = process.argv.slice(2);
 
 https
 	.createServer({ key: readFileSync(keyPath), cert: readFileSync(certPath) }, (request, response) => {
@@ -16,17 +17,20 @@ https
 				port: Number(targetPort),
 				path: request.url,
 				method: request.method,
-				headers: { ...request.headers, host: 'localhost:4200', 'x-forwarded-proto': 'https' },
+				headers: { ...request.headers, host: `localhost:${listenPort}`, 'x-forwarded-proto': 'https' },
 			},
 			(answer) => {
 				response.writeHead(answer.statusCode ?? 502, answer.headers);
 				answer.pipe(response);
 			},
 		);
+		// A reply that breaks after its headers went out can only be cut off; a second set of
+		// headers would throw and take the proxy, and every later test, down with it.
 		upstream.on('error', () => {
-			response.writeHead(502);
-			response.end();
+			if (response.headersSent) response.destroy();
+			else response.writeHead(502).end();
 		});
+		response.on('error', () => upstream.destroy());
 		request.pipe(upstream);
 	})
-	.listen(4200, '127.0.0.1');
+	.listen(Number(listenPort), '127.0.0.1');

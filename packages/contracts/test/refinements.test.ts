@@ -98,7 +98,7 @@ describe('catalogue image roles', () => {
 		);
 	});
 
-	it('needs the gallery role on a product image and allows zoom beside it', () => {
+	it('needs the gallery role on a product image and allows zoom and card beside it', () => {
 		const gallery = (frame: unknown) => ({ slug: 'red-saree', frames: [frame] });
 		expect(CatalogGallery.safeParse(gallery(image({ gallery: [source], zoom: [source] }))).success).toBe(true);
 		expect(messages(CatalogGallery.safeParse(gallery(image({ gallery: [] }))))).toContain(
@@ -107,8 +107,10 @@ describe('catalogue image roles', () => {
 		expect(messages(CatalogGallery.safeParse(gallery(image({ zoom: [source] }))))).toContain(
 			'a product image needs the gallery role',
 		);
-		expect(messages(CatalogGallery.safeParse(gallery(image({ gallery: [source], card: [source] }))))).toContain(
-			'a product image carries gallery and zoom only',
+		// The thumbnail strip's card size rides along; any other size is refused.
+		expect(CatalogGallery.safeParse(gallery(image({ gallery: [source], card: [source] }))).success).toBe(true);
+		expect(messages(CatalogGallery.safeParse(gallery(image({ gallery: [source], thumb: [source] }))))).toContain(
+			'a product image carries gallery, zoom and card only',
 		);
 	});
 
@@ -126,6 +128,8 @@ describe('catalogue image roles', () => {
 			return parsed;
 		};
 		expect(group(null).success).toBe(true);
+		// A value with no second line reads null, so older pages still parse.
+		expect(group(null).data?.subLabel).toBeNull();
 		expect(group(image({ swatch_image: [source] })).success).toBe(true);
 		expect(messages(group(image({ card: [source] })))).toContain('a swatch image carries the square role only');
 	});
@@ -208,19 +212,19 @@ describe('admin product writes', () => {
 
 describe('FaqWrite', () => {
 	const faq = (overrides: Record<string, unknown>) => ({
-		question: { en: 'Q', fr: 'Q fr' },
-		answer: { en: 'A', fr: 'R fr' },
+		question: { en: 'Q', bn: 'Q bn' },
+		answer: { en: 'A', bn: 'R bn' },
 		...overrides,
 	});
-	const bothLanguages = 'English and French are required before publish';
+	const bothLanguages = 'English and Bengali are required before publish';
 
-	it('lets a draft go without French', () => {
+	it('lets a draft go without Bengali', () => {
 		expect(FaqWrite.safeParse({ question: { en: 'Q' }, answer: { en: 'A' } }).success).toBe(true);
 	});
 
-	it('needs French in both fields before it goes live', () => {
+	it('needs Bengali in both fields before it goes live', () => {
 		expect(FaqWrite.safeParse(faq({ status: 'live' })).success).toBe(true);
-		expect(messages(FaqWrite.safeParse(faq({ status: 'live', question: { en: 'Q', fr: ' ' } })))).toContain(
+		expect(messages(FaqWrite.safeParse(faq({ status: 'live', question: { en: 'Q', bn: ' ' } })))).toContain(
 			bothLanguages,
 		);
 		expect(messages(FaqWrite.safeParse(faq({ status: 'live', answer: { en: 'A' } })))).toContain(bothLanguages);
@@ -267,7 +271,7 @@ describe('ContentBlockInput owners', () => {
 			slot: 'main',
 			containsText: true,
 			images: { desktop: 'd', phone: 'p' },
-			localeImages: { fr: { desktop: 'fd', phone: 'fp' } },
+			localeImages: { bn: { desktop: 'fd', phone: 'fp' } },
 		});
 		expect(parsed.success).toBe(true);
 	});
@@ -312,7 +316,7 @@ describe('MediaRoleDefinition', () => {
 			'role widths must be unique',
 		);
 		expect(messages(MediaRoleDefinition.safeParse(role({ fit: 'cover' })))).toContain(
-			'`cover`, `pad` and `blur` roles need an aspect box',
+			'`cover`, `pad`, `blur` and `story` roles need an aspect box',
 		);
 	});
 });
@@ -344,22 +348,16 @@ describe('MediaAsset formats', () => {
 	});
 });
 
-describe('ProductBundle groups', () => {
-	it('keeps group codes unique', () => {
-		const group = {
-			code: 'core',
-			label: { en: 'Core' },
-			maxSelections: 1,
-			components: [{ productId: 'prod_saree_001', quantity: 1 }],
-		};
+describe('ProductBundle levels', () => {
+	it('keeps level codes unique', () => {
+		const level = { code: 'core', label: { en: 'Core' }, take: 1, items: [{ productId: 'prod_saree_001' }] };
 		const parsed = ProductBundle.safeParse({
 			id: 'bundle_1',
 			productId: 'prod_set',
-			bundleType: 'fixed_kit',
-			pricePolicy: 'sum_components',
-			groups: [group, group],
+			levels: [level, level],
+			pricing: { methodId: 'bpm_pieces_added_up' },
 		});
-		expect(messages(parsed)).toContain('bundle group codes must be unique');
+		expect(messages(parsed)).toContain('level codes must be unique');
 	});
 });
 

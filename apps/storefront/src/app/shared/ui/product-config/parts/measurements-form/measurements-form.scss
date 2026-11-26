@@ -1,9 +1,27 @@
 .measurements-form {
 	padding: 16px;
-	border: 1px solid #eee;
+	border: 1px solid var(--st-border);
 	border-radius: 8px;
-	background-color: #fafafa;
+	background-color: var(--st-surface-subtle);
 	margin-bottom: 18px;
+
+	// The in / cm switch sits on the title row, saving a row (owner, 21 Nov, brief rev 4 P9).
+	.measurements-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 8px 12px;
+		margin-bottom: 14px;
+
+		.measurements-title {
+			margin-bottom: 0;
+		}
+
+		.select-package {
+			margin: 0;
+		}
+	}
 
 	.measurements-title {
 		display: flex;

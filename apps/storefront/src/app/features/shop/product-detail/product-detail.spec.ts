@@ -14,7 +14,7 @@ import { ACTIVE_LOCALE } from '@core/i18n/active-locale';
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { SiteConfigStore } from '@core/state/site-config.store';
 
-import { ProductDetail } from './product-detail';
+import { ProductDetail, showBuyBar } from './product-detail';
 
 const product = signal<unknown>(undefined);
 const pending = signal(true);
@@ -34,7 +34,13 @@ vi.mock('@data-access/queries/product.queries', () => ({
 }));
 
 const render = (
-	options: { platform?: string; variant?: string | null; response?: unknown; noQuery?: boolean; functional?: boolean } = {},
+	options: {
+		platform?: string;
+		variant?: string | null;
+		response?: unknown;
+		noQuery?: boolean;
+		functional?: boolean;
+	} = {},
 ) => {
 	const params = new BehaviorSubject<Record<string, string>>({ slug: 'red-saree' });
 	const map = (value: string | null) => ({ get: () => value });
@@ -50,7 +56,9 @@ const render = (
 	const router = { navigate: vi.fn() };
 	const seo = {
 		applyJsonLd: vi.fn(),
+		removeJsonLd: vi.fn(),
 		applyDocument: vi.fn(),
+		applyProduct: vi.fn(),
 		absoluteUrl: (path: string) => `https://shop.test${path}`,
 		absoluteAsset: (path: string) => `https://cdn.test${path}`,
 	};
@@ -236,6 +244,40 @@ describe('ProductDetail SEO', () => {
 		});
 	});
 
+	it('names the product videos as VideoObjects, and nothing for a product without one', () => {
+		const { seo } = render();
+		product.set({ ...base });
+		TestBed.tick();
+		expect(jsonLd(seo, 'product-group')).not.toHaveProperty('subjectOf');
+		const short = {
+			videoId: 'YfNsUapqTqE',
+			title: 'S6D',
+			thumbnailUrl: '',
+			kind: 'short',
+			durationSeconds: 48,
+			publishedAt: '2026-10-01T00:00:00Z',
+		};
+		const long = { videoId: 'QRP0xuczTUo', title: 'EP693', thumbnailUrl: '', kind: 'video', durationSeconds: 0 };
+		product.set({ ...base, videos: [short, long] });
+		TestBed.tick();
+		expect(jsonLd(seo, 'product-group')).toMatchObject({
+			subjectOf: [
+				{
+					'@type': 'VideoObject',
+					name: 'S6D',
+					uploadDate: '2026-10-01T00:00:00Z',
+					duration: 'PT48S',
+					embedUrl: 'https://www.youtube-nocookie.com/embed/YfNsUapqTqE',
+					contentUrl: 'https://www.youtube.com/shorts/YfNsUapqTqE',
+				},
+				{ '@type': 'VideoObject', name: 'EP693', contentUrl: 'https://www.youtube.com/watch?v=QRP0xuczTUo' },
+			],
+		});
+		const [, second] = (jsonLd(seo, 'product-group') as { subjectOf: object[] }).subjectOf;
+		expect(second).not.toHaveProperty('uploadDate');
+		expect(second).not.toHaveProperty('duration');
+	});
+
 	it('uses the regular price when there is no sale price', () => {
 		const { seo } = render();
 		product.set({ ...base, sale_price: 0 });
@@ -283,6 +325,74 @@ describe('ProductDetail SEO', () => {
 		});
 	});
 
+	it('describes the product fully for search engines and link previews', () => {
+		const { seo } = render();
+		product.set({
+			...base,
+			description: '<p>Woven&nbsp;in   Varanasi.</p>',
+			product_thumbnail: { original_url: '/a.webp' },
+			product_galleries: [{ original_url: '/a.webp' }, { original_url: '/b.webp' }, {}],
+			semantic_attributes: [
+				{ code: 'fabric', value: 'Silk' },
+				{ code: 'color', value: 'Red' },
+			],
+			reviews_count: 3,
+			rating_count: 4.666,
+			variations: [
+				{ sku: 'V 1', name: 'Red', sale_price: 100, price: 200, stock_status: 'in_stock' },
+				{ sku: 'V2', name: 'Blue', sale_price: 0, price: 200, stock_status: 'in_stock' },
+			],
+			attributes: [{ slug: 'color', name: 'Colour' }],
+		});
+		TestBed.tick();
+		const group = jsonLd(seo, 'product-group') as Record<string, unknown>;
+		expect(group).toMatchObject({
+			description: 'Woven in Varanasi.',
+			brand: { '@type': 'Brand', name: 'Saha Textile' },
+			image: ['https://cdn.test/a.webp', 'https://cdn.test/b.webp'],
+			material: 'Silk',
+			color: 'Red',
+			aggregateRating: { ratingValue: 4.7, reviewCount: 3 },
+		});
+		expect((group['hasVariant'] as Array<Record<string, unknown>>)[0]).toMatchObject({
+			url: 'https://shop.test/product/red-saree?variant=V%201',
+			inProductGroupWithID: 'red-saree',
+			offers: { itemCondition: 'https://schema.org/NewCondition', seller: { name: 'Saha Textile' } },
+		});
+		expect(seo.applyProduct).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				priceINR: 1500,
+				imageAlt: 'Red saree',
+				shareTitle: 'Red saree · ₹1,500',
+				inStock: true,
+				imageSize: undefined,
+			}),
+		);
+		expect(vi.mocked(seo.applyProduct).mock.lastCall?.[0].shareDescription).toMatch(/^Silk · Red\. /);
+		product.set({ ...base, sale_price: 0, reviews_count: 0 });
+		TestBed.tick();
+		const plain = jsonLd(seo, 'product-group') as Record<string, unknown>;
+		expect(plain['aggregateRating']).toBeUndefined();
+		expect(plain['description']).toBeUndefined();
+		expect(seo.applyProduct).toHaveBeenLastCalledWith(
+			expect.objectContaining({ priceINR: 2000, shareTitle: 'Red saree · ₹2,000', shareDescription: '' }),
+		);
+	});
+
+	it('adds FAQ structured data for the visible FAQ, and removes it without one', () => {
+		const { seo } = render();
+		product.set({ ...base, faq: [{ question: 'Silk?', answer: 'Yes' }] });
+		TestBed.tick();
+		expect(jsonLd(seo, 'product-faq')).toEqual({
+			'@context': 'https://schema.org',
+			'@type': 'FAQPage',
+			mainEntity: [{ '@type': 'Question', name: 'Silk?', acceptedAnswer: { '@type': 'Answer', text: 'Yes' } }],
+		});
+		product.set({ ...base, faq: [] });
+		TestBed.tick();
+		expect(seo.removeJsonLd).toHaveBeenCalledWith('product-faq');
+	});
+
 	it('lists the breadcrumb trail ending on the product', () => {
 		const { seo } = render();
 		product.set({ ...base, breadcrumb_trail: [{ name: 'Sarees', path: '/collections/sarees' }] });
@@ -315,7 +425,7 @@ describe('ProductDetail sticky bar', () => {
 	const button = (bottom: number) => {
 		const element = document.createElement('div');
 		element.className = 'scroll-button';
-		element.getBoundingClientRect = () => ({ bottom }) as DOMRect;
+		element.getBoundingClientRect = () => ({ top: bottom - 46, bottom }) as DOMRect;
 		document.body.append(element);
 	};
 
@@ -329,7 +439,7 @@ describe('ProductDetail sticky bar', () => {
 		expect(document.body.classList.contains('stickyCart')).toBe(false);
 	});
 
-	it('shows once the button has scrolled away, and hides again', () => {
+	it('on a laptop, shows while the page’s buttons are out of view, above or below, and hides while they are in view', () => {
 		const { page } = render();
 		button(-10);
 		page.onScroll();
@@ -341,7 +451,18 @@ describe('ProductDetail sticky bar', () => {
 		document.querySelector('.scroll-button')?.remove();
 		button(window.innerHeight + 100);
 		page.onScroll();
-		expect(document.body.classList.contains('stickyCart')).toBe(false);
+		expect(document.body.classList.contains('stickyCart')).toBe(true);
+		document.querySelector('.scroll-button')?.remove();
+	});
+
+	it('shows only while the page buttons are out of view, phones included (HX-1)', () => {
+		// Phones (HX-1): the bar steps back while the page's buttons show above the bottom menu.
+		expect(showBuyBar({ top: 100, bottom: 146 }, 375, 812)).toBe(false);
+		expect(showBuyBar({ top: 760, bottom: 806 }, 375, 812)).toBe(true);
+		expect(showBuyBar({ top: -60, bottom: -14 }, 375, 812)).toBe(true);
+		expect(showBuyBar({ top: 100, bottom: 146 }, 1366, 657)).toBe(false);
+		expect(showBuyBar({ top: 700, bottom: 746 }, 1366, 657)).toBe(true);
+		expect(showBuyBar({ top: -60, bottom: -14 }, 1366, 657)).toBe(true);
 	});
 
 	it('removes the bar when leaving, in the browser only', () => {

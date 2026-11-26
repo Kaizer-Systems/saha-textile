@@ -4,9 +4,10 @@ wide: true
 description: Conventions for operator forms, data tables, validation and actions.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/admin/src/app/shared/ui/table
+    - apps/admin/src/app/data-access/interfaces/table.interface.ts
     - apps/admin/src/app/shared/ui/form-fields
     - apps/admin/src/app/shared/ui/image-upload
     - apps/admin/src/app/features/product/form-product
@@ -25,7 +26,7 @@ The shared table coordinates:
 - page size and page number;
 - sort field and direction;
 - optional date-range filters;
-- checkbox selection and bulk-item output;
+- checkbox selection that stays through search, page, sort and page-size changes (a tick belongs to the row; with `selectionKey` it is also kept for the browser tab), the selection bar, chips and picked list, and `bulkActions` buttons shown while anything is ticked and the operator holds each button's permission (see [Product list bulk actions and drafts](./product-bulk-actions-and-drafts.md));
 - row-action output;
 - rating/date/currency presentation;
 - loading-state resets;
@@ -33,6 +34,24 @@ The shared table coordinates:
 - confirmation/delete modal hooks.
 
 Feature components should provide table configuration and translate emitted table parameters into a query. They should not duplicate pagination/search state unless their workflow genuinely differs.
+
+## Row actions and table inputs
+
+A feature declares row actions in `tableConfig.rowActions` (`ITableAction`, `apps/admin/src/app/data-access/interfaces/table.interface.ts`):
+
+| Field             | Type               | Meaning                                                                                        |
+| ----------------- | ------------------ | ---------------------------------------------------------------------------------------------- |
+| `label`           | string             | Translation key; shown as the icon's hover name and screen-reader name                         |
+| `actionToPerform` | string             | Emitted in the `action` output. `delete` always opens the delete modal first                   |
+| `icon`            | string             | Remix icon class                                                                               |
+| `permission`      | string or string[] | Hides the action without the permission. UX only: the API enforces the permission              |
+| `deletedRows`     | boolean            | Show only on rows whose `status` is `deleted`. Without it, an action is hidden on deleted rows |
+| `confirm`         | boolean            | Open the shared confirmation modal before emitting                                             |
+| `rowStatuses`     | string[]           | Show only on rows whose `status` is one of these values                                        |
+
+Table inputs beyond `tableConfig`: `hasCheckbox`, `hasDuplicate`, `topbar`, `pagination`, `loading`, `dateRange` and `deleteMessage`. `deleteMessage` is a translation key that replaces the delete modal's default "deleted permanently" text. Use it where a delete is a soft delete, as the customer list does with `customer_deleted_message`.
+
+Pass `tableConfig` as a signal and replace it with `tableConfig.set({ ...base, data, total })` from the query effect. The admin app is zoneless, so writing `tableConfig.data` from an effect does not schedule a render, and the table keeps showing the previous rows after a refetch.
 
 ## Table request lifecycle
 
@@ -53,7 +72,7 @@ Large forms such as product editing combine:
 - reactive `FormGroup`, `FormControl`, and `FormArray` structures;
 - route-derived create/edit mode;
 - query-backed dropdowns;
-- category, tag, store, attribute, and tax data;
+- category, tag, attribute, and tax data;
 - rich-text editing;
 - date ranges;
 - image selection, where the media modal uploads directly to Spaces and shows the preview once the worker finishes;
@@ -88,7 +107,7 @@ Every real mutation UI should make these states explicit:
 
 ## Bulk actions
 
-Bulk delete, approval, publish, and status actions require more than a selected-ID array:
+The blog list's **Go Live** and **Take off shop** buttons follow this pattern, and the product list's six actions follow it end to end ([Product list bulk actions and drafts](./product-bulk-actions-and-drafts.md)). Bulk delete, approval, publish, and status actions require more than a selected-ID array:
 
 - explicit scope and item count;
 - confirmation for destructive operations;
@@ -105,23 +124,25 @@ Bulk delete, approval, publish, and status actions require more than a selected-
 - Do not use table configuration as an authorization mechanism.
 - Keep destructive actions recoverable or explicitly confirmed.
 - Do not show a success message for a method with no backend.
+- Give every icon-only action a translated hover name: `[title]="'edit' | transloco"` on the button, link or click target. Use the same key for `aria-label` when one is set. `pnpm check:icon-titles` fails the lint on a missing one (`DEC-ICON-TITLES`).
+- Write table `rowActions` and `bulkActions` labels as translation keys (`edit`, `delete`, `view`, `go_live`). The shared table shows the row-action label as the icon's hover name and screen-reader name.
 
 ## Product form rules
 
-The product form writes through `POST /admin/catalog/products/:idOrSlug`.
+The product form writes through `POST /admin/catalog/products/:idOrSlug`. Its Go Live button and the product list both call `POST /admin/catalog/products/:idOrSlug/go-live`, which lists what stops the product going live. **Save and next** saves, then opens the next product from the list the form was opened from, or the list after the last one.
 
-- Product status is `live` or `disabled` here. Discontinuing is a separate action that writes a `410`, or a `301` when a live replacement is named.
+- Product status is `live` or `disabled` here. Discontinuing is a separate action that writes a `410`, or a `301` when a live replacement is named. In the same transaction it disables every related, upsell and cross-sell relation that points to the product. Disabling a product leaves its relations alone, because public reads already skip targets that are not live.
 - A product that has ever been live keeps its SKUs.
 - Changing the address writes a redirect from the old one.
 - A made-to-order product must be live and needs a lead time.
 - A badge cannot be both pinned and hidden.
 - A selling price cannot exceed the MRP.
 - Related, upsell and cross-sell lists hold up to 12 products.
-- A live FAQ entry needs both English and French text.
+- A live FAQ entry needs both English and Bengali text.
 
 ## Banner rules
 
-Each banner has one record per position and slot, keyed as `{ownerType}:{ownerId}:{position}:{slot}`. The home hero has four layouts, chosen in one setting: `hero_full`, `hero_main_side`, `hero_main_stack` and `hero_center_sides`. Each layout sets its own slots. Every image must be a processed banner upload, and an active banner needs alt text in every active locale.
+Each banner has one record per position and slot, keyed as `{ownerType}:{ownerId}:{position}:{slot}`. The home hero has four layouts, chosen in one setting: `hero_full`, `hero_main_side`, `hero_main_stack` and `hero_center_sides`. Each layout sets its own slots: `hero_full` is a carousel of `main`, `slide_2` and `slide_3`. The two promo banners under the hero use `promo_wide`, with `item_1` and `item_2`. Every image must be a processed banner upload, and an active banner needs alt text in every active locale.
 
 A slot takes a desktop image, with optional tablet and phone images. Phone applies below 768 px, tablet from 768 to 1199 px, and desktop from 1200 px. Images are not cropped. When the art contains text, the live-text fields are ignored and the alt text must repeat the words. A wide slot with text in its art needs a phone image.
 

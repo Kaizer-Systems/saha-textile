@@ -15,8 +15,8 @@ import { ErrorService } from '@data-access/services/error.service';
 import { LoggingService } from '@data-access/services/logging.service';
 import { NotificationService } from '@data-access/services/notification.service';
 
-import { environment } from '../../../../public/environments/environment';
 import { BACKGROUND_REQUEST } from './background-request';
+import { environment } from '../../../../public/environments/environment';
 
 @Injectable()
 export class GlobalErrorHandlerInterceptor implements HttpInterceptor {

@@ -3,6 +3,7 @@ import {
 	CatalogCard,
 	CatalogGallery,
 	CatalogHome,
+	type CatalogPageBundle,
 	CatalogPlacementPage,
 	type CatalogPlacementQuery,
 	CatalogProductPage,
@@ -15,14 +16,17 @@ import {
 } from '@saha-textile/contracts';
 import {
 	retiredCollectionRow,
+	isShownOnShop,
 	parseAttributeFilter,
 	parsePriceRanges,
 	productGallery,
 	resolveImage,
 	liveRelations,
+	stepperStep,
 	type AddonTemplateRepository,
 	type CategoryPlacementRepository,
 	type CategoryRepository,
+	type FaqRepository,
 	type ListingFilters,
 	type ListingPort,
 	type MediaAssetRepository,
@@ -35,7 +39,7 @@ import {
 	type StoragePort,
 } from '@saha-textile/core-domain';
 
-import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { LanguageStore } from '../languages/language-store';
 import { catalogLocale, localized } from './catalog-locale';
 import { pricedRow, productReadModel, skuView } from './catalog-read-model';
 import { MongoListing } from './mongo-listing';
@@ -43,15 +47,20 @@ import {
 	ADDON_TEMPLATE_REPOSITORY,
 	CATEGORY_PLACEMENT_REPOSITORY,
 	CATEGORY_REPOSITORY,
+	FAQ_REPOSITORY,
 	LISTING_PORT,
 	MEDIA_ASSET_REPOSITORY,
+	BUNDLE_READER,
 	PRODUCT_BUNDLE_REPOSITORY,
 	PRODUCT_REPOSITORY,
 	PRODUCT_VARIANT_REPOSITORY,
 	PRODUCT_RELATION_REPOSITORY,
 	SEO_ROUTE_REPOSITORY,
+	SALE_PRICE_BOOK,
 	STORAGE_PORT,
 } from '../infra/tokens';
+import type { SalePriceBook } from '../events/sale-price-book';
+import type { BundleReader } from './bundles/bundle-reader';
 
 const RAIL = 12;
 /** A category image is any library image, so take the size that suits it best. */
@@ -72,10 +81,21 @@ const CATEGORY_IMAGE_ROLES = ['category_icon', 'card', 'gallery', 'thumb'] as co
 /** Matches no category, so an unknown slug empties the list instead of widening it. */
 const NO_CATEGORY = 'no-such-category';
 
+/** "You may also like" shows at least this many when the category has them. */
+const RELATED_MINIMUM = 6;
+
+/** The sizes a product page's photos carry: the main photo, its hover zoom, and the thumbnail strip. */
+const GALLERY_FRAME_ROLES = ['gallery', 'zoom', 'card'];
+/** The width chat apps and search draw a link preview at (the Link preview 1.91:1 profile's size). */
+const SHARE_WIDTH = 1200;
+
 @Injectable()
 export class CatalogPublicService {
 	private readonly listings: ListingPort;
-	private readonly locales: readonly string[];
+	/** The languages the shop shows; English alone where no store is given (unit tests). */
+	private get locales(): readonly string[] {
+		return this.languages?.shop() ?? ['en'];
+	}
 
 	constructor(
 		@Inject(PRODUCT_REPOSITORY) private readonly products: ProductRepository,
@@ -97,10 +117,13 @@ export class CatalogPublicService {
 		@Optional() @Inject(CATEGORY_REPOSITORY) private readonly categories: CategoryRepository | null = null,
 		@Optional() @Inject(SEO_ROUTE_REPOSITORY) private readonly seoRoutes: SeoRouteRepository | null = null,
 		@Optional() @Inject(LISTING_PORT) listing: ListingPort | null = null,
-		@Optional() @Inject(APP_CONFIG) config: AppConfig | null = null,
+		// Named outright: a `| null` type is recorded as Object, which Nest cannot resolve.
+		@Optional() @Inject(LanguageStore) private readonly languages: LanguageStore | null = null,
+		@Optional() @Inject(FAQ_REPOSITORY) private readonly faqs: FaqRepository | null = null,
+		@Optional() @Inject(SALE_PRICE_BOOK) private readonly sales: SalePriceBook | null = null,
+		@Optional() @Inject(BUNDLE_READER) private readonly bundleReader: BundleReader | null = null,
 	) {
 		this.listings = listing ?? new MongoListing(products, variants);
-		this.locales = config?.locales ?? ['en'];
 	}
 
 	/**
@@ -116,10 +139,17 @@ export class CatalogPublicService {
 		]);
 		const byId = new Map(categories.map((category) => [category.id, category]));
 		const summary = new Map(summaries.map((row) => [row.categoryId, row]));
-		const images = await this.categoryImages([
-			...categories.flatMap((category) => [category.media?.bannerImage ?? [], category.media?.iconImage ?? []].flat()),
-			...summaries.flatMap((row) => row.coverAssetId ?? []),
-		]);
+		const images = await this.categoryImages(
+			[
+				...categories.flatMap((category) =>
+					[category.media?.bannerImage ?? [], category.media?.iconImage ?? []].flat(),
+				),
+				...summaries.flatMap((row) => row.coverAssetId ?? []),
+			],
+			// The version each category stored for its pictures (R4-1; media step 4d). A photo two categories
+			// show in different versions draws the last one read: the address is shared by photo id.
+			Object.assign({}, ...categories.map((category) => category.media?.versions ?? {})),
+		);
 		const shown = new Set<string>();
 		const rows: CatalogMenuCategory[] = [];
 		const ordered = [...placements].sort((a, b) => a.depth - b.depth || a.displayOrder - b.displayOrder);
@@ -149,10 +179,13 @@ export class CatalogPublicService {
 	}
 
 	/** One address per asset, for images that only need showing. */
-	async categoryImages(ids: readonly string[]): Promise<Map<string, string>> {
+	async categoryImages(
+		ids: readonly string[],
+		versions: Readonly<Record<string, string>> = {},
+	): Promise<Map<string, string>> {
 		const assets = await this.assetsFor([...ids]);
 		const urls = [...assets].flatMap(([id, asset]) => {
-			const image = this.image(asset, CATEGORY_IMAGE_ROLES);
+			const image = this.image(asset, CATEGORY_IMAGE_ROLES, versions[id]);
 			const url = CATEGORY_IMAGE_ROLES.flatMap((role) => image?.roles[role]?.[0]?.url ?? [])[0];
 			return url ? [[id, url] as const] : [];
 		});
@@ -166,11 +199,52 @@ export class CatalogPublicService {
 		const read = productReadModel(product, rows, variant);
 		const groups = product.optionGroups.length ? product.optionGroups : groupsFromAttributes(product);
 		const swatchIds = groups.flatMap((group) => group.terms.flatMap((term) => term.swatchAssetId ?? []));
-		const assets = await this.assetsFor([...productGallery(product), ...swatchIds]);
+		const variantPhotos = rows.flatMap((row) => row.media?.primaryAssetId ?? []);
+		const assets = await this.assetsFor([...productGallery(product), ...swatchIds, ...variantPhotos]);
+		await this.addCutPhotos(assets);
+		const swatchOf = (id: string) => this.swatchAsset(assets, id, product.media.versions);
 		const gallery = productGallery(product).flatMap((id) => {
-			const image = this.image(assets.get(id), ['gallery', 'zoom']);
-			return image ? [{ id, image }] : [];
+			// `card` is the thumbnail strip's size (about 120 px); without it the strip fell back to 900 px photos.
+			const image = this.image(assets.get(id), GALLERY_FRAME_ROLES, product.media.versions?.[id]);
+			// A frame is a photo with its gallery size; card sizes alone (the strip's) are not one.
+			return image?.roles['gallery']?.length ? [{ id, image }] : [];
 		});
+		// A variant's own picture ("Variation image", owner 17 Nov) at the version stored with it: the gallery's frame
+		// when it is the same photo and version, else a frame of its own after the gallery, so choosing the variant
+		// shows it first. A compound product's variant leads with its own photo group instead (below).
+		const variantFrame = (row: ProductVariant): string | null => {
+			const photo = row.media?.primaryAssetId;
+			if (!photo) return null;
+			const grouped = product.media.compound.some(
+				(entry) => entry.selectionHash === row.optionSelectionHash && entry.gallery.length > 0,
+			);
+			if (product.imageMode === 'compound' && grouped) return photo;
+			const version = row.media?.primaryVersionId ?? null;
+			const inGallery = gallery.some((frame) => frame.id === photo);
+			if (inGallery && (version === null || version === (product.media.versions?.[photo] ?? null))) return photo;
+			const key = `${photo}@${version ?? ''}`;
+			if (gallery.some((frame) => frame.id === key)) return key;
+			const image = this.image(assets.get(photo), GALLERY_FRAME_ROLES, version);
+			if (!image?.roles['gallery']?.length) return null;
+			gallery.push({ id: key, image });
+			return key;
+		};
+		const variantFrames = new Map(rows.map((row) => [row.id, variantFrame(row)]));
+		// The main photo's link-preview card, once the main-photo sizes exist.
+		const mainPhoto = productGallery(product)[0];
+		const cards = mainPhoto ? this.image(assets.get(mainPhoto), ['share', 'story']) : null;
+		// "Meta image" (owner, 17 Nov): a chosen link-preview picture wins over the main photo's own card.
+		const chosenShare = await this.chosenShare(product);
+		const mainCard = cards?.roles['share']?.[0]?.url || null;
+		const shareImageUrl = chosenShare?.url ?? mainCard;
+		// The pipeline's share card is always a 1200×630 JPEG.
+		const shareImageSize = chosenShare
+			? { width: chosenShare.width, height: chosenShare.height, type: chosenShare.type }
+			: mainCard
+				? { width: 1200, height: 630, type: 'image/jpeg' }
+				: null;
+		// The tall Status/Story card; the shopper's phone writes the words into its band (share brief J1).
+		const shareStoryUrl = cards?.roles['story']?.[0]?.url || null;
 		const axisCodes = new Set(
 			groups.filter((group) => group.semanticRole === 'variation_axis').map((group) => group.attributeCode),
 		);
@@ -194,9 +268,24 @@ export class CatalogPublicService {
 			price: read.price,
 			badges: read.badges,
 			madeToOrder: read.madeToOrder,
+			saleEndsAt: this.sales?.endsAtFor(product.id, new Date(), { isSet: product.type === 'bundle' }) ?? null,
 			estimatedDeliveryText: product.estimatedDeliveryText ? localized(product.estimatedDeliveryText) : null,
 			sareeLengthM: product.sareeLengthM ?? null,
 			blousePieceM: product.blousePieceM ?? null,
+			soldBy: product.soldBy,
+			metre:
+				product.soldBy === 'metre'
+					? {
+							// M2: a metre product saved before its cut was set still sells from 1.0 m.
+							shortestCutTenths: product.shortestCutTenths ?? 10,
+							stepTenths: stepperStep('metre'),
+							quickLengths: product.quickLengths.map((row) => ({
+								tenths: row.tenths,
+								label: localized(row.label),
+							})),
+							widthInches: product.widthInches,
+						}
+					: null,
 			selected: selected
 				? {
 						sku: selected.sku,
@@ -208,6 +297,12 @@ export class CatalogPublicService {
 				: null,
 			unknownVariant: read.unknownVariant,
 			gallery: gallery.map((frame) => frame.image),
+			shareImageUrl,
+			shareImageSize,
+			shareStoryUrl,
+			code: product.sku,
+			// A video YouTube no longer plays (weekly check) is left off the page.
+			videos: product.videos.filter((video) => !video.unavailableSince),
 			optionGroups: groups.map((group) => ({
 				code: group.attributeCode,
 				label: localized(group.label),
@@ -218,18 +313,33 @@ export class CatalogPublicService {
 				terms: group.terms.map((term) => ({
 					code: term.code,
 					label: localized(term.label),
+					// The second line some looks draw (`size_v2`), in the page language.
+					subLabel: term.subLabel ? localized(term.subLabel) || null : null,
 					isBase: term.isBase,
 					hex: term.hex ?? null,
-					image: term.swatchAssetId ? this.image(assets.get(term.swatchAssetId), ['swatch_image']) : null,
+					// The version stored with the swatch; a swatch made from one of the product's own photos draws
+					// the version its gallery stores.
+					image: term.swatchAssetId
+						? ((swatch) =>
+								this.image(
+									swatch.asset,
+									['swatch_image'],
+									swatch.version ??
+										term.swatchVersionId ??
+										// Inside this branch the term has a swatch photo.
+										product.media.versions?.[term.swatchAssetId as string],
+								))(swatchOf(term.swatchAssetId))
+						: null,
 					// An option that measures costs the template's amount unless this product overrides it.
-					priceDeltaINR: term.priceDeltaINR ?? (term.requiresMeasurements ? (measurements?.priceINR ?? null) : null),
+					priceDeltaINR:
+						term.priceDeltaINR ?? (term.requiresMeasurements ? (measurements?.priceINR ?? null) : null),
 					requiresMeasurements: term.requiresMeasurements,
 				})),
 			})),
 			variants: axisCodes.size
 				? rows.map((row) => {
 						const priced = pricedRow(row, read.madeToOrder);
-						const photo = row.media?.primaryAssetId ?? null;
+						const photo = variantFrames.get(row.id) ?? null;
 						const own = product.imageMode === 'compound' ? framesOf(row) : [];
 						const found = photo ? gallery.findIndex((frame) => frame.id === photo) : -1;
 						const galleryIndex = own[0] ?? found;
@@ -252,14 +362,17 @@ export class CatalogPublicService {
 				: [],
 			measurements,
 			bundle: await this.bundleFor(product),
+			freeWith: await this.freeWithFor(product),
 			breadcrumb: await this.breadcrumbFor(product),
+			rating: { average: product.ratingsSummary.avg, count: product.ratingsSummary.count },
+			faq: await this.faqFor(product),
 		});
 	}
 
 	/** What a cart needs of a product: the page when it can be sold, and its name either way. */
 	async cartRead(id: string): Promise<{ slug: string; title: string; page: CatalogProductPage | null } | null> {
 		const live = await this.products.findById(id, 'public');
-		if (live) {
+		if (live && isShownOnShop(live)) {
 			const page = await this.page(live.slug);
 			return { slug: page.slug, title: page.title, page };
 		}
@@ -275,6 +388,7 @@ export class CatalogPublicService {
 		if (template && template.fields.length > 0) {
 			return {
 				templateCode: template.code,
+				title: template.label ? localized(template.label) || null : null,
 				priceINR: product.addonPriceINR ?? template.priceINR,
 				fields: template.fields.map((field) => ({ ...field, label: localized(field.label) })),
 				sizeGuide: template.sizeGuide,
@@ -284,6 +398,7 @@ export class CatalogPublicService {
 		if (own.length === 0) return null;
 		return {
 			templateCode: null,
+			title: null,
 			priceINR: product.addonPriceINR ?? 0,
 			fields: own.map((addon) => ({
 				code: addon.code,
@@ -297,62 +412,62 @@ export class CatalogPublicService {
 		};
 	}
 
+	/** A piece's or free item's own main photo (card size), for set rows and free-item rows. */
+	private readonly cardImage = async (target: Product): Promise<ResolvedImage | null> => {
+		const primary = productGallery(target)[0];
+		if (!primary) return null;
+		const photo = (await this.assetsFor([primary])).get(primary);
+		return this.image(photo, ['card'], target.media.versions?.[primary]);
+	};
+
+	/** The set block (bundle builder brief, approved 2026-11-22): levels, extras and their prices, from core's engine. */
 	private async bundleFor(product: Product) {
-		if (!this.bundles) return null;
+		if (!this.bundles || !this.bundleReader || product.type !== 'bundle') return null;
 		const bundle = await this.bundles.findByProductId(product.id, 'public');
 		if (!bundle) return null;
-		const groups = await Promise.all(
-			bundle.groups.map(async (group) => {
-				const components = await Promise.all(
-					group.components.map(async (component) => {
-						const target = await this.products.findById(component.productId, 'public');
-						if (!target) return null;
-						const rows = await this.variants.listForProduct(target.id, 'public');
-						const read = productReadModel(target, rows);
-						const chosen = read.selected ? pricedRow(read.selected, read.madeToOrder) : null;
-						return {
-							productId: target.id,
-							slug: target.slug,
-							title: localized(target.title),
-							sku: read.selected?.sku ?? target.sku,
-							sellingINR: chosen?.sellingINR ?? target.basePriceINR,
-							quantity: component.quantity,
-							required: component.required,
-							inStock: read.sellable > 0 || read.madeToOrder,
-						};
-					}),
-				);
-				const live = components.filter((component) => component !== null);
-				return {
-					code: group.code,
-					label: localized(group.label),
-					minSelections: group.minSelections,
-					maxSelections: Math.min(group.maxSelections, Math.max(1, live.length)),
-					components: live,
-				};
-			}),
-		);
-		const usable = groups.filter((group) => group.components.length > 0);
-		if (usable.length === 0) return null;
-		const sum = usable.reduce(
-			(total, group) =>
-				total +
-				group.components.reduce((part, component) => part + component.sellingINR * component.quantity, 0),
-			0,
-		);
-		return {
-			bundleType: bundle.bundleType,
-			pricePolicy: bundle.pricePolicy,
-			priceINR: bundle.pricePolicy === 'fixed_bundle_price' ? (bundle.fixedPriceINR ?? sum) : sum,
-			groups: usable,
-		};
+		const resolved = await this.bundleReader.resolve(bundle);
+		return this.bundleReader.page(resolved, product, this.cardImage);
 	}
 
+	/** Free with this product (P8), as the page shows it. */
+	private async freeWithFor(product: Product) {
+		if (!this.bundleReader || !product.freeWith) return null;
+		return this.bundleReader.freeWithPage(product.freeWith, this.cardImage);
+	}
+
+	/**
+	 * The product page FAQ, when switched on: the product's own questions, then its categories'
+	 * and their parents' (owner decision 2026-11-08). Shop-wide questions stay on the FAQ page.
+	 */
+	private async faqFor(product: Product): Promise<Array<{ question: string; answer: string }>> {
+		if (!product.faqEnabled || !this.faqs) return [];
+		const placements = this.placements;
+		const paths = placements
+			? await Promise.all(product.categoryIds.map((id) => placements.findCanonical(id)))
+			: [];
+		const categoryIds = [
+			...new Set([...product.categoryIds, ...paths.flatMap((row) => row?.pathCategoryIds ?? [])]),
+		];
+		const entries = await this.faqs.resolveForSurface({ productId: product.id, categoryIds, includeGlobal: false });
+		const own = entries.filter((entry) => entry.productIds.includes(product.id));
+		const shared = entries.filter((entry) => !entry.productIds.includes(product.id));
+		return [...own, ...shared]
+			.map((entry) => ({ question: localized(entry.question), answer: localized(entry.answer) }))
+			.filter((entry) => entry.question.trim() && entry.answer.trim());
+	}
+
+	/** The trail to the product's most specific live category (the deepest one it sits in). */
 	private async breadcrumbFor(product: Product) {
-		const categoryId = product.categoryIds[0];
-		if (!categoryId || !this.placements) return [];
-		const placement = await this.placements.findCanonical(categoryId);
-		if (!placement || placement.status !== 'live') return [];
+		const placements = this.placements;
+		if (!product.categoryIds.length || !placements) return [];
+		const found = await Promise.all(product.categoryIds.map((id) => placements.findCanonical(id)));
+		const placement = found
+			.filter((row): row is NonNullable<typeof row> => row !== null && row.status === 'live')
+			.reduce<(typeof found)[number]>(
+				(deepest, row) => (!deepest || row.pathSlugs.length > deepest.pathSlugs.length ? row : deepest),
+				null,
+			);
+		if (!placement) return [];
 		const labels = placement.pathLabel.split(' / ');
 		const named = await Promise.all(
 			placement.pathCategoryIds.map(async (id) => (await this.categories?.findById(id))?.name),
@@ -391,12 +506,20 @@ export class CatalogPublicService {
 			pageSize,
 			locale: catalogLocale(),
 		});
-		const names = placement?.pathLabel.split(' / ') ?? [];
+		// Each step of the trail in the request language; the stored path label is English.
+		const labels = placement?.pathLabel.split(' / ') ?? [];
+		const named = await Promise.all(
+			(placement?.pathCategoryIds ?? []).map(async (id) => (await this.categories?.findById(id))?.name),
+		);
+		const names = (placement?.pathSlugs ?? []).map(
+			(slug, index) => localized(named[index] ?? {}) || (labels[index] ?? slug),
+		);
 		return CatalogPlacementPage.parse({
 			path: placement?.pathSlugs.join('/') ?? '',
 			title: names.at(-1) ?? placement?.pathLabel ?? 'All products',
 			breadcrumb: (placement?.pathSlugs ?? []).map((slug, index, pathSlugs) => ({
-				name: names[index] ?? slug,
+				// `names` has one entry per path slug (built from the same list above).
+				name: names[index] as string,
 				path: `/collections/${pathSlugs.slice(0, index + 1).join('/')}`,
 			})),
 			products: await this.cardsForIds(result.productIds),
@@ -405,7 +528,21 @@ export class CatalogPublicService {
 			pageSize,
 			facets: result.facets,
 			indexable: isCleanListing(query),
+			faq:
+				placement && page === 1 && isCleanListing(query)
+					? await this.categoryFaq(placement.pathCategoryIds)
+					: [],
 		});
+	}
+
+	/** A category page's FAQ: questions written for it or its parents, never the shop-wide ones. */
+	private async categoryFaq(categoryIds: readonly string[]): Promise<Array<{ question: string; answer: string }>> {
+		if (!this.faqs || !categoryIds.length) return [];
+		const entries = await this.faqs.resolveForSurface({ categoryIds, includeGlobal: false });
+		return entries
+			.filter((entry) => entry.scope === 'category' || entry.scope === 'mixed')
+			.map((entry) => ({ question: localized(entry.question), answer: localized(entry.answer) }))
+			.filter((entry) => entry.question.trim() && entry.answer.trim());
 	}
 
 	private async variantsByProduct(products: readonly Product[]): Promise<Map<string, ProductVariant[]>> {
@@ -448,8 +585,9 @@ export class CatalogPublicService {
 		const product = await this.requireLive(slug);
 		const assets = await this.assetsFor(productGallery(product));
 		const frames = productGallery(product).flatMap((id) => {
-			const image = this.image(assets.get(id), ['gallery', 'zoom']);
-			return image ? [image] : [];
+			// `card` is the thumbnail strip's size (about 120 px); without it the strip fell back to 900 px photos.
+			const image = this.image(assets.get(id), GALLERY_FRAME_ROLES, product.media.versions?.[id]);
+			return image?.roles['gallery']?.length ? [image] : [];
 		});
 		return CatalogGallery.parse({ slug: product.slug, frames });
 	}
@@ -460,15 +598,42 @@ export class CatalogPublicService {
 			attribute.terms.flatMap((term) => (term.swatch ? [term.swatch] : [])),
 		);
 		const assets = await this.assetsFor(ids);
+		await this.addCutPhotos(assets);
 		return product.attributes.flatMap((attribute) =>
-			attribute.terms.map((term) => ({
-				attributeCode: attribute.code,
-				termCode: term.code,
-				label: localized(term.label),
-				hex: term.hex ?? null,
-				image: term.swatch ? this.image(assets.get(term.swatch), ['swatch_image']) : null,
-			})),
+			attribute.terms.map((term) => {
+				const swatch = term.swatch ? this.swatchAsset(assets, term.swatch, product.media.versions) : null;
+				return {
+					attributeCode: attribute.code,
+					termCode: term.code,
+					label: localized(term.label),
+					hex: term.hex ?? null,
+					image: swatch ? this.image(swatch.asset, ['swatch_image'], swatch.version) : null,
+				};
+			}),
 		);
+	}
+
+	/** Loads the photos of swatch cuts still being made, so they can stand in meanwhile (brief P11). */
+	private async addCutPhotos(assets: Map<string, MediaAsset>): Promise<void> {
+		const making = [...assets.values()].flatMap((asset) =>
+			asset.cutFrom && asset.processing.state !== 'ready' ? [asset.cutFrom.assetId] : [],
+		);
+		for (const [id, row] of await this.assetsFor(making)) assets.set(id, row);
+	}
+
+	/**
+	 * The picture a swatch draws: its own, or, while it is a cut still being made, its photo's (owner, 21 Nov 2026,
+	 * brief P11: "nothing breaks"), drawn in the version the product's gallery stores for that photo.
+	 */
+	private swatchAsset(
+		assets: ReadonlyMap<string, MediaAsset>,
+		id: string,
+		versions: Readonly<Record<string, string>> | undefined,
+	): { asset: MediaAsset | undefined; version: string | undefined } {
+		const asset = assets.get(id);
+		const photo =
+			asset?.cutFrom && asset.processing.state !== 'ready' ? assets.get(asset.cutFrom.assetId) : undefined;
+		return photo ? { asset: photo, version: versions?.[photo.id] } : { asset, version: undefined };
 	}
 
 	async cardsForSlugs(slugs: readonly string[]) {
@@ -483,33 +648,72 @@ export class CatalogPublicService {
 	/** Cards for products still on sale; anything no longer public is left out. */
 	async cardsForIds(ids: readonly string[]): Promise<CatalogCard[]> {
 		const found = await Promise.all(ids.map((id) => this.products.findById(id, 'public')));
-		return this.cards(found.filter((product) => product !== null));
+		// A product kept off the shop (Show on shop off) is sold only inside sets and as a free item (D5).
+		return this.cards(found.filter((product): product is Product => product !== null && isShownOnShop(product)));
 	}
 
 	async relationCards(slug: string) {
 		const product = await this.requireLive(slug);
-		if (!this.relations) return { related: [], upsell: [], crossSell: [], boughtTogether: [] };
-		const rows = liveRelations(
-			await this.relations.listForProduct({ sourceProductId: product.id, audience: 'public', pageSize: 24 }),
-			new Set(
-				(await this.products.list({ audience: 'public', page: 1, pageSize: 1000 })).items.map((row) => row.id),
-			),
-		);
-		const grouped = async (type: 'related' | 'upsell' | 'cross_sell' | 'bought_together') => {
-			const ids = rows.filter((row) => row.relationType === type).map((row) => row.targetId);
-			const found: Product[] = [];
-			for (const id of ids.slice(0, 12)) {
-				const target = await this.products.findById(id, 'public');
-				if (target) found.push(target);
-			}
-			return this.cards(found);
-		};
+		const rows = this.relations
+			? await this.relations.listForProduct({ sourceProductId: product.id, audience: 'public', pageSize: 24 })
+			: [];
+		// Only targets still on sale, looked up one by one: at most 24 reads, however large the
+		// catalogue grows (this used to load the first 1,000 products to build the same set).
+		const targets = new Map<string, Product>();
+		for (const id of new Set(rows.map((row) => row.targetId))) {
+			const target = await this.products.findById(id, 'public');
+			if (target && isShownOnShop(target)) targets.set(id, target);
+		}
+		const live = liveRelations(rows, new Set(targets.keys()));
+		const products = (type: 'related' | 'upsell' | 'cross_sell' | 'bought_together') =>
+			live
+				.filter((row) => row.relationType === type)
+				.slice(0, 12)
+				// liveRelations keeps only rows whose target was found above.
+				.map((row) => targets.get(row.targetId) as Product);
+		const picked = products('related');
+		const related =
+			picked.length < RELATED_MINIMUM
+				? [
+						...picked,
+						...(await this.sameCategory(
+							product,
+							new Set([product.id, ...picked.map((row) => row.id)]),
+							RELATED_MINIMUM - picked.length,
+						)),
+					]
+				: picked;
 		return {
-			related: await grouped('related'),
-			upsell: await grouped('upsell'),
-			crossSell: await grouped('cross_sell'),
-			boughtTogether: await grouped('bought_together'),
+			related: await this.cards(related),
+			upsell: await this.cards(products('upsell')),
+			crossSell: await this.cards(products('cross_sell')),
+			boughtTogether: await this.cards(products('bought_together')),
 		};
+	}
+
+	/**
+	 * Tops up "You may also like" when fewer than six were picked in the admin: live products
+	 * from the product's own category first, then each parent in turn (owner decision 2026-11-09).
+	 */
+	private async sameCategory(product: Product, exclude: ReadonlySet<string>, wanted: number): Promise<Product[]> {
+		const found: Product[] = [];
+		const skip = new Set(exclude);
+		for (const categoryId of [...product.categoryIds].reverse()) {
+			if (found.length >= wanted) break;
+			const page = await this.products.list({
+				audience: 'public',
+				categoryId,
+				page: 1,
+				pageSize: wanted + skip.size,
+			});
+			for (const row of page.items) {
+				if (found.length >= wanted) break;
+				if (skip.has(row.id) || row.type === 'bundle') continue;
+				skip.add(row.id);
+				found.push(row);
+			}
+		}
+		return found;
 	}
 
 	async livePaths(): Promise<{ products: string[]; collections: string[] }> {
@@ -518,6 +722,14 @@ export class CatalogPublicService {
 			this.placements?.listLivePaths() ?? Promise.resolve([]),
 		]);
 		return { products, collections };
+	}
+
+	/** The live product page a short `/p/<code>` address stands for. Codes are stored as typed, then tried in capitals. */
+	async slugForCode(code: string): Promise<string | null> {
+		return (
+			(await this.products.findPublicSlugBySku(code)) ??
+			(code === code.toUpperCase() ? null : await this.products.findPublicSlugBySku(code.toUpperCase()))
+		);
 	}
 
 	/** Redirects the taxonomy implies: each retired collection and where it now goes. */
@@ -532,7 +744,7 @@ export class CatalogPublicService {
 	}
 
 	/** The head data for one public address. Null when the address has no row. */
-	async seoRoute(path: string, locale: 'en' | 'fr') {
+	async seoRoute(path: string, locale: string) {
 		const route = (await this.seoRoutes?.find(path, locale)) ?? null;
 		return route && { ...route, description: plainText(route.description) };
 	}
@@ -547,23 +759,44 @@ export class CatalogPublicService {
 			...products.map((slug) => `/product/${slug}`),
 			...collections.map((path) => `/collections/${path}`),
 		]);
-		return routes
-			.filter((route) => route.entityType === 'page' || live.has(route.path))
-			.map((route) => (/^\/(en|fr)$/.test(route.canonicalPath) ? `${route.canonicalPath}/` : route.canonicalPath))
-			.sort();
+		const shown = new Set(this.locales);
+		const prefix = (path: string) => /^\/([a-z]{2,3}(?:-[A-Z]{2})?)(?=\/|$)/.exec(path)?.[1] ?? null;
+		const listed = routes.filter(
+			(route) => (route.entityType === 'page' || live.has(route.path)) && shown.has(route.locale),
+		);
+		const paths = new Set(listed.map((route) => route.canonicalPath));
+		// A language switched on after the rows were written has its pages too: every live item has
+		// its text by then (Settings › Languages), so its address follows the English one.
+		for (const route of listed.filter((row) => row.locale === 'en' && prefix(row.canonicalPath) === 'en')) {
+			const rest = route.canonicalPath.slice('/en'.length);
+			for (const locale of this.locales) if (locale !== 'en') paths.add(`/${locale}${rest}`);
+		}
+		const own = (path: string) => (prefix(path) && path === `/${prefix(path)}` ? `${path}/` : path);
+		return [...new Set([...paths].map(own))].sort();
 	}
 
 	private async requireLive(slug: string): Promise<Product> {
 		const product =
 			(await this.products.findBySlug(slug, 'public')) ?? (await this.products.findById(slug, 'public'));
-		if (!product) throw new NotFoundException(`Product not found: ${slug}`);
-		return product;
+		return shownProduct(product, slug);
 	}
 
 	private async cards(products: Product[], known?: ReadonlyMap<string, ProductVariant[]>): Promise<CatalogCard[]> {
 		const variants = known ?? (await this.variantsByProduct(products));
 		const assets = await this.assetsFor(products.flatMap((product) => productGallery(product).slice(0, 1)));
-		return products.map((product) => this.card(product, variants.get(product.id) ?? [], assets));
+		// Sets price and stock from their pieces (G02): their cards read the set's own page model.
+		const sets = new Map(
+			await Promise.all(
+				products
+					.filter((product) => product.type === 'bundle')
+					.map(async (product) => [product.id, await this.bundleFor(product).catch(() => null)] as const),
+			),
+		);
+		return products.map((product) => {
+			const card = this.card(product, variants.get(product.id) ?? [], assets);
+			const set = sets.get(product.id);
+			return set ? setCard(card, set) : card;
+		});
 	}
 
 	private card(product: Product, rows: ProductVariant[], assets: Map<string, MediaAsset>): CatalogCard {
@@ -578,9 +811,10 @@ export class CatalogPublicService {
 			badges: [read.badges.primary, read.badges.secondary].filter((badge) => badge !== null),
 			lowStockLeft: read.badges.secondary === 'low_stock' ? read.sellable : null,
 			sku: read.selected?.sku ?? product.sku,
-			image: primary ? this.image(assets.get(primary), ['card']) : null,
+			image: primary ? this.image(assets.get(primary), ['card'], product.media.versions?.[primary]) : null,
 			inStock: read.sellable > 0 || read.madeToOrder,
 			madeToOrder: read.madeToOrder,
+			soldBy: product.soldBy,
 		});
 	}
 
@@ -590,7 +824,35 @@ export class CatalogPublicService {
 		return new Map(assets.map((asset) => [asset.id, asset]));
 	}
 
-	private image(asset: MediaAsset | undefined, roles: readonly string[]): ResolvedImage | null {
+	/** The product's chosen share picture: the widest file of the version chosen, or null when none is set or ready. */
+	private async chosenShare(
+		product: Product,
+	): Promise<{ url: string; width: number; height: number; type: string } | null> {
+		const chosen = product.media.shareImage;
+		if (!chosen || !this.storage) return null;
+		const asset = (await this.assetsFor([chosen.assetId])).get(chosen.assetId);
+		if (!asset || asset.deletedAt) return null;
+		// Link previews are drawn about 1200 wide: the widest size up to that, else the narrowest above it.
+		const fit = (width: number) => (width <= SHARE_WIDTH ? SHARE_WIDTH - width : width);
+		const files = asset.derivatives
+			.filter((file) => (chosen.versionId ? file.versionId === chosen.versionId : true))
+			// Chat apps read JPEG best, so a JPEG size wins.
+			.sort(
+				(a, b) =>
+					Number(b.format === 'image/jpeg') - Number(a.format === 'image/jpeg') ||
+					fit(a.width) - fit(b.width),
+			);
+		const best = files[0];
+		return best
+			? { url: this.storage.getUrl(best.storageKey), width: best.width, height: best.height, type: best.format }
+			: null;
+	}
+
+	private image(
+		asset: MediaAsset | undefined,
+		roles: readonly string[],
+		versionId?: string | null,
+	): ResolvedImage | null {
 		if (!asset || !this.storage) return null;
 		const resolved = resolveImage({
 			asset,
@@ -598,6 +860,7 @@ export class CatalogPublicService {
 			locale: 'en',
 			fallbackLocale: 'en',
 			roles,
+			versionId,
 		});
 		if (!resolved || !roles.some((role) => (resolved.roles[role]?.length ?? 0) > 0)) return null;
 		return resolved;
@@ -641,4 +904,50 @@ function isCleanListing(query: CatalogPlacementQuery): boolean {
 	return (
 		page === 1 && [attribute, price, price_min, price_max, rating, category, sortBy].every((v) => v === undefined)
 	);
+}
+
+/**
+ * A set's card (bundle builder brief G02): a fixed set shows its price with the pieces' total struck; a set with
+ * choices shows "From" its lowest full combination. Stock is the set's own (enough of every piece).
+ */
+export function setCard(card: CatalogCard, set: CatalogPageBundle): CatalogCard {
+	const needsSize = set.levels.some((level) =>
+		level.items.some((item) => item.variantId === null && item.variants.length > 0),
+	);
+	const freeChoice = set.levels.some((level) =>
+		level.items.some((item) => item.freeWith !== null && !item.freeWith.given && item.freeWith.min > 0),
+	);
+	const choose = set.fromPrice || set.heading === 'choose' || needsSize || freeChoice;
+	return CatalogCard.parse({
+		...card,
+		price: choose
+			? { kind: 'single', sellingINR: set.lowINR, mrpINR: null, percentOff: null }
+			: {
+					kind: 'single',
+					sellingINR: set.priceINR,
+					mrpINR: set.separatelyINR > set.priceINR ? set.separatelyINR : null,
+					percentOff:
+						set.separatelyINR > set.priceINR
+							? Math.round(((set.separatelyINR - set.priceINR) / set.separatelyINR) * 100)
+							: null,
+				},
+		inStock: set.buyable,
+		set: {
+			pieces: Math.max(
+				1,
+				set.levels.reduce((sum, level) => sum + level.take, 0),
+			),
+			choose,
+		},
+	});
+}
+
+/**
+ * The product a shopper may open, or "not found". Show on shop off (D5): the page is "not found" to shoppers, though
+ * the product sells inside sets. Kept out of the async method: V8 counted the branches of a check right after an
+ * await as never run (or less than never).
+ */
+function shownProduct(product: Product | null, slug: string): Product {
+	if (!product || !isShownOnShop(product)) throw new NotFoundException(`Product not found: ${slug}`);
+	return product;
 }

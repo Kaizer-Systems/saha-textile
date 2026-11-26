@@ -23,7 +23,7 @@ export class Tax {
 	private readonly params = signal<Params>({});
 	readonly taxesQuery = injectTaxesQuery(() => this.params());
 
-	public tableConfig: ITableConfig = {
+	public tableConfig: ITableConfig<ITax> = {
 		columns: [
 			{ title: 'No.', dataField: 'no', type: 'no' },
 			{ title: 'name', dataField: 'name', sortable: true, sort_direction: 'desc' },
@@ -37,9 +37,9 @@ export class Tax {
 			{ title: 'status', dataField: 'status', type: 'switch' },
 		],
 		rowActions: [
-			{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'tax.edit' },
+			{ label: 'edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'tax.edit' },
 			{
-				label: 'Delete',
+				label: 'delete',
 				actionToPerform: 'delete',
 				icon: 'ri-delete-bin-line',
 				permission: 'tax.destroy',
@@ -62,10 +62,10 @@ export class Tax {
 	}
 
 	onActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform == 'edit') this.edit(action.data);
-		else if (action.actionToPerform == 'status') this.status(action.data);
-		else if (action.actionToPerform == 'delete') this.delete(action.data);
-		else if (action.actionToPerform == 'deleteAll') this.deleteAll(action.data);
+		if (action.actionToPerform == 'edit') this.edit(action.data as ITax);
+		else if (action.actionToPerform == 'status') this.status(action.data as ITax);
+		else if (action.actionToPerform == 'delete') this.delete(action.data as ITax);
+		else if (action.actionToPerform == 'deleteAll') this.deleteAll(action.data as number[]);
 	}
 
 	edit(data: ITax) {

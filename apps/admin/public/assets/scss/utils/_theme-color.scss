@@ -1,0 +1,63 @@
+@use 'sass:math';
+@use 'sass:meta';
+
+// Theme colour helpers (owner, 2026-11-10). The admin's theme colour is the CSS variable
+// `--theme-color`, set from Brand Kit › Admin theme colour while the app runs. Sass cannot work
+// on a run-time variable, so for the theme colour these helpers return CSS that the browser
+// works out from the variable (exactly as Sass's rgba / lighten / darken would); for any other
+// colour they compute in Sass as before. `$primary-color` stays only as the marker that says
+// "this is the theme colour".
+
+@function is-theme-color($color) {
+	@return meta.type-of($color) == 'color' and $color == $primary-color;
+}
+
+/// The colour itself.
+@function tc($color) {
+	@if is-theme-color($color) {
+		@return var(--theme-color);
+	}
+	@return $color;
+}
+
+/// The colour as a fill under white text. For the theme colour, its deeper shade (`--theme-strong`,
+/// 75% theme + 25% black), which reaches WCAG AA with white where the theme colour itself does not.
+@function tc-fill($color) {
+	@if is-theme-color($color) {
+		@return var(--theme-strong);
+	}
+	@return $color;
+}
+
+/// The colour as text. For the theme colour, `--theme-ink`: the deeper shade on light surfaces, the
+/// bright theme colour in dark mode (utils/_admin-colours.scss, themes/_dark-colours.scss).
+@function tc-ink($color) {
+	@if is-theme-color($color) {
+		@return var(--theme-ink);
+	}
+	@return $color;
+}
+
+/// The colour at an opacity: 0.1 or 10% (like rgba($color, 0.1)).
+@function tc-alpha($color, $alpha) {
+	@if is-theme-color($color) {
+		$percent: if(math.unit($alpha) == '%', $alpha, $alpha * 100%);
+		@return color-mix(in srgb, var(--theme-color) #{$percent}, transparent);
+	}
+	@return rgba($color, $alpha);
+}
+
+/// Lighter (+) or darker (−) by HSL lightness points (like lighten / darken).
+@function tc-shade($color, $amount) {
+	@if is-theme-color($color) {
+		$points: math.div($amount, 1%);
+		@if $points >= 0 {
+			@return hsl(from var(--theme-color) h s calc(l + #{$points}));
+		}
+		@return hsl(from var(--theme-color) h s calc(l - #{math.abs($points)}));
+	}
+	@if $amount >= 0 {
+		@return lighten($color, $amount);
+	}
+	@return darken($color, math.abs($amount));
+}

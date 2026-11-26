@@ -1,5 +1,6 @@
 import type {
 	AttributeDefinition,
+	BundlePriceMethod,
 	CategoryFacetConfig,
 	CategoryPlacement,
 	FaqEntry,
@@ -109,10 +110,27 @@ export interface ProductVariantRepository {
  */
 export interface ProductBundleRepository {
 	findByProductId(productId: string, audience?: CatalogAudience): Promise<ProductBundle | null>;
+	/** Bundles of these products (admin lists), any status. */
+	listByProductIds(productIds: readonly string[]): Promise<ProductBundle[]>;
+	/** Every bundle that holds this product as a piece or an extra: "Used in", and stock refresh on a stock move. */
+	listContaining(productId: string): Promise<ProductBundle[]>;
+	/** How many bundles price themselves with this method (the method list's "Used by"). */
+	countUsingMethod(methodId: string): Promise<number>;
 	/** True when the product is backed by a bundle — the nesting guard. */
 	isBundleProduct(productId: string): Promise<boolean>;
 	save(bundle: ProductBundle, context?: TransactionContext): Promise<ProductBundle>;
+	/** Saves only the worked-out stock (V3), so a stock move never rewrites the set. */
+	saveStock(productId: string, stock: NonNullable<ProductBundle['stock']>): Promise<void>;
 	deleteById(bundleId: string, context?: TransactionContext): Promise<void>;
+}
+
+/** Products › Bundle price methods: the "Set price is" list, made in the method builder (owner, 22 Nov 2026). */
+export interface BundlePriceMethodRepository {
+	list(): Promise<BundlePriceMethod[]>;
+	findById(id: string): Promise<BundlePriceMethod | null>;
+	findByCode(code: string): Promise<BundlePriceMethod | null>;
+	save(method: BundlePriceMethod): Promise<BundlePriceMethod>;
+	deleteById(id: string): Promise<void>;
 }
 
 export interface RelationFilter extends PageQuery {
@@ -143,6 +161,8 @@ export interface ProductRelationRepository {
 }
 
 export interface FaqFilter extends PageQuery {
+	/** Only these items (Settings › Languages: a list filtered to what is missing in a language). */
+	ids?: readonly string[];
 	categoryId?: string;
 	productId?: string;
 	audience?: CatalogAudience;
@@ -153,7 +173,14 @@ export interface FaqRepository {
 	findById(faqId: string): Promise<FaqEntry | null>;
 	list(filter: FaqFilter): Promise<Paginated<FaqEntry>>;
 	/** Global + category + product entries for one page, deduped, in display order. */
-	resolveForSurface(input: { categoryIds?: readonly string[]; productId?: string }): Promise<FaqEntry[]>;
+	resolveForSurface(input: {
+		categoryIds?: readonly string[];
+		productId?: string;
+		/** False leaves out the shop-wide questions (the product and category pages). Default true. */
+		includeGlobal?: boolean;
+	}): Promise<FaqEntry[]>;
+	/** A product's own questions (product scope only), any status, in display order. */
+	listForProduct(productId: string): Promise<FaqEntry[]>;
 	save(entry: FaqEntry): Promise<FaqEntry>;
 	deleteById(faqId: string): Promise<void>;
 }
@@ -161,6 +188,8 @@ export interface FaqRepository {
 export interface QuestionFilter extends PageQuery {
 	productId?: string;
 	status?: ProductQuestion['status'];
+	/** Words to find in the question, the asker's name or email (admin only). */
+	search?: string;
 }
 
 /**
@@ -186,6 +215,7 @@ export interface ProductQuestionRepository {
 		answeredAt: string;
 	}): Promise<ProductQuestion | null>;
 	updateStatus(questionId: string, status: ProductQuestion['status']): Promise<void>;
+	deleteById(questionId: string): Promise<void>;
 }
 
 export interface ReviewFilter extends PageQuery {
@@ -210,7 +240,26 @@ export interface ReviewRepository {
 	list(filter: ReviewFilter): Promise<Paginated<Review>>;
 	/** Whether this user has a delivered order line for this product. */
 	hasVerifiedPurchase(input: { userId: string; productId: string }): Promise<boolean>;
+	/** The newest delivered order of this user that holds this product, or null. */
+	findReviewableOrderId(input: { userId: string; productId: string }): Promise<string | null>;
+	/** A customer's own review of one product, whatever its status (one per customer and product). */
+	findByUserAndProduct(input: { userId: string; productId: string }): Promise<Review | null>;
 	create(review: Review): Promise<Review>;
+	/**
+	 * The author's edit: new rating, text and photos, back to `pending` with the moderation
+	 * fields cleared. Matches on the author, so another customer's id changes nothing.
+	 */
+	updateByAuthor(
+		input: {
+			reviewId: string;
+			userId: string;
+			rating: number;
+			title: string | null;
+			body: string;
+			imageAssetIds: string[];
+		},
+		context?: TransactionContext,
+	): Promise<Review | null>;
 	moderate(
 		input: {
 			reviewId: string;
@@ -224,7 +273,10 @@ export interface ReviewRepository {
 		context?: TransactionContext,
 	): Promise<Review | null>;
 	getAggregate(productId: string): Promise<RatingAggregate | null>;
-	/** Recomputes from approved reviews only; returns the persisted aggregate. */
+	/**
+	 * Recomputes from approved reviews only; returns the persisted aggregate. The product's
+	 * own star summary (shown on cards and in search) is written in the same step.
+	 */
 	recomputeAggregate(productId: string, context?: TransactionContext): Promise<RatingAggregate>;
 }
 
@@ -250,7 +302,7 @@ export interface ProductInsightSetRepository {
 
 /** One public address per language. Filtered, private and gone URLs are not rows. */
 export interface SeoRouteRepository {
-	find(path: string, locale: 'en' | 'fr'): Promise<SeoRoute | null>;
+	find(path: string, locale: string): Promise<SeoRoute | null>;
 	listIndexable(): Promise<SeoRoute[]>;
 	save(route: SeoRoute): Promise<SeoRoute>;
 }

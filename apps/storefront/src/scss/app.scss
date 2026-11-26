@@ -13,8 +13,17 @@
 
 @import 'utils/variables';
 @import 'style';
+@import 'utils/shop-colours';
+@import 'components/page-builder';
+@import 'components/render-near-screen';
+@import 'components/gallery-before-start';
+@import 'components/product-gallery';
+@import 'components/option-looks';
+@import 'components/buy-box-layout';
+@import 'components/measure-row';
+@import 'components/buy-bar';
+@import 'components/set-rows';
+@import 'components/heading-classes';
 
-.dark {
-	@import 'utils/dark_variables';
-	@import 'style';
-}
+// The theme's dark mode is built from dark.scss into a file of its own, which a page links only
+// when the shop's mode is dark, so light pages never download it.

@@ -7,6 +7,7 @@
 			{{ 'add' | transloco }} {{ form.controls['type']?.value | titlecase }} {{'address' | transloco }}
 		</h3>
 		<app-button
+			[title]="'close' | transloco"
 			[class]="'btn btn-close'"
 			[spinner]="false"
 			[id]="'address_modal_close_btn'"

@@ -29,8 +29,9 @@ export class Media {
 	readonly MediaModal = viewChild<MediaModal>('mediaModal');
 	readonly DeleteModal = viewChild<DeleteModal>('deleteModal');
 
-	selectImage(data: IAttachment[]) {
-		this.images = data;
+	/** The library page chooses several, so the box hands back a list. */
+	selectImage(data: IAttachment[] | IAttachment) {
+		this.images = Array.isArray(data) ? data : [data];
 	}
 
 	onActionClicked(action: string) {

@@ -1,6 +1,36 @@
 import { defineEventHandler, getRequestURL, send, setResponseHeaders } from 'h3';
 
-import { environment } from '../../../public/environments/environment';
+import { DEFAULT_LOCALE, localeOfPath, refreshSupportedLocales, supportedLocales } from '../../app/core/i18n/locale';
+import { serverApiUrl } from '../api-url';
+import { hiddenFromSearch } from '../search-visibility';
+
+/**
+ * Pages the storefront itself owns, listed in every language beside the API's products,
+ * categories and posts. About Us and Offer still hold the theme's demo content and stay out
+ * (they are `noindex`); FAQ is added only once it has questions.
+ */
+const STATIC_PAGES = [
+	'/blogs',
+	'/collections',
+	'/contact-us',
+	'/privacy-policy',
+	'/refund-returns',
+	'/shipping-policy',
+	'/terms-conditions',
+	'/videos',
+];
+
+/** Whether the shop FAQ has any questions; an empty FAQ page is `noindex`. */
+const faqHasRows = async () => {
+	try {
+		const response = await fetch(`${serverApiUrl()}/catalog/faq`, { signal: AbortSignal.timeout(5000) });
+		if (!response.ok) return false;
+		const rows = await response.json();
+		return Array.isArray(rows) && rows.length > 0;
+	} catch {
+		return false;
+	}
+};
 
 /**
  * `/sitemap.xml` and `/robots.txt`. Middleware rather than a server route, because Analog puts
@@ -22,21 +52,49 @@ export default defineEventHandler(async (event) => {
 	};
 
 	if (path === '/sitemap.xml') {
-		const response = await fetch(`${environment.apiUrl}/catalog/sitemap`, { signal: AbortSignal.timeout(5000) });
+		const [response, withFaq] = await Promise.all([
+			fetch(`${serverApiUrl()}/catalog/sitemap`, { signal: AbortSignal.timeout(5000) }),
+			faqHasRows(),
+		]);
 		if (!response.ok) {
 			event.node.res.statusCode = 503;
 			setResponseHeaders(event, { 'Cache-Control': 'no-store', 'Retry-After': '60' });
 			await send(event, 'The sitemap is unavailable.', 'text/plain; charset=utf-8');
 			return true;
 		}
-		const { paths } = await response.json();
+		await refreshSupportedLocales(serverApiUrl());
+		const locales = supportedLocales();
+		const own = withFaq ? [...STATIC_PAGES, '/faq'] : STATIC_PAGES;
+		const paths = [
+			...new Set([
+				...(await response.json()).paths,
+				...locales.flatMap((locale) => own.map((page) => `/${locale}${page}`)),
+			]),
+		].sort();
 		const origin = originOf();
+		// Each address names its other-language versions, the same pairs as the page heads.
+		const listed = new Set(paths);
 		let urls = '';
-		for (const entry of paths) urls += `<url><loc>${origin}${entry}</loc></url>`;
+		for (const entry of paths) {
+			const prefix = localeOfPath(entry);
+			const rest = prefix ? entry.slice(prefix.length + 1) : entry;
+			let alternates = '';
+			for (const locale of locales) {
+				const sibling = `/${locale}${rest}`;
+				if (listed.has(sibling)) {
+					alternates += `<xhtml:link rel="alternate" hreflang="${locale}" href="${origin}${sibling}"/>`;
+				}
+			}
+			const fallback = `/${DEFAULT_LOCALE}${rest}`;
+			if (alternates && listed.has(fallback)) {
+				alternates += `<xhtml:link rel="alternate" hreflang="x-default" href="${origin}${fallback}"/>`;
+			}
+			urls += `<url><loc>${origin}${entry}</loc>${alternates}</url>`;
+		}
 		setResponseHeaders(event, { 'Cache-Control': 'public, max-age=3600' });
 		await send(
 			event,
-			`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`,
+			`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">${urls}</urlset>`,
 			'application/xml; charset=utf-8',
 		);
 		return true;
@@ -46,7 +104,10 @@ export default defineEventHandler(async (event) => {
 		setResponseHeaders(event, { 'Cache-Control': 'public, max-age=3600' });
 		await send(
 			event,
-			`User-agent: *\nAllow: /\n\nSitemap: ${originOf()}/sitemap.xml\n`,
+			// Staging and a development server ask every crawler to stay out (search-visibility.ts).
+			hiddenFromSearch()
+				? 'User-agent: *\nDisallow: /\n'
+				: `User-agent: *\nAllow: /\n\nSitemap: ${originOf()}/sitemap.xml\n`,
 			'text/plain; charset=utf-8',
 		);
 		return true;

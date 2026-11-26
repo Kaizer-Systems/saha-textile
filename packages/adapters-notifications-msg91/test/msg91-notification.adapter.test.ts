@@ -79,7 +79,7 @@ describe('Msg91NotificationAdapter', () => {
 		const adapter = new Msg91NotificationAdapter({
 			config: {
 				authKey: 'test-key',
-				emailFrom: 'no-reply@sahatextile.com',
+				emailFromFor: () => 'no-reply@sahatextile.com',
 			},
 			settings,
 			templates,
@@ -158,7 +158,7 @@ describe('Msg91NotificationAdapter', () => {
 		const adapter = new Msg91NotificationAdapter({
 			config: {
 				authKey: 'test-key',
-				emailFrom: 'no-reply@sahatextile.com',
+				emailFromFor: () => 'no-reply@sahatextile.com',
 				emailDomain: 'sahatextile.com',
 			},
 			settings,
@@ -265,7 +265,7 @@ describe('Msg91NotificationAdapter', () => {
 		};
 
 		const adapter = new Msg91NotificationAdapter({
-			config: { authKey: 'test-key', emailFrom: 'no-reply@sahatextile.com', senderId: 'SAHATX' },
+			config: { authKey: 'test-key', emailFromFor: () => 'no-reply@sahatextile.com', senderId: 'SAHATX' },
 			settings,
 			templates,
 			outbox,
@@ -284,5 +284,57 @@ describe('Msg91NotificationAdapter', () => {
 
 		expect(result.status).toBe('suppressed_no_consent');
 		expect(fetchImpl).not.toHaveBeenCalled();
+	});
+});
+
+describe('Msg91NotificationAdapter and Settings › Communications', () => {
+	const build = (enabled: boolean, allows: (templateKey: string) => Promise<boolean>) => {
+		const outbox = memoryOutbox();
+		const fetchImpl = vi.fn();
+		const settings: NotificationSettingsRepository = {
+			findSettings: async () => ({ enabled, planLimit: null, usedThisPeriod: 0 }) as never,
+			listSettings: async () => [],
+			upsertSettings: async (s) => s,
+			incrementUsage: async () => 0,
+		};
+		const adapter = new Msg91NotificationAdapter({
+			config: { authKey: 'test-key', emailFromFor: () => 'no-reply@example.test' },
+			settings,
+			templates: { findByKey: async () => null, list: async () => [], upsert: async (t) => t },
+			outbox,
+			consent: {
+				findLatestForUser: async () => null,
+				findLatestForGuest: async () => null,
+				append: async (e) => e,
+				listForUser: async () => ({ items: [], total: 0, page: 1, pageSize: 20 }),
+			},
+			gate: { allows: vi.fn(async (templateKey: string) => allows(templateKey)) },
+			fetchImpl,
+			idFactory: () => 'outbox_gate_1',
+		});
+		return { adapter, outbox, fetchImpl };
+	};
+	const message = {
+		channel: 'sms' as const,
+		category: 'transactional' as const,
+		templateKey: 'password_reset',
+		destination: '+919800000000',
+	};
+
+	it('records a message switched off as suppressed_use_disabled and never calls MSG91', async () => {
+		const { adapter, outbox, fetchImpl } = build(true, async () => false);
+		expect((await adapter.send(message)).status).toBe('suppressed_use_disabled');
+		expect(outbox.entries.get('outbox_gate_1')?.['status']).toBe('suppressed_use_disabled');
+		expect(fetchImpl).not.toHaveBeenCalled();
+	});
+
+	it('lets the channel kill switch win', async () => {
+		const { adapter } = build(false, async () => false);
+		expect((await adapter.send(message)).status).toBe('suppressed_channel_disabled');
+	});
+
+	it('goes on to the template when the message is switched on', async () => {
+		const { adapter } = build(true, async () => true);
+		expect((await adapter.send(message)).status).toBe('failed');
 	});
 });

@@ -4,7 +4,7 @@ wide: true
 description: State ownership, data sources, interceptors and runtime configuration in the admin application.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/admin/src/app/app.config.ts
     - apps/admin/src/app/core/config/runtime-config.ts
@@ -31,10 +31,10 @@ The admin application combines server-state queries, application stores, a clien
 
 ## Data sources
 
-| Source | Features                                                                                                                                                                                                                                          |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| API    | Auth, roles, operators, customers, notification settings, media library, banners, reviews, YouTube, product form, redirects, add-on templates, FAQ, questions                                                                                     |
-| JSON   | Attributes, blog, cart, categories, countries, coupons, currencies, customer ledger, dashboard, navigation badges, notification inbox, order status, orders, pages, points, refunds, settings, shipping, states, stores, tags, tax, theme options |
+| Source | Features                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API    | Auth, roles, operators, customers, notification settings, media library, banners, reviews, YouTube, product form, categories, attributes, redirects, add-on templates, FAQ, questions, blog posts, categories and tags, launch and sale events, stores, mailboxes and the inbox, search words, Storefront settings › Search, home page widgets, suppliers, purchase orders, purchase entries and returns, stock, counts, opening stock, stock reports, Settings › Purchases and stock and Shop details, the Stock menu badge and the bell's stock lines |
+| JSON   | Cart, countries, coupons, currencies, customer ledger, home page demo widgets, other navigation badges, notification inbox, order status, orders, pages, points, product tags, refunds, settings, shipping, states, tax, theme options                                                                                                                                                                                                                                                                                                                  |
 
 ## Read path
 
@@ -90,7 +90,7 @@ Do not optimistically remove or approve records unless rollback is defined. High
 
 ## Runtime configuration
 
-The admin application loads `public/config.json` at startup, through `provideAppInitializer` in `core/config/runtime-config.ts`, and fills the mutable `environment` object with `apiUrl` and other non-secret values. The committed file holds localhost defaults. Deployments mount their own.
+The admin application loads `public/config.json` at startup, through `provideAppInitializer` in `core/config/runtime-config.ts`, and fills the mutable `environment` object with `apiUrl` and other non-secret values. The committed file holds localhost defaults. Deployments mount their own. On a host that is not local, the application refuses to start when the file is missing, cannot be parsed or points at localhost.
 
 ## Session and HTTP behaviour
 

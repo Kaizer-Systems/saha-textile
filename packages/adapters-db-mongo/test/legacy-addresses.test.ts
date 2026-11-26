@@ -21,7 +21,7 @@ describe('legacy address file', () => {
 	it('accepts a live product and the home page only when it is live', () => {
 		const live = new Set(['/product/red-saree']);
 		expect(legacyTargetIsLive('/en/product/red-saree', live)).toBe(true);
-		expect(legacyTargetIsLive('/fr/product/gone', live)).toBe(false);
+		expect(legacyTargetIsLive('/bn/product/gone', live)).toBe(false);
 		expect(legacyTargetIsLive('/en', live)).toBe(false);
 		expect(legacyTargetIsLive('/en/about-us', live)).toBe(false);
 	});
@@ -30,6 +30,8 @@ describe('legacy address file', () => {
 		const live = new Set(['sarees/pure-silk']);
 		expect(legacyTargetIsLive('/en/collections/sarees/pure-silk', live)).toBe(true);
 		expect(legacyTargetIsLive('/en/contact-us', live)).toBe(true);
+		// The old WordPress /videos page moved here (owner, 2026-11-10).
+		expect(legacyTargetIsLive('/en/videos', live)).toBe(true);
 		expect(legacyTargetIsLive('/en/collections/missing', live)).toBe(false);
 	});
 });

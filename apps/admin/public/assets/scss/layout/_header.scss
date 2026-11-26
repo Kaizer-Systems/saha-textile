@@ -47,7 +47,7 @@
 			position: absolute;
 			height: 40px;
 			width: 40px;
-			background-color: rgba($primary-color, 0.1);
+			background-color: tc-alpha($primary-color, 0.1);
 			border-radius: 100%;
 			left: -11px;
 			z-index: -2;
@@ -163,13 +163,13 @@
 				transition: all 0.3s ease;
 
 				&:hover {
-					background-color: rgba($primary-color, 0.1);
+					background-color: tc-alpha($primary-color, 0.1);
 					border-radius: 5px;
 					transition: all 0.3s ease;
 
 					> a {
 						> span {
-							color: var(--theme-color);
+							color: var(--theme-ink);
 							transition: all 0.3s ease;
 						}
 
@@ -228,7 +228,7 @@
 		.nav-link {
 			display: inline-block;
 			border-radius: 5px;
-			background-color: rgba($primary-color, 0.07%);
+			background-color: tc-alpha($primary-color, 0.07%);
 			transition: all 0.3s ease;
 
 			&.active {
@@ -291,7 +291,7 @@
 
 				&:hover {
 					a {
-						color: var(--theme-color);
+						color: var(--theme-ink);
 						letter-spacing: 1.5px;
 						transition: all 0.3s ease;
 					}
@@ -359,7 +359,7 @@
 
 					&:hover {
 						&:before {
-							color: var(--theme-color);
+							color: var(--theme-ink);
 							transition: all 0.3s ease;
 						}
 					}
@@ -387,7 +387,7 @@
 
 					&:hover {
 						&:before {
-							color: var(--theme-color);
+							color: var(--theme-ink);
 							transition: all 0.3s ease;
 						}
 					}

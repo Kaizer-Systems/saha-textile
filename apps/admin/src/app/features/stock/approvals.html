@@ -1,0 +1,151 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'stock_approvals'"
+>
+	<div class="d-flex mb-3 flex-wrap gap-2">
+		@for (item of tabs; track item) {
+		<button
+			type="button"
+			class="align-items-center btn btn-sm d-flex"
+			[class.btn-theme]="tab() === item"
+			[class.btn-outline]="tab() !== item"
+			[attr.aria-pressed]="tab() === item"
+			(click)="setTab(item)"
+		>
+			{{ 'approvals_tab_' + item | transloco }}@if (item === 'pending' && query.data()?.total && tab() ===
+			'pending') { {{ query.data()?.total }} }
+		</button>
+		}
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th style="width: 170px">{{ 'asked' | transloco }}</th>
+					<th>{{ 'by' | transloco }}</th>
+					<th style="width: 260px">{{ 'item' | transloco }}</th>
+					<th class="text-end">{{ 'qty_change' | transloco }}</th>
+					<th>{{ 'reason' | transloco }}</th>
+					@if (canSeeCost()) {
+					<th class="text-end">{{ 'value_at_cost' | transloco }}</th>
+					}
+					<th>{{ 'note_and_proof' | transloco }}</th>
+					<th style="width: 170px"></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (request of query.data()?.items ?? []; track request.id) {
+				<tr>
+					<td>{{ request.requestedAt | shortDateTime }}</td>
+					<td>{{ request.requestedByName ?? '—' }}</td>
+					<td>
+						@if (request.kind === 'count') { {{ 'stock_count' | transloco }} {{ request.countNumber }} · {{
+						request.title }} } @else {
+						<h6 class="mb-0">{{ request.title }}</h6>
+						<small class="text-muted">{{ request.sku }}</small>
+						}
+					</td>
+					<td class="text-end text-nowrap">
+						@if (request.kind === 'count' && request.countSummary; as summary) {
+						<strong>
+							−{{ qty(summary.missing, summary.missingTenths) }} / +{{ qty(summary.found,
+							summary.foundTenths) }}
+						</strong>
+						} @else {
+						<strong [class]="request.action === 'remove' ? 'text-danger' : 'text-success'">
+							{{ request.action === 'remove' ? '−' : '+' }}{{ request.quantity | stockQty: request.soldBy
+							}}
+						</strong>
+						}
+					</td>
+					<td>
+						{{ request.reasonCode ? ('reason_code_' + request.reasonCode | transloco) :
+						('reason_code_manual_recount_correction' | transloco) }}
+					</td>
+					@if (canSeeCost()) {
+					<td class="text-end text-nowrap">
+						{{ request.valueAtCostINR === null ? '—' : (request.valueAtCostINR | rupees) }}
+					</td>
+					}
+					<td>
+						@if (request.kind === 'count' && request.countSummary; as summary) {
+						<span class="small">
+							{{ 'count_differences_line' | transloco: { differences: summary.differences, skus:
+							summary.skus } }}
+						</span>
+						} @else {
+						<span class="small">{{ request.note }}</span>
+						@if (request.photoAssetIds.length) {
+						<br />
+						<span class="small">
+							{{ 'photos_count' | transloco: { count: request.photoAssetIds.length } }}
+						</span>
+						} } @if (request.rejectReason) {
+						<div class="small text-danger">
+							{{ 'rejected_because' | transloco: { reason: request.rejectReason } }}
+						</div>
+						} @if (request.decidedByName) {
+						<div class="small text-muted">
+							{{ 'decided_by' | transloco: { name: request.decidedByName } }}
+						</div>
+						}
+					</td>
+					<td>
+						@if (request.status === 'pending') { @if (own(request, me())) {
+						<span class="small text-muted">{{ 'your_own_request' | transloco }}</span>
+						} @else if (request.kind === 'count') {
+						<button
+							type="button"
+							class="btn btn-theme btn-sm"
+							(click)="review(request)"
+						>
+							{{ 'review' | transloco }}
+						</button>
+						} @else {
+						<div class="d-flex gap-1">
+							<button
+								type="button"
+								class="btn btn-theme btn-sm"
+								[disabled]="busy() === request.id"
+								(click)="approve(request)"
+							>
+								{{ 'approve' | transloco }}
+							</button>
+							<button
+								type="button"
+								class="btn btn-outline btn-sm"
+								[disabled]="busy() === request.id"
+								(click)="reject(request)"
+							>
+								{{ 'reject' | transloco }}
+							</button>
+						</div>
+						} } @else if (request.number) {
+						<a [routerLink]="['/stock/adjustments', request.id]">{{ request.number }}</a>
+						}
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td [attr.colspan]="canSeeCost() ? 8 : 7">
+						<div class="no-data-added">
+							<h4>{{ (tab() === 'pending' ? 'nothing_waiting' : 'no_records_found') | transloco }}</h4>
+						</div>
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if ((query.data()?.total ?? 0) > pageSize) {
+	<nav class="custom-pagination">
+		<app-pagination
+			[total]="query.data()?.total ?? 0"
+			[currentPage]="page()"
+			[pageSize]="pageSize"
+			(setPage)="page.set($event)"
+		/>
+	</nav>
+	}
+	<p class="small text-muted mt-3 mb-0">{{ 'approvals_note' | transloco }}</p>
+</app-page-wrapper>

@@ -1,54 +1,46 @@
-import { AsyncPipe, DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { Component, PLATFORM_ID, computed, inject, input } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
-
-import { Observable } from 'rxjs';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
+import { Component, PLATFORM_ID, computed, effect, inject, input, signal } from '@angular/core';
 
 import { SettingStore } from '@core/state/setting.store';
-import { ICurrency, ICurrencyModel } from '@data-access/interfaces/currency.interface';
-import { IValues } from '@data-access/interfaces/setting.interface';
+import { ICurrency } from '@data-access/interfaces/currency.interface';
 import { injectCurrenciesQuery } from '@data-access/queries/currency.queries';
 import { ClickOutsideDirective } from '@shared/directives/out-side-directive';
 import { Button } from '@shared/ui/button/button';
 
+/**
+ * The top bar's currency picker. It reads the store's signals directly, so it shows as soon as the settings arrive:
+ * on a first visit they can arrive after hydration, and a copy kept in a plain field was never drawn again, leaving
+ * the top bar without its picker until the next page.
+ */
 @Component({
 	selector: 'app-currency',
 	templateUrl: './currency.html',
 	styleUrls: ['./currency.scss'],
-	imports: [ClickOutsideDirective, Button, AsyncPipe],
+	imports: [ClickOutsideDirective, Button],
 })
 export class Currency {
-	private platformId = inject<Object>(PLATFORM_ID);
-	private document = inject(DOCUMENT);
-	private settingStore = inject(SettingStore);
-
-	setting$: Observable<IValues> = toObservable(this.settingStore.setting) as Observable<IValues>;
-	selectedCurrency$: Observable<ICurrency> = toObservable(
-		this.settingStore.selectedCurrency,
-	) as Observable<ICurrency>;
-
-	public open: boolean = false;
-	public selectedCurrency: ICurrency;
-	public setting: IValues;
+	private readonly platformId = inject<object>(PLATFORM_ID);
+	private readonly document = inject(DOCUMENT);
+	private readonly settingStore = inject(SettingStore);
 
 	readonly style = input<string>('basic');
+	readonly selectedCurrency = this.settingStore.selectedCurrency;
+	readonly open = signal(false);
 
 	private readonly currenciesQuery = injectCurrenciesQuery(() => ({ status: 1 }));
-	currency$: Observable<ICurrencyModel> = toObservable(
-		computed(() => this.currenciesQuery.data() ?? { data: [], total: 0 }),
-	);
+	readonly currencies = computed<ICurrency[]>(() => this.currenciesQuery.data()?.data ?? []);
 
 	constructor() {
-		this.selectedCurrency$.subscribe((setting) => (this.selectedCurrency = setting));
+		// The shop's own currencies (`GET /currency`): a saved choice takes today's rate, or falls back to ₹.
+		effect(() => this.settingStore.useCurrencies(this.currencies()));
 	}
 
-	openDropDown() {
-		this.open = !this.open;
+	openDropDown(): void {
+		this.open.update((open) => !open);
 	}
 
-	selectCurrency(currency: ICurrency) {
-		this.selectedCurrency = currency;
-		this.open = false;
+	selectCurrency(currency: ICurrency): void {
+		this.open.set(false);
 		// Persisted to localStorage inside the store so it survives the reload.
 		this.settingStore.setCurrency(currency);
 		if (isPlatformBrowser(this.platformId)) {
@@ -56,7 +48,7 @@ export class Currency {
 		}
 	}
 
-	hideDropdown() {
-		this.open = false;
+	hideDropdown(): void {
+		this.open.set(false);
 	}
 }

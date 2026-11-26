@@ -8,7 +8,7 @@ import { ProductGallery } from './product-gallery';
 
 const render = (product?: unknown) => {
 	const instance: Record<string, unknown> = {};
-	const open = vi.fn(() => ({ componentInstance: instance }));
+	const open = vi.fn(() => ({ componentInstance: instance, result: Promise.resolve() }));
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({ providers: [{ provide: NgbModal, useValue: { open } }] });
 	TestBed.overrideComponent(ProductGallery, { set: { imports: [], template: '' } });
@@ -38,5 +38,32 @@ describe('ProductGallery', () => {
 		const { gallery, instance } = render();
 		gallery.openFullscreen(1);
 		expect(instance['alt']).toBe('');
+	});
+
+	it('shows the small card file in the thumbnail strip', () => {
+		const { gallery } = render();
+		const card = [
+			{ url: 'https://cdn/a-200.webp', width: 200, height: 267, format: 'image/webp' },
+			{ url: 'https://cdn/a-400.webp', width: 400, height: 533, format: 'image/webp' },
+		];
+		const image = { id: 1, original_url: 'https://cdn/a.jpg', image: { roles: { card } } };
+		expect(gallery.thumb(image as never)).toEqual({
+			src: 'https://cdn/a-200.webp',
+			srcset: 'https://cdn/a-200.webp 200w, https://cdn/a-400.webp 400w',
+		});
+		// Sent without card sizes: the gallery's own sizes, smallest first, never the 900 px main file alone.
+		const gallerySizes = [
+			{ url: 'https://cdn/c-600.webp', width: 600, height: 800, format: 'image/webp' },
+			{ url: 'https://cdn/c-900.webp', width: 900, height: 1200, format: 'image/webp' },
+		];
+		const noCard = { id: 3, original_url: 'https://cdn/c-900.webp', image: { roles: { gallery: gallerySizes } } };
+		expect(gallery.thumb(noCard as never)).toEqual({
+			src: 'https://cdn/c-600.webp',
+			srcset: 'https://cdn/c-600.webp 600w, https://cdn/c-900.webp 900w',
+		});
+		expect(gallery.thumb({ id: 2, original_url: 'https://cdn/b.jpg' } as never)).toEqual({
+			src: 'https://cdn/b.jpg',
+			srcset: null,
+		});
 	});
 });

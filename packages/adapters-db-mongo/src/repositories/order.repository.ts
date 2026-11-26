@@ -1,7 +1,8 @@
-import { type Order, type OrderStatus, PURCHASED_ORDER_STATUSES } from '@saha-textile/contracts';
+import { type Order, type OrderStatus, PURCHASED_STORED_ORDER_STATUSES } from '@saha-textile/contracts';
 import type {
 	OrderRepository,
 	PageQuery,
+	PaidOrderLine,
 	Paginated,
 	PurchasedOrder,
 	PurchasedProduct,
@@ -39,7 +40,7 @@ export class MongoOrderRepository implements OrderRepository {
 	}
 
 	async listPurchased(): Promise<PurchasedOrder[]> {
-		const docs = await OrderModel.find({ status: { $in: PURCHASED_ORDER_STATUSES } })
+		const docs = await OrderModel.find({ status: { $in: PURCHASED_STORED_ORDER_STATUSES } })
 			.lean<OrderDoc[]>()
 			.exec();
 		return docs.map(toOrder).map((order) => ({
@@ -48,9 +49,49 @@ export class MongoOrderRepository implements OrderRepository {
 		}));
 	}
 
+	async paidTotalsBetween(from: string, to: string): Promise<{ orders: number; totalINR: number }> {
+		const [row] = await OrderModel.aggregate<{ orders: number; totalINR: number }>([
+			{
+				$match: {
+					status: { $in: [...PURCHASED_STORED_ORDER_STATUSES] },
+					createdAt: { $gte: new Date(from), $lt: new Date(to) },
+				},
+			},
+			{ $group: { _id: null, orders: { $sum: 1 }, totalINR: { $sum: '$totalINR' } } },
+		]).exec();
+		return { orders: row?.orders ?? 0, totalINR: row?.totalINR ?? 0 };
+	}
+
+	async hasLinesFor(productId: string): Promise<boolean> {
+		return (await OrderModel.exists({ 'lines.productId': productId }).exec()) !== null;
+	}
+
+	async listPaidLinesBetween(from: string, to: string, productIds: readonly string[]): Promise<PaidOrderLine[]> {
+		if (!productIds.length) return [];
+		const docs = await OrderModel.find({
+			status: { $in: PURCHASED_STORED_ORDER_STATUSES },
+			createdAt: { $gte: new Date(from), $lt: new Date(to) },
+			'lines.productId': { $in: [...productIds] },
+		})
+			.lean<OrderDoc[]>()
+			.exec();
+		const wanted = new Set(productIds);
+		return docs.map(toOrder).flatMap((order) =>
+			order.lines
+				.filter((line) => wanted.has(line.productId))
+				.map((line) => ({
+					orderId: order.id,
+					productId: line.productId,
+					sku: line.sku,
+					quantity: line.quantity,
+					unitPriceINR: line.unitPriceINR,
+				})),
+		);
+	}
+
 	async listRecentlyPurchased(since: string, limit: number): Promise<PurchasedProduct[]> {
 		const docs = await OrderModel.find({
-			status: { $in: PURCHASED_ORDER_STATUSES },
+			status: { $in: PURCHASED_STORED_ORDER_STATUSES },
 			createdAt: { $gte: new Date(since) },
 		})
 			.sort({ createdAt: -1 })
@@ -59,7 +100,7 @@ export class MongoOrderRepository implements OrderRepository {
 			.exec();
 		const newest = new Map<string, string>();
 		for (const order of docs.map(toOrder)) {
-			const paid = order.statusTimeline.find((event) => event.status === 'paid')?.at ?? order.createdAt;
+			const paid = order.statusTimeline.find((event) => event.status === 'placed')?.at ?? order.createdAt;
 			if (!paid) continue;
 			for (const line of order.lines) {
 				if (!newest.has(line.productId)) newest.set(line.productId, paid);

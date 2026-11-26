@@ -68,8 +68,13 @@ export type AuthRateLimitAction =
 	| 'product_question'
 	| 'stock_alert'
 	| 'catalog_search'
+	| 'search_click'
 	| 'cart_write'
-	| 'consent_write';
+	| 'wishlist_write'
+	| 'consent_write'
+	| 'contact_message'
+	| 'share_open'
+	| 'share_password';
 
 const MINUTES = 60;
 const HOURS = 60 * MINUTES;
@@ -144,8 +149,18 @@ export const AUTH_RATE_LIMIT_POLICY: Readonly<Record<AuthRateLimitAction, RateLi
 		counting: 'attempts',
 		ip: { max: 120, windowSeconds: 1 * MINUTES },
 	},
+	/** Result clicks feed Trending, so one address cannot push a product up the list. */
+	search_click: {
+		counting: 'attempts',
+		ip: { max: 30, windowSeconds: 1 * MINUTES },
+	},
 	/** Guest carts need no account, so this keeps one address from filling the collection. */
 	cart_write: {
+		counting: 'attempts',
+		ip: { max: 120, windowSeconds: 1 * MINUTES },
+	},
+	/** A heart press per product; this only stops one address hammering the account list. */
+	wishlist_write: {
 		counting: 'attempts',
 		ip: { max: 120, windowSeconds: 1 * MINUTES },
 	},
@@ -153,6 +168,26 @@ export const AUTH_RATE_LIMIT_POLICY: Readonly<Record<AuthRateLimitAction, RateLi
 	consent_write: {
 		counting: 'attempts',
 		ip: { max: 30, windowSeconds: 1 * MINUTES },
+	},
+	/**
+	 * Contact Us lands in a staff mailbox, so one sender gets three messages a day and one
+	 * address ten (a shared office or phone network still fits).
+	 */
+	contact_message: {
+		counting: 'attempts',
+		identifier: { max: 3, windowSeconds: 24 * HOURS },
+		ip: { max: 10, windowSeconds: 24 * HOURS },
+	},
+	/** Media share links: codes are long and random, so this only stops one address trying many. */
+	share_open: {
+		counting: 'attempts',
+		ip: { max: 60, windowSeconds: 1 * MINUTES },
+	},
+	/** Wrong passwords on one link, and from one address across links (break-it: 20 tries). */
+	share_password: {
+		counting: 'failures',
+		identifier: { max: 10, windowSeconds: 15 * MINUTES },
+		ip: { max: 50, windowSeconds: 15 * MINUTES },
 	},
 };
 

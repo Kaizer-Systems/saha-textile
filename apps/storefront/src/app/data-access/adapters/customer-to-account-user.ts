@@ -1,8 +1,7 @@
-import { countryCodes } from '@shared/data/country-code';
-
 import { IAccountUser } from '@data-access/interfaces/account.interface';
 import { ICustomer, ICustomerAddress } from '@data-access/interfaces/customer.interface';
 import { IUserAddress } from '@data-access/interfaces/user.interface';
+import { countryCodes } from '@shared/data/country-code';
 
 /**
  * Maps the customer OUR API returns onto the shape the ported account views read.

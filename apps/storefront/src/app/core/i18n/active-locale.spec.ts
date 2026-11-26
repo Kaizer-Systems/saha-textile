@@ -13,11 +13,11 @@ const read = (request?: unknown) => {
 
 describe('ACTIVE_LOCALE', () => {
 	it('reads the original address on the server', () => {
-		expect(read({ originalUrl: '/fr/cart', url: '/cart' })).toBe('fr');
+		expect(read({ originalUrl: '/bn/cart', url: '/cart' })).toBe('bn');
 	});
 
 	it('falls back to the plain address, then to the root', () => {
-		expect(read({ url: '/fr/cart' })).toBe('fr');
+		expect(read({ url: '/bn/cart' })).toBe('bn');
 		expect(read({})).toBe('en');
 	});
 

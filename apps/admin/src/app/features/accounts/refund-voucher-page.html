@@ -1,0 +1,269 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'rf_title'"
+>
+	@if (voucher.data(); as v) {
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">
+				{{ v.number }}
+				<div
+					class="d-inline-block ms-2"
+					[class.status-success]="v.status === 'refunded'"
+					[class.status-pending]="v.status === 'waiting_for_gateway'"
+					[class.status-danger]="v.status === 'failed'"
+				>
+					<span>{{ 'rf_status_' + v.status | transloco }}</span>
+				</div>
+			</h5>
+			<small class="text-muted">{{ 'rf_title_line' | transloco: { date: day(v.date), payee: v.payee } }}</small>
+		</div>
+		<div class="d-flex flex-wrap gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="rf_print"
+				[disabled]="busy()"
+				(click)="print()"
+			>
+				<i class="ri-printer-line"></i>
+				{{ 'inv_print' | transloco }}
+			</button>
+			@if (canAct()) { @if (v.how === 'gateway') {
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="rf_retry"
+				[disabled]="busy()"
+				(click)="retry()"
+			>
+				<i class="ri-refresh-line"></i>
+				{{ 'rf_try_again' | transloco }}
+			</button>
+			}
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="rf_by_hand_open"
+				[disabled]="busy()"
+				(click)="openByHand(byHandModal)"
+			>
+				{{ 'rf_pay_by_bank' | transloco }}
+			</button>
+			}
+		</div>
+	</div>
+	<div class="row g-3">
+		<div class="col-xl-8">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'details' | transloco }}</h5>
+					</div>
+					<div class="row g-3 small">
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'rf_against_receipt' | transloco }}</span>
+							<b>
+								{{ v.receiptNumber ?? '—' }} @if (v.receiptDate) { {{ 'rf_of_date' | transloco: { date:
+								day(v.receiptDate) } }} }
+							</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'rf_order' | transloco }}</span>
+							<a [routerLink]="['/order/details', v.orderId]">
+								<b>{{ v.orderNumber }}</b>
+							</a>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'rf_paid_to' | transloco }}</span>
+							<b>{{ v.payee }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'doc_amount' | transloco }}</span>
+							<b>{{ inr(v.amountINR) }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'rf_how' | transloco }}</span>
+							<b>{{ 'rf_how_' + v.how | transloco }} · {{ v.reference }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'ret_why' | transloco }}</span>
+							<b>{{ 'rf_reason_' + v.reason | transloco }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'rf_tax_on_advance' | transloco }}</span>
+							<b>{{ 'rf_tax_on_advance_none' | transloco }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'rf_can_cancel' | transloco }}</span>
+							<b>
+								{{ (v.status === 'refunded' ? 'rf_can_cancel_no_gone' : 'rf_can_cancel_no_retry') |
+								transloco }}
+							</b>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'cn_edit_log' | transloco }}</h5>
+					</div>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'log_when' | transloco }}</th>
+									<th>{{ 'log_who' | transloco }}</th>
+									<th>{{ 'log_what' | transloco }}</th>
+									<th>{{ 'log_field' | transloco }}</th>
+									<th>{{ 'log_before' | transloco }}</th>
+									<th>{{ 'log_after' | transloco }}</th>
+									<th>{{ 'log_why' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (row of logRows(); track $index) {
+								<tr>
+									<td class="text-nowrap">{{ row.when }}</td>
+									<td>{{ row.who }}</td>
+									<td>{{ row.what }}</td>
+									<td>{{ row.field }}</td>
+									<td>{{ row.before }}</td>
+									<td>{{ row.after }}</td>
+									<td>{{ row.why }}</td>
+								</tr>
+								} @empty {
+								<tr>
+									<td
+										colspan="7"
+										class="text-muted"
+									>
+										{{ 'log_empty' | transloco }}
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					<p class="help-text mt-2 mb-0">{{ 'log_caption' | transloco }}</p>
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-4">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'cn_what_changed' | transloco }}</h5>
+					</div>
+					@let icon = v.status === 'refunded' ? 'ri-checkbox-circle-line text-success' : 'ri-time-line
+					text-warning';
+					<ul class="list-unstyled small mb-0">
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i [class]="icon"></i>
+							<div>
+								<b>{{ 'rf_receipt_n' | transloco: { number: v.receiptNumber ?? '—' } }}</b>
+								<span class="text-muted">· payments</span>
+								<span class="d-block">
+									{{ (v.status === 'refunded' ? 'rf_changed_refunded' : 'rf_changed_not_yet') |
+									transloco }}
+								</span>
+							</div>
+						</li>
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i class="ri-checkbox-circle-line text-success"></i>
+							<div>
+								<b>{{ 'rf_change_order_title' | transloco }}</b>
+								<span class="text-muted">· orders</span>
+								<span class="d-block">
+									@if (order.data(); as o) { {{ 'ord_status_' + o.order.status | transloco }} } @else
+									{ — }
+								</span>
+							</div>
+						</li>
+						<li class="d-flex gap-2 py-2">
+							<i class="ri-checkbox-circle-line text-success"></i>
+							<div>
+								<b>{{ 'cn_effect_stock_title' | transloco }}</b>
+								<span class="text-muted">· inventoryLedger</span>
+								<span class="d-block">{{ 'rf_changed_stock' | transloco: { count: pieces() } }}</span>
+							</div>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<ng-template
+		#byHandModal
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="mb-0">{{ 'rf_pay_by_bank' | transloco }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			<div class="row g-2">
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="rf_by_hand_ledger"
+					>
+						{{ 'cn_refund_from' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="rf_by_hand_ledger"
+						[ngModel]="ledgerId()"
+						(ngModelChange)="ledgerId.set($event)"
+					>
+						<option value="">—</option>
+						@for (l of payFrom(); track l.id) {
+						<option [value]="l.id">{{ l.name }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="rf_by_hand_reference"
+					>
+						{{ 'cn_refund_reference' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="rf_by_hand_reference"
+						maxlength="60"
+						[ngModel]="reference()"
+						(ngModelChange)="reference.set($event)"
+					/>
+				</div>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="rf_by_hand_confirm"
+				[disabled]="busy() || !ledgerId() || reference().trim().length < 4"
+				(click)="byHand()"
+			>
+				{{ 'cn_refund_confirm' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+	}
+</app-page-wrapper>

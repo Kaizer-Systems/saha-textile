@@ -1,148 +1,93 @@
 <!-- tiles section -->
 <section class="dashboard-tiles">
 	<div class="container-fluid">
-		@if (!isVendor()) {
-		<div class="row g-3">
-			<div class="col-xl-3 col-sm-6">
-				<div class="card-tiles">
-					<div>
-						<h6>{{ 'total_revenue' | transloco }}</h6>
-						<h3>{{ (statistics$ | async)?.total_revenue | currencySymbol }}</h3>
-					</div>
-					<div class="icon-box">
-						<i class="ri-wallet-line"></i>
-					</div>
-				</div>
-			</div>
-			<div class="col-xl-3 col-sm-6">
-				<div class="card-tiles">
-					<div>
-						<h6>{{ 'total_orders' | transloco }}</h6>
-						<h3>{{ (statistics$ | async)?.total_orders }}</h3>
-					</div>
-					<div class="icon-box">
-						<i class="ri-file-text-line"></i>
-					</div>
-				</div>
-			</div>
-			<div class="col-xl-3 col-sm-6">
-				<div class="card-tiles">
-					<div>
-						<h6>{{ 'total_stores' | transloco }}</h6>
-						<h3>{{ (statistics$ | async)?.total_stores }}</h3>
-					</div>
-					<div class="icon-box">
-						<i class="ri-box-3-line"></i>
-					</div>
-				</div>
-			</div>
-			<div class="col-xl-3 col-sm-6">
-				<div class="card-tiles">
-					<div>
-						<h6>{{ 'total_user' | transloco }}</h6>
-						<h3>{{ (statistics$ | async)?.total_users }}</h3>
-					</div>
-					<div class="icon-box">
-						<i class="ri-group-line"></i>
-					</div>
-				</div>
-			</div>
-		</div>
-		} @if (isVendor()) {
-		<div class="row">
-			<div class="col-3">
-				<div class="card-tiles">
-					<div>
-						<h6>{{ 'total_revenue' | transloco }}</h6>
-						<h3>{{ (statistics$ | async)?.total_revenue | currencySymbol }}</h3>
-					</div>
-					<div class="icon-box">
-						<i class="ri-wallet-line"></i>
-					</div>
-				</div>
-			</div>
-			<div class="col-3">
-				<div class="card-tiles">
-					<div>
-						<h6>{{ 'total_orders' | transloco }}</h6>
-						<h3>{{ (statistics$ | async)?.total_orders }}</h3>
-					</div>
-					<div class="icon-box">
-						<i class="ri-file-text-line"></i>
-					</div>
-				</div>
-			</div>
-			<div class="col-3">
-				<div class="card-tiles">
-					<div>
-						<h6>{{ 'total_product' | transloco }}</h6>
-						<h3>{{ (product$ | async)?.total }}</h3>
-					</div>
-					<div class="icon-box">
-						<i class="ri-box-3-line"></i>
-					</div>
-				</div>
-			</div>
-			<div class="col-3">
-				<div class="card-tiles">
-					<div>
-						<h6>{{ 'total_balance' | transloco }}</h6>
-						<h3>0</h3>
-					</div>
-					<div class="icon-box">
-						<i class="ri-group-line"></i>
-					</div>
-				</div>
-			</div>
+		@if (!hasAnyWidget()) {
+		<div class="no-data-added">
+			<h4>{{ 'no_dashboard_access' | transloco }}</h4>
 		</div>
 		}
+		<div class="row g-3">
+			<div
+				class="col-xl-3 col-sm-6"
+				*hasPermission="'dashboard.revenue'"
+			>
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'total_revenue' | transloco }}</h6>
+						<h3>{{ revenue() === undefined ? '-' : (revenue()! | currencySymbol) }}</h3>
+						<app-period-picker (changed)="revenuePeriod.set($event)" />
+					</div>
+					<div class="icon-box">
+						<i class="ri-wallet-line"></i>
+					</div>
+				</div>
+			</div>
+			<div
+				class="col-xl-3 col-sm-6"
+				*hasPermission="'dashboard.orders'"
+			>
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'total_orders' | transloco }}</h6>
+						<h3>{{ orderCount() ?? '-' }}</h3>
+						<app-period-picker (changed)="ordersPeriod.set($event)" />
+					</div>
+					<div class="icon-box">
+						<i class="ri-file-text-line"></i>
+					</div>
+				</div>
+			</div>
+			<div
+				class="col-xl-3 col-sm-6"
+				*hasPermission="'setting.index'"
+			>
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'total_stores' | transloco }}</h6>
+						<h3>{{ activeStores() }}</h3>
+					</div>
+					<div class="icon-box">
+						<i class="ri-box-3-line"></i>
+					</div>
+				</div>
+			</div>
+			<div
+				class="col-xl-3 col-sm-6"
+				*hasPermission="'dashboard.customers'"
+			>
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'total_customers' | transloco }}</h6>
+						<h3>{{ customerCount() ?? '-' }}</h3>
+					</div>
+					<div class="icon-box">
+						<i class="ri-group-line"></i>
+					</div>
+				</div>
+			</div>
+		</div>
 	</div>
 </section>
 
 <!-- revenue & top vendor -->
 <section>
 	<div class="row m-0">
-		<div class="col-xl-8 col-md-6 p-0">
-			<app-page-wrapper
-				[gridClass]="'col-sm-12'"
-				[title]="'average_revenue'"
-			>
-				<div #chart></div>
-			</app-page-wrapper>
-		</div>
 		<div
-			class="col-xl-4 col-md-6 p-0"
-			*hasPermission="'store.index'"
+			class="col-xl-8 col-md-6 p-0"
+			*hasPermission="'dashboard.revenue'"
 		>
 			<app-page-wrapper
 				[gridClass]="'col-sm-12'"
-				[title]="'top_stores'"
+				[title]="'monthly_revenue'"
 			>
-				<div button>
-					@if (isBrowser) {
-					<select2
-						class="custom-select min-w-cls"
-						[data]="filter?.length ? filter : []"
-						[placeholder]="'filter_by' | transloco"
-						(update)="filterSeller($event)"
-					/>
-					}
-				</div>
-				<app-table
-					[tableConfig]="sellerTableConfig"
-					(tableChanged)="onSellerTableChange($event)"
-					[pagination]="false"
-					[topbar]="false"
-					[loading]="topSellerLoader"
-					[hasCheckbox]="false"
-				/>
+				<div #chart></div>
 			</app-page-wrapper>
 		</div>
 	</div>
 	<div class="row m-0">
 		<div
 			class="col-xl-5 col-md-6 p-0"
-			*hasPermission="'product.index'"
+			*hasPermission="'dashboard.top_products'"
 		>
 			<app-page-wrapper
 				[gridClass]="'col-sm-12'"
@@ -159,45 +104,45 @@
 					}
 				</div>
 				<div class="top-selling-table datatable-wrapper table-responsive">
-					@if (topProductLoader) {
+					@if (topProductLoader()) {
 					<div class="table-loader">
 						<span>{{ 'please_wait' | transloco }}...</span>
 					</div>
 					}
 					<table>
-						@for (product of ((topProduct$ | async) | slice:0:4); track product) {
+						@for (product of topProducts(); track product.productId) {
 						<tr>
 							<td>
 								<div class="img-info">
 									<img
-										[src]="product?.product_thumbnail ? product?.product_thumbnail.original_url : 'assets/images/product.png'"
+										[src]="product.thumbnailUrl ?? 'assets/images/product.png'"
 										class="img-fluid"
 										alt="product"
 									/>
 									<div>
-										<h6>{{ product?.created_at | date: 'dd MMM yyyy'}}</h6>
-										<h5>{{ product?.name }}</h5>
+										<h6>{{ product.lastSoldAt | date: 'dd MMM yyyy' }}</h6>
+										<h5>{{ localized(product.title) }}</h5>
 									</div>
 								</div>
 							</td>
 							<td>
 								<h6>{{ 'price' | transloco }}</h6>
-								<h5>{{ product?.sale_price | currencySymbol }}</h5>
+								<h5>{{ product.unitPriceINR | currencySymbol }}</h5>
 							</td>
 							<td>
 								<h6>{{ 'orders' | transloco }}</h6>
-								<h5>{{ product?.orders_count }}</h5>
+								<h5>{{ product.orders }}</h5>
 							</td>
 							<td>
 								<h6>{{ 'stock' | transloco }}</h6>
-								<h5>{{ product?.quantity }}</h5>
+								<h5>{{ product.stock }}</h5>
 							</td>
 							<td>
 								<h6>{{ 'amount' | transloco }}</h6>
-								<h5>{{ +product?.order_amount | currencySymbol }}</h5>
+								<h5>{{ product.revenueINR | currencySymbol }}</h5>
 							</td>
 						</tr>
-						} @if (!(topProduct$ | async)?.length) {
+						} @if (!topProducts().length) {
 						<tr>
 							<td>
 								<div class="no-data-added">
@@ -212,15 +157,14 @@
 		</div>
 		<div
 			class="col-xl-7 col-md-6 p-0"
-			*hasPermission="'order.index'"
+			*hasPermission="'dashboard.orders'"
 		>
 			<app-page-wrapper
 				[gridClass]="'col-sm-12'"
 				[title]="'recent_orders'"
 			>
 				<app-table
-					[tableConfig]="orderTableConfig"
-					(tableChanged)="onOrderTableChange($event)"
+					[tableConfig]="orderTableConfig()"
 					(rowClicked)="orderView($event)"
 					(action)="onOrderActionClicked($event)"
 					[loading]="false"
@@ -234,30 +178,31 @@
 	<div class="row m-0">
 		<div
 			class="col-xl-7 col-md-6 p-0"
-			*hasPermission="'product.index'"
+			*hasPermission="'dashboard.stock'"
 		>
 			<app-page-wrapper
 				[gridClass]="'col-sm-12'"
 				[title]="'product_stock_report'"
 			>
 				<div button>
-					@if (isBrowser) {
-					<select2
-						class="custom-select min-w-cls"
-						[data]="(category$ | async)?.length ? (category$ | async) : []"
-						[placeholder]="'select_category' | transloco"
-						(update)="filterProduct($event)"
-						resettable
-					/>
-					}
+					<ng-container *hasPermission="'category.index'">
+						@if (isBrowser) {
+						<select2
+							class="custom-select min-w-cls"
+							[data]="(category$ | async)?.length ? (category$ | async) : []"
+							[placeholder]="'select_category' | transloco"
+							(update)="filterProduct($event)"
+							resettable
+						/>
+						}
+					</ng-container>
 				</div>
 				<app-table
-					[tableConfig]="productStockTableConfig"
+					[tableConfig]="productStockTableConfig()"
 					[pagination]="false"
 					[topbar]="false"
 					[hasCheckbox]="false"
-					[loading]="productStockLoader"
-					(tableChanged)="onProductTableChange($event)"
+					[loading]="productStockLoader()"
 					(rowClicked)="productEdit($event)"
 					(action)="onProductActionClicked($event)"
 				/>
@@ -267,10 +212,11 @@
 			<app-page-wrapper
 				[gridClass]="'col-sm-12'"
 				[title]="'latest_reviews'"
-				*hasPermission="'review.index'"
+				*hasPermission="'dashboard.reviews'"
 			>
 				<div button>
 					<a
+						*hasPermission="'review.index'"
 						[routerLink]="['/review']"
 						class="txt-primary"
 					>
@@ -279,32 +225,32 @@
 				</div>
 				<div class="review-box table-responsive">
 					<table>
-						@for (review of ((review$ | async)?.data | slice:0:4); track review.id) {
+						@for (review of reviews(); track review.id) {
 						<tr>
 							<td>
 								<div class="review-content">
 									<div class="img-box">
 										<img
-											[src]="review?.product?.product_thumbnail ? review?.product?.product_thumbnail?.original_url : 'assets/images/product.png'"
+											[src]="review.thumbnailUrl ?? 'assets/images/product.png'"
 											class="img-fluid"
 											[alt]="'review'"
 										/>
 									</div>
-									<span>{{ review?.product?.name }}</span>
+									<span>{{ review.productTitle ? localized(review.productTitle) : '-' }}</span>
 								</div>
 							</td>
-							<td>{{ review?.consumer?.name }}</td>
+							<td>{{ review.customerName }}</td>
 							<td>
 								<ngb-rating
 									class="rating-sec"
-									[rate]="review?.rating"
+									[rate]="review.rating"
 								/>
 							</td>
 						</tr>
 						}
 					</table>
 				</div>
-				@if (!(review$ | async)?.data?.length) {
+				@if (!reviews().length) {
 				<div class="no-data-added">
 					<h4>{{ 'no_records_found' | transloco }}</h4>
 				</div>
@@ -321,6 +267,7 @@
 					<div class="col-xxl-6">
 						<div class="blog-box">
 							<a
+								[title]="blog?.title"
 								href="javascript:void(0)"
 								class="blog-img"
 							>

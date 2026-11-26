@@ -23,6 +23,7 @@
     "@saha-textile/contracts": "workspace:*",
     "@saha-textile/core-domain": "workspace:*",
     "bullmq": "6.3.17",
+    "bullmq-otel": "2.0.1",
     "ioredis": "6.0.0"
   },
   "devDependencies": {

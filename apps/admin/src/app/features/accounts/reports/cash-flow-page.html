@@ -1,0 +1,58 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'reports_title'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<h5 class="mb-1">{{ 'report_cash_flow' | transloco }}</h5>
+		<app-period-picker
+			[choices]="presets"
+			[start]="'this_fy'"
+			[labelPrefix]="'period_'"
+			(picked)="setPeriod($event)"
+		/>
+	</div>
+	@if (report.error()) {
+	<div class="alert alert-warning py-2">{{ 'statement_problem' | transloco }}</div>
+	} @if (report.data(); as r) {
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<tbody>
+				@for (s of sections; track s) {
+				<tr>
+					<td
+						class="fw-bold"
+						colspan="2"
+					>
+						{{ 'cash_flow_' + s | transloco }}
+					</td>
+				</tr>
+				@for (l of r.lines; track l.key) { @if (l.section === s) {
+				<tr>
+					<td class="ps-4 text-start">{{ 'cash_flow_line_' + l.key | transloco }}</td>
+					<td class="text-nowrap">{{ figure(l.paise) }}</td>
+				</tr>
+				} }
+				<tr>
+					<td class="fw-bold ps-4 text-start">{{ 'cash_flow_net_' + s | transloco }}</td>
+					<td class="fw-bold text-nowrap">{{ figure(r.sections[s]) }}</td>
+				</tr>
+				}
+				<tr>
+					<td class="fw-bold">{{ 'cash_flow_net' | transloco }}</td>
+					<td class="fw-bold text-nowrap">{{ figure(r.netChange) }}</td>
+				</tr>
+				<tr>
+					<td>{{ 'cash_flow_opening' | transloco }}</td>
+					<td class="text-nowrap">{{ figure(r.openingCash) }}</td>
+				</tr>
+				<tr>
+					<td class="fw-bold">{{ 'cash_flow_closing' | transloco }}</td>
+					<td class="fw-bold text-nowrap">{{ figure(r.closingCash) }}</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	@if (r.openingCash + r.netChange !== r.closingCash) {
+	<div class="alert alert-warning mt-3 py-2">{{ 'cash_flow_unbalanced' | transloco }}</div>
+	} }
+</app-page-wrapper>

@@ -1,0 +1,752 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'cn_title'"
+>
+	@if (note.data(); as n) {
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">
+				{{ n.number ?? ('cn_title' | transloco) }}
+				<div
+					class="d-inline-block ms-2"
+					[class.status-pending]="n.status === 'draft'"
+					[class.status-success]="n.status === 'issued'"
+					[class.status-danger]="n.status === 'cancelled'"
+				>
+					<span>{{ 'cn_status_' + n.status | transloco }}</span>
+				</div>
+			</h5>
+			<small class="text-muted">
+				@if (draft()) { {{ 'cn_against' | transloco: { invoice: n.invoiceNumber, date: day(n.invoiceDate) } }} }
+				@else { {{ 'cn_issued_line' | transloco: { date: day(n.date), invoice: n.invoiceNumber, buyer:
+				n.buyer.name } }} } ·
+				<a [routerLink]="['/order/details', n.orderId]">{{ n.orderNumber }}</a>
+				@if (n.returnId) { ·
+				<a [routerLink]="['/accounts/returns', n.returnId]">
+					@if (returnEntry.data(); as r) { {{ 'cn_from_return_n' | transloco: { number: r.number } }} } @else
+					{ {{ 'cn_from_return' | transloco }} }
+				</a>
+				}
+			</small>
+		</div>
+		<div class="d-flex flex-wrap gap-2">
+			@if (draft()) { @if (canEdit()) {
+			<button
+				type="button"
+				class="btn btn-outline text-danger"
+				id="cn_delete"
+				[disabled]="busy()"
+				(click)="remove(n)"
+			>
+				<i class="ri-delete-bin-line"></i>
+				{{ 'cn_delete_draft' | transloco }}
+			</button>
+			}
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="cn_save"
+				[disabled]="busy() || !canEdit()"
+				(click)="save(n)"
+			>
+				{{ 'cn_save_draft' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="cn_issue"
+				[disabled]="busy() || !canEdit()"
+				(click)="issue(n)"
+			>
+				<i class="ri-check-line"></i>
+				{{ 'cn_issue' | transloco }}
+			</button>
+			} @else if (n.status === 'issued') {
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="cn_print"
+				[disabled]="busy()"
+				(click)="print(n)"
+			>
+				<i class="ri-printer-line"></i>
+				{{ 'inv_print' | transloco }}
+			</button>
+			@if (canRefund()) {
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="cn_refund_open"
+				[disabled]="busy()"
+				(click)="openRefund(refundModal)"
+			>
+				<i class="ri-refund-2-line"></i>
+				{{ 'cn_refund_now' | transloco: { amount: inr(n.totalINR) } }}
+			</button>
+			} @if (!n.debitNoteId) {
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="cn_undo"
+				[disabled]="busy()"
+				(click)="openDebit(debitModal)"
+			>
+				<i class="ri-arrow-go-back-line"></i>
+				{{ 'cn_undo_debit' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-outline text-danger"
+				id="cn_cancel_open"
+				[disabled]="busy()"
+				(click)="openCancel(cancelModal, blockedModal, n)"
+			>
+				<i class="ri-close-circle-line"></i>
+				{{ 'cancel' | transloco }}
+			</button>
+			} }
+		</div>
+	</div>
+	@if (draft()) {
+	<app-document-lock
+		documentType="creditNote"
+		[documentId]="n.id"
+		(editable)="editable.set($event)"
+	/>
+	} @if (n.debitNoteId) {
+	<div class="alert alert-light border">
+		{{ 'cn_undone_by' | transloco }}
+		<a
+			href="javascript:void(0)"
+			(click)="printDebit(n.debitNoteId)"
+		>
+			{{ 'cn_print_debit' | transloco }}
+		</a>
+	</div>
+	} @if (n.cancellation; as c) {
+	<div class="alert alert-light border">{{ 'cn_cancelled_because' | transloco: { reason: c.reason } }}</div>
+	}
+	<div class="row g-3">
+		<div class="col-xl-8">
+			@if (draft()) {
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'details' | transloco }}</h5>
+					</div>
+					<div class="row g-3 small">
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'ret_number' | transloco }}</span>
+							<b>{{ n.number ?? ('cn_number_on_issue' | transloco) }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'date' | transloco }}</span>
+							<b>{{ day(n.date) }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'inv_buyer' | transloco }}</span>
+							<b>{{ n.buyer.name }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'inv_place_of_supply' | transloco }}</span>
+							<b>{{ state(n.placeOfSupply) }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'cn_kind' | transloco }}</span>
+							<b>{{ 'cn_kind_' + n.kind | transloco }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'ret_why' | transloco }}</span>
+							<b>{{ n.reason }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'ret_refund_to' | transloco }}</span>
+							<b>{{ 'ret_refund_' + n.refundTo | transloco }}</b>
+						</div>
+						<div class="col-md-3 col-6">
+							<span class="text-muted d-block">{{ 'cn_deadline' | transloco }}</span>
+							<b>{{ day(n.deadline) }}</b>
+						</div>
+					</div>
+				</div>
+			</div>
+			}
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'cn_lines' | transloco }}</h5>
+					</div>
+					@if (draft()) {
+					<div class="alert alert-warning py-2">
+						<i class="ri-information-line me-1"></i>
+						{{ 'cn_lines_from_invoice' | transloco }}
+					</div>
+					}
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th class="text-start">{{ 'inv_item' | transloco }}</th>
+									<th>HSN</th>
+									<th>{{ 'inv_qty' | transloco }}</th>
+									<th class="text-end">{{ 'cn_col_taxable' | transloco }}</th>
+									@for (head of taxHeads(); track head) {
+									<th class="text-end">{{ head }}</th>
+									}
+									<th class="text-end">{{ 'accounts_total' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (line of n.lines; track line.lineId) {
+								<tr>
+									<td class="text-start">
+										{{ line.delivery ? ('cn_delivery_share' | transloco) : line.title }}
+										<small class="text-muted d-block">
+											@if (line.delivery) { {{ 'cn_delivery_' + line.note | transloco }} } @else {
+											{{ line.sku }} @if (line.outcome) { · {{ 'ret_outcome_' + line.outcome |
+											transloco }} } }
+										</small>
+									</td>
+									<td class="text-nowrap">{{ line.hsn }}</td>
+									<td>
+										@if (canEdit() && goodsKind() && !line.delivery) {
+										<input
+											class="form-control form-control-sm"
+											type="number"
+											min="0"
+											[max]="line.quantity / perShown(line)"
+											[step]="1 / perShown(line)"
+											[attr.aria-label]="('inv_qty' | transloco) + ': ' + line.title"
+											[ngModel]="quantity(line.lineId, line.quantity) / perShown(line)"
+											(ngModelChange)="setQuantity(line.lineId, $event, line.quantity, line.unit)"
+										/>
+										} @else if (!line.delivery) { {{ line.quantity | stockQty: (line.unit === 'MTR'
+										? 'metre' : 'piece') }} } @else { — }
+									</td>
+									<td class="text-end text-nowrap">{{ inr(line.taxableINR) }}</td>
+									@if (n.interState) {
+									<td class="text-end text-nowrap">{{ inr(line.igstINR) }}</td>
+									} @else {
+									<td class="text-end text-nowrap">{{ inr(line.cgstINR) }}</td>
+									<td class="text-end text-nowrap">{{ inr(line.sgstINR) }}</td>
+									}
+									<td class="text-end text-nowrap">{{ inr(line.totalINR) }}</td>
+								</tr>
+								}
+								<tr>
+									<td
+										class="text-start"
+										colspan="3"
+									>
+										<b>{{ 'accounts_total' | transloco }}</b>
+									</td>
+									<td class="text-end text-nowrap">
+										<b>{{ inr(n.taxableINR) }}</b>
+									</td>
+									@if (n.interState) {
+									<td class="text-end text-nowrap">
+										<b>{{ inr(n.igstINR) }}</b>
+									</td>
+									} @else {
+									<td class="text-end text-nowrap">
+										<b>{{ inr(n.cgstINR) }}</b>
+									</td>
+									<td class="text-end text-nowrap">
+										<b>{{ inr(n.sgstINR) }}</b>
+									</td>
+									}
+									<td class="text-end text-nowrap">
+										<b>{{ inr(n.totalINR) }}</b>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+			@if (!draft()) {
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'cn_edit_log' | transloco }}</h5>
+					</div>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'log_when' | transloco }}</th>
+									<th>{{ 'log_who' | transloco }}</th>
+									<th>{{ 'log_what' | transloco }}</th>
+									<th>{{ 'log_field' | transloco }}</th>
+									<th>{{ 'log_before' | transloco }}</th>
+									<th>{{ 'log_after' | transloco }}</th>
+									<th>{{ 'log_why' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (row of logRows(); track $index) {
+								<tr>
+									<td class="text-nowrap">{{ row.when }}</td>
+									<td>{{ row.who }}</td>
+									<td>{{ row.what }}</td>
+									<td>{{ row.field }}</td>
+									<td>{{ row.before }}</td>
+									<td>{{ row.after }}</td>
+									<td>{{ row.why }}</td>
+								</tr>
+								} @empty {
+								<tr>
+									<td
+										colspan="7"
+										class="text-muted"
+									>
+										{{ 'log_empty' | transloco }}
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					<p class="help-text mt-2 mb-0">{{ 'log_caption' | transloco }}</p>
+				</div>
+			</div>
+			}
+		</div>
+		<div class="col-xl-4">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ (draft() ? 'cn_when_issue' : 'cn_what_changed') | transloco }}</h5>
+					</div>
+					@let icon = draft() ? '' : 'ri-checkbox-circle-line text-success';
+					<ul class="list-unstyled small mb-0">
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i [class]="icon || 'ri-hashtag'"></i>
+							<div>
+								<b>{{ 'ret_number' | transloco }}</b>
+								<span class="text-muted">· sequences</span>
+								<span class="d-block">
+									{{ 'cn_effect_number' | transloco: { number: n.number ?? 'CN/…' } }}
+								</span>
+							</div>
+						</li>
+						@if (goods().length) {
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i [class]="icon || 'ri-stack-line'"></i>
+							<div>
+								<b>{{ 'cn_effect_stock_title' | transloco }}</b>
+								<span class="text-muted">· inventoryLedger, inventoryCostLayers</span>
+								@for (line of goods(); track line.lineId) { @let e = effectLine(line);
+								<span class="d-block">{{ e.key | transloco: e.params }}</span>
+								}
+							</div>
+						</li>
+						}
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i [class]="icon || 'ri-percent-line'"></i>
+							<div class="flex-grow-1">
+								<div class="d-flex justify-content-between gap-2">
+									<span>
+										<b>{{ 'cn_effect_tax_title' | transloco }}</b>
+										<span class="text-muted">· gstEntries</span>
+									</span>
+									<b class="text-nowrap">−{{ inr(taxOf(n)) }}</b>
+								</div>
+								<span class="d-block">
+									{{ (n.buyer.gstin ? 'cn_effect_tax_registered' : 'cn_effect_tax_unregistered') |
+									transloco: { amount: inr(taxOf(n)), month: month() } }}
+								</span>
+							</div>
+						</li>
+						@if (inputTax() > 0) {
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i [class]="icon || 'ri-percent-line'"></i>
+							<div>
+								<b>{{ 'cn_effect_input_tax_title' | transloco }}</b>
+								<span class="text-muted">· journalVouchers</span>
+								<span class="d-block">
+									{{ 'cn_effect_input_tax' | transloco: { amount: inr(inputTax()) } }}
+								</span>
+							</div>
+						</li>
+						}
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i [class]="icon || 'ri-file-list-3-line'"></i>
+							<div class="flex-grow-1">
+								<div class="d-flex justify-content-between gap-2">
+									<span>
+										<b>{{ 'cn_effect_order_title' | transloco: { number: n.orderNumber } }}</b>
+										<span class="text-muted">· orders, returns</span>
+									</span>
+									<b class="text-nowrap">{{ inr(n.totalINR) }}</b>
+								</div>
+								<span class="d-block">
+									@if (returnEntry.data(); as r) { {{ 'cn_effect_order_return' | transloco: { number:
+									r.number } }} } {{ 'cn_effect_order_' + (n.refund?.status ?? (n.refundTo ===
+									'customer_account' ? 'kept' : 'due')) | transloco: { amount: inr(n.totalINR) } }}
+								</span>
+							</div>
+						</li>
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i [class]="icon || 'ri-user-line'"></i>
+							<div>
+								<b>{{ 'cn_effect_customer_title' | transloco }}</b>
+								<span class="text-muted">· ledgerEntries</span>
+								<span class="d-block">
+									{{ 'cn_effect_customer_' + (n.refund?.status ?? (n.refundTo === 'customer_account' ?
+									'kept' : 'due')) | transloco: { amount: inr(n.totalINR) } }}
+								</span>
+							</div>
+						</li>
+						<li class="d-flex gap-2 py-2">
+							<i [class]="icon || 'ri-history-line'"></i>
+							<div>
+								<b>{{ 'cn_effect_log_title' | transloco }}</b>
+								<span class="text-muted">· auditLogs</span>
+								<span class="d-block">{{ 'cn_effect_log' | transloco }}</span>
+							</div>
+						</li>
+					</ul>
+					@if (draft()) {
+					<div class="alert alert-light small mt-2 mb-0 border">{{ 'cn_one_transaction' | transloco }}</div>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<ng-template
+		#cancelModal
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="mb-0">{{ 'cn_cancel_title' | transloco: { number: n.number } }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			<div class="alert alert-info py-2">{{ 'cn_cancel_info' | transloco }}</div>
+			@if (checks(); as c) {
+			<div class="table-responsive datatable-wrapper border-table mb-3">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th class="text-start">{{ 'cn_check' | transloco }}</th>
+							<th>{{ 'cn_result' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td class="text-start">
+								{{ 'cn_check_filed' | transloco: { month: monthLabel(c.month) } }}
+							</td>
+							<td>
+								<div [class]="c.monthFiled ? 'status-danger' : 'status-success'">
+									<span>
+										{{ (c.monthFiled ? 'cn_pill_filed' : 'cn_pill_not_filed') | transloco }}
+									</span>
+								</div>
+							</td>
+						</tr>
+						<tr>
+							<td class="text-start">{{ 'cn_check_books' | transloco }}</td>
+							<td>
+								<div [class]="c.booksClosed ? 'status-danger' : 'status-success'">
+									<span>{{ (c.booksClosed ? 'cn_closed' : 'cn_open') | transloco }}</span>
+								</div>
+							</td>
+						</tr>
+						<tr>
+							<td class="text-start">{{ 'cn_check_refund' | transloco }}</td>
+							<td>
+								<div [class]="c.refundPaid ? 'status-danger' : 'status-success'">
+									<span>{{ (c.refundPaid ? 'cn_yes' : 'cn_no') | transloco }}</span>
+								</div>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			@if (!c.superAdmin) {
+			<div class="alert alert-warning py-2">{{ 'cn_cancel_super_admin' | transloco }}</div>
+			} }
+			<label
+				class="form-label-title"
+				for="cn_cancel_reason"
+			>
+				{{ 'cn_why_logged' | transloco }}
+			</label>
+			<textarea
+				class="form-control"
+				id="cn_cancel_reason"
+				rows="2"
+				maxlength="300"
+				[ngModel]="reason()"
+				(ngModelChange)="reason.set($event)"
+			></textarea>
+			<p class="form-label-title mt-3 mb-1">{{ 'cn_cancel_changes' | transloco }}</p>
+			<ul class="list-unstyled small mb-0">
+				@if (goods().length) {
+				<li class="d-flex border-bottom gap-2 py-2">
+					<i class="ri-stack-line"></i>
+					<div>
+						<b>{{ 'cn_effect_stock_title' | transloco }}</b>
+						<span class="text-muted">· inventoryLedger</span>
+						@for (line of goods(); track line.lineId) { @if (line.outcome !== 'write_off') {
+						<span class="d-block">
+							{{ 'cn_cancel_stock_line' | transloco : { qty: (line.quantity | stockQty: (line.unit ===
+							'MTR' ? 'metre' : 'piece')), sku: line.sku, } }}
+						</span>
+						} }
+					</div>
+				</li>
+				}
+				<li class="d-flex border-bottom gap-2 py-2">
+					<i class="ri-percent-line"></i>
+					<div>
+						<b>{{ 'cn_effect_tax_title' | transloco }}</b>
+						<span class="text-muted">· gstEntries</span>
+						<span class="d-block">
+							{{ 'cn_cancel_tax' | transloco: { amount: inr(taxOf(n)), month: month() } }} @if (inputTax()
+							> 0) { {{ 'cn_cancel_input_tax' | transloco: { amount: inr(inputTax()) } }} }
+						</span>
+					</div>
+				</li>
+				<li class="d-flex border-bottom gap-2 py-2">
+					<i class="ri-file-list-3-line"></i>
+					<div>
+						<b>{{ 'cn_effect_order_title' | transloco: { number: n.orderNumber } }}</b>
+						<span class="text-muted">· orders, returns</span>
+						<span class="d-block">
+							@if (returnEntry.data(); as r) { {{ 'cn_cancel_order_return' | transloco: { number: r.number
+							} }} } @else { {{ 'cn_cancel_order' | transloco }} }
+						</span>
+					</div>
+				</li>
+				<li class="d-flex gap-2 py-2">
+					<i class="ri-history-line"></i>
+					<div>
+						<b>{{ 'cn_effect_log_title' | transloco }}</b>
+						<span class="text-muted">· auditLogs</span>
+						<span class="d-block">{{ 'cn_cancel_log' | transloco }}</span>
+					</div>
+				</li>
+			</ul>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cn_keep' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-outline text-danger"
+				id="cn_cancel_confirm"
+				[disabled]="busy() || !checks()?.allowed || reason().trim().length < 5"
+				(click)="cancel(n)"
+			>
+				{{ 'cn_cancel' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+
+	<ng-template
+		#blockedModal
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="mb-0">{{ 'cn_blocked_title' | transloco }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body">
+			<div class="alert alert-danger py-2">
+				<i class="ri-lock-line me-1"></i>
+				{{ 'cn_blocked_reason' | transloco: { month: monthLabel(checks()?.month ?? ''), number: n.number } }}
+			</div>
+			<p class="mb-0">
+				{{ 'cn_blocked_debit' | transloco: { invoice: n.invoiceNumber, amount: inr(n.totalINR) } }}
+			</p>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'close' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="cn_blocked_debit"
+				(click)="openDebit(debitModal)"
+			>
+				{{ 'cn_make_debit' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+
+	<ng-template
+		#refundModal
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="mb-0">{{ 'cn_refund_now' | transloco: { amount: inr(n.totalINR) } }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			@for (h of ['gateway', 'by_hand']; track h) {
+			<label class="form-check d-block">
+				<input
+					class="form-check-input"
+					type="radio"
+					name="cn_refund_how"
+					[checked]="refundHow() === h"
+					(change)="refundHow.set($any(h))"
+				/>
+				{{ 'cn_refund_how_' + h | transloco }}
+			</label>
+			} @if (refundHow() === 'by_hand') {
+			<div class="row g-2 mt-2">
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="cn_refund_method"
+					>
+						{{ 'cn_refund_method' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="cn_refund_method"
+						[ngModel]="refundMethod()"
+						(ngModelChange)="refundMethod.set($event)"
+					>
+						<option value="bank_transfer">{{ 'ret_refund_bank_transfer' | transloco }}</option>
+						<option value="upi">UPI</option>
+					</select>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="cn_refund_ledger"
+					>
+						{{ 'cn_refund_from' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="cn_refund_ledger"
+						[ngModel]="refundLedger()"
+						(ngModelChange)="refundLedger.set($event)"
+					>
+						<option value="">—</option>
+						@for (l of payFrom(); track l.id) {
+						<option [value]="l.id">{{ l.name }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="cn_refund_reference"
+					>
+						{{ 'cn_refund_reference' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="cn_refund_reference"
+						maxlength="60"
+						[ngModel]="refundReference()"
+						(ngModelChange)="refundReference.set($event)"
+					/>
+				</div>
+			</div>
+			}
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="cn_refund_confirm"
+				[disabled]="busy() || (refundHow() === 'by_hand' && (!refundLedger() || refundReference().trim().length < 4))"
+				(click)="refund(n)"
+			>
+				{{ 'cn_refund_confirm' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+
+	<ng-template
+		#debitModal
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="mb-0">{{ 'cn_undo_debit' | transloco }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			<p>{{ 'cn_debit_info' | transloco }}</p>
+			<label
+				class="form-label-title"
+				for="cn_debit_reason"
+			>
+				{{ 'cn_why_logged' | transloco }}
+			</label>
+			<textarea
+				class="form-control"
+				id="cn_debit_reason"
+				rows="2"
+				maxlength="300"
+				[ngModel]="reason()"
+				(ngModelChange)="reason.set($event)"
+			></textarea>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="cn_debit_confirm"
+				[disabled]="busy() || reason().trim().length < 5"
+				(click)="debit(n)"
+			>
+				{{ 'cn_make_debit' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+	}
+</app-page-wrapper>

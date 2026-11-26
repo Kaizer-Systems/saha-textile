@@ -2,6 +2,8 @@ import {
 	CatalogStatus,
 	DerivativeFit,
 	DerivativeFormat,
+	MediaCategory,
+	MediaFill,
 	MediaKind,
 	MediaProcessingState,
 	MediaPurpose,
@@ -28,6 +30,16 @@ export interface MediaAssetDoc {
 	height: number | null;
 	slug: string;
 	derivatives: unknown[];
+	/** Absent on assets stored before image profiles (media step 2); the release migration names them. */
+	versions?: unknown[];
+	/** A Replace in progress (media step 3b). */
+	replacing?: unknown;
+	/** The focal point for crops (S10), fractions of the upright photo. */
+	focal?: { x: number; y: number } | null;
+	/** A swatch cut (brief P11): the photo it was cut from and the square, fractions of the upright photo. */
+	cutFrom?: { assetId: string; region: { x: number; y: number; width: number; height: number } } | null;
+	/** Files kept after a Replace until they are swept (decision 11). */
+	keptFiles?: unknown[];
 	dominantColor: string | null;
 	thumbHash: string | null;
 	visibility: string;
@@ -42,6 +54,13 @@ export interface MediaAssetDoc {
 	status: string;
 	uploadedBy: { type: string; id: string } | null;
 	deletedAt: Date | null;
+	/** The Media page (step 1): folder, name, content hash, Trash, and the category it is listed under. */
+	folderId?: string | null;
+	displayName?: string | null;
+	sha256?: string | null;
+	trashedAt?: Date | null;
+	trashedFrom?: string | null;
+	category?: string;
 	createdAt?: Date;
 	updatedAt?: Date;
 }
@@ -58,6 +77,15 @@ const MediaAssetSchema = new Schema<MediaAssetDoc>(
 		height: { type: Number, default: null },
 		slug: { type: String, required: true },
 		derivatives: { type: [Schema.Types.Mixed], default: [] },
+		versions: { type: [Schema.Types.Mixed], default: [] },
+		/** A Replace in progress (media step 3b); null otherwise. */
+		replacing: { type: Schema.Types.Mixed, default: null },
+		/** The focal point for crops (S10): { x, y } as fractions; null keeps the middle. */
+		focal: { type: Schema.Types.Mixed, default: null },
+		/** A swatch cut's photo and square (brief P11); `cutFrom.assetId` is indexed for "this photo's cuts". */
+		cutFrom: { type: Schema.Types.Mixed, default: null },
+		/** Files kept after a Replace until their `deleteAfter` (ISO time), then swept (decision 11). */
+		keptFiles: { type: [Schema.Types.Mixed], default: [] },
 		dominantColor: { type: String, default: null },
 		thumbHash: { type: String, default: null },
 		visibility: { type: String, enum: MediaVisibility.options, default: 'public' },
@@ -77,20 +105,41 @@ const MediaAssetSchema = new Schema<MediaAssetDoc>(
 		status: { type: String, enum: CatalogStatus.options, default: 'draft' },
 		uploadedBy: { type: Schema.Types.Mixed, default: null },
 		deletedAt: { type: Date, default: null },
+		folderId: { type: String, default: null },
+		displayName: { type: String, default: null },
+		sha256: { type: String, default: null },
+		trashedAt: { type: Date, default: null },
+		trashedFrom: { type: String, default: null },
+		category: { type: String, enum: MediaCategory.options, default: 'images' },
 	},
 	{ collection: 'mediaAssets', timestamps: true },
 );
+
+/** The Media page: a folder's files, in or out of Trash, by name or date. */
+MediaAssetSchema.index({ folderId: 1, trashedAt: 1, displayName: 1 });
+MediaAssetSchema.index({ trashedAt: 1, category: 1, createdAt: -1 });
+/** The duplicate check (S6): the same bytes already in Media. */
+MediaAssetSchema.index({ sha256: 1 }, { partialFilterExpression: { sha256: { $type: 'string' } } });
 
 /** Admin media library browsing. */
 MediaAssetSchema.index({ kind: 1, purpose: 1, status: 1, createdAt: -1 });
 /** The orphan-collection sweep: soft-deleted before a cutoff. */
 MediaAssetSchema.index({ deletedAt: 1 });
+// A photo's swatch cuts (brief P11): the Media Library lists them, and a Replace of the photo cuts them again.
+MediaAssetSchema.index(
+	{ 'cutFrom.assetId': 1 },
+	{ partialFilterExpression: { 'cutFrom.assetId': { $type: 'string' } } },
+);
 /** GC pass 1 pages live assets by id under a creation cutoff. */
 MediaAssetSchema.index({ deletedAt: 1, createdAt: 1, _id: 1 });
 /** Reprocess after a ladder edit: assets holding a stale derivative of a role. */
 MediaAssetSchema.index({ 'derivatives.role': 1, 'derivatives.roleVersion': 1 });
 /** Library search over the SEO slug. */
 MediaAssetSchema.index({ slug: 1 });
+/** Pickers list photos holding a version of the profile a slot needs (R4-2); F01 counts them. */
+MediaAssetSchema.index({ 'versions.profileKey': 1, 'versions.state': 1 });
+// The daily sweep of files kept after a Replace.
+MediaAssetSchema.index({ 'keptFiles.deleteAfter': 1 }, { sparse: true });
 /** Storage keys must not be claimed twice; partial because a purged master is null. */
 MediaAssetSchema.index(
 	{ originalStorageKey: 1 },
@@ -113,6 +162,10 @@ export interface MediaRoleDoc {
 	quality: number;
 	primaryOnly: boolean;
 	respectSlotMaxWidth: boolean;
+	/** Absent on roles stored before the link-preview logo strip; reads as false. */
+	brandStrip?: boolean;
+	/** Absent on roles stored before the padded-card margin; reads as 0. */
+	inset?: number;
 	version: number;
 	updatedAt?: Date;
 }
@@ -130,6 +183,8 @@ const MediaRoleSchema = new Schema<MediaRoleDoc>(
 		quality: { type: Number, default: 82 },
 		primaryOnly: { type: Boolean, default: false },
 		respectSlotMaxWidth: { type: Boolean, default: false },
+		brandStrip: { type: Boolean, default: false },
+		inset: { type: Number, default: 0 },
 		version: { type: Number, default: 1 },
 	},
 	{ collection: 'mediaRoles', timestamps: { createdAt: false, updatedAt: true } },
@@ -137,3 +192,46 @@ const MediaRoleSchema = new Schema<MediaRoleDoc>(
 
 export const MediaRoleModel: Model<MediaRoleDoc> =
 	(models.MediaRole as Model<MediaRoleDoc>) ?? model<MediaRoleDoc>('MediaRole', MediaRoleSchema);
+
+/** Image profiles (`mediaProfiles`, Settings › Image profiles). Keyed by the profile key itself. */
+export interface MediaProfileDoc {
+	_id: string;
+	name: string;
+	builtIn: boolean;
+	shape: { width: number; height: number } | null;
+	roles: string[];
+	/** Absent on profiles stored before Settings › Image profiles (release migration 0002 adds them). */
+	widths?: Record<string, number[]>;
+	quality?: number | null;
+	fills: string[];
+	minSize: { edge: string; px: number; mode: string } | null;
+	maxBytes: number;
+	accepts: string[];
+	mainPhotoOnly: boolean;
+	enabled: boolean;
+	version: number;
+	updatedAt?: Date;
+}
+
+const MediaProfileSchema = new Schema<MediaProfileDoc>(
+	{
+		_id: { type: String, required: true },
+		name: { type: String, required: true },
+		builtIn: { type: Boolean, default: false },
+		shape: { type: Schema.Types.Mixed, default: null },
+		roles: { type: [String], required: true },
+		widths: { type: Schema.Types.Mixed, default: {} },
+		quality: { type: Number, default: null },
+		fills: { type: [String], enum: MediaFill.options, default: [] },
+		minSize: { type: Schema.Types.Mixed, default: null },
+		maxBytes: { type: Number, required: true },
+		accepts: { type: [String], required: true },
+		mainPhotoOnly: { type: Boolean, default: false },
+		enabled: { type: Boolean, default: true },
+		version: { type: Number, default: 1 },
+	},
+	{ collection: 'mediaProfiles', timestamps: { createdAt: false, updatedAt: true } },
+);
+
+export const MediaProfileModel: Model<MediaProfileDoc> =
+	(models.MediaProfile as Model<MediaProfileDoc>) ?? model<MediaProfileDoc>('MediaProfile', MediaProfileSchema);

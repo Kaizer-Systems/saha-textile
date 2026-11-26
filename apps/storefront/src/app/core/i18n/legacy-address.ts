@@ -1,6 +1,9 @@
-import { resolveLegacyAddress } from '@saha-textile/core-domain/legacy-resolve';
+import { resolveLegacyAddress, setLocalePrefixTest } from '@saha-textile/core-domain/legacy-resolve';
 
-import { localeRedirectFor, type LocaleRedirect } from './locale';
+import { DEFAULT_LOCALE, isLocale, localeRedirectFor, type LocaleRedirect, retiredLocaleRedirect } from './locale';
+
+// Old addresses lose their language prefix before they are compared: the shop's own languages.
+setLocalePrefixTest(isLocale);
 
 /**
  * Storefront adapter for the core address rules. The rules themselves live in
@@ -31,6 +34,7 @@ const LIVE_EXACT = new Set([
 	'/compare',
 	'/account',
 	'/collections',
+	'/videos',
 ]);
 
 let rows: SeoRedirectRow[] = [];
@@ -41,6 +45,8 @@ let retryAt = 0;
 let backoffMs = 0;
 let catalogReady = false;
 let refreshing: Promise<void> | null = null;
+/** Set once the first load has finished, loaded or not: only that one may hold a request back. */
+let firstLoadDone = false;
 
 const CATALOG_TTL_MS = 15_000;
 const MAX_BACKOFF_MS = 60_000;
@@ -76,10 +82,25 @@ export function isLiveStorefrontPath(pathname: string): boolean {
 	return false;
 }
 
+/** A Media share link's short form, `/s/<code>`, as admins send it. */
+const SHARE_LINK = /^\/s\/[A-Za-z0-9]{16,64}\/?$/;
+
 export function storefrontAddress(
 	pathAndQuery: string,
 	rememberedLocale: string | undefined,
 ): LocaleRedirect | { status: 410 } | null {
+	// A switched-off language's pages go to English before any saved redirect is consulted.
+	const retired = retiredLocaleRedirect(pathAndQuery);
+	if (retired) return retired;
+	// A share link opens in the visitor's own language. 302: it depends on who asks, and it is
+	// never an old WordPress address, so it must not reach the legacy rules (which answer 410).
+	const queryAt = pathAndQuery.indexOf('?');
+	const pathname = queryAt === -1 ? pathAndQuery : pathAndQuery.slice(0, queryAt);
+	if (SHARE_LINK.test(pathname)) {
+		const locale = isLocale(rememberedLocale) ? rememberedLocale : DEFAULT_LOCALE;
+		const query = queryAt === -1 ? '' : pathAndQuery.slice(queryAt);
+		return { status: 302, location: `/${locale}${pathname.replace(/\/$/, '')}${query}` };
+	}
 	const legacy = resolveLegacyAddress(pathAndQuery, rows, isLiveStorefrontPath);
 	if (legacy?.status === 410) return { status: 410 };
 	if (legacy && legacy.location) return { status: legacy.status, location: legacy.location };
@@ -139,6 +160,7 @@ async function refresh(apiUrl: string): Promise<void> {
 		retryAt = Date.now() + backoffMs;
 	} finally {
 		refreshing = null;
+		firstLoadDone = true;
 	}
 }
 
@@ -149,7 +171,8 @@ async function refresh(apiUrl: string): Promise<void> {
 export async function refreshLegacyCatalog(apiUrl: string): Promise<void> {
 	const now = Date.now();
 	if (now - loadedAt >= CATALOG_TTL_MS && now >= retryAt) refreshing ??= refresh(apiUrl);
-	if (!catalogReady && refreshing) await refreshing;
+	// A slow or absent API would otherwise hold every request whose arrival starts a retry.
+	if (!catalogReady && !firstLoadDone && refreshing) await refreshing;
 }
 
 /** Back to a server that has loaded nothing. */
@@ -162,4 +185,5 @@ export function resetLegacyCatalog(): void {
 	backoffMs = 0;
 	catalogReady = false;
 	refreshing = null;
+	firstLoadDone = false;
 }

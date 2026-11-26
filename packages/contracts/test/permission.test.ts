@@ -31,8 +31,26 @@ describe('permission registry', () => {
 	// `wallet.*`) that a single-vendor business cannot use, duplicates of live codes
 	// (`role.edit`, `theme.{edit,index}`), and the ambiguous `user.{edit,destroy}`. 91 → 92 on
 	// 2026-11-03 with `customer.restore` (`DEC-CUSTOMER-SOFT-DELETE-OPS` recycle bin).
+	// 94 → 98 on 2026-11-08 with `search_term.{create,destroy,edit,index}` (admin Search words).
 	it('exposes every code with a stable order', () => {
-		expect(PERMISSION_CODES).toHaveLength(92);
+		// 98 → 104 on 2026-11-09 with `event.{cancel,create,destroy,edit,index,publish}` (launch and sale events).
+		// 104 → 106 on 2026-11-09 with `mailbox.{manage,use}` (Gmail mailboxes in the admin).
+		// 106 → 107 on 2026-11-15 with `language.manage` (Settings › Languages).
+		// 107 → 136 on 2026-11-17 with the seven purchases and stock groups the owner accepted in
+		// the purchases and stock brief (X01): supplier, purchase_order, purchase, purchase_return,
+		// stock, stock_count, stock_report.
+		// 136 → 137 on 2026-11-17 with `page_builder.go_live` (Page Builder Q10 A, accepted with the brief).
+		// 140 → 156 on 2026-11-20 with the orders brief's permissions table (approved 2026-11-20), as
+		// resource.action pairs: business.{approve,assign,create,credit,edit,hold,index,settle},
+		// order.{address,open,payment,send} and price_zone.{create,destroy,edit,index} (DEC-B2B-ZONES).
+		// 156 → 157 on 2026-11-23 with `company.edit` (accounts brief: Settings › Company, Registrations, Features).
+		// 157 → 160 on 2026-11-23 with `edocs.generate`, `edocs.cancel`, `edocs.settings` (accounts brief addendum 2).
+		// 160 → 161 on 2026-11-23 with `location.edit` (accounts brief K, L).
+		// 161 → 165 on 2026-11-23 with `accounts.index/post/edit/lock` (accounts brief Q, T).
+		// 165 → 166 on 2026-11-24 with `accounts_template.edit` (accounts templates AT-D4).
+		// 166 → 171 on 2026-11-24 with `cash.{count,index,manage,settings}` and `expense_claim.create` (accounts brief O);
+		// 171 → 174 with `transfer.{create,index,manage}` (accounts brief N).
+		expect(PERMISSION_CODES).toHaveLength(178);
 		expect([...PERMISSION_CODES]).toEqual([...PERMISSION_CODES].sort((a, b) => a.localeCompare(b)));
 	});
 

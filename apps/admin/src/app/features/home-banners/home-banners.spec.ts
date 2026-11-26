@@ -59,6 +59,20 @@ describe('HomeBanners', () => {
 		expect(page.block('none')).toBeNull();
 	});
 
+	it('offers a form per slide of the full hero, and both promo banners', async () => {
+		const { page, gateway } = render();
+		gateway.list.mockImplementation((owner: string) =>
+			of(owner === 'home' ? [{ position: 'promo_wide', slot: 'item_1' }] : []),
+		);
+		await page.ngOnInit();
+		page.layout.set('hero_full');
+		expect(page.slots()).toEqual(['main', 'slide_2', 'slide_3']);
+		expect(page.promoSlots).toEqual(['item_1', 'item_2']);
+		expect(page.promoBlock('item_1')).toMatchObject({ slot: 'item_1' });
+		expect(page.promoBlock('item_2')).toBeNull();
+		expect(page.heroBlocks()).toEqual([]);
+	});
+
 	it('copes with no popup block', async () => {
 		const { page, gateway } = render();
 		gateway.list.mockReturnValue(of([]));
@@ -82,11 +96,11 @@ const block = (overrides: Record<string, unknown> = {}) => ({
 	key: 'k1',
 	images: { desktop: 'd1', tablet: null, phone: 'p1' },
 	containsText: false,
-	localeImages: { fr: { desktop: 'f1' } },
-	heading: { en: 'Hi', fr: '' },
-	subheading: { en: '', fr: '' },
-	ctaLabel: { en: '', fr: '' },
-	alt: { en: 'Alt', fr: '' },
+	localeImages: { bn: { desktop: 'f1' } },
+	heading: { en: 'Hi', bn: '' },
+	subheading: { en: '', bn: '' },
+	ctaLabel: { en: '', bn: '' },
+	alt: { en: 'Alt', bn: '' },
 	link: { href: '/shop', external: true },
 	status: 'active',
 	startsAt: '2026-11-01T10:30:00.000Z',
@@ -146,6 +160,16 @@ describe('BannerSlotForm', () => {
 		expect(page.previews().phone).toBeNull();
 	});
 
+	it('keeps the version each picture was chosen with, and sends it on save (R4-1, media step 4d)', async () => {
+		const { page, gateway } = await render();
+		page.pick('desktop', { id: 'd1', versionId: 'banner_keep_shape.as_is' } as never);
+		page.pick('phone', { id: 'p1', versionId: 'phone_banner_4x5.crop' } as never);
+		expect(page.imageVersions()).toEqual({ d1: 'banner_keep_shape.as_is', p1: 'phone_banner_4x5.crop' });
+		await page.save();
+		const sent = (gateway.save.mock.lastCall as unknown[])[0];
+		expect(sent).toMatchObject({ imageVersions: { d1: 'banner_keep_shape.as_is', p1: 'phone_banner_4x5.crop' } });
+	});
+
 	it('needs a desktop image', async () => {
 		const { page, gateway, notifications } = await render();
 		await page.save();
@@ -186,7 +210,7 @@ describe('BannerSlotForm', () => {
 			subheading: {},
 			alt: { en: 'Alt' },
 			link: { href: '/sale', external: true },
-			localeImages: { fr: { desktop: 'f1' } },
+			localeImages: { bn: { desktop: 'f1' } },
 			endsAt: null,
 		});
 		expect((sent as { startsAt: string }).startsAt).toContain('2026-11-01');
@@ -197,7 +221,7 @@ describe('BannerSlotForm', () => {
 
 	it('drops text and link when the art holds the text', async () => {
 		const { page, gateway } = await render(null, 'side');
-		page.form.patchValue({ desktop: 'd', containsText: true, heading: { en: 'Hi', fr: '' } });
+		page.form.patchValue({ desktop: 'd', containsText: true, heading: { en: 'Hi', bn: '' } });
 		await page.save();
 		expect(gateway.save).toHaveBeenCalledWith(
 			expect.objectContaining({ heading: {}, subheading: {}, ctaLabel: {}, link: null, localeImages: {} }),

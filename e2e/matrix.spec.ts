@@ -1,3 +1,4 @@
+import { readsHome } from './home-lock';
 import { expect, test } from './support';
 
 /** One product for each way an option can be drawn. */
@@ -24,8 +25,8 @@ test.describe('every picker style', () => {
 			expect(problems.failed).toEqual([]);
 		});
 
-		test(`${style} also renders in French on ${slug}`, async ({ page, problems }) => {
-			await page.goto(`/fr/product/${slug}`);
+		test(`${style} also renders in Bengali on ${slug}`, async ({ page, problems }) => {
+			await page.goto(`/bn/product/${slug}`);
 			await expect(page.locator('app-buy-box')).toBeVisible();
 			expect(problems.errors).toEqual([]);
 		});
@@ -33,14 +34,21 @@ test.describe('every picker style', () => {
 });
 
 test.describe('around the product', () => {
+	// Recently Viewed and the Bengali rails are read on Home as a fresh test database has it.
+	readsHome();
+
 	test('quick view opens from a card without leaving the listing', async ({ page, isMobile }) => {
-		test.skip(isMobile, 'the card actions appear on hover');
 		await page.goto('/en/collections/sarees');
 		await page.waitForLoadState('networkidle');
 		const card = page.locator('app-collection-products app-product-box').first();
-		await card.hover();
-		await card.locator('.product-option a').first().click();
-		await expect(page.locator('ngb-modal-window')).toBeVisible();
+		// Laptops: the hover bar's eye. Phones: the eye among the card's corner buttons (owner, 22 Nov 2026).
+		if (isMobile) await card.locator('.product-header-top button[aria-label="Quick View"]').click();
+		else {
+			await card.hover();
+			await card.locator('.product-option a').first().click();
+		}
+		await expect(page.locator('ngb-modal-window.st-quick-view')).toBeVisible();
+		await expect(page.locator('.st-quick-view app-buy-box')).toBeVisible();
 		await expect(page).toHaveURL(/\/collections\/sarees/);
 	});
 
@@ -66,9 +74,9 @@ test.describe('around the product', () => {
 		await expect(second.getByText('Recently Viewed').first()).toBeAttached();
 	});
 
-	test('French home rails are translated', async ({ page }) => {
-		await page.goto('/fr/');
-		await expect(page.getByText('Nouveautés').first()).toBeAttached();
+	test('Bengali home rails are translated', async ({ page }) => {
+		await page.goto('/bn/');
+		await expect(page.getByText('নতুন এসেছে').first()).toBeAttached();
 		await expect(page.getByText('New Arrivals')).toHaveCount(0);
 	});
 });

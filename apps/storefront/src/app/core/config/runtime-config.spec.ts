@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { loadRuntimeConfig, provideRuntimeConfig, runtimeConfig, runtimeConfigReady } from './runtime-config';
+import {
+	loadRuntimeConfig,
+	loadServedConfig,
+	provideRuntimeConfig,
+	runtimeConfig,
+	runtimeConfigReady,
+} from './runtime-config';
 import { environment } from '../../../../public/environments/environment';
 
 const held = { ...runtimeConfig };
@@ -46,5 +52,64 @@ describe('loadRuntimeConfig in the browser', () => {
 describe('provideRuntimeConfig', () => {
 	it('returns an initializer provider', () => {
 		expect(provideRuntimeConfig()).toBeDefined();
+	});
+});
+
+describe('loadRuntimeConfig on a deployed host', () => {
+	const host = 'shop.example.test';
+
+	it('refuses a missing, cut-off or localhost config', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => ({ ok: false })),
+		);
+		await expect(loadServedConfig(host, true)).rejects.toThrow('Runtime config is missing');
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => ({
+				ok: true,
+				json: async () => {
+					throw new SyntaxError('cut off');
+				},
+			})),
+		);
+		await expect(loadServedConfig(host, true)).rejects.toThrow('Runtime config is missing');
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => ({ ok: true, json: async () => ({ apiUrl: 'https://localhost:4000' }) })),
+		);
+		await expect(loadServedConfig(host, true)).rejects.toThrow('points at localhost');
+	});
+
+	it('refuses a local or missing site address, which the translations load from', async () => {
+		for (const siteUrl of ['https://localhost:4200', undefined]) {
+			vi.stubGlobal(
+				'fetch',
+				vi.fn(async () => ({ ok: true, json: async () => ({ apiUrl: 'https://api.example.test', siteUrl }) })),
+			);
+			await expect(loadServedConfig(host, true)).rejects.toThrow('Runtime config is missing');
+		}
+	});
+
+	it('starts with real addresses', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => ({
+				ok: true,
+				json: async () => ({ apiUrl: 'https://api.example.test', siteUrl: 'https://shop.example.test' }),
+			})),
+		);
+		await loadServedConfig(host, true);
+		expect(runtimeConfig.apiUrl).toBe('https://api.example.test');
+	});
+
+	it('does not treat being offline as a broken deployment', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => {
+				throw new Error('offline');
+			}),
+		);
+		await expect(loadServedConfig(host, false)).resolves.toBeUndefined();
 	});
 });

@@ -1,0 +1,260 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'payroll_structures'"
+>
+	<div class="row g-3">
+		<div class="col-xl-3">
+			<div class="card">
+				<div class="card-body">
+					<div class="d-flex justify-content-between align-items-center mb-2">
+						<h6 class="mb-0">{{ 'payroll_structures' | transloco }}</h6>
+						<button
+							*hasPermission="'accounts.edit'"
+							type="button"
+							class="btn btn-sm btn-outline"
+							(click)="pick(null)"
+						>
+							{{ 'payroll_add_structure' | transloco }}
+						</button>
+					</div>
+					@for (t of templates.data() ?? []; track t.id) {
+					<button
+						type="button"
+						class="btn btn-link d-block p-0 text-start"
+						[class.fw-semibold]="editing()?.id === t.id"
+						(click)="pick(t)"
+					>
+						{{ t.name }}
+					</button>
+					} @empty {
+					<small class="text-muted">{{ 'payroll_structures_none' | transloco }}</small>
+					}
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-9">
+			<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+				<div>
+					<h5 class="mb-1">
+						{{ 'payroll_structure_title' | transloco: { name: name() || ('payroll_new_structure' |
+						transloco) } }}
+					</h5>
+					<small class="text-muted">
+						{{ (basis() === 'ctc' ? 'payroll_example_ctc_line' : 'payroll_example_pay_line') | transloco: {
+						amount: money(example()) } }}
+					</small>
+				</div>
+				<button
+					*hasPermission="'accounts.edit'"
+					type="button"
+					class="btn btn-theme"
+					id="sst_save"
+					[disabled]="busy() || name().trim().length < 2"
+					(click)="save()"
+				>
+					{{ 'save' | transloco }}
+				</button>
+			</div>
+			<div class="card">
+				<div class="card-body theme-form theme-form-2">
+					<div class="row g-3 mb-3">
+						<div class="col-md-5">
+							<label
+								class="form-label-title"
+								for="sst_name"
+							>
+								{{ 'payroll_structure_name' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="sst_name"
+								maxlength="80"
+								[ngModel]="name()"
+								(ngModelChange)="name.set($event)"
+							/>
+						</div>
+						<div class="col-md-3">
+							<label
+								class="form-label-title"
+								for="sst_basis"
+							>
+								{{ 'payroll_structure_basis' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="sst_basis"
+								[ngModel]="basis()"
+								(ngModelChange)="basis.set($event)"
+							>
+								<option value="ctc">{{ 'payroll_basis_ctc' | transloco }}</option>
+								<option value="gross">{{ 'payroll_basis_gross' | transloco }}</option>
+							</select>
+						</div>
+						<div class="col-md-4">
+							@if (basis() === 'ctc') {
+							<label
+								class="form-label-title"
+								for="sst_ctc"
+							>
+								{{ 'payroll_example_ctc' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="sst_ctc"
+								type="number"
+								min="0"
+								[ngModel]="exampleCtcYearINR()"
+								(ngModelChange)="exampleCtcYearINR.set(+$event)"
+							/>
+							} @else {
+							<label
+								class="form-label-title"
+								for="sst_pay"
+							>
+								{{ 'payroll_example_pay' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="sst_pay"
+								type="number"
+								min="0"
+								[ngModel]="examplePayINR()"
+								(ngModelChange)="examplePayINR.set(+$event)"
+							/>
+							}
+						</div>
+					</div>
+					@if (preview.data(); as p) { @if (p.shortfallINR > 0) {
+					<div class="alert alert-warning py-2">
+						<i class="ri-information-line"></i>
+						{{ 'payroll_structure_warning' | transloco: { share: p.basicSharePct, extra:
+						money(p.shortfallINR), wages: money(p.totalINR / 2), basic: money(p.totalINR / 2 -
+						p.shortfallINR) } }}
+					</div>
+					} @if (p.fits === false) {
+					<div
+						class="alert alert-danger py-2"
+						id="sst_over"
+					>
+						{{ 'payroll_structure_over_ctc' | transloco }}
+					</div>
+					} }
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'payroll_col_component' | transloco }}</th>
+									<th>{{ 'payroll_col_kind' | transloco }}</th>
+									<th>{{ 'payroll_col_how' | transloco }}</th>
+									<th>{{ 'payroll_on_pay' | transloco: { amount: money(example()) } }}</th>
+									<th>{{ 'payroll_col_counts_as_wages' | transloco }}</th>
+									<th></th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (c of components(); track $index; let i = $index) {
+								<tr>
+									<td>
+										<select
+											class="form-select"
+											[attr.aria-label]="'payroll_col_component' | transloco"
+											[ngModel]="c.head"
+											(ngModelChange)="setLine(i, { head: $event })"
+										>
+											@for (h of heads; track h) {
+											<option
+												[value]="h"
+												[disabled]="h !== c.head && !free().includes(h)"
+											>
+												{{ 'payroll_head_' + h | transloco }}
+											</option>
+											}
+										</select>
+									</td>
+									<td>{{ 'payroll_kind_earning' | transloco }}</td>
+									<td>
+										<div class="d-flex gap-2">
+											<select
+												class="form-select w-auto"
+												[attr.aria-label]="'payroll_col_how' | transloco"
+												[ngModel]="c.how"
+												(ngModelChange)="setLine(i, { how: $event })"
+											>
+												<option value="percent">
+													{{ (basis() === 'ctc' ? 'payroll_how_percent_ctc' :
+													'payroll_how_percent') | transloco }}
+												</option>
+												<option value="percent_basic">
+													{{ 'payroll_how_percent_basic' | transloco }}
+												</option>
+												<option value="fixed">{{ 'payroll_how_fixed' | transloco }}</option>
+												<option value="rest">{{ 'payroll_how_rest' | transloco }}</option>
+											</select>
+											@if (c.how !== 'rest') {
+											<input
+												class="form-control w-auto"
+												type="number"
+												min="0"
+												[attr.aria-label]="'payroll_col_how' | transloco"
+												[ngModel]="c.value"
+												(ngModelChange)="setLine(i, { value: +$event })"
+											/>
+											}
+										</div>
+									</td>
+									<td class="text-nowrap">{{ money(preview.data()?.structure?.[c.head] ?? 0) }}</td>
+									<td>
+										{{ 'payroll_wages_' + (preview.data()?.lines?.[i]?.treatment ?? 'yes') |
+										transloco }}
+									</td>
+									<td>
+										<button
+											type="button"
+											class="btn btn-sm"
+											[title]="'delete' | transloco"
+											[attr.aria-label]="'delete' | transloco"
+											(click)="removeLine(i)"
+										>
+											<i class="ri-delete-bin-line"></i>
+										</button>
+									</td>
+								</tr>
+								} @if (preview.data()?.ctcMonthINR !== undefined) {
+								<tr>
+									<td colspan="3">{{ 'payroll_structure_employer' | transloco }}</td>
+									<td
+										class="text-nowrap"
+										id="sst_employer"
+									>
+										{{ money(preview.data()?.employerINR ?? 0) }}
+									</td>
+									<td colspan="2"></td>
+								</tr>
+								<tr>
+									<td colspan="3"><b>{{ 'payroll_structure_ctc_month' | transloco }}</b></td>
+									<td
+										class="text-nowrap"
+										id="sst_ctc_month"
+									>
+										<b>{{ money(preview.data()?.ctcMonthINR ?? 0) }}</b>
+									</td>
+									<td colspan="2"></td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					@if (free().length) {
+					<button
+						type="button"
+						class="btn btn-sm btn-outline mt-2"
+						(click)="addLine()"
+					>
+						{{ 'payroll_add_line' | transloco }}
+					</button>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+</app-page-wrapper>

@@ -1,0 +1,360 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'ship_where_rules_apply'"
+>
+	@if (canAdd()) {
+	<div button>
+		<button
+			type="button"
+			class="align-items-center btn btn-theme d-flex"
+			id="ship_add_exception"
+			(click)="add()"
+		>
+			<i
+				class="ri-add-line"
+				aria-hidden="true"
+			></i>
+			{{ 'ship_add_exception' | transloco }}
+		</button>
+	</div>
+	}
+	<div class="theme-form theme-form-2 mega-form mb-3">
+		@for (zone of zones; track zone) {
+		<app-form-fields
+			[label]="'ship_site_wide_' + zone"
+			[for]="'ship_site_wide_' + zone"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<select
+				class="form-select"
+				[id]="'ship_site_wide_' + zone"
+				[disabled]="!canEdit()"
+				[ngModel]="siteWide()[zone]"
+				(ngModelChange)="setSiteWide(zone, $event)"
+			>
+				<option value="">{{ 'ship_choose_rule_set' | transloco }}</option>
+				@for (ruleSet of activeFor(zone); track ruleSet.id) {
+				<option [value]="ruleSet.id">{{ ruleSet.name }}</option>
+				}
+			</select>
+		</app-form-fields>
+		} @if (canEdit()) {
+		<div class="d-flex justify-content-end">
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="ship_site_wide_save"
+				[disabled]="saving()"
+				(click)="saveSiteWide()"
+			>
+				{{ 'save' | transloco }}
+			</button>
+		</div>
+		}
+	</div>
+
+	<h6 class="mb-2">{{ 'ship_exceptions' | transloco }}</h6>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'ship_applies_to' | transloco }}</th>
+					<th>{{ 'ship_zone_domestic' | transloco }}</th>
+					<th>{{ 'ship_zone_international' | transloco }}</th>
+					<th class="text-end">{{ 'ship_products_affected' | transloco }}</th>
+					<th>{{ 'actions' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (exception of exceptions.data() ?? []; track exception.id) {
+				<tr [attr.data-exception-id]="exception.id">
+					<td>
+						<span class="badge bg-light text-dark me-1">
+							{{ 'ship_target_' + exception.target.kind | transloco }}
+						</span>
+						@if (exception.target.kind === 'category') {
+						<b>{{ categoryName(exception.target.categoryId) }}</b>
+						@if (exception.target.includeSubcategories) {
+						<small class="text-muted">{{ 'ship_and_subcategories' | transloco }}</small>
+						} } @else {
+						<b>{{ productTitles()[exception.target.productId] }}</b>
+						} @if (exception.note) {
+						<div class="small text-muted">{{ exception.note }}</div>
+						}
+					</td>
+					<td [class.text-danger]="exception.domestic.kind === 'cantShip'">
+						{{ choiceLabel(exception.domestic) }}
+					</td>
+					<td [class.text-danger]="exception.international.kind === 'cantShip'">
+						{{ choiceLabel(exception.international) }}
+					</td>
+					<td class="text-end text-nowrap">{{ affected(exception) ?? '—' }}</td>
+					<td>
+						<ul id="actions">
+							@if (canEdit()) {
+							<li>
+								<a
+									href="javascript:void(0)"
+									class="text-success"
+									[title]="'edit' | transloco"
+									[attr.aria-label]="'edit' | transloco"
+									(click)="edit(exception)"
+								>
+									<i class="ri-pencil-line"></i>
+								</a>
+							</li>
+							} @if (canDelete()) {
+							<li>
+								<a
+									href="javascript:void(0)"
+									class="text-danger"
+									[title]="'delete' | transloco"
+									[attr.aria-label]="'delete' | transloco"
+									(click)="remove(exception)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</a>
+							</li>
+							}
+						</ul>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="5"
+						class="text-muted"
+					>
+						{{ 'ship_no_exceptions' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<div class="row g-3 mt-1">
+		<div class="col-lg-7">
+			<div
+				class="alert alert-info d-flex align-items-start gap-2"
+				role="note"
+			>
+				<i
+					class="ri-route-line mt-1"
+					aria-hidden="true"
+				></i>
+				<div>
+					<b>{{ 'ship_which_wins' | transloco }}</b>
+					<ol class="mt-1 mb-0">
+						<li>{{ 'ship_wins_1' | transloco }}</li>
+						<li>{{ 'ship_wins_2' | transloco }}</li>
+						<li>{{ 'ship_wins_3' | transloco }}</li>
+						<li>{{ 'ship_wins_4' | transloco }}</li>
+					</ol>
+				</div>
+			</div>
+		</div>
+	</div>
+</app-page-wrapper>
+
+<ng-template
+	#exceptionPopup
+	let-modal
+>
+	@if (draft(); as current) {
+	<div class="modal-header">
+		<h2 id="ship_exception_title">{{ (current.id ? 'ship_edit_exception' : 'ship_add_exception') | transloco }}</h2>
+		<button
+			type="button"
+			class="btn btn-close"
+			[title]="'close' | transloco"
+			[attr.aria-label]="'close' | transloco"
+			(click)="modal.dismiss()"
+		>
+			<i class="ri-close-line"></i>
+		</button>
+	</div>
+	<div class="modal-body theme-form theme-form-2">
+		<app-form-fields
+			[label]="'ship_applies_to'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<div class="d-flex gap-3">
+				@for (kind of ['category', 'product']; track kind) {
+				<div class="form-check">
+					<input
+						class="form-check-input"
+						type="radio"
+						name="ship_target_kind"
+						[id]="'ship_target_' + kind"
+						[checked]="current.kind === kind"
+						[disabled]="!!current.id"
+						(change)="patch({ kind: $any(kind) })"
+					/>
+					<label
+						class="form-check-label"
+						[for]="'ship_target_' + kind"
+					>
+						{{ 'ship_target_' + kind | transloco }}
+					</label>
+				</div>
+				}
+			</div>
+		</app-form-fields>
+		@if (current.kind === 'category') {
+		<app-form-fields
+			[label]="'ship_target_category'"
+			[for]="'ship_exception_category'"
+			[required]="true"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<select
+				class="form-select"
+				id="ship_exception_category"
+				[disabled]="!!current.id"
+				[ngModel]="current.categoryId"
+				(ngModelChange)="patch({ categoryId: $event })"
+			>
+				<option value="">{{ 'ship_choose_category' | transloco }}</option>
+				@for (row of categoryRows.data() ?? []; track row.id) {
+				<option [value]="row.id">{{ row.path ?? row.name['en'] }}</option>
+				}
+			</select>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'ship_include_subcategories'"
+			[for]="'ship_include_sub'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<div class="form-check form-switch ps-0">
+				<label class="switch">
+					<input
+						type="checkbox"
+						id="ship_include_sub"
+						[checked]="current.includeSubcategories"
+						(change)="patch({ includeSubcategories: $any($event.target).checked })"
+					/>
+					<span class="switch-state"></span>
+				</label>
+			</div>
+		</app-form-fields>
+		} @else {
+		<app-form-fields
+			[label]="'ship_target_product'"
+			[for]="'ship_exception_product'"
+			[required]="true"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			@if (current.product) {
+			<div class="d-flex align-items-center gap-2">
+				<b>{{ current.product.title }}</b>
+				@if (!current.id) {
+				<a
+					href="javascript:void(0)"
+					[title]="'ship_change' | transloco"
+					(click)="patch({ product: null })"
+				>
+					{{ 'ship_change' | transloco }}
+				</a>
+				}
+			</div>
+			} @else {
+			<input
+				class="form-control"
+				id="ship_exception_product"
+				type="search"
+				autocomplete="off"
+				[placeholder]="'ship_search_product' | transloco"
+				(input)="searchProducts($any($event.target).value)"
+			/>
+			@if (productResults().length) {
+			<div class="list-group mt-1">
+				@for (row of productResults(); track row.id) {
+				<button
+					type="button"
+					class="list-group-item list-group-item-action"
+					(click)="pickProduct(row)"
+				>
+					{{ row.title }}
+					<small class="text-muted">{{ row.sku }}</small>
+				</button>
+				}
+			</div>
+			} }
+		</app-form-fields>
+		} @for (zone of zones; track zone) {
+		<app-form-fields
+			[label]="'ship_zone_' + zone"
+			[for]="'ship_exception_' + zone"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<select
+				class="form-select"
+				[id]="'ship_exception_' + zone"
+				[ngModel]="$any(current)[zone]"
+				(ngModelChange)="setZoneChoice(zone, $event)"
+			>
+				<option value="siteWide">{{ 'ship_choice_siteWide' | transloco }}</option>
+				@for (ruleSet of activeFor(zone); track ruleSet.id) {
+				<option [value]="'rs:' + ruleSet.id">{{ ruleSet.name }}</option>
+				}
+				<option value="free">{{ 'ship_choice_free' | transloco }}</option>
+				<option value="cantShip">{{ 'ship_choice_cantShip' | transloco }}</option>
+			</select>
+		</app-form-fields>
+		}
+		<app-form-fields
+			[label]="'ship_note'"
+			[for]="'ship_exception_note'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<input
+				class="form-control"
+				id="ship_exception_note"
+				maxlength="200"
+				[ngModel]="current.note"
+				(ngModelChange)="patch({ note: $event })"
+			/>
+		</app-form-fields>
+		@if (current.domestic === 'cantShip' || current.international === 'cantShip') {
+		<div
+			class="alert alert-warning d-flex align-items-start gap-2"
+			role="note"
+		>
+			<i
+				class="ri-alert-line mt-1"
+				aria-hidden="true"
+			></i>
+			<div>{{ 'ship_cant_ship_warning' | transloco }}</div>
+		</div>
+		}
+	</div>
+	<div class="modal-footer">
+		<div class="left-part"></div>
+		<div class="right-part d-flex gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="ship_exception_save"
+				[disabled]="!draftValid() || saving()"
+				(click)="saveException()"
+			>
+				{{ 'save' | transloco }}
+			</button>
+		</div>
+	</div>
+	}
+</ng-template>

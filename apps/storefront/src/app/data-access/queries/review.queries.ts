@@ -5,17 +5,27 @@ import { firstValueFrom } from 'rxjs';
 
 import { ReviewService } from '@data-access/services/review.service';
 
-/**
- * TanStack Query for a product's reviews (replaces NGXS ReviewState.review +
- * GetReviewAction). Keyed on the product id (reactive to the product input);
- * disabled until an id is present. SendReviewAction / UpdateReviewAction were
- * no-op mocks — dropped (no backend yet).
- */
-export function injectReviewQuery(productId: () => number | string | undefined) {
+/** A product's approved reviews and rating summary, keyed on the product slug. */
+export function injectReviewQuery(productSlug: () => string | undefined) {
 	const reviewService = inject(ReviewService);
 	return injectQuery(() => ({
-		queryKey: ['reviews', productId()],
-		queryFn: () => firstValueFrom(reviewService.getReview({ product_id: productId() })),
-		enabled: !!productId(),
+		queryKey: ['reviews', productSlug()],
+		queryFn: () => firstValueFrom(reviewService.getReviews(productSlug() ?? '')),
+		enabled: !!productSlug(),
+	}));
+}
+
+/**
+ * What the signed-in customer can do on this product: review, wait for delivery, or edit.
+ * Browser-only and never cached across people: it is keyed on the product and only runs
+ * once a session is known.
+ */
+export function injectMyReviewQuery(productId: () => string | undefined, signedIn: () => boolean) {
+	const reviewService = inject(ReviewService);
+	return injectQuery(() => ({
+		queryKey: ['my-review', productId()],
+		queryFn: () => firstValueFrom(reviewService.mine(productId() ?? '')),
+		enabled: !!productId() && signedIn(),
+		staleTime: 0,
 	}));
 }

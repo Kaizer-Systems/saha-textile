@@ -1,0 +1,21 @@
+/* Bootstrap ships no 9:16 ratio; this is its documented custom-ratio variable (brief, 2026-11-10). */
+.ratio-9x16 {
+	--bs-aspect-ratio: 177.78%;
+}
+
+/* The player's own skin, in the shop's colours, filling the ratio box. */
+video-skin {
+	display: block;
+	position: absolute;
+	inset: 0;
+	--media-accent-color: var(--theme-color);
+	--media-accent-text-color: #fff;
+	--media-border-radius: 0.5rem;
+	--media-font-family: inherit;
+}
+
+youtube-video {
+	display: block;
+	width: 100%;
+	height: 100%;
+}

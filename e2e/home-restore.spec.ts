@@ -1,0 +1,309 @@
+import { test as plain } from '@playwright/test';
+
+import { expect, test } from './support';
+import { ensureHomeBanners } from './database';
+import { HOME_LOCK_WAIT_MS, holdHome, readsHome } from './home-lock';
+
+/** Phones and tablets are checked both ways up. */
+const PHONES = [
+	[320, 568],
+	[360, 640],
+	[375, 667],
+	[390, 844],
+	[412, 915],
+	[430, 932],
+];
+const TABLETS = [
+	[600, 960],
+	[768, 1024],
+	[820, 1180],
+	[1024, 1366],
+];
+const COMPUTERS = [
+	[1280, 720],
+	[1366, 768],
+	[1440, 900],
+	[1536, 864],
+	[1728, 1117],
+	[1920, 1080],
+	[2560, 1440],
+	[3840, 2160],
+];
+const SIZES = [
+	...[...PHONES, ...TABLETS].flatMap(([width, height]) => [
+		{ width: width!, height: height! },
+		{ width: height!, height: width! },
+	]),
+	...COMPUTERS.map(([width, height]) => ({ width: width!, height: height! })),
+];
+
+/** What the box and the popup must never do to a button label, measured in the page. */
+const measureButtons = (selector: string) => {
+	const lineCount = (element: Element) => {
+		const range = document.createRange();
+		range.selectNodeContents(element);
+		const rows = [...range.getClientRects()].filter((row) => row.width > 0).map((row) => Math.round(row.top / 4));
+		return new Set(rows).size;
+	};
+	return [...document.querySelectorAll<HTMLElement>(selector)].map((button) => ({
+		label: button.textContent?.trim() ?? '',
+		lines: lineCount(button),
+		clipped: button.scrollWidth > button.clientWidth + 1 || button.scrollHeight > button.clientHeight + 1,
+		width: Math.round(button.getBoundingClientRect().width),
+	}));
+};
+
+// One pass covers every size, so the phone project leaves it out.
+plain.describe('Cookie box at every screen size', { tag: '@desktop-only' }, () => {
+	for (const locale of ['en', 'bn']) {
+		plain(`no label is clipped or broken in ${locale}`, async ({ page }) => {
+			plain.setTimeout(120_000);
+			await page.addInitScript(() => sessionStorage.setItem('st_newsletter_shown', '1'));
+			await page.goto(`/${locale}/`);
+			await page.locator('.cookie-bar-box').waitFor();
+			await page.addStyleTag({ content: '*,*::before,*::after{transition:none!important}' });
+
+			for (const size of SIZES) {
+				await page.setViewportSize(size);
+				const where = `${locale} at ${size.width}x${size.height}`;
+				const buttons = await page.evaluate(measureButtons, '.cookie-bar-box .button-group button');
+				expect(buttons, where).toHaveLength(3);
+				for (const button of buttons) {
+					expect(button.clipped, `${button.label}, ${where}`).toBe(false);
+					expect(button.lines, `${button.label}, ${where}`).toBe(1);
+				}
+				const [first, second] = buttons;
+				expect(first?.width, `equal widths, ${where}`).toBe(second?.width);
+
+				const box = await page.locator('.cookie-bar-box').evaluate((element) => {
+					const rect = element.getBoundingClientRect();
+					return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+				});
+				expect(box.left, where).toBeGreaterThanOrEqual(0);
+				expect(box.right, where).toBeLessThanOrEqual(size.width);
+				expect(box.top, where).toBeGreaterThanOrEqual(0);
+				expect(box.bottom, where).toBeLessThanOrEqual(size.height);
+			}
+		});
+
+		plain(`the settings popup stays usable in ${locale}`, async ({ page }) => {
+			plain.setTimeout(120_000);
+			await page.addInitScript(() => sessionStorage.setItem('st_newsletter_shown', '1'));
+			await page.goto(`/${locale}/`);
+			await page.locator('#cookie_choose_btn').click();
+			const popup = page.locator('.cookie-settings .modal-content');
+			await popup.waitFor();
+			await page.addStyleTag({
+				content: '*,*::before,*::after{transition:none!important;animation:none!important}',
+			});
+
+			for (const size of SIZES) {
+				await page.setViewportSize(size);
+				const where = `${locale} at ${size.width}x${size.height}`;
+				const buttons = await page.evaluate(measureButtons, '.cookie-settings .cookie-actions .btn');
+				expect(buttons, where).toHaveLength(3);
+				for (const button of buttons) {
+					expect(button.clipped, `${button.label}, ${where}`).toBe(false);
+					expect(button.lines, `${button.label}, ${where}`).toBe(1);
+				}
+				const rect = await popup.evaluate((element) => {
+					const box = element.getBoundingClientRect();
+					return { left: box.left, right: box.right, top: box.top, bottom: box.bottom };
+				});
+				expect(rect.left, where).toBeGreaterThanOrEqual(-1);
+				expect(rect.right, where).toBeLessThanOrEqual(size.width + 1);
+				expect(rect.top, where).toBeGreaterThanOrEqual(-1);
+				expect(rect.bottom, where).toBeLessThanOrEqual(size.height + 1);
+			}
+		});
+	}
+});
+
+test.describe('Header menu', () => {
+	const sections = ['Home', 'Sarees', 'Dress Materials', 'Product', 'Mega menu', 'Blog', 'Videos', 'Pages'];
+
+	test('shows the real categories and every demo section', async ({ page, isMobile }) => {
+		await page.goto('/en/');
+		if (isMobile) await page.locator('.navbar-toggler').first().click();
+		const labels = page.locator('app-menu ul.navbar-nav > li > a');
+		await expect(labels).toHaveCount(sections.length);
+		for (const [index, section] of sections.entries()) await expect(labels.nth(index)).toContainText(section);
+	});
+
+	test('the demo product links open real products', async ({ page, request }) => {
+		await page.goto('/en/');
+		const link = page.locator('app-menu a[href*="/product/"]').first();
+		await expect(link).toHaveAttribute('href', /\/en\/product\/(?!deliciously-sweet-watermelon)/);
+		const href = await link.getAttribute('href');
+		expect((await request.get(href!)).status()).toBe(200);
+	});
+});
+
+test.describe('Home banners', () => {
+	// Stand-in banners for these tests only: put back after, so later specs see the home page as found. They run in
+	// order in one worker, holding Home alone (home-lock.ts) so the other project's run and every reader of Home wait.
+	test.describe.configure({ mode: 'default' });
+	let putBack: () => Promise<void> = async () => undefined;
+	let releaseHome: () => void = () => undefined;
+	test.beforeAll(async () => {
+		test.setTimeout(HOME_LOCK_WAIT_MS + 30_000);
+		releaseHome = await holdHome('change');
+		putBack = await ensureHomeBanners();
+	});
+	test.afterAll(async () => {
+		try {
+			await putBack();
+		} finally {
+			releaseHome();
+		}
+	});
+
+	test('the hero plays three slides from the admin banners', async ({ page }) => {
+		await page.goto('/en/');
+		const hero = page.locator('.home-slider-carousel');
+		await expect(hero.locator('.owl-item:not(.cloned)')).toHaveCount(3);
+		await expect(hero.locator('.owl-dot')).toHaveCount(3);
+		await expect(hero.locator('.owl-item:not(.cloned) picture img').first()).toHaveAttribute(
+			'fetchpriority',
+			'high',
+		);
+		await expect(hero.locator('.owl-item:not(.cloned) a').first()).toHaveAttribute('href', /\/en\/collections/);
+	});
+
+	test('the first HTML carries the hero, so nothing jumps in later', async ({ request }) => {
+		const html = await (await request.get('/en/')).text();
+		expect(html).toContain('home-slider-carousel');
+	});
+
+	test('the promo banners sit under the hero', async ({ page }) => {
+		await page.goto('/en/');
+		await expect(page.locator('.col-xxl-8 app-image-link picture img')).toBeVisible();
+		await expect(page.locator('.col-xxl-4 app-image-link picture img')).toBeVisible();
+	});
+});
+
+test.describe('Home blog posts', () => {
+	readsHome();
+
+	test('their pictures are real pictures that load near the screen, at the card width', async ({ page }) => {
+		const blogPictures: string[] = [];
+		page.on('request', (request) => {
+			if (/-blog-\d+w-/.test(request.url())) blogPictures.push(request.url());
+		});
+		// Chrome fetches a lazy picture once it comes within 1,250 px of the window. The shop's Home opens with its
+		// banners and puts the blog section well beyond that; the test database's Home has no banners and is short,
+		// so the first screen is opened in a short window to keep the section as far away, then the size goes back.
+		const size = page.viewportSize() ?? { width: 1280, height: 720 };
+		await page.setViewportSize({ width: size.width, height: 240 });
+		await page.goto('/en/', { waitUntil: 'networkidle' });
+		const pictures = page.locator('.slider-3-blog .blog-box-image img');
+		// The e2e stack seeds three live posts (apps/api/src/seed-e2e-blog.ts).
+		await expect(pictures).not.toHaveCount(0);
+		const distance = await page
+			.locator('.slider-3-blog')
+			.evaluate((section) => section.getBoundingClientRect().top - window.innerHeight);
+		expect(distance).toBeGreaterThan(1250);
+		// Nothing from the blog section loads with the first screen: it is far below it.
+		expect(blogPictures).toEqual([]);
+		await page.setViewportSize(size);
+		// The carousel loops, so its first slides in the page are copies parked beside the visible strip; a lazy
+		// picture there rightly never loads. Check the first slide on show.
+		const first = page.locator('.slider-3-blog .owl-item.active .blog-box-image img').first();
+		await expect(first).toHaveAttribute('loading', 'lazy');
+		await expect(first).toHaveAttribute('srcset', /\d+w/);
+		// The link keeps its name for screen readers; the picture inside it is part of the link.
+		await expect(page.locator('.slider-3-blog .blog-image').first()).toHaveAttribute('aria-label', /.+/);
+
+		await first.scrollIntoViewIfNeeded();
+		await expect
+			.poll(() => first.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0))
+			.toBe(true);
+		// The picture fills the theme's 65% box, as the background did (measured once the carousel has settled).
+		// Layout sizes, not the box on screen: the theme zooms and tilts the picture under a resting pointer
+		// (scale 1.12, rotate 3°), which makes the on-screen box 0.679 tall for 1 wide.
+		const fit = () =>
+			first.evaluate((image: HTMLImageElement) => {
+				const box = image.parentElement as HTMLElement;
+				return {
+					width: Math.abs(image.offsetWidth - box.offsetWidth),
+					height: Math.abs(image.offsetHeight - box.offsetHeight),
+					ratio: Math.abs(box.offsetHeight / box.offsetWidth - 0.65),
+				};
+			});
+		await expect.poll(async () => (await fit()).width).toBeLessThanOrEqual(1);
+		const settled = await fit();
+		expect(settled.height).toBeLessThanOrEqual(1);
+		expect(settled.ratio).toBeLessThan(0.02);
+		// A file near the card's width, never the 1600 px original on a phone.
+		const chosen = await first.evaluate((image: HTMLImageElement) => image.currentSrc);
+		if ((page.viewportSize()?.width ?? 0) < 580) expect(chosen).not.toMatch(/-1600w-/);
+	});
+});
+
+test.describe('Home far sections', () => {
+	readsHome();
+
+	test('wait until they are near the screen, then draw in full', async ({ page }) => {
+		await page.goto('/en/', { waitUntil: 'networkidle' });
+		const sections = page.locator('app-home > section');
+		// The first screen (hero, promos) draws at once; sections further down wait until they are near it.
+		expect(await sections.first().evaluate((section) => getComputedStyle(section).contentVisibility)).toBe(
+			'visible',
+		);
+		expect(await sections.last().evaluate((section) => getComputedStyle(section).contentVisibility)).toBe('auto');
+		// The footer draws at once: a skipped footer made Lighthouse misread its contrast.
+		expect(
+			await page
+				.locator('app-basic-footer > footer')
+				.evaluate((footer) => getComputedStyle(footer).contentVisibility),
+		).toBe('visible');
+
+		// Deep in the page: the second product row draws its products, with their pictures, once near the screen.
+		const row = page.locator('app-home > section.product-section').nth(1);
+		await row.scrollIntoViewIfNeeded();
+		await expect(row.locator('a[href*="/product/"]').first()).toBeVisible();
+		// The row's carousel loops: its first pictures in the page are copies parked off-screen, rightly never loaded.
+		const picture = row.locator('.owl-item.active img').first();
+		await expect
+			.poll(() => picture.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0))
+			.toBe(true);
+		// Never left in the "draw everything" state that Back uses while it restores a position.
+		expect(await page.evaluate(() => document.documentElement.classList.contains('st-render-all'))).toBe(false);
+	});
+});
+
+test.describe('Scroll between pages', () => {
+	readsHome();
+
+	test('a product opens at its top, and Back returns to the same card on Home', async ({ page }) => {
+		await page.goto('/en/', { waitUntil: 'networkidle' });
+		const row = page.locator('app-home > section.product-section').nth(1);
+		// The row at the top of the screen, so Home is well scrolled however tall the sections above it are (with or
+		// without banners).
+		await row.evaluate((element) => element.scrollIntoView({ block: 'start' }));
+		const card = row.locator('.owl-item.active a[href*="/product/"]').first();
+		await expect(card).toBeVisible();
+		await page.waitForTimeout(400);
+		const href = (await card.getAttribute('href')) ?? '';
+		const title = ((await row.locator('h2').first().textContent()) ?? '').trim();
+		const before = (await card.boundingBox())?.y ?? 0;
+		expect(await page.evaluate(() => scrollY)).toBeGreaterThan(300);
+
+		// Forward: the new page starts at its top, wherever Home was scrolled.
+		await card.dispatchEvent('click');
+		await page.waitForURL(/\/product\//);
+		await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+
+		// Back: the same card is where it was on screen, even though viewing the product added "Recently viewed" above.
+		await page.goBack();
+		await page.waitForURL(/\/en\/?$/);
+		// The opened product is now also in "Recently viewed" higher up: measure the card in the same row as before.
+		const sameRow = page
+			.locator('app-home > section.product-section')
+			.filter({ has: page.locator('h2', { hasText: title }) });
+		const same = sameRow.locator(`.owl-item.active a[href="${href}"]`).first();
+		await expect
+			.poll(async () => Math.abs(((await same.boundingBox())?.y ?? -9999) - before), { timeout: 5000 })
+			.toBeLessThanOrEqual(3);
+	});
+});

@@ -3,7 +3,7 @@ title: Choose Your Path
 description: Select the reading path for your role.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-10'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - docs/engineering-live-context/execution-roadmap.mdx

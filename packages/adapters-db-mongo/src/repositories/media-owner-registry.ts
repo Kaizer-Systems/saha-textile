@@ -2,11 +2,25 @@ import type { Model } from 'mongoose';
 
 import {
 	AttributeDefinitionModel,
+	BlogPostModel,
+	LegalPageModel,
+	LegalPageRevisionModel,
+	BuilderPageModel,
+	PageLayoutRevisionModel,
+	SavedBlockModel,
 	CategoryModel,
 	ContentBlockModel,
+	ProductBundleModel,
 	ProductModel,
 	ProductVariantModel,
 	ReviewModel,
+	ShopEventModel,
+	StoreLocationModel,
+	OrderModel,
+	PaymentModel,
+	SupplierModel,
+	LedgerEntryModel,
+	ProductDraftModel,
 } from '../models/index';
 
 /**
@@ -35,7 +49,13 @@ export const MEDIA_OWNER_REGISTRY: readonly MediaOwnerEntry[] = [
 	entry('product gallery', as(ProductModel), 'media.gallery'),
 	entry('product gallery attachment', as(ProductModel), 'media.gallery.assetId'),
 	entry('variant image', as(ProductVariantModel), 'media.primaryAssetId'),
+	entry('product share picture (Meta image)', as(ProductModel), 'media.shareImage.assetId'),
+	// A bundle's optional styled photo (brief A5); stored free-form, so the schema walk cannot find it.
+	entry('bundle styled photo', as(ProductBundleModel), 'styledPhoto.assetId'),
 	entry('attribute swatch', as(AttributeDefinitionModel), 'terms.swatchAssetId'),
+	// A product's own option swatches (and add-on picture tiles), photos or swatch cuts (brief P11); option groups are
+	// stored free-form, so the schema walk below cannot find this path by itself.
+	entry('product option swatch', as(ProductModel), 'optionGroups.terms.swatchAssetId'),
 	entry('category banner', as(CategoryModel), 'media.bannerAssetId'),
 	entry('category banner (legacy)', as(CategoryModel), 'media.bannerImage'),
 	entry('category photo', as(CategoryModel), 'media.thumbnailAssetId'),
@@ -43,4 +63,28 @@ export const MEDIA_OWNER_REGISTRY: readonly MediaOwnerEntry[] = [
 	entry('category share image', as(CategoryModel), 'seo.ogImageAssetId'),
 	entry('review photos', as(ReviewModel), 'imageAssetIds'),
 	entry('banner or content block', as(ContentBlockModel), 'assetIds'),
+	entry('blog cover', as(BlogPostModel), 'coverAssetId'),
+	entry('blog share image', as(BlogPostModel), 'shareImageAssetId'),
+	entry('blog post picture', as(BlogPostModel), 'assetIds'),
+	entry('legal page share picture', as(LegalPageModel), 'metaImageAssetId'),
+	entry('legal page share picture (earlier version)', as(LegalPageRevisionModel), 'metaImageAssetId'),
+	entry('page layout picture (Page Builder)', as(PageLayoutRevisionModel), 'assetIds'),
+	entry('saved block picture (Page Builder)', as(SavedBlockModel), 'assetIds'),
+	entry('page share picture (Page Builder settings)', as(BuilderPageModel), 'settings.shareImage.assetId'),
+	entry('store photos', as(StoreLocationModel), 'photoAssetIds'),
+	entry('event popup pictures', as(ShopEventModel), 'popupAssetIds'),
+	entry('event popup picture (before 2026-11-10)', as(ShopEventModel), 'popupAssetId'),
+	entry('order line picture (kept with the order)', as(OrderModel), 'lines.imageAssetId'),
+	entry('payment proof', as(PaymentModel), 'proofMediaId'),
+	entry('signed set-off agreement (business)', as(SupplierModel), 'setOff.mediaId'),
+	entry('signed set-off agreement (one-off entry)', as(LedgerEntryModel), 'agreement.mediaId'),
+	// A saved product draft (bulk actions brief § 7): its list picture, and the photos its form holds.
+	// A draft of a new product may hold photos no product uses yet, so they must count as used. The
+	// form is stored free-form, so the schema walk finds only `imageAssetId`; the variant pictures and
+	// picture tiles sit under per-variant keys that a path cannot name.
+	entry('product draft picture', as(ProductDraftModel), 'imageAssetId'),
+	entry('product draft photos', as(ProductDraftModel), 'form.state.images.gallery'),
+	entry('product draft photos per choice', as(ProductDraftModel), 'form.state.images.compound.gallery'),
+	entry('product draft share picture', as(ProductDraftModel), 'form.state.images.shareImage.assetId'),
+	entry('product draft option swatch', as(ProductDraftModel), 'form.state.optionGroups.terms.swatchAssetId'),
 ];

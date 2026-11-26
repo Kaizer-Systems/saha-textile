@@ -1,0 +1,140 @@
+// An order as a tree (bundle builder brief E05, approved 2026-11-22), the cart's look: a set's or a product-with-free-
+// items' line carries a bar in the theme colour; pieces, free items and extras sit beneath it, indented, smaller.
+.my-order-lines {
+	tr.mo-group > td:first-child {
+		box-shadow: inset 4px 0 0 var(--theme-color);
+	}
+
+	tr.mo-child {
+		background-color: var(--st-surface-subtle);
+
+		&.is-free {
+			background-color: color-mix(in srgb, var(--st-success) 6%, var(--st-surface));
+		}
+
+		td {
+			padding-top: 6px;
+			padding-bottom: 6px;
+		}
+
+		td.product-image {
+			padding-left: 32px;
+
+			img {
+				width: 32px;
+				height: 42px;
+				object-fit: cover;
+			}
+		}
+
+		&.is-depth-2 td.product-image {
+			padding-left: 56px;
+		}
+	}
+
+	// The theme clamps a product table's 2nd column to one line at 150px; a set's name needs two lines and room.
+	tbody tr td.mo-name {
+		min-width: 240px;
+		max-width: 340px;
+
+		h6 {
+			-webkit-line-clamp: 2;
+			color: var(--st-text);
+		}
+	}
+
+	.mo-name {
+		white-space: normal;
+		text-align: left;
+
+		.st-piece-chip {
+			margin: 0 6px 0 0;
+			vertical-align: 1px;
+		}
+	}
+}
+
+// The order at a glance (owner, 22 Nov 2026): placed date, items, pieces in the parcel, free items, as the shop's
+// own chips with an icon each.
+.st-order-facts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 8px;
+
+	.st-piece-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		margin: 0;
+		padding: 4px 10px;
+		font-size: 13px;
+		font-weight: 500;
+
+		i {
+			font-size: 15px;
+		}
+	}
+}
+
+.st-order-note {
+	margin: 0 0 14px;
+	color: var(--st-text-muted);
+	font-size: 13px;
+}
+
+// Summary: the total stands out; what the whole order saved sits under it in the success colour.
+.tracking-total li.st-order-total span {
+	color: var(--theme-color);
+	font-size: 18px;
+}
+
+.st-order-saved {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 14px 0 0;
+	padding: 8px 12px;
+	border-radius: 10px;
+	background-color: color-mix(in srgb, var(--st-success) 10%, transparent);
+	color: var(--st-success);
+	font-size: 14px;
+	font-weight: 600;
+
+	i {
+		font-size: 17px;
+	}
+}
+
+// Delivery: who, where, and a phone number to tap, each beside its icon.
+.st-order-delivery {
+	display: grid;
+	gap: 10px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+
+	li {
+		display: grid;
+		grid-template-columns: 22px minmax(0, 1fr);
+		align-items: start;
+		color: var(--st-text-body);
+		font-size: 15px;
+		line-height: 1.5;
+	}
+
+	i {
+		color: var(--theme-color);
+		font-size: 17px;
+		line-height: 1.4;
+	}
+
+	b {
+		color: var(--st-text);
+	}
+
+	a {
+		color: var(--theme-color);
+		font-weight: 600;
+	}
+}

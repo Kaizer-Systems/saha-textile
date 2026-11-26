@@ -10,7 +10,7 @@ import type {
 	ProductVariant,
 } from '@saha-textile/contracts';
 
-import { DEMO_FRENCH } from './demo-french';
+import { DEMO_BENGALI } from './demo-bengali';
 
 /**
  * The three product photos already on the dev Spaces bucket. Every seeded product
@@ -152,10 +152,10 @@ const rupee = (value: unknown): number => {
 	return Math.round(number);
 };
 
-const text = (value: string | undefined, fallback: string): { en: string; fr?: string } => {
+const text = (value: string | undefined, fallback: string): { en: string; bn?: string } => {
 	const en = (value && value.trim()) || fallback;
-	const fr = DEMO_FRENCH[en];
-	return fr ? { en, fr } : { en };
+	const bn = DEMO_BENGALI[en];
+	return bn ? { en, bn } : { en };
 };
 
 const slugify = (value: string): string =>
@@ -251,7 +251,7 @@ function optionGroupsFor(product: DemoProduct, variable: boolean, frames: readon
 					code: slugify(term.slug || label),
 					label: text(label, label),
 					isBase: isBaseLabel(label),
-				hidden: false,
+					hidden: false,
 					...(hex ? { hex } : {}),
 					...(style === 'image_swatch' ? { swatchAssetId: frames[index % frames.length]! } : {}),
 					addonTemplateIds: [],
@@ -385,7 +385,10 @@ function photoAssets(derivatives: Map<string, ImageDerivative[]>): MediaAsset[] 
 				processedAt: '2026-11-03T00:00:00.000Z',
 			},
 			warnings: [],
-			servesAsPrimary: false,
+			// Rotated by product index, each photo leads some products, so each needs the sizes only a
+			// main photo gets (link preview, Story card, feed square, email thumbnail), as the admin's
+			// product save would mark it.
+			servesAsPrimary: true,
 			maxDisplayWidth: null,
 			renditions: [],
 			hlsPlaylistKey: null,
@@ -441,6 +444,8 @@ export function mapDemoCatalogue(input: {
 			ancestors: pathIds.slice(0, -1),
 			depth: Math.max(0, slugs.length - 1),
 			isBannerCollection: false,
+			hsnCode: null,
+			returnable: true,
 			displayOrder: category.id,
 		};
 	});
@@ -559,7 +564,7 @@ export function mapDemoCatalogue(input: {
 						code: slugify(term.slug || label),
 						label: text(label, label),
 						isBase: isBaseLabel(label),
-				hidden: false,
+						hidden: false,
 						...(hex ? { hex } : {}),
 						...(style === 'image_swatch' ? { swatch: frames[termIndex % frames.length]! } : {}),
 					};
@@ -569,7 +574,8 @@ export function mapDemoCatalogue(input: {
 		if (measurements.length > 0 && demoMeasurements.length === 0) demoMeasurements.push(...measurements);
 		const doc: Product = {
 			id,
-			type: variable ? 'variable' : 'simple',
+			// A demo set is a set product (bundle builder brief): its own record holds the pieces, so it has no variations.
+			type: product.type === 'bundle' ? 'bundle' : variable ? 'variable' : 'simple',
 			sku,
 			title: text(product.name, slug),
 			slug,
@@ -579,7 +585,7 @@ export function mapDemoCatalogue(input: {
 			categoryIds,
 			tags: (product.tags ?? []).map((tag) => tag.slug || tag.name || '').filter(Boolean),
 			basePriceINR: onSale ? sale : price,
-			media: { gallery: [...frames], compound: [], altOverrides: {} },
+			media: { gallery: [...frames], compound: [], altOverrides: {}, versions: {} },
 			attributes,
 			optionGroups: optionGroupsFor(product, variable, frames),
 			variations: [],
@@ -611,6 +617,10 @@ export function mapDemoCatalogue(input: {
 			lowStockThreshold: null,
 			lifetimeUnitsReceived: 0,
 			featured: Boolean(product.is_featured),
+			showOnShop: true,
+			freeWith: null,
+			faqEnabled: false,
+			videos: [],
 			insightBadges: [],
 			pinnedBadges: [],
 			hiddenBadges: [],
@@ -621,6 +631,12 @@ export function mapDemoCatalogue(input: {
 			onSale,
 			shippingDefaults: { weightGrams: null, lengthCm: null, widthCm: null, heightCm: null },
 			hsnCode: null,
+			soldBy: 'piece',
+			returnable: null,
+			shortestCutTenths: null,
+			quickLengths: [],
+			widthInches: null,
+			weightPerMetreGrams: null,
 			createdAt: product.created_at,
 		};
 		productDocs.push(doc);
@@ -659,10 +675,12 @@ export function mapDemoCatalogue(input: {
 				stock: {
 					tracked: true,
 					quantity: Math.max(0, Math.round(quantity)),
+					held: 0,
+					reserved: 0,
 					lowStockThreshold: null,
 					allowBackorder: false,
 				},
-				media: { primaryAssetId: assetId },
+				media: { primaryAssetId: assetId, primaryVersionId: null },
 			});
 		};
 
@@ -730,7 +748,30 @@ export function mapDemoCatalogue(input: {
 
 	for (const product of productDocs) {
 		for (const group of product.optionGroups) {
-			if (definitions.has(group.attributeCode)) continue;
+			const known = definitions.get(group.attributeCode);
+			if (known) {
+				// Every value any product uses belongs in the list the admin and the filters read. Taking
+				// the first product's values alone left Work, Fabric, Pattern and Occasion with one each.
+				const codes = new Set(known.terms.map((term) => term.code));
+				const added = group.terms.filter((term) => !codes.has(term.code));
+				if (added.length) {
+					definitions.set(group.attributeCode, {
+						...known,
+						terms: [
+							...known.terms,
+							...added.map((term) => ({
+								code: term.code,
+								label: term.label,
+								slug: term.code,
+								aliases: [],
+								isBase: term.isBase,
+								hidden: false,
+							})),
+						],
+					});
+				}
+				continue;
+			}
 			definitions.set(group.attributeCode, {
 				id: `attr_${group.attributeCode}`,
 				code: group.attributeCode,
@@ -754,30 +795,34 @@ export function mapDemoCatalogue(input: {
 	const bundles: ProductBundle[] = productDocs
 		.filter((product) => bundleIds.has(product.id))
 		.flatMap((product) => {
-			const components = productDocs.filter((candidate) => !bundleIds.has(candidate.id)).slice(0, 3);
+			const components = productDocs.filter((candidate) => !bundleIds.has(candidate.id)).slice(0, 2);
 			if (components.length === 0) return [];
+			// A fixed pair at the product's price, one level per piece (bundle builder brief, 22 Nov 2026).
 			return [
 				{
 					id: `bnd_${product.id}`,
 					productId: product.id,
-					bundleType: 'choose_one_per_group' as const,
-					pricePolicy: 'fixed_bundle_price' as const,
-					fixedPriceINR: product.basePriceINR,
-					groups: [
-						{
-							code: 'set',
-							label: { en: 'Set' },
-							minSelections: 1,
-							maxSelections: 1,
-							components: components.map((component) => ({
-								productId: component.id,
-								variantId: null,
-								quantity: 1,
-								required: false,
-								priceAdjustmentINR: null,
-							})),
-						},
-					],
+					levels: components.map((component, at) => ({
+						code: `piece-${at + 1}`,
+						label: { en: `Piece ${at + 1}`, bn: `পিস ${at + 1}` },
+						take: 1,
+						source: { kind: 'items' as const },
+						items: [{ productId: component.id, variantId: null, quantity: 1, priceInSetINR: null }],
+						priceMode: 'difference' as const,
+					})),
+					extras: [],
+					pricing: {
+						methodId: 'bpm_fixed_price',
+						params: { setPrice: product.basePriceINR },
+						rules: [],
+						combine: 'all' as const,
+						capAtSeparately: false,
+						roundTo: 'one' as const,
+					},
+					saleWindow: null,
+					styledPhoto: null,
+					dearerReason: null,
+					stock: null,
 					status: product.status,
 				},
 			];

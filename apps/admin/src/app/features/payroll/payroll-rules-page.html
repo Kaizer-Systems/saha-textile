@@ -1,0 +1,2214 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'payroll_rules'"
+>
+	<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">{{ 'payroll_rules_title' | transloco }}</h5>
+			<small class="text-muted">{{ 'payroll_rules_sub' | transloco }}</small>
+		</div>
+		<button
+			*hasPermission="'accounts.lock'"
+			type="button"
+			class="btn btn-theme"
+			id="rules_add"
+			[disabled]="!current()"
+			(click)="open(versionModal)"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'payroll_rules_add' | transloco }}
+		</button>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'payroll_col_rule' | transloco }}</th>
+					<th>{{ 'payroll_col_in_force' | transloco }}</th>
+					<th>{{ 'payroll_col_values' | transloco }}</th>
+					<th>{{ 'payroll_col_applies' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (r of rows(); track $index) {
+				<tr>
+					<td>{{ 'payroll_rule_' + r.key | transloco: r.values }}</td>
+					<td>
+						@if (r.from) { {{ day(r.from) }} } @else { {{ 'payroll_rule_' + r.key + '_from' | transloco }} }
+					</td>
+					<td>{{ 'payroll_rule_' + r.key + '_values' | transloco: r.values }}</td>
+					<td>{{ 'payroll_rule_' + r.key + '_applies' | transloco: r.values }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<small class="text-muted d-block mt-2">{{ 'payroll_rules_note' | transloco }}</small>
+	<h6 class="mt-4">{{ 'payroll_rules_versions' | transloco }}</h6>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'payroll_col_in_force' | transloco }}</th>
+					<th>{{ 'payroll_note' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (v of versions.data() ?? []; track v.id) {
+				<tr>
+					<td>
+						{{ day(v.from) }} @if (v.id === current()?.id) {
+						<span class="badge bg-light text-dark ms-1 border">
+							{{ 'payroll_rules_in_force' | transloco }}
+						</span>
+						}
+					</td>
+					<td>@if (v.builtIn) { {{ 'payroll_rules_built_in' | transloco }} } @else { {{ v.note }} }</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<ng-template
+		#versionModal
+		let-modal
+	>
+		@if (form(); as f) {
+		<div class="modal-header">
+			<h5 class="modal-title">{{ 'payroll_rules_add' | transloco }}</h5>
+			<button
+				type="button"
+				class="btn-close"
+				[attr.aria-label]="'close' | transloco"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			<div class="row g-3">
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="pr_from"
+					>
+						{{ 'payroll_rules_from' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_from"
+						type="date"
+						[ngModel]="f.from"
+						(ngModelChange)="patch({ from: $event })"
+					/>
+				</div>
+				<div class="col-md-8">
+					<label
+						class="form-label-title"
+						for="pr_note"
+					>
+						{{ 'payroll_rules_why' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_note"
+						maxlength="300"
+						[ngModel]="f.note"
+						(ngModelChange)="patch({ note: $event })"
+					/>
+				</div>
+			</div>
+			<h6 class="mt-4">{{ 'payroll_rule_pf' | transloco }}</h6>
+			<div class="row g-3">
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_pf"
+					>
+						{{ 'payroll_f_pf_rate' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_pf"
+						type="number"
+						step="0.01"
+						[ngModel]="f.pfRatePct"
+						(ngModelChange)="patch({ pfRatePct: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_pf_cap"
+					>
+						{{ 'payroll_f_pf_cap' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_pf_cap"
+						type="number"
+						[ngModel]="f.pfWageCap"
+						(ngModelChange)="patch({ pfWageCap: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_eps"
+					>
+						{{ 'payroll_f_eps_rate' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_eps"
+						type="number"
+						step="0.01"
+						[ngModel]="f.epsRatePct"
+						(ngModelChange)="patch({ epsRatePct: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_eps_cap"
+					>
+						{{ 'payroll_f_eps_cap' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_eps_cap"
+						type="number"
+						[ngModel]="f.epsCap"
+						(ngModelChange)="patch({ epsCap: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_admin"
+					>
+						{{ 'payroll_f_pf_admin' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_admin"
+						type="number"
+						step="0.01"
+						[ngModel]="f.pfAdminPct"
+						(ngModelChange)="patch({ pfAdminPct: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_admin_min"
+					>
+						{{ 'payroll_f_pf_admin_min' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_admin_min"
+						type="number"
+						[ngModel]="f.pfAdminMin"
+						(ngModelChange)="patch({ pfAdminMin: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_edli"
+					>
+						{{ 'payroll_f_edli' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_edli"
+						type="number"
+						step="0.01"
+						[ngModel]="f.edliPct"
+						(ngModelChange)="patch({ edliPct: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_pf_n"
+					>
+						{{ 'payroll_f_headcount' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_pf_n"
+						type="number"
+						[ngModel]="f.pfHeadcount"
+						(ngModelChange)="patch({ pfHeadcount: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_pf_day"
+					>
+						{{ 'payroll_f_due_day' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_pf_day"
+						type="number"
+						min="1"
+						max="31"
+						[ngModel]="f.pfDueDay"
+						(ngModelChange)="patch({ pfDueDay: +$event })"
+					/>
+				</div>
+			</div>
+			<h6 class="mt-4">{{ 'payroll_rule_esi' | transloco }}</h6>
+			<div class="row g-3">
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_esi_ee"
+					>
+						{{ 'payroll_f_esi_ee' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_esi_ee"
+						type="number"
+						step="0.01"
+						[ngModel]="f.esiEmployeePct"
+						(ngModelChange)="patch({ esiEmployeePct: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_esi_er"
+					>
+						{{ 'payroll_f_esi_er' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_esi_er"
+						type="number"
+						step="0.01"
+						[ngModel]="f.esiEmployerPct"
+						(ngModelChange)="patch({ esiEmployerPct: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_esi_limit"
+					>
+						{{ 'payroll_f_esi_limit' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_esi_limit"
+						type="number"
+						[ngModel]="f.esiGrossLimit"
+						(ngModelChange)="patch({ esiGrossLimit: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_esi_n"
+					>
+						{{ 'payroll_f_headcount' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_esi_n"
+						type="number"
+						[ngModel]="f.esiHeadcount"
+						(ngModelChange)="patch({ esiHeadcount: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_esi_day"
+					>
+						{{ 'payroll_f_due_day' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_esi_day"
+						type="number"
+						min="1"
+						max="31"
+						[ngModel]="f.esiDueDay"
+						(ngModelChange)="patch({ esiDueDay: +$event })"
+					/>
+				</div>
+			</div>
+			<div class="row g-3 mt-1">
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_max"
+					>
+						{{ 'payroll_f_max_deduction' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_max"
+						type="number"
+						[ngModel]="f.maxDeductionPct"
+						(ngModelChange)="patch({ maxDeductionPct: +$event })"
+					/>
+				</div>
+			</div>
+			<h6 class="mt-4">{{ 'payroll_states_title' | transloco }}</h6>
+			<div class="d-flex align-items-center mb-2 flex-wrap gap-2">
+				@for (st of f.states; track st.stateCode; let i = $index) {
+				<button
+					type="button"
+					class="btn btn-sm"
+					[class.btn-theme]="i === stateAt()"
+					[class.btn-outline]="i !== stateAt()"
+					(click)="stateAt.set(i)"
+				>
+					{{ stateName(st.stateCode) }}
+				</button>
+				}
+				<select
+					class="form-select form-select-sm w-auto"
+					id="pr_state_pick"
+					[attr.aria-label]="'payroll_state_add_pick' | transloco"
+					[ngModel]="stateToAdd()"
+					(ngModelChange)="pickStateToAdd($event)"
+				>
+					<option value="">{{ 'payroll_state_add_pick' | transloco }}</option>
+					@for (c of stateChoices; track c.code) { @if (!hasState(c.code)) {
+					<option [value]="c.code">{{ c.name }}</option>
+					} }
+				</select>
+				@if (startingSets().length) {
+				<select
+					class="form-select form-select-sm w-auto"
+					id="pr_state_start"
+					[attr.aria-label]="'payroll_state_start_from' | transloco"
+					[title]="'payroll_pt_start_check_' + stateToAdd() | transloco"
+					[ngModel]="startFrom()"
+					(ngModelChange)="startFrom.set($event)"
+				>
+					@for (x of startingSets(); track x.label) {
+					<option [value]="x.label">
+						{{ 'payroll_state_start_set' | transloco: { state: stateName(x.stateCode), from: day(x.from) }
+						}}
+					</option>
+					}
+					<option value="">{{ 'payroll_state_start_blank' | transloco }}</option>
+				</select>
+				}
+				<button
+					type="button"
+					class="btn btn-sm btn-outline"
+					id="pr_state_add"
+					[disabled]="!stateToAdd()"
+					(click)="addState()"
+				>
+					<i class="ri-add-line"></i>
+					{{ 'payroll_state_add' | transloco }}
+				</button>
+			</div>
+			@if (!f.states.length) {
+			<small class="text-danger d-block">{{ 'payroll_states_none' | transloco }}</small>
+			} @if (picked(); as st) {
+			<!-- Brief 26 LV1: a State's set in two parts, professional tax and the welfare fund, and leave. -->
+			<div class="d-flex mb-3 flex-wrap gap-2">
+				<button
+					type="button"
+					class="btn btn-sm"
+					id="pr_section_pt"
+					[class.btn-theme]="stateSection() === 'pt'"
+					[class.btn-outline]="stateSection() !== 'pt'"
+					(click)="stateSection.set('pt')"
+				>
+					{{ 'payroll_section_pt' | transloco }}
+				</button>
+				<button
+					type="button"
+					class="btn btn-sm"
+					id="pr_section_leave"
+					[class.btn-theme]="stateSection() === 'leave'"
+					[class.btn-outline]="stateSection() !== 'leave'"
+					(click)="stateSection.set('leave')"
+				>
+					{{ 'payroll_section_leave' | transloco }}
+				</button>
+				<button
+					type="button"
+					class="btn btn-sm"
+					id="pr_section_holidays"
+					[class.btn-theme]="stateSection() === 'holidays'"
+					[class.btn-outline]="stateSection() !== 'holidays'"
+					(click)="stateSection.set('holidays')"
+				>
+					{{ 'payroll_section_holidays' | transloco }}
+				</button>
+				<button
+					type="button"
+					class="btn btn-sm"
+					id="pr_section_wages"
+					[class.btn-theme]="stateSection() === 'wages'"
+					[class.btn-outline]="stateSection() !== 'wages'"
+					(click)="stateSection.set('wages')"
+				>
+					{{ 'payroll_section_wages' | transloco }}
+				</button>
+			</div>
+			@if (stateSection() === 'leave') {
+			<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+				<small class="text-muted">
+					{{ 'payroll_leave_sub' | transloco: { state: stateName(st.stateCode) } }}
+				</small>
+				<span class="d-flex gap-2">
+					@if (hasLeaveStart(st)) {
+					<button
+						type="button"
+						class="btn btn-sm btn-outline"
+						id="pr_leave_start"
+						(click)="startLeave()"
+					>
+						{{ 'payroll_leave_start_set' | transloco }}
+					</button>
+					}
+					<button
+						type="button"
+						class="btn btn-sm btn-outline"
+						id="pr_leave_add"
+						(click)="addLeaveType()"
+					>
+						<i class="ri-add-line"></i>
+						{{ 'payroll_leave_add' | transloco }}
+					</button>
+				</span>
+			</div>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'payroll_leave_col_name' | transloco }}</th>
+							<th>{{ 'payroll_leave_col_key' | transloco }}</th>
+							<th>{{ 'payroll_leave_col_paid' | transloco }}</th>
+							<th>{{ 'payroll_leave_col_active' | transloco }}</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (t of st.leaveTypes; track $index) {
+						<tr>
+							<td>
+								<input
+									class="form-control"
+									maxlength="60"
+									[id]="'pr_leave_name_' + t.key"
+									[attr.aria-label]="'payroll_leave_col_name' | transloco"
+									[ngModel]="t.name"
+									(ngModelChange)="setLeaveType(t.key, { name: $event })"
+								/>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									maxlength="6"
+									[id]="'pr_leave_key_' + t.key"
+									[attr.aria-label]="'payroll_leave_col_key' | transloco"
+									[ngModel]="t.key"
+									(ngModelChange)="setLeaveType(t.key, { key: $event.toUpperCase() })"
+								/>
+							</td>
+							<td>
+								<select
+									class="form-select"
+									[attr.aria-label]="'payroll_leave_col_paid' | transloco"
+									[ngModel]="t.paid"
+									(ngModelChange)="setLeaveType(t.key, { paid: $event })"
+								>
+									@for (p of leavePaid; track p) {
+									<option [value]="p">{{ 'payroll_leave_paid_' + p | transloco }}</option>
+									}
+								</select>
+							</td>
+							<td>
+								<input
+									class="form-check-input"
+									type="checkbox"
+									[attr.aria-label]="'payroll_leave_col_active' | transloco"
+									[checked]="t.active"
+									(change)="setLeaveType(t.key, { active: !t.active })"
+								/>
+							</td>
+							<td class="text-nowrap">
+								<button
+									type="button"
+									class="btn btn-sm"
+									[id]="'pr_leave_rules_' + t.key"
+									[class.btn-theme]="leaveOpen() === t.key"
+									[class.btn-outline]="leaveOpen() !== t.key"
+									(click)="openLeave(t.key)"
+								>
+									{{ 'payroll_leave_rules' | transloco }}
+								</button>
+								<button
+									type="button"
+									class="btn btn-outline text-danger btn-sm ms-1"
+									[title]="'remove' | transloco"
+									[attr.aria-label]="'remove' | transloco"
+									(click)="removeLeaveType(t.key)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</button>
+							</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td
+								colspan="5"
+								class="text-muted"
+							>
+								{{ 'payroll_leave_none' | transloco }}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			@if (openType(); as t) { @if (openRule(); as r) {
+			<!-- Brief 26 LV2: one type's rules, the first whose condition matches applying; Try it beside them. -->
+			<div class="row g-3 mt-2">
+				<div class="col-lg-8">
+					<h6 class="mb-2">{{ 'payroll_leave_rules_for' | transloco: { name: t.name || t.key } }}</h6>
+					@if (t.rules.length > 1) {
+					<div class="d-flex mb-2 flex-wrap gap-2">
+						@for (x of t.rules; track $index; let i = $index; let last = $last) {
+						<button
+							type="button"
+							class="btn btn-sm"
+							[class.btn-theme]="leaveRuleAt() === i"
+							[class.btn-outline]="leaveRuleAt() !== i"
+							(click)="leaveRuleAt.set(i)"
+						>
+							{{ (last ? 'payroll_leave_rule_everyone' : 'payroll_leave_rule_n') | transloco: { n: i + 1 }
+							}}
+						</button>
+						}
+					</div>
+					}
+					<div class="row g-2">
+						@if (r.when) {
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="pr_leave_when_designation"
+							>
+								{{ 'payroll_leave_when_designation' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="pr_leave_when_designation"
+								maxlength="80"
+								[ngModel]="r.when.designation ?? ''"
+								(ngModelChange)="setRule({ when: { ...r.when, designation: $event } })"
+							/>
+						</div>
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="pr_leave_when_department"
+							>
+								{{ 'payroll_leave_when_department' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="pr_leave_when_department"
+								maxlength="80"
+								[ngModel]="r.when.department ?? ''"
+								(ngModelChange)="setRule({ when: { ...r.when, department: $event } })"
+							/>
+						</div>
+						}
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="pr_leave_year_start"
+							>
+								{{ 'payroll_leave_year' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="pr_leave_year_start"
+								[ngModel]="yearStartOf(r)"
+								(ngModelChange)="setYearStart(r, +$event)"
+							>
+								@for (m of monthNumbers; track m) {
+								<option [ngValue]="m">
+									{{ 'payroll_leave_year_from' | transloco: { month: ('payroll_month_' + m |
+									transloco) } }}
+								</option>
+								}
+								<option [ngValue]="0">{{ 'payroll_leave_year_joining' | transloco }}</option>
+							</select>
+						</div>
+						@if (yearStartOf(r)) {
+						<div class="col-md-2">
+							<label
+								class="form-label-title"
+								for="pr_leave_year_months"
+							>
+								{{ 'payroll_leave_year_months' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="pr_leave_year_months"
+								type="number"
+								min="1"
+								max="12"
+								[ngModel]="yearMonthsOf(r)"
+								(ngModelChange)="setYearMonths(r, +$event)"
+							/>
+						</div>
+						}
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="pr_leave_valid"
+							>
+								{{ 'payroll_leave_valid' | transloco }}
+							</label>
+							<div class="d-flex gap-2">
+								<select
+									class="form-select"
+									id="pr_leave_valid"
+									[ngModel]="r.validity.kind"
+									(ngModelChange)="setValidity($event, r)"
+								>
+									@for (k of validityKinds; track k) {
+									<option [value]="k">{{ 'payroll_leave_valid_' + k | transloco }}</option>
+									}
+								</select>
+								@if (r.validity.kind === 'days' || r.validity.kind === 'months') {
+								<input
+									class="form-control w-auto"
+									type="number"
+									min="1"
+									[attr.aria-label]="'payroll_leave_valid' | transloco"
+									[ngModel]="r.validity.n"
+									(ngModelChange)="setRule({ validity: { kind: r.validity.kind, n: +$event } })"
+								/>
+								}
+							</div>
+						</div>
+						<div class="col-md-6">
+							<label
+								class="form-label-title"
+								for="pr_leave_credit"
+							>
+								{{ 'payroll_leave_credit' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="pr_leave_credit"
+								[ngModel]="r.credit.kind"
+								(ngModelChange)="setCreditKind($event)"
+							>
+								@for (k of creditKinds; track k) {
+								<option [value]="k">{{ 'payroll_leave_credit_' + k | transloco }}</option>
+								}
+							</select>
+						</div>
+						<div class="col-md-6">
+							@if (r.credit.kind === 'per_days_worked') {
+							<span class="form-label-title d-block">{{ 'payroll_leave_credit_every' | transloco }}</span>
+							<div class="d-flex align-items-center gap-2">
+								<input
+									class="form-control w-auto"
+									id="pr_leave_every"
+									type="number"
+									min="1"
+									[attr.aria-label]="'payroll_leave_credit_every' | transloco"
+									[ngModel]="r.credit.every"
+									(ngModelChange)="setRule({ credit: { kind: 'per_days_worked', every: +$event, give: $any(r.credit).give } })"
+								/>
+								<input
+									class="form-control w-auto"
+									id="pr_leave_give"
+									type="number"
+									min="0"
+									step="0.5"
+									[attr.aria-label]="'payroll_leave_credit_give' | transloco"
+									[ngModel]="r.credit.give"
+									(ngModelChange)="setRule({ credit: { kind: 'per_days_worked', every: $any(r.credit).every, give: +$event } })"
+								/>
+							</div>
+							} @else if (r.credit.kind !== 'none') {
+							<label
+								class="form-label-title"
+								for="pr_leave_days"
+							>
+								{{ 'payroll_leave_credit_days' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="pr_leave_days"
+								type="number"
+								min="0"
+								step="0.5"
+								[ngModel]="$any(r.credit).days"
+								(ngModelChange)="setRule({ credit: { kind: r.credit.kind, days: +$event } })"
+							/>
+							}
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="pr_leave_wait"
+							>
+								{{ 'payroll_leave_wait' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="pr_leave_wait"
+								type="number"
+								min="0"
+								[ngModel]="r.waitDays"
+								(ngModelChange)="setRule({ waitDays: $event ? +$event : null })"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="pr_leave_joiners"
+							>
+								{{ 'payroll_leave_joiners' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="pr_leave_joiners"
+								[ngModel]="r.joiners"
+								(ngModelChange)="setRule({ joiners: $event })"
+							>
+								@for (k of joinerKinds; track k) {
+								<option [value]="k">{{ 'payroll_leave_joiners_' + k | transloco }}</option>
+								}
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="pr_leave_rounding"
+							>
+								{{ 'payroll_leave_rounding' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="pr_leave_rounding"
+								[ngModel]="r.rounding"
+								(ngModelChange)="setRule({ rounding: $event })"
+							>
+								@for (k of roundingKinds; track k) {
+								<option [value]="k">{{ 'payroll_leave_rounding_' + k | transloco }}</option>
+								}
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="pr_leave_carry"
+							>
+								{{ 'payroll_leave_carry' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="pr_leave_carry"
+								type="number"
+								min="0"
+								[placeholder]="'payroll_leave_carry_all' | transloco"
+								[ngModel]="r.carryMax"
+								(ngModelChange)="setRule({ carryMax: $event === '' || $event === null ? null : +$event })"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="pr_leave_above"
+							>
+								{{ 'payroll_leave_above' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="pr_leave_above"
+								[ngModel]="r.aboveCap"
+								(ngModelChange)="setRule({ aboveCap: $event })"
+							>
+								<option value="encash">{{ 'payroll_leave_above_encash' | transloco }}</option>
+								<option value="lapse">{{ 'payroll_leave_above_lapse' | transloco }}</option>
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label
+								class="form-label-title"
+								for="pr_leave_day_pay"
+							>
+								{{ 'payroll_leave_day_pay' | transloco }}
+							</label>
+							<select
+								class="form-select"
+								id="pr_leave_day_pay"
+								[ngModel]="r.encash.dayPay"
+								(ngModelChange)="setRule({ encash: { ...r.encash, dayPay: $event } })"
+							>
+								@for (k of dayPayKinds; track k) {
+								<option [value]="k">{{ 'payroll_leave_day_pay_' + k | transloco }}</option>
+								}
+							</select>
+						</div>
+						<div class="d-flex col-12 flex-wrap gap-3">
+							@for (flag of takingFlags; track flag.key) {
+							<div class="form-check">
+								<input
+									class="form-check-input"
+									type="checkbox"
+									[id]="'pr_leave_' + flag.key"
+									[checked]="flagOn(r, flag.key)"
+									(change)="toggleFlag(r, flag.key)"
+								/>
+								<label
+									class="form-check-label"
+									[for]="'pr_leave_' + flag.key"
+								>
+									{{ 'payroll_leave_flag_' + flag.key | transloco }}
+								</label>
+							</div>
+							}
+						</div>
+					</div>
+					<div class="d-flex mt-2 gap-2">
+						<button
+							type="button"
+							class="btn btn-sm btn-outline"
+							id="pr_leave_add_condition"
+							(click)="addRuleCondition()"
+						>
+							<i class="ri-add-line"></i>
+							{{ 'payroll_leave_add_condition' | transloco }}
+						</button>
+						@if (r.when) {
+						<button
+							type="button"
+							class="btn btn-sm btn-outline text-danger"
+							id="pr_leave_remove_rule"
+							(click)="removeRule(leaveRuleAt())"
+						>
+							{{ 'payroll_leave_remove_rule' | transloco }}
+						</button>
+						}
+					</div>
+				</div>
+				<div class="col-lg-4">
+					<div class="rounded border p-3">
+						<h6>{{ 'payroll_leave_try' | transloco }}</h6>
+						<label
+							class="form-label-title"
+							for="pr_leave_try_joined"
+						>
+							{{ 'payroll_col_joined' | transloco }}
+						</label>
+						<input
+							class="form-control"
+							id="pr_leave_try_joined"
+							type="date"
+							[ngModel]="tryJoined()"
+							(ngModelChange)="tryJoined.set($event)"
+						/>
+						<label
+							class="form-label-title mt-2"
+							for="pr_leave_try_worked"
+						>
+							{{ 'payroll_leave_try_worked' | transloco }}
+						</label>
+						<input
+							class="form-control"
+							id="pr_leave_try_worked"
+							type="number"
+							min="0"
+							[ngModel]="tryWorked()"
+							(ngModelChange)="tryWorked.set(+$event)"
+						/>
+						<p
+							class="mt-2 mb-0"
+							id="pr_leave_try_result"
+						>
+							{{ 'payroll_leave_try_result' | transloco: { days: tryCredit(), key: t.key } }}
+						</p>
+						<h6 class="mt-3">{{ 'payroll_leave_plain' | transloco }}</h6>
+						<p
+							class="mb-0"
+							id="pr_leave_plain"
+						>
+							{{ plainWords() }}
+						</p>
+					</div>
+				</div>
+			</div>
+			} } } @if (stateSection() === 'holidays') {
+			<!-- Brief 26 LV1, AT2: the State's holidays, for every store in it or one; a holiday never uses up leave. -->
+			<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+				<small class="text-muted">
+					{{ 'payroll_holidays_sub' | transloco: { state: stateName(st.stateCode) } }}
+				</small>
+				<button
+					type="button"
+					class="btn btn-sm btn-outline"
+					id="pr_holiday_add"
+					(click)="addHoliday()"
+				>
+					<i class="ri-add-line"></i>
+					{{ 'payroll_holiday_add' | transloco }}
+				</button>
+			</div>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'date' | transloco }}</th>
+							<th>{{ 'payroll_holiday_name' | transloco }}</th>
+							<th>{{ 'location' | transloco }}</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (h of st.holidays; track $index; let i = $index) {
+						<tr>
+							<td>
+								<input
+									class="form-control"
+									type="date"
+									[id]="'pr_holiday_day_' + i"
+									[attr.aria-label]="'date' | transloco"
+									[ngModel]="h.day"
+									(ngModelChange)="setHoliday(i, { day: $event })"
+								/>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									maxlength="80"
+									[id]="'pr_holiday_name_' + i"
+									[class.is-invalid]="!h.name.trim()"
+									[attr.aria-label]="'payroll_holiday_name' | transloco"
+									[ngModel]="h.name"
+									(ngModelChange)="setHoliday(i, { name: $event })"
+								/>
+							</td>
+							<td>
+								<select
+									class="form-select"
+									[id]="'pr_holiday_store_' + i"
+									[attr.aria-label]="'location' | transloco"
+									[ngModel]="h.locationId ?? ''"
+									(ngModelChange)="setHoliday(i, { locationId: $event || null })"
+								>
+									<option value="">{{ 'payroll_holiday_every_store' | transloco }}</option>
+									@for (l of storesOf(st.stateCode); track l.id) {
+									<option [value]="l.id">{{ l.name }}</option>
+									}
+								</select>
+							</td>
+							<td class="text-end">
+								<button
+									type="button"
+									class="btn btn-sm btn-outline"
+									[id]="'pr_holiday_remove_' + i"
+									[title]="'remove' | transloco"
+									(click)="removeHoliday(i)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</button>
+							</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td
+								colspan="4"
+								class="text-muted"
+							>
+								{{ 'payroll_holidays_none' | transloco }}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			} @if (stateSection() === 'wages') {
+			<!-- Brief 26 SR4: the State's minimum wages by skill level, each set dated by its notification. -->
+			<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+				<small class="text-muted">
+					{{ 'payroll_wages_sub' | transloco: { state: stateName(st.stateCode) } }}
+				</small>
+				<button
+					type="button"
+					class="btn btn-sm btn-outline"
+					id="pr_wages_add"
+					(click)="addWageSet()"
+				>
+					<i class="ri-add-line"></i>
+					{{ 'payroll_wages_add' | transloco }}
+				</button>
+			</div>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'payroll_wages_from' | transloco }}</th>
+							@for (l of skillLevels; track l) {
+							<th>{{ 'payroll_skill_' + l | transloco }}</th>
+							}
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (w of st.minimumWages; track $index; let i = $index) {
+						<tr>
+							<td>
+								<input
+									class="form-control"
+									type="date"
+									[id]="'pr_wages_from_' + i"
+									[attr.aria-label]="'payroll_wages_from' | transloco"
+									[ngModel]="w.from"
+									(ngModelChange)="setWageSet(i, $event, null, null)"
+								/>
+							</td>
+							@for (l of skillLevels; track l) {
+							<td>
+								<input
+									class="form-control"
+									type="number"
+									min="0"
+									[id]="'pr_wages_' + l + '_' + i"
+									[attr.aria-label]="'payroll_skill_' + l | transloco"
+									[ngModel]="w.levels[l]"
+									(ngModelChange)="setWageSet(i, null, l, $event)"
+								/>
+							</td>
+							}
+							<td class="text-end">
+								<button
+									type="button"
+									class="btn btn-sm btn-outline"
+									[id]="'pr_wages_remove_' + i"
+									[title]="'remove' | transloco"
+									(click)="removeWageSet(i)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</button>
+							</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td
+								colspan="6"
+								class="text-muted"
+							>
+								{{ 'payroll_wages_none' | transloco }}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			} @if (stateSection() === 'pt') {
+			<div class="row g-3">
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="pr_pt_freq"
+					>
+						{{ 'payroll_f_pt_frequency' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="pr_pt_freq"
+						[ngModel]="st.ptFrequency"
+						(ngModelChange)="patchState({ ptFrequency: $event })"
+					>
+						@for (q of frequencies; track q) {
+						<option [value]="q">{{ 'payroll_pt_freq_' + q | transloco }}</option>
+						}
+					</select>
+				</div>
+				@if (st.ptFrequency === 'half_yearly' || st.ptFrequency === 'yearly') {
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="pr_pt_months"
+					>
+						{{ 'payroll_f_pt_months' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_pt_months"
+						[ngModel]="st.ptMonths"
+						(ngModelChange)="patchState({ ptMonths: $event })"
+					/>
+				</div>
+				}
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="pr_pt_day"
+					>
+						{{ 'payroll_f_due_day' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_pt_day"
+						type="number"
+						min="1"
+						max="31"
+						[ngModel]="st.ptDueDay"
+						(ngModelChange)="patchState({ ptDueDay: +$event })"
+					/>
+				</div>
+			</div>
+			<small class="text-muted d-block mt-1">{{ 'payroll_pt_slabs_' + st.ptFrequency | transloco }}</small>
+			@if (st.ptFrequency !== 'none') {
+			<!-- Brief 26 PT1, PT2: who the slabs are for, what a half-yearly or yearly tax is worked on, who is exempt. -->
+			<div class="row g-3 mt-1">
+				<div class="col-md-4">
+					<span class="form-label-title d-block">{{ 'payroll_pt_slabs_who' | transloco }}</span>
+					<div class="d-flex flex-wrap gap-2">
+						<button
+							type="button"
+							class="btn btn-sm"
+							id="pr_pt_same"
+							[class.btn-theme]="!st.ptWomen"
+							[class.btn-outline]="st.ptWomen"
+							(click)="setWomen(false)"
+						>
+							{{ 'payroll_pt_same_for_all' | transloco }}
+						</button>
+						<button
+							type="button"
+							class="btn btn-sm"
+							id="pr_pt_women"
+							[class.btn-theme]="st.ptWomen"
+							[class.btn-outline]="!st.ptWomen"
+							(click)="setWomen(true)"
+						>
+							{{ 'payroll_pt_women_separate' | transloco }}
+						</button>
+					</div>
+				</div>
+				@if (st.ptFrequency === 'half_yearly' || st.ptFrequency === 'yearly') {
+				<div class="col-md-4">
+					<span class="form-label-title d-block">{{ 'payroll_pt_basis' | transloco }}</span>
+					@for (b of bases; track b) {
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="radio"
+							name="pr_pt_basis"
+							[id]="'pr_pt_basis_' + b"
+							[checked]="st.ptBasis === b"
+							(change)="patchState({ ptBasis: b })"
+						/>
+						<label
+							class="form-check-label"
+							[for]="'pr_pt_basis_' + b"
+						>
+							{{ 'payroll_pt_basis_' + b | transloco }}
+						</label>
+					</div>
+					}
+				</div>
+				}
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="pr_pt_exempt_age"
+					>
+						{{ 'payroll_pt_exempt_age' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_pt_exempt_age"
+						type="number"
+						min="18"
+						max="120"
+						[ngModel]="st.ptExemptAge"
+						(ngModelChange)="patchState({ ptExemptAge: $event ? +$event : null })"
+					/>
+					<div class="form-check mt-2">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="pr_pt_exempt_dis"
+							[checked]="st.ptExemptDisability"
+							(change)="patchState({ ptExemptDisability: !st.ptExemptDisability })"
+						/>
+						<label
+							class="form-check-label"
+							for="pr_pt_exempt_dis"
+						>
+							{{ 'payroll_pt_exempt_disability' | transloco }}
+						</label>
+					</div>
+				</div>
+			</div>
+			@for (list of listsOf(st); track list) { @if (st.ptWomen) {
+			<h6 class="mt-3 mb-0">{{ 'payroll_pt_list_' + list | transloco }}</h6>
+			}
+			<div class="table-responsive datatable-wrapper border-table mt-2">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'payroll_f_pt_up_to' | transloco }}</th>
+							<th>{{ 'payroll_f_pt_tax' | transloco }}</th>
+							<th>{{ 'payroll_pt_other_month' | transloco }}</th>
+							<th>{{ 'payroll_pt_other_tax' | transloco }}</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (s of slabsOf(st, list); track $index; let i = $index) {
+						<tr>
+							<td>
+								@if (s.upTo === null) { {{ 'payroll_f_pt_above' | transloco }} } @else {
+								<input
+									class="form-control"
+									type="number"
+									[attr.aria-label]="'payroll_f_pt_up_to' | transloco"
+									[ngModel]="s.upTo"
+									(ngModelChange)="setSlab(i, { upTo: +$event }, list)"
+								/>
+								}
+							</td>
+							<td>
+								<input
+									class="form-control"
+									type="number"
+									[attr.aria-label]="'payroll_f_pt_tax' | transloco"
+									[ngModel]="s.tax"
+									(ngModelChange)="setSlab(i, { tax: +$event }, list)"
+								/>
+							</td>
+							<td>
+								<select
+									class="form-select"
+									[attr.aria-label]="'payroll_pt_other_month' | transloco"
+									[ngModel]="s.otherMonth ?? 0"
+									(ngModelChange)="setSlab(i, { otherMonth: +$event || null }, list)"
+								>
+									<option [ngValue]="0">—</option>
+									@for (m of monthNumbers; track m) {
+									<option [ngValue]="m">{{ 'payroll_month_' + m | transloco }}</option>
+									}
+								</select>
+							</td>
+							<td>
+								@if (s.otherMonth) {
+								<input
+									class="form-control"
+									type="number"
+									[attr.aria-label]="'payroll_pt_other_tax' | transloco"
+									[ngModel]="s.otherTax"
+									(ngModelChange)="setSlab(i, { otherTax: +$event }, list)"
+								/>
+								}
+							</td>
+							<td>
+								@if (s.upTo !== null) {
+								<button
+									type="button"
+									class="btn btn-outline text-danger btn-sm"
+									[title]="'remove' | transloco"
+									[attr.aria-label]="'remove' | transloco"
+									(click)="removeSlab(i, list)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</button>
+								}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<button
+				type="button"
+				class="btn btn-sm btn-outline mt-2"
+				[id]="list === 'ptSlabs' ? 'pr_slab_add' : 'pr_slab_add_women'"
+				(click)="addSlab(list)"
+			>
+				<i class="ri-add-line"></i>
+				{{ 'payroll_pt_add_slab' | transloco }}
+			</button>
+			}
+			<p
+				class="small mt-2 mb-0"
+				id="pr_pt_year_most"
+				[class.text-danger]="overYearCap()"
+				[class.text-muted]="!overYearCap()"
+			>
+				{{ 'payroll_pt_year_most' | transloco: { amount: yearMostText() } }} @if (overYearCap()) { · {{
+				'payroll_pt_year_over' | transloco }} }
+			</p>
+			}
+			<h6 class="mt-3">{{ 'payroll_rule_lwf' | transloco: { state: stateName(st.stateCode) } }}</h6>
+			<div class="row g-3">
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_lwf_ee"
+					>
+						{{ 'payroll_f_lwf_ee' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_lwf_ee"
+						type="number"
+						[ngModel]="st.lwfEmployee"
+						(ngModelChange)="patchState({ lwfEmployee: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_lwf_er"
+					>
+						{{ 'payroll_f_lwf_er' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_lwf_er"
+						type="number"
+						[ngModel]="st.lwfEmployer"
+						(ngModelChange)="patchState({ lwfEmployer: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_lwf_m"
+					>
+						{{ 'payroll_f_lwf_months' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_lwf_m"
+						[ngModel]="st.lwfMonths"
+						(ngModelChange)="patchState({ lwfMonths: $event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_lwf_day"
+					>
+						{{ 'payroll_f_due_day' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_lwf_day"
+						type="number"
+						min="1"
+						max="31"
+						[ngModel]="st.lwfDueDay"
+						(ngModelChange)="patchState({ lwfDueDay: +$event })"
+					/>
+				</div>
+			</div>
+			} @if (f.states.length > 1) {
+			<button
+				type="button"
+				class="btn btn-sm btn-outline text-danger mt-3"
+				id="pr_state_remove"
+				(click)="removeState(stateAt())"
+			>
+				{{ 'payroll_state_remove' | transloco: { state: stateName(st.stateCode) } }}
+			</button>
+			} }
+			<!-- Brief 26 AT1: each store's shift: the hours that make a full day, the grace, the weekly offs. -->
+			<div class="d-flex justify-content-between align-items-center mt-4 mb-2 flex-wrap gap-2">
+				<h6 class="mb-0">{{ 'payroll_shifts_title' | transloco }}</h6>
+				<button
+					type="button"
+					class="btn btn-sm btn-outline"
+					id="pr_shift_add"
+					[disabled]="f.shifts.length >= (locations.data()?.length ?? 0)"
+					(click)="addShift()"
+				>
+					<i class="ri-add-line"></i>
+					{{ 'payroll_shift_add' | transloco }}
+				</button>
+			</div>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'location' | transloco }}</th>
+							<th>{{ 'payroll_shift_start' | transloco }}</th>
+							<th>{{ 'payroll_shift_end' | transloco }}</th>
+							<th>{{ 'payroll_shift_full_day' | transloco }}</th>
+							<th>{{ 'payroll_shift_grace' | transloco }}</th>
+							<th>{{ 'payroll_shift_weekly_off' | transloco }}</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (sh of f.shifts; track $index; let i = $index) {
+						<tr>
+							<td>
+								<select
+									class="form-select"
+									[id]="'pr_shift_store_' + i"
+									[attr.aria-label]="'location' | transloco"
+									[ngModel]="sh.locationId"
+									(ngModelChange)="setShift(i, { locationId: $event })"
+								>
+									@for (l of shiftStores(i); track l.id) {
+									<option [value]="l.id">{{ l.name }}</option>
+									}
+								</select>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									type="time"
+									[id]="'pr_shift_start_' + i"
+									[attr.aria-label]="'payroll_shift_start' | transloco"
+									[ngModel]="sh.start"
+									(ngModelChange)="setShift(i, { start: $event })"
+								/>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									type="time"
+									[id]="'pr_shift_end_' + i"
+									[attr.aria-label]="'payroll_shift_end' | transloco"
+									[ngModel]="sh.end"
+									(ngModelChange)="setShift(i, { end: $event })"
+								/>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									type="number"
+									min="1"
+									max="24"
+									step="0.5"
+									[id]="'pr_shift_hours_' + i"
+									[attr.aria-label]="'payroll_shift_full_day' | transloco"
+									[ngModel]="sh.fullDayHours"
+									(ngModelChange)="setShift(i, { fullDayHours: +$event })"
+								/>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									type="number"
+									min="0"
+									max="240"
+									[id]="'pr_shift_grace_' + i"
+									[attr.aria-label]="'payroll_shift_grace' | transloco"
+									[ngModel]="sh.graceMinutes"
+									(ngModelChange)="setShift(i, { graceMinutes: +$event })"
+								/>
+							</td>
+							<td>
+								<div class="d-flex flex-wrap gap-1">
+									@for (w of weekdays; track w) {
+									<button
+										type="button"
+										class="btn btn-sm"
+										[id]="'pr_shift_off_' + i + '_' + w"
+										[class.btn-theme]="sh.weeklyOff.includes(w)"
+										[class.btn-outline]="!sh.weeklyOff.includes(w)"
+										[attr.aria-pressed]="sh.weeklyOff.includes(w)"
+										(click)="toggleOff(i, w)"
+									>
+										{{ 'payroll_weekday_' + w | transloco }}
+									</button>
+									}
+								</div>
+							</td>
+							<td class="text-end">
+								<button
+									type="button"
+									class="btn btn-sm btn-outline"
+									[id]="'pr_shift_remove_' + i"
+									[title]="'remove' | transloco"
+									(click)="removeShift(i)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</button>
+							</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td
+								colspan="7"
+								class="text-muted"
+							>
+								{{ 'payroll_shifts_none' | transloco }}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			@if (f.incomeTax; as t) {
+			<h6 class="mt-4">{{ 'payroll_tax_rules_title' | transloco }}</h6>
+			<div class="row g-3">
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_new_std"
+					>
+						{{ 'payroll_tax_f_new_standard' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_new_std"
+						type="number"
+						min="0"
+						[ngModel]="t.newStandard"
+						(ngModelChange)="patchTax({ newStandard: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_new_rebate"
+					>
+						{{ 'payroll_tax_f_new_rebate' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_new_rebate"
+						type="number"
+						min="0"
+						[ngModel]="t.newRebateUpTo"
+						(ngModelChange)="patchTax({ newRebateUpTo: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_old_std"
+					>
+						{{ 'payroll_tax_f_old_standard' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_old_std"
+						type="number"
+						min="0"
+						[ngModel]="t.oldStandard"
+						(ngModelChange)="patchTax({ oldStandard: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_old_rebate"
+					>
+						{{ 'payroll_tax_f_old_rebate_up_to' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_old_rebate"
+						type="number"
+						min="0"
+						[ngModel]="t.oldRebateUpTo"
+						(ngModelChange)="patchTax({ oldRebateUpTo: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_old_rebate_max"
+					>
+						{{ 'payroll_tax_f_old_rebate_max' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_old_rebate_max"
+						type="number"
+						min="0"
+						[ngModel]="t.oldRebateMax"
+						(ngModelChange)="patchTax({ oldRebateMax: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_cess"
+					>
+						{{ 'payroll_tax_f_cess' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_cess"
+						type="number"
+						min="0"
+						[ngModel]="t.cessPct"
+						(ngModelChange)="patchTax({ cessPct: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_80c"
+					>
+						{{ 'payroll_tax_f_80c' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_80c"
+						type="number"
+						min="0"
+						[ngModel]="t.limit80c"
+						(ngModelChange)="patchTax({ limit80c: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_home"
+					>
+						{{ 'payroll_tax_f_home_loan' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_home"
+						type="number"
+						min="0"
+						[ngModel]="t.limitHomeLoan"
+						(ngModelChange)="patchTax({ limitHomeLoan: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_tax_proof"
+					>
+						{{ 'payroll_tax_f_proof_month' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_tax_proof"
+						type="number"
+						min="0"
+						[ngModel]="t.proofFromMonth"
+						(ngModelChange)="patchTax({ proofFromMonth: +$event })"
+					/>
+				</div>
+			</div>
+			<!-- Brief 26 TX4: section 126's limits (replacing the single 80D limit), the rounding, the rent cities. -->
+			<div class="row g-3 mt-1">
+				<div class="col-md-6">
+					<h6 class="small mb-1">{{ 'payroll_tax_126_title' | transloco }}</h6>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<tbody>
+								@for (k of healthKeys; track k) {
+								<tr>
+									<td>{{ 'payroll_tax_126_' + k | transloco }}</td>
+									<td>
+										<input
+											class="form-control"
+											type="number"
+											min="0"
+											[id]="'pr_tax_126_' + k"
+											[attr.aria-label]="'payroll_tax_126_' + k | transloco"
+											[ngModel]="t.health[k]"
+											(ngModelChange)="setHealth(k, +$event)"
+										/>
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					@for (g of ['self', 'parents']; track g) {
+					<div class="form-check mt-1">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							[id]="'pr_tax_senior_medical_' + g"
+							[checked]="g === 'self' ? t.seniorMedical.self : t.seniorMedical.parents"
+							(change)="toggleSeniorMedical(g === 'self' ? 'self' : 'parents')"
+						/>
+						<label
+							class="form-check-label"
+							[for]="'pr_tax_senior_medical_' + g"
+						>
+							{{ 'payroll_tax_senior_medical_' + g | transloco }}
+						</label>
+					</div>
+					}
+					<label
+						class="form-label-title mt-2"
+						for="pr_tax_rounding"
+					>
+						{{ 'payroll_tax_rounding' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="pr_tax_rounding"
+						[ngModel]="t.rounding"
+						(ngModelChange)="patchTax({ rounding: $event })"
+					>
+						@for (r of roundings; track r) {
+						<option [value]="r">{{ 'payroll_tax_rounding_' + r | transloco }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-6">
+					<h6 class="small mb-1">{{ 'payroll_tax_cities_title' | transloco }}</h6>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<tbody>
+								@for (c of t.rentCities; track $index; let i = $index) {
+								<tr>
+									<td>{{ c }}</td>
+									<td>
+										<button
+											type="button"
+											class="btn btn-outline text-danger btn-sm"
+											[title]="'remove' | transloco"
+											[attr.aria-label]="'remove' | transloco"
+											(click)="removeCity(i)"
+										>
+											<i class="ri-delete-bin-line"></i>
+										</button>
+									</td>
+								</tr>
+								}
+								<tr>
+									<td>
+										<input
+											class="form-control"
+											id="pr_tax_city"
+											maxlength="40"
+											[placeholder]="'payroll_tax_city_add' | transloco"
+											[attr.aria-label]="'payroll_tax_city_add' | transloco"
+											[ngModel]="cityToAdd()"
+											(ngModelChange)="cityToAdd.set($event)"
+										/>
+									</td>
+									<td>
+										<button
+											type="button"
+											class="btn btn-sm btn-outline"
+											id="pr_tax_city_add"
+											[disabled]="cityToAdd().trim().length < 2"
+											(click)="addCity()"
+										>
+											{{ 'payroll_tax_city_add_btn' | transloco }}
+										</button>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<p class="help-text mt-1">{{ 'payroll_tax_cities_help' | transloco }}</p>
+				</div>
+			</div>
+			@for (g of slabGroups; track g) {
+			<h6 class="small mt-3 mb-1">{{ 'payroll_tax_slabs_' + g | transloco }}</h6>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'payroll_tax_f_up_to' | transloco }}</th>
+							<th>{{ 'payroll_tax_f_rate' | transloco }}</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (x of t.slabs[g]; track $index; let i = $index) {
+						<tr>
+							<td>
+								@if (x.upTo === null) { {{ 'payroll_f_pt_above' | transloco }} } @else {
+								<input
+									class="form-control"
+									type="number"
+									[attr.aria-label]="'payroll_tax_f_up_to' | transloco"
+									[ngModel]="x.upTo"
+									(ngModelChange)="setTaxSlab(g, i, { upTo: +$event })"
+								/>
+								}
+							</td>
+							<td>
+								<input
+									class="form-control"
+									type="number"
+									[attr.aria-label]="'payroll_tax_f_rate' | transloco"
+									[ngModel]="x.rate"
+									(ngModelChange)="setTaxSlab(g, i, { rate: +$event })"
+								/>
+							</td>
+							<td>
+								@if (x.upTo !== null) {
+								<button
+									type="button"
+									class="btn btn-outline text-danger btn-sm"
+									[title]="'remove' | transloco"
+									[attr.aria-label]="'remove' | transloco"
+									(click)="removeTaxSlab(g, i)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</button>
+								}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<button
+				type="button"
+				class="btn btn-sm btn-outline mt-1"
+				(click)="addTaxSlab(g)"
+			>
+				<i class="ri-add-line"></i>
+				{{ 'payroll_pt_add_slab' | transloco }}
+			</button>
+			} @for (g of tierGroups; track g) {
+			<h6 class="small mt-3 mb-1">{{ 'payroll_tax_tiers_' + g | transloco }}</h6>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'payroll_tax_f_over' | transloco }}</th>
+							<th>{{ 'payroll_tax_f_rate' | transloco }}</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (x of t.tiers[g]; track $index; let i = $index) {
+						<tr>
+							<td>
+								<input
+									class="form-control"
+									type="number"
+									[attr.aria-label]="'payroll_tax_f_over' | transloco"
+									[ngModel]="x.over"
+									(ngModelChange)="setTier(g, i, { over: +$event })"
+								/>
+							</td>
+							<td>
+								<input
+									class="form-control"
+									type="number"
+									[attr.aria-label]="'payroll_tax_f_rate' | transloco"
+									[ngModel]="x.rate"
+									(ngModelChange)="setTier(g, i, { rate: +$event })"
+								/>
+							</td>
+							<td>
+								<button
+									type="button"
+									class="btn btn-outline text-danger btn-sm"
+									[title]="'remove' | transloco"
+									[attr.aria-label]="'remove' | transloco"
+									(click)="removeTier(g, i)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</button>
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<button
+				type="button"
+				class="btn btn-sm btn-outline mt-1"
+				(click)="addTier(g)"
+			>
+				<i class="ri-add-line"></i>
+				{{ 'payroll_tax_add_tier' | transloco }}
+			</button>
+			}
+			<small class="text-muted d-block mt-2">{{ 'payroll_tax_rules_note' | transloco }}</small>
+			} @if (f.bonus; as b) {
+			<h6 class="mt-4">{{ 'payroll_bonus_rules_title' | transloco }}</h6>
+			<div class="row g-3">
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_bonus_rate"
+					>
+						{{ 'payroll_bonus_f_rate' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_bonus_rate"
+						type="number"
+						min="0"
+						[ngModel]="b.ratePct"
+						(ngModelChange)="patchBonus({ ratePct: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_bonus_ceiling"
+					>
+						{{ 'payroll_bonus_f_ceiling' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_bonus_ceiling"
+						type="number"
+						min="0"
+						[ngModel]="b.ceiling"
+						(ngModelChange)="patchBonus({ ceiling: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_bonus_limit"
+					>
+						{{ 'payroll_bonus_f_limit' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_bonus_limit"
+						type="number"
+						min="0"
+						[ngModel]="b.eligibleUpTo"
+						(ngModelChange)="patchBonus({ eligibleUpTo: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_bonus_min"
+					>
+						{{ 'payroll_bonus_f_minimum' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_bonus_min"
+						type="number"
+						min="0"
+						[ngModel]="b.minimum"
+						(ngModelChange)="patchBonus({ minimum: +$event })"
+					/>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="pr_bonus_book"
+					>
+						{{ 'payroll_bonus_f_provision' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="pr_bonus_book"
+						[ngModel]="b.provision"
+						(ngModelChange)="patchBonus({ provision: $event })"
+					>
+						<option value="monthly">{{ 'payroll_bonus_provision_monthly' | transloco }}</option>
+						<option value="year_end">{{ 'payroll_bonus_provision_year_end' | transloco }}</option>
+					</select>
+				</div>
+			</div>
+			<!-- Brief 26 BN2: the law, the wage basis, the days worked to qualify. -->
+			<div class="row g-3 mt-1">
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="pr_bonus_law"
+					>
+						{{ 'payroll_bonus_f_law' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="pr_bonus_law"
+						[ngModel]="b.law"
+						(ngModelChange)="patchBonus({ law: $event })"
+					>
+						<option value="code_on_wages">{{ 'payroll_bonus_law_code_on_wages' | transloco }}</option>
+						<option value="bonus_act">{{ 'payroll_bonus_law_bonus_act' | transloco }}</option>
+					</select>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="pr_bonus_basis"
+					>
+						{{ 'payroll_bonus_f_basis' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="pr_bonus_basis"
+						[ngModel]="b.wageBasis"
+						(ngModelChange)="patchBonus({ wageBasis: $event })"
+					>
+						<option value="code">{{ 'payroll_bonus_basis_code' | transloco }}</option>
+						<option value="basic_da">{{ 'payroll_bonus_basis_basic_da' | transloco }}</option>
+					</select>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="pr_bonus_days"
+					>
+						{{ 'payroll_bonus_f_days' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_bonus_days"
+						type="number"
+						min="1"
+						max="365"
+						[ngModel]="b.minDays"
+						(ngModelChange)="patchBonus({ minDays: +$event })"
+					/>
+				</div>
+			</div>
+			}
+			<!-- Brief 26 BN-D3: the heads the Codes count as wages, one list for bonus and (once the CA confirms) PF. -->
+			<h6 class="mt-4 mb-1">{{ 'payroll_wage_heads_title' | transloco }}</h6>
+			<div class="d-flex flex-wrap gap-2">
+				@for (h of wageHeadChoices; track h) {
+				<button
+					type="button"
+					class="btn btn-sm"
+					[id]="'pr_wage_head_' + h"
+					[class.btn-theme]="f.wageHeads.includes(h)"
+					[class.btn-outline]="!f.wageHeads.includes(h)"
+					[attr.aria-pressed]="f.wageHeads.includes(h)"
+					(click)="toggleWageHead(h)"
+				>
+					{{ 'payroll_head_' + h | transloco }}
+				</button>
+				}
+			</div>
+			<div class="form-check mt-2">
+				<input
+					class="form-check-input"
+					type="checkbox"
+					id="pr_pf_code_wages"
+					[checked]="f.pfUsesCodeWages"
+					(change)="setPfUsesCodeWages(!f.pfUsesCodeWages)"
+				/>
+				<label
+					class="form-check-label"
+					for="pr_pf_code_wages"
+				>
+					{{ 'payroll_pf_code_wages' | transloco }}
+				</label>
+			</div>
+			<p class="help-text mt-1">{{ 'payroll_wage_heads_help' | transloco }}</p>
+			<h6 class="mt-4">{{ 'payroll_rule_bonus' | transloco }} · {{ 'payroll_rule_gratuity' | transloco }}</h6>
+			<div class="row g-3">
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_bonus_n"
+					>
+						{{ 'payroll_f_bonus_n' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_bonus_n"
+						type="number"
+						[ngModel]="f.bonusHeadcount"
+						(ngModelChange)="patch({ bonusHeadcount: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_bonus_w"
+					>
+						{{ 'payroll_f_bonus_warn' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_bonus_w"
+						type="number"
+						[ngModel]="f.bonusWarnAt"
+						(ngModelChange)="patch({ bonusWarnAt: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_gr_n"
+					>
+						{{ 'payroll_f_gratuity_n' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_gr_n"
+						type="number"
+						[ngModel]="f.gratuityHeadcount"
+						(ngModelChange)="patch({ gratuityHeadcount: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_gr_d"
+					>
+						{{ 'payroll_f_gratuity_days' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_gr_d"
+						type="number"
+						[ngModel]="f.gratuityDaysPerYear"
+						(ngModelChange)="patch({ gratuityDaysPerYear: +$event })"
+					/>
+				</div>
+				<div class="col-md-3">
+					<label
+						class="form-label-title"
+						for="pr_gr_m"
+					>
+						{{ 'payroll_f_gratuity_month' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="pr_gr_m"
+						type="number"
+						[ngModel]="f.gratuityMonthDays"
+						(ngModelChange)="patch({ gratuityMonthDays: +$event })"
+					/>
+				</div>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				[disabled]="busy() || !f.from || unnamedHoliday()"
+				(click)="save()"
+			>
+				{{ 'payroll_rules_save' | transloco }}
+			</button>
+		</div>
+		}
+	</ng-template>
+</app-page-wrapper>

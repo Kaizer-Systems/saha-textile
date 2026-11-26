@@ -18,11 +18,17 @@ export interface ProductVariantDoc {
 	priceINR: number;
 	compareAtPriceINR: number | null;
 	salePriceINR: number | null;
-	saleWindow?: { startsAt: Date | null; endsAt: Date | null };
-	stock: { tracked: boolean; quantity: number; lowStockThreshold: number | null; allowBackorder: boolean };
+	stock: {
+		tracked: boolean;
+		quantity: number;
+		held?: number;
+		reserved?: number;
+		lowStockThreshold: number | null;
+		allowBackorder: boolean;
+	};
 	shippingProfile?: Record<string, number | null>;
 	taxProfile?: { hsnCode: string | null; taxClassId: string | null };
-	media?: { primaryAssetId: string | null };
+	media?: { primaryAssetId: string | null; primaryVersionId?: string | null };
 	barcode?: string | null;
 	createdAt?: Date;
 	updatedAt?: Date;
@@ -43,10 +49,13 @@ const ProductVariantSchema = new Schema<ProductVariantDoc>(
 		priceINR: { type: Number, required: true },
 		compareAtPriceINR: { type: Number, default: null },
 		salePriceINR: { type: Number, default: null },
-		saleWindow: { type: Schema.Types.Mixed },
 		stock: {
 			tracked: { type: Boolean, default: true },
 			quantity: { type: Number, default: 0 },
+			/** Pieces set aside (photoshoot, display, waiting for supplier): on hand, not for sale. */
+			held: { type: Number, default: 0 },
+			/** Pieces kept for orders (`DEC-STOCK-RESERVE`): admin orders from save, shop orders from Pay. */
+			reserved: { type: Number, default: 0 },
 			lowStockThreshold: { type: Number, default: null },
 			allowBackorder: { type: Boolean, default: false },
 		},
@@ -66,6 +75,8 @@ ProductVariantSchema.index({ sku: 1 }, { unique: true });
 ProductVariantSchema.index({ productId: 1, status: 1 });
 /** Search/reindex sweeps by recency. */
 ProductVariantSchema.index({ status: 1, updatedAt: -1 });
+/** The admin home page's stock report: lowest stock first, read in index order. */
+ProductVariantSchema.index({ status: 1, 'stock.tracked': 1, 'stock.quantity': 1, _id: 1 });
 
 export const ProductVariantModel: Model<ProductVariantDoc> =
 	(models.ProductVariant as Model<ProductVariantDoc>) ??

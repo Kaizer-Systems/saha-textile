@@ -38,7 +38,7 @@
 				</div>
 			</div>
 		</div>
-		} @if ((category$ | async)?.data?.length) {
+		} @if ((category$ | async)?.length) {
 		<div
 			class="accordion-item"
 			ngbAccordionItem
@@ -65,12 +65,12 @@
 					ngbAccordionBody
 				>
 					<ng-template>
-						<app-blog-category [data]="(category$ | async)?.data || []" />
+						<app-blog-category [data]="(category$ | async) || []" />
 					</ng-template>
 				</div>
 			</div>
 		</div>
-		} @if ((tag$ | async)?.data?.length) {
+		} @if ((tag$ | async)?.length) {
 		<div
 			class="accordion-item"
 			ngbAccordionItem
@@ -97,7 +97,7 @@
 					ngbAccordionBody
 				>
 					<ng-template>
-						<app-blog-tag [tags]="(tag$ | async)?.data || []" />
+						<app-blog-tag [tags]="(tag$ | async) || []" />
 					</ng-template>
 				</div>
 			</div>

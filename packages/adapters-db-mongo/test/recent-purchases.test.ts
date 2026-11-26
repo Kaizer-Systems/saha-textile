@@ -23,7 +23,7 @@ describe.skipIf(!hasMongoEnv())('recently purchased products (integration)', () 
 	const run = randomUUID();
 	const product = (name: string) => `prd_recent_${run}_${name}`;
 
-	const place = async (name: string, status: OrderStatus, paidAt?: string) => {
+	const place = async (name: string, status: OrderStatus | 'pending' | 'paid' | 'refunded', paidAt?: string) => {
 		const id = `order_recent_${randomUUID()}`;
 		const line = {
 			productId: product(name),
@@ -95,5 +95,28 @@ describe.skipIf(!hasMongoEnv())('recently purchased products (integration)', () 
 		);
 
 		expect((await mine()).map((row) => row.productId)).not.toContain(product('old'));
+	});
+
+	it('totals paid orders placed in a stretch of time, for sales by schedule (Page Builder SG-23)', async () => {
+		// A stretch no other suite writes into: a moment in 2001 picked for this run.
+		const start = new Date(Date.UTC(2001, 0, 1) + Math.floor(Math.random() * 1e9));
+		const end = new Date(start.getTime() + 60_000);
+		const inside = new Date(start.getTime() + 1_000);
+		for (const [name, status] of [
+			['sold_a', 'delivered'],
+			['sold_b', 'paid'],
+			['unpaid', 'pending'],
+			['cancelled', 'cancelled'],
+		] as const) {
+			const id = await place(name, status);
+			// The raw driver: Mongoose keeps `createdAt` out of updates.
+			await OrderModel.collection.updateOne({ _id: id as never }, { $set: { createdAt: inside } });
+		}
+		const after = await place('after', 'delivered');
+		await OrderModel.collection.updateOne({ _id: after as never }, { $set: { createdAt: end } });
+		expect(await orders.paidTotalsBetween(start.toISOString(), end.toISOString())).toEqual({
+			orders: 2,
+			totalINR: 2000,
+		});
 	});
 });

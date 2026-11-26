@@ -1,8 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import { catchError, Observable, map } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
+import { runtimeConfig } from '@core/config/runtime-config';
 import { IFaqModel } from '@data-access/interfaces/page.interface';
 import { IStaticPage } from '@data-access/interfaces/static-page.interface';
 
@@ -16,17 +17,19 @@ export class PageService {
 
 	public skeletonLoader: boolean = false;
 
-	getFaqs(): Observable<IFaqModel> {
+	/** The shop-wide FAQ in the page language (English where a translation is missing). */
+	getFaqs(locale = 'en'): Observable<IFaqModel> {
+		const pick = (text: Record<string, string | undefined>) => text[locale] || text['en'] || '';
 		return this.http
-			.get<Array<{ id: string; question: { en: string }; answer: { en: string } }>>(
+			.get<Array<{ id: string; question: Record<string, string>; answer: Record<string, string> }>>(
 				`${environment.apiUrl}/catalog/faq`,
 			)
 			.pipe(
 				map((rows) => ({
 					data: rows.map((row, index) => ({
 						id: index + 1,
-						title: row.question.en,
-						description: row.answer.en,
+						title: pick(row.question),
+						description: pick(row.answer),
 						created_by_id: '',
 						status: 'live',
 					})),
@@ -35,13 +38,11 @@ export class PageService {
 			);
 	}
 
-	// Static content pages (privacy policy, terms, etc.) — one JSON per slug
-	// under assets/data/pages/.
+	// The legal pages (privacy policy, terms, refunds and returns, shipping) from the API, written in Admin › Pages.
+	/** A legal page in one language from the API (Legal Pages brief); the API falls back to English. */
 	getPage(slug: string, locale = 'en'): Observable<IStaticPage> {
-		const english = this.http.get<IStaticPage>(`${environment.URL}/pages/${slug}.json`);
-		if (locale === 'en') return english;
-		return this.http
-			.get<IStaticPage>(`${environment.URL}/pages/${slug}.${locale}.json`)
-			.pipe(catchError(() => english));
+		return this.http.get<IStaticPage>(`${runtimeConfig.apiUrl}/catalog/pages/${encodeURIComponent(slug)}`, {
+			params: { locale },
+		});
 	}
 }

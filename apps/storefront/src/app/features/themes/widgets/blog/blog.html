@@ -6,7 +6,7 @@
 				<app-skeleton-blog />
 			</ng-template>
 		</ng-container>
-		} } @else { @for (blog of blogs(); track blog) {
+		} } @else { @for (blog of blogs(); track blog.id) {
 		<ng-container carouselSlide>
 			<ng-template carouselSlide>
 				<div>
@@ -20,18 +20,35 @@
 						</div>
 						}
 						<div class="blog-box-image">
+							<!--
+								A real picture in the theme's ratio box (the link's :before), not a CSS background: it loads
+								only near the screen, in the width the card shows, instead of every post's 1600 px original
+								with the page. The theme already sizes `.blog-image img` to the box.
+							-->
 							<a
-								[routerLink]="['/blog/', blog?.slug]"
-								class="blog-image bg-size"
-								[style.background-image]="'url(' + (blog.blog_thumbnail ? blog?.blog_thumbnail?.original_url : 'assets/images/product.png') + ')'"
-							></a>
+								[routerLink]="['/blog/', blog.slug]"
+								class="blog-image bg-size position-relative"
+								[attr.aria-label]="blog.blog_thumbnail?.alt || blog.title"
+							>
+								<img
+									class="position-absolute object-fit-cover start-0 top-0"
+									[src]="blog.blog_thumbnail?.original_url || 'assets/images/product.png'"
+									[attr.srcset]="blog.blog_thumbnail?.srcset || null"
+									sizes="(min-width: 1600px) 520px, (min-width: 1050px) 33vw, (min-width: 580px) 50vw, calc(100vw - 32px)"
+									[attr.width]="blog.blog_thumbnail?.width || null"
+									[attr.height]="blog.blog_thumbnail?.height || null"
+									alt=""
+									loading="lazy"
+									decoding="async"
+								/>
+							</a>
 						</div>
 						<a
-							[routerLink]="['/blog/', blog?.slug]"
+							[routerLink]="['/blog/', blog.slug]"
 							class="blog-detail"
 						>
-							<h6>{{ blog.created_at | date: 'dd MMM yyyy hh:mm:a' }}</h6>
-							<h5>{{ blog.title }}</h5>
+							<p class="h6">{{ blog.published_at | shopDate }}</p>
+							<h3 class="h5">{{ blog.title }}</h3>
 						</a>
 					</div>
 				</div>

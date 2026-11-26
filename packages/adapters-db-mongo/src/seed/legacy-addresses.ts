@@ -17,7 +17,7 @@ export const LEGACY_ADDRESSES: readonly LegacyAddressRow[] = JSON.parse(
 	readFileSync(resolve(__dirname, '../../data/legacy-addresses.json'), 'utf8'),
 ) as LegacyAddressRow[];
 
-const STATIC_PAGES = new Set(['/contact-us', '/account', '/cart', '/checkout', '/blogs', '/search']);
+const STATIC_PAGES = new Set(['/contact-us', '/account', '/cart', '/checkout', '/blogs', '/search', '/videos']);
 
 export function approvedLegacyRows(rows: readonly LegacyAddressRow[]): LegacyAddressRow[] {
 	const pending = rows.filter((row) => !row.approved);
@@ -42,7 +42,7 @@ export function normaliseLegacyPath(path: string): string {
 
 /** A 301 or 302 may only point at a live collection or a page this shop already renders. */
 export function legacyTargetIsLive(targetPath: string, livePaths: ReadonlySet<string>): boolean {
-	const bare = targetPath.replace(/^\/(en|fr)/, '') || '/';
+	const bare = targetPath.replace(/^\/(en|bn)/, '') || '/';
 	if (STATIC_PAGES.has(bare)) return true;
 	if (bare.startsWith('/collections/')) return livePaths.has(bare.slice('/collections/'.length));
 	if (bare.startsWith('/product/')) return livePaths.has(bare);

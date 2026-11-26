@@ -33,8 +33,10 @@
 	#galleryList
 	let-hash
 >
+	<p class="help-text">{{ 'product_photo_hint' | transloco }}</p>
 	<ul class="image-select-list cursor-pointer">
 		<li
+			[title]="'add_image' | transloco"
 			class="choosefile-input"
 			(click)="open(hash)"
 		>
@@ -52,8 +54,16 @@
 				[src]="tiles().get(id) ?? 'assets/images/product.png'"
 				alt="image"
 				class="img-fluid"
+				role="button"
+				[title]="'product_photo_title' | transloco"
+				[attr.data-photo]="id"
+				(click)="editPhoto(id)"
 			/>
+			@if (versionLabel(id); as label) {
+			<span class="fm-vbadge">{{ label }}</span>
+			}
 			<a
+				[title]="'remove_image' | transloco"
 				href="javascript:void(0)"
 				class="remove-icon"
 				(click)="remove(hash, index)"
@@ -62,6 +72,7 @@
 			</a>
 			<div class="image-order-actions">
 				<button
+					[title]="'move_earlier' | transloco"
 					type="button"
 					[attr.aria-label]="'move_earlier' | transloco"
 					(click)="move(hash, index, -1)"
@@ -69,6 +80,7 @@
 					<i class="ri-arrow-left-s-line"></i>
 				</button>
 				<button
+					[title]="'make_primary' | transloco"
 					type="button"
 					[attr.aria-label]="'make_primary' | transloco"
 					(click)="makePrimary(hash, index)"
@@ -76,6 +88,7 @@
 					<i [class]="index === 0 ? 'ri-star-fill' : 'ri-star-line'"></i>
 				</button>
 				<button
+					[title]="'move_later' | transloco"
 					type="button"
 					[attr.aria-label]="'move_later' | transloco"
 					(click)="move(hash, index, 1)"
@@ -87,7 +100,9 @@
 		}
 	</ul>
 	@if (offShape(hash).length) {
-	<p class="help-text text-danger">{{ 'image_not_portrait' | transloco: { positions: offShape(hash).join(', ') } }}</p>
+	<p class="help-text text-danger">
+		{{ 'image_not_portrait' | transloco: { positions: offShape(hash).join(', ') } }}
+	</p>
 	}
 </ng-template>
 
@@ -114,7 +129,7 @@
 					ngbAccordionButton
 					type="button"
 				>
-					{{ row.label }} · {{ 'image_count' | transloco: { count: gallery(row.hash).length } }}
+					{{ row.label }} · {{ 'image_count' | plural: gallery(row.hash).length }}
 				</button>
 			</div>
 			<div ngbAccordionCollapse>
@@ -139,14 +154,9 @@
 		class="form-control"
 		id="primary_alt"
 		[value]="alt()"
+		[placeholder]="libraryAlt()[locale()] ?? ''"
 		(change)="setAlt($any($event.target).value)"
 	/>
 	<p class="help-text">{{ 'alt_text_help' | transloco }}</p>
 </app-form-fields>
 }
-<app-media-modal
-	#picker
-	[multipleImage]="true"
-	[purpose]="'product'"
-	(selectImage)="add($event)"
-/>

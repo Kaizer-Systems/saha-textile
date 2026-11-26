@@ -1,0 +1,220 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'print_barcode_labels'"
+>
+	<div class="row g-4">
+		<div class="col-xl-5">
+			<div class="theme-form theme-form-2">
+				<div class="row align-items-center g-2 mb-4">
+					<label
+						class="form-label-title col-sm-3 mb-0"
+						for="labels_sheet"
+					>
+						{{ 'label_sheet' | transloco }}
+					</label>
+					<div class="col-sm-9">
+						<select
+							class="form-select"
+							id="labels_sheet"
+							[ngModel]="sheet()"
+							(ngModelChange)="setSheet($event)"
+						>
+							@for (kind of kinds; track kind) {
+							<option [value]="kind">{{ 'label_sheet_' + kind | transloco }}</option>
+							}
+						</select>
+						<p class="help-text">{{ 'label_sheet_help' | transloco }}</p>
+					</div>
+				</div>
+				<div class="row align-items-center g-2 mb-4">
+					<label
+						class="form-label-title col-sm-3 mb-0"
+						for="labels_start"
+					>
+						{{ 'start_at_label' | transloco }}
+					</label>
+					<div class="col-sm-9">
+						<input
+							class="form-control"
+							id="labels_start"
+							type="number"
+							min="1"
+							[max]="perSheet()"
+							[ngModel]="startAt()"
+							(ngModelChange)="setStart($event)"
+						/>
+						<p class="help-text">{{ 'start_at_label_help' | transloco }}</p>
+					</div>
+				</div>
+				<div class="row align-items-center g-2 mb-4">
+					<span class="form-label-title col-sm-3 mb-0">{{ 'on_each_label' | transloco }}</span>
+					<div class="col-sm-9 d-flex flex-wrap gap-3">
+						@for (field of fieldsList; track field) {
+						<label class="d-flex align-items-center gap-1">
+							<input
+								type="checkbox"
+								class="checkbox_animated"
+								[checked]="fields().has(field)"
+								(change)="toggle(field)"
+							/>
+							{{ 'label_field_' + field | transloco }}
+						</label>
+						}
+					</div>
+				</div>
+			</div>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'item' | transloco }}</th>
+							<th
+								class="text-end"
+								style="width: 110px"
+							>
+								{{ 'labels' | transloco }}
+							</th>
+							<th style="width: 50px"></th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (item of items(); track item.variantId; let i = $index) {
+						<tr>
+							<td>
+								<h6 class="mb-0">
+									{{ item.title }}@if (item.optionsLabel) { · {{ item.optionsLabel }} }
+								</h6>
+								<small class="text-muted">{{ item.sku }}</small>
+							</td>
+							<td class="text-end">
+								<input
+									class="form-control form-control-sm d-inline-block text-end"
+									type="number"
+									min="0"
+									max="1000"
+									style="width: 80px"
+									[attr.aria-label]="'labels' | transloco"
+									[ngModel]="item.count"
+									(ngModelChange)="setCount(i, $event)"
+								/>
+							</td>
+							<td>
+								<ul id="actions">
+									<li>
+										<a
+											href="javascript:void(0)"
+											[title]="'remove_line' | transloco"
+											[attr.aria-label]="'remove_line' | transloco"
+											(click)="remove(i)"
+										>
+											<i class="ri-delete-bin-line"></i>
+										</a>
+									</li>
+								</ul>
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<div class="mt-2">
+				<app-line-search
+					[placeholder]="'labels_add_more'"
+					(picked)="add($event)"
+					(pickedProduct)="add($event)"
+				/>
+			</div>
+			<p class="small text-muted mt-2 mb-0">
+				@if (entryNumber()) { {{ 'labels_from_entry' | transloco: { number: entryNumber() } }} } {{
+				'labels_summary' | plural: total() : { sheets: sheets(), start: startAt() } }}
+			</p>
+		</div>
+		<div class="col-xl-7">
+			<h6 class="mb-2">{{ 'labels_preview' | transloco: { sheets: sheets() || 1 } }}</h6>
+			<div
+				class="rounded border p-2"
+				style="background: #f3f3f3"
+			>
+				<div
+					[style.display]="'grid'"
+					[style.grid-template-columns]="'repeat(' + geometry().columns + ', 1fr)'"
+					[style.gap.px]="4"
+				>
+					@for (cell of preview(); track $index) { @if (cell.kind === 'used') {
+					<div
+						class="d-flex align-items-center justify-content-center text-muted small rounded border"
+						[style.aspect-ratio]="geometry().widthMm + ' / ' + geometry().heightMm"
+						style="
+							background: repeating-linear-gradient(
+								45deg,
+								transparent 0 6px,
+								rgba(127, 127, 127, 0.12) 6px 12px
+							);
+						"
+					>
+						{{ 'label_used' | transloco }}
+					</div>
+					} @else if (cell.kind === 'label' && cell.item) {
+					<div
+						class="text-dark rounded border bg-white p-1"
+						style="font-size: 9px; line-height: 1.2; overflow: hidden"
+						[style.aspect-ratio]="geometry().widthMm + ' / ' + geometry().heightMm"
+					>
+						@if (fields().has('name')) {
+						<div class="fw-bold text-truncate">{{ cell.item.title }}</div>
+						} @if (cell.bars; as bars) {
+						<svg
+							[attr.viewBox]="'0 0 ' + bars.width + ' 30'"
+							width="100%"
+							height="22"
+							preserveAspectRatio="none"
+							aria-hidden="true"
+						>
+							<path
+								[attr.d]="bars.d"
+								fill="#000"
+							/>
+						</svg>
+						}
+						<div class="d-flex justify-content-between">
+							<span>@if (fields().has('sku')) { {{ cell.item.sku }} }</span>
+							<span>
+								@if (fields().has('price')) {
+								<strong>{{ cell.item.priceINR | rupees }}</strong>
+								} @if (fields().has('mrp') && cell.item.mrpINR) {
+								<s>{{ cell.item.mrpINR | rupees }}</s>
+								}
+							</span>
+						</div>
+					</div>
+					} @else {
+					<div
+						class="rounded border"
+						[style.aspect-ratio]="geometry().widthMm + ' / ' + geometry().heightMm"
+					></div>
+					} }
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="d-flex justify-content-end mt-3 flex-wrap gap-2">
+		@if (entryId()) {
+		<a
+			class="btn btn-outline"
+			[routerLink]="['/purchase-entries', entryId()]"
+		>
+			{{ 'cancel' | transloco }}
+		</a>
+		}
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="labels_print"
+			[disabled]="!canPrint()"
+			(click)="print()"
+		>
+			<i class="ri-printer-line me-1"></i>
+			{{ 'print_n_labels' | plural: total() }}
+		</button>
+	</div>
+</app-page-wrapper>

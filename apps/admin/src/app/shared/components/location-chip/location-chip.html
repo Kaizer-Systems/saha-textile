@@ -1,0 +1,60 @@
+@if (query.data(); as chip) { @if (chip.choices.length > 0 || chip.maySeeAll) { @if (chip.maySwitch) {
+<div
+	ngbDropdown
+	class="d-inline-block ms-2"
+	id="location_chip"
+>
+	<button
+		type="button"
+		class="btn btn-sm btn-outline d-inline-flex align-items-center gap-1"
+		ngbDropdownToggle
+	>
+		<i
+			class="ri-map-pin-2-line"
+			aria-hidden="true"
+		></i>
+		<span>{{ chip.current ? chip.current.name : ('location_all' | transloco) }}</span>
+	</button>
+	<div ngbDropdownMenu>
+		@if (chip.maySeeAll) {
+		<button
+			type="button"
+			ngbDropdownItem
+			[class.active]="chip.allLocations"
+			(click)="pick(null)"
+		>
+			{{ 'location_all' | transloco }}
+		</button>
+		<hr class="my-1" />
+		} @for (c of chip.choices; track c.id) {
+		<button
+			type="button"
+			ngbDropdownItem
+			[class.active]="chip.current?.id === c.id"
+			(click)="pick(c.id)"
+		>
+			{{ c.name }}
+			<small class="ms-2 opacity-75">{{ c.shortCode }}</small>
+		</button>
+		}
+	</div>
+</div>
+} @else if (chip.current) {
+<button
+	type="button"
+	class="btn btn-sm btn-outline d-inline-flex align-items-center ms-2 gap-1"
+	id="location_chip"
+	disabled
+	[title]="'location_fixed' | transloco"
+>
+	<i
+		class="ri-map-pin-2-line"
+		aria-hidden="true"
+	></i>
+	<span>{{ chip.current.name }}</span>
+	<i
+		class="ri-lock-line"
+		aria-hidden="true"
+	></i>
+</button>
+} } }

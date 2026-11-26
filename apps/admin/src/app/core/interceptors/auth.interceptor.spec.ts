@@ -14,10 +14,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AdminAuthGateway } from '@core/auth/auth-gateway';
 import { CsrfTokens } from '@core/auth/csrf-tokens';
+import { IdleLockService } from '@core/auth/idle-lock.service';
 import { AuthStore } from '@core/state/auth.store';
+import { UnsavedChanges } from '@core/unsaved/unsaved-changes';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { AuthInterceptor } from './auth.interceptor';
+import { CSRF_REPLAY } from './global-error-handler.interceptor';
 
 /**
  * Behaviour of the admin session transport: the CSRF contract (pass 3b) and 401 recovery
@@ -34,6 +37,8 @@ import { AuthInterceptor } from './auth.interceptor';
 const CREDENTIAL_URL = '/stub-credential-endpoint';
 /** A credential endpoint whose SUCCESS proves a session exists — login, not logout. */
 const ESTABLISHING_URL = '/stub-session-establishing-endpoint';
+/** A PIN or password check on the lock: refused, the session lives on. */
+const PRESENCE_URL = '/stub-presence-proof-endpoint';
 const PROTECTED_URL = '/orders';
 
 /** Captures every forwarded request and lets each attempt be answered independently. */
@@ -67,6 +72,8 @@ describe('admin AuthInterceptor', () => {
 	let csrfTokens: CsrfTokens;
 	let acquireCsrf: () => Observable<unknown>;
 	let refreshResult: (call: number) => Observable<void>;
+	let idleLock: { lockFromServer: ReturnType<typeof vi.fn>; whenUnlocked: () => Promise<void>; release: () => void };
+	let unsaved: { markSaved: ReturnType<typeof vi.fn> };
 
 	beforeEach(() => {
 		handler = new StubHandler();
@@ -78,10 +85,16 @@ describe('admin AuthInterceptor', () => {
 		refreshResult = () => of(undefined);
 		csrfTokens = new CsrfTokens();
 		acquireCsrf = () => of(undefined);
+		let release = () => undefined as void;
+		const unlocked = new Promise<void>((resolve) => (release = resolve));
+		idleLock = { lockFromServer: vi.fn(), whenUnlocked: () => unlocked, release: () => release() };
+		unsaved = { markSaved: vi.fn() };
 
 		const gateway = {
-			isCredentialEndpoint: (url: string) => url === CREDENTIAL_URL || url === ESTABLISHING_URL,
-			isSessionEstablishingEndpoint: (url: string) => url === ESTABLISHING_URL,
+			isCredentialEndpoint: (url: string) =>
+				url === CREDENTIAL_URL || url === ESTABLISHING_URL || url === PRESENCE_URL,
+			isSessionEstablishingEndpoint: (url: string) => url === ESTABLISHING_URL || url === PRESENCE_URL,
+			isPresenceProofEndpoint: (url: string) => url === PRESENCE_URL,
 			ensureCsrfToken: () => {
 				csrfCalls += 1;
 				return acquireCsrf().pipe(
@@ -104,6 +117,8 @@ describe('admin AuthInterceptor', () => {
 				{ provide: NotificationService, useValue: notificationService },
 				{ provide: AdminAuthGateway, useValue: gateway },
 				{ provide: CsrfTokens, useValue: csrfTokens },
+				{ provide: IdleLockService, useValue: idleLock },
+				{ provide: UnsavedChanges, useValue: unsaved },
 			],
 		});
 		interceptor = TestBed.inject(AuthInterceptor);
@@ -234,6 +249,18 @@ describe('admin AuthInterceptor', () => {
 			expect(navigate).not.toHaveBeenCalled();
 		});
 
+		// A mistyped PIN or password on the lock must not sign the operator out: the server keeps
+		// the session behind its lock, and the form behind the lock has to survive the typo.
+		it('keeps the session when the lock refuses a PIN or password', async () => {
+			handler.responder = () => throwError(unauthorized);
+
+			await expect(firstValueFrom(run('POST', PRESENCE_URL))).rejects.toMatchObject({ status: 401 });
+
+			expect(refreshCalls).toBe(0);
+			expect(clear).not.toHaveBeenCalled();
+			expect(navigate).not.toHaveBeenCalled();
+		});
+
 		it('clears the session and surfaces the original 401 when rotation fails', async () => {
 			refreshResult = () => throwError(() => new HttpErrorResponse({ status: 401 }));
 			handler.responder = () => throwError(unauthorized);
@@ -302,6 +329,9 @@ describe('admin AuthInterceptor', () => {
 			const [first, replay] = handler.forwarded();
 			expect(first?.headers.get('x-csrf-token')).toBe('stale-token');
 			expect(replay?.headers.get('x-csrf-token')).toBe('acquired-token');
+			// The error toast stays quiet for the first refusal and speaks only for the replay.
+			expect(first?.context.get(CSRF_REPLAY)).toBe(false);
+			expect(replay?.context.get(CSRF_REPLAY)).toBe(true);
 			expect(csrfCalls).toBe(1);
 			expect(refreshCalls).toBe(0);
 		});
@@ -498,6 +528,43 @@ describe('admin AuthInterceptor', () => {
 	 * bounded by the failure latch. So the skip list stays as short as the evidence allows,
 	 * and anything unrecognised keeps the pre-4b behaviour.
 	 */
+	describe('the server-held lock (owner, 2026-11-20)', () => {
+		const locked = () =>
+			new HttpErrorResponse({
+				status: 401,
+				error: {
+					error: { code: 'unauthorized', message: 'Authentication is required.', reason: 'session_locked' },
+				},
+			});
+
+		it('shows the lock, holds the call, and sends it again after the PIN, without rotating or signing out', async () => {
+			csrfTokens.remember('token');
+			handler.responder = (_req, index) =>
+				index === 0 ? throwError(locked) : of(new HttpResponse({ status: 200 }));
+			let done = false;
+			const result = firstValueFrom(run('POST')).then(() => (done = true));
+			await Promise.resolve();
+			expect(idleLock.lockFromServer).toHaveBeenCalledOnce();
+			expect(handler.forwarded()).toHaveLength(1);
+			expect(done).toBe(false);
+
+			idleLock.release();
+			await result;
+			expect(handler.forwarded()).toHaveLength(2);
+			expect(refreshCalls).toBe(0);
+			expect(clear).not.toHaveBeenCalled();
+		});
+
+		it('counts a change request that came back fine as a save, but not a read or a sign-in call', async () => {
+			await firstValueFrom(run('POST'));
+			expect(unsaved.markSaved).toHaveBeenCalledOnce();
+			await firstValueFrom(run('GET'));
+			// Any sign-in, lock or presence call lives under /auth/.
+			await firstValueFrom(run('POST', '/auth/stub-presence'));
+			expect(unsaved.markSaved).toHaveBeenCalledOnce();
+		});
+	});
+
 	describe('refusal reasons (rule 7)', () => {
 		const refusedWith = (reason: string) =>
 			new HttpErrorResponse({

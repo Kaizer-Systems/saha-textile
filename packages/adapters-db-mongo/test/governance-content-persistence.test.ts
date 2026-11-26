@@ -255,7 +255,8 @@ describe.skipIf(!hasMongoEnv())('governance and content persistence (integration
 				displayOrder: 0,
 				status: 'draft',
 			});
-			expect(await faq.resolveForSurface({ productId })).toHaveLength(0);
+			// Global entries are left out: other test files make live global FAQs in this shared database.
+			expect(await faq.resolveForSurface({ productId, includeGlobal: false })).toHaveLength(0);
 		});
 	});
 

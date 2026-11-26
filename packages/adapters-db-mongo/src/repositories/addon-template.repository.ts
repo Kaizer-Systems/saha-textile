@@ -55,7 +55,11 @@ export class MongoAddonTemplateRepository implements AddonTemplateRepository {
 			type: 'number',
 			unit,
 			required: false,
-			validation: { ...(min === null ? {} : { min }), ...(max === null ? {} : { max }), ...(step === null ? {} : { step }) },
+			validation: {
+				...(min === null ? {} : { min }),
+				...(max === null ? {} : { max }),
+				...(step === null ? {} : { step }),
+			},
 		}));
 		await AddonTemplateModel.updateOne(
 			{ _id: existing?._id ?? randomUUID() },

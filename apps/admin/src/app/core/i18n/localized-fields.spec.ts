@@ -22,13 +22,13 @@ describe('language gaps', () => {
 		const form = new FormGroup({ name: new FormControl('Silk'), note: new FormControl('') });
 		const fields = new LocalizedFields(form, ['name', 'note'], ['note']);
 		expect(fields.gaps('en')).toEqual([]);
-		expect(fields.gaps('fr')).toEqual([{ key: 'name', label: 'name' }]);
+		expect(fields.gaps('bn')).toEqual([{ key: 'name', label: 'name' }]);
 	});
 
 	it('builds one list per language', () => {
-		expect(gapsByLocale((locale) => [{ key: locale, label: 'x' }])).toEqual({
+		expect(gapsByLocale(['en', 'bn'], (locale) => [{ key: locale, label: 'x' }])).toEqual({
 			en: [{ key: 'en', label: 'x' }],
-			fr: [{ key: 'fr', label: 'x' }],
+			bn: [{ key: 'bn', label: 'x' }],
 		});
 	});
 });

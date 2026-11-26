@@ -1,0 +1,359 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'payroll_increments'"
+>
+	<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+		<small class="text-muted">{{ 'inc_sub' | transloco: { n: people().length, date: from() } }}</small>
+		<div class="d-flex align-items-center flex-wrap gap-2">
+			<app-export-menu
+				id="inc_export"
+				[source]="exportSource"
+			/>
+			<button
+				*hasPermission="'accounts.edit'"
+				type="button"
+				class="btn btn-theme"
+				id="inc_accept"
+				[disabled]="busy() || !chosen().length || !current() || preview.isFetching() || reason().trim().length < 3"
+				(click)="accept()"
+			>
+				{{ 'inc_accept' | transloco: { n: chosen().length } }}
+			</button>
+		</div>
+	</div>
+	<div class="row g-3 theme-form theme-form-2 mb-3">
+		<div class="col-md-3">
+			<label
+				class="form-label-title"
+				for="inc_store"
+			>
+				{{ 'location' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="inc_store"
+				[ngModel]="store()"
+				(ngModelChange)="store.set($event)"
+			>
+				<option value="">{{ 'inc_all_stores' | transloco }}</option>
+				@for (l of locations.data() ?? []; track l.id) {
+				<option [value]="l.id">{{ l.name }}</option>
+				}
+			</select>
+		</div>
+		<div class="col-md-3">
+			<label
+				class="form-label-title"
+				for="inc_department"
+			>
+				{{ 'inc_department' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="inc_department"
+				[ngModel]="department()"
+				(ngModelChange)="department.set($event)"
+			>
+				<option value="">{{ 'inc_all_departments' | transloco }}</option>
+				@for (d of departments(); track d) {
+				<option [value]="d">{{ d }}</option>
+				}
+			</select>
+		</div>
+		<div class="col-md-2">
+			<label
+				class="form-label-title"
+				for="inc_joined"
+			>
+				{{ 'inc_joined_before' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				type="date"
+				id="inc_joined"
+				[ngModel]="joinedBefore()"
+				(ngModelChange)="joinedBefore.set($event)"
+			/>
+		</div>
+		<div class="col-md-2">
+			<label
+				class="form-label-title"
+				for="inc_from"
+			>
+				{{ 'rev_from' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				type="date"
+				id="inc_from"
+				[ngModel]="from()"
+				(ngModelChange)="from.set($event)"
+			/>
+		</div>
+		<div class="col-md-2">
+			<label
+				class="form-label-title"
+				for="inc_why"
+			>
+				{{ 'rev_why' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="inc_why"
+				maxlength="300"
+				[ngModel]="reason()"
+				(ngModelChange)="reason.set($event)"
+			/>
+		</div>
+		<div class="col-md-3">
+			<label
+				class="form-label-title"
+				for="inc_plan_pick"
+			>
+				{{ 'inc_saved_plans' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="inc_plan_pick"
+				[ngModel]="''"
+				(ngModelChange)="usePlan($event)"
+			>
+				<option value="">—</option>
+				@for (p of plans.data() ?? []; track p.id) {
+				<option [value]="p.id">{{ p.name }}</option>
+				}
+			</select>
+		</div>
+		<div class="col-md-3">
+			<label
+				class="form-label-title"
+				for="inc_kind"
+			>
+				{{ 'inc_plan' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="inc_kind"
+				[ngModel]="kind()"
+				(ngModelChange)="kind.set($event)"
+			>
+				<option value="rating">{{ 'inc_kind_rating' | transloco }}</option>
+				<option value="percent">{{ 'inc_kind_percent' | transloco }}</option>
+				<option value="amount">{{ 'inc_kind_amount' | transloco }}</option>
+			</select>
+		</div>
+		@if (kind() === 'percent') {
+		<div class="col-md-2">
+			<label
+				class="form-label-title"
+				for="inc_pct"
+			>
+				%
+			</label>
+			<input
+				class="form-control"
+				type="number"
+				id="inc_pct"
+				[ngModel]="pct()"
+				(ngModelChange)="pct.set(+$event)"
+			/>
+		</div>
+		} @if (kind() === 'amount') {
+		<div class="col-md-2">
+			<label
+				class="form-label-title"
+				for="inc_amount"
+			>
+				{{ 'inc_amount_month' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				type="number"
+				id="inc_amount"
+				[ngModel]="amountMonth()"
+				(ngModelChange)="amountMonth.set(+$event)"
+			/>
+		</div>
+		}
+		<div class="col-md-4">
+			<label
+				class="form-label-title"
+				for="inc_plan_name"
+			>
+				{{ 'inc_plan_name' | transloco }}
+			</label>
+			<div class="d-flex gap-2">
+				<input
+					class="form-control"
+					id="inc_plan_name"
+					maxlength="80"
+					[ngModel]="planName()"
+					(ngModelChange)="planName.set($event)"
+				/>
+				<button
+					*hasPermission="'accounts.edit'"
+					type="button"
+					class="btn btn-outline text-nowrap"
+					id="inc_plan_save"
+					[disabled]="planName().trim().length < 2"
+					(click)="savePlan()"
+				>
+					{{ 'inc_plan_save' | transloco }}
+				</button>
+			</div>
+		</div>
+	</div>
+	@if (kind() === 'rating') {
+	<div class="d-flex align-items-center mb-3 flex-wrap gap-2">
+		<span class="form-label-title mb-0">{{ 'inc_ratings' | transloco }}</span>
+		@for (b of bands(); track $index; let i = $index) {
+		<span class="d-flex align-items-center gap-1 rounded border px-2 py-1">
+			<input
+				class="form-control form-control-sm w-auto"
+				maxlength="10"
+				size="3"
+				[id]="'inc_band_rating_' + i"
+				[attr.aria-label]="'inc_rating' | transloco"
+				[ngModel]="b.rating"
+				(ngModelChange)="setBand(i, { rating: $event })"
+			/>
+			<input
+				class="form-control form-control-sm w-auto"
+				type="number"
+				size="4"
+				[id]="'inc_band_pct_' + i"
+				[attr.aria-label]="'%'"
+				[ngModel]="b.pct"
+				(ngModelChange)="setBand(i, { pct: +$event })"
+			/>
+			%
+			<button
+				type="button"
+				class="btn btn-sm p-0"
+				[id]="'inc_band_remove_' + i"
+				[title]="'remove' | transloco"
+				(click)="removeBand(i)"
+			>
+				<i class="ri-close-line"></i>
+			</button>
+		</span>
+		}
+		<button
+			type="button"
+			class="btn btn-sm btn-outline"
+			id="inc_band_add"
+			(click)="addBand()"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'inc_band_add' | transloco }}
+		</button>
+	</div>
+	}
+	<div
+		class="table-responsive datatable-wrapper border-table"
+		[class.opacity-50]="!current()"
+	>
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th></th>
+					<th>{{ 'payroll_col_name' | transloco }}</th>
+					<th>{{ 'inc_rating' | transloco }}</th>
+					<th class="text-end">{{ 'inc_ctc_now' | transloco }}</th>
+					<th class="text-end">%</th>
+					<th class="text-end">{{ 'inc_ctc_new' | transloco }}</th>
+					<th class="text-end">{{ 'inc_change_month' | transloco }}</th>
+					<th>{{ 'inc_checks' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (e of people(); track e.id) { @let r = rowOf(e.id);
+				<tr>
+					<td>
+						<input
+							class="form-check-input"
+							type="checkbox"
+							[id]="'inc_pick_' + e.id"
+							[attr.aria-label]="e.name"
+							[checked]="selected(e.id)"
+							[disabled]="blocked(e.id)"
+							(change)="toggle(e.id)"
+						/>
+					</td>
+					<td>{{ e.name }}</td>
+					<td>
+						@if (kind() === 'rating') {
+						<select
+							class="form-select form-select-sm w-auto"
+							[id]="'inc_rating_' + e.id"
+							[attr.aria-label]="'inc_rating' | transloco"
+							[ngModel]="ratingOf(e)"
+							(ngModelChange)="setRating(e.id, $event)"
+						>
+							@for (b of bands(); track $index) {
+							<option [value]="b.rating">{{ b.rating }}</option>
+							}
+						</select>
+						} @else { — }
+					</td>
+					<td class="text-end">{{ r ? r.ctcYearNowINR.toLocaleString('en-IN') : '…' }}</td>
+					<td class="text-end">
+						<input
+							class="form-control form-control-sm w-auto text-end"
+							type="number"
+							size="4"
+							[id]="'inc_pct_' + e.id"
+							[attr.aria-label]="'%'"
+							[ngModel]="kind() === 'amount' ? (r?.changePct ?? 0) : pctOf(e)"
+							(ngModelChange)="setPct(e.id, $event)"
+						/>
+					</td>
+					<td class="text-end">{{ r ? r.ctcYearNewINR.toLocaleString('en-IN') : '…' }}</td>
+					<td class="text-end">{{ r ? r.changeMonthINR.toLocaleString('en-IN') : '…' }}</td>
+					<td>
+						@for (c of r?.checks ?? []; track c.code) {
+						<span [class]="'badge ' + (c.blocking ? 'bg-danger' : 'bg-warning text-dark') + ' me-1'">
+							{{ 'rev_check_' + c.code | transloco: { amount: c.inr.toLocaleString('en-IN') } }}
+						</span>
+						} @empty { @if (r) { ✓ } }
+					</td>
+					<td>
+						<button
+							type="button"
+							class="btn btn-sm p-0"
+							[id]="'inc_open_' + e.id"
+							[title]="'payroll_revise_pay' | transloco"
+							(click)="open(e)"
+						>
+							<i class="ri-eye-line"></i>
+						</button>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="9"
+						class="text-muted"
+					>
+						{{ 'payroll_no_employees' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+			<tfoot>
+				<tr>
+					<td colspan="6">{{ 'inc_year_cost' | transloco: { n: chosen().length } }}</td>
+					<td
+						class="text-end"
+						id="inc_year_cost"
+					>
+						<b>{{ yearCost().toLocaleString('en-IN') }}</b>
+					</td>
+					<td colspan="2"></td>
+				</tr>
+			</tfoot>
+		</table>
+	</div>
+	<small class="text-muted d-block mt-2">{{ 'inc_note' | transloco }}</small>
+</app-page-wrapper>

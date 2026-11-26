@@ -23,6 +23,10 @@ export interface MediaGcReport {
 }
 
 const HOUR = 3_600_000;
+
+/** A plain file, or a file named, placed or trashed on the Media page (step 1). */
+export const keptOnMediaPage = (asset: MediaAsset): boolean =>
+	asset.kind === 'file' || !!asset.folderId || !!asset.displayName || !!asset.trashedAt;
 const PAGE = 200;
 
 /**
@@ -49,6 +53,9 @@ export const runMediaGarbageCollection = async (
 	for (;;) {
 		const page = await deps.assets.listLiveCreatedBefore({ createdBefore, afterId, limit: PAGE });
 		for (const asset of page) {
+			// Files kept on the Media page are the owner's to manage: Trash removes them after 30
+			// days. Only an upload abandoned on a form (no name, no folder) is collected here.
+			if (keptOnMediaPage(asset)) continue;
 			if ((await deps.assets.countReferences(asset.id)) > 0) continue;
 			report.softDeleted.push(asset.id);
 			if (!options.dryRun) await deps.assets.softDelete(asset.id, now.toISOString());

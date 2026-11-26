@@ -28,8 +28,9 @@ export async function sendSmsFlowViaMsg91(
 ): Promise<Msg91ToolResult> {
 	const mobiles = normalizeE164Digits(dispatch.destination);
 	const recipient: Record<string, string> = { mobiles };
+	// DLT templates take text only: lists and yes/no flags belong to email templates.
 	for (const [key, value] of Object.entries(dispatch.variables)) {
-		recipient[key] = String(value);
+		if (typeof value === 'string' || typeof value === 'number') recipient[key] = String(value);
 	}
 	const body: Record<string, unknown> = {
 		// Same value under both names — see the PENDING LIVE VERIFICATION note above.

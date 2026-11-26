@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { Select2 } from 'ng-select2-component';
@@ -25,6 +25,7 @@ export class Redirect {
 	private api = inject(RedirectService);
 	private fb = inject(FormBuilder);
 	private router = inject(Router);
+	private route = inject(ActivatedRoute);
 	readonly formOnly = signal(this.router.url.includes('/create') || this.router.url.includes('/edit/'));
 	readonly crumbs = adminBreadcrumb(['catalog', this.formOnly() ? 'form' : 'redirects']);
 
@@ -53,7 +54,7 @@ export class Redirect {
 		reason: ['manual', Validators.required],
 	});
 
-	readonly tableConfig = signal<ITableConfig>({
+	readonly tableConfig = signal<ITableConfig<RedirectRow>>({
 		columns: [
 			{ title: 'path', dataField: 'sourcePath', sortable: true },
 			{ title: 'status', dataField: 'statusCode' },
@@ -72,6 +73,11 @@ export class Redirect {
 
 	constructor() {
 		this.reload();
+		// The Release Console's Search engines screen opens `create?source=/missing/path` for a
+		// "page not found" path, so the form starts with that path filled in.
+		const source = this.route.snapshot.queryParamMap.get('source');
+		if (source?.startsWith('/') && this.route.snapshot.url[0]?.path === 'create')
+			this.form.patchValue({ sourcePath: source.slice(0, 500) });
 	}
 
 	reload() {

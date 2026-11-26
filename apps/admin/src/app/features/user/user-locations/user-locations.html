@@ -1,0 +1,91 @@
+<div
+	class="card"
+	id="user_locations"
+>
+	<div class="card-body">
+		<div class="title-header option-title">
+			<h5>{{ 'user_loc_title' | transloco }}</h5>
+		</div>
+		<div class="row g-3">
+			<div class="col-xl-8">
+				<label class="form-label-title d-block">{{ 'user_loc_works_at' | transloco }}</label>
+				@for (l of active(); track l.id) {
+				<div class="d-flex align-items-center gap-3 py-1">
+					<label class="form-check mb-0">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							[id]="'user_loc_' + l.shortCode"
+							[disabled]="!canEdit()"
+							[checked]="worksAt().includes(l.id)"
+							(change)="toggle(l.id, $any($event.target).checked)"
+						/>
+						{{ l.name }}
+						<small class="text-muted">{{ l.shortCode }}</small>
+					</label>
+					@if (worksAt().includes(l.id)) {
+					<label class="form-check small mb-0">
+						<input
+							class="form-check-input"
+							type="radio"
+							name="user_loc_home"
+							[disabled]="!canEdit()"
+							[checked]="homeLocationId() === l.id"
+							(change)="homeLocationId.set(l.id)"
+						/>
+						{{ 'user_loc_home' | transloco }}
+					</label>
+					}
+				</div>
+				}
+				<div class="d-flex mt-3 flex-wrap gap-4">
+					<div class="d-flex align-items-center gap-2">
+						<label class="switch mb-0">
+							<input
+								type="checkbox"
+								id="user_loc_may_switch"
+								[disabled]="!canEdit()"
+								[checked]="maySwitch()"
+								(change)="maySwitch.set($any($event.target).checked)"
+							/>
+							<span class="switch-state"></span>
+						</label>
+						<span>{{ 'user_loc_may_switch' | transloco }}</span>
+					</div>
+					<div class="d-flex align-items-center gap-2">
+						<label class="switch mb-0">
+							<input
+								type="checkbox"
+								id="user_loc_may_see_all"
+								[disabled]="!canEdit()"
+								[checked]="maySeeAll()"
+								(change)="maySeeAll.set($any($event.target).checked)"
+							/>
+							<span class="switch-state"></span>
+						</label>
+						<span>{{ 'user_loc_may_see_all' | transloco }}</span>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-4">
+				<div class="alert alert-info mb-0">
+					<b>{{ 'user_loc_will_see' | transloco }}</b>
+					<div class="small mt-1">{{ sees() }}</div>
+				</div>
+			</div>
+		</div>
+		@if (canEdit()) {
+		<div class="d-flex justify-content-end mt-3">
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="user_loc_save"
+				[disabled]="saving()"
+				(click)="save()"
+			>
+				{{ 'save' | transloco }}
+			</button>
+		</div>
+		}
+	</div>
+</div>

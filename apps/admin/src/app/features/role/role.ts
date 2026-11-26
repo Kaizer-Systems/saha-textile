@@ -48,9 +48,9 @@ export class Role {
 			},
 		],
 		rowActions: [
-			{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'role.update' },
+			{ label: 'edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'role.update' },
 			{
-				label: 'Delete',
+				label: 'delete',
 				actionToPerform: 'delete',
 				icon: 'ri-delete-bin-line',
 				permission: 'role.destroy',
@@ -77,9 +77,9 @@ export class Role {
 	}
 
 	onActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform == 'edit') this.edit(action.data);
-		else if (action.actionToPerform == 'delete') this.delete(action.data);
-		else if (action.actionToPerform == 'deleteAll') this.deleteAll(action.data);
+		if (action.actionToPerform == 'edit') this.edit(action.data as IRole);
+		else if (action.actionToPerform == 'delete') this.delete(action.data as IRole);
+		else if (action.actionToPerform == 'deleteAll') this.deleteAll(action.data as (string | number)[]);
 	}
 
 	edit(data: IRole) {

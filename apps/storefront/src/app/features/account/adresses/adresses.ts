@@ -3,6 +3,7 @@ import { Component, inject, viewChild } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 
 import { TranslocoModule } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 
 import { AccountStore } from '@core/state/account.store';
@@ -13,6 +14,8 @@ import { Button } from '@shared/ui/button/button';
 import { AddressModal } from '@shared/ui/modal/address-modal/address-modal';
 import { DeleteModal } from '@shared/ui/modal/delete-modal/delete-modal';
 import { NoData } from '@shared/ui/no-data/no-data';
+
+import { ShopAddressPopup } from './shop-address-popup';
 
 @Component({
 	selector: 'app-adresses',
@@ -27,6 +30,14 @@ export class Adresses {
 
 	readonly AddressModal = viewChild<AddressModal>('addressModal');
 	readonly DeleteModal = viewChild<DeleteModal>('deleteModal');
+
+	private readonly modals = inject(NgbModal);
+
+	/** shop15, shop16: add or edit with the country rules (the checked address-book routes). */
+	openAddress(row: IUserAddress | null): void {
+		const popup = this.modals.open(ShopAddressPopup, { centered: true, size: 'lg', windowClass: 'theme-modal' });
+		(popup.componentInstance as ShopAddressPopup).start(row, !(this.accountStore.user()?.address?.length ?? 0));
+	}
 
 	delete(action: string, data: IUserAddress) {
 		// `address_id` is the server's own id; `id` beside it is a display-only numeric hash.

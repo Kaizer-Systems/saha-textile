@@ -16,7 +16,14 @@
 **/.env.*
 !**/.env.example
 certs
+.production-proof
+.local-release
 docker/stack/env/*.env
+docker/stack/env/redis-password
+docker/stack/env/meilisearch.toml
+docker/stack/env/*.tmp
+docker/stack/env
+docker/dev-secrets
 .claude
 .cursor
 .vscode
@@ -24,3 +31,7 @@ vendor
 project-context
 apps/developer-portal*
 docs
+
+# Release Console key file, real secrets
+docker/release-console/env
+docker/release-console/runner.log

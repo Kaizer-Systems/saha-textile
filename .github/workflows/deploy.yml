@@ -1,0 +1,315 @@
+name: Deploy
+
+# Deploys one commit to its server (production-deployment-plan.mdx §3, §4 and §7; build step 3).
+# Started by hand or by the Release Console (Ship › Live deploy, with the owner's PIN), on the branch
+# the target environment allows: `staging` for staging, `main` for production, and any branch for
+# development (a development server tries branches; its GitHub environment allows every branch).
+# Each GitHub environment holds a required reviewer, so the deploy job waits for the owner's approval.
+#
+#   images   are this commit's images in GHCR? (found by the code fingerprint, the tree tag)
+#   publish  if not: CI, the production proof and the GHCR images (publish-images.yml). Never for
+#            production, which runs only images staging published first.
+#   resolve  the four image digests
+#   deploy   Infisical sign-in as this environment's deploy identity → release folder →
+#            deploy.sh --check-only → over the Cloudflare tunnel to the server's deploy user, which
+#            signs in to GHCR, pulls by digest, runs the release steps, switches the apps and checks
+#            health (docker/production/bin/receive-release.sh, deploy.sh) → health through Cloudflare
+#
+# The repository is public, so anyone signed in can read these logs. Every step prints its name and
+# pass or fail only: never a host, an address, a value or container logs.
+#
+# The environment needs, as variables: INFISICAL_IDENTITY_ID, SERVER_SSH_HOST (the tunnel's SSH
+# host), SERVER_SSH_KNOWN_HOSTS (the server's host key line) and API_HOST; and as secrets:
+# DEPLOY_SSH_KEY (the deploy user's private key), CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET
+# (the Cloudflare Access service token). docker/production/README.md, "A new server", lists them.
+
+run-name: ${{ inputs.action == 'rollback' && 'Roll back' || 'Deploy' }} ${{ inputs.environment }} · ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Where to deploy
+        type: choice
+        options: [staging, production, development]
+        required: true
+      allow_blank:
+        description: >-
+          Required /api values this deploy may run without, comma-separated names (Release Console,
+          screen 12). Only names tagged may-deploy-blank in docker/production/required-secrets.txt;
+          each becomes --allow-blank NAME for the release step.
+        type: string
+        default: ''
+        required: false
+      action:
+        description: deploy (this commit) or rollback (the server puts its previous release back, from images on disk)
+        type: choice
+        options: [deploy, rollback]
+        default: deploy
+        required: false
+      rotate:
+        description: >-
+          Change the database, Redis and search secrets on the server to Infisical's (Release Path brief, C1).
+          Without it, a release whose values differ is refused before anything changes.
+        type: boolean
+        default: false
+        required: false
+      restart_database:
+        description: With rotate, restart MongoDB now for a new keyfile (about 20 s); otherwise it is used from the next restart.
+        type: boolean
+        default: false
+        required: false
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  images:
+    name: Images for this commit
+    if: inputs.action != 'rollback'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      found: ${{ steps.find.outputs.found }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Sign in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Look for this commit's images
+        id: find
+        run: bash scripts/deploy/find-images.sh >/dev/null
+
+      - name: Production runs only images staging published first
+        if: steps.find.outputs.found != 'true' && inputs.environment == 'production'
+        run: |
+          echo "FAILED: this commit's code has no published images. Deploy it to staging first." >&2
+          exit 1
+
+  publish:
+    name: Publish
+    needs: images
+    if: inputs.action != 'rollback' && needs.images.outputs.found != 'true' && inputs.environment != 'production'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/publish-images.yml
+
+  resolve:
+    name: Image digests
+    needs: [images, publish]
+    if: always() && inputs.action != 'rollback' && needs.images.result == 'success' && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      api: ${{ steps.find.outputs.api }}
+      storefront: ${{ steps.find.outputs.storefront }}
+      admin: ${{ steps.find.outputs.admin }}
+      ops: ${{ steps.find.outputs.ops }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Sign in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read the four digests
+        id: find
+        run: |
+          bash scripts/deploy/find-images.sh >/dev/null
+          grep -q '^found=true$' "$GITHUB_OUTPUT" || { echo 'FAILED: the images are not in GHCR.' >&2; exit 1; }
+
+  deploy:
+    name: ${{ inputs.action == 'rollback' && 'Roll back' || 'Deploy to' }} ${{ inputs.environment }}
+    needs: resolve
+    if: ${{ !cancelled() && (inputs.action == 'rollback' || needs.resolve.result == 'success') }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      # write: only to tag the commit once it is live (the last step).
+      contents: write
+      id-token: write
+      packages: read
+    env:
+      TIER: ${{ inputs.environment }}
+      ACTION: ${{ inputs.action || 'deploy' }}
+      ALLOW_BLANK: ${{ inputs.allow_blank }}
+      ROTATE: ${{ inputs.rotate }}
+      RESTART_DATABASE: ${{ inputs.restart_database }}
+      # Kept in step with NEVER_BLANK_PATTERN in packages/release-console-contracts (a test checks it).
+      NEVER_BLANK: '^(MONGODB_|REDIS_|MEILISEARCH_)|^(NODE_ENV|DEPLOY_ENV|PORT|JWT_ACCESS_SECRET|JWT_REFRESH_SECRET|CSRF_SECRET|COOKIE_SECURE|CORS_ALLOWED_ORIGINS|TRUST_PROXY)$'
+    steps:
+      # A job's env cannot read the runner context (GitHub refused the whole file as invalid, so no deploy could
+      # start), so the two folders are set here, from the runner's own variable, for every later step.
+      - name: Folders on this runner
+        run: |
+          echo "RELEASE_DIR=$RUNNER_TEMP/release" >> "$GITHUB_ENV"
+          echo "SSH_DIR=$RUNNER_TEMP/ssh" >> "$GITHUB_ENV"
+
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Check this environment is set up
+        env:
+          IDENTITY: ${{ vars.INFISICAL_IDENTITY_ID }}
+          SSH_HOST: ${{ vars.SERVER_SSH_HOST }}
+          KNOWN_HOSTS: ${{ vars.SERVER_SSH_KNOWN_HOSTS }}
+          API_HOST: ${{ vars.API_HOST }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          ACCESS_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          ACCESS_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          missing=''
+          for name in IDENTITY SSH_HOST KNOWN_HOSTS API_HOST DEPLOY_KEY ACCESS_ID ACCESS_SECRET; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          [ -z "$missing" ] || { echo "FAILED: this environment is missing:$missing (docker/production/README.md, A new server)." >&2; exit 1; }
+          if [ "$RESTART_DATABASE" = true ] && [ "$ROTATE" != true ]; then
+            echo 'FAILED: restart_database goes only with rotate.' >&2; exit 1
+          fi
+          if [ "$ACTION" = rollback ] && { [ "$ROTATE" = true ] || [ -n "$ALLOW_BLANK" ]; }; then
+            echo 'FAILED: a rollback takes no rotate or allow_blank: it returns to the previous release as it ran.' >&2; exit 1
+          fi
+          # Values allowed blank: names only, each tagged may-deploy-blank in required-secrets.txt (the release step
+          # checks the same list again, and that the Spaces keys come together).
+          IFS=',' read -r -a requested <<<"$ALLOW_BLANK"
+          for name in "${requested[@]}"; do
+            [ -n "$name" ] || continue
+            [[ "$name" =~ ^[A-Z][A-Z0-9_]{1,63}$ ]] || { echo "FAILED: allow_blank holds something that is not a variable name." >&2; exit 1; }
+            if [[ "$name" =~ $NEVER_BLANK ]]; then echo "FAILED: $name can never be deployed blank." >&2; exit 1; fi
+            awk -v n="$name" '!/^#/ && $1 == n { for (i = 2; i <= NF; i++) if ($i == "may-deploy-blank") found = 1 } END { exit !found }' \
+              docker/production/required-secrets.txt ||
+              { echo "FAILED: $name is not tagged may-deploy-blank in docker/production/required-secrets.txt." >&2; exit 1; }
+          done
+
+      - name: Install the Infisical CLI
+        if: env.ACTION == 'deploy'
+        run: bash scripts/deploy/install-infisical.sh
+
+      - name: Sign in to Infisical as this environment's deploy identity
+        if: env.ACTION == 'deploy'
+        run: node scripts/secrets/github-login.mjs "${{ vars.INFISICAL_IDENTITY_ID }}"
+
+      - name: Write the release folder
+        if: env.ACTION == 'deploy'
+        env:
+          API_IMAGE: ${{ needs.resolve.outputs.api }}
+          STOREFRONT_IMAGE: ${{ needs.resolve.outputs.storefront }}
+          ADMIN_IMAGE: ${{ needs.resolve.outputs.admin }}
+          OPS_IMAGE: ${{ needs.resolve.outputs.ops }}
+        run: |
+          umask 077
+          printf 'API_IMAGE=%s\nSTOREFRONT_IMAGE=%s\nADMIN_IMAGE=%s\nOPS_IMAGE=%s\n' \
+            "$API_IMAGE" "$STOREFRONT_IMAGE" "$ADMIN_IMAGE" "$OPS_IMAGE" > "$RUNNER_TEMP/images.env"
+          mkdir "$RELEASE_DIR"
+          # One --allow-blank NAME per allowed value (checked in the first step); the release records them.
+          flags=()
+          IFS=',' read -r -a requested <<<"$ALLOW_BLANK"
+          for name in "${requested[@]}"; do [ -z "$name" ] || flags+=(--allow-blank "$name"); done
+          if [ "$ROTATE" = true ]; then flags+=(--rotate); fi
+          if [ "$RESTART_DATABASE" = true ]; then flags+=(--restart-database); fi
+          node scripts/secrets/cli.mjs release "$TIER" --images "$RUNNER_TEMP/images.env" --out "$RELEASE_DIR" "${flags[@]}" >/dev/null
+
+      - name: Check the release folder
+        if: env.ACTION == 'deploy'
+        run: bash "$RELEASE_DIR/bin/deploy.sh" --check-only "$RELEASE_DIR" >/dev/null
+
+      - name: Install cloudflared
+        run: |
+          curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
+          echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main' |
+            sudo tee /etc/apt/sources.list.d/cloudflared.list >/dev/null
+          sudo apt-get update -qq >/dev/null && sudo apt-get install -y -qq cloudflared >/dev/null
+
+      - name: Open the way to the server
+        env:
+          SSH_HOST: ${{ vars.SERVER_SSH_HOST }}
+          KNOWN_HOSTS: ${{ vars.SERVER_SSH_KNOWN_HOSTS }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          ACCESS_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          ACCESS_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          umask 077
+          mkdir -p "$SSH_DIR"
+          printf '%s\n' "$DEPLOY_KEY" > "$SSH_DIR/deploy_key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$SSH_DIR/known_hosts"
+          {
+            echo 'Host server'
+            echo "  HostName $SSH_HOST"
+            echo '  User deploy'
+            echo "  IdentityFile $SSH_DIR/deploy_key"
+            echo '  IdentitiesOnly yes'
+            echo "  UserKnownHostsFile $SSH_DIR/known_hosts"
+            echo '  StrictHostKeyChecking yes'
+            echo '  LogLevel ERROR'
+            echo "  ProxyCommand cloudflared access ssh --hostname %h --service-token-id $ACCESS_ID --service-token-secret $ACCESS_SECRET"
+          } > "$SSH_DIR/config"
+
+      - name: Ship the release and deploy it on the server
+        if: env.ACTION == 'deploy'
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          id="$(date -u +%Y%m%d-%H%M%S)-${GITHUB_SHA::8}"
+          echo "RELEASE_ID=$id" >> "$GITHUB_ENV"
+          {
+            printf 'release %s\n%s\n%s\n' "$id" "$GHCR_USER" "$GHCR_TOKEN"
+            tar -C "$RELEASE_DIR" -czf - .
+          } | ssh -F "$SSH_DIR/config" server
+
+      - name: Roll back on the server
+        if: env.ACTION == 'rollback'
+        run: printf 'rollback\n' | ssh -F "$SSH_DIR/config" server
+
+      # deploy.sh already checked readiness on the server; this proves the way in through Cloudflare.
+      # /health/live, because the edge answers /health/ready only to callers inside the server (404 here).
+      - name: Health through Cloudflare
+        env:
+          API_HOST: ${{ vars.API_HOST }}
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            curl -fsS --max-time 20 -o /dev/null "https://$API_HOST/health/live" && { echo 'Reachable.'; exit 0; }
+            sleep 10
+          done
+          echo 'FAILED: the API did not answer through Cloudflare.' >&2
+          exit 1
+
+      # A tag per live release, so the Release Console can deploy an older version (brief Q3). Each
+      # environment accepts its own tags (<environment>-*). A refused tag never fails a live deploy.
+      - name: Tag the live release
+        if: env.ACTION == 'deploy'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$TIER-$RELEASE_ID"
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f "ref=refs/tags/$tag" -f "sha=$GITHUB_SHA" >/dev/null &&
+            echo "Tagged $tag." || echo 'The tag was refused; the release is live all the same.'
+
+      - name: Remove the release folder and keys from the runner
+        if: always()
+        run: rm -rf "$RELEASE_DIR" "$SSH_DIR" "$RUNNER_TEMP/images.env"

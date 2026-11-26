@@ -3,35 +3,66 @@
 		<h5>{{ 'my_orders' | transloco }}</h5>
 	</div>
 </div>
-@if ((order$ | async)?.data?.length) {
+@if (result(); as page) { @if (orders().length) {
 <div class="total-box mt-0">
-	<div class="wallet-table mt-0">
+	<!-- Phones and tablets: one card per order, nothing scrolls sideways (owner, 22 Nov 2026). -->
+	<ul class="st-order-cards d-xl-none">
+		@for (order of orders(); track order.orderNumber) {
+		<li><app-order-card [order]="order" /></li>
+		}
+	</ul>
+	<!-- Laptops: one row per order (E06). -->
+	<div class="wallet-table d-none d-xl-block mt-0">
 		<div class="table-responsive">
-			<table>
-				<tbody>
+			<table class="my-orders-table">
+				<thead>
 					<tr>
-						<th>{{ 'no' | transloco }}</th>
-						<th>{{ 'order_number' | transloco }}</th>
+						<th>{{ 'my_orders_col_order' | transloco }}</th>
 						<th>{{ 'date' | transloco }}</th>
-						<th>{{ 'amount' | transloco }}</th>
-						<th>{{ 'payment_status' | transloco }}</th>
-						<th>{{ 'payment_method' | transloco }}</th>
-						<th>{{ 'option' | transloco }}</th>
+						<th>{{ 'my_orders_col_items' | transloco }}</th>
+						<th>{{ 'total' | transloco }}</th>
+						<th>{{ 'status' | transloco }}</th>
+						<th><span class="visually-hidden">{{ 'my_orders_view' | transloco }}</span></th>
 					</tr>
-					@for (order of (order$ | async)?.data ; track order ; let i = $index) {
+				</thead>
+				<tbody>
+					@for (order of orders(); track order.orderNumber) {
 					<tr>
-						<td>{{ i + 1 }}</td>
-						<td><span class="fw-bolder">#{{order.order_number}}</span></td>
-						<td>{{ order?.created_at | date: 'dd MMM yyyy hh:mm:a' }}</td>
-						<td>{{ order?.total! | currencySymbol }}</td>
-						<td>
-							<div class="status-{{order.payment_status.toLowerCase()}}">
-								<span>{{ order.payment_status | titleCase }}</span>
+						<td class="mo-number"><span class="fw-bolder">#{{ order.orderNumber }}</span></td>
+						<td class="mo-date">{{ order.placedAt | date: 'd MMM yyyy' }}</td>
+						<td class="mo-items">
+							<div class="d-flex align-items-center gap-3">
+								<app-thumb-stack
+									[images]="thumbs(order)"
+									[size]="'sm'"
+								/>
+								<span>
+									{{ items(order) }} @if (order.sets) {
+									<span class="st-piece-chip is-set">
+										{{ (order.sets + order.products > 1 ? 'my_orders_includes_sets' :
+										'cart_set_chip') | transloco }}
+									</span>
+									}
+								</span>
 							</div>
 						</td>
-						<td>{{ order.payment_method.toUpperCase() }}</td>
-						<td>
-							<a [routerLink]="['/account/order/details', order.order_number]">
+						<td class="mo-total">{{ money(order.total, order.currency) }}</td>
+						<td class="mo-status">
+							<div [class]="'status-' + pill(order.status)">
+								<span>{{ 'shop_order_status_' + order.status | transloco }}</span>
+							</div>
+							<app-order-progress
+								class="mo-progress"
+								[status]="order.status"
+								[label]="'shop_order_status_' + order.status | transloco"
+							/>
+						</td>
+						<td class="mo-view">
+							<a
+								[routerLink]="['/account/order/details', order.orderNumber]"
+								[attr.aria-label]="'my_orders_view_number' | transloco: { number: order.orderNumber }"
+								[title]="'my_orders_view' | transloco"
+							>
 								<i class="ri-eye-line"></i>
 							</a>
 						</td>
@@ -41,22 +72,22 @@
 			</table>
 		</div>
 	</div>
-	@if ((order$ | async)?.data?.length) {
+	@if (page.total > pageSize) {
 	<nav class="custome-pagination">
 		<app-pagination
-			[total]="(order$ | async)?.total || 0"
-			[currentPage]="filter()['page']"
-			[pageSize]="filter()['paginate']"
+			[total]="page.total"
+			[currentPage]="page.page"
+			[pageSize]="pageSize"
 			(setPage)="setPaginate($event)"
 		/>
 	</nav>
 	}
 </div>
-} @if (!(order$ | async)?.data?.length) {
+} @else {
 <app-no-data
 	[class]="'no-data-added'"
 	[image]="'assets/svg/empty-items.svg'"
 	[text]="'no_orders_found' | transloco"
 	[description]="'no_orders_description' | transloco"
 />
-}
+} }

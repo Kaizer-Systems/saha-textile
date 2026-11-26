@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { goLiveGaps, productGallery } from '../src/catalog/go-live';
 import { selectionHash, variantMatrix } from '../src/catalog/variant-matrix';
 
-const both = { en: 'Text', fr: 'Texte' };
+const both = { en: 'Text', bn: 'Texte' };
 const complete = (over: Record<string, unknown> = {}) =>
 	({
 		title: both,
@@ -28,13 +28,33 @@ const run = (product: Product, priced = true, alt: Record<string, string> | null
 	goLiveGaps({
 		product,
 		variants: [{ priceINR: priced ? 100 : 0 } as ProductVariant],
-		locales: ['en', 'fr'],
+		locales: ['en', 'bn'],
 		assetAlt: () => alt,
 	});
 
 describe('goLiveGaps', () => {
 	it('finds nothing on a finished product', () => {
 		expect(run(complete())).toEqual([]);
+	});
+
+	it('checks the FAQ questions in every language only while the FAQ is on', () => {
+		const faq = [
+			{ question: both, answer: both },
+			{ question: { en: 'Silk?' }, answer: { en: 'Yes', bn: ' ' } },
+		];
+		const gaps = (faqEnabled: boolean) =>
+			goLiveGaps({
+				product: complete({ faqEnabled }),
+				variants: [{ priceINR: 100 } as ProductVariant],
+				locales: ['en', 'bn'],
+				assetAlt: () => both,
+				faq,
+			});
+		expect(gaps(false)).toEqual([]);
+		expect(gaps(true)).toEqual([
+			{ field: 'faq_question:2', locale: 'bn' },
+			{ field: 'faq_answer:2', locale: 'bn' },
+		]);
 	});
 
 	it('wants a colour or an image on each swatch', () => {
@@ -49,6 +69,35 @@ describe('goLiveGaps', () => {
 			{ field: 'swatch_image:c:x', locale: null },
 		]);
 		expect(run(complete({ optionGroups: groups('image_swatch', { swatchAssetId: 'm' }) }))).toEqual([]);
+		// The colour chip is a colour too; the picture chip a picture; the picture tiles keep their placeholder.
+		expect(run(complete({ optionGroups: groups('colour_chip', {}) }))).toEqual([
+			{ field: 'swatch_colour:c:x', locale: null },
+		]);
+		expect(run(complete({ optionGroups: groups('picture_chip', {}) }))).toEqual([
+			{ field: 'swatch_image:c:x', locale: null },
+		]);
+		expect(run(complete({ optionGroups: groups('picture_row', {}) }))).toEqual([]);
+		expect(run(complete({ optionGroups: groups('size_v2', {}) }))).toEqual([]);
+	});
+
+	it('wants a second line in every language once it is written in one', () => {
+		const groups = (subLabel?: Record<string, string>) => [
+			{
+				attributeCode: 'size',
+				label: both,
+				displayStyle: 'size_v2',
+				terms: [{ code: 'm', label: both, subLabel }],
+			},
+		];
+		expect(run(complete({ optionGroups: groups() }))).toEqual([]);
+		expect(run(complete({ optionGroups: groups({ en: ' ' }) }))).toEqual([]);
+		expect(run(complete({ optionGroups: groups({ en: 'Medium' }) }))).toEqual([
+			{ field: 'value_note:size:m', locale: 'bn' },
+		]);
+		expect(run(complete({ optionGroups: groups({ bn: 'মাঝারি' }) }))).toEqual([
+			{ field: 'value_note:size:m', locale: 'en' },
+		]);
+		expect(run(complete({ optionGroups: groups({ en: 'Medium', bn: 'মাঝারি' }) }))).toEqual([]);
 	});
 
 	it('wants the primary image in every size a shop page needs', () => {
@@ -56,7 +105,7 @@ describe('goLiveGaps', () => {
 			goLiveGaps({
 				product: complete(),
 				variants: [{ priceINR: 100 } as ProductVariant],
-				locales: ['en', 'fr'],
+				locales: ['en', 'bn'],
 				assetAlt: () => both,
 				primaryRoles,
 			});
@@ -67,7 +116,9 @@ describe('goLiveGaps', () => {
 	});
 
 	it('wants a template when an option measures', () => {
-		const measured = [{ attributeCode: 'c', label: both, terms: [{ code: 'x', label: both, requiresMeasurements: true }] }];
+		const measured = [
+			{ attributeCode: 'c', label: both, terms: [{ code: 'x', label: both, requiresMeasurements: true }] },
+		];
 		expect(run(complete({ optionGroups: measured }))).toEqual([{ field: 'addon_template', locale: null }]);
 		expect(run(complete({ optionGroups: measured, addonTemplateCode: 't' }))).toEqual([]);
 	});
@@ -75,13 +126,15 @@ describe('goLiveGaps', () => {
 	it('wants lead-time text in every language once it is written', () => {
 		expect(run(complete({ estimatedDeliveryText: null }))).toEqual([]);
 		expect(run(complete({ estimatedDeliveryText: { en: ' ' } }))).toEqual([]);
-		expect(run(complete({ estimatedDeliveryText: { en: 'Soon' } }))).toEqual([{ field: 'lead_time', locale: 'fr' }]);
+		expect(run(complete({ estimatedDeliveryText: { en: 'Soon' } }))).toEqual([
+			{ field: 'lead_time', locale: 'bn' },
+		]);
 	});
 
 	it('names every language gap, and treats blanks as missing', () => {
 		const gaps = run(
 			complete({
-				title: { en: 'x', fr: '  ' },
+				title: { en: 'x', bn: '  ' },
 				shortDescription: { en: 'x' },
 				description: undefined,
 				seo: undefined,
@@ -92,13 +145,13 @@ describe('goLiveGaps', () => {
 		);
 		expect(gaps).toEqual(
 			expect.arrayContaining([
-				{ field: 'title', locale: 'fr' },
-				{ field: 'short_description', locale: 'fr' },
+				{ field: 'title', locale: 'bn' },
+				{ field: 'short_description', locale: 'bn' },
 				{ field: 'description', locale: 'en' },
-				{ field: 'meta_title', locale: 'fr' },
+				{ field: 'meta_title', locale: 'bn' },
 				{ field: 'meta_description', locale: 'en' },
-				{ field: 'option:color', locale: 'fr' },
-				{ field: 'value:color:red', locale: 'fr' },
+				{ field: 'option:color', locale: 'bn' },
+				{ field: 'value:color:red', locale: 'bn' },
 			]),
 		);
 	});
@@ -113,8 +166,8 @@ describe('goLiveGaps', () => {
 	});
 
 	it('reads alt text from the override, then the library', () => {
-		expect(run(complete(), true, { en: 'x' })).toEqual([{ field: 'image_alt', locale: 'fr' }]);
-		const overridden = complete({ media: { gallery: ['a'], compound: [], altOverrides: { a: { fr: 'y' } } } });
+		expect(run(complete(), true, { en: 'x' })).toEqual([{ field: 'image_alt', locale: 'bn' }]);
+		const overridden = complete({ media: { gallery: ['a'], compound: [], altOverrides: { a: { bn: 'y' } } } });
 		expect(run(overridden, true, { en: 'x' })).toEqual([]);
 		expect(run(complete(), true, null)).toHaveLength(2);
 	});
@@ -129,6 +182,7 @@ describe('productGallery', () => {
 				{ selectionHash: 'y', gallery: ['c', 'd'] },
 			],
 			altOverrides: {},
+			versions: {},
 		};
 		expect(productGallery({ imageMode: 'simple', media })).toEqual(['a']);
 		expect(productGallery({ imageMode: 'compound', media })).toEqual(['b', 'c', 'd']);

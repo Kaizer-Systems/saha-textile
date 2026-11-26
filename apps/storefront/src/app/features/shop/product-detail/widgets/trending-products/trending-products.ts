@@ -1,29 +1,24 @@
-import { SlicePipe } from '@angular/common';
-import { Component, computed } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
+import { Component, computed, input } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { Observable } from 'rxjs';
 
 import { IProduct } from '@data-access/interfaces/product.interface';
-import { injectRelatedProductsData } from '@data-access/queries/product.queries';
+import { injectProductTrendingQuery } from '@data-access/queries/product.queries';
 import { ProductBox } from '@shared/ui/product-box/product-box';
 
+/**
+ * "Trending products" beside the product: what shoppers have been opening in the same
+ * categories lately, topped up with their bestsellers, in the theme's small list cards.
+ */
 @Component({
 	selector: 'app-trending-products',
 	templateUrl: './trending-products.html',
 	styleUrls: ['./trending-products.scss'],
-	imports: [ProductBox, SlicePipe, TranslocoModule],
+	imports: [ProductBox, TranslocoModule],
 })
 export class TrendingProducts {
-	private readonly relatedQuery = injectRelatedProductsData();
-	relatedProduct$: Observable<IProduct[]> = toObservable(computed(() => this.relatedQuery.data() ?? []));
+	readonly product = input<IProduct | null>();
 
-	public relatedProducts: IProduct[] = [];
-
-	ngOnInit() {
-		this.relatedProduct$.subscribe((products) => {
-			this.relatedProducts = products.length ? products?.filter((product) => product?.is_trending) : [];
-		});
-	}
+	private readonly trendingQuery = injectProductTrendingQuery(() => this.product()?.slug);
+	readonly products = computed(() => this.trendingQuery.data() ?? []);
 }

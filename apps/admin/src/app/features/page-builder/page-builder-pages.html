@@ -1,0 +1,154 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'page_builder'"
+>
+	<div class="fm-note mb-4">
+		<i
+			class="ri-information-line"
+			aria-hidden="true"
+		></i>
+		<div>
+			<strong>{{ 'pb_pages_note_title' | transloco }}</strong>
+			{{ 'pb_pages_note' | transloco }}
+		</div>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table
+			class="all-package theme-table no-footer fm-table table"
+			id="pb_pages"
+		>
+			<thead>
+				<tr>
+					<th>{{ 'pb_col_page' | transloco }}</th>
+					<th>{{ 'pb_col_address' | transloco }}</th>
+					<th style="min-width: 190px">{{ 'pb_col_showing' | transloco }}</th>
+					<th style="min-width: 210px">{{ 'pb_col_arrange' | transloco }}</th>
+					<th style="min-width: 210px">{{ 'pb_col_status' | transloco }}</th>
+					<th>{{ 'pb_col_action' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of pages() ?? []; track row.pageType) {
+				<tr [attr.data-page]="row.pageType">
+					<td>
+						<div class="d-flex align-items-center gap-2 text-nowrap">
+							<i
+								class="ri-home-4-line fs-5"
+								aria-hidden="true"
+							></i>
+							<strong>{{ 'pb_page_' + row.pageType | transloco }}</strong>
+						</div>
+					</td>
+					<td class="text-nowrap">/en/ · /bn/</td>
+					<td>
+						@if (row.liveLayoutName) { {{ row.liveLayoutName }}
+						<span class="badge bg-success ms-1">{{ 'pb_status_live' | transloco }}</span>
+						} @else {
+						<span class="text-muted">{{ 'pb_showing_fixed' | transloco }}</span>
+						}
+					</td>
+					<td>
+						{{ 'pb_arrange_whole' | transloco }}
+						<div class="small text-muted">{{ 'pb_layout_count' | plural: row.layoutCount }}</div>
+					</td>
+					<td>
+						<span class="badge bg-success">{{ 'pb_status_ready' | transloco }}</span>
+						@if (row.nextSwitchAt) {
+						<div class="small text-muted">
+							{{ 'pb_next_switch' | transloco: { when: (row.nextSwitchAt | date: 'd MMM y, h:mm a' :
+							'+0530') } }}
+						</div>
+						}
+					</td>
+					<td>
+						<a
+							class="btn btn-sm btn-theme"
+							[routerLink]="['/page-builder', row.pageType]"
+							[id]="'pb_open_' + row.pageType"
+						>
+							{{ 'pb_open' | transloco }}
+						</a>
+					</td>
+				</tr>
+				} @for (page of later; track page.name) {
+				<tr>
+					<td>
+						<div class="d-flex align-items-center gap-2 text-nowrap">
+							<i
+								[class]="page.icon + ' fs-5 text-muted'"
+								aria-hidden="true"
+							></i>
+							{{ page.name | transloco }}
+						</div>
+					</td>
+					<td class="text-nowrap">
+						{{ page.address.startsWith('/') ? page.address : (page.address | transloco) }}
+					</td>
+					<td>{{ page.now | transloco }}</td>
+					<td>{{ page.arrange | transloco }}</td>
+					<td>
+						<span class="fm-chip muted">{{ 'pb_status_later' | transloco }}</span>
+						<div class="small text-muted">
+							{{ 'pb_needs' | transloco: { what: (page.needs | transloco) } }}
+						</div>
+					</td>
+					<td></td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<!-- SG-17: one list of every scheduled switch, across every page. -->
+	<h5 class="mt-4 mb-3">{{ 'pb_coming_up' | transloco }}</h5>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table
+			class="all-package theme-table no-footer fm-table mb-0 table"
+			id="pb_coming_up"
+		>
+			<thead>
+				<tr>
+					<th>{{ 'pb_col_from' | transloco }}</th>
+					<th>{{ 'pb_col_until' | transloco }}</th>
+					<th>{{ 'pb_col_page' | transloco }}</th>
+					<th>{{ 'pb_col_layout' | transloco }}</th>
+					<th>{{ 'pb_col_status' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of comingUp(); track row.layoutId + row.from) {
+				<tr>
+					<td class="text-nowrap">{{ row.from | date: 'd MMM y, h:mm a' : '+0530' }}</td>
+					<td class="text-nowrap">{{ row.until ? (row.until | date: 'd MMM y, h:mm a' : '+0530') : '—' }}</td>
+					<td>
+						<a [routerLink]="['/page-builder', row.pageType]">
+							{{ 'pb_page_' + row.pageType | transloco }}
+						</a>
+					</td>
+					<td><strong>{{ row.layoutName }}</strong></td>
+					<td>
+						@if (row.state === 'showing') {
+						<span class="badge bg-success">{{ 'pb_status_live' | transloco }}</span>
+						} @else {
+						<span class="badge bg-info text-dark">{{ 'pb_status_scheduled' | transloco }}</span>
+						}
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td colspan="5">{{ 'pb_coming_up_empty' | transloco }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<div class="fm-note mt-4">
+		<i
+			class="ri-lock-line"
+			aria-hidden="true"
+		></i>
+		<div>
+			<strong>{{ 'pb_not_here_title' | transloco }}</strong>
+			{{ 'pb_not_here' | transloco }}
+		</div>
+	</div>
+</app-page-wrapper>

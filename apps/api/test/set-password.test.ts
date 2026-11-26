@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { AuthService } from '../src/auth/auth.service';
 import { StorefrontAuthController } from '../src/auth/storefront-auth.controller';
 import { loadConfig } from '../src/config/app-config';
+import { LanguageStore } from '../src/languages/language-store';
 
 /**
  * Setting a password from inside a session.
@@ -100,6 +101,7 @@ function harness(options: { passwordHash: string | null; acceptOtp?: string }): 
 		oauth as never,
 		{ withTransaction: async <T>(work: () => Promise<T>) => work() } as never,
 		config,
+		LanguageStore.fixed(['en', 'bn']),
 	);
 	return result;
 }

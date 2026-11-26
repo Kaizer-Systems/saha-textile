@@ -4,9 +4,9 @@ import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { ConsentStore } from '@core/consent/consent.store';
 import { SettingService } from '@data-access/services/setting.service';
 
-import { ConsentStore } from '@core/consent/consent.store';
 import { LoaderStore } from './loader.store';
 import { SettingStore } from './setting.store';
 
@@ -93,6 +93,26 @@ describe('SettingStore', () => {
 		store.loadSettings();
 		TestBed.tick();
 		expect(store.selectedCurrency()).toBeNull();
+	});
+
+	it('keeps a saved currency at today’s rate, and falls back to rupees when the shop stops selling it', () => {
+		const inr = { code: 'INR', symbol: '₹', exchange_rate: 1 };
+		const usd = { code: 'USD', symbol: 'US$', exchange_rate: 0.01272 };
+		const store = setup();
+		store.useCurrencies([inr, usd] as never);
+		expect(store.selectedCurrency()).toBeNull();
+		// A choice saved from the theme's demo list carried its own rate and symbol.
+		store.setCurrency({ code: 'USD', symbol: '$', exchange_rate: '0.012' } as never);
+		store.useCurrencies([] as never);
+		expect(store.selectedCurrency()).toMatchObject({ symbol: '$' });
+		store.useCurrencies([inr, usd] as never);
+		expect(store.selectedCurrency()).toEqual(usd);
+		expect(JSON.parse(localStorage.getItem('selectedCurrency') ?? '{}')).toEqual(usd);
+		store.useCurrencies([inr, usd] as never);
+		expect(store.selectedCurrency()).toBe(usd);
+		store.setCurrency({ code: 'EUR', symbol: '€', exchange_rate: 0.011 } as never);
+		store.useCurrencies([inr, usd] as never);
+		expect(store.selectedCurrency()).toEqual(inr);
 	});
 
 	it('touches no storage on the server', () => {

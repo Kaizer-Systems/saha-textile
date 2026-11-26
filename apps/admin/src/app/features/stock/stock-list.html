@@ -1,0 +1,122 @@
+@if (tiles(); as tile) {
+<section class="dashboard-tiles">
+	<div class="container-fluid">
+		<div class="row g-3 mb-3">
+			@if (canSeeCost()) {
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'stock_value_at_cost' | transloco }}</h6>
+						<h3>{{ tile.valueAtCostINR === null ? '—' : (tile.valueAtCostINR | rupees) }}</h3>
+						<p class="small text-muted mb-0">{{ 'qty_pieces' | plural: tile.pieces }} · FIFO</p>
+					</div>
+					<div class="icon-box">
+						<i class="ri-safe-2-line"></i>
+					</div>
+				</div>
+			</div>
+			}
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'low_stock' | transloco }}</h6>
+						<h3>{{ tile.low }}</h3>
+						<p class="small text-muted mb-0">{{ 'variants_at_or_under_level' | transloco }}</p>
+					</div>
+					<div class="icon-box">
+						<i class="ri-error-warning-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'out_of_stock' | transloco }}</h6>
+						<h3>{{ tile.out }}</h3>
+						<p class="small text-muted mb-0">
+							{{ 'sold_in_last_30_days' | plural: tile.outSoldLast30Days }}
+						</p>
+					</div>
+					<div class="icon-box">
+						<i class="ri-close-circle-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'held' | transloco }}</h6>
+						<h3>{{ tile.held }}</h3>
+						<p class="small text-muted mb-0">
+							{{ 'waiting_for_supplier_n' | transloco: { count: tile.heldWaitingForSupplier } }}
+						</p>
+					</div>
+					<div class="icon-box">
+						<i class="ri-pause-circle-line"></i>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+}
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'all_stock'"
+>
+	<div
+		button
+		class="d-flex gap-2"
+	>
+		<app-export-menu
+			*hasPermission="'stock_report.export'"
+			id="stock_list_export"
+			[source]="exportListSource"
+		/>
+		<button
+			*hasPermission="'stock_count.create'"
+			type="button"
+			class="align-items-center btn btn-outline d-flex"
+			(click)="startCount()"
+		>
+			<i class="ri-list-check-3"></i>
+			{{ 'start_a_stock_count' | transloco }}
+		</button>
+	</div>
+	<app-table
+		[tableConfig]="tableConfig()"
+		[searchPlaceholder]="'stock_search_placeholder'"
+		(tableChanged)="onTableChange($event)"
+		(rowClicked)="open($event)"
+		(action)="onAction($event)"
+	>
+		<div
+			tableFilters
+			class="d-flex flex-wrap gap-2"
+		>
+			@for (item of filters; track item.key) {
+			<button
+				type="button"
+				class="align-items-center btn btn-sm d-flex"
+				[class.btn-theme]="filter() === item.key"
+				[class.btn-outline]="filter() !== item.key"
+				[attr.aria-pressed]="filter() === item.key"
+				(click)="setFilter(item.key)"
+			>
+				{{ item.label | transloco }} @if (item.count && counts()[item.count]) { {{ counts()[item.count] }} }
+			</button>
+			}
+			<select
+				class="form-control"
+				[attr.aria-label]="'category' | transloco"
+				[ngModel]="categoryId()"
+				(ngModelChange)="setCategory($event)"
+			>
+				<option value="">{{ 'all_categories' | transloco }}</option>
+				@for (option of categoryOptions(); track option.id) {
+				<option [value]="option.id">{{ option.label }}</option>
+				}
+			</select>
+		</div>
+	</app-table>
+</app-page-wrapper>

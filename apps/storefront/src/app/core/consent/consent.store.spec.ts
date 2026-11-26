@@ -16,7 +16,9 @@ vi.mock('@core/config/runtime-config', () => ({
 const cookie = (categories: object, version = COOKIE_POLICY_VERSION) =>
 	`st_consent=${encodeURIComponent(JSON.stringify({ id: 'id-1', version, savedAt: 'at', categories }))}`;
 
-const setup = (options: { cookie?: string; platform?: string; protocol?: string; post?: unknown; get?: unknown } = {}) => {
+const setup = (
+	options: { cookie?: string; platform?: string; protocol?: string; post?: unknown; get?: unknown } = {},
+) => {
 	const written: string[] = [];
 	const removed: string[] = [];
 	const page = {
@@ -107,7 +109,7 @@ describe('ConsentStore', () => {
 		expect(written[0]).not.toContain('Secure');
 		expect(written.slice(1).join()).toContain('st_locale=; Max-Age=0');
 		expect(written.slice(1).join()).toContain('st_newsletter=; Max-Age=0');
-		expect(removed).toEqual(['st_recent', 'selectedCurrency']);
+		expect(removed).toEqual(['st_recent', 'st_search', 'selectedCurrency']);
 	});
 
 	it('keeps one id across changes of mind', () => {
@@ -124,15 +126,21 @@ describe('ConsentStore', () => {
 	});
 
 	describe('on sign-in', () => {
-		it('adds this device\'s choice to the account', async () => {
+		it("adds this device's choice to the account", async () => {
 			const { store, http } = setup({ cookie: cookie({ functional: true }) });
 			await store.syncAccount();
 			expect(http.post).toHaveBeenCalledOnce();
 			expect(http.get).not.toHaveBeenCalled();
 		});
 
-		it('picks up the account\'s choice on a new device', async () => {
-			const categories = { functional: true, analytics: false, targeting: false, marketing: false, promotional: false };
+		it("picks up the account's choice on a new device", async () => {
+			const categories = {
+				functional: true,
+				analytics: false,
+				targeting: false,
+				marketing: false,
+				promotional: false,
+			};
 			const { store, written } = setup({ get: of({ policyVersion: COOKIE_POLICY_VERSION, categories }) });
 			await store.syncAccount();
 			expect(store.allows('functional')).toBe(true);

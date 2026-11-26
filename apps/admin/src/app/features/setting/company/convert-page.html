@@ -1,0 +1,133 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'cv_title'"
+>
+	<div class="card">
+		<div class="card-body theme-form theme-form-2">
+			<div class="title-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+				<h5>{{ 'cv_heading' | transloco: { name: profile.data()?.legalName ?? '' } }}</h5>
+				<span class="d-flex gap-2">
+					<button
+						type="button"
+						class="btn btn-outline"
+						id="cv_preview"
+						[disabled]="busy() || !kind()"
+						(click)="load()"
+					>
+						{{ 'cv_preview' | transloco }}
+					</button>
+					<button
+						type="button"
+						class="btn btn-theme"
+						id="cv_convert"
+						[disabled]="!canConvert()"
+						(click)="convert()"
+					>
+						{{ 'cv_convert' | transloco }}
+					</button>
+				</span>
+			</div>
+			<div class="row g-3 mb-3">
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="cv_kind"
+					>
+						{{ 'cv_new_kind' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="cv_kind"
+						[ngModel]="kind()"
+						(ngModelChange)="kind.set($event); preview.set(null)"
+					>
+						<option value="">{{ 'cv_choose' | transloco }}</option>
+						@for (k of kinds(); track k) {
+						<option [value]="k">{{ 'co_kind_' + k | transloco }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="cv_last_day"
+					>
+						{{ 'cv_last_day' | transloco }}
+					</label>
+					<input
+						type="date"
+						class="form-control"
+						id="cv_last_day"
+						[ngModel]="lastDay()"
+						(ngModelChange)="lastDay.set($event); preview.set(null)"
+					/>
+				</div>
+			</div>
+			@if (preview(); as p) { @for (code of p.problems; track code) {
+			<div class="alert alert-danger py-2">{{ words(code) }}</div>
+			} @if (p.rows.length) {
+			<div class="table-responsive">
+				<table class="theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'cv_col_old' | transloco }}</th>
+							<th>{{ 'cv_col_balance' | transloco }}</th>
+							<th>{{ 'cv_col_goes_to' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of p.rows; track row.from) {
+						<tr>
+							<td class="text-start">{{ rowName(row) }}</td>
+							<td class="text-nowrap">{{ drCr(row.balancePaise) }}</td>
+							<td>
+								<select
+									class="form-select"
+									[id]="'cv_to_' + row.from"
+									[ngModel]="choice()[row.from] ?? ''"
+									(ngModelChange)="pick(row.from, $event)"
+								>
+									<option value="">{{ 'cv_choose' | transloco }}</option>
+									@for (t of p.targets; track $index) {
+									<option [value]="t.ledgerId ? 'id:' + t.ledgerId : 'key:' + t.key">
+										{{ t.name }}
+									</option>
+									}
+									<option [value]="NEW">{{ 'cv_new_ledger' | transloco }}</option>
+								</select>
+								@if (choice()[row.from] === NEW) {
+								<input
+									class="form-control mt-2"
+									maxlength="120"
+									[id]="'cv_name_' + row.from"
+									[placeholder]="'cv_new_ledger_name' | transloco"
+									[ngModel]="names()[row.from] ?? ''"
+									(ngModelChange)="name(row.from, $event)"
+								/>
+								}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			} @if (!p.rows.length) {
+			<p class="help-text">{{ 'cv_nothing_to_map' | transloco }}</p>
+			}
+			<p class="help-text mb-1">
+				{{ 'cv_opening' | transloco: { date: p.openingDate, months: p.months.length } }}
+			</p>
+			}
+			<p class="help-text mb-0">
+				<b>{{ 'cv_what' | transloco }}</b>
+				{{ 'cv_what_body' | transloco }}
+			</p>
+			<a
+				class="d-inline-block mt-3"
+				routerLink="/setting/company"
+			>
+				{{ 'cv_back' | transloco }}
+			</a>
+		</div>
+	</div>
+</app-page-wrapper>

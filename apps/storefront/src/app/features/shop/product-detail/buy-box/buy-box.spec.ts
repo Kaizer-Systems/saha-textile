@@ -4,13 +4,14 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { BehaviorSubject, of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthStore } from '@core/state/auth.store';
 import { CartFacade } from '@core/state/cart/cart.facade';
-import { CompareFacade } from '@core/state/compare/compare.store';
-import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
+import { CompareStore } from '@core/state/compare/compare.store';
+import { WishlistStore } from '@core/state/wishlist/wishlist.store';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { BuyBox } from './buy-box';
@@ -28,8 +29,8 @@ const product = {
 const render = (signedIn = true, overrides: Record<string, unknown> = {}) => {
 	const items = new BehaviorSubject<unknown[]>([]);
 	const cart = { cartItems$: items, addToCart: vi.fn() };
-	const wishlist = { addToWishlist: vi.fn() };
-	const compare = { addToCompare: vi.fn() };
+	const wishlist = { saved: signal(new Set(['7'])), has: vi.fn(() => false), toggle: vi.fn(async () => {}) };
+	const compare = { chosen: signal(new Set(['red-saree'])), toggle: vi.fn() };
 	const toast = { showSuccess: vi.fn() };
 	const router = { navigate: vi.fn() };
 	const http = { post: vi.fn(() => of({})) };
@@ -37,8 +38,8 @@ const render = (signedIn = true, overrides: Record<string, unknown> = {}) => {
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: CartFacade, useValue: cart },
-			{ provide: WishlistFacade, useValue: wishlist },
-			{ provide: CompareFacade, useValue: compare },
+			{ provide: WishlistStore, useValue: wishlist },
+			{ provide: CompareStore, useValue: compare },
 			{ provide: NotificationService, useValue: toast },
 			{ provide: Router, useValue: router },
 			{ provide: HttpClient, useValue: http },
@@ -136,12 +137,14 @@ describe('BuyBox buying', () => {
 		expect(router.navigate).toHaveBeenCalledWith(['/checkout']);
 	});
 
-	it('adds to the wishlist and compare', () => {
+	it('toggles the wishlist and compare, and shows their state', () => {
 		const { box, wishlist, compare } = render();
-		box.addToWishlist();
-		box.addToCompare();
-		expect(wishlist.addToWishlist).toHaveBeenCalledWith({ product_id: 7 });
-		expect(compare.addToCompare).toHaveBeenCalledWith({ product_id: 7 });
+		expect(box.saved()).toBe(true);
+		expect(box.compared()).toBe(false);
+		box.toggleWishlist();
+		box.toggleCompare();
+		expect(wishlist.toggle).toHaveBeenCalledWith(expect.objectContaining({ id: 7 }));
+		expect(compare.toggle).toHaveBeenCalledWith(expect.objectContaining({ id: 7 }));
 	});
 });
 
@@ -171,5 +174,229 @@ describe('BuyBox stock alerts', () => {
 		box.notify();
 		expect(http.post.mock.calls[0]).toBeDefined();
 		expect((http.post.mock.calls[0] as unknown[])[1]).toEqual({ variantSku: 'SKU-7' });
+	});
+});
+
+describe('BuyBox fabric by the metre (M02–M04)', () => {
+	const fabric = {
+		sale_price: 180,
+		price: 180,
+		discount: 0,
+		quantity: 45,
+		sold_by: 'metre',
+		metre_rule: {
+			shortestCutTenths: 10,
+			stepTenths: 5,
+			quickLengths: [{ tenths: 25, label: 'suit' }],
+			widthInches: 44,
+		},
+	};
+
+	it('starts at the shortest cut, steps by 0.5 m and stops at what is left', () => {
+		const { box } = render(true, fabric);
+		expect(box.length()).toBe(10);
+		box.updateQuantity(1);
+		expect(box.length()).toBe(15);
+		box.updateQuantity(-1);
+		box.updateQuantity(-1);
+		expect(box.length()).toBe(10);
+		box.pickLength(43);
+		box.updateQuantity(1);
+		expect(box.length()).toBe(45);
+		expect(box.lineTotal()).toBe(810);
+	});
+
+	it('snaps a typed length and says so, and turns buying off below the cut', () => {
+		const { box } = render(true, fabric);
+		const input = document.createElement('input');
+		input.value = '2.55';
+		box.typeLength(input);
+		expect(box.length()).toBe(26);
+		expect(box.snapped()).toEqual({ typed: '2.55', length: '2.6 unit_m' });
+		expect(input.value).toBe('2.6 unit_m');
+		input.value = '0.5';
+		box.typeLength(input);
+		expect(box.lengthIssue()).toBe('below_cut');
+		expect(box.purchasable()).toBe(false);
+		input.value = '60';
+		box.typeLength(input);
+		expect(box.lengthIssue()).toBe('over_stock');
+		input.value = 'two';
+		box.typeLength(input);
+		expect(box.length()).toBe(600);
+	});
+
+	it('sends the length in tenths to the cart, and nothing while it cannot be bought', () => {
+		const { box, cart } = render(true, fabric);
+		const build = configured(box, { quantity: 25 });
+		box.pickLength(25);
+		box.addToCart();
+		expect(build).toHaveBeenCalledWith(25, null);
+		expect(cart.addToCart).toHaveBeenCalled();
+		build.mockClear();
+		box.pickLength(5);
+		box.addToCart();
+		expect(build).not.toHaveBeenCalled();
+	});
+
+	it('has no length limit for made to order', () => {
+		const { box } = render(true, { ...fabric, made_to_order: true });
+		box.pickLength(900);
+		expect(box.lengthIssue()).toBeNull();
+	});
+});
+
+describe('BuyBox price line stock', () => {
+	const variant = (quantity: number, stock_status = 'in_stock') => ({ sku: 'V', quantity, stock_status });
+	const withVariants = { attributes: [{ id: 1 }], variations: [variant(3)] };
+
+	it('counts a plain product, amber at two or fewer, red when sold out', () => {
+		expect(render(true, { quantity: 9 }).box.stockChip()).toEqual({ kind: 'in', count: 9 });
+		expect(render(true, { quantity: 2 }).box.stockChip()).toEqual({ kind: 'low', count: 2 });
+		expect(render(true, { stock_status: 'out_of_stock' }).box.stockChip()).toEqual({ kind: 'out', count: 0 });
+		expect(render(true).box.stockChip()).toEqual({ kind: 'in', count: null });
+	});
+
+	it('says nothing where a count would mislead', () => {
+		expect(render(true, { made_to_order: true, quantity: 4 }).box.stockChip()).toBeNull();
+		expect(render(true, { bundle: { bundle_price: 1 }, quantity: 4 }).box.stockChip()).toBeNull();
+		expect(render(true, { sold_by: 'metre', metre_rule: { shortestCutTenths: 10 } }).box.stockChip()).toBeNull();
+		expect(render(true, { stock_status: 'on_backorder' }).box.stockChip()).toBeNull();
+	});
+
+	it('follows the chosen option once there is one, and draws the option table from the data', () => {
+		const { box } = render(true, withVariants);
+		expect(box.hasVariation()).toBe(true);
+		expect(box.stockChip()).toBeNull();
+		box.onSummary({ variation: variant(1) } as never);
+		expect(box.stockChip()).toEqual({ kind: 'low', count: 1 });
+		box.onSummary({ variation: variant(0, 'out_of_stock') } as never);
+		expect(box.stockChip()).toEqual({ kind: 'out', count: 0 });
+		expect(render(true, { attributes: [{ id: 1 }], variations: [] }).box.hasVariation()).toBe(false);
+	});
+});
+
+describe('BuyBox and the buy bar', () => {
+	it('chooses a value the bar asks for through the configurator', () => {
+		const { box } = render();
+		const chooseValue = vi.fn();
+		Object.defineProperty(box, 'configurator', { value: () => ({ chooseValue }) });
+		box.chooseValue({ id: 3 } as never);
+		expect(chooseValue).toHaveBeenCalledWith({ id: 3 });
+	});
+
+	it('shows the add-on’s chosen terms and opens the sheet, writing back only what is saved', async () => {
+		const groups = [
+			{
+				code: 'blouse',
+				label: 'Blouse',
+				default_term_code: 'none',
+				terms: [
+					{ code: 'none', label: 'None' },
+					{ code: 'boat', label: 'Boat Neck', requires_measurements: true },
+				],
+			},
+		];
+		const { box } = render(true, { addon_groups: groups });
+		const applyAddon = vi.fn();
+		const addonState = signal<{ selections: Record<string, string>; valid: boolean } | null>({
+			selections: { blouse: 'boat' },
+			valid: false,
+		});
+		Object.defineProperty(box, 'configurator', {
+			value: () => ({
+				addonState,
+				applyAddon,
+				effectiveBase: () => 1500,
+				addonSnapshot: () => ({ selections: { blouse: 'boat' }, measurements: {}, measured: false }),
+			}),
+		});
+		expect(box.addonView()).toEqual({
+			chips: [{ group: 'Blouse', term: 'Boat Neck' }],
+			needs: true,
+			measured: false,
+		});
+		const start = vi.fn();
+		const modals = TestBed.inject(NgbModal);
+		const open = vi.spyOn(modals, 'open');
+		open.mockReturnValueOnce({ componentInstance: { start }, result: Promise.reject('closed') } as never);
+		await box.openAddon('designs');
+		expect(start).toHaveBeenCalledWith(
+			expect.objectContaining({ mode: 'designs', basePrice: 1500, selections: { blouse: 'boat' } }),
+		);
+		expect(applyAddon).not.toHaveBeenCalled();
+		open.mockReturnValueOnce({
+			componentInstance: { start },
+			result: Promise.resolve({ selections: { blouse: 'none' }, measurements: {}, measured: false }),
+		} as never);
+		await box.openAddon('all');
+		expect(applyAddon).toHaveBeenCalledWith({ blouse: 'none' }, {}, false);
+		expect(render().box.addonView()).toBeNull();
+	});
+
+	it('shows a set in the bar and configures it in a sheet that keeps its choices (brief P4, P8)', async () => {
+		expect(render().box.setView()).toBeNull();
+		const bundle = { levels: [{ take: 1 }, { take: 1 }], bundle_price: 7300 };
+		const { box, cart } = render(true, { bundle });
+		const applySet = vi.fn();
+		const bundleState = signal<{ valid: boolean } | null>(null);
+		let snapshot: unknown = null;
+		let purchasable = false;
+		Object.defineProperty(box, 'configurator', {
+			value: () => ({
+				bundleState,
+				applySet,
+				effectiveBase: () => 7300,
+				purchasable: () => purchasable,
+				setSnapshot: () => snapshot,
+			}),
+		});
+		expect(box.setView()).toEqual({ pieces: 2, ready: false });
+		expect(box.setPieces()).toBeNull();
+		bundleState.set({ valid: true });
+		expect(box.setView()).toEqual({ pieces: 2, ready: true });
+		// A set with picks or an optional piece counts the pieces it holds now.
+		bundleState.set({ valid: true, pieces: ['a', 'b', 'c'] } as never);
+		expect(box.setView()).toEqual({ pieces: 3, ready: true });
+		bundleState.set({ valid: true });
+
+		const modals = TestBed.inject(NgbModal);
+		const open = vi.spyOn(modals, 'open');
+		await box.openSet();
+		expect(open).not.toHaveBeenCalled();
+
+		snapshot = { selections: { blouse: 'boat' }, measurements: {}, measured: false };
+		const save = vi.fn(() => true);
+		const start = vi.fn();
+		open.mockReturnValueOnce({ componentInstance: { start, save }, result: Promise.reject('closed') } as never);
+		await box.openSet();
+		expect(start).toHaveBeenCalledWith(expect.objectContaining({ mode: 'set', basePrice: 7300, buyable: false }));
+		const options = open.mock.calls[0][1] as { beforeDismiss: () => boolean };
+		// Outside taps and Escape keep the choices: the sheet saves instead of being dismissed.
+		expect(options.beforeDismiss()).toBe(false);
+		expect(save).toHaveBeenCalled();
+		save.mockReturnValueOnce(false);
+		expect(options.beforeDismiss()).toBe(true);
+		expect(applySet).not.toHaveBeenCalled();
+
+		box.onSummary({ ...(summary as object), purchasable: false, soldOut: false } as never);
+		open.mockReturnValueOnce({
+			componentInstance: { start, save },
+			result: Promise.resolve({ selections: { blouse: 'none' }, measurements: {}, measured: false, add: true }),
+		} as never);
+		await box.openSet();
+		expect(applySet).toHaveBeenCalledWith({ blouse: 'none' }, {}, false, {});
+		// A set that cannot be bought yet is never added, whatever the sheet says.
+		expect(cart.addToCart).not.toHaveBeenCalled();
+
+		purchasable = true;
+		box.onSummary({ ...(summary as object), purchasable: true, soldOut: false, variation: null } as never);
+		const addToCart = vi.spyOn(box, 'addToCart').mockImplementation(() => undefined);
+		open.mockReturnValueOnce({
+			componentInstance: { start, save },
+			result: Promise.resolve({ selections: {}, measurements: {}, measured: true, add: true }),
+		} as never);
+		await box.openSet();
+		expect(addToCart).toHaveBeenCalledOnce();
 	});
 });

@@ -1,0 +1,371 @@
+@if (entry(); as current) {
+<div class="container-fluid d-none d-md-block">
+	<div class="mb-4">
+		<div class="tracking-panel">
+			<ul>
+				@for (item of steps; track item.svg; let i = $index) {
+				<li [class.active]="i === 0">
+					<div class="panel-content">
+						<div class="icon">
+							<img
+								src="assets/svg/tracking/{{ item.svg }}.svg"
+								class="img-fluid"
+								alt=""
+							/>
+						</div>
+						<div class="status">{{ item.label | transloco }}</div>
+					</div>
+				</li>
+				}
+			</ul>
+		</div>
+	</div>
+</div>
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'check_goods'"
+>
+	<span
+		option
+		class="text-muted ms-2"
+	>
+		{{ current.supplierName }} · {{ 'bill' | transloco }} {{ current.billNumber }}
+	</span>
+	<p class="text-muted">{{ 'check_goods_intro' | transloco }}</p>
+
+	<!-- Phone (g01): a card per line, steppers, scan to jump. -->
+	<div class="d-md-none">
+		<p class="small text-muted mb-2">{{ words(totals().onBill) }}</p>
+		<button
+			type="button"
+			class="btn btn-theme mb-3 w-100"
+			(click)="scan()"
+		>
+			<i class="ri-barcode-line me-1"></i>
+			{{ 'scan_a_label' | transloco }}
+		</button>
+		@for (count of lines(); track count.line.lineId; let i = $index) {
+		<div
+			class="mb-2 rounded border p-2"
+			[id]="'count-' + count.line.lineId"
+			[class.border-warning]="count.damaged > 0 || count.missing > 0"
+			[class.border-success]="highlighted() === count.line.lineId"
+		>
+			<div class="d-flex align-items-center mb-2 gap-2">
+				@if (count.line.imageUrl) {
+				<img
+					[src]="count.line.imageUrl"
+					alt=""
+					width="40"
+					height="52"
+					class="rounded"
+					style="object-fit: cover"
+				/>
+				}
+				<div>
+					<h6 class="mb-0">{{ count.line.optionsLabel || count.line.title }}</h6>
+					<small class="text-muted">
+						{{ count.line.sku }} · {{ 'on_the_bill_short' | transloco: { qty: (count.line.quantity |
+						stockQty: count.line.soldBy) } }}
+					</small>
+				</div>
+			</div>
+			<div class="d-flex small gap-2">
+				<div class="flex-fill">
+					<label class="d-block text-muted">{{ 'count_good' | transloco }}</label>
+					<div class="input-group input-group-sm">
+						<button
+							type="button"
+							class="btn btn-outline"
+							[title]="'one_less' | transloco"
+							(click)="step(i, 'good', -1)"
+						>
+							−
+						</button>
+						<input
+							class="form-control text-center"
+							inputmode="numeric"
+							[attr.aria-label]="'count_good' | transloco"
+							[ngModel]="count.good"
+							(ngModelChange)="set(i, 'good', $event)"
+						/>
+						<button
+							type="button"
+							class="btn btn-outline"
+							[title]="'one_more' | transloco"
+							(click)="step(i, 'good', 1)"
+						>
+							+
+						</button>
+					</div>
+				</div>
+				<div class="flex-fill">
+					<label class="d-block text-muted">{{ 'count_damaged' | transloco }}</label>
+					<div class="input-group input-group-sm">
+						<button
+							type="button"
+							class="btn btn-outline"
+							[title]="'one_less' | transloco"
+							(click)="step(i, 'damaged', -1)"
+						>
+							−
+						</button>
+						<input
+							class="form-control text-center"
+							inputmode="numeric"
+							[attr.aria-label]="'count_damaged' | transloco"
+							[ngModel]="count.damaged"
+							(ngModelChange)="set(i, 'damaged', $event)"
+						/>
+						<button
+							type="button"
+							class="btn btn-outline"
+							[title]="'one_more' | transloco"
+							(click)="step(i, 'damaged', 1)"
+						>
+							+
+						</button>
+					</div>
+				</div>
+			</div>
+			@if (count.missing > 0) {
+			<p class="small text-warning mt-1 mb-0">
+				{{ 'count_missing_short' | transloco: { qty: (count.missing | stockQty: count.line.soldBy) } }}
+			</p>
+			} @if (count.damaged > 0) {
+			<select
+				class="form-select form-select-sm mt-2"
+				[attr.aria-label]="'what_is_wrong' | transloco"
+				[ngModel]="count.reason"
+				(ngModelChange)="setReason(i, $event)"
+			>
+				@for (reason of reasons; track reason) {
+				<option [value]="reason">{{ 'damage_reason_' + reason | transloco }}</option>
+				}
+			</select>
+			<input
+				class="form-control form-control-sm mt-1"
+				maxlength="500"
+				[placeholder]="'damage_note_placeholder' | transloco"
+				[ngModel]="count.note"
+				(ngModelChange)="setNote(i, $event)"
+			/>
+			<a
+				href="javascript:void(0)"
+				class="small text-decoration-underline d-inline-block mt-1"
+				(click)="addPhotos(i)"
+			>
+				<i class="ri-camera-line"></i>
+				{{ (count.photos.length ? 'photos_count' : 'add_photos') | transloco: { count: count.photos.length } }}
+			</a>
+			} @if (problems()[i] || lineErrors()[count.line.lineId]) {
+			<p class="small text-danger mt-1 mb-0">
+				{{ lineErrors()[count.line.lineId] ?? ((problems()[i] ?? '') | transloco) }}
+			</p>
+			}
+		</div>
+		}
+	</div>
+
+	<!-- Desktop (p08): the bill's lines with good, damaged or wrong, missing. -->
+	<div class="d-none d-md-block">
+		<div class="table-responsive datatable-wrapper border-table">
+			<table class="all-package theme-table no-footer table">
+				<thead>
+					<tr>
+						<th style="width: 300px">{{ 'item' | transloco }}</th>
+						<th class="text-end">{{ 'on_the_bill' | transloco }}</th>
+						<th
+							class="text-end"
+							style="width: 130px"
+						>
+							{{ 'good_into_stock' | transloco }}
+						</th>
+						<th
+							class="text-end"
+							style="width: 130px"
+						>
+							{{ 'damaged_or_wrong' | transloco }}
+						</th>
+						<th
+							class="text-end"
+							style="width: 110px"
+						>
+							{{ 'missing' | transloco }}
+						</th>
+						<th style="width: 260px">{{ 'what_is_wrong' | transloco }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					@for (count of lines(); track count.line.lineId; let i = $index) {
+					<tr [class.table-warning]="count.damaged > 0 || count.missing > 0">
+						<td>
+							<div class="d-flex align-items-center gap-2 text-start">
+								@if (count.line.imageUrl) {
+								<img
+									[src]="count.line.imageUrl"
+									alt=""
+									width="40"
+									height="52"
+									class="rounded"
+									style="object-fit: cover"
+								/>
+								}
+								<div>
+									<h6 class="mb-0">{{ count.line.title }}</h6>
+									<small class="text-muted">
+										{{ count.line.sku }}@if (count.line.optionsLabel) { · {{ count.line.optionsLabel
+										}} }
+									</small>
+									@if (problems()[i] || lineErrors()[count.line.lineId]) {
+									<div class="small text-danger mt-1">
+										{{ lineErrors()[count.line.lineId] ?? ((problems()[i] ?? '') | transloco) }}
+									</div>
+									}
+								</div>
+							</div>
+						</td>
+						<td class="text-end text-nowrap">{{ count.line.quantity | stockQty: count.line.soldBy }}</td>
+						@for (field of ['good', 'damaged', 'missing']; track field) {
+						<td class="text-end">
+							<input
+								class="form-control form-control-sm d-inline-block text-end"
+								inputmode="numeric"
+								style="width: 80px"
+								[attr.aria-label]="('count_' + field) | transloco"
+								[ngModel]="$any(count)[field]"
+								(ngModelChange)="set(i, $any(field), $event)"
+							/>
+						</td>
+						}
+						<td>
+							@if (count.damaged > 0) {
+							<select
+								class="form-select form-select-sm"
+								[attr.aria-label]="'what_is_wrong' | transloco"
+								[ngModel]="count.reason"
+								(ngModelChange)="setReason(i, $event)"
+							>
+								@for (reason of reasons; track reason) {
+								<option [value]="reason">{{ 'damage_reason_' + reason | transloco }}</option>
+								}
+							</select>
+							<input
+								class="form-control form-control-sm mt-1"
+								maxlength="500"
+								[placeholder]="'damage_note_placeholder' | transloco"
+								[ngModel]="count.note"
+								(ngModelChange)="setNote(i, $event)"
+							/>
+							<a
+								href="javascript:void(0)"
+								class="small text-decoration-underline"
+								(click)="addPhotos(i)"
+							>
+								<i class="ri-camera-line"></i>
+								{{ (count.photos.length ? 'photos_count' : 'add_photos') | transloco: { count:
+								count.photos.length } }}
+							</a>
+							} @else if (count.missing > 0) { {{ 'pr_reason_short_supplied' | transloco }} } @else {
+							<span class="text-muted">—</span>
+							}
+						</td>
+					</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+	<div class="row mt-3">
+		<div class="col-xl-7">
+			<div
+				class="alert alert-info d-flex align-items-start gap-2"
+				role="alert"
+			>
+				<i class="ri-information-line mt-1"></i>
+				<div>
+					<strong>{{ 'on_posting' | transloco }}</strong>
+					{{ 'on_posting_into_stock' | transloco: { what: words(totals().intoStock) } }} @if
+					(totals().anyBack) { {{ 'on_posting_return_draft' | transloco: { what: words(totals().back) } }} }
+					@if (totals().anyMissing) { {{ 'on_posting_debit_note' | transloco: { what: words(totals().missing)
+					} }} } @if (totals().anyBack || totals().anyMissing) { {{ 'on_posting_bill_counts_in_full' |
+					transloco }} }
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-5">
+			<div class="tracking-total tracking-wrapper">
+				<ul>
+					<li>
+						{{ 'on_the_bill' | transloco }}
+						<span>{{ words(totals().onBill) }}</span>
+					</li>
+					<li>
+						{{ 'into_stock' | transloco }}
+						<span>{{ words(totals().intoStock) }}</span>
+					</li>
+					<li>
+						{{ 'back_to_supplier' | transloco }}
+						<span>{{ words(totals().back) }}</span>
+					</li>
+					<li>
+						{{ 'missing' | transloco }}
+						<span>{{ words(totals().missing) }}</span>
+					</li>
+					<li>
+						{{ 'bill_total' | transloco }}
+						<span>{{ current.totals.totalINR | rupees }}</span>
+					</li>
+				</ul>
+			</div>
+		</div>
+	</div>
+	@if (lineErrors()['_']; as problem) {
+	<div
+		class="alert alert-warning"
+		role="alert"
+	>
+		{{ problem }}
+	</div>
+	}
+	<div class="d-flex justify-content-end mt-3 flex-wrap gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="back()"
+		>
+			{{ 'back_to_lines' | transloco }}
+		</button>
+		@if (canPost()) {
+		<button
+			type="button"
+			class="btn btn-outline"
+			[disabled]="busy()"
+			(click)="saveOnly()"
+		>
+			{{ 'save_the_count' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="pe_post"
+			[disabled]="busy() || totals().nothingIn"
+			(click)="post()"
+		>
+			{{ 'post_what_to_stock' | transloco: { what: words(totals().intoStock) } }}
+		</button>
+		} @else {
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="pe_save_count"
+			[disabled]="busy()"
+			(click)="saveOnly()"
+		>
+			{{ 'done_counting' | transloco }}
+		</button>
+		}
+	</div>
+</app-page-wrapper>
+}

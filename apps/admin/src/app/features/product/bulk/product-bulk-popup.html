@@ -1,0 +1,112 @@
+@if (ask(); as asking) {
+<div class="modal-header">
+	<h2 id="product_bulk_title">{{ word('bulk_title_') | plural: rows().length }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	<div class="d-flex mb-3 flex-wrap gap-2">
+		@for (group of pills(); track group.key) {
+		<div [class]="group.pill">
+			<span>{{ group.key | transloco: { count: group.count } }}</span>
+		</div>
+		}
+	</div>
+	<p>{{ word('bulk_body_') | transloco }}</p>
+	@if (refused().length) {
+	<ul
+		class="list-unstyled small mb-3"
+		id="product_bulk_refused"
+	>
+		@for (row of refused(); track $index) {
+		<li class="text-warning">
+			<strong>{{ row.title }}</strong>
+			: {{ row.why }}
+		</li>
+		}
+	</ul>
+	} @if (asking.action === 'discontinue') {
+	<p class="fw-semibold mb-2">{{ 'bulk_old_links' | transloco }}</p>
+	<div class="form-check mb-2">
+		<input
+			class="form-check-input"
+			type="radio"
+			name="bulk_links"
+			id="bulk_links_gone"
+			[checked]="linkChoice() === 'gone'"
+			(change)="linkChoice.set('gone')"
+		/>
+		<label
+			class="form-check-label"
+			for="bulk_links_gone"
+		>
+			<strong>{{ 'bulk_links_gone' | transloco }}</strong>
+			<span class="d-block help-text">{{ 'bulk_links_gone_help' | transloco }}</span>
+		</label>
+	</div>
+	<div class="form-check mb-2">
+		<input
+			class="form-check-input"
+			type="radio"
+			name="bulk_links"
+			id="bulk_links_page"
+			[checked]="linkChoice() === 'page'"
+			(change)="linkChoice.set('page')"
+		/>
+		<label
+			class="form-check-label"
+			for="bulk_links_page"
+		>
+			<strong>{{ 'bulk_links_page' | transloco }}</strong>
+			<span class="d-block help-text">{{ 'bulk_links_page_help' | transloco }}</span>
+		</label>
+	</div>
+	@if (linkChoice() === 'page') {
+	<select2
+		class="custom-select"
+		id="bulk_replacement"
+		[data]="asking.targets ?? []"
+		[value]="replacement() ?? ''"
+		[placeholder]="'replacement' | transloco"
+		noResultMessage="{{ 'no_data_found' | transloco }}"
+		(update)="pickReplacement($event)"
+	/>
+	} } @if (failed()) {
+	<div
+		class="alert alert-warning d-flex align-items-start mt-3 mb-0 gap-2"
+		role="alert"
+	>
+		<i class="ri-error-warning-line mt-1"></i>
+		<div>{{ 'bulk_failed' | transloco }}</div>
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			id="product_bulk_confirm"
+			[class]="'btn ' + (asking.action === 'discontinue' || asking.action === 'delete' ? 'btn-danger' : 'btn-theme')"
+			[disabled]="!canConfirm()"
+			(click)="confirm()"
+		>
+			@if (asking.action === 'duplicate') { {{ 'bulk_confirm_duplicate' | plural: doneCount() }} } @else { {{
+			word('bulk_confirm_') | transloco: { count: doneCount() } }} }
+		</button>
+	</div>
+</div>
+}

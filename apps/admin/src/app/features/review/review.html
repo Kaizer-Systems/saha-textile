@@ -17,6 +17,7 @@
 	<div class="modal-header">
 		<h2>{{ 'review_photos' | transloco }}</h2>
 		<app-button
+			[title]="'close' | transloco"
 			[class]="'btn btn-close'"
 			[spinner]="false"
 			[id]="'review_photos_close'"
@@ -31,6 +32,7 @@
 			@for (photo of openPhotos(); track photo.assetId) {
 			<div class="col-sm-6">
 				<a
+					[title]="'open_photo' | transloco"
 					[href]="photo.fullUrl"
 					target="_blank"
 					rel="noopener"

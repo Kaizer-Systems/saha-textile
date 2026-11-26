@@ -1,4 +1,6 @@
 import { randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -6,6 +8,7 @@ import { loadConfig } from '../src/config/app-config';
 import { exitOnDeploymentConfigError } from '../src/config/boot-failure';
 import {
 	DeploymentConfigError,
+	MAY_DEPLOY_BLANK,
 	deploymentHardeningProblems,
 	isStrictDeployment,
 } from '../src/config/deployment-hardening';
@@ -41,6 +44,8 @@ const deployment = (overrides: Record<string, string | undefined> = {}): NodeJS.
 		SPACES_SECRET: 'spaces-secret-for-tests',
 		SPACES_BUCKET: 'saha-textile-media',
 		SPACES_CDN_URL: 'https://cdn.sahatextile.com',
+		MEILISEARCH_HOST: 'http://meilisearch:7700',
+		MEILISEARCH_API_KEY: 'a'.repeat(8) + secret(),
 		...overrides,
 	};
 	for (const key of Object.keys(env)) if (env[key] === undefined) delete env[key];
@@ -65,6 +70,8 @@ describe('deployment hardening', () => {
 			['production', undefined, true], // forgotten DEPLOY_ENV fails closed
 			['production', 'production', true],
 			['production', 'staging', true],
+			['production', 'development', true], // a development server (owner, 2026-11-21)
+			['development', 'development', true],
 			['production', 'local', false], // the mode-3 Docker stack
 			['development', undefined, false],
 			['test', undefined, false],
@@ -77,11 +84,14 @@ describe('deployment hardening', () => {
 			expect(problemsFor({ NODE_ENV: 'production' } as NodeJS.ProcessEnv).length).toBeGreaterThan(5);
 		});
 
-		it.each(['staging', 'production'])('refuses DEPLOY_ENV=%s on a development build', (deployEnv) => {
-			expect(problemsFor(deployment({ NODE_ENV: 'development', DEPLOY_ENV: deployEnv }))).toEqual([
-				`DEPLOY_ENV=${deployEnv} requires NODE_ENV=production.`,
-			]);
-		});
+		it.each(['development', 'staging', 'production'])(
+			'refuses DEPLOY_ENV=%s on a development build',
+			(deployEnv) => {
+				expect(problemsFor(deployment({ NODE_ENV: 'development', DEPLOY_ENV: deployEnv }))).toEqual([
+					`DEPLOY_ENV=${deployEnv} requires NODE_ENV=production.`,
+				]);
+			},
+		);
 
 		it('rejects an unknown DEPLOY_ENV rather than guessing', () => {
 			expect(() => loadConfig(deployment({ DEPLOY_ENV: 'prod' }))).toThrow();
@@ -89,7 +99,7 @@ describe('deployment hardening', () => {
 	});
 
 	describe('a complete deployment', () => {
-		it.each(['production', 'staging'])('boots as %s with no problems', (deployEnv) => {
+		it.each(['production', 'staging', 'development'])('boots as %s with no problems', (deployEnv) => {
 			expect(problemsFor(deployment({ DEPLOY_ENV: deployEnv }))).toEqual([]);
 		});
 
@@ -262,6 +272,89 @@ describe('deployment hardening', () => {
 		});
 	});
 
+	describe('the Release Console reads (OPS_TOKEN, MSG91_RECEIPT_TOKEN): optional, strong when set', () => {
+		it('starts with neither set, and with real values', () => {
+			expect(problemsFor(deployment())).toEqual([]);
+			expect(
+				problemsFor(deployment({ OPS_TOKEN: secret(), MSG91_RECEIPT_TOKEN: randomBytes(24).toString('hex') })),
+			).toEqual([]);
+			expect(loadConfig(deployment({ OPS_TOKEN: secret() })).ops.token).toHaveLength(96);
+			expect(loadConfig(deployment()).ops).toEqual({});
+		});
+
+		it('refuses a weak or placeholder key', () => {
+			expect(problemsFor(deployment({ OPS_TOKEN: 'short' }))).toEqual([
+				'OPS_TOKEN must be at least 64 characters; generate one with `openssl rand -hex 48`.',
+			]);
+			expect(problemsFor(deployment({ MSG91_RECEIPT_TOKEN: randomBytes(8).toString('hex') }))).toEqual([
+				'MSG91_RECEIPT_TOKEN must be at least 48 letters or digits; generate one with `openssl rand -hex 24`.',
+			]);
+			expect(problemsFor(deployment({ MSG91_RECEIPT_TOKEN: `change-me-${secret()}` }))).toEqual([
+				'MSG91_RECEIPT_TOKEN looks like a placeholder; generate one with `openssl rand -hex 24`.',
+			]);
+			expect(problemsFor(deployment({ MSG91_RECEIPT_TOKEN: 'ab'.repeat(30) }))).toEqual([
+				'MSG91_RECEIPT_TOKEN is too repetitive to be random; generate one with `openssl rand -hex 24`.',
+			]);
+			expect(problemsFor(deployment({ MSG91_RECEIPT_TOKEN: `${secret()}/x?y` }))).toEqual([
+				'MSG91_RECEIPT_TOKEN must be at least 48 letters or digits; generate one with `openssl rand -hex 24`.',
+			]);
+		});
+	});
+
+	describe('provider keys deployed blank on purpose (RELEASE_ALLOWED_BLANK, owner 2026-11-21)', () => {
+		const noSpaces = { SPACES_KEY: undefined, SPACES_SECRET: undefined, SPACES_BUCKET: undefined };
+
+		it('starts without the MSG91 key or the media keys when the release named them', () => {
+			expect(
+				problemsFor(deployment({ MSG91_AUTH_KEY: undefined, RELEASE_ALLOWED_BLANK: 'MSG91_AUTH_KEY' })),
+			).toEqual([]);
+			expect(
+				problemsFor(
+					deployment({
+						...noSpaces,
+						MSG91_AUTH_KEY: undefined,
+						RELEASE_ALLOWED_BLANK: 'MSG91_AUTH_KEY,SPACES_BUCKET,SPACES_KEY,SPACES_SECRET',
+					}),
+				),
+			).toEqual([]);
+		});
+
+		it('skips only the named check: the media store needs all three of its names', () => {
+			expect(problemsFor(deployment({ ...noSpaces, RELEASE_ALLOWED_BLANK: 'SPACES_KEY' }))).toEqual([
+				'Media storage must be configured: set SPACES_KEY, SPACES_SECRET and SPACES_BUCKET.',
+			]);
+			expect(problemsFor(deployment({ MSG91_AUTH_KEY: undefined, RELEASE_ALLOWED_BLANK: 'SPACES_KEY' }))).toEqual(
+				['MSG91_AUTH_KEY must be set when NOTIFICATION_PROVIDER=msg91.'],
+			);
+		});
+
+		it('never lets the list excuse a start-up secret, the provider choice or a data store', () => {
+			expect(
+				problemsFor(deployment({ JWT_ACCESS_SECRET: undefined, RELEASE_ALLOWED_BLANK: 'JWT_ACCESS_SECRET' })),
+			).toEqual([
+				'RELEASE_ALLOWED_BLANK may name only MSG91_AUTH_KEY, SPACES_KEY, SPACES_SECRET, SPACES_BUCKET.',
+				'JWT_ACCESS_SECRET must be set; a deployment never falls back to a built-in development value.',
+			]);
+			const leaked = problemsFor(deployment({ RELEASE_ALLOWED_BLANK: 'REDIS_PASSWORD=zzleak' }));
+			expect(leaked).toEqual([
+				'RELEASE_ALLOWED_BLANK may name only MSG91_AUTH_KEY, SPACES_KEY, SPACES_SECRET, SPACES_BUCKET.',
+			]);
+			expect(leaked.join('')).not.toContain('zzleak');
+			expect(
+				problemsFor(deployment({ NOTIFICATION_PROVIDER: 'console', RELEASE_ALLOWED_BLANK: 'MSG91_AUTH_KEY' })),
+			).toEqual(['NOTIFICATION_PROVIDER must be msg91: the console provider only logs codes and links.']);
+		});
+
+		it('names exactly the keys tagged may-deploy-blank in docker/production/required-secrets.txt', () => {
+			const tagged = readFileSync(resolve(__dirname, '../../../docker/production/required-secrets.txt'), 'utf8')
+				.split('\n')
+				.map((line) => line.trim().split(/\s+/))
+				.filter(([name, ...tags]) => name && !name.startsWith('#') && tags.includes('may-deploy-blank'))
+				.map(([name]) => name);
+			expect([...tagged].sort()).toEqual([...MAY_DEPLOY_BLANK].sort());
+		});
+	});
+
 	describe('social sign-in', () => {
 		it.each([
 			[{ FACEBOOK_OAUTH_APP_ID: '123456789' }],
@@ -329,6 +422,23 @@ describe('deployment hardening', () => {
 			expect(
 				problemsFor(deployment({ SPACES_KEY: undefined, SPACES_SECRET: undefined, SPACES_BUCKET: undefined })),
 			).toEqual(['Media storage must be configured: set SPACES_KEY, SPACES_SECRET and SPACES_BUCKET.']);
+		});
+
+		it('search needs a host and a real key', () => {
+			expect(problemsFor(deployment({ MEILISEARCH_HOST: undefined }))).toEqual([
+				'MEILISEARCH_HOST must be set: without it search and typeahead stop working.',
+			]);
+			expect(problemsFor(deployment({ MEILISEARCH_API_KEY: undefined }))).toEqual([
+				'MEILISEARCH_API_KEY must be set: a production search server refuses unsigned requests.',
+			]);
+			for (const key of ['local-saha-textile-meili', 'replace-this-search-key']) {
+				expect(problemsFor(deployment({ MEILISEARCH_API_KEY: key }))).toEqual([
+					'MEILISEARCH_API_KEY looks like a local or placeholder value.',
+				]);
+			}
+			expect(problemsFor(deployment({ MEILISEARCH_API_KEY: 'short' }))).toEqual([
+				'MEILISEARCH_API_KEY must be at least 16 characters.',
+			]);
 		});
 
 		it('requires the CDN URL, and over https', () => {
@@ -409,5 +519,15 @@ describe('deployment hardening', () => {
 			expect(() => exitOnDeploymentConfigError(crash)).toThrow(crash);
 			expect(exit).not.toHaveBeenCalled();
 		});
+	});
+	it('holds a kept previous key to the same rules, and never lets it equal a current one', () => {
+		expect(problemsFor(deployment({ CSRF_SECRET_PREVIOUS: secret() }))).toEqual([]);
+		expect(problemsFor(deployment({ JWT_ACCESS_SECRET_PREVIOUS: 'change-me' })).join(' ')).toContain(
+			'JWT_ACCESS_SECRET_PREVIOUS',
+		);
+		const env = deployment();
+		expect(problemsFor({ ...env, CSRF_SECRET_PREVIOUS: env.CSRF_SECRET }).join(' ')).toContain(
+			'CSRF_SECRET and CSRF_SECRET_PREVIOUS must be different secrets.',
+		);
 	});
 });

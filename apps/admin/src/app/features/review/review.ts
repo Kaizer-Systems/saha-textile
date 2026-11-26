@@ -20,6 +20,7 @@ interface ReviewTableRow {
 	product_review_image: { original_url: string } | null;
 	consumer_name: string;
 	product_name: string;
+	review: string;
 	rating: number;
 	status: string;
 	photo_count: number;
@@ -62,15 +63,16 @@ export class Review {
 			},
 			{ title: 'consumer_name', dataField: 'consumer_name' },
 			{ title: 'product_name', dataField: 'product_name' },
+			{ title: 'review', dataField: 'review' },
 			{ title: 'rating', dataField: 'rating', type: 'rating' },
 			{ title: 'status', dataField: 'status' },
 			{ title: 'photos', dataField: 'photo_count' },
 			{ title: 'created_at', dataField: 'created_at', type: 'date' },
 		],
 		rowActions: [
-			{ label: 'Photos', actionToPerform: 'photos', icon: 'ri-image-line', permission: 'review.index' },
-			{ label: 'Approve', actionToPerform: 'approve', icon: 'ri-check-line', permission: 'review.edit' },
-			{ label: 'Reject', actionToPerform: 'reject', icon: 'ri-close-circle-line', permission: 'review.edit' },
+			{ label: 'photos', actionToPerform: 'photos', icon: 'ri-image-line', permission: 'review.index' },
+			{ label: 'approve', actionToPerform: 'approve', icon: 'ri-check-line', permission: 'review.edit' },
+			{ label: 'reject', actionToPerform: 'reject', icon: 'ri-close-circle-line', permission: 'review.edit' },
 		],
 		data: [] as ReviewTableRow[],
 		total: 0,
@@ -86,6 +88,7 @@ export class Review {
 				product_review_image: row.photos[0]?.thumbUrl ? { original_url: row.photos[0].thumbUrl } : null,
 				consumer_name: row.customerName ?? row.review.userId,
 				product_name: row.productName ?? row.review.productId,
+				review: [row.review.title, row.review.body].filter(Boolean).join(' — '),
 				rating: row.review.rating,
 				status: row.review.status,
 				photo_count: row.photos.length,

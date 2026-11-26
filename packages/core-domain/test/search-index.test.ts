@@ -12,6 +12,8 @@ describe('rebuildSearchIndex', () => {
 		const written: string[][] = [];
 		const search: SearchPort = {
 			indexProduct: async () => undefined,
+			indexProducts: async () => undefined,
+			updateSynonyms: async () => undefined,
 			replaceIndex: async (entries) => {
 				written.push(entries.map((entry) => entry.product.id));
 			},
@@ -30,7 +32,13 @@ describe('rebuildSearchIndex', () => {
 
 describe('valueSearchWords', () => {
 	const definitions = [
-		{ code: 'color', terms: [{ code: 'red', aliases: ['lal', 'rouge'] }, { code: 'blue', aliases: ['neel'] }] },
+		{
+			code: 'color',
+			terms: [
+				{ code: 'red', aliases: ['lal', 'rouge'] },
+				{ code: 'blue', aliases: ['neel'] },
+			],
+		},
 	] as never;
 
 	it('finds the words staff wrote for the values a product carries', () => {

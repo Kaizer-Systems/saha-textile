@@ -252,3 +252,117 @@ export const AdminReviewListResponse = z.object({
 	pageSize: z.number().int().positive(),
 });
 export type AdminReviewListResponse = z.infer<typeof AdminReviewListResponse>;
+
+/** `PATCH /storefront/reviews/:id` — the author edits their own review; it returns to moderation. */
+export const ReviewUpdateRequest = z.object({
+	rating: z.number().int().min(1).max(5),
+	title: z.string().max(200).nullable().default(null),
+	body: z.string().trim().min(1).max(5000),
+	imageAssetIds: z.array(Id).max(5).default([]),
+});
+export type ReviewUpdateRequest = z.infer<typeof ReviewUpdateRequest>;
+
+/** A review photo as the shop shows it. */
+export const ReviewPhoto = z.object({
+	assetId: Id,
+	thumbUrl: z.string().nullable(),
+	fullUrl: z.string().nullable(),
+	alt: z.string(),
+});
+export type ReviewPhoto = z.infer<typeof ReviewPhoto>;
+
+/**
+ * An approved review as the public sees it. The author is a first name and an initial
+ * ("Riya S."); no email, id or full surname leaves the API.
+ */
+export const PublicReview = z.object({
+	id: Id,
+	rating: z.number().int().min(1).max(5),
+	title: z.string().nullable(),
+	body: z.string(),
+	authorName: z.string(),
+	createdAt: IsoDateTime.nullable(),
+	photos: z.array(ReviewPhoto),
+});
+export type PublicReview = z.infer<typeof PublicReview>;
+
+export const ProductReviewSummary = z.object({
+	average: z.number().min(0).max(5),
+	count: z.number().int().nonnegative(),
+	buckets: z.object({
+		1: z.number().int().nonnegative(),
+		2: z.number().int().nonnegative(),
+		3: z.number().int().nonnegative(),
+		4: z.number().int().nonnegative(),
+		5: z.number().int().nonnegative(),
+	}),
+});
+export type ProductReviewSummary = z.infer<typeof ProductReviewSummary>;
+
+/** `GET /catalog/reviews?productSlug=` query. */
+export const ProductReviewsQuery = z.object({
+	productSlug: z.string().trim().min(1).max(200),
+	page: z.coerce.number().int().positive().max(500).default(1),
+	pageSize: z.coerce.number().int().positive().max(50).default(10),
+});
+export type ProductReviewsQuery = z.infer<typeof ProductReviewsQuery>;
+
+/** Approved reviews for one product, newest first, with the summary behind its stars. */
+export const ProductReviewsResponse = z.object({
+	summary: ProductReviewSummary,
+	items: z.array(PublicReview),
+	total: z.number().int().nonnegative(),
+	page: z.number().int().positive(),
+	pageSize: z.number().int().positive(),
+});
+export type ProductReviewsResponse = z.infer<typeof ProductReviewsResponse>;
+
+/**
+ * `GET /storefront/reviews/mine?productId=` — what the signed-in customer may do on one
+ * product page: write a review for a delivered order, wait for delivery, or edit their review.
+ */
+export const MyProductReview = z.discriminatedUnion('state', [
+	z.object({ state: z.literal('can_review'), orderId: Id }),
+	z.object({ state: z.literal('needs_delivery') }),
+	z.object({
+		state: z.literal('reviewed'),
+		review: z.object({
+			id: Id,
+			rating: z.number().int().min(1).max(5),
+			title: z.string().nullable(),
+			body: z.string(),
+			status: ReviewStatus,
+			createdAt: IsoDateTime.nullable(),
+			photos: z.array(ReviewPhoto),
+		}),
+	}),
+]);
+export type MyProductReview = z.infer<typeof MyProductReview>;
+
+export const MyProductReviewQuery = z.object({ productId: Id });
+export type MyProductReviewQuery = z.infer<typeof MyProductReviewQuery>;
+
+/** `GET /admin/catalog/questions` query: the status tab, words to find, and the page. */
+export const AdminQuestionListQuery = z.object({
+	status: QuestionStatus.optional(),
+	search: z.string().trim().max(200).optional(),
+	page: z.coerce.number().int().positive().default(1),
+	pageSize: z.coerce.number().int().positive().max(100).default(30),
+});
+export type AdminQuestionListQuery = z.infer<typeof AdminQuestionListQuery>;
+
+/** A question for the moderator, with the product it is about. The asker's email is admin-only. */
+export const AdminQuestionRow = z.object({
+	question: ProductQuestion,
+	productName: z.string().nullable(),
+	productSlug: z.string().nullable(),
+});
+export type AdminQuestionRow = z.infer<typeof AdminQuestionRow>;
+
+export const AdminQuestionListResponse = z.object({
+	items: z.array(AdminQuestionRow),
+	total: z.number().int().nonnegative(),
+	page: z.number().int().positive(),
+	pageSize: z.number().int().positive(),
+});
+export type AdminQuestionListResponse = z.infer<typeof AdminQuestionListResponse>;

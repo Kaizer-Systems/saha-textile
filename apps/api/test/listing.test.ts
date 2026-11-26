@@ -7,7 +7,7 @@ import { CatalogLocaleInterceptor, catalogLocale, localized, withCatalogLocale }
 import { ResilientListing } from '../src/catalog/resilient-listing';
 import { idOrder, listingDocument } from '../src/search/listing-document';
 import { MeilisearchListing } from '../src/search/meilisearch-listing';
-import { MeilisearchSearch } from '../src/search/meilisearch-search';
+import { MeilisearchSearch, noProductsLoaded } from '../src/search/meilisearch-search';
 
 const filters = (over: Partial<ListingFilters> = {}): ListingFilters => ({
 	priceRanges: [],
@@ -32,7 +32,7 @@ describe('catalog locale', () => {
 	};
 
 	it('reads ?locale= and refuses anything that is not a language', async () => {
-		await expect(run('fr')).resolves.toBe('fr');
+		await expect(run('bn')).resolves.toBe('bn');
 		await expect(run('../etc')).resolves.toBe('en');
 		await expect(run(undefined)).resolves.toBe('en');
 		const noQuery = { switchToHttp: () => ({ getRequest: () => ({}) }) };
@@ -44,9 +44,9 @@ describe('catalog locale', () => {
 	});
 
 	it('falls back to English, then to nothing', () => {
-		expect(withCatalogLocale('fr', () => localized({ en: 'Red', fr: 'Rouge' }))).toBe('Rouge');
-		expect(withCatalogLocale('fr', () => localized({ en: 'Red' }))).toBe('Red');
-		expect(withCatalogLocale('fr', () => localized({ en: 'Red', fr: '' }))).toBe('Red');
+		expect(withCatalogLocale('bn', () => localized({ en: 'Red', bn: 'লাল' }))).toBe('লাল');
+		expect(withCatalogLocale('bn', () => localized({ en: 'Red' }))).toBe('Red');
+		expect(withCatalogLocale('bn', () => localized({ en: 'Red', bn: '' }))).toBe('Red');
 		expect(localized({})).toBe('');
 	});
 });
@@ -98,18 +98,18 @@ const product = (over: Record<string, unknown> = {}) =>
 		id: 'prd_12',
 		type: 'simple',
 		sku: 'S',
-		title: { en: 'Silk Saree', fr: 'Saree en Soie' },
+		title: { en: 'Silk Saree', bn: 'সিল্কের শাড়ি' },
 		slug: 'silk-saree',
 		categoryIds: ['cat_1'],
 		basePriceINR: 1000,
 		optionGroups: [
 			{
 				attributeCode: 'fabric',
-				label: { en: 'Fabric', fr: 'Tissu' },
+				label: { en: 'Fabric', bn: 'কাপড়' },
 				semanticRole: 'filter_only',
 				displayStyle: 'rectangle',
 				requiredSelection: false,
-				terms: [{ code: 'silk', label: { en: 'Silk', fr: 'Soie' } }],
+				terms: [{ code: 'silk', label: { en: 'Silk', bn: 'সিল্ক' } }],
 			},
 			{
 				attributeCode: 'color',
@@ -134,32 +134,32 @@ const product = (over: Record<string, unknown> = {}) =>
 
 describe('listingDocument', () => {
 	it('carries what filters and sorting need, in every language', () => {
-		const doc = listingDocument({ product: product(), variants: [] }, ['en', 'fr']);
+		const doc = listingDocument({ product: product(), variants: [] }, ['en', 'bn']);
 		expect(doc).toMatchObject({
 			id: 'prd_12',
 			idOrder: 'prd_000000000012',
 			createdOrder: '',
 			terms: ['fabric:silk', 'color:red'],
 			filterCodes: ['fabric'],
-			titleOrder: { en: 'silk saree', fr: 'saree en soie' },
+			titleOrder: { en: 'silk saree', bn: 'সিল্কের শাড়ি' },
 		});
-		expect(doc.facts).toContain('Soie');
+		expect(doc.facts).toContain('সিল্ক');
 		const named = listingDocument({ product: product(), variants: [], categoryNames: ['Budget Range'] }, ['en']);
 		expect(named.facts).toContain('Budget Range');
 		expect(JSON.parse(doc.facetValues[0] as string)).toMatchObject({
 			code: 'fabric',
 			term: 'silk',
-			group: { fr: 'Tissu' },
-			label: { fr: 'Soie' },
+			group: { bn: 'কাপড়' },
+			label: { bn: 'সিল্ক' },
 		});
 	});
 
 	it('sorts an untranslated title by its English', () => {
 		const doc = listingDocument(
 			{ product: product({ title: { en: 'Plain' }, createdAt: '2026-01-01T00:00:00.000Z' }), variants: [] },
-			['en', 'fr'],
+			['en', 'bn'],
 		);
-		expect(doc.titleOrder).toEqual({ en: 'plain', fr: 'plain' });
+		expect(doc.titleOrder).toEqual({ en: 'plain', bn: 'plain' });
 		expect(doc.createdOrder).toBe('2026-01-01T00:00:00.000Z');
 		expect(idOrder('abc')).toBe('abc');
 	});
@@ -167,7 +167,7 @@ describe('listingDocument', () => {
 
 const facet = (code: string, term: string, label: Record<string, string>, group: Record<string, string>) =>
 	JSON.stringify({ code, term, label, group });
-const silk = facet('fabric', 'silk', { en: 'Silk', fr: 'Soie' }, { en: 'Fabric', fr: 'Tissu' });
+const silk = facet('fabric', 'silk', { en: 'Silk', bn: 'সিল্ক' }, { en: 'Fabric', bn: 'কাপড়' });
 const cotton = facet('fabric', 'cotton', { en: 'Cotton' }, { en: 'Fabric' });
 const red = facet('color', 'red', { en: 'Red' }, { en: 'Color' });
 const addon = facet('hidden', 'x', { en: 'X' }, { en: 'Hidden' });
@@ -213,9 +213,9 @@ describe('MeilisearchListing', () => {
 			main,
 			{ facetDistribution: { facetValues: { [silk]: 1, [cotton]: 1, [blank]: 1 }, filterCodes: { fabric: 1 } } },
 		]);
-		const [fabric] = (await listing.page(query({ locale: 'fr' }))).facets;
-		expect(fabric?.label).toBe('Tissu');
-		expect(fabric?.terms.map((term) => term.label)).toEqual(['', 'Cotton', 'Soie']);
+		const [fabric] = (await listing.page(query({ locale: 'bn' }))).facets;
+		expect(fabric?.label).toBe('কাপড়');
+		expect(fabric?.terms.map((term) => term.label)).toEqual(['', 'Cotton', 'সিল্ক']);
 	});
 
 	it('builds every filter and gives a ticked facet its own count', async () => {
@@ -255,12 +255,12 @@ describe('MeilisearchListing', () => {
 		['asc', ['idOrder:asc']],
 		['desc', ['idOrder:desc']],
 		['high-low', ['minINR:desc', 'idOrder:asc']],
-		['a-z', ['titleOrder.fr:asc', 'idOrder:asc']],
-		['z-a', ['titleOrder.fr:desc', 'idOrder:desc']],
+		['a-z', ['titleOrder.bn:asc', 'idOrder:asc']],
+		['z-a', ['titleOrder.bn:desc', 'idOrder:desc']],
 		['discount-high-low', ['percentOff:desc', 'idOrder:asc']],
 	] as const)('sorts by %s', async (sort, expected) => {
 		const { listing, multiSearch } = build([{}, {}]);
-		const page = await listing.page(query({ sort, locale: 'fr' }));
+		const page = await listing.page(query({ sort, locale: 'bn' }));
 		expect(sent(multiSearch)[0]?.sort).toEqual(expected);
 		expect(page).toEqual({ productIds: [], total: 0, facets: [] });
 	});
@@ -288,7 +288,7 @@ describe('MeilisearchSearch as the listing client', () => {
 	const fetcher = vi.fn();
 	const reply = (status: number, body?: unknown) =>
 		({ ok: status < 400, status, json: async () => body }) as unknown as Response;
-	const search = () => new MeilisearchSearch('http://meili.test', 'k', async () => [], 'products', ['en', 'fr']);
+	const search = () => new MeilisearchSearch('http://meili.test', 'k', async () => [], 'products', ['en', 'bn']);
 	const entry = { product: product(), variants: [] as ProductVariant[] };
 
 	beforeEach(() => {
@@ -308,46 +308,205 @@ describe('MeilisearchSearch as the listing client', () => {
 		await expect(search().multiSearch([])).resolves.toEqual([]);
 	});
 
-	it('replaces the index in batches and waits for the last task', async () => {
+	/** Answers like Meilisearch: every write is a task that has already succeeded. */
+	const engine = (overrides: (url: string, method: string) => Response | undefined = () => undefined) => {
 		let uid = 0;
-		fetcher.mockImplementation(async (url: string) => {
-			if (url.includes('/tasks/')) return reply(200, { status: uid > 0 ? 'succeeded' : 'enqueued' });
+		fetcher.mockImplementation(async (url: string, init: RequestInit) => {
+			const method = init.method ?? 'GET';
+			const special = overrides(url, method);
+			if (special) return special;
+			if (url.includes('/tasks/')) return reply(200, { status: 'succeeded' });
+			if (method === 'GET') return reply(200, { results: [] });
 			uid += 1;
 			return reply(202, { taskUid: uid });
 		});
+	};
+
+	it("replaces this version's index in batches, then records the build", async () => {
+		engine();
 		await search().replaceIndex(Array.from({ length: 501 }, () => entry));
 		const posts = fetcher.mock.calls.filter((call) => call[1].method === 'POST');
-		expect(posts).toHaveLength(2);
-		expect(fetcher.mock.calls.at(-1)?.[0]).toBe(`http://meili.test/tasks/${uid}`);
-		expect(fetcher.mock.calls.some((call) => call[1].method === 'DELETE')).toBe(true);
+		expect(posts.map((call) => call[0])).toEqual([
+			'http://meili.test/indexes/products_v1_next/documents',
+			'http://meili.test/indexes/products_v1_next/documents',
+			'http://meili.test/swap-indexes',
+			'http://meili.test/indexes/products_builds/documents?primaryKey=id',
+		]);
+		expect(JSON.parse(posts[2]?.[1].body as string)).toEqual([{ indexes: ['products_v1', 'products_v1_next'] }]);
+		expect(JSON.parse(posts[3]?.[1].body as string)).toMatchObject([
+			{ id: 'v1', status: 'complete', documents: 501 },
+		]);
+		const touchedLive = fetcher.mock.calls.filter((call) =>
+			String(call[0]).includes('/indexes/products_v1/documents'),
+		);
+		expect(touchedLive).toEqual([]);
+	});
+
+	it('keeps the previous version and removes older ones and half-built copies', async () => {
+		engine((url, method) =>
+			url.endsWith('/indexes?limit=1000') && method === 'GET'
+				? reply(200, {
+						results: [
+							{ uid: 'products_v1' },
+							{ uid: 'products_v0' },
+							{ uid: 'products_v-1' },
+							{ uid: 'products_v0_next' },
+							{ uid: 'products_builds' },
+							{ uid: 'other_v0' },
+							{},
+						],
+					})
+				: undefined,
+		);
+		await search().replaceIndex([]);
+		const deleted = fetcher.mock.calls.filter((call) => call[1].method === 'DELETE').map((call) => call[0]);
+		expect(deleted).toContain('http://meili.test/indexes/products_v0_next');
+		expect(deleted).not.toContain('http://meili.test/indexes/products_v0');
+		expect(deleted).not.toContain('http://meili.test/indexes/other_v0');
+	});
+
+	it('knows whether this version is built', async () => {
+		engine((url) => (url.endsWith('/documents/v1') ? reply(200, { status: 'complete' }) : undefined));
+		await expect(search().buildState()).resolves.toBe('ready');
+		engine((url) => (url.endsWith('/documents/v1') ? reply(200, { status: 'started' }) : undefined));
+		await expect(search().buildState()).resolves.toBe('missing');
+		engine((url) => (url.endsWith('/indexes/products_v1') ? reply(404) : undefined));
+		await expect(search().buildState()).resolves.toBe('missing');
+		engine(() => reply(503));
+		await expect(search().buildState()).rejects.toBeInstanceOf(SearchUnavailableError);
+	});
+
+	it('loads no products for a writer-only client', async () => {
+		await expect(noProductsLoaded()).resolves.toEqual([]);
+	});
+
+	it('reads and updates its build record', async () => {
+		engine((url) =>
+			url.endsWith('/documents/v1')
+				? reply(200, { startedAt: '2026-11-10T00:00:00Z', caughtUpAt: null })
+				: undefined,
+		);
+		await expect(search().buildRecord()).resolves.toEqual({ startedAt: '2026-11-10T00:00:00Z', caughtUpAt: null });
+		engine((url) => (url.endsWith('/documents/v1') ? reply(200, { status: 'complete' }) : undefined));
+		await expect(search().buildRecord()).resolves.toBeNull();
+		engine((url) => (url.endsWith('/documents/v1') ? reply(404) : undefined));
+		await expect(search().buildRecord()).resolves.toBeNull();
+		engine(() => reply(503));
+		await expect(search().buildRecord()).rejects.toBeInstanceOf(SearchUnavailableError);
+		engine();
+		await search().recordCatchUp(new Date('2026-11-10T01:00:00Z'));
+		const put = fetcher.mock.calls.find((call) => call[1].method === 'PUT');
+		expect(put?.[0]).toBe('http://meili.test/indexes/products_builds/documents?primaryKey=id');
+		expect(JSON.parse(put?.[1].body as string)).toEqual([{ id: 'v1', caughtUpAt: '2026-11-10T01:00:00.000Z' }]);
+	});
+
+	it('lists every document id, page by page', async () => {
+		const full = Array.from({ length: 1000 }, (_, i) => ({ id: `p${i}` }));
+		engine((url) => {
+			if (!url.includes('/documents?fields=id')) return undefined;
+			return url.includes('offset=0')
+				? reply(200, { results: [...full.slice(0, 999), {}] })
+				: reply(200, { results: [{ id: 'last' }] });
+		});
+		const ids = await search().indexedIds();
+		expect(ids).toHaveLength(1000);
+		expect(ids.at(-1)).toBe('last');
+		engine((url) => (url.includes('/documents?fields=id') ? reply(200, {}) : undefined));
+		await expect(search().indexedIds()).resolves.toEqual([]);
+	});
+
+	it('applies changes: writes live products, removes the rest, and waits', async () => {
+		engine();
+		await search().applyChanges(
+			Array.from({ length: 501 }, () => entry),
+			['gone'],
+		);
+		const posts = fetcher.mock.calls.filter((call) => call[1].method === 'POST').map((call) => call[0]);
+		expect(posts).toEqual([
+			'http://meili.test/indexes/products_v1/documents',
+			'http://meili.test/indexes/products_v1/documents',
+			'http://meili.test/indexes/products_v1/documents/delete-batch',
+		]);
+		fetcher.mockClear();
+		engine();
+		await search().applyChanges([], []);
+		const writes = fetcher.mock.calls.filter((call) => String(call[0]).includes('/documents'));
+		expect(writes).toEqual([]);
+	});
+
+	it('applies settings alone for a release that keeps the version', async () => {
+		engine();
+		await search().applyCurrentSettings();
+		expect(fetcher.mock.calls.map((call) => call[0])[0]).toBe('http://meili.test/indexes/products_v1/settings');
+	});
+
+	it('reports the state of the index for the readiness probe', async () => {
+		fetcher.mockResolvedValueOnce(reply(200, { uid: 'products_v1' }));
+		await expect(search().indexStatus()).resolves.toEqual({ up: true, detail: 'index ready' });
+		fetcher.mockResolvedValueOnce(reply(404));
+		await expect(search().indexStatus()).resolves.toEqual({ up: false, detail: 'unavailable or index missing' });
+		const unset = new MeilisearchSearch(undefined, undefined, async () => [], 'products', ['en']);
+		await expect(unset.indexStatus()).resolves.toEqual({ up: false, detail: 'not configured' });
 	});
 
 	it('polls a task still running', async () => {
 		let polls = 0;
-		fetcher.mockImplementation(async (url: string) => {
-			if (!url.includes('/tasks/')) return reply(202, { taskUid: 1 });
-			polls += 1;
-			return reply(200, { status: polls > 1 ? 'succeeded' : 'processing' });
+		fetcher.mockImplementation(async (url: string, init: RequestInit) => {
+			if (url.includes('/tasks/')) {
+				polls += 1;
+				if (polls === 1) return reply(200, {});
+				return reply(200, { status: polls > 2 ? 'succeeded' : 'processing', indexUid: 'products_v1_next' });
+			}
+			if ((init.method ?? 'GET') === 'GET')
+				return reply(200, { results: [{ uid: polls, progress: { percentage: polls } }] });
+			return reply(202, { taskUid: 1 });
 		});
 		await search().replaceIndex([]);
-		expect(polls).toBeGreaterThan(1);
+		expect(polls).toBeGreaterThan(2);
+		expect(fetcher.mock.calls.some((call) => String(call[0]).includes('indexUids=products_v1_next'))).toBe(true);
 	});
 
-	it('fails when a task fails or never finishes', async () => {
+	it("fails at once on a failed task, with the engine's reason", async () => {
 		fetcher.mockImplementation(async (url: string) =>
-			reply(200, url.includes('/tasks/') ? { status: 'failed' } : { taskUid: 1 }),
+			reply(
+				200,
+				url.includes('/tasks/') ? { status: 'failed', error: { message: 'disk full' } } : { taskUid: 1 },
+			),
 		);
-		await expect(search().replaceIndex([])).rejects.toBeInstanceOf(SearchUnavailableError);
+		await expect(search().replaceIndex([])).rejects.toThrow('task failed: disk full');
 		fetcher.mockImplementation(async (url: string) =>
-			reply(200, url.includes('/tasks/') ? { status: 'canceled' } : { taskUid: 1 }),
+			reply(200, url.includes('/tasks/') ? { status: 'canceled', error: null } : { taskUid: 1 }),
 		);
-		await expect(search().replaceIndex([])).rejects.toThrow('did not finish');
-		const start = Date.now();
-		vi.spyOn(Date, 'now')
-			.mockReturnValueOnce(start)
-			.mockReturnValue(start + 120_000);
-		fetcher.mockImplementation(async () => reply(200, { taskUid: 1 }));
-		await expect(search().replaceIndex([])).rejects.toThrow('did not finish');
+		await expect(search().replaceIndex([])).rejects.toThrow('(task canceled)');
+	});
+
+	it('keeps waiting while the engine moves, and stops when it stalls', async () => {
+		let now = 1_000_000;
+		vi.spyOn(Date, 'now').mockImplementation(() => now);
+		vi.spyOn(globalThis, 'setTimeout').mockImplementation(((done: () => void) => {
+			now += 30_000;
+			done();
+			return 0;
+		}) as never);
+		let moves = 0;
+		fetcher.mockImplementation(async (url: string, init: RequestInit) => {
+			if (url.includes('/tasks/'))
+				return reply(200, { status: moves > 5 ? 'succeeded' : 'processing', indexUid: null });
+			if (url.includes('/batches')) {
+				moves += 1;
+				return reply(200, { results: [{ progress: { percentage: moves * 10 } }] });
+			}
+			if ((init.method ?? 'GET') === 'GET') return reply(200, {});
+			return reply(202, { taskUid: 1 });
+		});
+		// Thirty seconds between polls, but always moving: well past a minute, and still fine.
+		await expect(search().applyCurrentSettings()).resolves.toBeUndefined();
+		fetcher.mockImplementation(async (url: string, init: RequestInit) => {
+			if (url.includes('/tasks/')) return reply(200, { status: 'processing' });
+			if ((init.method ?? 'GET') === 'GET') return reply(200, { results: [{ uid: 7, progress: null }] });
+			return reply(202, { taskUid: 1 });
+		});
+		await expect(search().applyCurrentSettings()).rejects.toThrow('no progress for 60 seconds');
 		vi.restoreAllMocks();
 	});
 });

@@ -3,6 +3,8 @@ import { Component, Input, PLATFORM_ID, inject } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
 
+import { ShopEvents } from '@core/events/shop-events';
+
 interface IRemainingTime {
 	days: number;
 	hours: number;
@@ -23,15 +25,18 @@ export class SaleTimer {
 	remainingTime: IRemainingTime | null = null;
 
 	private platformId = inject(PLATFORM_ID);
+	/** The server's clock, so a wrong phone clock can't change the time left. */
+	private clock = inject(ShopEvents);
 	private intervalId?: ReturnType<typeof setInterval>;
 
 	ngOnChanges() {
 		const startDate = this.startDate;
 		const endDate = this.endDate;
-		if (startDate && endDate) {
-			const startDateTime = new Date(startDate).getTime();
+		// A sale event sends only its end: no start means it is already running.
+		if (endDate) {
+			const startDateTime = startDate ? new Date(startDate).getTime() : 0;
 			const endDateTime = new Date(endDate).getTime();
-			const now = new Date().getTime();
+			const now = this.clock.serverTime();
 			this.remainingTime = null;
 
 			if (now > startDateTime && endDateTime > now) {
@@ -50,11 +55,10 @@ export class SaleTimer {
 	private updateTimer() {
 		const startDate = this.startDate;
 		const endDate = this.endDate;
-		if (startDate && endDate) {
-			// Input dates and times (Change these to your desired input dates and times)
-			const startDateTime = new Date(startDate).getTime();
+		if (endDate) {
+			const startDateTime = startDate ? new Date(startDate).getTime() : 0;
 			const endDateTime = new Date(endDate).getTime();
-			const now = new Date().getTime();
+			const now = this.clock.serverTime();
 
 			let targetDate = endDateTime; // Assume the target date is the end date
 
@@ -77,8 +81,7 @@ export class SaleTimer {
 	}
 
 	private calculateTimeDifference(targetDate: number) {
-		const now = new Date().getTime();
-		const timeDiff = targetDate - now;
+		const timeDiff = targetDate - this.clock.serverTime();
 
 		this.remainingTime = {
 			days: Math.floor(timeDiff / (1000 * 60 * 60 * 24)),

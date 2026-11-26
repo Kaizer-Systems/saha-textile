@@ -1,4 +1,7 @@
-import type { FastifyRequest } from 'fastify';
+import { trace } from '@opentelemetry/api';
+import { AsyncLocalStorage } from 'node:async_hooks';
+
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 
 import type { AppConfig } from '../config/app-config';
 
@@ -35,4 +38,30 @@ export function resolveClientIp(request: FastifyRequest, config: AppConfig): str
 		if (typeof value === 'string' && value.trim()) return value.trim().split(',')[0]!.trim();
 	}
 	return request.ip;
+}
+
+/** The request being handled, so every log line written for it can name it. */
+const requestContext = new AsyncLocalStorage<{ requestId: string }>();
+
+/** The id of the request whose work is running now, if any. */
+export function currentRequestId(): string | undefined {
+	return requestContext.getStore()?.requestId;
+}
+
+/** Runs `work` as part of a request, for jobs and tests that are not HTTP requests. */
+export function runWithRequestId<T>(requestId: string, work: () => T): T {
+	return requestContext.run({ requestId }, work);
+}
+
+/**
+ * Carries the request id through everything a request does. `run` wraps the rest of the
+ * Fastify pipeline (guards, handler, services), so a service's log line can name its request
+ * without the id being passed down by hand.
+ */
+export function attachRequestContext(instance: Pick<FastifyInstance, 'addHook'>): void {
+	instance.addHook('onRequest', (request, _reply, done) => {
+		// The same id on the request's trace (when tracing is on), so a waterfall leads to its log lines.
+		trace.getActiveSpan()?.setAttribute('saha_textile.request_id', request.id);
+		requestContext.run({ requestId: request.id }, done);
+	});
 }

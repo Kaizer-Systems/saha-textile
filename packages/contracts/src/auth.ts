@@ -168,6 +168,18 @@ export const CsrfTokenResponse = z.object({
 export type CsrfTokenResponse = z.infer<typeof CsrfTokenResponse>;
 
 /**
+ * Whether this browser's session stopped working because everyone was signed out after a key leak:
+ * the day it happened (`yyyy-mm-dd`), shown on the sign-in page for 30 days, or null.
+ */
+export const SessionNoticeResponse = z.object({
+	signedOutAt: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.nullable(),
+});
+export type SessionNoticeResponse = z.infer<typeof SessionNoticeResponse>;
+
+/**
  * Redeems an email-verification token.
  *
  * Previously an anonymous `z.object({ token })` inline in the route decorator — the only

@@ -1,0 +1,28 @@
+[
+	{
+		"code": "GB",
+		"name": "United Kingdom",
+		"callingCode": "44",
+		"subdivisionLabel": "county",
+		"postalCodeLabel": "postcode",
+		"postalCodeRequired": true,
+		"postalCodePattern": "[A-Z]{1,2}\\d[A-Z\\d]? ?\\d[A-Z]{2}",
+		"mobileLengths": [
+			10
+		],
+		"hasSubdivisions": true
+	},
+	{
+		"code": "IN",
+		"name": "India",
+		"callingCode": "91",
+		"subdivisionLabel": "state",
+		"postalCodeLabel": "pin",
+		"postalCodeRequired": true,
+		"postalCodePattern": "\\d{6}",
+		"mobileLengths": [
+			10
+		],
+		"hasSubdivisions": true
+	}
+]

@@ -1,0 +1,113 @@
+@if (tiles(); as tile) {
+<section class="dashboard-tiles">
+	<div class="container-fluid">
+		<div class="row g-3 mb-3">
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'bought_this_month' | transloco }}</h6>
+						<h3>{{ tile.boughtThisMonthINR | rupees }}</h3>
+						<p class="small text-muted mb-0">
+							{{ 'posted_entries_count' | plural: tile.postedThisMonth }} · {{ 'qty_pieces' | plural:
+							tile.piecesThisMonth }}
+						</p>
+					</div>
+					<div class="icon-box">
+						<i class="ri-shopping-bag-3-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'we_owe_suppliers' | transloco }}</h6>
+						<h3>{{ tile.owedINR | rupees }}</h3>
+						<p class="small text-muted mb-0">{{ 'bills_count' | plural: tile.owedBills }}</p>
+					</div>
+					<div class="icon-box">
+						<i class="ri-wallet-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'due_in_7_days' | transloco }}</h6>
+						<h3>{{ tile.dueIn7DaysINR | rupees }}</h3>
+						<p class="small text-muted mb-0">
+							@if (tile.dueIn7DaysNext; as next) { {{ next.supplierName }} · {{ next.dueOn | shortDate }}
+							} @else { {{ 'nothing_due_soon' | transloco }} }
+						</p>
+					</div>
+					<div class="icon-box">
+						<i class="ri-calendar-event-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'drafts' | transloco }}</h6>
+						<h3>{{ tile.drafts }}</h3>
+						<p class="small text-muted mb-0">{{ 'drafts_not_in_stock' | transloco }}</p>
+					</div>
+					<div class="icon-box">
+						<i class="ri-draft-line"></i>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+}
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'purchase_entries'"
+>
+	<div
+		button
+		class="d-flex gap-2"
+		*hasPermission="'purchase.create'"
+	>
+		<a
+			[routerLink]="['/purchase-entries/create']"
+			[queryParams]="{ import: 1 }"
+			class="align-items-center btn btn-outline d-flex"
+		>
+			<i class="ri-file-upload-line"></i>
+			{{ 'import_lines' | transloco }}
+		</a>
+		<a
+			[routerLink]="['/purchase-entries/create']"
+			class="align-items-center btn btn-theme d-flex"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'new_purchase_entry' | transloco }}
+		</a>
+	</div>
+	<app-table
+		[tableConfig]="tableConfig()"
+		[searchPlaceholder]="'pe_search_placeholder'"
+		(tableChanged)="onTableChange($event)"
+		(rowClicked)="open($event)"
+		(action)="onAction($event)"
+	>
+		<div
+			tableFilters
+			class="d-flex flex-wrap gap-2"
+		>
+			@for (item of filters; track item.key) {
+			<button
+				type="button"
+				class="align-items-center btn btn-sm d-flex"
+				[class.btn-theme]="filter() === item.key"
+				[class.btn-outline]="filter() !== item.key"
+				[attr.aria-pressed]="filter() === item.key"
+				(click)="setFilter(item.key)"
+			>
+				{{ item.label | transloco }} @if (item.key !== 'all' && counts()[item.key]) { {{ counts()[item.key] }} }
+			</button>
+			}
+		</div>
+	</app-table>
+</app-page-wrapper>

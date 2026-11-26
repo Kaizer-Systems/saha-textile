@@ -79,7 +79,8 @@
 					white-space: nowrap;
 				}
 				&.active {
-					background: linear-gradient(-45deg, #0da487, #009289);
+					// Two deep shades of the theme colour, so the white label reaches AA at both ends (R6-3).
+					background: linear-gradient(-45deg, var(--theme-strong), var(--theme-strong-hover));
 					border-radius: 6px;
 					font-weight: 500;
 					color: $white;
@@ -194,7 +195,7 @@
 				white-space: nowrap;
 				&.active {
 					background: transparent;
-					color: var(--theme-color);
+					color: var(--theme-ink);
 					border-radius: 0;
 					font-weight: 600;
 					border: none;

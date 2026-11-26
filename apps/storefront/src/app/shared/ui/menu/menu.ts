@@ -1,4 +1,4 @@
-import { DatePipe, NgClass, NgTemplateOutlet, isPlatformBrowser } from '@angular/common';
+import { NgClass, NgTemplateOutlet, isPlatformBrowser } from '@angular/common';
 import { Component, HostListener, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
@@ -11,25 +11,45 @@ import { ICategory } from '@data-access/interfaces/category.interface';
 import { IMenu } from '@data-access/interfaces/menu.interface';
 import { injectBlogsQuery } from '@data-access/queries/blog.queries';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
+import { injectHomeRailsQuery } from '@data-access/queries/product.queries';
 import * as data from '@shared/data/menu';
+import { ShopDatePipe } from '@shared/pipes/shop-date.pipe';
 
 @Component({
 	selector: 'app-menu',
 	templateUrl: './menu.html',
 	styleUrls: ['./menu.scss'],
-	imports: [NgTemplateOutlet, NgClass, RouterLink, DatePipe, TranslocoModule],
+	imports: [NgTemplateOutlet, NgClass, RouterLink, ShopDatePipe, TranslocoModule],
 })
 export class Menu {
-	private readonly blogsQuery = injectBlogsQuery(() => ({ status: 1, paginate: 10 }));
+	private readonly blogsQuery = injectBlogsQuery(() => ({ paginate: 2 }));
 	blog$: Observable<IBlogModel | undefined> = toObservable(computed(() => this.blogsQuery.data()));
 	// Real taxonomy for the header nav. Reference data (staleTime Infinity), shared cache with the rest of the app.
 	private readonly categoriesQuery = injectCategoriesQuery();
+
+	private readonly railsQuery = injectHomeRailsQuery();
+
+	// Real products for the demo menu's product links. The demo slugs left with the old catalogue.
+	private readonly productSlugs = computed(() => {
+		const rails = this.railsQuery.data();
+		if (!rails) return [];
+		const cards = [...rails.newArrivals, ...rails.bestsellers, ...rails.featured, ...rails.sale];
+		return [...new Set(cards.map((card) => card.slug))];
+	});
+
+	/** Where the mega menu's picture leads. */
+	readonly featuredProductPath = computed(() => {
+		const [slug] = this.productSlugs();
+		return slug ? `/product/${slug}` : '/collections';
+	});
 
 	// The static demo menu with the real Sarees / Dress Materials trees spliced in once the taxonomy
 	// resolves. A signal, so the server renders those links rather than only the demo menu.
 	readonly menu = computed<IMenu[]>(() => {
 		const categories = this.categoriesQuery.data()?.data ?? [];
-		return categories.length ? this.buildMenu(categories, this.isMobileView()) : data.menu;
+		const items = categories.length ? this.buildMenu(categories, this.isMobileView()) : data.menu;
+		const newestPost = this.blogsQuery.data()?.data[0]?.slug;
+		return this.withNewestPost(this.withRealProducts(items, this.productSlugs()), newestPost);
 	});
 	public blogs: IBlog[];
 
@@ -56,6 +76,28 @@ export class Menu {
 				this.blogs = blog.data.slice(0, 2);
 			}
 		});
+	}
+
+	/** A copy of the menu whose "Blog details" link opens the newest live post, or the blog list. */
+	private withNewestPost(items: IMenu[], slug: string | undefined): IMenu[] {
+		const walk = (nodes: IMenu[]): IMenu[] =>
+			nodes.map((node) => {
+				const path = node.path === 'blog/' ? (slug ? `blog/${slug}` : 'blogs') : node.path;
+				return { ...node, path, ...(node.children ? { children: walk(node.children) } : {}) };
+			});
+		return walk(items);
+	}
+
+	/** A copy of the menu whose `product/…` links each open a real product, in turn. */
+	private withRealProducts(items: IMenu[], slugs: string[]): IMenu[] {
+		if (slugs.length === 0) return items;
+		let next = 0;
+		const walk = (nodes: IMenu[]): IMenu[] =>
+			nodes.map((node) => {
+				const path = node.path?.startsWith('product/') ? `product/${slugs[next++ % slugs.length]}` : node.path;
+				return { ...node, path, ...(node.children ? { children: walk(node.children) } : {}) };
+			});
+		return walk(items);
 	}
 
 	/**

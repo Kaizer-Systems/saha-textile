@@ -4,7 +4,7 @@ wide: true
 description: How atomic writes work, and how the database catalogue is generated.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-10'
 source_of_truth:
     - packages/adapters-db-mongo/src
     - packages/adapters-db-mongo/scripts/generate-catalogue.ts
@@ -69,6 +69,8 @@ These workflows use transactions:
 | Admin invite                | Invite, audit record                               |
 | Product save                | Product, variants, redirect for a changed address  |
 | Product discontinuation     | Product, redirect                                  |
+| Review moderation           | Review decision, product rating aggregate          |
+| Review edit by its author   | Review, rating aggregate when it was approved      |
 
 ### Planned workflows
 

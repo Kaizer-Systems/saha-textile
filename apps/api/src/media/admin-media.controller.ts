@@ -44,7 +44,10 @@ export class AdminMediaController {
 
 	@Put('roles/:key')
 	@RequirePermissions('setting.edit')
-	@ApiOperation({ operationId: 'updateMediaRole', summary: 'Edit a role; changed widths mark old derivatives stale' })
+	@ApiOperation({
+		operationId: 'updateMediaRole',
+		summary: 'Edit a role; new widths apply to files made afterwards',
+	})
 	updateRole(
 		@Principal() principal: AuthenticatedPrincipal,
 		@Param('key') key: string,

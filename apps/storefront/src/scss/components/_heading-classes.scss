@@ -1,0 +1,28 @@
+// Heading classes (Bootstrap's `.h3`–`.h6`): the look of a heading level on an element of another level, or on text
+// that is not a heading, so a page's outline can follow its content while every look stays exactly as it was
+// (accessibility decision D4, 17 Nov 2026). Built the way Bootstrap's own Sass builds them: `@extend` gives the class
+// every theme rule written for that tag, in every context (`.home-detail h6` also styles `.home-detail .h6`), including
+// the Bengali rules. Imported at the top level of app.scss and of dark.scss, so the dark copy and the shop's own
+// `html.dark` rules get the same classes. Bootstrap's compiled CSS styles `.h1`–`.h6` with its own sizes only, which
+// is why the theme's look has to be extended here. h1 and h2 are not needed by any page yet.
+.h3 {
+	@extend h3;
+}
+
+.h4 {
+	@extend h4;
+}
+
+.h5 {
+	@extend h5;
+}
+
+.h6 {
+	@extend h6;
+}
+
+// The theme capitalises every h1 and h2 (`text-transform: capitalize`); h3–h6 never were. An h1 or h2 that takes a
+// smaller level's look drops it, so a name such as "Sarees for weddings" reads as typed, as it did before.
+:is(h1, h2):is(.h3, .h4, .h5, .h6) {
+	text-transform: none;
+}

@@ -12,7 +12,6 @@ import 'dotenv/config';
 import {
 	MongoContentBlockRepository,
 	MongoMediaAssetRepository,
-	MongoMediaRoleRepository,
 	MongoSiteSettingsRepository,
 	connectMongo,
 	disconnectMongo,
@@ -24,7 +23,8 @@ import sharp from 'sharp';
 
 import { loadConfig } from '../src/config/app-config';
 import { ContentBlocksService } from '../src/media/content-blocks.service';
-import { MediaService } from '../src/media/media.service';
+import { composeMongoMediaService } from '../src/media/compose-media-service';
+import { LanguageStore } from '../src/languages/language-store';
 
 const config = loadConfig();
 const { key, secret, bucket, region, endpoint, cdnUrl } = config.spaces;
@@ -35,8 +35,13 @@ const settings = new MongoSiteSettingsRepository();
 const storage = new SpacesStorageAdapter({ key, secret, bucket, region, endpoint, cdnUrl });
 const queue = new BullMqMediaJobQueue(config.redis);
 const audit = { append: async <T>(entry: T) => entry };
-const media = new MediaService(assets, new MongoMediaRoleRepository(), storage, queue, audit as never, config);
-const content = new ContentBlocksService(blocks, assets, settings, storage, config);
+const media = composeMongoMediaService({
+	storage,
+	queue,
+	audit: audit as never,
+	languages: LanguageStore.fixed(config.locales),
+});
+const content = new ContentBlocksService(blocks, assets, settings, storage, LanguageStore.fixed(config.locales));
 const admin = { type: 'admin' as const, id: 'adm_e2e' };
 
 const art = async (width: number, height: number, label: string, rgb: [number, number, number]) => {
@@ -87,19 +92,19 @@ async function main(): Promise<void> {
 			images: { desktop, tablet: null, phone },
 			containsText: false,
 			localeImages: {},
-			heading: { en: 'The festive edit', fr: "L'édition festive" },
-			subheading: { en: 'New arrivals', fr: 'Nouveautés' },
-			ctaLabel: { en: 'Shop now', fr: 'Acheter' },
+			heading: { en: 'The festive edit', bn: 'উৎসবের কালেকশন' },
+			subheading: { en: 'New arrivals', bn: 'নতুন এসেছে' },
+			ctaLabel: { en: 'Shop now', bn: 'Acheter' },
 			link: { href: '/collections', external: false },
-			alt: { en: 'Festive saree collection', fr: 'Collection de saris de fête' },
+			alt: { en: 'Festive saree collection', bn: 'উৎসবের শাড়ির কালেকশন' },
 			status: 'active',
 			startsAt: null,
 			endsAt: null,
 		});
-		const read = await content.storefront({ ownerType: 'home', locale: 'fr' });
+		const read = await content.storefront({ ownerType: 'home', locale: 'bn' });
 		const hero = read.banners.find((banner) => banner.key === 'home:-:hero:main');
 		console.log(
-			hero ? 'PASS  hero banner resolved for fr' : 'FAIL  hero banner missing',
+			hero ? 'PASS  hero banner resolved for bn' : 'FAIL  hero banner missing',
 			hero
 				? `(${hero.heading}; desktop ${hero.images.desktop.roles.banner?.map((s) => s.width).join('/')}; phone ${hero.images.phone?.roles.banner?.map((s) => s.width).join('/')})`
 				: '',

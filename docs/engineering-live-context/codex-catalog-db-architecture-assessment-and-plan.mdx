@@ -64,7 +64,7 @@ Atlas-specific capabilities such as Atlas Search, Atlas Data Federation, and Atl
 
 ## 4. Live Site Facts That Must Drive the Model
 
-- Current public catalog: 23 products; 20 simple and 3 variable.
+- WordPress test site at discovery: 23 products; 20 simple and 3 variable. The owner confirmed on 2026-11-07 that these were test entries and that the real catalogue will be large.
 - Current public category tree: 26 public category URLs, but WordPress exposes 77 product-category terms, including empty/future/admin terms.
 - Top-level public categories are `Saree`, `Dress Materials`, and `Uncategorized`.
 - `Saree` is three levels deep in places:
@@ -612,10 +612,8 @@ Purpose: purchasable SKU rows, prices, stock, variant media, and option selectio
   priceINR: number;
   compareAtPriceINR?: number;
   salePriceINR?: number;
-  saleWindow?: {
-    startsAt?: Date;
-    endsAt?: Date;
-  };
+  // No per-SKU sale window: timed sales are launch and sale events (owner log, 2026-11-09),
+  // laid over shop reads while they run. The field was removed on 2026-11-10.
   stock: {
     tracked: boolean;
     quantity: number;
@@ -2108,7 +2106,7 @@ SEO is not a frontend-only concern. It must be modeled in DB, validated in admin
 - Route records are locale-aware. The prefix/canonical convention is locked
   (owner log § Locale URLs, 2026-10-31): every route carries its locale as the
   first segment, slugs are shared across locales at launch, and hreflang lists
-  every active locale plus `x-default` → `/`.
+  every active locale plus `x-default` → the same page in English (amended 2026-11-08).
 - Product and category routes must be generated from one centralized route
   policy rather than hard-coded locale pairs.
 - Category paths come from canonical `categoryPlacements.pathSlugs`.
@@ -2913,9 +2911,9 @@ Top-level page option:
 
 ## 21. Translation and Content Completion Rules
 
-English is the primary locale. The active target locale pair is English and
-French. Bengali is a likely future locale and remains useful search-dictionary
-test coverage, but it is not a locked current launch pair.
+English is the primary locale. The active locale pair is English and Bengali
+(Bengali replaced French on 2026-11-08; see the owner decision round "Bengali
+replaces French").
 
 Use two translation machines:
 

@@ -1,0 +1,280 @@
+import { Order, OrderSettings, type OrderPayment, type PaymentRequest } from '@saha-textile/contracts';
+import { describe, expect, it } from 'vitest';
+
+import { isIndianMobile, PaymentRequestsService, hashPayToken } from '../src/admin-orders/payment-requests.service';
+
+const order = Order.parse({
+	id: 'ord_1',
+	orderNumber: 'ST-2611-482190',
+	currency: 'INR',
+	lines: [
+		{
+			lineId: 'l1',
+			productId: 'p1',
+			title: { en: 'Kanjivaram saree' },
+			sku: 'SAR-1',
+			quantity: 1,
+			unitPriceINR: 30_000,
+			unitPricePaid: 30_000,
+			lineTotalINR: 30_000,
+			lineTotalPaid: 30_000,
+		},
+	],
+	subtotalINR: 30_000,
+	subtotalPaid: 30_000,
+	totalINR: 30_000,
+	totalPaid: 30_000,
+	status: 'awaiting_payment',
+	buyer: { kind: 'person', customerId: 'cus_1', name: 'Ananya Das', email: 'ananya@example.test' },
+	addresses: {
+		billing: {
+			fullName: 'Ananya Das',
+			line1: '12 Lake Road',
+			city: 'Kolkata',
+			postalCode: '700029',
+			country: 'IN',
+			countryCode: 'IN',
+			mobile: { countryCallingCode: '91', number: '9830012345' },
+		},
+		delivery: {
+			fullName: 'Ananya Das',
+			line1: '12 Lake Road',
+			city: 'Kolkata',
+			postalCode: '700029',
+			country: 'IN',
+			countryCode: 'IN',
+		},
+	},
+	balance: {
+		goodsINR: 30_000,
+		couponINR: 0,
+		shippingINR: 0,
+		totalINR: 30_000,
+		paidINR: 0,
+		dueINR: 30_000,
+		paidAheadINR: 0,
+	},
+});
+
+function harness(gatewayPayments: Array<{ gatewayReference: string; amountMinor: number }> = []) {
+	const requests: PaymentRequest[] = [];
+	const payments: OrderPayment[] = [];
+	const cancelled: string[] = [];
+	const settled: string[] = [];
+	const sent: Array<{ channel: string; destination: string; templateKey: string }> = [];
+	const ccavenue = {
+		gateway: 'ccavenue',
+		createPaymentRequest: async (input: { reference: string; amountMinor: number }) => ({
+			gatewayRequestId: `qi_${input.reference}`,
+			url: `https://payit.cc/${requests.length + 1}`,
+			auditRecord: {},
+		}),
+		fetchPaymentRequestStatus: async (id: string) => ({
+			gatewayRequestId: id,
+			state: gatewayPayments.length ? 'paid' : 'open',
+			payments: gatewayPayments.map((row) => ({
+				...row,
+				currency: 'INR',
+				at: '2026-11-20T07:00:00.000Z',
+				method: 'upi',
+			})),
+			auditRecord: {},
+		}),
+		cancelPaymentRequest: async (id: string) => void cancelled.push(id),
+	};
+	const tells: string[] = [];
+	const svc = new PaymentRequestsService(
+		{
+			get: async () => order,
+			tell: async () => void tells.push('tell'),
+			told: () => [],
+			settle: async (_o: Order, _r: number, _a: unknown, _at: string, _c: unknown, entry: { kind: string }) => {
+				settled.push(entry.kind);
+				return order;
+			},
+		} as never,
+		{
+			childNumber: async (_k: string, number: string, n: number) => `${number}/Q${n}`,
+			issue: async () => 'RC/26-27/000009',
+		} as never,
+		{
+			listEnabled: async () => [
+				{ code: 'USD', symbol: 'US$' },
+				{ code: 'INR', symbol: '₹' },
+			],
+			convert: async (amountINR: number, code: string) =>
+				code === 'USD'
+					? {
+							currency: code,
+							amount: Math.round(((amountINR * 1.06) / 94.1) * 100) / 100,
+							rateFromINR: 1 / 94.1,
+							markupPercent: 6,
+							amountINR,
+						}
+					: { currency: code, amount: amountINR, rateFromINR: 1, markupPercent: 0, amountINR },
+		} as never,
+		{
+			listByOrder: async () => requests,
+			findById: async (id: string) => requests.find((row) => row.id === id) ?? null,
+			findByTokenHash: async (hash: string) => requests.find((row) => row.tokenHash === hash) ?? null,
+			save: async (request: PaymentRequest) => {
+				const index = requests.findIndex((row) => row.id === request.id);
+				if (index >= 0) requests[index] = request;
+				else requests.push(request);
+				return request;
+			},
+		} as never,
+		{
+			findByGatewayReference: async (_g: string, ref: string) =>
+				payments.find((row) => row.reference === ref) ?? null,
+			save: async (payment: OrderPayment) => payments.push(payment),
+		} as never,
+		{ get: async () => OrderSettings.parse({}) } as never,
+		{ get: async () => ({ phone: '+91 33 4000 1234', email: 'wecare@sahatextile.com' }) } as never,
+		new Map([['ccavenue', ccavenue]]) as never,
+		{ withTransaction: async (work: (context: unknown) => Promise<unknown>) => work({}) } as never,
+		{ media: { shopOrigin: 'https://localhost:4200/' } } as never,
+		{
+			isChannelEnabled: async (channel: string) => channel !== 'whatsapp',
+			send: async (message: { channel: string; destination: string; templateKey: string }) => {
+				sent.push(message);
+				return { status: 'sent', providerMessageId: 'm1', outboxEntryId: 'o1' };
+			},
+		} as never,
+	);
+	return { svc, requests, payments, cancelled, settled, sent, tells };
+}
+
+const actor = { id: 'adm_1', name: null };
+const NOW = new Date('2026-11-20T06:00:00.000Z');
+
+describe('payment requests and our pay link (pl01–pl05, oo07, K1)', () => {
+	it('asks the INR gateway for no more than is due, and our link shows the current request', async () => {
+		const { svc, settled } = harness();
+		await expect(
+			svc.create('ord_1', { amountINR: 30_001, currency: 'INR', revision: 0 }, actor, NOW),
+		).rejects.toMatchObject({
+			response: { issues: [{ code: 'more_than_due', params: { dueINR: 30_000 } }] },
+		});
+		await expect(
+			svc.create('ord_1', { amountINR: 100, currency: 'USD', revision: 0 }, actor, NOW),
+		).rejects.toMatchObject({
+			response: { issues: [{ code: 'gateway_not_configured', params: { gateway: 'paypal' } }] },
+		});
+		const request = await svc.create('ord_1', { amountINR: 30_000, currency: 'INR', revision: 0 }, actor, NOW);
+		expect(request).toMatchObject({
+			number: 'ST-2611-482190/Q1',
+			gateway: 'ccavenue',
+			gatewayUrl: 'https://payit.cc/1',
+			sentTo: { email: 'ananya@example.test', mobile: '+91 9830012345' },
+			expiresAt: '2026-11-27T06:00:00.000Z',
+		});
+		expect(request.ourUrl).toMatch(/^https:\/\/localhost:4200\/pay\/[A-Za-z0-9_-]{32}$/);
+		expect(settled).toEqual(['paymentRequest']);
+		const token = (request.ourUrl as string).split('/pay/')[1] as string;
+		expect(await svc.payPage(token, NOW)).toMatchObject({
+			state: 'payable',
+			amount: 30_000,
+			payUrl: 'https://payit.cc/1',
+			deliveryCity: 'Kolkata',
+		});
+	});
+
+	it('previews a request before it is sent: gateway, today’s rate, recipient and why it can’t go', async () => {
+		const { svc, requests } = harness();
+		const rupees = await svc.preview('ord_1', { currency: 'INR' });
+		expect(rupees).toMatchObject({
+			dueINR: 30_000,
+			amountINR: 30_000,
+			gateway: 'ccavenue',
+			amount: 30_000,
+			sendTo: { email: 'ananya@example.test', mobile: '+91 9830012345' },
+			smsReachable: true,
+			validDays: 7,
+			problem: null,
+		});
+		// ₹ first; PayPal isn't set up here, so dollars are listed but not ready.
+		expect(rupees.currencies).toEqual([
+			{ code: 'INR', symbol: '₹', gateway: 'ccavenue', ready: true },
+			{ code: 'USD', symbol: 'US$', gateway: 'paypal', ready: false },
+		]);
+		const dollars = await svc.preview('ord_1', { currency: 'usd', amountINR: 20_000 });
+		expect(dollars).toMatchObject({
+			currency: 'USD',
+			gateway: 'paypal',
+			amount: 225.29,
+			markupPercent: 6,
+			problem: 'gateway_not_configured',
+		});
+		expect((await svc.preview('ord_1', { currency: 'INR', amountINR: 30_001 })).problem).toBe('more_than_due');
+		expect((await svc.preview('ord_1', { currency: 'JPY' })).problem).toBe('currency_unknown');
+		expect(requests).toHaveLength(0);
+	});
+
+	it('replaces and cancels the old request, and the old link forwards to the new one', async () => {
+		const { svc, requests, cancelled } = harness();
+		const first = await svc.create('ord_1', { amountINR: 30_000, currency: 'INR', revision: 0 }, actor, NOW);
+		await svc.create('ord_1', { amountINR: 20_000, currency: 'INR', revision: 1 }, actor, NOW);
+		expect(requests.map((row) => row.status)).toEqual(['replaced', 'active']);
+		expect(cancelled).toEqual(['qi_ST-2611-482190/Q1']);
+		const oldToken = (first.ourUrl as string).split('/pay/')[1] as string;
+		expect(await svc.payPage(oldToken, NOW)).toMatchObject({
+			state: 'payable',
+			amount: 20_000,
+			payUrl: 'https://payit.cc/2',
+		});
+	});
+
+	it('records a captured payment once, however often staff check', async () => {
+		const { svc, payments, settled, tells } = harness([
+			{ gatewayReference: '313012345678', amountMinor: 3_000_000 },
+		]);
+		const request = await svc.create('ord_1', { amountINR: 30_000, currency: 'INR', revision: 0 }, actor, NOW);
+		const first = await svc.check('ord_1', request.id, actor, NOW);
+		expect(first).toMatchObject({
+			recorded: true,
+			request: { status: 'paid' },
+			payment: { method: 'gateway', amountINR: 30_000, receiptNumber: 'RC/26-27/000009' },
+		});
+		const again = await svc.check('ord_1', request.id, actor, NOW);
+		expect(again.recorded).toBe(false);
+		expect(payments).toHaveLength(1);
+		expect(settled).toEqual(['paymentRequest', 'payment']);
+		// The payment's messages go once, after the save; a repeated check tells nothing.
+		expect(tells).toEqual(['tell']);
+	});
+
+	it('shows the expired page with the shop’s contact once a request is cancelled or out of date', async () => {
+		const { svc } = harness();
+		const request = await svc.create('ord_1', { amountINR: 30_000, currency: 'INR', revision: 0 }, actor, NOW);
+		const token = (request.ourUrl as string).split('/pay/')[1] as string;
+		expect(await svc.payPage(token, new Date('2026-12-01T00:00:00.000Z'))).toEqual({
+			state: 'expired',
+			orderNumber: 'ST-2611-482190',
+			contactPhone: '+91 33 4000 1234',
+			contactEmail: 'wecare@sahatextile.com',
+		});
+		await svc.cancel('ord_1', request.id, actor, NOW);
+		expect((await svc.payPage(token, NOW)).state).toBe('expired');
+		await expect(svc.payPage('not-a-token', NOW)).rejects.toThrow('does not exist');
+		expect(hashPayToken(token)).toHaveLength(64);
+	});
+
+	it('shows our own SMS before sending, sends only when pressed, and records it (pr01, pr02)', async () => {
+		const { svc, sent, settled } = harness();
+		const request = await svc.create('ord_1', { amountINR: 30_000, currency: 'INR', revision: 0 }, actor, NOW);
+		const sms = await svc.messagePreview('ord_1', request.id, 'sms');
+		expect(sms).toMatchObject({ to: '+91 9830012345', unavailable: null });
+		expect(sms.text).toMatch(
+			/^Saha Textile: please pay for your order ST2611482190 here: https:\/\/.+ Thank you for shopping with us\.$/,
+		);
+		const out = await svc.sendMessage('ord_1', request.id, 'sms', actor, NOW);
+		expect(out.status).toBe('sent');
+		expect(sent).toMatchObject([
+			{ channel: 'sms', templateKey: 'order_payment_link', destination: '+91 9830012345' },
+		]);
+		expect(out.request.sends).toMatchObject([{ channel: 'sms', by: 'adm_1' }]);
+		expect(settled).toContain('message');
+		expect(isIndianMobile('+44 20 7946 0000')).toBe(false);
+	});
+});

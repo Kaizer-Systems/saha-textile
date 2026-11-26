@@ -134,7 +134,8 @@ header {
 					position: absolute;
 					top: -7px;
 					right: 3px;
-					background-color: $danger-color;
+					// A deeper red so the white text reaches 5.6 : 1. Shop change, 2026-11-10.
+					background-color: #c62828;
 					font-size: 10px;
 					padding: 1px 4px;
 					color: $white;
@@ -883,6 +884,10 @@ header {
 
 	.header-nav-middle {
 		margin: auto !important;
+	}
+
+	.navbar-top .rightside-box {
+		margin-left: 16px;
 	}
 
 	.offcanvas {
@@ -1651,7 +1656,8 @@ header {
 		position: absolute;
 		top: -7px;
 		right: 3px;
-		background-color: $danger-color;
+		// A deeper red so the white text reaches 5.6 : 1. Shop change, 2026-11-10.
+		background-color: #c62828;
 		font-size: 10px;
 		padding: 1px 4px;
 		color: $white;
@@ -1813,7 +1819,7 @@ header {
 }
 
 .menu-label {
-	background-color: #ff7272;
+	background-color: #c62828; // was #ff7272, 2.7 : 1 with white (shop change, 2026-11-10)
 	font-size: 12px;
 	border-radius: 2px;
 	padding: 3px 5px;
@@ -1835,7 +1841,7 @@ header {
 		position: absolute;
 		top: 50%;
 		transform: translateY(-50%) rotate(45deg);
-		background-color: #ff7272;
+		background-color: #c62828; // was #ff7272, 2.7 : 1 with white (shop change, 2026-11-10)
 		left: -5px;
 		width: 12px;
 		height: 12px;

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-import { Id, IsoDateTime } from './common';
+import { PostalAddressFields } from './address-book';
+import { EnglishDeliveryText, EnglishName, Id, IsoDateTime, LatinDigits, LocaleCode, cleanText } from './common';
 
 /**
  * Customer account lifecycle status (auth plan §7.1).
@@ -38,8 +39,9 @@ export type AuthIdentity = z.infer<typeof AuthIdentity>;
 /**
  * Named saved address (`DEC-ACCOUNT-SEPARATION` D9).
  *
- * `label` is the Home/Office name. Billing-vs-shipping policy flags are deliberately
- * absent — those remain open under `DEC-ADDRESS`.
+ * `label` is the Home/Office name. `DEC-ADDRESS` (2026-11-20) adds the country code, the State's
+ * code, a structured mobile and second number, and a landmark; new writes go through
+ * `SavedAddressWrite` in `address-book.ts`, which the server checks against the country data.
  */
 export const Address = z.object({
 	id: Id,
@@ -54,8 +56,33 @@ export const Address = z.object({
 	country: z.string().min(2),
 	phone: z.string().optional(),
 	isDefault: z.boolean().default(false),
+	/* DEC-ADDRESS fields (2026-11-20). Optional so older rows still read; new writes set them all. */
+	countryCode: PostalAddressFields.shape.countryCode,
+	subdivisionCode: PostalAddressFields.shape.subdivisionCode,
+	gstStateCode: PostalAddressFields.shape.gstStateCode,
+	landmark: PostalAddressFields.shape.landmark,
+	mobile: PostalAddressFields.shape.mobile,
+	altMobile: PostalAddressFields.shape.altMobile,
 });
 export type Address = z.infer<typeof Address>;
+
+/**
+ * The address fields as a request may write them (BN-12): the recipient's name and every delivery
+ * detail in English letters, Bengali digits converted. Stored rows keep the looser `Address`, so
+ * an older row never fails to load.
+ */
+export const AddressInput = Address.omit({ id: true }).extend({
+	label: z.string().transform(cleanText).pipe(z.string().min(1).max(80)).optional(),
+	fullName: EnglishName,
+	line1: EnglishDeliveryText.pipe(z.string().min(1)),
+	line2: EnglishDeliveryText.optional(),
+	city: EnglishDeliveryText.pipe(z.string().min(1)),
+	state: EnglishDeliveryText.optional(),
+	postalCode: LatinDigits.pipe(z.string().min(1)),
+	country: z.string().min(2),
+	phone: LatinDigits.optional(),
+});
+export type AddressInput = z.infer<typeof AddressInput>;
 
 /**
  * Consent snapshot kept on the customer (latest effective consent). Granular
@@ -139,6 +166,11 @@ export const Customer = z.object({
 	/** Reserved; empty until a measurement-profile surface writes them. */
 	measurementProfiles: z.array(CustomerMeasurementProfile).default([]),
 	guestCartId: Id.nullable().default(null),
+	/**
+	 * The language this customer reads the shop in (BN-13): taken from the page they signed up on.
+	 * Emails, the order page and later WhatsApp messages use it.
+	 */
+	preferredLocale: LocaleCode.optional(),
 	consent: ConsentRecord.optional(),
 	createdAt: IsoDateTime.optional(),
 	updatedAt: IsoDateTime.optional(),

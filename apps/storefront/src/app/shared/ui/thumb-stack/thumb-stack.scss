@@ -1,0 +1,58 @@
+// Overlapping pictures (owner, 22 Nov 2026). Each picture gets a ring in the surface colour so the overlap reads in
+// light and dark; the "+N" bubble takes the same size.
+:host {
+	display: inline-flex;
+	flex: none;
+}
+
+.st-thumbs {
+	display: inline-flex;
+	align-items: center;
+
+	img,
+	.st-thumbs-more {
+		width: 40px;
+		height: 52px;
+		border: 2px solid var(--st-surface);
+		border-radius: 8px;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+
+		& + img,
+		& + .st-thumbs-more {
+			margin-left: -16px;
+		}
+	}
+
+	img {
+		object-fit: cover;
+		background-color: var(--st-surface-soft);
+	}
+
+	.st-thumbs-more {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		background-color: var(--st-surface-soft);
+		color: var(--st-text-body);
+		font-size: 13px;
+		font-weight: 600;
+	}
+
+	&.is-sm {
+		img,
+		.st-thumbs-more {
+			width: 28px;
+			height: 36px;
+			border-radius: 6px;
+
+			& + img,
+			& + .st-thumbs-more {
+				margin-left: -12px;
+			}
+		}
+
+		.st-thumbs-more {
+			font-size: 11px;
+		}
+	}
+}

@@ -5,7 +5,7 @@ description: Authentication, cookie sessions, CSRF, authorization and identity f
 search_keywords: 'cookies csrf st_access st_refresh st_admin_access otp msg91 jwt session bola audiences pin'
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/api/src/auth
     - apps/api/src/admin
@@ -97,6 +97,7 @@ sequenceDiagram
 | Guest (`st_guest`)   |                  No | Opaque proof of ownership of one guest cart              |
 | Signup (`st_signup`) |                  No | Ties an in-progress signup to one browser                |
 | Locale (`st_locale`) |                 Yes | The visitor's language choice                            |
+| Theme (`st_theme`)   |                 Yes | The visitor's light or dark choice                       |
 
 Storefront sessions use `st_access`, `st_refresh` and `st_csrf`. Admin sessions use `st_admin_access`, `st_admin_refresh` and `st_admin_csrf`, so the two never overwrite each other. `CookieAudienceGuard` selects the right names from the route's `@Audience`.
 
@@ -130,6 +131,8 @@ For cookie-authenticated `POST`, `PUT`, `PATCH` and `DELETE` requests, `CsrfGuar
 2. Requires the CSRF cookie and a matching `x-csrf-token` header.
 3. Compares them in constant time and checks the session's stored hash.
 4. Rejects with 403 and `reason: csrf_rejected`, without saying which half failed.
+
+A `@Public()` route, such as sign-in, refresh or password recovery, treats session cookies that resolve to no live session as absent. Session cookies can outlive their session: the row expires, is revoked, or was written by another database. Such a cookie carries no authority, so there is nothing to forge, and refusing it would block sign-in until the person deleted cookies by hand. A live session on a public route still gets the full check, and a route that needs a session refuses dead cookies with `csrf_rejected`.
 
 The storefront and admin cannot read cookies on the API host. They fetch the token from `GET /auth/csrf` or `GET /auth/admin/csrf` and keep it in memory (`CsrfTokenHolder` in `packages/http-transport`). The gateways fetch it again after sign-in and rotation. On `csrf_rejected`, the interceptors fetch once and replay once. A 403 without that reason is never retried. A cross-site page cannot read the token, because CORS lets only listed origins read the reply.
 
@@ -226,18 +229,60 @@ Meta proves nothing about its address, so a Facebook signup finds out through th
 - A contact change keeps the old value until the new one is proven. Starting a change to a taken value looks the same as any other start, and no code is delivered. Confirmation spends the proof, changes the identifier and writes the audit record in one transaction. A race returns `contact_in_use`.
 - `signup`, `step-up` and contact-change refusals use stable codes, shown by the screen that asked rather than as a toast.
 
+### Account deletion and restore
+
+Operators delete and restore customers from the CRM (`CustomerLifecycleService`, `apps/api/src/admin/customer-lifecycle.service.ts`). A delete is a soft delete: the row stays for order history, and its email and phone leave the unique indexes so the person can sign up again.
+
+| Route                                       | Permission         | Effect                                                          |
+| ------------------------------------------- | ------------------ | --------------------------------------------------------------- |
+| `DELETE /admin/customers/:customerId`       | `customer.destroy` | Soft delete, ends access, releases Google and Facebook links    |
+| `GET /admin/customers/deleted`              | `customer.restore` | Lists deleted customers; the live list refuses `status=deleted` |
+| `POST /admin/customers/:customerId/restore` | `customer.restore` | Restores the customer to the status they had before the delete  |
+
+A soft delete commits three writes in one transaction:
+
+1. The row is set to `deleted`. Its previous status goes into `statusBeforeDelete`, the time into `deletedAt`, and `tokenVersion` increases, so every access token already issued fails on its next request.
+2. Every `authIdentities` row the customer holds for `google` or `facebook` is removed (`AuthIdentityRepository.releaseForSubject`). The pair (provider, subject) is unique, so the same provider account can now sign up again. Password identities are not affected.
+3. A `customer.delete` audit record is written with a `status` diff, an `identities` diff, and `metadata.releasedIdentities` listing each removed link's provider, subject and link time. The provider email is not copied into the record.
+
+After the commit, the service revokes what could still reach the account. Each step is idempotent, and the status and token version already block the account if one fails:
+
+- All sessions, with reason `admin_action`.
+- Unused activation, password-reset and email-verification links.
+- Open one-time codes for the customer's id, email and phone, plus the new value of a contact change in flight. Codes are marked consumed and blocked, which also frees the one-active-code slot for that address.
+- The pending contact change itself.
+
+A restore puts back the status recorded at delete time. A customer deleted before that status was recorded comes back `disabled`. Released Google and Facebook links do not come back: the customer reconnects them from the account page. Email, phone and password stay on the row and return with it.
+
+A restore is refused with `customer_identifier_taken` when another live customer now holds the email or phone. The message names which one. The service checks first for a clear answer, and the unique index decides a race between the check and the write. The restore and its `customer.restore` audit record commit together. Both audit actions use the `financial_security` tier.
+
 ## Admin identity
 
 - Operators sign in with a password or a six-digit PIN, using email or username. There is no self-registration and no social sign-in.
 - An operator account comes from an invite, valid for seven days, or from the first-administrator command.
 - Account Security at `/account` manages the PIN, password and sessions.
 - Five failed PIN attempts lock PIN use for 15 minutes. Password sign-in stays available.
+- The preferred sign-in method reads as `password` when the account has no PIN, so a stored `pin` preference never leaves an operator facing a PIN form they cannot use.
+- The sign-in screen says the credentials are wrong only for a 401. Any other failure shows a generic error. The hint about a locked PIN appears only on the PIN form.
 - A password reset suspends the PIN until the new password has been used once.
 - A password change ends every session, including the current one.
 
 ### Admin idle lock
 
-After 15 minutes of inactivity the admin shell opens a lock screen. `POST /auth/admin/resume` accepts the PIN or password and extends the same session, so the open route and form state survive. The lock proves presence. The one-hour idle lifetime still ends the session on the server.
+After 15 minutes without operator activity the admin session locks. The server holds the lock, so a reload, a new tab or a laptop waking from sleep comes back to the lock screen on the same page.
+
+- **State.** Each admin session records `lastActiveAt` (operator presence) and `lockedAt`. A session counts as locked when `lockedAt` is set, or when more than 17 minutes (the 15-minute lock plus 2 minutes of grace) have passed since the last presence. A lock found by time alone is written to the session.
+- **Presence.** Typing, clicking, scrolling or touching in any open admin tab counts. One tab reports it with `POST /auth/admin/activity` at most once a minute. Background reads never count, so an unattended tab locks on the server too.
+- **Locking.** When the 15 minutes pass, the tab sends `POST /auth/admin/lock`, retrying on its 15-second timer until the server has it. Tabs lock and unlock together through a `BroadcastChannel`.
+- **While locked.** The session guard refuses every admin route with `401` and the reason `session_locked`, except the routes marked `@AllowWhileLocked()`: `GET /auth/admin/me` (which returns `session.locked`) and `POST /auth/admin/resume`. Cookie refresh still works but never removes the lock, and it caps the idle expiry at one hour after the last presence.
+- **Resume.** `POST /auth/admin/resume` checks the PIN or password first, then clears the lock and rotates the same session, so the open route and form state survive. The admin then fetches the new CSRF token. A refused PIN or password keeps the session and the lock screen; the admin asks `/me` whether the session is still alive and signs out only if it is not. Rate limits and the PIN lockout apply.
+- **Calls made while locked.** A call refused with `session_locked` waits until the lock comes down, then is sent again. The guard refuses before any handler runs, so sending it again cannot repeat a change.
+
+The one-hour idle lifetime and the absolute lifetime still end the session on the server.
+
+### Unsaved changes
+
+A reload or tab close in the admin with unsaved form work, locked or not, shows the browser's own "Leave site?" question. Browsers use their own wording and buttons; a page cannot change them. A form counts as unsaved when Angular marks it `ng-dirty` and it was edited after the last successful change request. Search boxes, table filters, anything inside `[data-unsaved="off"]` (such as the lock screen's password form) and the sign-in pages never count. Screens whose unsaved work is not a form, such as the shipping rule builder, register a check with `UnsavedChanges.register()`.
 
 ## Password, PIN, and OTP policies
 
@@ -273,6 +318,10 @@ In local development `OTP_LOCAL_FIXED_CODE` can fix the code. It is refused in p
 
 `packages/core-domain/src/auth/rate-limit-policy.ts` defines limits per action. Login and OTP verification count failures, so honest customers behind a shared carrier address do not use up a budget. Actions that spend a real resource, such as sending a code, count every attempt. Identifier-scoped refusals keep the generic error, so an attacker cannot time them. Address-scoped refusals return 429 with `Retry-After`.
 
+## Mailbox tokens
+
+A connected Gmail mailbox's refresh token is encrypted with `MAILBOX_TOKEN_KEY` before it is stored, and it never appears in a request, a response or a log. Only mailboxes on `MAILBOX_DOMAIN` can be connected. An operator opens a mailbox only when its access list names them; `mailbox.manage` changes those lists.
+
 ## Secrets at startup
 
 A strict deployment refuses to start with unsafe secrets or settings. See [Deployment hardening](./composition-and-adapters#deployment-hardening).
@@ -295,10 +344,10 @@ A strict deployment refuses to start with unsafe secrets or settings. See [Deplo
 
 ## Audit records
 
-Security audit records identify the request, session, actor, action, target, decision, time and safe context. They never contain passwords, PINs, OTP values, tokens, provider secrets, raw IPs or full personal data. Each record has a retention tier: `financial_security` keeps it for seven years, and `catalog_admin` for five. Authority and credential events use the seven-year tier. The trail is read-only over HTTP, through `GET /admin/audit-logs`, which caps a page at 200 rows and omits the IP and user-agent hashes. Offboarding an operator sets `disabled`, so the record keeps its subject and the email stays claimed.
+Security audit records identify the request, session, actor, action, target, decision, time and safe context. They never contain passwords, PINs, OTP values, tokens, provider secrets, raw IPs or full personal data. Each record has a retention tier: `financial_security` keeps it for seven years, `catalog_admin` for five, and `books` for eight (every change to the books: vouchers, ledgers and month locks). Authority and credential events use the seven-year tier. The trail is read-only over HTTP, through `GET /admin/audit-logs`, which caps a page at 200 rows and omits the IP and user-agent hashes. Offboarding an operator sets `disabled`, so the record keeps its subject and the email stays claimed.
 
 ## Limitations
 
-- Pending-intent continuation is partial: a guest's stock-alert request replays after sign-in, while wishlist and checkout intent do not.
+- Pending-intent continuation is partial: a guest's stock-alert request replays after sign-in and a guest's saved hearts merge into the account, while checkout intent does not.
 - `POST /orders` has no idempotency key.
 - Hosted access to the developer portal is not designed yet.

@@ -14,9 +14,13 @@
 			{{ 'add_tag' | transloco }}
 		</a>
 	</div>
+	@if (tagType() === 'post') {
+	<app-missing-language-notice [code]="missing.code()" />
+	}
 	<app-table
-		[tableConfig]="tableConfig"
+		[tableConfig]="tableConfig()"
 		[hasCheckbox]="true"
+		[selectionKey]="'tags'"
 		(tableChanged)="onTableChange($event)"
 		(rowClicked)="edit($event)"
 		(action)="onActionClicked($event)"

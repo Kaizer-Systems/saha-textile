@@ -3,7 +3,20 @@
  * it, so what shoppers read cannot drift from what the code does. Adding a tool to an empty
  * category turns its switch on: change `COOKIE_POLICY_VERSION` then, so everyone is asked again.
  */
-export const COOKIE_POLICY_VERSION = '2026-11-07';
+export const COOKIE_POLICY_VERSION = '2026-11-10';
+
+/**
+ * Set on `<html>` by the page head, before the first paint, for a visitor with no decision under this policy: the
+ * cookie box, drawn hidden by the server, shows at once (consent-ask.vite.ts; decision D1, 17 Nov 2026).
+ */
+export const CONSENT_ASK_CLASS = 'st-consent-ask';
+
+/**
+ * Which of the box's buttons a visitor tapped before the box's code woke up (decision D1): the page head notes it on
+ * `<html>`, and the box carries it out once awake if Angular's replay did not (consent-ask.vite.ts).
+ */
+export const CONSENT_TAP_ATTRIBUTE = 'data-st-consent-tap';
+export const CONSENT_BUTTONS = ['cookie_accept_btn', 'cookie_necessary_btn', 'cookie_choose_btn'] as const;
 
 export type OptionalCategory = 'functional' | 'analytics' | 'targeting' | 'marketing' | 'promotional';
 
@@ -18,21 +31,29 @@ export const NECESSARY_ITEMS: readonly CookieItem[] = [
 	{ name: 'st_access, st_refresh', purpose: 'cookie_item_session', keptFor: 'cookie_kept_session' },
 	{ name: 'st_csrf', purpose: 'cookie_item_csrf', keptFor: 'cookie_kept_visit' },
 	{ name: 'st_guest, ngrx_cart', purpose: 'cookie_item_cart', keptFor: 'cookie_kept_cart' },
+	{ name: 'st_wishlist, st_compare', purpose: 'cookie_item_lists', keptFor: 'cookie_kept_browser' },
 	{ name: 'st_consent', purpose: 'cookie_item_consent', keptFor: 'cookie_kept_year' },
+	{ name: 'sw.js', purpose: 'cookie_item_app', keptFor: 'cookie_kept_cleared' },
 	{ name: 'Google, Facebook', purpose: 'cookie_item_sign_in', keptFor: 'cookie_kept_by_them' },
 ];
 
 export const FUNCTIONAL_ITEMS: readonly CookieItem[] = [
 	{ name: 'st_locale', purpose: 'cookie_item_language', keptFor: 'cookie_kept_year' },
+	{ name: 'st_theme', purpose: 'cookie_item_theme', keptFor: 'cookie_kept_year' },
 	{ name: 'selectedCurrency', purpose: 'cookie_item_currency', keptFor: 'cookie_kept_cleared' },
 	{ name: 'st_recent', purpose: 'cookie_item_recent', keptFor: 'cookie_kept_cleared' },
+	{ name: 'st_search', purpose: 'cookie_item_search', keptFor: 'cookie_kept_cleared' },
 	{ name: 'st_newsletter', purpose: 'cookie_item_newsletter', keptFor: 'cookie_kept_newsletter' },
-	{ name: 'Google Maps', purpose: 'cookie_item_map', keptFor: 'cookie_kept_by_google' },
+	{ name: 'st_events', purpose: 'cookie_item_events', keptFor: 'cookie_kept_events' },
+	// Nothing from YouTube loads until play is pressed; that press is consent for that one video.
+	{ name: 'YouTube (youtube-nocookie.com)', purpose: 'cookie_item_youtube', keptFor: 'cookie_kept_by_them' },
 ];
 
 /** Categories with nothing behind them show Not in use, and Accept all leaves them off. */
 export const EMPTY_CATEGORIES: readonly OptionalCategory[] = ['analytics', 'targeting', 'marketing', 'promotional'];
 
 /** What a refusal removes. Anything optional stored in the browser belongs here. */
-export const OPTIONAL_COOKIES: readonly string[] = ['st_locale', 'st_newsletter'];
-export const OPTIONAL_STORAGE: readonly string[] = ['st_recent', 'selectedCurrency'];
+export const OPTIONAL_COOKIES: readonly string[] = ['st_locale', 'st_newsletter', 'st_events'];
+export const OPTIONAL_STORAGE: readonly string[] = ['st_recent', 'st_search', 'selectedCurrency'];
+/** Functional cookies a refusal shortens to this visit instead of removing (the light/dark choice). */
+export const VISIT_ONLY_WHEN_REFUSED: readonly string[] = ['st_theme'];

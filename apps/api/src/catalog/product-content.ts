@@ -16,10 +16,18 @@ export function applyProductContent(product: Product, content: ProductContentWri
 		sareeLengthM: content.sareeLengthM,
 		blousePieceM: content.blousePieceM,
 		categoryIds: content.categoryIds,
+		faqEnabled: content.faqEnabled,
 		optionGroups: content.optionGroups,
 		addonTemplateCode: content.addonTemplateCode,
 		imageMode: content.imageMode,
-		media: { gallery: content.gallery, compound: content.compound, altOverrides: content.altOverrides },
+		media: {
+			gallery: content.gallery,
+			compound: content.compound,
+			altOverrides: content.altOverrides,
+			versions: content.versions,
+			// Absent (an older form) keeps the share picture; null clears it.
+			shareImage: content.shareImage === undefined ? (product.media.shareImage ?? null) : content.shareImage,
+		},
 	};
 }
 

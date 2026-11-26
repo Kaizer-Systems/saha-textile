@@ -1,0 +1,464 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'gst_returns_title'"
+>
+	@if (draft.data(); as d) {
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">
+				{{ d.returnType }} · {{ monthName() }}
+				<div [class]="'d-inline-block ms-2 ' + pill[d.status]">
+					<span>{{ 'gst_status_' + d.status | transloco }}</span>
+				</div>
+			</h5>
+			<small class="text-muted">
+				{{ 'gstr3b_prepared_by' | transloco: { gstin: d.gstin, name: d.preparedByName || '—', date:
+				day(d.preparedAt) } }}
+			</small>
+		</div>
+		<div class="d-flex flex-wrap gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="gst_download"
+				(click)="download(d)"
+			>
+				<i class="ri-download-2-line"></i>
+				{{ 'gst_download' | transloco }}
+			</button>
+			@if (d.setOff) {
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="gst_to_setoff"
+				(click)="toSetOff()"
+			>
+				<i class="ri-bank-line"></i>
+				{{ 'gstr3b_set_off_and_pay' | transloco }}
+			</button>
+			} @if (canPost()) {
+			<button
+				*hasPermission="'accounts.post'"
+				type="button"
+				class="btn btn-theme"
+				id="gst_post_setoff"
+				[disabled]="busy()"
+				(click)="openPost(postTemplate)"
+			>
+				{{ 'gstr3b_post_set_off' | transloco }}
+			</button>
+			} @if (open()) {
+			<button
+				*hasPermission="'accounts.edit'"
+				type="button"
+				class="btn btn-outline"
+				id="gst_prepare_again"
+				[disabled]="busy()"
+				(click)="prepareAgain(d)"
+			>
+				{{ 'gst_prepare_again' | transloco }}
+			</button>
+			} @if (d.status === 'prepared') {
+			<button
+				*hasPermission="'accounts.post'"
+				type="button"
+				class="btn btn-theme"
+				id="gst_checked"
+				[disabled]="busy()"
+				(click)="step(d, 'checked')"
+			>
+				{{ 'gstr3b_send_for_approval' | transloco }}
+			</button>
+			} @if (d.status === 'checked') {
+			<button
+				*hasPermission="'accounts.lock'"
+				type="button"
+				class="btn btn-theme"
+				id="gst_approve"
+				[disabled]="busy() || d.problems.length > 0"
+				(click)="step(d, 'approved')"
+			>
+				{{ 'gst_approve' | transloco }}
+			</button>
+			}
+		</div>
+	</div>
+	<div class="row g-3">
+		<div class="col-xl-8">
+			<div class="card">
+				<div class="card-body">
+					<div class="d-flex flex-wrap gap-2">
+						@for (s of steps; track s; let i = $index) {
+						<div class="rounded border px-3 py-2">
+							<i [class]="icon(d, i)"></i>
+							<b class="ms-1">{{ 'gst_step_' + s | transloco }}</b>
+						</div>
+						}
+					</div>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-body">
+					@if (d.problems.length) {
+					<div class="alert alert-warning py-2">
+						@for (p of d.problems; track $index) {
+						<div>{{ 'gstr3b_check_' + p.problem | transloco: { document: p.document } }}</div>
+						}
+					</div>
+					}
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'gst_col_table' | transloco }}</th>
+									<th>{{ 'gstr3b_col_from' | transloco }}</th>
+									<th>{{ 'gst_col_tax' | transloco }}</th>
+									<th>{{ 'gstr3b_col_change' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (row of rows(d); track row.table) {
+								<tr>
+									<td>{{ 'gstr3b_table_' + key(row.table) | transloco }}</td>
+									<td>
+										@if (row.table === '4A') {
+										<a routerLink="/accounts/gst/2b">{{ 'gstr3b_from_4A' | transloco }}</a>
+										} @else { {{ 'gstr3b_from_' + key(row.table) | transloco }} }
+									</td>
+									<td class="text-nowrap">{{ money(row.tax) }}</td>
+									<td>
+										{{ 'gstr3b_change_' + key(row.table) | transloco }} @if (row.adjustable &&
+										open()) {
+										<button
+											*hasPermission="'accounts.edit'"
+											type="button"
+											class="btn btn-sm ms-1 p-0"
+											[disabled]="busy()"
+											[title]="'gstr3b_change' | transloco"
+											(click)="openChange(changeTemplate, row.adjustable)"
+										>
+											<i class="ri-pencil-line"></i>
+										</button>
+										}
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					@if (d.adjustments.length) {
+					<b class="d-block small mt-3">{{ 'gstr3b_changes' | transloco }}</b>
+					<ul class="list-unstyled small mb-0">
+						@for (a of d.adjustments; track $index; let i = $index) {
+						<li class="d-flex align-items-start border-bottom gap-2 py-2">
+							<div class="flex-grow-1">
+								<b>{{ 'gstr3b_table_' + key(a.table) | transloco }}</b>
+								· IGST {{ paise(a.igst) }} · CGST {{ paise(a.cgst) }} · SGST {{ paise(a.sgst) }}
+								<div class="text-muted">{{ a.reason }}</div>
+							</div>
+							@if (open()) {
+							<button
+								*hasPermission="'accounts.edit'"
+								type="button"
+								class="btn btn-sm p-0"
+								[disabled]="busy()"
+								[title]="'gstr3b_remove_change' | transloco"
+								(click)="removeChange(d, i)"
+							>
+								<i class="ri-close-line"></i>
+							</button>
+							}
+						</li>
+						}
+					</ul>
+					}
+				</div>
+			</div>
+			@if (d.setOff; as s) {
+			<div
+				class="card"
+				id="gst_setoff"
+			>
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'gstr3b_set_off_title' | transloco }}</h5>
+					</div>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th></th>
+									<th>IGST</th>
+									<th>CGST</th>
+									<th>SGST</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (r of setOffRows(s); track r.key) {
+								<tr>
+									<td [class.fw-bold]="r.bold">{{ 'gstr3b_setoff_' + r.key | transloco }}</td>
+									<td
+										class="text-nowrap"
+										[class.fw-bold]="r.bold"
+									>
+										{{ paise(r.igst) }}
+									</td>
+									<td
+										class="text-nowrap"
+										[class.fw-bold]="r.bold"
+									>
+										{{ paise(r.cgst) }}
+									</td>
+									<td
+										class="text-nowrap"
+										[class.fw-bold]="r.bold"
+									>
+										{{ paise(r.sgst) }}
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					<small class="text-muted d-block mt-2">{{ 'gstr3b_setoff_note' | transloco }}</small>
+				</div>
+			</div>
+			}
+		</div>
+		<div class="col-xl-4">
+			@if (d.challan; as c) {
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'gstr3b_after_posting' | transloco }}</h5>
+					</div>
+					<ul class="list-unstyled small mb-0">
+						@if (d.setOffVoucherId) {
+						<li class="border-bottom py-2">
+							<i class="ri-file-list-3-line text-success me-1"></i>
+							<b>{{ 'gstr3b_posted_journal' | transloco }}</b>
+							<div class="text-muted">
+								<a [routerLink]="['/accounts/vouchers', d.setOffVoucherId]">{{ c.setOffNumber }}</a>
+								· {{ 'gstr3b_posted_journal_body' | transloco }}
+							</div>
+						</li>
+						} @if (d.challanVoucherId) {
+						<li class="border-bottom py-2">
+							<i class="ri-bank-line text-success me-1"></i>
+							<b>{{ 'gstr3b_posted_challan' | transloco }}</b>
+							<div class="text-muted">
+								<a [routerLink]="['/accounts/vouchers', d.challanVoucherId]">{{ c.challanNumber }}</a>
+								· {{ 'gstr3b_posted_challan_body' | transloco: { challan: c.number, amount:
+								paise(c.amountPaise), date: day(c.paidOn) } }}
+							</div>
+						</li>
+						}
+					</ul>
+				</div>
+			</div>
+			}
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'gstr3b_finalising' | transloco }}</h5>
+					</div>
+					<ul class="list-unstyled small mb-0">
+						@for (k of ['gstr1_first', 'ca_approval', 'three_years']; track k) {
+						<li class="border-bottom py-2">
+							<i class="ri-checkbox-circle-line text-success me-1"></i>
+							<b>{{ 'gstr3b_final_' + k | transloco }}</b>
+							<div class="text-muted">{{ 'gstr3b_final_' + k + '_body' | transloco }}</div>
+						</li>
+						}
+						<li class="border-bottom py-2">
+							<i class="ri-checkbox-circle-line text-success me-1"></i>
+							<b>{{ 'gst_enter_arn' | transloco }}</b>
+							<div class="text-muted">
+								@if (d.arn) { {{ 'gstr3b_filed_with' | transloco: { arn: d.arn, date: day(d.filedOn ??
+								'') } }} } @else { {{ 'gstr3b_enter_arn_body' | transloco: { month: monthName() } }} }
+							</div>
+							@if (d.status === 'approved') {
+							<button
+								*hasPermission="'accounts.lock'"
+								type="button"
+								class="btn btn-theme btn-sm mt-2"
+								id="gst_open_file"
+								(click)="openFile(d)"
+							>
+								{{ 'gst_enter_arn' | transloco }}
+							</button>
+							}
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+	<ng-template
+		#postTemplate
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="modal-title">{{ 'gstr3b_post_title' | transloco: { month: monthName() } }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			<p class="small text-muted">{{ 'gstr3b_post_help' | transloco: { amount: paise(cashPaise()) } }}</p>
+			<label
+				class="form-label-title"
+				for="gst_pay_from"
+			>
+				{{ 'gstr3b_pay_from' | transloco }}
+			</label>
+			<select
+				class="form-select mb-3"
+				id="gst_pay_from"
+				[ngModel]="payFrom()"
+				(ngModelChange)="payFrom.set($event)"
+			>
+				<option value="">—</option>
+				@for (b of bankAccounts.data()?.items ?? []; track b.id) {
+				<option [value]="b.id">{{ b.shortName }} · {{ b.numberShown }}</option>
+				}
+			</select>
+			<div class="row g-3">
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="gst_challan"
+					>
+						{{ 'gstr3b_challan' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="gst_challan"
+						maxlength="20"
+						[ngModel]="challan()"
+						(ngModelChange)="challan.set($event)"
+					/>
+				</div>
+				<div class="col-md-6">
+					<label
+						class="form-label-title"
+						for="gst_paid_on"
+					>
+						{{ 'gstr3b_paid_on' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="gst_paid_on"
+						type="date"
+						[ngModel]="paidOn()"
+						(ngModelChange)="paidOn.set($event)"
+					/>
+				</div>
+			</div>
+			<b class="d-block small mt-3">{{ 'accounts_what_changes' | transloco }}</b>
+			<ul class="list-unstyled small mb-0">
+				<li class="border-bottom py-2">
+					<i class="ri-file-list-3-line me-1"></i>
+					<b>{{ 'gstr3b_posted_journal' | transloco }}</b>
+					<div class="text-muted">{{ 'gstr3b_posted_journal_body' | transloco }}</div>
+				</li>
+				<li class="border-bottom py-2">
+					<i class="ri-bank-line me-1"></i>
+					<b>{{ 'gstr3b_posted_challan' | transloco }}</b>
+					<div class="text-muted">{{ 'gstr3b_post_challan_body' | transloco }}</div>
+				</li>
+			</ul>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="gst_post_confirm"
+				[disabled]="busy() || !payFrom() || challan().trim().length < 6"
+				(click)="postSetOff(d)"
+			>
+				{{ 'gstr3b_post_set_off' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+	<ng-template
+		#changeTemplate
+		let-modal
+	>
+		<div class="modal-header">
+			<h5 class="modal-title">
+				{{ 'gstr3b_change_title' | transloco: { table: ('gstr3b_table_' + key(changeTable()) | transloco) } }}
+			</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body theme-form theme-form-2">
+			<p class="small text-muted">{{ 'gstr3b_change_help_' + key(changeTable()) | transloco }}</p>
+			<div class="row g-3">
+				@for (h of ['igst', 'cgst', 'sgst']; track h) {
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						[for]="'gst_change_' + h"
+					>
+						{{ h.toUpperCase() }} (₹)
+					</label>
+					<input
+						class="form-control"
+						inputmode="decimal"
+						[id]="'gst_change_' + h"
+						[ngModel]="h === 'igst' ? changeIgst() : h === 'cgst' ? changeCgst() : changeSgst()"
+						(ngModelChange)="h === 'igst' ? changeIgst.set($event) : h === 'cgst' ? changeCgst.set($event) : changeSgst.set($event)"
+					/>
+				</div>
+				}
+			</div>
+			<label
+				class="form-label-title mt-3"
+				for="gst_change_reason"
+			>
+				{{ 'gstr3b_change_reason' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="gst_change_reason"
+				maxlength="200"
+				[ngModel]="changeReason()"
+				(ngModelChange)="changeReason.set($event)"
+			/>
+		</div>
+		<div class="modal-footer">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="gst_change_save"
+				[disabled]="busy() || !changeReady()"
+				(click)="saveChange(d)"
+			>
+				{{ 'gstr3b_change_save' | transloco }}
+			</button>
+		</div>
+	</ng-template>
+	}
+</app-page-wrapper>

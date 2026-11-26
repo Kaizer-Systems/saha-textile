@@ -1,0 +1,209 @@
+<div class="modal-header">
+	<h2 id="order_payment_popup_title">
+		{{ 'ord_record_payment' | transloco }}@if (order(); as o) { · {{ o.orderNumber }} }
+	</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	<div class="row g-3">
+		<div class="col-md-6">
+			<label
+				class="form-label"
+				for="pay_method"
+			>
+				{{ 'ord_col_method' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="pay_method"
+				[ngModel]="method()"
+				(ngModelChange)="method.set($event)"
+			>
+				@for (item of methods; track item) {
+				<option [value]="item">{{ 'ord_method_' + item | transloco }}</option>
+				}
+			</select>
+		</div>
+		<div class="col-md-6">
+			<label
+				class="form-label"
+				for="pay_amount"
+			>
+				{{ 'ord_amount_received' | transloco }}
+			</label>
+			<div class="input-group">
+				<span class="input-group-text">₹</span>
+				<input
+					class="form-control"
+					id="pay_amount"
+					inputmode="decimal"
+					autocomplete="off"
+					ngbAutofocus
+					[ngModel]="amount()"
+					(ngModelChange)="amount.set($event)"
+				/>
+			</div>
+			<p class="help-text mb-0">{{ 'ord_amount_due_help' | transloco: { amount: (dueINR() | rupees) } }}</p>
+		</div>
+		<div class="col-md-6">
+			<label
+				class="form-label"
+				for="pay_reference"
+			>
+				{{ (method() === 'cashOnDelivery' ? 'ord_reference' : 'ord_reference_' + method()) | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="pay_reference"
+				maxlength="120"
+				autocomplete="off"
+				[ngModel]="reference()"
+				(ngModelChange)="reference.set($event)"
+			/>
+			@if (method() === 'cashOnDelivery') {
+			<p class="help-text mb-0">{{ 'ord_reference_cod_help' | transloco }}</p>
+			}
+		</div>
+		<div class="col-md-6">
+			<label
+				class="form-label"
+				for="pay_on"
+			>
+				{{ 'ord_received_on' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="pay_on"
+				type="date"
+				[max]="today"
+				[ngModel]="receivedOn()"
+				(ngModelChange)="receivedOn.set($event)"
+			/>
+		</div>
+		@if (method() === 'cashOnDelivery') {
+		<div class="col-12">
+			<label
+				class="form-label"
+				for="pay_collected_by"
+			>
+				{{ 'ord_collected_by' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="pay_collected_by"
+				maxlength="120"
+				autocomplete="off"
+				[ngModel]="collectedBy()"
+				(ngModelChange)="collectedBy.set($event)"
+			/>
+		</div>
+		} @if (method() === 'bankTransfer') {
+		<div class="col-12">
+			<div class="d-flex flex-wrap gap-4">
+				<div class="form-check">
+					<input
+						class="form-check-input"
+						type="radio"
+						id="pay_in"
+						name="pay_received"
+						[checked]="received()"
+						(change)="received.set(true)"
+					/>
+					<label
+						class="form-check-label"
+						for="pay_in"
+					>
+						{{ 'ord_transfer_in' | transloco }}
+					</label>
+				</div>
+				<div class="form-check">
+					<input
+						class="form-check-input"
+						type="radio"
+						id="pay_not_yet"
+						name="pay_received"
+						[checked]="!received()"
+						(change)="received.set(false)"
+					/>
+					<label
+						class="form-check-label"
+						for="pay_not_yet"
+					>
+						{{ 'ord_transfer_not_yet' | transloco }}
+					</label>
+				</div>
+			</div>
+		</div>
+		}
+		<div class="col-12">
+			<label
+				class="form-label"
+				for="pay_note"
+			>
+				{{ 'ord_note' | transloco }}
+				<span class="text-muted">({{ 'optional' | transloco }})</span>
+			</label>
+			<input
+				class="form-control"
+				id="pay_note"
+				maxlength="500"
+				[ngModel]="note()"
+				(ngModelChange)="note.set($event)"
+			/>
+		</div>
+	</div>
+	@if (outcome(); as result) {
+	<div
+		class="alert d-flex align-items-start mt-3 mb-0 gap-2"
+		[class.alert-success]="result.tone === 'success'"
+		[class.alert-info]="result.tone === 'info'"
+		[class.alert-warning]="result.tone === 'warning'"
+		role="status"
+	>
+		<i class="ri-scales-3-line mt-1"></i>
+		<div>
+			<b>{{ result.lead }}</b>
+			{{ result.rest }}
+		</div>
+	</div>
+	}
+	<p class="small text-muted mt-3 mb-0">
+		{{ (method() === 'cashOnDelivery' ? 'ord_manual_rupees_short' : 'ord_manual_rupees_only') | transloco }}
+	</p>
+	@if (error(); as problem) {
+	<div
+		class="alert alert-warning d-flex align-items-start mt-3 mb-0 gap-2"
+		role="alert"
+	>
+		<i class="ri-error-warning-line mt-1"></i>
+		<div>{{ problem }}</div>
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			[disabled]="!canSave()"
+			(click)="save()"
+		>
+			{{ 'ord_record_amount' | transloco: { amount: (amountValue() ?? 0 | rupees) } }}
+		</button>
+	</div>
+</div>

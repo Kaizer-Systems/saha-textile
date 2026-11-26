@@ -8,6 +8,9 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 import { ConsentStore } from '@core/consent/consent.store';
 import { EMPTY_CATEGORIES, FUNCTIONAL_ITEMS, NECESSARY_ITEMS } from '@core/consent/cookie-catalogue';
 
+/** The longest label's length: the buttons use it to decide how many fit on a row. */
+export const longestLabel = (...labels: string[]): number => Math.max(...labels.map((label) => label.length));
+
 /** The choice in full. Empty categories say so instead of offering a switch that does nothing. */
 @Component({
 	selector: 'app-cookie-settings',
@@ -22,6 +25,7 @@ export class CookieSettings {
 	readonly necessary = NECESSARY_ITEMS;
 	readonly functionalItems = FUNCTIONAL_ITEMS;
 	readonly empty = EMPTY_CATEGORIES;
+	readonly longest = longestLabel;
 
 	readonly functional = signal(false);
 	readonly openList = signal<'necessary' | 'functional' | null>(null);
@@ -33,7 +37,12 @@ export class CookieSettings {
 		});
 	}
 
+	/**
+	 * One popup at a time. A tap on the box's Choose before the box woke can arrive twice on a slow phone: the box
+	 * carries out the tap the page head noted, then Angular's late replay of the same tap asks again.
+	 */
 	private open() {
+		if (this.ref) return;
 		this.functional.set(this.consent.allows('functional'));
 		this.openList.set(null);
 		this.ref = this.modal.open(this.template(), {
@@ -41,6 +50,8 @@ export class CookieSettings {
 			modalDialogClass: 'cookie-settings',
 			windowClass: 'theme-modal cookie-settings-modal',
 		});
+		const closed = () => (this.ref = null);
+		this.ref.result.then(closed, closed);
 	}
 
 	toggleList(list: 'necessary' | 'functional') {

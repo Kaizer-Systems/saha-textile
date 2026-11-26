@@ -1,15 +1,18 @@
 import { inject } from '@angular/core';
 
-import { injectQuery } from '@tanstack/angular-query-experimental';
+import { injectQuery, keepPreviousData } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
-import { Params } from '@data-access/interfaces/core.interface';
+import { IAdminQuestionListParams } from '@data-access/interfaces/questions-answers.interface';
 import { QuestionsAnswersService } from '@data-access/services/questions-answers.service';
 
-export function injectQuestionAnswersQuery(params: () => Params) {
-	const questionsAnswersService = inject(QuestionsAnswersService);
+export const ADMIN_QUESTIONS_KEY = 'admin-questions';
+
+export function injectQuestionAnswersQuery(params: () => IAdminQuestionListParams) {
+	const service = inject(QuestionsAnswersService);
 	return injectQuery(() => ({
-		queryKey: ['question-answers', params()],
-		queryFn: () => firstValueFrom(questionsAnswersService.getQuestionAnswers(params())),
+		queryKey: [ADMIN_QUESTIONS_KEY, params()],
+		queryFn: () => firstValueFrom(service.list(params())),
+		placeholderData: keepPreviousData,
 	}));
 }

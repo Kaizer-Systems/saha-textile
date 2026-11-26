@@ -1,0 +1,420 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+	type ConsoleView,
+	KEY_KINDS,
+	envTagKeySchema,
+	type KeyRef,
+	type NewProject,
+	type Project,
+	type Repository,
+	type LinkKey,
+	type RotationState,
+	type SlotKeys,
+	emptyRotation,
+} from '@saha-textile/release-console-contracts';
+
+import { KeySourceService } from '../keys/key-source.js';
+import { RunnerClient } from '../runner/runner-client.js';
+import { ConsoleStore } from '../store/console-store.js';
+import { checkKey, stateWithExpiry } from '../vendors/key-checks.js';
+
+const run = promisify(execFile);
+
+/**
+ * The GitHub CLI's own sign-in on this computer (made in the browser with `gh auth login`). In
+ * Docker the console's container has no gh, so the Mac helper reads it from the Mac's gh instead.
+ */
+export async function githubCliToken(
+	helper: Pick<RunnerClient, 'call'> = new RunnerClient(),
+	local: () => Promise<{ stdout: string }> = () => run('gh', ['auth', 'token'], { timeout: 10_000 }),
+): Promise<string | null> {
+	const { stdout } = await local().catch(() => ({ stdout: '' }));
+	if (stdout.trim()) return stdout.trim();
+	const answer = await helper
+		.call<{ token: string | null }>('GET', '/github/token', undefined, 10_000)
+		.catch(() => ({ token: null }));
+	return answer.token || null;
+}
+
+/** Every environment must run on one of its repository's clouds and read one of its secrets managers. */
+export function checkRepository(repo: Repository): void {
+	const clouds = new Set(repo.cloud.map((c) => c.id));
+	const secrets = new Set(repo.secrets.map((x) => x.id));
+	for (const e of repo.environments) {
+		if (e.cloudId && !clouds.has(e.cloudId))
+			throw new ConflictException(`${repo.name} · ${e.label} runs on a cloud the repository does not have.`);
+		if (e.secretsId && !secrets.has(e.secretsId))
+			throw new ConflictException(
+				`${repo.name} · ${e.label} reads a secrets manager the repository does not have.`,
+			);
+	}
+}
+
+/** Projects, their repositories and key links. Key values stay in Infisical and the key file. */
+@Injectable()
+export class ProjectsService {
+	constructor(
+		private readonly store: ConsoleStore,
+		private readonly keys: KeySourceService,
+	) {}
+
+	view(): ConsoleView {
+		const file = this.store.read();
+		return {
+			workspaces: file.workspaces,
+			projects: file.projects.map((p) => ({
+				...p,
+				keys: p.keys.map((k) => ({ ...k, state: stateWithExpiry(k.state, k.expiresAt) })),
+			})),
+		};
+	}
+
+	project(id: string): Project {
+		const p = this.view().projects.find((x) => x.id === id);
+		if (!p) throw new NotFoundException(`No project ${id}.`);
+		return p;
+	}
+
+	repository(projectId: string, repoId: string): { project: Project; repo: Repository } {
+		const project = this.project(projectId);
+		const repo = project.repositories.find((r) => r.id === repoId);
+		if (!repo) throw new NotFoundException(`No repository ${repoId} in ${project.name}.`);
+		return { project, repo };
+	}
+
+	add(input: NewProject): Project {
+		const file = this.store.read();
+		if (file.projects.some((p) => p.id === input.id || p.name.toLowerCase() === input.name.toLowerCase()))
+			throw new ConflictException('A project with that name exists.');
+		const ids = input.repositories.map((r) => r.id);
+		if (new Set(ids).size !== ids.length) throw new ConflictException('Two repositories share an id.');
+		input.repositories.forEach(checkRepository);
+		const project: Project = { ...input, keys: [], sshEmails: [], createdAt: new Date().toISOString() };
+		this.store.update((f) => ({
+			...f,
+			workspaces: [...new Set([...f.workspaces, project.workspace])],
+			projects: [...f.projects, project],
+		}));
+		this.store.audit(
+			project.id,
+			'project-added',
+			`${project.name} added with ${project.repositories.length} repositories`,
+		);
+		return project;
+	}
+
+	async remove(id: string): Promise<void> {
+		const project = this.project(id);
+		this.store.update((f) => ({ ...f, projects: f.projects.filter((p) => p.id !== id) }));
+		this.store.audit(
+			id,
+			'project-removed',
+			`${project.name} removed with its ${project.keys.length} key links; the keys stay in Infisical`,
+		);
+	}
+
+	/** Links a key to its Infisical names and checks it at once. No value is sent or stored. */
+	async linkKey(projectId: string, input: LinkKey): Promise<KeyRef> {
+		this.project(projectId);
+		const kind = KEY_KINDS[input.kind];
+		const envNames = kind.stored ? (input.envNames.length ? input.envNames : kind.envNames) : [];
+		if (kind.stored && !envNames.length)
+			throw new ConflictException('Name the Infisical variable that holds this key.');
+		if (input.kind === 'spaces-key' && envNames.length !== 2)
+			throw new ConflictException('A Spaces key needs two names: its access key, then its secret.');
+		const ref: KeyRef = {
+			id: input.id,
+			kind: input.kind,
+			label: input.label,
+			envNames,
+			account: '',
+			rights: [],
+			expiresAt: input.expiresAt,
+			checkedAt: null,
+			state: 'unchecked',
+			note: input.note,
+			target: input.target,
+		};
+		this.saveKey(projectId, ref);
+		this.store.audit(
+			projectId,
+			'key-linked',
+			`${input.label} (${input.id}) linked${envNames.length ? ` to ${envNames.join(' + ')}` : ''}`,
+		);
+		return this.checkKeyNow(projectId, input.id);
+	}
+
+	async checkKeyNow(projectId: string, keyId: string): Promise<KeyRef> {
+		const project = this.project(projectId);
+		const ref = project.keys.find((k) => k.id === keyId);
+		if (!ref) throw new NotFoundException(`No key ${keyId}.`);
+		const value = await this.valueOf(ref);
+		const repos = project.repositories
+			.filter((r) => r.sourceCode.keyId === keyId)
+			.map((r) => r.sourceCode.repository);
+		const check = value
+			? await checkKey(ref.kind, value, repos, ref.target)
+			: {
+					state: 'failed' as const,
+					account: '',
+					rights: [],
+					note: ref.envNames.length
+						? `The key file has no value for ${ref.envNames.join(' + ')}. Add it in Infisical, then run pnpm console:env.`
+						: 'The GitHub CLI is not signed in where the console runs.',
+				};
+		const next: KeyRef = {
+			...ref,
+			account: check.account || ref.account,
+			rights: check.rights,
+			expiresAt: check.expiresAt === undefined ? ref.expiresAt : (check.expiresAt ?? ref.expiresAt),
+			checkedAt: new Date().toISOString(),
+			state: check.state,
+			note: check.note,
+		};
+		next.state = stateWithExpiry(next.state, next.expiresAt);
+		this.saveKey(projectId, next);
+		this.store.audit(projectId, 'key-checked', `${ref.label}: ${next.state}`);
+		return next;
+	}
+
+	async removeKey(projectId: string, keyId: string): Promise<void> {
+		const ref = this.project(projectId).keys.find((k) => k.id === keyId);
+		if (!ref) throw new NotFoundException(`No key ${keyId}.`);
+		this.store.update((f) => ({
+			...f,
+			projects: f.projects.map((p) =>
+				p.id !== projectId
+					? p
+					: {
+							...p,
+							keys: p.keys.filter((k) => k.id !== keyId),
+							repositories: p.repositories.map((r) => ({
+								...r,
+								sourceCode: {
+									...r.sourceCode,
+									keyId: r.sourceCode.keyId === keyId ? null : r.sourceCode.keyId,
+								},
+								cloud: r.cloud.map((c) => ({ ...c, keyIds: c.keyIds.filter((k) => k !== keyId) })),
+								edge: r.edge.map((e) => ({ ...e, keyIds: e.keyIds.filter((k) => k !== keyId) })),
+								secrets: r.secrets.map((x) => ({ ...x, keyIds: x.keyIds.filter((k) => k !== keyId) })),
+							})),
+						},
+			),
+		}));
+		this.store.audit(projectId, 'key-unlinked', `${ref.label} (${keyId}) unlinked; it stays in Infisical`);
+	}
+
+	/** The environment tags of one repository's cloud resources (resource key → environment name). */
+	envTags(projectId: string, repoId: string): Record<string, string> {
+		return { ...(this.store.read().envTags[`${projectId}/${repoId}`] ?? {}) };
+	}
+
+	/**
+	 * Tags a resource with one of the repository's own environments, or clears it (`env` null). The
+	 * environment must exist in the repository, so a tag always names something real.
+	 */
+	setEnvTag(projectId: string, repoId: string, key: string, env: string | null): Record<string, string> {
+		const project = this.project(projectId);
+		const repo = project.repositories.find((r) => r.id === repoId);
+		if (!repo) throw new NotFoundException(`${repoId} is not in ${projectId}.`);
+		if (!envTagKeySchema.safeParse(key).success) throw new BadRequestException('Not a resource the console tags.');
+		if (env !== null && !repo.environments.some((e) => e.name === env))
+			throw new BadRequestException(`${env} is not an environment of ${repo.name}.`);
+		const slot = `${projectId}/${repoId}`;
+		this.store.update((f) => {
+			const tags = { ...(f.envTags[slot] ?? {}) };
+			if (env === null) delete tags[key];
+			else tags[key] = env;
+			return { ...f, envTags: { ...f.envTags, [slot]: tags } };
+		});
+		this.store.audit(projectId, 'env-tag', `${key} → ${env ?? 'no environment'}`);
+		return this.envTags(projectId, repoId);
+	}
+
+	/**
+	 * Drops the tags of resources that no longer exist (destroyed here or on the vendor's own page),
+	 * given the full live list of one kind. Called only with a complete list.
+	 */
+	pruneEnvTags(projectId: string, repoId: string, kind: string, liveIds: string[]): void {
+		const slot = `${projectId}/${repoId}`;
+		const prefix = `do:${kind}:`;
+		const live = new Set(liveIds.map((id) => `${prefix}${id}`));
+		const stale = Object.keys(this.store.read().envTags[slot] ?? {}).filter(
+			(k) => k.startsWith(prefix) && !live.has(k),
+		);
+		if (!stale.length) return;
+		this.store.update((f) => {
+			// Stale tags were just read from this slot, so it is there.
+			const tags = { ...(f.envTags[slot] as Record<string, string>) };
+			for (const k of stale) delete tags[k];
+			return { ...f, envTags: { ...f.envTags, [slot]: tags } };
+		});
+		this.store.audit(projectId, 'env-tag', `${stale.join(', ')} → removed (no longer on the account)`);
+	}
+
+	/** What secret rotations left behind for one environment (Release Path brief, Part 3). */
+	rotation(projectId: string, repoId: string, env: string): RotationState {
+		return this.store.read().rotations[`${projectId}/${repoId}`]?.[env] ?? emptyRotation();
+	}
+
+	/** Replaces one environment's rotation record (names and dates only). */
+	setRotation(projectId: string, repoId: string, env: string, next: RotationState): RotationState {
+		const slot = `${projectId}/${repoId}`;
+		this.store.update((f) => ({
+			...f,
+			rotations: { ...f.rotations, [slot]: { ...(f.rotations[slot] ?? {}), [env]: next } },
+		}));
+		return next;
+	}
+
+	/** Who may sign in over SSH to the project's servers (owner, 21 Nov: a list, more added later). */
+	setSshEmails(projectId: string, emails: string[]): Project {
+		this.project(projectId);
+		const clean = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+		this.store.update((f) => ({
+			...f,
+			projects: f.projects.map((p) => (p.id !== projectId ? p : { ...p, sshEmails: clean })),
+		}));
+		this.store.audit(
+			projectId,
+			'ssh-list',
+			`${clean.length} ${clean.length === 1 ? 'person' : 'people'} on the SSH list`,
+		);
+		return this.project(projectId);
+	}
+
+	setSlotKeys(projectId: string, input: SlotKeys): Project {
+		const project = this.project(projectId);
+		const known = new Set(project.keys.map((k) => k.id));
+		const unknown = input.keyIds.filter((k) => !known.has(k));
+		if (unknown.length) throw new NotFoundException(`No key ${unknown.join(', ')} in ${project.name}.`);
+		const { repo } = this.repository(projectId, input.repositoryId);
+		if (input.slot === 'cloud' && !repo.cloud.some((c) => c.id === input.slotId))
+			throw new NotFoundException('No such cloud slot.');
+		if (input.slot === 'edge' && !repo.edge.some((e) => e.id === input.slotId))
+			throw new NotFoundException('No such edge slot.');
+		if (input.slot === 'secrets' && !repo.secrets.some((x) => x.id === input.slotId))
+			throw new NotFoundException('No such secrets manager.');
+		this.store.update((f) => ({
+			...f,
+			projects: f.projects.map((p) =>
+				p.id !== projectId
+					? p
+					: {
+							...p,
+							repositories: p.repositories.map((r) =>
+								r.id !== input.repositoryId
+									? r
+									: input.slot === 'source-code'
+										? { ...r, sourceCode: { ...r.sourceCode, keyId: input.keyIds[0] ?? null } }
+										: input.slot === 'cloud'
+											? {
+													...r,
+													cloud: r.cloud.map((c) =>
+														c.id === input.slotId ? { ...c, keyIds: input.keyIds } : c,
+													),
+												}
+											: input.slot === 'edge'
+												? {
+														...r,
+														edge: r.edge.map((e) =>
+															e.id === input.slotId ? { ...e, keyIds: input.keyIds } : e,
+														),
+													}
+												: {
+														...r,
+														secrets: r.secrets.map((x) =>
+															x.id === input.slotId ? { ...x, keyIds: input.keyIds } : x,
+														),
+													},
+							),
+						},
+			),
+		}));
+		this.store.audit(
+			projectId,
+			'slot-keys-changed',
+			`${input.repositoryId} ${input.slot}${input.slotId ? ` ${input.slotId}` : ''}: ${input.keyIds.join(', ') || 'none'}`,
+		);
+		return this.project(projectId);
+	}
+
+	addRepository(projectId: string, repo: Repository): Project {
+		const project = this.project(projectId);
+		if (project.repositories.some((r) => r.id === repo.id))
+			throw new ConflictException(`${project.name} has a repository ${repo.id}.`);
+		this.replaceRepositories(projectId, [...project.repositories, this.keepKnownKeys(project, repo)]);
+		this.store.audit(projectId, 'repository-added', `${repo.name} (${repo.sourceCode.repository}) added`);
+		return this.project(projectId);
+	}
+
+	/** Replaces a repository's settings; key ids the project does not hold are dropped. */
+	updateRepository(projectId: string, repoId: string, repo: Repository): Project {
+		const { project } = this.repository(projectId, repoId);
+		if (repo.id !== repoId) throw new ConflictException('A repository keeps its id.');
+		this.replaceRepositories(
+			projectId,
+			project.repositories.map((r) => (r.id === repoId ? this.keepKnownKeys(project, repo) : r)),
+		);
+		this.store.audit(projectId, 'repository-changed', `${repo.name}: settings saved`);
+		return this.project(projectId);
+	}
+
+	removeRepository(projectId: string, repoId: string): Project {
+		const { project, repo } = this.repository(projectId, repoId);
+		if (project.repositories.length === 1)
+			throw new ConflictException('A project keeps at least one repository; remove the project instead.');
+		this.replaceRepositories(
+			projectId,
+			project.repositories.filter((r) => r.id !== repoId),
+		);
+		this.store.audit(projectId, 'repository-removed', `${repo.name} removed; the project's keys stay`);
+		return this.project(projectId);
+	}
+
+	private keepKnownKeys(project: Project, repo: Repository): Repository {
+		checkRepository(repo);
+		const known = new Set(project.keys.map((k) => k.id));
+		const ids = (list: string[]) => list.filter((k) => known.has(k));
+		return {
+			...repo,
+			sourceCode: {
+				...repo.sourceCode,
+				keyId: repo.sourceCode.keyId && known.has(repo.sourceCode.keyId) ? repo.sourceCode.keyId : null,
+			},
+			cloud: repo.cloud.map((c) => ({ ...c, keyIds: ids(c.keyIds) })),
+			edge: repo.edge.map((e) => ({ ...e, keyIds: ids(e.keyIds) })),
+			secrets: repo.secrets.map((x) => ({ ...x, keyIds: ids(x.keyIds) })),
+		};
+	}
+
+	private replaceRepositories(projectId: string, repositories: Repository[]): void {
+		const ids = repositories.map((r) => r.id);
+		if (new Set(ids).size !== ids.length) throw new ConflictException('Two repositories share an id.');
+		this.store.update((f) => ({
+			...f,
+			projects: f.projects.map((p) => (p.id === projectId ? { ...p, repositories } : p)),
+		}));
+	}
+
+	/** The key's value for a vendor call, held in memory for that call only. */
+	async valueOf(ref: KeyRef): Promise<string | null> {
+		if (ref.kind === 'github-cli') return githubCliToken();
+		const values = ref.envNames.map((n) => this.keys.get(n));
+		if (!values.length || values.some((v) => v === null)) return null;
+		// A Spaces key is its access key and secret joined, as its check expects.
+		return values.join(':');
+	}
+
+	private saveKey(projectId: string, ref: KeyRef): void {
+		this.store.update((f) => ({
+			...f,
+			projects: f.projects.map((p) =>
+				p.id !== projectId ? p : { ...p, keys: [...p.keys.filter((k) => k.id !== ref.id), ref] },
+			),
+		}));
+	}
+}

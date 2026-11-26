@@ -1,24 +1,352 @@
+@if (paypalDown(); as since) {
+<div class="container-fluid">
+	<div class="row">
+		<div class="col-12">
+			<div
+				class="alert alert-warning d-flex align-items-start gap-2"
+				role="alert"
+				id="fx_paypal_down"
+			>
+				<i
+					class="ri-alert-line mt-1"
+					aria-hidden="true"
+				></i>
+				<div>
+					<b>{{ 'fx_paypal_down_title' | transloco: { since: when(since) } }}</b>
+					{{ 'fx_paypal_down_body' | transloco: { last: when(query.data()?.settings?.dailyFetch?.lastRunAt ??
+					null) } }}
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+}
 <app-page-wrapper
 	[gridClass]="'col-sm-12'"
-	[title]="'currencies'"
+	[title]="'fx_exchange_rates'"
 >
+	@if (query.data(); as data) { @if (draft(); as current) {
 	<div
-		*hasPermission="'currency.create'"
-		button
+		class="row g-3 mb-3"
+		role="radiogroup"
+		[attr.aria-label]="'fx_exchange_rates' | transloco"
 	>
-		<a
-			[routerLink]="['/currency/create']"
-			class="align-items-center btn btn-theme d-flex"
-		>
-			<i class="ri-add-line"></i>
-			{{ 'add_currency' | transloco }}
-		</a>
+		<div class="col-lg-4">
+			<label
+				class="card mb-0 h-100"
+				[style.border]="current.source === 'paypalFxaas' ? chosenBorder : null"
+				[style.opacity]="data.settings.paypalFxaas.approved ? null : 0.75"
+			>
+				<div class="card-body">
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="radio"
+							name="fx_source"
+							id="fx_source_paypal"
+							[checked]="current.source === 'paypalFxaas'"
+							[disabled]="!data.settings.paypalFxaas.approved || !canEdit()"
+							(change)="patch({ source: 'paypalFxaas' })"
+						/>
+						<span class="form-check-label fw-semibold">{{ 'fx_source_paypal' | transloco }}</span>
+					</div>
+					<div class="small text-muted mt-2">
+						{{ 'fx_source_paypal_help' | transloco }} @if (data.settings.paypalFxaas.approved) {
+						<span class="fm-chip">
+							{{ 'fx_paypal_approved' | transloco: { at: when(data.settings.paypalFxaas.lastQuoteAt) } }}
+						</span>
+						} @else {
+						<span class="fm-chip muted">{{ 'fx_paypal_not_approved' | transloco }}</span>
+						}
+						<br />
+						{{ 'fx_source_paypal_fallback' | transloco }}
+					</div>
+				</div>
+			</label>
+		</div>
+		<div class="col-lg-4">
+			<label
+				class="card mb-0 h-100"
+				[style.border]="current.source === 'stored' ? chosenBorder : null"
+			>
+				<div class="card-body">
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="radio"
+							name="fx_source"
+							id="fx_source_stored"
+							[checked]="current.source === 'stored'"
+							[disabled]="!canEdit()"
+							(change)="patch({ source: 'stored' })"
+						/>
+						<span class="form-check-label fw-semibold">{{ 'fx_source_stored' | transloco }}</span>
+					</div>
+					<div class="small text-muted mt-2">{{ 'fx_source_stored_help' | transloco }}</div>
+				</div>
+			</label>
+		</div>
 	</div>
-	<app-table
-		[tableConfig]="tableConfig"
-		[hasCheckbox]="true"
-		(tableChanged)="onTableChange($event)"
-		(rowClicked)="edit($event)"
-		(action)="onActionClicked($event)"
-	/>
+	<div class="theme-form theme-form-2 mega-form">
+		<app-form-fields
+			[label]="'fx_markup'"
+			[for]="'fx_markup'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<div class="d-flex align-items-center gap-2">
+				<div
+					class="input-group flex-nowrap"
+					style="width: 140px"
+				>
+					<input
+						class="form-control"
+						type="number"
+						min="0"
+						max="30"
+						step="0.1"
+						id="fx_markup"
+						[readonly]="!data.canEditMarkup"
+						[value]="current.markup"
+						(change)="patch({ markup: +$any($event.target).value })"
+					/>
+					<span class="input-group-text">%</span>
+				</div>
+				@if (!data.canEditMarkup) {
+				<i
+					class="ri-lock-line text-muted"
+					[title]="'fx_markup_locked' | transloco"
+					[attr.aria-label]="'fx_markup_locked' | transloco"
+				></i>
+				}
+			</div>
+			<p class="help-text">{{ 'fx_markup_help' | transloco }}</p>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'fx_daily_fetch'"
+			[for]="'fx_fetch_on'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<div class="d-flex align-items-center flex-wrap gap-3">
+				<div class="form-check form-switch ps-0">
+					<label class="switch">
+						<input
+							type="checkbox"
+							id="fx_fetch_on"
+							[disabled]="!canEdit()"
+							[checked]="current.fetchEnabled"
+							(change)="patch({ fetchEnabled: $any($event.target).checked })"
+						/>
+						<span class="switch-state"></span>
+					</label>
+				</div>
+				<span class="small">{{ 'fx_at' | transloco }}</span>
+				<input
+					class="form-control"
+					style="width: 110px"
+					type="text"
+					inputmode="numeric"
+					maxlength="5"
+					placeholder="12:30"
+					[attr.aria-label]="'fx_fetch_time' | transloco"
+					[readonly]="!canEdit()"
+					[value]="current.fetchTime"
+					(change)="setFetchTime($any($event.target).value)"
+				/>
+				<span class="small">
+					{{ (data.fetchUsesKey ? 'fx_from_provider' : 'fx_from_provider_open') | transloco }}
+				</span>
+				@if (canEdit()) {
+				<button
+					type="button"
+					class="btn btn-outline btn-sm"
+					id="fx_fetch_now"
+					[disabled]="fetching()"
+					(click)="fetchNow()"
+				>
+					<i
+						class="ri-refresh-line me-1"
+						aria-hidden="true"
+					></i>
+					{{ 'fx_fetch_now' | transloco }}
+				</button>
+				}
+			</div>
+			<p class="help-text">{{ 'fx_daily_fetch_help' | transloco }}</p>
+			@if (data.settings.dailyFetch.lastError; as problem) {
+			<p class="small text-danger mb-0">{{ 'fx_last_fetch_failed' | transloco: { problem } }}</p>
+			}
+		</app-form-fields>
+	</div>
+	} } @else {
+	<div class="table-loader">
+		<span>{{ 'please_wait' | transloco }}...</span>
+	</div>
+	}
 </app-page-wrapper>
+@if (query.data(); as data) {
+<div class="container-fluid">
+	<div class="row">
+		<div class="col-sm-12">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ 'currencies' | transloco }}</h5>
+						</div>
+					</div>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table
+							class="all-package theme-table no-footer table"
+							id="fx_currencies"
+						>
+							<thead>
+								<tr>
+									<th>{{ 'fx_col_currency' | transloco }}</th>
+									<th>{{ 'fx_col_name' | transloco }}</th>
+									<th
+										class="text-end"
+										style="width: 120px"
+									>
+										{{ 'fx_col_rate' | transloco }}
+									</th>
+									<th style="width: 150px">{{ 'fx_col_set_by' | transloco }}</th>
+									<th style="width: 140px">{{ 'fx_col_when' | transloco }}</th>
+									<th style="width: 220px">
+										{{ 'fx_col_example' | transloco: { markup: data.settings.paypalMarkupPercent }
+										}}
+									</th>
+									<th style="width: 100px">{{ 'status' | transloco }}</th>
+									<th style="width: 70px"></th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (row of data.currencies; track row.code) {
+								<tr [attr.data-currency]="row.code">
+									<td><b>{{ row.symbol }}</b></td>
+									<td>{{ currencyName(row.code) }}</td>
+									<td class="text-end text-nowrap">{{ rate(row.inrPerUnit) }}</td>
+									<td>{{ setBy(row) }}</td>
+									<td>{{ when(row.setAt) }}</td>
+									<td>{{ example(row, data.exampleINR) }}</td>
+									<td>
+										<div [class]="row.stored && row.enabled ? 'status-success' : 'status-pending'">
+											<span>
+												{{ (row.stored && row.enabled ? 'fx_on' : 'fx_off') | transloco }}
+											</span>
+										</div>
+									</td>
+									<td>
+										@if (canEdit()) {
+										<ul id="actions">
+											<li>
+												<a
+													href="javascript:void(0)"
+													class="text-success"
+													[title]="'fx_edit_rate' | transloco"
+													[attr.aria-label]="'fx_edit_rate' | transloco"
+													(click)="edit(row)"
+												>
+													<i class="ri-pencil-line"></i>
+												</a>
+											</li>
+										</ul>
+										}
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					<p class="help-text mt-2 mb-0">{{ 'fx_table_note' | transloco }}</p>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+}
+
+<ng-template
+	#ratePopup
+	let-modal
+>
+	@if (editing(); as current) {
+	<div class="modal-header">
+		<h2 id="fx_rate_title">{{ 'fx_rate_title' | transloco: { code: current.row.symbol } }}</h2>
+		<button
+			type="button"
+			class="btn btn-close"
+			[title]="'close' | transloco"
+			[attr.aria-label]="'close' | transloco"
+			(click)="modal.dismiss()"
+		>
+			<i class="ri-close-line"></i>
+		</button>
+	</div>
+	<div class="modal-body theme-form theme-form-2">
+		<app-form-fields
+			[label]="'fx_col_rate'"
+			[for]="'fx_rate_value'"
+			[labelClass]="'form-label-title col-sm-4 mb-0'"
+			[gridClass]="'col-sm-8'"
+		>
+			<div
+				class="input-group flex-nowrap"
+				style="width: 180px"
+			>
+				<span class="input-group-text">₹</span>
+				<input
+					class="form-control"
+					type="number"
+					min="0"
+					step="0.01"
+					id="fx_rate_value"
+					[ngModel]="current.inrPerUnit"
+					(ngModelChange)="patchEditing({ inrPerUnit: $event })"
+				/>
+			</div>
+			<p class="help-text">{{ 'fx_rate_help' | transloco: { code: current.row.symbol } }}</p>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'status'"
+			[for]="'fx_rate_on'"
+			[labelClass]="'form-label-title col-sm-4 mb-0'"
+			[gridClass]="'col-sm-8'"
+		>
+			<div class="form-check form-switch ps-0">
+				<label class="switch">
+					<input
+						type="checkbox"
+						id="fx_rate_on"
+						[checked]="current.enabled"
+						(change)="patchEditing({ enabled: $any($event.target).checked })"
+					/>
+					<span class="switch-state"></span>
+				</label>
+			</div>
+		</app-form-fields>
+	</div>
+	<div class="modal-footer">
+		<div class="left-part"></div>
+		<div class="right-part d-flex gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="fx_rate_save"
+				[disabled]="saving() || !(current.inrPerUnit && current.inrPerUnit > 0)"
+				(click)="saveRate()"
+			>
+				{{ 'save' | transloco }}
+			</button>
+		</div>
+	</div>
+	}
+</ng-template>

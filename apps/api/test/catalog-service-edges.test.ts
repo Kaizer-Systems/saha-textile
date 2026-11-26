@@ -1,13 +1,11 @@
-import { BadRequestException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Product, ProductVariant } from '@saha-textile/contracts';
-import { SearchUnavailableError } from '@saha-textile/core-domain';
 import { describe, expect, it, vi } from 'vitest';
 import type { z } from 'zod';
 
 import { AdminAddonTemplatesController } from '../src/catalog/admin-addon-templates.controller';
 import { AdminProductsController } from '../src/catalog/admin-products.controller';
 import { AdminRedirectsController } from '../src/catalog/admin-redirects.controller';
-import { CatalogSearchController } from '../src/catalog/catalog-search.controller';
 import { CatalogService } from '../src/catalog/catalog.service';
 import { CategoriesController } from '../src/catalog/categories.controller';
 import { ProductsController } from '../src/catalog/products.controller';
@@ -87,6 +85,7 @@ interface Options {
 	relations?: unknown[];
 	redirects?: unknown[];
 	assets?: unknown[];
+	outbox?: unknown;
 }
 
 const build = (options: Options = {}) => {
@@ -105,11 +104,15 @@ const build = (options: Options = {}) => {
 		save: vi.fn(async (saved: unknown) => saved),
 	};
 	const categories = {
-		tree: vi.fn(async () => ['tree']),
+		tree: vi.fn(async () => TREE as unknown[]),
 		findBySlug: vi.fn(async (slug: string) => (slug === 'silk' ? { id: 'c1' } : null)),
-		findById: vi.fn(async (id: string) => (id === 'c1' ? { name: { en: 'Silk', fr: 'Soie' } } : null)),
+		findById: vi.fn(async (id: string) => (id === 'c1' ? { name: { en: 'Silk', bn: 'সিল্ক' } } : null)),
 	};
-	const variants = { listForProduct: vi.fn(async () => rows), save: vi.fn(async (saved: unknown) => saved) };
+	const variants = {
+		listForProduct: vi.fn(async () => rows),
+		listForProducts: vi.fn(async () => rows),
+		save: vi.fn(async (saved: unknown) => saved),
+	};
 	const redirects = {
 		list: vi.fn(async () => stored),
 		findBySource: vi.fn(
@@ -134,6 +137,7 @@ const build = (options: Options = {}) => {
 		listForProduct: vi.fn(async () => options.relations ?? []),
 		deleteById: vi.fn(async () => {}),
 		save: vi.fn(async (saved: unknown) => saved),
+		disableForTarget: vi.fn(async () => 0),
 	};
 	const placements = {
 		findByPath: vi.fn(async () => options.placement ?? null),
@@ -141,7 +145,7 @@ const build = (options: Options = {}) => {
 	};
 	const media = { findManyByIds: vi.fn(async () => options.assets ?? []) };
 	const storage = { getUrl: (key: string) => `https://cdn.test/${key}` };
-	const search = { indexProduct: vi.fn(async () => {}), removeProduct: vi.fn(async () => {}) };
+	const search = { indexProducts: vi.fn(async () => {}), removeProduct: vi.fn(async () => {}) };
 	const stockAlerts = { save: vi.fn(async () => {}) };
 	const service = options.bare
 		? new CatalogService(products as never, categories as never, variants as never, redirects as never)
@@ -159,10 +163,16 @@ const build = (options: Options = {}) => {
 				storage as never,
 				search as never,
 				stockAlerts as never,
+				undefined,
+				undefined,
+				(options as { faqs?: unknown }).faqs as never,
+				undefined,
+				options.outbox as never,
 			);
 	return {
 		service,
 		products,
+		categories,
 		variants,
 		redirects,
 		addons,
@@ -177,6 +187,8 @@ const build = (options: Options = {}) => {
 
 const actions = (audit: { append: ReturnType<typeof vi.fn> }) =>
 	audit.append.mock.calls.map((call: unknown[]) => (call[0] as { action: string }).action);
+
+const TREE = [{ id: 'c1', name: { en: 'Silk', bn: 'সিল্ক' }, ancestors: [] }];
 
 describe('reads', () => {
 	it('defaults the audience to public', async () => {
@@ -196,7 +208,7 @@ describe('reads', () => {
 
 	it('reads the category tree and one category', async () => {
 		const { service } = build();
-		expect(await service.getCategoryTree()).toEqual(['tree']);
+		expect(await service.getCategoryTree()).toEqual(TREE);
 		expect(await service.getCategory('silk')).toEqual({ id: 'c1' });
 		await expect(service.getCategory('none')).rejects.toBeInstanceOf(NotFoundException);
 	});
@@ -271,7 +283,7 @@ describe('redirects', () => {
 
 describe('discontinue', () => {
 	it('writes a 410 with no replacement, and takes the product out of search', async () => {
-		const { service, products, search, stored } = build();
+		const { service, products, search, stored, relations, transactions } = build();
 		expect(await service.discontinue('red-saree', null, 'a1')).toEqual({
 			slug: 'red-saree',
 			statusCode: 410,
@@ -283,6 +295,8 @@ describe('discontinue', () => {
 		});
 		expect(stored[0]).toMatchObject({ sourcePath: '/product/red-saree', statusCode: 410 });
 		expect(search.removeProduct).toHaveBeenCalledWith('prd_1');
+		expect(relations.disableForTarget).toHaveBeenCalledWith('prd_1');
+		expect(transactions.withTransaction).toHaveBeenCalledTimes(1);
 	});
 
 	it('writes a 301 to a live product', async () => {
@@ -355,6 +369,20 @@ describe('admin list and detail', () => {
 		const row = product({ media: { gallery: ['m1', 'gone'], compound: [], altOverrides: {} } });
 		const detail = await build({ row, rows: [variant()], assets: [asset] }).service.adminDetail('red-saree');
 		expect(detail.images).toMatchObject([{ assetId: 'm1', url: 'https://cdn.test/k' }]);
+	});
+
+	it('gives the form the FAQ switch and the product’s own questions', async () => {
+		const faqs = {
+			listForProduct: vi.fn(async () => [{ id: 'f1', question: { en: 'Q?' }, answer: { en: 'A' } }]),
+		};
+		const row = product({ faqEnabled: true });
+		const detail = await build({ row, rows: [variant()], faqs } as never).service.adminDetail('red-saree');
+		expect(detail.content).toMatchObject({
+			faqEnabled: true,
+			faq: [{ id: 'f1', question: { en: 'Q?' }, answer: { en: 'A' } }],
+		});
+		const none = await build({ row: product(), rows: [variant()] }).service.adminDetail('red-saree');
+		expect(none.content).toMatchObject({ faqEnabled: false, faq: [] });
 	});
 
 	it('falls back to the base price, and to no thumbnail', async () => {
@@ -522,7 +550,7 @@ describe('saving the product form', () => {
 			onSale: true,
 			featured: true,
 		});
-		expect(search.indexProduct).toHaveBeenCalledTimes(1);
+		expect(search.indexProducts).toHaveBeenCalledTimes(1);
 		expect(actions(audit)).toEqual(['catalog.product.save']);
 	});
 
@@ -547,7 +575,7 @@ describe('saving the product form', () => {
 	});
 
 	it('keeps a tax class and a delivery text in other languages', async () => {
-		const row = product({ estimatedDeliveryText: { en: 'Old', fr: 'Bientôt' } });
+		const row = product({ estimatedDeliveryText: { en: 'Old', bn: 'শিগগিরই' } });
 		const { service, variants, products } = build({
 			row,
 			rows: [variant({ taxProfile: { hsnCode: 'x', taxClassId: 'gst' } })],
@@ -556,7 +584,7 @@ describe('saving the product form', () => {
 		expect((variants.save.mock.calls[0] as unknown as [VariantRow])[0].taxProfile?.taxClassId).toBe('gst');
 		expect((products.save.mock.calls[0] as unknown as [Row])[0].estimatedDeliveryText).toEqual({
 			en: 'New',
-			fr: 'Bientôt',
+			bn: 'শিগগিরই',
 		});
 	});
 
@@ -586,27 +614,15 @@ describe('saving the product form', () => {
 		expect(search.removeProduct).toHaveBeenCalledWith('prd_1');
 	});
 
-	it('counts stock received, and notes a return to stock', async () => {
-		const { service, products } = build({ rows: [variant({ stock: { quantity: 0 } })] });
+	it('never changes stock from the form: stock moves only through stock documents (F01)', async () => {
+		const { service, products, variants } = build({ rows: [variant({ stock: { quantity: 0 } })] });
 		await service.updateMerchandising('red-saree', form({ variants: [write({ quantity: 5 })] }));
 		const saved = (products.save.mock.calls[0] as unknown as [Row])[0];
-		expect(saved.lifetimeUnitsReceived).toBe(5);
-		expect(saved.backInStockAt).toEqual(expect.any(String));
-	});
-
-	it('counts a row with no earlier stock as all new', async () => {
-		const { service, products } = build();
-		const realGet = Map.prototype.get;
-		const spy = vi.spyOn(Map.prototype, 'get').mockImplementation(function (
-			this: Map<unknown, unknown>,
-			key: unknown,
-		) {
-			const stack = new Error().stack ?? '';
-			return stack.includes('catalog.service') && stack.includes('reduce') ? undefined : realGet.call(this, key);
-		});
-		await service.updateMerchandising('red-saree', form({ variants: [write({ quantity: 3 })] }));
-		spy.mockRestore();
-		expect((products.save.mock.calls[0] as unknown as [Row])[0].lifetimeUnitsReceived).toBe(3);
+		// Receiving and the back-in-stock date belong to posting a purchase entry now.
+		expect(saved.lifetimeUnitsReceived).toBe(0);
+		expect(saved.backInStockAt).toBeNull();
+		const row = (variants.save.mock.calls[0] as unknown as [{ stock: { quantity: number } }])[0];
+		expect(row.stock.quantity).toBe(0);
 	});
 
 	it('counts nothing for stock going down', async () => {
@@ -658,14 +674,81 @@ describe('saving the product form', () => {
 	it('gives search the names of its categories', async () => {
 		const { service, search } = build();
 		await service.syncSearch(product({ status: 'live', categoryIds: ['c1', 'gone'] }));
-		expect(search.indexProduct).toHaveBeenLastCalledWith(
-			expect.objectContaining({ categoryNames: ['Silk', 'Soie'] }),
-		);
+		expect(search.indexProducts).toHaveBeenLastCalledWith([
+			expect.objectContaining({ categoryNames: ['Silk', 'সিল্ক'], searchTerms: [], showFirst: false }),
+		]);
+	});
+
+	it('re-indexes many products at once, leaving out those not on the shop', async () => {
+		const { service, search } = build();
+		const count = await service.syncSearchMany([
+			product({ id: 'prd_1', status: 'live' }),
+			product({ id: 'prd_2', status: 'draft' }),
+		]);
+		expect(count).toBe(1);
+		expect(search.indexProducts).toHaveBeenLastCalledWith([
+			expect.objectContaining({ product: expect.objectContaining({ id: 'prd_1' }) }),
+		]);
+	});
+
+	describe('through the search change queue', () => {
+		const queue = () => ({
+			request: vi.fn(async () => {}),
+			markDone: vi.fn(async () => {}),
+			markFailed: vi.fn(async () => {}),
+		});
+
+		it('queues inside the save transaction, then sends and marks the change done', async () => {
+			const outbox = queue();
+			const { service, search, transactions } = build({ outbox });
+			await service.updateMerchandising('red-saree', form());
+			expect(transactions.withTransaction).toHaveBeenCalled();
+			expect(outbox.request).toHaveBeenCalledTimes(2);
+			expect(search.indexProducts).toHaveBeenCalled();
+			expect(outbox.markDone).toHaveBeenCalledWith(
+				[{ productId: 'prd_1', changedAt: expect.any(Date) }],
+				expect.any(Date),
+			);
+			await service.discontinue('red-saree', null, 'a1');
+			expect(search.removeProduct).toHaveBeenCalledWith('prd_1');
+		});
+
+		it('removes products not on the shop, and loads one it was not given', async () => {
+			const outbox = queue();
+			const { service, search } = build({ outbox });
+			const count = await service.syncSearchMany([product({ id: 'prd_2', status: 'draft' })]);
+			expect(count).toBe(0);
+			expect(search.removeProduct).toHaveBeenCalledWith('prd_2');
+			await expect(service.syncSearchMany([])).resolves.toBe(0);
+		});
+
+		it('leaves a change waiting when search is down, and never fails the save', async () => {
+			const outbox = queue();
+			const { service, search } = build({ outbox });
+			search.indexProducts.mockRejectedValue(new Error('search down'));
+			await expect(service.updateMerchandising('red-saree', form())).resolves.toMatchObject({ id: 'prd_1' });
+			expect(outbox.markFailed).toHaveBeenCalledWith(expect.any(Array), 'search down', expect.any(Date));
+		});
+
+		it('still saves when even the queue is unreachable', async () => {
+			const outbox = queue();
+			outbox.request.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('mongo blip'));
+			const { service } = build({ outbox });
+			await expect(service.updateMerchandising('red-saree', form())).resolves.toMatchObject({ id: 'prd_1' });
+		});
+
+		it('does nothing without a search index', async () => {
+			const outbox = queue();
+			const { service } = build({ outbox });
+			(service as unknown as { search: null }).search = null;
+			await service.syncSearch(product({ status: 'live' }));
+			expect(outbox.request).not.toHaveBeenCalled();
+		});
 	});
 
 	it('saves even when the search index is down', async () => {
 		const { service, search } = build();
-		search.indexProduct.mockRejectedValue(new Error('search down'));
+		search.indexProducts.mockRejectedValue(new Error('search down'));
 		await expect(service.updateMerchandising('red-saree', form())).resolves.toMatchObject({ id: 'prd_1' });
 	});
 
@@ -713,7 +796,10 @@ describe('add-on templates', () => {
 	it('lists, saves and removes with an audit row', async () => {
 		const { service, audit, addons } = build();
 		expect(await service.listAddonTemplates()).toEqual(['template']);
-		await service.saveAddonTemplate({ code: 'fall', label: { en: 'Fall' }, priceINR: 1, fields: [], sizeGuide: [] }, 'a1');
+		await service.saveAddonTemplate(
+			{ code: 'fall', label: { en: 'Fall' }, priceINR: 1, fields: [], sizeGuide: [] },
+			'a1',
+		);
 		await service.removeAddonTemplate('fall');
 		expect(addons.remove).toHaveBeenCalledWith('fall');
 		expect(actions(audit)).toEqual(['catalog.addon-template.save', 'catalog.addon-template.remove']);
@@ -722,9 +808,9 @@ describe('add-on templates', () => {
 	it('answers nothing, or refuses, with no store', async () => {
 		const { service } = build({ bare: true });
 		expect(await service.listAddonTemplates()).toEqual([]);
-		await expect(service.saveAddonTemplate({ code: 'x', label: { en: 'X' }, priceINR: 1, fields: [], sizeGuide: [] })).rejects.toBeInstanceOf(
-			NotFoundException,
-		);
+		await expect(
+			service.saveAddonTemplate({ code: 'x', label: { en: 'X' }, priceINR: 1, fields: [], sizeGuide: [] }),
+		).rejects.toBeInstanceOf(NotFoundException);
 		await expect(service.removeAddonTemplate('x')).rejects.toBeInstanceOf(NotFoundException);
 	});
 });
@@ -740,7 +826,7 @@ describe('catalogue controllers', () => {
 			discontinue: vi.fn(async () => 'gone'),
 			updateMerchandising: vi.fn(async () => 'saved'),
 		};
-		const controller = new AdminProductsController(catalog as never, {} as never);
+		const controller = new AdminProductsController(catalog as never, {} as never, {} as never);
 		expect(await controller.list({ page: 1 } as never)).toBe('list');
 		expect(await controller.replacementTargets()).toBe('targets');
 		expect(await controller.detail('p')).toBe('detail');
@@ -809,7 +895,10 @@ describe('catalogue controllers', () => {
 			gallery: vi.fn(async () => 'gallery'),
 			page: vi.fn(async () => 'page'),
 		};
-		const controller = new ProductsController(catalog as never, publicCatalog as never);
+		const insights = { trendingFor: vi.fn(async () => ({ kind: 'popular', items: [] })) };
+		const controller = new ProductsController(catalog as never, publicCatalog as never, insights as never);
+		expect(await controller.trending('red', { limit: 4 })).toEqual({ kind: 'popular', items: [] });
+		expect(insights.trendingFor).toHaveBeenCalledWith('red', 4);
 		await controller.list('2', '10', 'c', 't', 's');
 		expect(catalog.listProducts).toHaveBeenLastCalledWith({
 			audience: 'public',
@@ -842,9 +931,17 @@ describe('catalogue controllers', () => {
 			seoRoute: vi.fn(async () => 'route'),
 			sitemapPaths: vi.fn(async () => ['/en/']),
 			livePaths: vi.fn(async () => 'paths'),
+			slugForCode: vi.fn(async (code: string) => (code === 'KATA-1001' ? 'red-saree' : null)),
 		};
 		const recent = { list: vi.fn(async () => 'recent') };
-		const controller = new StorefrontCatalogController(catalog as never, recent as never);
+		const blog = { sitemapPaths: vi.fn(async () => ['/en/blog/real-banarasi']) };
+		const share = { get: vi.fn(async () => 'share settings') };
+		const controller = new StorefrontCatalogController(
+			catalog as never,
+			recent as never,
+			blog as never,
+			share as never,
+		);
 		expect(await controller.home()).toBe('home');
 		expect(await controller.placement({ path: 'x' } as never)).toBe('placement');
 		await controller.cards({ slug: 'a' } as never);
@@ -855,8 +952,11 @@ describe('catalogue controllers', () => {
 		expect(catalog.cardsForSlugs).toHaveBeenLastCalledWith([]);
 		expect(await controller.recent()).toBe('recent');
 		expect(await controller.seoRoute({ path: '/x', locale: 'en' } as never)).toEqual({ route: 'route' });
-		expect(await controller.sitemap()).toEqual({ paths: ['/en/'] });
+		expect(await controller.sitemap()).toEqual({ paths: ['/en/', '/en/blog/real-banarasi'] });
 		expect(await controller.livePaths()).toBe('paths');
+		expect(await controller.byCode('KATA-1001')).toEqual({ slug: 'red-saree' });
+		expect(await controller.shareSettings()).toBe('share settings');
+		await expect(controller.byCode('NOPE')).rejects.toThrow('Not Found');
 	});
 
 	it('rate limits a stock alert by person', async () => {
@@ -870,26 +970,5 @@ describe('catalogue controllers', () => {
 		await controller.stockAlert('p', { variantSku: 'V1' } as never, undefined, request);
 		expect(limits.enforce).toHaveBeenLastCalledWith('stock_alert', { identifier: '', ip: '1.2.3.4' });
 		expect(catalog.requestStockAlert).toHaveBeenLastCalledWith('p', 'V1', null);
-	});
-
-	it('searches, and turns a search outage into a 503', async () => {
-		const search = { search: vi.fn(async () => ({ items: [{ id: 'p1' }], total: 1 })) };
-		const catalog = { cardsForIds: vi.fn(async () => ['card']) };
-		const limits = { enforce: vi.fn(async () => {}) };
-		const controller = new CatalogSearchController(search as never, catalog as never, limits as never);
-		const request = { ip: '1.2.3.4' } as never;
-		expect(await controller.searchProducts({ q: 'silk', categoryId: 'c' } as never, request)).toEqual({
-			items: ['card'],
-			total: 1,
-		});
-		expect(search.search).toHaveBeenLastCalledWith({ q: 'silk', categoryId: 'c', page: 1, pageSize: 24 });
-		await controller.searchProducts({ q: 'silk' } as never, request);
-		expect(search.search).toHaveBeenLastCalledWith({ q: 'silk', page: 1, pageSize: 24 });
-		search.search.mockRejectedValueOnce(new SearchUnavailableError('down'));
-		await expect(controller.searchProducts({ q: 'x' } as never, request)).rejects.toBeInstanceOf(
-			ServiceUnavailableException,
-		);
-		search.search.mockRejectedValueOnce(new Error('bug'));
-		await expect(controller.searchProducts({ q: 'x' } as never, request)).rejects.toThrow('bug');
 	});
 });

@@ -15,8 +15,13 @@
 				<div class="search-box">
 					<div class="input-group">
 						<input
+							#field
 							type="text"
+							inputmode="search"
+							enterkeyhint="search"
 							class="form-control"
+							[attr.aria-label]="'search_for_products' | transloco"
+							placeholder="{{ 'search_here' | transloco }}"
 							[formControl]="search"
 						/>
 						<app-button
@@ -28,8 +33,18 @@
 						>
 							{{ 'search' | transloco }}
 						</app-button>
+						<app-search-suggest
+							[field]="field"
+							[control]="search"
+							(submitted)="searchProduct($event)"
+						/>
 					</div>
 				</div>
+				@if (term() && !loading() && products().length) {
+				<p class="text-content mt-3 mb-0 text-center">
+					{{ 'search_results_count' | transloco: { count: total(), term: term() } }}
+				</p>
+				}
 			</div>
 		</div>
 	</div>
@@ -40,9 +55,12 @@
 		<div [class]="gridClass">
 			@if (loading()) { @for (item of skeletonItems; track item) {
 			<app-skeleton-product-box />
-			} } @else { @for (product of products(); track product) {
+			} } @else { @for (product of products(); track product.id) {
 			<div class="col">
-				<div class="search-product product-wrapper">
+				<div
+					class="search-product product-wrapper"
+					(click)="openedFromResults($event, product)"
+				>
 					<div>
 						<app-product-box
 							[product]="product"
@@ -59,8 +77,17 @@
 			[class]="'no-data-added collection-no-data'"
 			[image]="'assets/svg/no-product.svg'"
 			[text]="(unavailable() ? 'search_unavailable' : 'no_products_found') | transloco"
-			[description]="'no_search_results_description' | transloco"
+			[description]="(unavailable() ? 'search_unavailable_description' : 'no_search_results_description') | transloco"
 		/>
+		} @if (!loading() && total() > pageSize) {
+		<nav class="custome-pagination">
+			<app-pagination
+				[total]="total()"
+				[currentPage]="page()"
+				[pageSize]="pageSize"
+				(setPage)="setPage($event)"
+			/>
+		</nav>
 		}
 	</div>
 </section>

@@ -1,8 +1,13 @@
 import { z } from 'zod';
 
 import { OptionDisplayStyle, SemanticRole, SizeGuideRow } from './attribute';
-import { Id, IsoDateTime, Slug } from './common';
+import { BundleMethodBase, BundleMethodInput, BundlePriceRule, BundleRuleCombine } from './bundle-rules';
+import { Id, IsoDateTime, LocaleCode, Slug } from './common';
+import { FreeWithTake } from './free-with';
 import { ResolvedImage } from './media';
+import { BundleLevelPriceMode } from './product-bundle';
+import { SaleRule } from './shop-event';
+import { ProductVideo } from './site-settings';
 
 const money = z.number().int().nonnegative();
 
@@ -36,6 +41,13 @@ export const CatalogCard = z
 		image: ResolvedImage.nullable(),
 		inStock: z.boolean(),
 		madeToOrder: z.boolean(),
+		/** Fabric by the metre shows "/ m" after its price (M6). */
+		soldBy: z.enum(['piece', 'metre']).default('piece'),
+		/**
+		 * A set's card (bundle builder brief G02, approved 2026-11-22): how many pieces, and whether the shopper must
+		 * choose (a choice level, a size, a free item to pick). A fixed set adds straight from its card.
+		 */
+		set: z.object({ pieces: z.number().int().positive(), choose: z.boolean() }).nullable().default(null),
 	})
 	.superRefine((card, ctx) => {
 		const roles = Object.keys(card.image?.roles ?? {});
@@ -74,9 +86,15 @@ const galleryImage = ResolvedImage.superRefine((image, ctx) => {
 	if (!image.roles['gallery']?.length) {
 		ctx.addIssue({ code: 'custom', message: 'a product image needs the gallery role', path: ['roles'] });
 	}
+	// The main photo, its hover zoom, and `card` for the page's thumbnail strip (about 120 px; without it the strip
+	// fell back to the 900 px photos). Nothing else, so the page answer stays lean.
 	const roles = Object.keys(image.roles);
-	if (roles.some((role) => role !== 'gallery' && role !== 'zoom')) {
-		ctx.addIssue({ code: 'custom', message: 'a product image carries gallery and zoom only', path: ['roles'] });
+	if (roles.some((role) => role !== 'gallery' && role !== 'zoom' && role !== 'card')) {
+		ctx.addIssue({
+			code: 'custom',
+			message: 'a product image carries gallery, zoom and card only',
+			path: ['roles'],
+		});
 	}
 });
 
@@ -124,20 +142,59 @@ export type CatalogPlacementQuery = z.infer<typeof CatalogPlacementQuery>;
 
 export const CatalogSeoRouteQuery = z.object({
 	path: z.string().min(1).max(300),
-	locale: z.enum(['en', 'fr']),
+	locale: LocaleCode,
 });
 export type CatalogSeoRouteQuery = z.infer<typeof CatalogSeoRouteQuery>;
 
 export const CatalogCardsQuery = z.object({
 	slug: z.union([Slug, z.array(Slug).max(50)]).optional(),
+	/** Product ids, for lists kept by id (a guest's wishlist, the compare list). Order is kept. */
+	id: z.union([Id, z.array(Id).max(50)]).optional(),
 });
 export type CatalogCardsQuery = z.infer<typeof CatalogCardsQuery>;
 
 export const CatalogSearchQuery = z.object({
 	q: z.string().max(200).default(''),
 	categoryId: Id.optional(),
+	page: z.coerce.number().int().positive().max(500).default(1),
+	pageSize: z.coerce.number().int().positive().max(48).default(24),
+	/**
+	 * `page` when the shopper committed the search (Enter, the button, a link), which counts it in
+	 * the search reports; `typeahead` for the suggestion box, which is never counted.
+	 */
+	source: z.enum(['typeahead', 'page']).default('typeahead'),
 });
 export type CatalogSearchQuery = z.infer<typeof CatalogSearchQuery>;
+
+export const CatalogSearchPage = z.object({
+	items: z.array(CatalogCard),
+	total: z.number().int().nonnegative(),
+	page: z.number().int().positive(),
+	pageSize: z.number().int().positive(),
+});
+export type CatalogSearchPage = z.infer<typeof CatalogSearchPage>;
+
+/** A product opened from search results, with the words that found it. No shopper detail. */
+export const CatalogSearchClick = z.object({
+	q: z.string().trim().min(1).max(200),
+	productId: Id.max(80),
+});
+export type CatalogSearchClick = z.infer<typeof CatalogSearchClick>;
+
+export const CatalogSearchTrendingQuery = z.object({
+	limit: z.coerce.number().int().positive().max(12).default(6),
+});
+export type CatalogSearchTrendingQuery = z.infer<typeof CatalogSearchTrendingQuery>;
+
+/**
+ * `trending` ranks products by recent search-result clicks; `popular` is the bestseller list,
+ * shown until enough products have clicks to rank.
+ */
+export const CatalogSearchTrending = z.object({
+	kind: z.enum(['trending', 'popular']),
+	items: z.array(CatalogCard),
+});
+export type CatalogSearchTrending = z.infer<typeof CatalogSearchTrending>;
 
 export const CatalogPlacementPage = z.object({
 	path: z.string(),
@@ -150,6 +207,8 @@ export const CatalogPlacementPage = z.object({
 	facets: z.array(CatalogFacet),
 	/** False when the URL carries a facet combination. */
 	indexable: z.boolean(),
+	/** This category's and its parents' FAQ, in the page language; only on the plain first page. */
+	faq: z.array(z.object({ question: z.string(), answer: z.string() })).default([]),
 });
 export type CatalogPlacementPage = z.infer<typeof CatalogPlacementPage>;
 
@@ -162,6 +221,8 @@ export type CatalogGallery = z.infer<typeof CatalogGallery>;
 const PageOptionTerm = z.object({
 	code: z.string().min(1),
 	label: z.string(),
+	/** The value's second line in the page language, when it has one (`size_v2`). */
+	subLabel: z.string().nullable().default(null),
 	isBase: z.boolean(),
 	hex: z.string().nullable(),
 	image: swatchImage,
@@ -200,6 +261,8 @@ export type CatalogPageVariant = z.infer<typeof CatalogPageVariant>;
 export const CatalogPageMeasurements = z.object({
 	/** Null when the fields are the product's own rather than a shared template. */
 	templateCode: z.string().min(1).nullable(),
+	/** The template's name in the page language ("Suit measurements"), for the measurement row; null for own fields. */
+	title: z.string().nullable().default(null),
 	priceINR: money,
 	fields: z.array(
 		z.object({
@@ -214,31 +277,121 @@ export const CatalogPageMeasurements = z.object({
 	sizeGuide: z.array(SizeGuideRow),
 });
 
-export const CatalogPageBundle = z.object({
-	bundleType: z.enum(['fixed_kit', 'choose_one_per_group', 'optional_addons']),
-	pricePolicy: z.enum(['sum_components', 'fixed_bundle_price', 'discounted_components']),
-	priceINR: money,
-	groups: z.array(
+/** Worked-out amounts (sale prices, set totals) may carry paise. */
+const amount = z.number().nonnegative();
+
+/** A size or colour of a set piece or free item the shopper chooses (S8). */
+const PageChoiceVariant = z.object({ id: Id, label: z.string(), inStock: z.boolean() });
+
+/** Free with this product, as the shop shows it (P8, D4/D5): what is given or offered, and how many to take. */
+export const CatalogPageFreeWith = z.object({
+	take: FreeWithTake,
+	count: z.number().int().nullable(),
+	from: z.number().int().nullable(),
+	required: z.boolean(),
+	/** Worked out by core `freeRange`: nothing to choose (`given`), or how many the shopper must and may take. */
+	given: z.boolean(),
+	min: z.number().int().nonnegative(),
+	max: z.number().int().nonnegative(),
+	noneOrExactly: z.boolean(),
+	items: z.array(
 		z.object({
-			code: z.string().min(1),
-			label: z.string(),
-			minSelections: z.number().int().nonnegative(),
-			maxSelections: z.number().int().positive(),
-			components: z.array(
-				z.object({
-					productId: Id,
-					slug: Slug,
-					title: z.string(),
-					sku: z.string(),
-					sellingINR: money,
-					quantity: z.number().int().positive(),
-					required: z.boolean(),
-					inStock: z.boolean(),
-				}),
-			),
+			productId: Id,
+			title: z.string(),
+			image: ResolvedImage.nullable().default(null),
+			mrpINR: money.nullable(),
+			sellingINR: money,
+			quantity: z.number().int().positive(),
+			inStock: z.boolean(),
+			variantId: Id.nullable(),
+			variantLabel: z.string().nullable(),
+			variants: z.array(PageChoiceVariant).default([]),
 		}),
 	),
 });
+export type CatalogPageFreeWith = z.infer<typeof CatalogPageFreeWith>;
+
+/** One item of a set level or an optional extra, with today's prices and stock. */
+export const CatalogPageBundleItem = z.object({
+	key: z.string().min(1),
+	productId: Id,
+	slug: Slug,
+	title: z.string(),
+	sku: z.string(),
+	image: ResolvedImage.nullable().default(null),
+	mrpINR: money.nullable(),
+	sellingINR: money,
+	/** The running sale's price, while a sale lowers it. */
+	saleINR: amount.nullable().default(null),
+	/** Price in this set, per unit (its override, else the selling price). */
+	priceInSetINR: money,
+	/** What one unit costs bought alone today (the sale price while a sale runs). */
+	todayINR: amount,
+	quantity: z.number().int().positive(),
+	soldBy: z.enum(['piece', 'metre']).default('piece'),
+	inStock: z.boolean(),
+	/** Units free to sell now; null when made to order. */
+	available: z.number().int().nonnegative().nullable(),
+	/** A pinned size or colour, else null: the shopper picks from `variants`. */
+	variantId: Id.nullable(),
+	variantLabel: z.string().nullable(),
+	variants: z.array(PageChoiceVariant).default([]),
+	freeWith: CatalogPageFreeWith.nullable().default(null),
+});
+export type CatalogPageBundleItem = z.infer<typeof CatalogPageBundleItem>;
+
+export const CatalogPageBundleLevel = z.object({
+	code: z.string().min(1),
+	label: z.string(),
+	take: z.number().int().positive(),
+	/** More items than it takes: the shopper chooses. */
+	choice: z.boolean(),
+	priceMode: BundleLevelPriceMode,
+	items: z.array(CatalogPageBundleItem),
+});
+export type CatalogPageBundleLevel = z.infer<typeof CatalogPageBundleLevel>;
+
+/**
+ * A set on its product page (bundle builder brief, approved 2026-11-22). The shop prices each choice with core
+ * `quoteBundle` from `pricing`, the same rules checkout uses, so a shopper is charged what the page showed.
+ */
+export const CatalogPageBundle = z.object({
+	/** "Bundle Components" when nothing is chosen; "Choose your set" when any level is a choice. */
+	heading: z.enum(['components', 'choose']),
+	/** The set at its included picks, without extras. */
+	priceINR: amount,
+	separatelyINR: amount,
+	saveINR: amount,
+	/** Any level is a choice: lists and cards say "From" the lowest full combination. */
+	fromPrice: z.boolean(),
+	lowINR: amount,
+	highINR: amount,
+	levels: z.array(CatalogPageBundleLevel),
+	extras: z.array(CatalogPageBundleItem),
+	pricing: z.object({
+		base: BundleMethodBase,
+		inputs: z.array(BundleMethodInput),
+		methodRules: z.array(BundlePriceRule),
+		methodCombine: BundleRuleCombine,
+		params: z.record(z.string(), z.number()),
+		rules: z.array(BundlePriceRule),
+		combine: BundleRuleCombine,
+		capAtSeparately: z.boolean(),
+		roundTo: z.enum(['none', 'one', 'ten']),
+		/** Running sale events that include sets and reach this one: the lowest price wins, as for products. */
+		eventSale: z.array(SaleRule).default([]),
+	}),
+	stock: z.object({
+		setsPossible: z.number().int().nonnegative(),
+		state: z.enum(['in_stock', 'low_stock', 'out_of_stock']),
+		soldOutPieces: z.array(z.string()),
+		soldOutChoices: z.array(z.string()),
+	}),
+	/** Live, in stock and inside its sale window. */
+	buyable: z.boolean(),
+	saleWindow: z.object({ from: z.string().nullable(), to: z.string().nullable() }).nullable().default(null),
+});
+export type CatalogPageBundle = z.infer<typeof CatalogPageBundle>;
 
 /** One category in the shop menu, in the language asked for. */
 export const CatalogMenuCategory = z.object({
@@ -260,9 +413,21 @@ export const CatalogMenuCategory = z.object({
 export type CatalogMenuCategory = z.infer<typeof CatalogMenuCategory>;
 
 /** The product page read model. Prices are whole rupees from Mongo; images are resolved URLs. */
+/** Fabric by the metre on the product page (shop brief M02–M04); lengths in tenths of a metre. */
+export const CatalogPageMetre = z.object({
+	shortestCutTenths: z.number().int().positive(),
+	/** What − and + change the length by (M1: 0.5 m). */
+	stepTenths: z.number().int().positive(),
+	quickLengths: z.array(z.object({ tenths: z.number().int().positive(), label: z.string() })),
+	widthInches: z.number().nullable(),
+});
+export type CatalogPageMetre = z.infer<typeof CatalogPageMetre>;
+
 export const CatalogProductPage = z.object({
 	id: Id,
 	slug: Slug,
+	/** The product code; `/p/<code>` is the page's short address for captions people type. */
+	code: z.string().default(''),
 	path: z.string().min(1),
 	title: z.string(),
 	description: z.string(),
@@ -272,9 +437,14 @@ export const CatalogProductPage = z.object({
 	price: CatalogCardPrice,
 	badges: z.object({ primary: z.string().nullable(), secondary: z.string().nullable() }),
 	madeToOrder: z.boolean(),
+	/** When a running sale on this product ends, for the "Sale ends in" timer. Null with no sale. */
+	saleEndsAt: z.string().nullable().default(null),
 	estimatedDeliveryText: z.string().nullable(),
 	sareeLengthM: z.number().nullable(),
 	blousePieceM: z.number().nullable(),
+	/** Piece or metre; for metre, every quantity on the page is tenths of a metre. */
+	soldBy: z.enum(['piece', 'metre']).default('piece'),
+	metre: CatalogPageMetre.nullable().default(null),
 	selected: z
 		.object({
 			sku: z.string(),
@@ -286,11 +456,31 @@ export const CatalogProductPage = z.object({
 		.nullable(),
 	unknownVariant: z.boolean(),
 	gallery: z.array(galleryImage),
+	/**
+	 * The link-preview picture: the share picture chosen in the admin ("Meta image", owner 17 Nov) at its version, else
+	 * the main photo's 1200×630 card once made; until then previews use the first photo.
+	 */
+	shareImageUrl: z.string().min(1).nullable().default(null),
+	/** That picture's own size and type, so a page can state them; null when there is none. */
+	shareImageSize: z
+		.object({ width: z.number().int().positive(), height: z.number().int().positive(), type: z.string().min(1) })
+		.nullable()
+		.default(null),
+	/** The main photo's 1080×1920 Status/Story card with its empty word band, once made. */
+	shareStoryUrl: z.string().min(1).nullable().default(null),
 	optionGroups: z.array(CatalogPageOptionGroup),
 	variants: z.array(CatalogPageVariant),
 	measurements: CatalogPageMeasurements.nullable(),
 	bundle: CatalogPageBundle.nullable(),
+	/** Free with this product (P8); null when it has none. */
+	freeWith: CatalogPageFreeWith.nullable().default(null),
 	breadcrumb: z.array(z.object({ name: z.string(), path: z.string() })),
+	/** From approved reviews only; zero until one is approved. */
+	rating: z.object({ average: z.number().min(0).max(5), count: z.number().int().nonnegative() }),
+	/** The FAQ section, in the page language; empty when the product's FAQ is off. */
+	faq: z.array(z.object({ question: z.string(), answer: z.string() })).default([]),
+	/** YouTube videos and Shorts, in admin order: photo-strip tiles after the photos, and the Description tab. */
+	videos: z.array(ProductVideo).default([]),
 });
 export type CatalogProductPage = z.infer<typeof CatalogProductPage>;
 
@@ -302,3 +492,12 @@ export const CatalogSwatch = z.object({
 	image: swatchImage,
 });
 export type CatalogSwatch = z.infer<typeof CatalogSwatch>;
+
+/** A product code as it appears in a short `/p/<code>` address. */
+export const CatalogProductCode = z
+	.string()
+	.trim()
+	.min(1)
+	.max(64)
+	.regex(/^[A-Za-z0-9._-]+$/);
+export type CatalogProductCode = z.infer<typeof CatalogProductCode>;

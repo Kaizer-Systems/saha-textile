@@ -3,7 +3,7 @@ title: API Overview
 description: What the API does, its modules, and where to find API documentation.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-11-07'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/api/src
     - packages/contracts/src
@@ -20,19 +20,24 @@ Start with the [Backend platform atlas](../backend/overview) to see how HTTP, ap
 
 ## API modules
 
-| Module                   | Responsibility                                                                       |
-| ------------------------ | ------------------------------------------------------------------------------------ |
-| `health`                 | Liveness and readiness probes                                                        |
-| `auth`, `security`       | Storefront and admin sessions, signup, sign-in, recovery, CSRF tokens                |
-| `storefront`             | Customer self-service: profile, addresses, contact changes                           |
-| `admin`                  | Roles, operators, customers, notification settings, audit trail                      |
-| `catalog`                | Public catalogue reads, admin product forms, redirects, FAQ, questions, stock alerts |
-| `search`                 | Meilisearch adapter behind `SearchPort`                                              |
-| `media`                  | Media library, uploads, banners, YouTube, reviews                                    |
-| `cart`, `orders`         | Cart lifecycle and order creation                                                    |
-| `currency`, `promotions` | Currency conversion and coupon validation                                            |
-| `privacy`                | Consent records, export and erasure requests                                         |
-| `worker`                 | The background worker process, built from the same image                             |
+| Module                   | Responsibility                                                                                     |
+| ------------------------ | -------------------------------------------------------------------------------------------------- |
+| `health`                 | Liveness and readiness probes                                                                      |
+| `auth`, `security`       | Storefront and admin sessions, signup, sign-in, recovery, CSRF tokens                              |
+| `storefront`             | Customer self-service: profile, addresses, contact changes                                         |
+| `admin`                  | Roles, operators, customers, notification settings, audit trail, home dashboard                    |
+| `catalog`                | Public catalogue reads, admin product forms, redirects, FAQ, questions, stock alerts, search words |
+| `search`                 | Meilisearch adapter behind `SearchPort`                                                            |
+| `media`                  | Media library, uploads, banners, YouTube, reviews                                                  |
+| `blog`                   | Blog posts, categories and tags, for the admin and the shop                                        |
+| `events`                 | Launch and sale events, their sale prices and their messages                                       |
+| `stores`                 | The shop's stores, shown on Contact Us                                                             |
+| `mailboxes`              | Connected Gmail mailboxes, the admin inbox and Contact Us messages                                 |
+| `wishlist`               | A signed-in shopper's saved products                                                               |
+| `cart`, `orders`         | Cart lifecycle and order creation                                                                  |
+| `currency`, `promotions` | Currency conversion and coupon validation                                                          |
+| `privacy`                | Consent records, export and erasure requests                                                       |
+| `worker`                 | The background worker process, built from the same image                                           |
 
 ## Platform behaviour
 
@@ -57,5 +62,6 @@ Every request passes through the same controls: correlation ids, redacted logs, 
 
 ## Limitations
 
-- The API has no payment, shipping or exchange-rate adapter.
+- The CCAvenue adapter is bound behind `PaymentGatewayPort`, but no route starts a payment yet. Without CCAvenue settings the API binds an adapter that refuses every call.
+- The API has no shipping or exchange-rate adapter.
 - The OpenAPI document does not include full schemas or per-operation security. See [OpenAPI and Scalar](./openapi-and-scalar#limitations).

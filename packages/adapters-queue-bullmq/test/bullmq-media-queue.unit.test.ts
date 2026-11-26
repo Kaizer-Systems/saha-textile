@@ -6,6 +6,7 @@ const { queueCalls, queueApi, workerCalls, workerOn } = vi.hoisted(() => ({
 	queueCalls: [] as unknown[][],
 	queueApi: {
 		add: vi.fn(async () => undefined),
+		getJob: vi.fn(async (_id: string): Promise<unknown> => undefined),
 		upsertJobScheduler: vi.fn(async () => undefined),
 		count: vi.fn(async () => 0),
 		getWorkersCount: vi.fn(async () => 2),
@@ -18,6 +19,7 @@ const { queueCalls, queueApi, workerCalls, workerOn } = vi.hoisted(() => ({
 vi.mock('bullmq', () => ({
 	Queue: class {
 		add = queueApi.add;
+		getJob = queueApi.getJob;
 		upsertJobScheduler = queueApi.upsertJobScheduler;
 		count = queueApi.count;
 		getWorkersCount = queueApi.getWorkersCount;
@@ -71,6 +73,25 @@ describe('BullMqMediaJobQueue', () => {
 		});
 	});
 
+	it('clears a finished or failed reprocess of the same picture, and leaves a waiting one to absorb the new request', async () => {
+		const queue = new BullMqMediaJobQueue(connection);
+		const job = (completed: boolean, failed: boolean) => ({
+			isCompleted: async () => completed,
+			isFailed: async () => failed,
+			remove: vi.fn(async () => undefined),
+		});
+		for (const [earlier, removed] of [
+			[job(true, false), true],
+			[job(false, true), true],
+			[job(false, false), false],
+		] as const) {
+			queueApi.getJob.mockResolvedValueOnce(earlier);
+			await queue.enqueue({ type: 'reprocess', assetId: 'a2', reason: 'manual' });
+			expect(queueApi.getJob).toHaveBeenLastCalledWith('reprocess-a2-manual');
+			expect(earlier.remove).toHaveBeenCalledTimes(removed ? 1 : 0);
+		}
+	});
+
 	it('leaves other jobs without an id and honours a delay', async () => {
 		const queue = new BullMqMediaJobQueue(connection);
 		const job = { type: 'purge' as const, urls: ['https://cdn.test/a.webp'] };
@@ -80,6 +101,16 @@ describe('BullMqMediaJobQueue', () => {
 		expect(queueApi.add).toHaveBeenNthCalledWith(2, 'purge', job, { delay: 500 });
 	});
 
+	it('keeps one warm per page and switch moment, delayed to just after it (Page Builder FX-8)', async () => {
+		const queue = new BullMqMediaJobQueue(connection);
+		const job = { type: 'page-warm' as const, pageType: 'home', at: '2026-11-18T04:30:00.000Z' };
+		await queue.enqueue(job, { delayMs: 60_000 });
+		expect(queueApi.add).toHaveBeenLastCalledWith('page-warm', job, {
+			jobId: `page-warm-home-${Date.parse(job.at)}`,
+			delay: 60_000,
+		});
+	});
+
 	it('registers every recurring job', async () => {
 		await new BullMqMediaJobQueue(connection).registerSchedules();
 		expect(queueApi.upsertJobScheduler.mock.calls.map((call: unknown[]) => call[0])).toEqual([
@@ -87,7 +118,19 @@ describe('BullMqMediaJobQueue', () => {
 			'youtube-refresh',
 			'reprocess-stale',
 			'stock-alerts',
+			'product-videos-check',
+			'search-outbox',
+			'search-check',
+			'trash-purge',
+			'upload-sweep',
+			'cut-sweep',
+			'kept-files-sweep',
+			'spaces-check',
+			'zip-sweep',
 			'weekly-insight',
+			'page-go-live-waiting',
+			'page-builder-nightly',
+			'fx-fetch-due',
 		]);
 	});
 
@@ -129,5 +172,24 @@ describe('startMediaWorker', () => {
 		const onFailed = vi.fn();
 		startMediaWorker({ connection, handlers, concurrency: 1, onFailed });
 		expect(workerOn).toHaveBeenCalledWith('failed', onFailed);
+	});
+});
+
+describe('BullMqMediaJobQueue.isReachable', () => {
+	const queue = () => new BullMqMediaJobQueue({ host: 'redis', port: 6379, db: 0 });
+
+	it('is true when Redis answers', async () => {
+		queueApi.count.mockResolvedValueOnce(0);
+		await expect(queue().isReachable()).resolves.toBe(true);
+	});
+
+	it('is false on a failed connection', async () => {
+		queueApi.count.mockRejectedValueOnce(new Error('down'));
+		await expect(queue().isReachable()).resolves.toBe(false);
+	});
+
+	it('gives up when Redis never answers', async () => {
+		queueApi.count.mockReturnValueOnce(new Promise(() => undefined));
+		await expect(queue().isReachable(5)).resolves.toBe(false);
 	});
 });

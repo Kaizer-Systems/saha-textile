@@ -2,9 +2,9 @@
 /**
  * Translation catalogue parity guard.
  *
- * The admin's French catalogue had silently drifted 17 keys behind English. Nothing caught
+ * The admin's French catalogue (since replaced by Bengali) had silently drifted 17 keys behind English. Nothing caught
  * it because Transloco is configured with `fallbackLang: 'en'` and
- * `missingHandler: { useFallbackTranslation: true }` — a missing French string renders the
+ * `missingHandler: { useFallbackTranslation: true }` — a missing translated string renders the
  * English one instead of failing, so the gap is invisible from the screen and from the tests.
  * That is a good runtime behaviour and a terrible build-time one, which is exactly the shape
  * of rule that belongs in `pnpm lint` next to the naming and browser-auth guards.
@@ -31,12 +31,18 @@ const CATALOGUES = [
 
 /**
  * Values that are legitimately identical across languages: proper nouns, brand names, units
- * and words French borrows unchanged. Without this list the "untranslated" rule would flag
+ * and short forms Bengali keeps in English letters (owner decision round 2026-11-08). Without this list the "untranslated" rule would flag
  * "Blog", "Total" and "PayPal" forever, and a guard that cries wolf gets disabled.
  */
 const SHARED_VALUE = /^(?:[A-Z]{2,6}|\d+|[\s\p{P}]*)$/u;
 const SHARED_WORDS = new Set([
 	'saha textile',
+	// E-invoice portals and GST providers are named as they name themselves (accounts brief addendum 2).
+	'iris irp 6',
+	'masters india',
+	// Tax heads as printed on GST documents; Bengali keeps them in Latin letters (owner, 2026-11-17).
+	'cgst + sgst',
+	'gst {{rate}}%',
 	'simple',
 	'{{count}} images',
 	'action',
@@ -58,6 +64,8 @@ const SHARED_WORDS = new Set([
 	'image',
 	'images',
 	'instagram',
+	'linkedin',
+	'threads',
 	'logo',
 	'maintenance',
 	'maximum',
@@ -76,6 +84,7 @@ const SHARED_WORDS = new Set([
 	'port',
 	'coupons',
 	'razorpay',
+	'telegram',
 	'recaptcha',
 	'restriction',
 	'secret',
@@ -91,7 +100,7 @@ const SHARED_WORDS = new Set([
 	'type',
 	'code',
 	// Storefront (added 2026-11-03 when the guard was extended to it): theme-layout city
-	// names, the provider name, and words French spells identically.
+	// names and the provider names.
 	'1 point',
 	'base',
 	'berlin',
@@ -112,16 +121,26 @@ const SHARED_WORDS = new Set([
 	'sports',
 	'tokyo',
 	'variation',
+	'swift',
 ]);
 
-/** Letters that only appear in the non-English catalogues here. */
-const FRENCH_ACCENT = /[àâçéèêëîïôöùûüœ]/i;
+/** Text that is not English: Bengali script, or the accented letters French left behind. */
+const NOT_ENGLISH = /[\u0980-\u09FF]|[àâçéèêëîïôöùûüœ]/i;
 
-/** Cheap Hungarian tell-tales — the vendor theme shipped Hungarian inside `fr.json`. */
+/** Bengali script. Every Bengali value carries it, apart from the shared words above. */
+const BENGALI = /[\u0980-\u09FF]/;
+
+/** Cheap Hungarian tell-tales — the vendor theme once shipped Hungarian in a translation file. */
 const HUNGARIAN = /\b(?:minden|term[ée]k|term[ée]kek|hozz[áa]ad[áa]sa|attrib[úu]tumok|felhaszn[áa]l[óo])\b/i;
 
-/** Zero-width and byte-order marks left behind by machine translators. */
-const INVISIBLE = /[​‌‍﻿]/;
+/**
+ * Zero-width spaces and byte-order marks left behind by machine translators. The two joiners
+ * (U+200C, U+200D) are not on the list: Bengali needs them to shape some letters.
+ */
+const INVISIBLE = /[\u200B\uFEFF]/;
+
+/** Brand law: the brand is written in full in Bengali too, never a bare সাহা. */
+const BARE_BRAND_BN = /(?<![\u0980-\u09FF])সাহা(?![\u0980-\u09FF])(?!\s*টেক্সটাইল)/;
 
 let failures = 0;
 const fail = (message) => {
@@ -131,9 +150,11 @@ const fail = (message) => {
 
 for (const catalogue of CATALOGUES) {
 	const directory = join(repositoryRoot, catalogue.dir);
+	// Only `<language code>.json` is a catalogue; any other JSON beside them is not a language.
 	const locales = readdirSync(directory)
 		.filter((name) => name.endsWith('.json'))
-		.map((name) => name.slice(0, -'.json'.length));
+		.map((name) => name.slice(0, -'.json'.length))
+		.filter((name) => /^[a-z]{2,3}(?:-[A-Z]{2})?$/.test(name));
 
 	if (!locales.includes(catalogue.reference)) {
 		fail(`${catalogue.app}: reference locale ${catalogue.reference} not found in ${catalogue.dir}`);
@@ -162,7 +183,7 @@ for (const catalogue of CATALOGUES) {
 
 	// The reference catalogue must not carry another language's text.
 	for (const [key, value] of Object.entries(reference)) {
-		if (FRENCH_ACCENT.test(String(value))) {
+		if (NOT_ENGLISH.test(String(value))) {
 			fail(`${catalogue.app}/${catalogue.reference}: "${key}" holds non-English text — ${JSON.stringify(value)}`);
 		}
 	}
@@ -199,12 +220,20 @@ for (const catalogue of CATALOGUES) {
 				);
 			}
 
+			if (BARE_BRAND_BN.test(text))
+				fail(
+					`${catalogue.app}/${locale}: "${key}" writes a bare সাহা; use সাহা টেক্সটাইল — ${JSON.stringify(text)}`,
+				);
+
 			const source = String(reference[key] ?? '');
 			const normalized = source.trim().toLowerCase();
 			const looksTranslatable =
 				/\p{L}{4}/u.test(source) && !SHARED_VALUE.test(source) && !SHARED_WORDS.has(normalized);
 			if (looksTranslatable && normalized === text.trim().toLowerCase()) {
 				fail(`${catalogue.app}/${locale}: "${key}" is still English — ${JSON.stringify(text)}`);
+			}
+			if (locale === 'bn' && looksTranslatable && !BENGALI.test(text)) {
+				fail(`${catalogue.app}/${locale}: "${key}" has no Bengali letters — ${JSON.stringify(text)}`);
 			}
 		}
 	}

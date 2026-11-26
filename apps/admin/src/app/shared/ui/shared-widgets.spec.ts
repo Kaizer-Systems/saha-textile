@@ -2,20 +2,24 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormControl } from '@angular/forms';
 
+import { TranslocoService } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { Store } from '@ngrx/store';
+import { QueryClient } from '@tanstack/angular-query-experimental';
 import { BehaviorSubject, Subject, firstValueFrom, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { YouTubeGateway } from '@core/media/content-blocks.gateway';
+import { AuthStore } from '@core/state/auth.store';
 import { LoaderStore } from '@core/state/loader.store';
 import { NotificationService } from '@data-access/services/notification.service';
+import { FmPicker } from '@features/media/file-manager/fm-picker';
 
 import { Alert } from './alert/alert';
 import { Button } from './button/button';
 import { FeatherIcons } from './feather-icons/feather-icons';
 import { FormFields } from './form-fields/form-fields';
-import { ImageUpload } from './image-upload/image-upload';
+import { ImageUpload, PROFILE_FOR_PURPOSE } from './image-upload/image-upload';
 import { Link } from './link/link';
 import { MediaBox } from './media-box/media-box';
 import { NoData } from './no-data/no-data';
@@ -200,9 +204,29 @@ describe('PinPad', () => {
 	});
 });
 
+/** The image field opens the Media picker: an NgbModal whose answer the test sets. */
+const pickerModal = (answer: unknown = null) => {
+	const start = vi.fn();
+	const modals = {
+		open: vi.fn(() => ({
+			componentInstance: { start },
+			result: answer ? Promise.resolve(answer) : Promise.reject('closed'),
+		})),
+	};
+	return { modals, start };
+};
+const imageField = (answer: unknown = null) => {
+	const picker = pickerModal(answer);
+	const fixture = bare(ImageUpload, [
+		{ provide: NgbModal, useValue: picker.modals },
+		{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+	]);
+	return { fixture, ...picker };
+};
+
 describe('ImageUpload', () => {
 	const upload = () => {
-		const widget = bare(ImageUpload).componentInstance;
+		const widget = imageField().fixture.componentInstance;
 		const seen: unknown[] = [];
 		widget.selectedFiles.subscribe((value) => seen.push(value));
 		return { widget, seen };
@@ -244,6 +268,26 @@ describe('ImageUpload', () => {
 		widget.images = '' as never;
 		widget.remove(0, 'multiple');
 		expect(widget.image).toBeNull();
+	});
+});
+
+describe('ImageUpload one picture only', () => {
+	it('hides the "+" while a picture is set, and shows it again once it is removed', () => {
+		const { fixture } = imageField();
+		const widget = fixture.componentInstance;
+		expect(widget.canAdd).toBe(true);
+		widget.image = { id: 1 } as never;
+		widget.ngOnChanges();
+		expect(widget.canAdd).toBe(true);
+		fixture.componentRef.setInput('oneOnly', true);
+		expect(widget.canAdd).toBe(false);
+		widget.remove(0, 'single');
+		expect(widget.canAdd).toBe(true);
+		widget.showImageUrl = 'u';
+		expect(widget.canAdd).toBe(false);
+		widget.showImageUrl = null;
+		widget.showImages = [{ id: 2 }] as never;
+		expect(widget.canAdd).toBe(false);
 	});
 });
 
@@ -299,8 +343,13 @@ describe('YouTubeVideoField', () => {
 });
 
 describe('MediaBox', () => {
+	const permissions = signal<string[]>(['attachment.edit', 'attachment.destroy']);
+	const invalidateQueries = vi.fn();
 	const render = () => {
-		const fixture = bare(MediaBox);
+		const fixture = bare(MediaBox, [
+			{ provide: QueryClient, useValue: { invalidateQueries } },
+			{ provide: AuthStore, useValue: { permissions } },
+		]);
 		fixture.detectChanges();
 		TestBed.tick();
 		const box = fixture.componentInstance;
@@ -311,6 +360,17 @@ describe('MediaBox', () => {
 		return { fixture, box, images, deleted };
 	};
 	const event = (checked: boolean, value = '1') => ({ target: { checked, value } }) as never;
+
+	it('offers Edit details and Delete by permission, and refreshes after a save', () => {
+		const { box } = render();
+		expect([box.canEdit(), box.canDelete()]).toEqual([true, true]);
+		permissions.set(['attachment.edit']);
+		expect([box.canEdit(), box.canDelete()]).toEqual([true, false]);
+		permissions.set(['attachment.edit', 'attachment.destroy']);
+		box.refresh();
+		expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['attachments'] });
+		box.editDetails({ id: 'med_1' } as never);
+	});
 
 	it('follows the query', async () => {
 		const { box } = render();
@@ -363,6 +423,10 @@ describe('MediaBox', () => {
 		expect(box.selectedImages).toEqual([{ id: 1 }]);
 		box.selectImage(event(false), one, false);
 		expect(box.selectedImages).toEqual([]);
+		// Holding one picture from a single-picture start, ticking begins a list.
+		box.selectedImages = { id: 9 } as never;
+		box.selectImage(event(true), one, false);
+		expect(box.selectedImages).toEqual([{ id: 1 }]);
 	});
 
 	it('takes the image itself in URL mode', () => {
@@ -554,5 +618,99 @@ describe('Addtocart', () => {
 		dialog.addToCart({ id: 7 } as never);
 		expect(store.dispatch).toHaveBeenCalledOnce();
 		expect(modal.dismissAll).toHaveBeenCalledOnce();
+	});
+});
+
+describe('ImageUpload opens the Media picker (media step 4d, R4-2, E01–E04)', () => {
+	const picked = (id: string, versionId: string | null = `category_3x4.${id === 'med_b' ? 'blur' : 'as_is'}`) => ({
+		assetId: id,
+		versionId,
+		name: `${id}.jpg`,
+		thumbnailUrl: `https://cdn.test/${id}.webp`,
+	});
+
+	it('asks for the place’s profile, title and room, and hands back the photo with its version', async () => {
+		const { fixture, modals, start } = imageField([picked('med_b')]);
+		const widget = fixture.componentInstance;
+		fixture.componentRef.setInput('purpose', 'category');
+		fixture.componentRef.setInput('pickTitle', 'fm_pick_title_category_image');
+		const seen: unknown[] = [];
+		widget.selectedFiles.subscribe((value) => seen.push(value));
+		await widget.openPicker();
+		expect(modals.open).toHaveBeenCalledWith(FmPicker, expect.objectContaining({ size: 'xl' }));
+		expect(start).toHaveBeenCalledWith({
+			title: 'fm_pick_title_category_image',
+			accept: 'image',
+			max: 1,
+			already: 0,
+			profile: { key: 'category_3x4', name: 'profile_name_category_3x4', icon: false },
+		});
+		expect(seen.at(-1)).toMatchObject({
+			id: 'med_b',
+			versionId: 'category_3x4.blur',
+			original_url: 'https://cdn.test/med_b.webp',
+		});
+		// E04: a version other than “As is” is named on its tile.
+		expect(widget.versionBadge(seen.at(-1) as never)).toBe('profile_fill_blur');
+		expect(widget.versionBadge({ versionId: 'category_3x4.as_is' } as never)).toBeNull();
+	});
+
+	it('a many-picture field adds to what it holds, never twice, within its room', async () => {
+		const { fixture, start } = imageField([picked('med_a'), picked('med_c')]);
+		const widget = fixture.componentInstance;
+		fixture.componentRef.setInput('multipleImage', true);
+		fixture.componentRef.setInput('purpose', 'store');
+		fixture.componentRef.setInput('max', 8);
+		widget.images = [{ id: 'med_a' }, { id: 'med_z' }] as never;
+		widget.ngOnChanges();
+		expect(widget.left).toBe(6);
+		const seen: unknown[] = [];
+		widget.selectedFiles.subscribe((value) => seen.push(value));
+		await widget.openPicker();
+		expect(start).toHaveBeenCalledWith(
+			expect.objectContaining({
+				title: 'fm_pick_title',
+				max: 8,
+				already: 2,
+				profile: expect.objectContaining({ key: 'store_photo_4x3' }),
+			}),
+		);
+		expect((seen.at(-1) as { id: string }[]).map((row) => row.id)).toEqual(['med_z', 'med_a', 'med_c']);
+	});
+
+	it('a many-picture field with no room set takes the default; one bound to nothing starts empty', async () => {
+		const { fixture, start } = imageField([{ assetId: 'med_n', versionId: null, name: 'n.jpg' }]);
+		const widget = fixture.componentInstance;
+		expect(widget.left).toBeNull();
+		expect(widget.versionBadge({ id: 'med_n' } as never)).toBeNull();
+		fixture.componentRef.setInput('multipleImage', true);
+		widget.images = undefined as never;
+		widget.ngOnChanges();
+		expect(widget.left).toBe(40);
+		const seen: unknown[] = [];
+		widget.selectedFiles.subscribe((value) => seen.push(value));
+		await widget.openPicker();
+		expect(start).toHaveBeenCalledWith(expect.objectContaining({ max: 40, already: 0 }));
+		// A picked file without a thumbnail shows an empty address.
+		expect(seen.at(-1)).toEqual([expect.objectContaining({ id: 'med_n', original_url: '' })]);
+	});
+
+	it('a share picture takes any photo; an icon names its fills as icons; closing the picker changes nothing', async () => {
+		const share = imageField();
+		share.fixture.componentRef.setInput('profile', null);
+		const seen: unknown[] = [];
+		share.fixture.componentInstance.selectedFiles.subscribe((value) => seen.push(value));
+		await share.fixture.componentInstance.openPicker();
+		expect(share.start).toHaveBeenCalledWith(expect.objectContaining({ profile: null }));
+		expect(seen).toEqual([]);
+
+		const icon = imageField();
+		icon.fixture.componentRef.setInput('profile', 'browser_icon_1x1');
+		await icon.fixture.componentInstance.openPicker();
+		expect(icon.start).toHaveBeenCalledWith(
+			expect.objectContaining({ profile: expect.objectContaining({ key: 'browser_icon_1x1', icon: true }) }),
+		);
+		expect(PROFILE_FOR_PURPOSE.banner).toBe('banner_keep_shape');
+		expect(PROFILE_FOR_PURPOSE.avatar).toBeNull();
 	});
 });

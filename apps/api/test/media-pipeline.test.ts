@@ -1,19 +1,28 @@
 import { NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ContentBlock, MediaAsset } from '@saha-textile/contracts';
+import {
+	type ContentBlock,
+	type MediaAsset,
+	YOUTUBE_FEED_SHORTS,
+	YOUTUBE_FEED_VIDEOS,
+	YouTubeFeedCache,
+} from '@saha-textile/contracts';
+import * as core from '@saha-textile/core-domain';
 import type { MediaAssetRepository, StoragePort } from '@saha-textile/core-domain';
 
 import { loadConfig } from '../src/config/app-config';
 import { ContentBlocksService } from '../src/media/content-blocks.service';
 import { MediaService } from '../src/media/media.service';
 import { YouTubeService } from '../src/media/youtube.service';
+import { LanguageStore } from '../src/languages/language-store';
 
 const config = loadConfig({
 	JWT_ACCESS_SECRET: 'a'.repeat(32),
 	JWT_REFRESH_SECRET: 'b'.repeat(32),
 	CSRF_SECRET: 'c'.repeat(32),
 });
+const languages = LanguageStore.fixed(config.locales);
 
 const asset = (overrides: Partial<MediaAsset> = {}): MediaAsset => ({
 	id: 'med_1',
@@ -79,7 +88,10 @@ const mediaService = (rows: MediaAsset[] = []) =>
 		storage,
 		{ enqueue: vi.fn() } as never,
 		{ append: vi.fn() } as never,
-		config,
+		languages,
+		{ namesIn: async () => [] } as never,
+		{ findById: async () => null } as never,
+		{ admit: vi.fn(async () => undefined), release: vi.fn(async () => undefined) } as never,
 	);
 
 describe('MediaService', () => {
@@ -126,7 +138,10 @@ describe('MediaService', () => {
 			storage,
 			{ enqueue: vi.fn() } as never,
 			{ append: vi.fn() } as never,
-			config,
+			languages,
+			{ namesIn: async () => [] } as never,
+			{ findById: async () => null } as never,
+			{ admit: vi.fn(async () => undefined), release: vi.fn(async () => undefined) } as never,
 		);
 		await service.presign(
 			{ type: 'customer', id: 'cus_1' },
@@ -179,6 +194,7 @@ describe('ContentBlocksService', () => {
 		images: { desktop: 'med_1', tablet: null, phone: null },
 		containsText: false,
 		localeImages: {},
+		imageVersions: {},
 		heading: { en: 'Festive edit' },
 		subheading: {},
 		ctaLabel: {},
@@ -195,7 +211,7 @@ describe('ContentBlocksService', () => {
 			assetsOf([asset({ purpose: 'product' })]),
 			settings as never,
 			storage,
-			config,
+			languages,
 		);
 		await expect(service.upsert(input)).rejects.toMatchObject({ status: 422 });
 	});
@@ -206,13 +222,13 @@ describe('ContentBlocksService', () => {
 			assetsOf([asset()]),
 			settings as never,
 			storage,
-			config,
+			languages,
 		);
 		await expect(service.upsert({ ...input, status: 'active' })).rejects.toMatchObject({ status: 422 });
 		const saved = await service.upsert({
 			...input,
 			status: 'active',
-			alt: { en: 'Festive sarees', fr: 'Saris de fête' },
+			alt: { en: 'Festive sarees', bn: 'উৎসবের শাড়ি' },
 		});
 		expect(saved.key).toBe('home:-:hero:main');
 	});
@@ -223,19 +239,19 @@ describe('ContentBlocksService', () => {
 			id: 'cbk_1',
 			key: 'home:-:hero:main',
 			status: 'active',
-			alt: { en: 'Festive', fr: 'Fête' },
-			heading: { en: 'Festive edit', fr: 'Édition festive' },
+			alt: { en: 'Festive', bn: 'উৎসব' },
+			heading: { en: 'Festive edit', bn: 'Édition festive' },
 		};
 		const service = new ContentBlocksService(
 			blocksRepo([block]) as never,
 			assetsOf([asset()]),
 			settings as never,
 			storage,
-			config,
+			languages,
 		);
-		const { heroLayout, banners } = await service.storefront({ ownerType: 'home', locale: 'fr' });
+		const { heroLayout, banners } = await service.storefront({ ownerType: 'home', locale: 'bn' });
 		expect(heroLayout).toBe('hero_full');
-		expect(banners[0]).toMatchObject({ heading: 'Édition festive', alt: 'Fête' });
+		expect(banners[0]).toMatchObject({ heading: 'Édition festive', alt: 'উৎসব' });
 		expect(banners[0]?.images.desktop.roles.banner?.[0]?.url).toBe(
 			'https://cdn.test/media/med_1/festive-banner-480w-aaaaaaaa.webp',
 		);
@@ -243,10 +259,27 @@ describe('ContentBlocksService', () => {
 });
 
 describe('YouTubeService', () => {
+	it('keeps the refresh and the cache schema to the same 24 videos and 12 Shorts', () => {
+		expect([core.YOUTUBE_FEED_VIDEOS, core.YOUTUBE_FEED_SHORTS]).toEqual([
+			YOUTUBE_FEED_VIDEOS,
+			YOUTUBE_FEED_SHORTS,
+		]);
+		const row = (id: number) => ({
+			videoId: `v${String(id).padStart(10, '0')}`,
+			title: 't',
+			publishedAt: '2026-11-01T00:00:00.000Z',
+			thumbnailUrl: 'u',
+		});
+		const many = (count: number) => Array.from({ length: count }, (_, index) => row(index));
+		expect(YouTubeFeedCache.safeParse({ videos: many(24), shorts: many(12) }).success).toBe(true);
+		expect(YouTubeFeedCache.safeParse({ videos: many(25) }).success).toBe(false);
+		expect(YouTubeFeedCache.safeParse({ shorts: many(13) }).success).toBe(false);
+	});
+
 	it('rejects a non-YouTube link before calling the API', async () => {
 		const youtube = { findVideo: vi.fn() };
 		await expect(
-			new YouTubeService(youtube as never, {} as never).validate('https://vimeo.com/1'),
+			new YouTubeService(youtube as never, {} as never, {} as never, {} as never).validate('https://vimeo.com/1'),
 		).rejects.toMatchObject({ status: 422 });
 		expect(youtube.findVideo).not.toHaveBeenCalled();
 	});
@@ -261,7 +294,8 @@ describe('YouTubeService', () => {
 		const settings = {
 			get: vi.fn(async (key: string) => (key === 'youtube.feed' ? { videos, fetchedAt: null } : null)),
 		};
-		const service = new YouTubeService({} as never, settings as never);
+		// No video here has a stored poster, so storage is never asked for an address.
+		const service = new YouTubeService({} as never, settings as never, {} as never, {} as never);
 		expect((await service.rail('home')).videos).toHaveLength(8);
 		expect((await service.rail('pdp')).videos).toHaveLength(0);
 	});

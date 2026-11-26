@@ -27,6 +27,8 @@ export interface IAttributeValue {
 	id: number;
 	name: string;
 	value: string;
+	/** Optional second line under the name (`size_v2`), in the page language. */
+	sub_label?: string;
 	slug: string;
 	status: boolean;
 	hex_color: string;

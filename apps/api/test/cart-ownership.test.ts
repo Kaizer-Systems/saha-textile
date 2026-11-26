@@ -88,7 +88,17 @@ describe('CartService ownership / BOLA', () => {
 				id: 'cart_guest',
 				userId: null,
 				guestToken: guest.hash,
-				lines: [{ id: 'line_1', productId: 'p1', variationId: null, quantity: 1, addons: [] }],
+				lines: [
+					{
+						id: 'line_1',
+						productId: 'p1',
+						variationId: null,
+						quantity: 1,
+						addons: [],
+						bundle: null,
+						free: [],
+					},
+				],
 			}),
 		);
 		repo.findByUserId.mockResolvedValueOnce(null);
@@ -106,20 +116,42 @@ describe('CartService ownership / BOLA', () => {
 				id: 'cart_guest',
 				userId: null,
 				guestToken: guest.hash,
-				lines: [{ id: 'line_g', productId: 'p1', variationId: null, quantity: 2, addons: [] }],
+				lines: [
+					{
+						id: 'line_g',
+						productId: 'p1',
+						variationId: null,
+						quantity: 2,
+						addons: [],
+						bundle: null,
+						free: [],
+					},
+				],
 			}),
 		);
 		repo.findByUserId.mockResolvedValueOnce(
 			cart({
 				id: 'cart_user',
 				userId: 'cus_1',
-				lines: [{ id: 'line_u', productId: 'p1', variationId: null, quantity: 1, addons: [] }],
+				lines: [
+					{
+						id: 'line_u',
+						productId: 'p1',
+						variationId: null,
+						quantity: 1,
+						addons: [],
+						bundle: null,
+						free: [],
+					},
+				],
 			}),
 		);
 
 		const merged = await service.mergeGuestCartForUser('cus_1', guest.raw);
 		expect(merged?.id).toBe('cart_user');
-		expect(merged?.lines).toEqual([{ id: 'line_u', productId: 'p1', variationId: null, quantity: 3, addons: [] }]);
+		expect(merged?.lines).toEqual([
+			{ id: 'line_u', productId: 'p1', variationId: null, quantity: 3, addons: [], bundle: null, free: [] },
+		]);
 		expect(repo.deleteById).toHaveBeenCalledWith('cart_guest');
 	});
 

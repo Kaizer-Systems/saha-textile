@@ -1,0 +1,52 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="differences ? 'cash_differences' : 'cash_sheets'"
+>
+	<p class="small text-muted mb-3">{{ (differences ? 'cash_differences_sub' : 'cash_sheets_sub') | transloco }}</p>
+	<app-table
+		[tableConfig]="tableConfig()"
+		[searchPlaceholder]="'cash_sheets_search'"
+		(tableChanged)="onTableChange($event)"
+		(rowClicked)="open($event)"
+		(action)="onAction($event)"
+	>
+		<div
+			tableFilters
+			class="d-flex align-items-center flex-wrap gap-2"
+		>
+			@for (item of chips; track item) {
+			<button
+				type="button"
+				class="align-items-center btn btn-sm d-flex"
+				[class.btn-theme]="chip() === item"
+				[class.btn-outline]="chip() !== item"
+				[attr.aria-pressed]="chip() === item"
+				(click)="setChip(item)"
+			>
+				{{ 'cash_chip_' + item | transloco }}@if (item !== 'all' && counts()?.[item] !== undefined) {
+				<span class="ms-1">{{ counts()?.[item] }}</span>
+				}
+			</button>
+			}
+			<app-period-picker
+				[choices]="presets"
+				[start]="'this_month'"
+				[labelPrefix]="'period_'"
+				[hint]="hint"
+				(picked)="setPeriod($event)"
+			/>
+			<select
+				class="form-select form-select-sm w-auto"
+				id="cash_location"
+				[attr.aria-label]="'al_every_location' | transloco"
+				[ngModel]="location() ?? ''"
+				(ngModelChange)="setLocation($event)"
+			>
+				<option value="">{{ 'al_every_location' | transloco }}</option>
+				@for (place of choices.data()?.locations ?? []; track place.id) {
+				<option [value]="place.id">{{ place.name }}</option>
+				}
+			</select>
+		</div>
+	</app-table>
+</app-page-wrapper>

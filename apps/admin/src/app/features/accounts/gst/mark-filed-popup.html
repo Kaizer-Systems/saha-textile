@@ -1,0 +1,105 @@
+@if (about(); as a) {
+<div class="modal-header">
+	<h5 class="modal-title">{{ 'gst_mark_filed_title' | transloco: { type: a.returnType, month: a.monthName } }}</h5>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	></button>
+</div>
+<div class="modal-body">
+	<div class="row g-3">
+		<div class="col-md-6">
+			<label
+				class="form-label-title"
+				for="gst_arn"
+			>
+				ARN
+			</label>
+			<input
+				class="form-control"
+				id="gst_arn"
+				maxlength="20"
+				[ngModel]="arn()"
+				(ngModelChange)="arn.set($event)"
+			/>
+		</div>
+		<div class="col-md-6">
+			<label
+				class="form-label-title"
+				for="gst_filed_on"
+			>
+				{{ 'accounts_filed_on' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				type="date"
+				id="gst_filed_on"
+				[ngModel]="filedOn()"
+				(ngModelChange)="filedOn.set($event)"
+			/>
+		</div>
+	</div>
+	<span class="form-label-title d-block mt-3">{{ 'accounts_acknowledgement' | transloco }}</span>
+	@if (acknowledgement(); as file) {
+	<div class="d-flex align-items-center small gap-2">
+		<i class="ri-attachment-2"></i>
+		{{ file.name }}
+		<a
+			href="javascript:void(0)"
+			[title]="'accounts_remove_attachment' | transloco"
+			(click)="acknowledgement.set(null)"
+		>
+			<i class="ri-close-line"></i>
+		</a>
+	</div>
+	} @else {
+	<a
+		href="javascript:void(0)"
+		class="text-decoration-underline small"
+		id="gst_ack"
+		(click)="attachAck()"
+	>
+		<i class="ri-attachment-2"></i>
+		{{ 'accounts_add_file' | transloco }}
+	</a>
+	}
+	<b class="d-block small mt-3">{{ 'accounts_what_changes' | transloco }}</b>
+	<ul class="list-unstyled small mb-0">
+		<li class="border-bottom py-2">
+			<i class="ri-lock-line me-1"></i>
+			<b>{{ 'accounts_gst_change_lock' | transloco }}</b>
+			<div class="text-muted">{{ lockBody() | transloco: { month: a.monthName, gstin: a.gstin } }}</div>
+		</li>
+		<li class="border-bottom py-2">
+			<i class="ri-file-copy-line me-1"></i>
+			<b>{{ 'gst_change_snapshot' | transloco }}</b>
+			<div class="text-muted">{{ 'gst_change_snapshot_body' | transloco }}</div>
+		</li>
+		<li class="border-bottom py-2">
+			<i class="ri-history-line me-1"></i>
+			<b>{{ 'accounts_gst_change_log' | transloco }}</b>
+			<div class="text-muted">{{ 'accounts_gst_change_log_body' | transloco }}</div>
+		</li>
+	</ul>
+</div>
+<div class="modal-footer">
+	<button
+		type="button"
+		class="btn btn-outline"
+		(click)="modal.dismiss()"
+	>
+		{{ 'cancel' | transloco }}
+	</button>
+	<button
+		type="button"
+		class="btn btn-theme"
+		id="gst_file_confirm"
+		[disabled]="busy() || arn().trim().length < 10"
+		(click)="save()"
+	>
+		{{ 'accounts_mark_filed_lock' | transloco }}
+	</button>
+</div>
+}

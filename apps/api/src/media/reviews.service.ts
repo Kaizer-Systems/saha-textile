@@ -1,15 +1,21 @@
 import { randomUUID } from 'node:crypto';
 
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { HttpStatus } from '@nestjs/common';
 import type {
 	AdminReviewListQuery,
 	AdminReviewListResponse,
+	MediaAsset,
 	MediaPresignResponse,
+	MyProductReview,
+	ProductReviewsQuery,
+	ProductReviewsResponse,
 	Review,
 	ReviewModerationRequest,
+	ReviewPhoto,
 	ReviewPhotoPresignRequest,
 	ReviewSubmitRequest,
+	ReviewUpdateRequest,
 } from '@saha-textile/contracts';
 import {
 	MEDIA_INGEST_POLICY,
@@ -20,14 +26,17 @@ import {
 	type ProductRepository,
 	type ReviewRepository,
 	type StoragePort,
+	type TransactionManagerPort,
 	checkReviewPhotos,
 	discardReviewPhotos,
 	publishReviewPhotos,
+	publicReviewerName,
 	reviewPhotoSlug,
 } from '@saha-textile/core-domain';
 
 import { mediaRefusal } from './media-refusal';
-import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { localized } from '../catalog/catalog-locale';
+import { LanguageStore } from '../languages/language-store';
 import {
 	CUSTOMER_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
@@ -36,11 +45,12 @@ import {
 	PRODUCT_REPOSITORY,
 	REVIEW_REPOSITORY,
 	STORAGE_PORT,
+	TRANSACTION_MANAGER,
 } from '../infra/tokens';
 import { MediaService } from './media.service';
 
 const REVIEWABLE_ORDER_STATUSES = new Set(['delivered']);
-const REVIEW_PHOTO_ALT: Record<string, string> = { en: 'customer photo', fr: 'photo client' };
+const REVIEW_PHOTO_ALT: Record<string, string> = { en: 'customer photo', bn: 'গ্রাহকের ছবি' };
 
 /**
  * Reviews with photos (owner log § Media → Review photos; § Reviews).
@@ -60,7 +70,8 @@ export class ReviewsService {
 		@Inject(STORAGE_PORT) private readonly storage: StoragePort,
 		@Inject(MEDIA_JOB_QUEUE) private readonly queue: MediaJobQueuePort,
 		private readonly media: MediaService,
-		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly languages: LanguageStore,
+		@Optional() @Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort | null = null,
 	) {}
 
 	async presignPhoto(customerId: string, request: ReviewPhotoPresignRequest): Promise<MediaPresignResponse> {
@@ -87,7 +98,105 @@ export class ReviewsService {
 		);
 	}
 
+	/** Approved reviews for one live product, newest first, with the summary behind its stars. */
+	async publicList(query: ProductReviewsQuery): Promise<ProductReviewsResponse> {
+		const empty = { average: 0, count: 0, buckets: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } };
+		const product = await this.products.findBySlug(query.productSlug, 'public');
+		if (!product) return { summary: empty, items: [], total: 0, page: query.page, pageSize: query.pageSize };
+		const [page, aggregate] = await Promise.all([
+			this.reviews.listApprovedForProduct(product.id, { page: query.page, pageSize: query.pageSize }),
+			this.reviews.getAggregate(product.id),
+		]);
+		const items = await Promise.all(
+			page.items.map(async (review) => {
+				const customer = await this.customers.findById(review.userId);
+				return {
+					id: review.id,
+					rating: review.rating,
+					title: review.title,
+					body: review.body,
+					authorName: publicReviewerName(customer?.displayName),
+					createdAt: review.createdAt ?? null,
+					photos: await this.photosOf(review.imageAssetIds, true),
+				};
+			}),
+		);
+		const summary = aggregate
+			? {
+					average: aggregate.average,
+					count: aggregate.count,
+					buckets: { ...empty.buckets, ...aggregate.buckets },
+				}
+			: empty;
+		return { summary, items, total: page.total, page: page.page, pageSize: page.pageSize };
+	}
+
+	/** What this customer may do on one product page: review, wait for delivery, or edit. */
+	async mine(customerId: string, productId: string): Promise<MyProductReview> {
+		const own = await this.reviews.findByUserAndProduct({ userId: customerId, productId });
+		if (own) {
+			return {
+				state: 'reviewed',
+				review: {
+					id: own.id,
+					rating: own.rating,
+					title: own.title,
+					body: own.body,
+					status: own.status,
+					createdAt: own.createdAt ?? null,
+					photos: await this.photosOf(own.imageAssetIds, false),
+				},
+			};
+		}
+		const orderId = await this.reviews.findReviewableOrderId({ userId: customerId, productId });
+		return orderId ? { state: 'can_review', orderId } : { state: 'needs_delivery' };
+	}
+
+	/**
+	 * The author's edit goes back to moderation (owner decision 2026-11-08). Photos dropped from
+	 * the review are deleted; new ones must be the customer's own processed uploads. When the
+	 * review was approved, the public rating is recomputed in the same step.
+	 */
+	async update(customerId: string, reviewId: string, request: ReviewUpdateRequest): Promise<Review> {
+		const current = await this.reviews.findById(reviewId);
+		if (!current || current.userId !== customerId) throw new NotFoundException('No such review');
+		const kept = new Set(current.imageAssetIds);
+		const added = request.imageAssetIds.filter((id) => !kept.has(id));
+		if (added.length) {
+			const photos = await checkReviewPhotos({ assets: this.assets }, { customerId, assetIds: added });
+			if (photos.refusal) {
+				throw mediaRefusal(
+					HttpStatus.UNPROCESSABLE_ENTITY,
+					`photos_${photos.refusal}`,
+					'One of the photos cannot be attached.',
+				);
+			}
+		}
+		const next = [...new Set(request.imageAssetIds)];
+		const dropped = current.imageAssetIds.filter((id) => !next.includes(id));
+		if (dropped.length) {
+			await discardReviewPhotos({ assets: this.assets, storage: this.storage, queue: this.queue }, dropped);
+		}
+		const save = async () => {
+			const saved = await this.reviews.updateByAuthor({
+				reviewId,
+				userId: customerId,
+				rating: request.rating,
+				title: request.title,
+				body: request.body,
+				imageAssetIds: next,
+			});
+			if (!saved) throw new NotFoundException('No such review');
+			if (current.status === 'approved') await this.reviews.recomputeAggregate(current.productId);
+			return saved;
+		};
+		return this.transactions ? this.transactions.withTransaction(save) : save();
+	}
+
 	async submit(customerId: string, request: ReviewSubmitRequest): Promise<Review> {
+		if (await this.reviews.findByUserAndProduct({ userId: customerId, productId: request.productId })) {
+			throw mediaRefusal(HttpStatus.CONFLICT, 'already_reviewed', 'You have already reviewed this product.');
+		}
 		const order = await this.orders.findById(request.orderId);
 		const bought =
 			order &&
@@ -112,7 +221,7 @@ export class ReviewsService {
 		// Alt text is generated for every active locale and names the product, never the customer.
 		const product = await this.products.findById(request.productId);
 		const alt = Object.fromEntries(
-			this.config.locales.map((locale) => {
+			this.languages.content().map((locale) => {
 				const name = product?.title[locale] || product?.title.en || '';
 				const label = REVIEW_PHOTO_ALT[locale] ?? REVIEW_PHOTO_ALT.en;
 				return [locale, `${name} — ${label}`.replace(/^ — /, '')];
@@ -169,22 +278,46 @@ export class ReviewsService {
 		if (request.decision === 'approve') await publishReviewPhotos(deps, review.imageAssetIds);
 		else await discardReviewPhotos(deps, review.imageAssetIds);
 
-		const moderated = await this.reviews.moderate({
-			reviewId,
-			status: request.decision === 'approve' ? 'approved' : 'rejected',
-			moderatedByUserId: actorId,
-			moderatedAt: new Date().toISOString(),
-			note: request.note ?? undefined,
-			...(request.decision === 'reject' ? { imageAssetIds: [] } : {}),
-		});
-		await this.reviews.recomputeAggregate(review.productId);
-		if (!moderated) throw new NotFoundException('No such review');
-		return moderated;
+		// The decision and the rating it changes commit together, so the public rating never
+		// disagrees with the approved reviews behind it.
+		const decide = async () => {
+			const moderated = await this.reviews.moderate({
+				reviewId,
+				status: request.decision === 'approve' ? 'approved' : 'rejected',
+				moderatedByUserId: actorId,
+				moderatedAt: new Date().toISOString(),
+				note: request.note ?? undefined,
+				...(request.decision === 'reject' ? { imageAssetIds: [] } : {}),
+			});
+			if (!moderated) throw new NotFoundException('No such review');
+			await this.reviews.recomputeAggregate(review.productId);
+			return moderated;
+		};
+		return this.transactions ? this.transactions.withTransaction(decide) : decide();
+	}
+
+	/**
+	 * Photos for the shop. `publicOnly` drops anything not yet approved, so a public read can
+	 * never hand out a signed link; the author's own view gets signed previews of pending photos.
+	 */
+	private async photosOf(assetIds: readonly string[], publicOnly: boolean): Promise<ReviewPhoto[]> {
+		if (!assetIds.length) return [];
+		const assets = await this.assets.findManyByIds(assetIds);
+		const shown = publicOnly ? assets.filter((asset) => asset.visibility === 'public') : assets;
+		const previews = await this.previewsOf(shown);
+		// previewsOf answers one preview per asset, in order, so each has its asset (a never-run `: ''` went).
+		return previews.map((preview, index) => ({
+			...preview,
+			alt: localized((shown[index] as MediaAsset).text.alt),
+		}));
 	}
 
 	/** Thumb and full URLs per photo: public when approved, short-lived signed while private. */
 	private async previews(assetIds: readonly string[]) {
-		const assets = await this.assets.findManyByIds(assetIds);
+		return this.previewsOf(await this.assets.findManyByIds(assetIds));
+	}
+
+	private async previewsOf(assets: readonly MediaAsset[]) {
 		return Promise.all(
 			assets.map(async (asset) => {
 				const pick = (role: string) =>

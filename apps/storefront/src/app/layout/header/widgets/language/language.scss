@@ -1,0 +1,21 @@
+/*
+ * The page-language menu shows two flags (languageFlag: `us` for English, `in` for every other language). The
+ * theme draws `.iti-flag` from intl-tel-input's country sprite on cdnjs, 5,630 px wide and 161 KB at double
+ * density, which every page then fetched at high priority for two 20 px flags, competing with the page's first
+ * picture. Here they come from two small files of our own, drawn to the flags' official proportions; the box,
+ * border shadow and grey backing stay the theme's. Any other flag code still draws from the sprite, and the
+ * phone-number field on the sign-in pages keeps it, because it lists every country.
+ */
+.iti-flag.us,
+.iti-flag.in {
+	background-position: center;
+	background-size: cover;
+}
+
+.iti-flag.us {
+	background-image: url('/assets/images/flags/us.svg');
+}
+
+.iti-flag.in {
+	background-image: url('/assets/images/flags/in.svg');
+}

@@ -1,4 +1,258 @@
-@if (topbar()) {
+@if (hasCheckbox && selected.length) {
+<!-- The selection bar: the Media page's bar (.fm-bulk). On a phone it sits at the bottom of the screen. -->
+<div
+	class="fm-bulk table-picks"
+	role="region"
+	[attr.aria-label]="'picked_rows' | transloco"
+>
+	<strong
+		class="text-nowrap"
+		id="table_picked_count"
+	>
+		{{ 'n_selected' | transloco: { count: selected.length } }}
+	</strong>
+	<small class="d-none d-sm-inline text-nowrap opacity-75">
+		{{ 'n_on_this_page' | transloco: { count: pickedOnPage } }}
+	</small>
+	@if (overLimit) {
+	<span class="small">{{ 'picks_over_limit' | transloco: { max: tableConfig.maxPicks } }}</span>
+	} @else {
+	<div class="d-none d-sm-flex flex-wrap gap-2">
+		@for (bulk of barActions; track bulk.actionToPerform) {
+		<button
+			type="button"
+			class="btn btn-outline btn-sm d-flex align-items-center gap-1"
+			[id]="'bulk_' + bulk.actionToPerform"
+			(click)="runBulk(bulk)"
+		>
+			<i [class]="bulk.icon"></i>
+			{{ bulk.label | transloco }}
+		</button>
+		} @if (deleteButtonStatus) {
+		<button
+			type="button"
+			class="btn btn-outline btn-sm d-flex align-items-center gap-1"
+			(click)="DeleteModal().openModal('deleteAll', selected.slice())"
+		>
+			<i class="ri-delete-bin-line"></i>
+			{{ 'delete' | transloco }}
+		</button>
+		} @if (duplicateButtonStatus && hasDuplicate()) {
+		<button
+			type="button"
+			class="btn btn-outline btn-sm d-flex align-items-center gap-1"
+			(click)="ConfirmationModal().openModal('duplicate', selected.slice())"
+		>
+			<i class="ri-file-copy-line"></i>
+			{{ 'duplicate' | transloco }}
+		</button>
+		} @if (moreActions.length) {
+		<div
+			ngbDropdown
+			class="d-inline-block"
+		>
+			<button
+				type="button"
+				class="btn btn-outline btn-sm"
+				id="bulk_more"
+				ngbDropdownToggle
+			>
+				{{ 'more' | transloco }}
+			</button>
+			<div ngbDropdownMenu>
+				@for (bulk of moreActions; track bulk.actionToPerform) {
+				<button
+					type="button"
+					ngbDropdownItem
+					[class.text-danger]="bulk.danger"
+					[id]="'bulk_' + bulk.actionToPerform"
+					(click)="runBulk(bulk)"
+				>
+					<i [class]="bulk.icon"></i>
+					{{ bulk.label | transloco }}
+				</button>
+				}
+			</div>
+		</div>
+		}
+	</div>
+	<!-- On a phone every action sits in one menu that opens upwards from the bar. -->
+	@if (visibleBulkActions.length) {
+	<div
+		ngbDropdown
+		class="d-sm-none"
+		[placement]="['top-start', 'bottom-start']"
+	>
+		<button
+			type="button"
+			class="btn btn-outline btn-sm"
+			ngbDropdownToggle
+		>
+			{{ 'actions' | transloco }}
+		</button>
+		<div ngbDropdownMenu>
+			@for (bulk of visibleBulkActions; track bulk.actionToPerform) {
+			<button
+				type="button"
+				ngbDropdownItem
+				[class.text-danger]="bulk.danger"
+				(click)="runBulk(bulk)"
+			>
+				<i [class]="bulk.icon"></i>
+				{{ bulk.label | transloco }}
+			</button>
+			}
+		</div>
+	</div>
+	} }
+	<div class="d-flex align-items-center ms-auto gap-2">
+		<div
+			ngbDropdown
+			#pickMenu="ngbDropdown"
+			autoClose="outside"
+			[placement]="['bottom-end', 'top-end']"
+		>
+			<button
+				type="button"
+				class="btn btn-sm fm-bulk-x"
+				id="table_show_picks"
+				ngbDropdownToggle
+			>
+				{{ 'show_list' | transloco }}
+			</button>
+			<!-- The picked list: the Media page's upload tray (.fm-tray), opened under the bar. -->
+			<div
+				ngbDropdownMenu
+				class="fm-tray pick-tray p-0"
+			>
+				<div class="fm-tray-head">
+					{{ 'n_selected' | transloco: { count: selected.length } }}
+					<span>
+						<button
+							type="button"
+							class="btn btn-link btn-sm p-0 text-white"
+							(click)="clearPicks(); pickMenu.close()"
+						>
+							{{ 'clear_all' | transloco }}
+						</button>
+						<button
+							type="button"
+							class="btn btn-link btn-sm p-0 text-white"
+							[title]="'close' | transloco"
+							[attr.aria-label]="'close' | transloco"
+							(click)="pickMenu.close()"
+						>
+							<i class="ri-close-line"></i>
+						</button>
+					</span>
+				</div>
+				<ul>
+					@for (pick of pickList; track pick.id) {
+					<li>
+						@if (pick.view.image) {
+						<img
+							[src]="pick.view.image"
+							alt=""
+						/>
+						} @else {
+						<span class="pick-noimg"><i class="ri-image-line"></i></span>
+						}
+						<div class="fm-tray-name">
+							<div>
+								<a
+									href="javascript:void(0)"
+									(click)="openPick(pick); pickMenu.close()"
+								>
+									{{ pick.view.title }}
+								</a>
+							</div>
+							@if (pick.problem) {
+							<small class="text-warning">{{ pick.problem }}</small>
+							} @else if (pick.view.detail) {
+							<small class="text-muted">{{ pick.view.detail }}</small>
+							}
+						</div>
+						@if (pick.view.status) {
+						<div [class]="pick.view.statusClass">
+							<span>{{ pick.view.status | transloco }}</span>
+						</div>
+						}
+						<button
+							type="button"
+							class="btn btn-link btn-sm text-reset p-0"
+							[title]="'remove' | transloco"
+							[attr.aria-label]="'remove' | transloco"
+							(click)="unpick(pick.id)"
+						>
+							<i class="ri-close-line"></i>
+						</button>
+					</li>
+					}
+				</ul>
+				<div class="pick-tray-foot">
+					<span>{{ 'picks_newest_first' | transloco }}</span>
+					<span>
+						@for (row of pickCounts; track row.status; let last = $last) { {{ row.status | transloco }} {{
+						row.count }}@if (!last) { · } }
+					</span>
+				</div>
+			</div>
+		</div>
+		<button
+			type="button"
+			class="btn btn-sm fm-bulk-x"
+			id="table_clear_picks"
+			(click)="clearPicks()"
+		>
+			<i class="ri-close-line"></i>
+			{{ 'clear' | transloco }}
+		</button>
+	</div>
+</div>
+<!-- One chip per pick (the Media page's .fm-chip), newest first; ✕ drops it. -->
+<div class="fm-chips pick-chips">
+	@for (pick of chips; track pick.id) {
+	<span
+		class="fm-chip"
+		[class.warn]="pick.problem"
+		[title]="pick.problem ?? pick.view.title"
+	>
+		@if (pick.view.image) {
+		<img
+			[src]="pick.view.image"
+			alt=""
+		/>
+		}
+		<a
+			href="javascript:void(0)"
+			class="text-reset text-truncate"
+			(click)="openPick(pick)"
+		>
+			@if (pick.problem) {
+			<i class="ri-error-warning-line"></i>
+			} {{ pick.view.title }}
+		</a>
+		<button
+			type="button"
+			class="btn btn-link btn-sm text-reset lh-1 p-0"
+			[title]="'remove' | transloco"
+			[attr.aria-label]="'remove' | transloco"
+			(click)="unpick(pick.id)"
+		>
+			<i class="ri-close-line"></i>
+		</button>
+	</span>
+	} @if (chipOverflow) {
+	<button
+		type="button"
+		class="fm-chip muted border-0"
+		(click)="pickMenu.open()"
+	>
+		{{ 'n_more' | transloco: { count: chipOverflow } }}
+	</button>
+	}
+</div>
+} @if (topbar()) {
 <div class="show-box">
 	<div class="selection-box">
 		<label>{{ 'show' | transloco }} :</label>
@@ -11,26 +265,8 @@
 			}
 		</select>
 		<label>{{ 'items_per_page' | transloco }}</label>
-		@if (deleteButtonStatus) {
-		<a
-			href="javascript:void(0)"
-			class="align-items-center btn btn-outline btn-sm d-flex"
-			(click)="DeleteModal().openModal('deleteAll', selected)"
-		>
-			<i [class]="'ri-delete-bin-line'"></i>
-			{{ 'delete' | transloco }}
-		</a>
-		} @if (duplicateButtonStatus && hasDuplicate()) {
-		<a
-			href="javascript:void(0)"
-			class="align-items-center btn btn-outline btn-sm d-flex"
-			(click)="ConfirmationModal().openModal('duplicate', selected); 
-                     $event.preventDefault(); $event.stopPropagation()"
-		>
-			<i [class]="'ri-file-copy-line'"></i>
-			{{ 'duplicate' | transloco }}
-		</a>
-		}
+		<!-- A page's own filter buttons (All, Drafts, Late…), as the purchases and stock lists draw them. -->
+		<ng-content select="[tableFilters]"></ng-content>
 	</div>
 	<!-- <div class="role-search"> -->
 	<div class="datepicker-wrap">
@@ -83,6 +319,7 @@
 				readonly
 			/>
 			<button
+				[title]="'pick_date' | transloco"
 				class="btn btn-outline-secondary"
 				(click)="datepicker.toggle()"
 				type="button"
@@ -101,6 +338,7 @@
 				readonly
 			/>
 			<button
+				[title]="'pick_date' | transloco"
 				class="btn btn-outline-secondary"
 				(click)="datepicker.toggle()"
 				type="button"
@@ -136,12 +374,15 @@
 			type="search"
 			class="form-control"
 			id="role-search"
+			[placeholder]="searchPlaceholder() ? (searchPlaceholder() | transloco) : ''"
 			[formControl]="term"
 		/>
 	</div>
 	<!-- </div> -->
 </div>
 }
+<!-- A line about what the list is showing, between the search row and the rows (orders brief ol04). -->
+<ng-content select="[tableNote]"></ng-content>
 <div>
 	<div class="table-responsive datatable-wrapper border-table">
 		@if (loader.status() && loading()) {
@@ -159,7 +400,9 @@
 								type="checkbox"
 								class="custom-control-input checkbox_animated"
 								id="table-checkbox"
-								[checked]="(tableConfig.data?.length && selected.length === tableConfig.data?.length) || false"
+								[checked]="allOnPage"
+								[indeterminate]="someOnPage"
+								[attr.aria-label]="'pick_this_page' | transloco"
 								(change)="checkUncheckAll($event)"
 							/>
 							<label
@@ -173,6 +416,8 @@
 					} @for (columnHead of tableConfig.columns; track columnHead) {
 					<th
 						[class.sm-width]="columnHead?.type === 'no' || columnHead?.type === 'image'"
+						[class.text-end]="columnHead?.align === 'end'"
+						[style.width.px]="columnHead?.width"
 						[class.cursor-pointer]="columnHead?.sortable"
 						(click)="columnHead?.sortable && onChangeTable(columnHead, 'sort')"
 					>
@@ -195,7 +440,10 @@
 			</thead>
 			<tbody>
 				@for (columnData of tableConfig?.data; track columnData.id;let i = $index) {
-				<tr>
+				<tr
+					[class.table-active]="hasCheckbox && isPicked(columnData)"
+					[class.table-danger]="columnData.rowTone === 'danger'"
+				>
 					@if (hasCheckbox) {
 					<td class="sm-width">
 						<div class="custom-control custom-checkbox">
@@ -205,7 +453,7 @@
 								id="table-checkbox-item-{{ columnData.id }}"
 								[disabled]="columnData['system_reserve'] === '1'"
 								[value]="columnData?.id"
-								[checked]="columnData['system_reserve'] !== '1' && selected?.length && selected.includes($any(columnData?.id))"
+								[checked]="columnData['system_reserve'] !== '1' && isPicked(columnData)"
 								(change)="onItemChecked($event)"
 							/>
 							<label
@@ -219,6 +467,8 @@
 					} @for ( columnHead of tableConfig?.columns; track columnHead) {
 					<td
 						[class.sm-width]="columnHead?.type === 'no' || columnHead?.type === 'image'"
+						[class.text-end]="columnHead?.align === 'end'"
+						[class.text-nowrap]="columnHead?.align === 'end'"
 						class="cursor-pointer"
 						(click)="columnHead.type !== 'switch' && columnData['system_reserve'] !== '1' ? onRowClicked(columnData) : true"
 					>
@@ -244,12 +494,18 @@
 							</h4>
 						</div>
 						} } } @else { @if (columnHead?.type && columnHead?.type === 'switch') {
-						<div class="form-check form-switch ps-0">
+						<div
+							class="form-check form-switch ps-0"
+							[class.d-flex]="columnHead?.labelField"
+							[class.align-items-center]="columnHead?.labelField"
+							[class.justify-content-center]="columnHead?.labelField"
+							[class.gap-2]="columnHead?.labelField"
+						>
 							<label class="switch switch-sm">
 								<input
 									type="checkbox"
 									id="status-{{i}}"
-									[disabled]="columnData['system_reserve'] === '1' || !hasPermission(['edit'])"
+									[disabled]="columnData['system_reserve'] === '1' || !hasPermission(['edit']) || (columnHead?.lockField && columnData[columnHead.lockField])"
 									[value]="columnData[columnHead?.dataField.toString()] === '1' ? 0 : 1"
 									[checked]="columnData[columnHead?.dataField.toString()] === '1' ? true : false"
 									(click)="ConfirmationModal().openModal(columnHead?.dataField.toString(), columnData, 
@@ -258,9 +514,14 @@
 								/>
 								<span
 									class="switch-state"
-									[class.disabled]="columnData['system_reserve'] === '1' || !hasPermission(['edit'])"
+									[class.disabled]="columnData['system_reserve'] === '1' || !hasPermission(['edit']) || (columnHead?.lockField && columnData[columnHead.lockField])"
 								></span>
 							</label>
+							@if (columnHead?.labelField && columnData[columnHead.labelField]) {
+							<div [class]="columnHead.labelClassField ? columnData[columnHead.labelClassField] : ''">
+								<span>{{ columnData[columnHead.labelField] | transloco }}</span>
+							</div>
+							}
 						</div>
 						} @else { @if (columnHead?.type && columnHead?.type === 'price') { {{
 						columnData[columnHead?.dataField] | currencySymbol }} } @else { @if (columnHead?.type &&
@@ -279,16 +540,21 @@
 					<td>
 						<ul id="actions">
 							@if (columnData['system_reserve'] === '1') {
-							<a href="javascript:void(0)">
+							<a
+								[title]="'locked_item' | transloco"
+								href="javascript:void(0)"
+							>
 								<i [class]="'ri-lock-line'"></i>
 							</a>
 							} @else { @for ( action of tableConfig?.rowActions; track action) { @if
-							((columnData['status'] === 'deleted') === !!action.deletedRows) {
+							((columnData['status'] === 'deleted') === !!action.deletedRows && (!action.rowStatuses ||
+							action.rowStatuses.includes(columnData['status']))) {
 							<ng-container *hasPermission="action.permission">
 								<li>
 									<a
+										[title]="action.label | transloco"
 										href="javascript:void(0)"
-										[attr.aria-label]="action.label"
+										[attr.aria-label]="action.label | transloco"
 										(click)="action?.actionToPerform === 'delete' 
                                                                 ? DeleteModal().openModal('delete', columnData) 
                                                                 : action.confirm
@@ -333,7 +599,7 @@
 <app-delete-modal
 	#deleteModal
 	[message]="deleteMessage()"
-	(deleteItem)="onActionClicked($event?.actionToPerform, $event?.data)"
+	(deleteItem)="onDeleteConfirmed($event)"
 />
 
 <app-confirmation-modal

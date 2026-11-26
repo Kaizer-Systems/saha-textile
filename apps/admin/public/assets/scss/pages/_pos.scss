@@ -265,7 +265,7 @@
 
 		.stock {
 			font-size: 14px;
-			color: var(--theme-color);
+			color: var(--theme-ink);
 			margin-left: auto;
 		}
 
@@ -380,7 +380,7 @@
 				color: $title-color !important;
 
 				&.txt-primary {
-					color: var(--theme-color) !important;
+					color: var(--theme-ink) !important;
 				}
 
 				&.price {
@@ -444,7 +444,7 @@
 
 				label {
 					font-size: 14px;
-					color: #777;
+					color: var(--admin-muted);
 					padding-top: 2px;
 				}
 			}
@@ -478,7 +478,7 @@
 				background-color: #f7f7f7;
 				padding: 15px 40px;
 				border-radius: 20px;
-				background-color: rgba(13, 164, 135, 0.07);
+				background-color: color-mix(in srgb, var(--theme-color) 7%, transparent);
 				text-align: center;
 				cursor: pointer;
 
@@ -489,12 +489,12 @@
 				}
 
 				h5 {
-					color: #898989;
+					color: var(--admin-muted);
 				}
 
 				&.active {
 					border-color: var(--theme-color);
-					color: var(--theme-color);
+					color: var(--theme-ink);
 
 					i {
 						color: var(--theme-color);
@@ -919,7 +919,7 @@
 		}
 
 		&:hover {
-			background: linear-gradient(-45deg, #0da487, #719460);
+			background: linear-gradient(-45deg, var(--theme-color), #719460);
 			transition: all 0.5s ease;
 
 			h4 {
@@ -928,7 +928,7 @@
 		}
 
 		&.active {
-			background: linear-gradient(-45deg, #0da487, #719460);
+			background: linear-gradient(-45deg, var(--theme-color), #719460);
 			transition: all 0.5s ease;
 
 			h4 {

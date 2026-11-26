@@ -7,8 +7,13 @@ import { AdminReviewsController } from '../src/media/admin-reviews.controller';
 import { ContentBlocksService } from '../src/media/content-blocks.service';
 import { MediaService } from '../src/media/media.service';
 import { ReviewsService } from '../src/media/reviews.service';
-import { StorefrontMediaController, StorefrontReviewsController } from '../src/media/storefront-media.controller';
+import {
+	CatalogReviewsController,
+	StorefrontMediaController,
+	StorefrontReviewsController,
+} from '../src/media/storefront-media.controller';
 import { YouTubeService } from '../src/media/youtube.service';
+import { LanguageStore } from '../src/languages/language-store';
 
 const derivative = (role: string, width = 100) => ({
 	role,
@@ -64,15 +69,29 @@ const mediaDeps = (found: unknown = asset()) => {
 	};
 	const queue = { enqueue: vi.fn(async () => {}) };
 	const audit = { append: vi.fn(async () => {}) };
+	const browse = { namesIn: vi.fn(async () => ['Red Saree.jpg']) };
+	const folders = {
+		findById: vi.fn(async (id: string) =>
+			id === 'fld_trash'
+				? { id, trashedAt: '2026-11-01T00:00:00.000Z' }
+				: id === 'fld_1'
+					? { id, trashedAt: null }
+					: null,
+		),
+	};
+	const storageCheck = { admit: vi.fn(async () => undefined), release: vi.fn(async () => undefined) };
 	const service = new MediaService(
 		assets as never,
 		roles as never,
 		storage as never,
 		queue as never,
 		audit as never,
-		{ locales: ['en', 'fr'] } as never,
+		LanguageStore.fixed(['en', 'bn']),
+		browse as never,
+		folders as never,
+		storageCheck as never,
 	);
-	return { service, assets, roles, storage, queue, audit };
+	return { service, assets, roles, storage, queue, audit, browse, folders, storageCheck };
 };
 
 const admin = { type: 'admin', id: 'a1' } as const;
@@ -85,6 +104,8 @@ const upload = {
 	width: 1600,
 	height: 2133,
 } as never;
+/** The same upload with Media-page fields (folder, fingerprint, storage hold) or another purpose. */
+const uploadWith = (extra: Record<string, unknown>) => ({ ...(upload as object), ...extra }) as never;
 
 const statusOf = async (work: Promise<unknown>) => {
 	const error = (await work.catch((caught: unknown) => caught)) as HttpException;
@@ -116,14 +137,14 @@ describe('MediaService', () => {
 	it('states the upload rules and the active languages', () => {
 		const { service } = mediaDeps();
 		expect(service.uploadRules().acceptedTypes).toContain('image/jpeg');
-		expect(service.activeLocales).toEqual(['en', 'fr']);
+		expect(service.activeLocales).toEqual(['en', 'bn']);
 		expect(MediaService.ADMIN_PURPOSES).toContain('banner');
 	});
 
 	it('refuses an upload the policy rejects, with a message for each reason', async () => {
 		const { service } = mediaDeps();
 		const refused = await statusOf(
-			service.presign(admin, { ...(upload as object), contentType: 'image/gif' } as never),
+			service.presign(admin, { ...(upload as object), contentType: 'image/tiff' } as never),
 		);
 		expect(refused.status).toBe(422);
 	});
@@ -163,6 +184,37 @@ describe('MediaService', () => {
 		const done = mediaDeps();
 		await done.service.finalize(admin, 'med_1');
 		expect(done.queue.enqueue).not.toHaveBeenCalled();
+	});
+
+	it('holds storage for an admin upload until it is finished, never for a customer’s review photo', async () => {
+		const { service, storageCheck, assets } = mediaDeps();
+		const presigned = await service.presign(admin, uploadWith({ reservationId: 'res_batch' }));
+		expect(storageCheck.admit).toHaveBeenCalledWith('a1', 1000, 'res_batch', `res_${presigned.assetId}`);
+		const waiting = asset({
+			id: presigned.assetId,
+			processing: { state: 'awaiting_upload', attempts: 0, error: null, processedAt: null },
+		});
+		assets.findById.mockResolvedValue(waiting as never);
+		await service.finalize(admin, presigned.assetId);
+		expect(storageCheck.release).toHaveBeenCalledWith(`res_${presigned.assetId}`);
+		const review = mediaDeps();
+		await review.service.presign(customer, uploadWith({ purpose: 'review' }));
+		expect(review.storageCheck.admit).not.toHaveBeenCalled();
+	});
+
+	it('puts a Media-page upload in its folder with a free name and its fingerprint; other screens leave it in My files', async () => {
+		const { service, assets } = mediaDeps();
+		await service.presign(admin, uploadWith({ folderId: 'fld_1', sha256: 'a'.repeat(64) }));
+		expect(assets.create).toHaveBeenLastCalledWith(
+			expect.objectContaining({ folderId: 'fld_1', displayName: 'Red Saree (1).jpg', sha256: 'a'.repeat(64) }),
+		);
+		await service.presign(admin, upload as never);
+		expect(assets.create.mock.lastCall?.[0]).not.toHaveProperty('folderId');
+		const trashed = mediaDeps();
+		await expect(trashed.service.presign(admin, uploadWith({ folderId: 'fld_trash' }))).rejects.toMatchObject({
+			status: 422,
+		});
+		expect(trashed.storageCheck.admit).not.toHaveBeenCalled();
 	});
 
 	it('picks the best preview: known roles first, widest within a role', async () => {
@@ -241,6 +293,46 @@ describe('MediaService', () => {
 		expect(busy.queue.enqueue).not.toHaveBeenCalled();
 	});
 
+	it('a new web file name on a photo with versions runs like a Replace; a busy one is refused before anything is saved (step 3d)', async () => {
+		const deps = mediaDeps();
+		const withRenamer = (renamer: unknown) =>
+			new MediaService(
+				deps.assets as never,
+				deps.roles as never,
+				deps.storage as never,
+				deps.queue as never,
+				deps.audit as never,
+				LanguageStore.fixed(['en', 'bn']),
+				deps.browse as never,
+				deps.folders as never,
+				deps.storageCheck as never,
+				renamer as never,
+			);
+		const renamer = { renames: vi.fn(() => true), rename: vi.fn(async () => ({ phase: 'queued' })) };
+		await withRenamer(renamer).updateText('a1', 'med_1', { slug: 'new', alt: { en: 'A' } } as never);
+		// The text is saved now; the name changes with the new files.
+		expect(deps.assets.update).toHaveBeenCalledWith(
+			expect.objectContaining({ slug: 'red', text: expect.objectContaining({ alt: { en: 'A' } }) }),
+		);
+		expect(renamer.rename).toHaveBeenCalledWith('a1', 'med_1', 'new');
+		expect(deps.queue.enqueue).not.toHaveBeenCalled();
+		deps.assets.update.mockClear();
+		const busy = {
+			renames: vi.fn(() => {
+				throw new Error('rename_waits');
+			}),
+			rename: vi.fn(),
+		};
+		await expect(withRenamer(busy).updateText('a1', 'med_1', { slug: 'new' } as never)).rejects.toThrow(
+			'rename_waits',
+		);
+		expect(deps.assets.update).not.toHaveBeenCalled();
+		expect(busy.rename).not.toHaveBeenCalled();
+		// The same name again is no rename.
+		await withRenamer(renamer).updateText('a1', 'med_1', { slug: 'red' } as never);
+		expect(renamer.rename).toHaveBeenCalledTimes(1);
+	});
+
 	it('reprocesses only with an original', async () => {
 		const { service, queue } = mediaDeps();
 		await service.reprocess('a1', 'med_1');
@@ -285,7 +377,7 @@ describe('MediaService', () => {
 });
 
 describe('ReviewsService', () => {
-	const product = { id: 'p1', title: { en: 'Red', fr: 'Rouge' } };
+	const product = { id: 'p1', title: { en: 'Red', bn: 'লাল' } };
 	const order = { id: 'o1', userId: 'c1', status: 'delivered', lines: [{ productId: 'p1' }] };
 	const review = { id: 'r1', productId: 'p1', userId: 'c1', imageAssetIds: ['m1'] };
 	const build = (
@@ -296,10 +388,23 @@ describe('ReviewsService', () => {
 			review?: unknown;
 			moderated?: unknown;
 			locales?: string[];
+			transactional?: boolean;
+			own?: unknown;
+			orderId?: string | null;
 		} = {},
 	) => {
 		const reviews = {
 			hasVerifiedPurchase: vi.fn(async () => overrides.verified ?? true),
+			findByUserAndProduct: vi.fn(async () => overrides.own ?? null),
+			findReviewableOrderId: vi.fn(async () => (overrides.orderId === undefined ? 'o1' : overrides.orderId)),
+			updateByAuthor: vi.fn(async (input: { reviewId: string }) => ({ id: input.reviewId, status: 'pending' })),
+			listApprovedForProduct: vi.fn(async () => ({
+				items: [{ id: 'r1', userId: 'c1', rating: 5, title: null, body: 'Lovely', imageAssetIds: ['m1'] }],
+				total: 1,
+				page: 1,
+				pageSize: 10,
+			})),
+			getAggregate: vi.fn(async () => ({ average: 5, count: 1, buckets: { 5: 1 } }) as unknown),
 			create: vi.fn(async (row: unknown) => row),
 			list: vi.fn(async () => ({ items: [review], total: 1, page: 1, pageSize: 20 })),
 			findById: vi.fn(async () => (overrides.review === undefined ? review : overrides.review)),
@@ -313,10 +418,11 @@ describe('ReviewsService', () => {
 		};
 		const products = {
 			findById: vi.fn(async () => (overrides.product === undefined ? product : overrides.product)),
+			findBySlug: vi.fn(async () => (overrides.product === undefined ? product : overrides.product)),
 		};
 		const orders = { findById: vi.fn(async () => (overrides.order === undefined ? order : overrides.order)) };
 		const customers = {
-			findById: vi.fn(async () => ({ displayName: 'Asha', email: 'a@example.test' }) as unknown),
+			findById: vi.fn(async () => ({ displayName: 'Asha Roy', email: 'a@example.test' }) as unknown),
 		};
 		const storage = {
 			getUrl: (key: string) => `https://cdn.test/${key}`,
@@ -325,6 +431,7 @@ describe('ReviewsService', () => {
 		};
 		const queue = { enqueue: vi.fn(async () => {}) };
 		const media = { presign: vi.fn(async () => 'presigned') };
+		const transactions = { withTransaction: vi.fn(async (work: () => Promise<unknown>) => work()) };
 		const service = new ReviewsService(
 			reviews as never,
 			assets as never,
@@ -334,9 +441,10 @@ describe('ReviewsService', () => {
 			storage as never,
 			queue as never,
 			media as never,
-			{ locales: overrides.locales ?? ['en', 'fr'] } as never,
+			LanguageStore.fixed(overrides.locales ?? ['en', 'bn']),
+			overrides.transactional === false ? null : (transactions as never),
 		);
-		return { service, reviews, assets, products, customers, storage, media };
+		return { service, reviews, assets, products, customers, storage, media, transactions };
 	};
 	const submit = { orderId: 'o1', productId: 'p1', rating: 5, title: 'T', body: 'B', imageAssetIds: [] } as never;
 
@@ -378,7 +486,7 @@ describe('ReviewsService', () => {
 	});
 
 	it('stores a pending review and names photos after the product in each language', async () => {
-		const { service, assets, reviews } = build({ locales: ['en', 'fr', 'de'] });
+		const { service, assets, reviews } = build({ locales: ['en', 'bn', 'de'] });
 		const photo = {
 			id: 'm1',
 			purpose: 'review',
@@ -392,7 +500,7 @@ describe('ReviewsService', () => {
 		expect(assets.update).toHaveBeenCalledWith(
 			expect.objectContaining({
 				text: expect.objectContaining({
-					alt: { en: 'Red — customer photo', fr: 'Rouge — photo client', de: 'Red — customer photo' },
+					alt: { en: 'Red — customer photo', bn: 'লাল — গ্রাহকের ছবি', de: 'Red — customer photo' },
 				}),
 			}),
 		);
@@ -412,7 +520,7 @@ describe('ReviewsService', () => {
 		await service.submit('c1', { ...(submit as object), imageAssetIds: ['m1'] } as never);
 		expect(assets.update).toHaveBeenCalledWith(
 			expect.objectContaining({
-				text: expect.objectContaining({ alt: { en: 'customer photo', fr: 'photo client' } }),
+				text: expect.objectContaining({ alt: { en: 'customer photo', bn: 'গ্রাহকের ছবি' } }),
 			}),
 		);
 	});
@@ -432,7 +540,7 @@ describe('ReviewsService', () => {
 			{ id: 'm2', visibility: 'private', derivatives: [derivative('review_full')] },
 		]);
 		const page = await service.adminList({ page: 1, pageSize: 20 } as never);
-		expect(page.items[0]).toMatchObject({ productName: 'Red', customerName: 'Asha' });
+		expect(page.items[0]).toMatchObject({ productName: 'Red', customerName: 'Asha Roy' });
 		expect(page.items[0]?.photos).toEqual([
 			{
 				assetId: 'm1',
@@ -456,28 +564,94 @@ describe('ReviewsService', () => {
 	});
 
 	it('approves, keeping the photos', async () => {
-		const { service, reviews } = build();
+		const { service, reviews, transactions } = build();
 		await service.moderate('a1', 'r1', { decision: 'approve', note: 'Good' } as never);
+		expect(transactions.withTransaction).toHaveBeenCalledTimes(1);
 		expect(reviews.moderate).toHaveBeenCalledWith(expect.objectContaining({ status: 'approved', note: 'Good' }));
 		expect(reviews.moderate.mock.calls[0]?.[0 as never]).not.toHaveProperty('imageAssetIds');
 		expect(reviews.recomputeAggregate).toHaveBeenCalledWith('p1');
 	});
 
-	it('rejects, dropping the photos', async () => {
-		const { service, reviews } = build();
+	it('rejects, dropping the photos, without a transaction manager too', async () => {
+		const { service, reviews } = build({ transactional: false });
 		await service.moderate('a1', 'r1', { decision: 'reject' } as never);
 		expect(reviews.moderate).toHaveBeenCalledWith(
 			expect.objectContaining({ status: 'rejected', note: undefined, imageAssetIds: [] }),
 		);
 	});
 
+	it('refuses a second review of the same product', async () => {
+		const refused = await statusOf(build({ own: review }).service.submit('c1', submit));
+		expect(refused.status).toBe(409);
+	});
+
+	it('lists approved reviews with a short author name and public photos only', async () => {
+		const { service, assets } = build();
+		assets.findManyByIds.mockResolvedValue([
+			{ id: 'm1', visibility: 'public', derivatives: [derivative('review_thumb')], text: { alt: { en: 'Red' } } },
+			{ id: 'm2', visibility: 'private', derivatives: [derivative('review_thumb')], text: { alt: {} } },
+		]);
+		const page = await service.publicList({ productSlug: 'red', page: 1, pageSize: 10 });
+		expect(page.summary).toEqual({ average: 5, count: 1, buckets: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 1 } });
+		expect(page.items[0]).toMatchObject({ authorName: 'Asha R.', body: 'Lovely' });
+		expect(page.items[0]?.photos.map((photo) => photo.assetId)).toEqual(['m1']);
+		expect(page.items[0]?.photos[0]?.alt).toBe('Red');
+	});
+
+	it('answers an unknown product, or one without an aggregate, with an empty summary', async () => {
+		const gone = await build({ product: null }).service.publicList({ productSlug: 'x', page: 2, pageSize: 5 });
+		expect(gone).toMatchObject({ items: [], total: 0, page: 2, pageSize: 5, summary: { count: 0 } });
+		const fresh = build();
+		fresh.reviews.getAggregate.mockResolvedValue(null);
+		expect((await fresh.service.publicList({ productSlug: 'red', page: 1, pageSize: 10 })).summary.count).toBe(0);
+	});
+
+	it('tells the customer whether they can review, must wait, or already did', async () => {
+		expect(await build().service.mine('c1', 'p1')).toEqual({ state: 'can_review', orderId: 'o1' });
+		expect(await build({ orderId: null }).service.mine('c1', 'p1')).toEqual({ state: 'needs_delivery' });
+		const own = { ...review, rating: 4, title: null, body: 'Ok', status: 'pending', imageAssetIds: [] };
+		expect(await build({ own }).service.mine('c1', 'p1')).toMatchObject({
+			state: 'reviewed',
+			review: { id: 'r1', rating: 4, status: 'pending', photos: [] },
+		});
+	});
+
+	it('lets only the author edit, back to moderation, dropping removed photos', async () => {
+		const approved = { ...review, status: 'approved', imageAssetIds: ['m1', 'm2'] };
+		const { service, reviews, assets } = build({ review: approved });
+		const edit = { rating: 3, title: null, body: 'Changed', imageAssetIds: ['m1'] };
+		expect(await service.update('c1', 'r1', edit)).toMatchObject({ status: 'pending' });
+		expect(reviews.updateByAuthor).toHaveBeenCalledWith(
+			expect.objectContaining({ reviewId: 'r1', userId: 'c1', imageAssetIds: ['m1'] }),
+		);
+		expect(assets.findManyByIds).toHaveBeenCalledWith(['m2']);
+		expect(reviews.recomputeAggregate).toHaveBeenCalledWith('p1');
+		await expect(build().service.update('someone', 'r1', edit)).rejects.toBeInstanceOf(NotFoundException);
+		await expect(build({ review: null }).service.update('c1', 'r1', edit)).rejects.toBeInstanceOf(
+			NotFoundException,
+		);
+	});
+
+	it('refuses a new photo it cannot attach, and an edit that vanished', async () => {
+		const edit = { rating: 3, title: null, body: 'B', imageAssetIds: ['m1', 'new'] };
+		expect((await statusOf(build().service.update('c1', 'r1', edit))).status).toBe(422);
+		const vanished = build({ transactional: false });
+		vanished.reviews.updateByAuthor.mockResolvedValue(null as never);
+		await expect(vanished.service.update('c1', 'r1', { ...edit, imageAssetIds: ['m1'] })).rejects.toBeInstanceOf(
+			NotFoundException,
+		);
+		expect(vanished.reviews.recomputeAggregate).not.toHaveBeenCalled();
+	});
+
 	it('refuses an unknown review, or one that vanished mid-way', async () => {
 		await expect(
 			build({ review: null }).service.moderate('a1', 'r1', { decision: 'approve' } as never),
 		).rejects.toBeInstanceOf(NotFoundException);
-		await expect(
-			build({ moderated: null }).service.moderate('a1', 'r1', { decision: 'approve' } as never),
-		).rejects.toBeInstanceOf(NotFoundException);
+		const vanished = build({ moderated: null });
+		await expect(vanished.service.moderate('a1', 'r1', { decision: 'approve' } as never)).rejects.toBeInstanceOf(
+			NotFoundException,
+		);
+		expect(vanished.reviews.recomputeAggregate).not.toHaveBeenCalled();
 	});
 });
 
@@ -509,7 +683,7 @@ describe('ContentBlocksService', () => {
 			subheading: {},
 			ctaLabel: {},
 			link: null,
-			alt: { en: 'A', fr: 'B' },
+			alt: { en: 'A', bn: 'B' },
 			status: 'draft',
 			startsAt: null,
 			endsAt: null,
@@ -531,9 +705,7 @@ describe('ContentBlocksService', () => {
 			assets as never,
 			settings as never,
 			storage as never,
-			{
-				locales: ['en', 'fr'],
-			} as never,
+			LanguageStore.fixed(['en', 'bn']),
 		);
 		return { service, blocks, assets, settings };
 	};
@@ -551,13 +723,37 @@ describe('ContentBlocksService', () => {
 		expect((await statusOf(build(found).service.upsert(input()))).status).toBe(422);
 	});
 
+	it('takes a photo given a banner version later, whatever it was first uploaded for (media step 4d)', async () => {
+		const version = (profileKey: string) => ({
+			id: `${profileKey}.as_is`,
+			profileKey,
+			profileVersion: 1,
+			fill: 'as_is',
+			state: 'ready',
+			createdAt: '2026-11-16T00:00:00.000Z',
+		});
+		const reused = banner({ purpose: 'product', versions: [version('product_3x4'), version('banner_keep_shape')] });
+		await expect(build([reused]).service.upsert(input())).resolves.toMatchObject({ key: expect.any(String) });
+		const plain = banner({ purpose: 'product', versions: [version('product_3x4')] });
+		expect((await statusOf(build([plain]).service.upsert(input()))).status).toBe(422);
+	});
+
 	it('needs alt text in every language to go live', async () => {
-		const refused = await statusOf(build().service.upsert(input({ status: 'active', alt: { en: 'A', fr: ' ' } })));
-		expect(JSON.stringify(refused.body)).toContain('fr');
+		const refused = await statusOf(build().service.upsert(input({ status: 'active', alt: { en: 'A', bn: ' ' } })));
+		expect(JSON.stringify(refused.body)).toContain('bn');
 		await expect(build().service.upsert(input({ status: 'active' }))).resolves.toMatchObject({
 			key: expect.any(String),
 		});
 		expect((await statusOf(build().service.upsert(input({ status: 'active', alt: {} })))).status).toBe(422);
+	});
+
+	it('keeps the version each picture was chosen with, for its own pictures only (R4-1, step 4d)', async () => {
+		const { service, blocks } = build([banner()]);
+		const saved = await service.upsert(input({ imageVersions: { m1: 'banner_keep_shape.as_is', other: 'x.y' } }));
+		expect(saved.imageVersions).toEqual({ m1: 'banner_keep_shape.as_is' });
+		expect(blocks.save).toHaveBeenCalledWith(
+			expect.objectContaining({ imageVersions: { m1: 'banner_keep_shape.as_is' } }),
+		);
 	});
 
 	it('keeps the id of the block it replaces', async () => {
@@ -589,18 +785,18 @@ describe('ContentBlocksService', () => {
 		containsText: false,
 		images: { desktop: 'm1', tablet: 'm1', phone: null },
 		localeImages: {},
-		heading: { en: 'H', fr: 'T' },
+		heading: { en: 'H', bn: 'T' },
 		subheading: { en: 'S' },
 		ctaLabel: {},
 		link: null,
-		alt: { en: 'A', fr: 'B' },
+		alt: { en: 'A', bn: 'B' },
 		...overrides,
 	});
 
 	it('resolves live banners for a language, with fallbacks', async () => {
 		const { service, blocks } = build();
 		blocks.listLive.mockResolvedValue([block()]);
-		const response = await service.storefront({ ownerType: 'home', locale: 'fr' } as never);
+		const response = await service.storefront({ ownerType: 'home', locale: 'bn' } as never);
 		expect(response.heroLayout).toBe('hero_full');
 		expect(response.banners[0]).toMatchObject({ heading: 'T', subheading: 'S', ctaLabel: null, alt: 'B' });
 		expect(response.banners[0]?.images.tablet).not.toBeNull();
@@ -615,32 +811,45 @@ describe('ContentBlocksService', () => {
 			block({ alt: { en: 'A' }, key: 'k2' }),
 			block({ alt: {}, key: 'k3' }),
 		]);
-		const response = await service.storefront({ ownerType: 'category', ownerId: 'c1', locale: 'fr' } as never);
+		const response = await service.storefront({ ownerType: 'category', ownerId: 'c1', locale: 'bn' } as never);
 		expect(response.banners.map((row) => row.alt)).toEqual(['A', '']);
 	});
 
 	it('uses the art for the language and drops live text when the art carries it', async () => {
 		const { service, blocks } = build([banner(), banner({ id: 'm2' })]);
 		blocks.listLive.mockResolvedValue([
-			block({ containsText: true, localeImages: { fr: { desktop: 'm2', tablet: null, phone: null } } }),
+			block({ containsText: true, localeImages: { bn: { desktop: 'm2', tablet: null, phone: null } } }),
 		]);
-		const fr = await service.storefront({ ownerType: 'home', locale: 'fr' } as never);
-		expect(fr.banners[0]).toMatchObject({ heading: null, subheading: null });
-		expect(fr.banners[0]?.images.desktop.assetId).toBe('m2');
+		const bn = await service.storefront({ ownerType: 'home', locale: 'bn' } as never);
+		expect(bn.banners[0]).toMatchObject({ heading: null, subheading: null });
+		expect(bn.banners[0]?.images.desktop.assetId).toBe('m2');
 		const en = await service.storefront({ ownerType: 'home', locale: 'en' } as never);
 		expect(en.banners[0]?.images.desktop.assetId).toBe('m1');
 	});
 });
 
 describe('YouTubeService', () => {
-	const video = { videoId: 'dQw4w9WgXcQ', title: 'T', thumbnailUrl: 'u', publishedAt: 'p' };
-	const build = (stored: unknown = null, feed: unknown = null) => {
+	const video = {
+		videoId: 'dQw4w9WgXcQ',
+		title: 'T',
+		thumbnailUrl: 'u',
+		publishedAt: 'p',
+		kind: 'short',
+		durationSeconds: 48,
+	};
+	const build = (stored: unknown = null, feed: unknown = null, getUrl = (key: string) => `cdn/${key}`) => {
 		const youtube = { findVideo: vi.fn(async () => video as unknown) };
 		const settings = {
 			get: vi.fn(async (key: string) => (key === 'youtube' ? stored : feed)),
 			set: vi.fn(async () => {}),
 		};
-		return { service: new YouTubeService(youtube as never, settings as never), youtube, settings };
+		const queue = { enqueue: vi.fn(async () => {}) };
+		return {
+			service: new YouTubeService(youtube as never, settings as never, queue as never, { getUrl }),
+			youtube,
+			settings,
+			queue,
+		};
 	};
 	const stored = {
 		channelHandle: '@a',
@@ -656,6 +865,9 @@ describe('YouTubeService', () => {
 			videoId: 'dQw4w9WgXcQ',
 			title: 'T',
 			thumbnailUrl: 'u',
+			kind: 'short',
+			durationSeconds: 48,
+			publishedAt: 'p',
 		});
 		expect((await statusOf(service.validate('not a link at all'))).status).toBe(422);
 		youtube.findVideo.mockResolvedValue(null);
@@ -679,8 +891,66 @@ describe('YouTubeService', () => {
 	it('serves the rail only where it is switched on, and cut to the display count', async () => {
 		expect(await build(stored).service.rail('product')).toEqual({ videos: [] });
 		expect(await build(stored).service.rail('home')).toEqual({ videos: [] });
-		const { service } = build(stored, { videos: [1, 2, 3] });
-		expect((await service.rail('home')).videos).toEqual([1, 2]);
+		// A saved address from another bucket (a copied database) is never shown: the key decides.
+		const feedVideo = (id: string, posterKey: string | null = null) => ({
+			videoId: id,
+			thumbnailUrl: `yt/${id}`,
+			posterUrl: posterKey ? `https://other.test/${posterKey}` : null,
+			posterKey,
+		});
+		const feed = { videos: [feedVideo('a', 'youtube/a.webp'), feedVideo('b'), feedVideo('c')] };
+		const { service } = build(stored, feed);
+		expect((await service.rail('home')).videos.map((row) => [row.thumbnailUrl, row.posterUrl])).toEqual([
+			['cdn/youtube/a.webp', 'cdn/youtube/a.webp'],
+			['yt/b', null],
+		]);
+		// No storage settings on this server: YouTube's own picture.
+		const bare = build(stored, feed, () => {
+			throw new Error('storage is not configured');
+		}).service;
+		expect((await bare.rail('home')).videos.map((row) => [row.thumbnailUrl, row.posterUrl])).toEqual([
+			['yt/a', null],
+			['yt/b', null],
+		]);
+	});
+
+	it('tells admin when the cache was filled, how much it holds and the last error', async () => {
+		expect(await build(stored).service.status()).toEqual({
+			fetchedAt: null,
+			lastAttemptAt: null,
+			lastError: null,
+			videos: 0,
+			shorts: 0,
+		});
+		const feed = { videos: [{}, {}], shorts: [{}], fetchedAt: 'f', lastAttemptAt: 'a', lastError: 'HTTP 403' };
+		expect(await build(stored, feed).service.status()).toEqual({
+			fetchedAt: 'f',
+			lastAttemptAt: 'a',
+			lastError: 'HTTP 403',
+			videos: 2,
+			shorts: 1,
+		});
+	});
+
+	it('queues the refresh when admin asks for it now', async () => {
+		const { service, queue } = build(stored);
+		await service.refreshNow();
+		expect(queue.enqueue).toHaveBeenCalledWith({ type: 'youtube-refresh' });
+	});
+
+	it('serves /videos: every cached video and Short, our poster first, and the channel page', async () => {
+		const empty = await build(stored).service.videos();
+		expect(empty).toEqual({ videos: [], shorts: [], channelUrl: 'https://www.youtube.com/@a' });
+		const { service } = build(stored, {
+			videos: [{ videoId: 'v', thumbnailUrl: 'yt/v', posterUrl: null, posterKey: null }],
+			shorts: [
+				{ videoId: 's', thumbnailUrl: 'yt/s', posterUrl: 'https://other.test/s.webp', posterKey: 's.webp' },
+			],
+		});
+		const page = await service.videos();
+		expect(page.videos[0]?.thumbnailUrl).toBe('yt/v');
+		expect(page.shorts[0]?.thumbnailUrl).toBe('cdn/s.webp');
+		expect((await build(null, { videos: [] }).service.videos()).shorts).toEqual([]);
 	});
 });
 
@@ -727,6 +997,8 @@ describe('media controllers', () => {
 			validate: vi.fn(async () => 'valid'),
 			getSettings: vi.fn(async () => 'settings'),
 			updateSettings: vi.fn(async () => 'updated'),
+			status: vi.fn(async () => 'status'),
+			refreshNow: vi.fn(async () => undefined),
 		};
 		const brand = { settingsValue: vi.fn(async () => 'kit'), save: vi.fn(async () => 'kept') };
 		const controller = new AdminContentController(blocks as never, youtube as never, brand as never);
@@ -743,6 +1015,9 @@ describe('media controllers', () => {
 		expect(await controller.validate({ input: 'x' } as never)).toBe('valid');
 		expect(await controller.settings()).toBe('settings');
 		expect(await controller.updateSettings({} as never)).toBe('updated');
+		expect(await controller.status()).toBe('status');
+		await controller.refresh();
+		expect(youtube.refreshNow).toHaveBeenCalledOnce();
 	});
 
 	it('hands review moderation to the service', async () => {
@@ -757,19 +1032,30 @@ describe('media controllers', () => {
 		const controller = new StorefrontMediaController(
 			{ uploadRules: () => 'rules' } as never,
 			{ storefront: async () => 'banners' } as never,
-			{ rail: async () => 'rail' } as never,
+			{ rail: async () => 'rail', videos: async () => 'videos' } as never,
 			{ storefront: async () => 'brand' } as never,
 		);
 		expect(await controller.brandKit()).toBe('brand');
 		expect(controller.rules()).toBe('rules');
 		expect(await controller.banners({} as never)).toBe('banners');
 		expect(await controller.rail({ placement: 'home' } as never)).toBe('rail');
+		expect(await controller.videos()).toBe('videos');
 	});
 
 	it('uses the session as the review owner, and refuses a guest', async () => {
 		const media = { finalize: vi.fn(async () => 'final'), status: vi.fn(async () => 'status') };
-		const reviews = { presignPhoto: vi.fn(async () => 'signed'), submit: vi.fn(async () => 'saved') };
+		const reviews = {
+			presignPhoto: vi.fn(async () => 'signed'),
+			submit: vi.fn(async () => 'saved'),
+			mine: vi.fn(async () => 'mine'),
+			update: vi.fn(async () => 'edited'),
+		};
 		const controller = new StorefrontReviewsController(media as never, reviews as never);
+		expect(await controller.mine({ userId: 'c1' } as never, { productId: 'p1' })).toBe('mine');
+		expect(reviews.mine).toHaveBeenCalledWith('c1', 'p1');
+		expect(await controller.update({ userId: 'c1' } as never, 'r1', {} as never)).toBe('edited');
+		expect(reviews.update).toHaveBeenCalledWith('c1', 'r1', {});
+		expect(() => controller.mine(undefined, { productId: 'p1' })).toThrow(UnauthorizedException);
 		const shopper = { userId: 'c1' } as never;
 		expect(await controller.presign(shopper, {} as never)).toBe('signed');
 		expect(await controller.finalize(shopper, 'm')).toBe('final');
@@ -777,5 +1063,13 @@ describe('media controllers', () => {
 		expect(await controller.status(shopper, 'm')).toBe('status');
 		expect(await controller.submit(shopper, {} as never)).toBe('saved');
 		expect(() => controller.submit(undefined, {} as never)).toThrow(UnauthorizedException);
+	});
+});
+
+describe('CatalogReviewsController', () => {
+	it('hands the public read to the service', async () => {
+		const reviews = { publicList: vi.fn(async () => 'page') };
+		const controller = new CatalogReviewsController(reviews as never);
+		expect(await controller.list({ productSlug: 'red', page: 1, pageSize: 10 })).toBe('page');
 	});
 });

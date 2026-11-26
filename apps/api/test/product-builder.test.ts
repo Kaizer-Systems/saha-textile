@@ -7,8 +7,9 @@ import { AdminTaxonomyController } from '../src/catalog/admin-taxonomy.controlle
 import { applyProductContent, syncVariantRows } from '../src/catalog/product-content';
 import { ProductBuilderService } from '../src/catalog/product-builder.service';
 import { TaxonomyService } from '../src/catalog/taxonomy.service';
+import { LanguageStore } from '../src/languages/language-store';
 
-const both = { en: 'Text', fr: 'Texte' };
+const both = { en: 'Text', bn: 'Texte' };
 const product = (over: Record<string, unknown> = {}) =>
 	Product.parse({
 		id: 'prd_1',
@@ -28,9 +29,9 @@ const product = (over: Record<string, unknown> = {}) =>
 
 const content = (over: Record<string, unknown> = {}) =>
 	({
-		title: { en: ' Name ', fr: 'Nom' },
+		title: { en: ' Name ', bn: 'Nom' },
 		shortDescription: both,
-		description: { fr: 'Texte' },
+		description: { bn: 'Texte' },
 		metaTitle: both,
 		metaDescription: both,
 		estimatedDeliveryText: {},
@@ -40,32 +41,32 @@ const content = (over: Record<string, unknown> = {}) =>
 		imageMode: 'compound',
 		gallery: ['a'],
 		compound: [{ selectionHash: 'h', gallery: ['a'] }],
-		altOverrides: { a: { fr: 'Alt' } },
+		altOverrides: { a: { bn: 'Alt' } },
 		...over,
 	}) as never;
 
 describe('applyProductContent', () => {
 	it('keeps lead-time text only once it has English', () => {
-		const text = { en: ' Soon ', fr: 'Bientôt' };
+		const text = { en: ' Soon ', bn: 'শিগগিরই' };
 		expect(applyProductContent(product(), content({ estimatedDeliveryText: text })).estimatedDeliveryText).toEqual({
 			en: 'Soon',
-			fr: 'Bientôt',
+			bn: 'শিগগিরই',
 		});
-		const french = content({ estimatedDeliveryText: { fr: 'Bientôt' } });
-		expect(applyProductContent(product(), french).estimatedDeliveryText).toBeNull();
+		const bengali = content({ estimatedDeliveryText: { bn: 'শিগগিরই' } });
+		expect(applyProductContent(product(), bengali).estimatedDeliveryText).toBeNull();
 	});
 
 	it('takes every language-bound field and the images', () => {
 		const next = applyProductContent(product(), content());
-		expect(next.title).toEqual({ en: 'Name', fr: 'Nom' });
-		expect(next.description).toEqual({ en: '', fr: 'Texte' });
+		expect(next.title).toEqual({ en: 'Name', bn: 'Nom' });
+		expect(next.description).toEqual({ en: '', bn: 'Texte' });
 		expect(next.seo).toEqual({ title: both, description: both });
 		expect(next.imageMode).toBe('compound');
-		expect(next.media?.altOverrides).toEqual({ a: { fr: 'Alt' } });
+		expect(next.media?.altOverrides).toEqual({ a: { bn: 'Alt' } });
 	});
 
 	it('refuses a product with no English name', () => {
-		expect(() => applyProductContent(product(), content({ title: { fr: 'Nom' } }))).toThrow('English name');
+		expect(() => applyProductContent(product(), content({ title: { bn: 'Nom' } }))).toThrow('English name');
 		expect(() => applyProductContent(product(), content({ title: { en: ' ' } }))).toThrow('English name');
 	});
 });
@@ -127,6 +128,7 @@ describe('ProductBuilderService', () => {
 			}),
 			record: vi.fn(async () => undefined),
 			syncSearch: vi.fn(async () => undefined),
+			productFaq: vi.fn(async () => [{ question: { en: 'Silk?' }, answer: { en: 'Yes' } }]),
 		};
 		const products = {
 			findBySlug: vi.fn(async (slug: string) => rows.find((row) => row.slug === slug) ?? null),
@@ -137,7 +139,12 @@ describe('ProductBuilderService', () => {
 			save: vi.fn(async (row: unknown) => row),
 			listForProduct: vi.fn(async () => [{ priceINR: 100 }]),
 		};
-		const media = { findById: vi.fn(async () => ({ derivatives: [{ role: 'thumb' }, { role: 'card' }, { role: 'gallery' }], text: { alt: both } })) };
+		const media = {
+			findById: vi.fn(async () => ({
+				derivatives: [{ role: 'thumb' }, { role: 'card' }, { role: 'gallery' }],
+				text: { alt: both },
+			})),
+		};
 		const bundles = {
 			findByProductId: vi.fn(async (): Promise<unknown> => null),
 			isBundleProduct: vi.fn(async () => false),
@@ -147,7 +154,7 @@ describe('ProductBuilderService', () => {
 			catalog as never,
 			products as never,
 			variants as never,
-			{ locales: ['en', 'fr'] } as never,
+			LanguageStore.fixed(['en', 'bn']),
 			options.media === false ? null : (media as never),
 			options.bundles === false ? null : (bundles as never),
 		);
@@ -183,6 +190,16 @@ describe('ProductBuilderService', () => {
 		expect(already.products.save).not.toHaveBeenCalled();
 	});
 
+	it('checks the product’s FAQ questions only while its FAQ is on', async () => {
+		const on = build([product({ faqEnabled: true })]);
+		const result = await on.service.goLive('prd_1', null);
+		expect(result.live).toBe(false);
+		expect(result.gaps).toContainEqual({ field: 'faq_question:1', locale: 'bn' });
+		const off = build([product()]);
+		await off.service.goLive('prd_1', null);
+		expect(off.catalog.productFaq).not.toHaveBeenCalled();
+	});
+
 	it('keeps an earlier first-live date', async () => {
 		const { service, products } = build([product({ lifecycle: { liveAt: '2026-01-01T00:00:00.000Z' } })]);
 		await service.goLive('prd_1', null);
@@ -193,7 +210,7 @@ describe('ProductBuilderService', () => {
 		const { service, products } = build([product({ title: { en: 'Only English' } })]);
 		const result = await service.goLive('prd_1', null);
 		expect(result.live).toBe(false);
-		expect(result.gaps).toContainEqual({ field: 'title', locale: 'fr' });
+		expect(result.gaps).toContainEqual({ field: 'title', locale: 'bn' });
 		expect(products.save).not.toHaveBeenCalled();
 	});
 
@@ -206,24 +223,34 @@ describe('ProductBuilderService', () => {
 		const noLibrary = build([product()], { media: false });
 		expect((await noLibrary.service.goLive('prd_1', null)).gaps).toContainEqual({
 			field: 'image_alt',
-			locale: 'fr',
+			locale: 'bn',
 		});
 		const gone = build([product({ status: 'discontinued' })]);
 		await expect(gone.service.goLive('prd_1', null)).rejects.toThrow('discontinued');
 	});
 
-	const group = {
+	const level = {
 		code: 'g',
 		label: both,
-		minSelections: 1,
-		maxSelections: 1,
-		components: [{ productId: 'prd_1', variantId: null, quantity: 1, required: true, priceAdjustmentINR: null }],
+		take: 1,
+		source: { kind: 'items' },
+		items: [{ productId: 'prd_1', variantId: null, quantity: 1, priceInSetINR: null }],
+		priceMode: 'difference',
 	};
 	const write = {
-		bundleType: 'fixed_kit',
-		pricePolicy: 'sum_components',
-		fixedPriceINR: null,
-		groups: [group],
+		levels: [level],
+		extras: [],
+		pricing: {
+			methodId: 'bpm_pieces_added_up',
+			params: {},
+			rules: [],
+			combine: 'all',
+			capAtSeparately: false,
+			roundTo: 'one',
+		},
+		saleWindow: null,
+		styledPhoto: null,
+		dearerReason: null,
 	} as never;
 
 	it('reads and saves a bundle', async () => {
@@ -235,7 +262,8 @@ describe('ProductBuilderService', () => {
 		expect(catalog.record).toHaveBeenCalledOnce();
 		bundles.findByProductId.mockResolvedValueOnce({ id: 'bnd_1', status: 'live' });
 		await service.saveBundle('kit', write, null);
-		expect(bundles.save.mock.calls[1]?.[0]).toMatchObject({ id: 'bnd_1', status: 'live' });
+		// The set follows its product's status: a disabled product's set is a draft.
+		expect(bundles.save.mock.calls[1]?.[0]).toMatchObject({ id: 'bnd_1', status: 'draft' });
 		bundles.findByProductId.mockResolvedValueOnce({ id: 'bnd_1' });
 		await expect(service.bundle('kit')).resolves.toEqual({ id: 'bnd_1' });
 	});
@@ -283,7 +311,7 @@ describe('TaxonomyService', () => {
 	});
 	const body = (over: Record<string, unknown> = {}) =>
 		({
-			name: { en: 'Sarees', fr: 'Sarees' },
+			name: { en: 'Sarees', bn: 'Sarees' },
 			description: {},
 			seoTitle: {},
 			seoDescription: {},
@@ -302,6 +330,7 @@ describe('TaxonomyService', () => {
 			record: vi.fn(async () => undefined),
 			upsertRedirect: vi.fn(async () => undefined),
 			syncSearch: vi.fn(async () => undefined),
+			dropLeftBehindSwatches: vi.fn(async () => undefined),
 		};
 		const categories = {
 			tree: vi.fn(async () => rows),
@@ -336,6 +365,7 @@ describe('TaxonomyService', () => {
 		const products = {
 			list: vi.fn(async (): Promise<unknown> => ({ items: [], total: 0 })),
 			save: vi.fn(async (row: unknown) => row),
+			listByMainCategory: vi.fn(async (): Promise<unknown[]> => []),
 		};
 		const service = new TaxonomyService(
 			catalog as never,
@@ -351,6 +381,59 @@ describe('TaxonomyService', () => {
 	beforeEach(() => {
 		rows = [category()];
 		spots = [placement()];
+	});
+
+	it('keeps HSN and returnability unless a save sets them, and refills only the products that follow (F03)', async () => {
+		const { service, categories, products, catalog } = repositories();
+		rows = [category({ hsnCode: '5007', returnable: true })];
+		await service.saveCategory('cat_1', body(), null);
+		expect(categories.save.mock.lastCall?.[0]).toMatchObject({ hsnCode: '5007', returnable: true });
+		const followers = [
+			{ id: 'p1', sku: 'ST-1', title: { en: 'A' }, hsnCode: '5007' },
+			{ id: 'p2', sku: 'ST-2', title: { en: 'B' }, hsnCode: null },
+			{ id: 'p3', sku: 'ST-3', title: { en: 'C' }, hsnCode: '5208' },
+		];
+		products.listByMainCategory.mockResolvedValue(followers);
+		expect(await service.hsnImpact('cat_1')).toEqual({
+			categoryHsn: '5007',
+			using: 2,
+			own: [{ id: 'p3', sku: 'ST-3', title: 'C', hsnCode: '5208' }],
+		});
+		// Without the tick, products keep their HSN.
+		await service.saveCategory('cat_1', body({ hsnCode: '5407', returnable: false }), 'adm_1');
+		expect(categories.save.mock.lastCall?.[0]).toMatchObject({ hsnCode: '5407', returnable: false });
+		expect(products.save).not.toHaveBeenCalled();
+		// With it, only the products on the old code (or none) move to the new one.
+		rows = [category({ hsnCode: '5007' })];
+		await service.saveCategory('cat_1', body({ hsnCode: '5208', updateProductsHsn: true }), 'adm_1');
+		expect(products.save.mock.calls.map((call) => call[0])).toEqual([
+			expect.objectContaining({ id: 'p1', hsnCode: '5208' }),
+			expect.objectContaining({ id: 'p2', hsnCode: '5208' }),
+		]);
+		expect(catalog.record.mock.lastCall).toEqual([
+			'adm_1',
+			'catalog.category.save',
+			'cat_1',
+			expect.objectContaining({ hsnFrom: '5007', hsnTo: '5208', productsUpdated: ['ST-1', 'ST-2'] }),
+		]);
+	});
+
+	it('saves a category’s shipping charges, weight and box, and keeps them when a save leaves them out', async () => {
+		const { service, categories } = repositories();
+		const shipping = {
+			domesticINR: 100,
+			internationalFirstINR: 2000,
+			internationalFurtherINR: 900,
+			weightGrams: 650,
+			lengthCm: 35,
+			widthCm: 25,
+			heightCm: 5,
+		};
+		await service.saveCategory('cat_1', body({ shipping }), 'adm_1');
+		expect(categories.save.mock.lastCall?.[0]).toMatchObject({ shipping });
+		rows = [category({ shipping })];
+		await service.saveCategory('cat_1', body(), 'adm_1');
+		expect(categories.save.mock.lastCall?.[0]).toMatchObject({ shipping });
 	});
 
 	it('lists categories with their address and product count', async () => {
@@ -385,6 +468,28 @@ describe('TaxonomyService', () => {
 		const saved = categories.save.mock.lastCall?.[0] as { media: object; displayOrder: number };
 		expect(saved.displayOrder).toBe(2);
 		expect(saved.media).toEqual({ iconImage: 'a3' });
+	});
+
+	it('keeps the version each of its pictures was chosen with, and only for its own (R4-1, media step 4d)', async () => {
+		const { service, categories } = repositories();
+		rows = [category({ media: { bannerImage: 'a1', iconImage: 'a2', versions: { a1: 'category_3x4.white' } } })];
+		// A save that leaves the pictures out keeps them and their versions.
+		await service.saveCategory('cat_1', body({ displayOrder: 1 }), null);
+		expect(categories.save.mock.lastCall?.[0]).toMatchObject({
+			media: { bannerImage: 'a1', iconImage: 'a2', versions: { a1: 'category_3x4.white' } },
+		});
+		// A new choice brings its version; a picture taken off drops its version.
+		await service.saveCategory(
+			'cat_1',
+			body({ imageId: null, iconId: 'a3', imageVersions: { a3: 'square_1x1.crop', a9: 'x.y' } }),
+			null,
+		);
+		expect((categories.save.mock.lastCall?.[0] as { media: object }).media).toEqual({
+			iconImage: 'a3',
+			versions: { a3: 'square_1x1.crop' },
+		});
+		const [row] = await service.listCategories();
+		expect(row?.imageVersions).toEqual({ a1: 'category_3x4.white' });
 	});
 
 	it('adds a top-level and a child category with their placements', async () => {
@@ -517,6 +622,16 @@ describe('TaxonomyService', () => {
 		await service.saveAttribute(attribute(), null);
 		expect(attributes.save.mock.calls[1]?.[0]).toMatchObject({ id: 'attr_old' });
 		expect(catalog.record).toHaveBeenCalledTimes(2);
+		// A default picture replaced: the old one goes to the worker, which deletes it only if it is an unused cut.
+		attributes.findByCode.mockResolvedValueOnce({
+			id: 'attr_old',
+			terms: [{ code: 'red', swatchAssetId: 'med_old' }],
+		});
+		await service.saveAttribute(attribute(), null);
+		expect(catalog.dropLeftBehindSwatches).toHaveBeenLastCalledWith(
+			['med_old'],
+			(attribute() as { terms: { swatchAssetId?: string }[] }).terms.map((term) => term.swatchAssetId),
+		);
 		await expect(service.saveAttribute(attribute({ label: { en: ' ' } }), null)).rejects.toThrow('English name');
 	});
 
@@ -553,9 +668,9 @@ describe('TaxonomyService', () => {
 		products.list.mockResolvedValue({ items: [used, other], total: 2 });
 		const body = attribute({
 			code: 'color',
-			label: { en: 'Colour', fr: 'Couleur' },
+			label: { en: 'Colour', bn: 'রং' },
 			terms: [
-				{ code: 'red', slug: 'red', label: { en: 'Red', fr: 'Rouge' }, aliases: [] },
+				{ code: 'red', slug: 'red', label: { en: 'Red', bn: 'লাল' }, aliases: [] },
 				{ code: 'gone', slug: 'gone', label: { en: 'Kept' }, aliases: [] },
 			],
 		});
@@ -563,8 +678,8 @@ describe('TaxonomyService', () => {
 		expect(products.save).toHaveBeenCalledTimes(1);
 		const saved = products.save.mock.lastCall?.[0] as typeof used;
 		expect(saved.optionGroups[0]).toMatchObject({
-			label: { en: 'Colour', fr: 'Couleur' },
-			terms: [{ label: { en: 'Red', fr: 'Rouge' } }, { label: { en: 'Kept' } }],
+			label: { en: 'Colour', bn: 'রং' },
+			terms: [{ label: { en: 'Red', bn: 'লাল' } }, { label: { en: 'Kept' } }],
 		});
 		expect(saved.optionGroups[1]).toEqual(used.optionGroups[1]);
 		expect(catalog.syncSearch).toHaveBeenCalledWith(saved);
@@ -604,7 +719,7 @@ describe('admin builder routes', () => {
 			bundle: vi.fn(async () => 'bundle'),
 			saveBundle: vi.fn(async () => 'saved'),
 		};
-		const controller = new AdminProductsController({} as never, builder as never);
+		const controller = new AdminProductsController({} as never, builder as never, {} as never);
 		expect(await controller.create({} as never, signedIn)).toBe('made');
 		expect(await controller.create({} as never, undefined)).toBe('made');
 		expect(await controller.goLive('p', signedIn)).toBe('live');

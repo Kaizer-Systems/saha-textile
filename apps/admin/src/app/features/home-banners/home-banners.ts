@@ -3,6 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { TranslocoModule } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 
+import { injectMissingLanguage } from '@core/i18n/missing-language';
 import {
 	type ContentBlock,
 	ContentBlocksGateway,
@@ -11,6 +12,7 @@ import {
 } from '@core/media/content-blocks.gateway';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { MissingLanguageNotice } from '@shared/ui/missing-language-notice/missing-language-notice';
 
 import { BannerSlotForm } from './banner-slot-form/banner-slot-form';
 
@@ -19,12 +21,12 @@ import { BannerSlotForm } from './banner-slot-form/banner-slot-form';
  *
  * The hero layout is one setting, picked from the theme-options `selection-box` cards. The
  * storefront renders each layout with the theme's own hero markup in our colours. Below it,
- * one form per slot of the chosen layout, and the newsletter popup image.
+ * one form per slot of the chosen layout, the two promo banners, and the newsletter popup image.
  */
 @Component({
 	selector: 'app-home-banners',
 	templateUrl: './home-banners.html',
-	imports: [PageWrapper, TranslocoModule, BannerSlotForm],
+	imports: [MissingLanguageNotice, PageWrapper, TranslocoModule, BannerSlotForm],
 })
 export class HomeBanners implements OnInit {
 	private readonly gateway = inject(ContentBlocksGateway);
@@ -33,10 +35,20 @@ export class HomeBanners implements OnInit {
 	readonly layouts: HeroLayout[] = ['hero_full', 'hero_main_side', 'hero_main_stack', 'hero_center_sides'];
 	readonly layout = signal<HeroLayout>('hero_full');
 	readonly heroBlocks = signal<ContentBlock[]>([]);
+	readonly promoBlocks = signal<ContentBlock[]>([]);
 	readonly popupBlock = signal<ContentBlock | null>(null);
 	readonly loaded = signal(false);
 
 	readonly slots = computed(() => HERO_LAYOUT_SLOTS[this.layout()]);
+	/** Opened from Settings › Languages: only banners still missing one language's text. */
+	readonly missing = injectMissingLanguage('banners');
+
+	/** Every slot, or only those whose banner still lacks the language when the page is filtered. */
+	shows(block: ContentBlock | null): boolean {
+		const ids = this.missing.ids();
+		return !ids || (!!block && ids.has(block.id));
+	}
+	readonly promoSlots = ['item_1', 'item_2'];
 
 	async ngOnInit(): Promise<void> {
 		await this.reload();
@@ -44,6 +56,10 @@ export class HomeBanners implements OnInit {
 
 	block(slot: string): ContentBlock | null {
 		return this.heroBlocks().find((block) => block.slot === slot) ?? null;
+	}
+
+	promoBlock(slot: string): ContentBlock | null {
+		return this.promoBlocks().find((block) => block.slot === slot) ?? null;
 	}
 
 	async chooseLayout(layout: HeroLayout): Promise<void> {
@@ -63,6 +79,7 @@ export class HomeBanners implements OnInit {
 		]);
 		this.layout.set(layout);
 		this.heroBlocks.set(home.filter((block) => block.position === 'hero'));
+		this.promoBlocks.set(home.filter((block) => block.position === 'promo_wide'));
 		this.popupBlock.set(global.find((block) => block.position === 'newsletter_popup') ?? null);
 		this.loaded.set(true);
 	}

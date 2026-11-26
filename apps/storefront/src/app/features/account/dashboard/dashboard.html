@@ -124,6 +124,7 @@
 										{{ (user$ | async)?.email }}
 										<a
 											href="javascript:void(0)"
+											role="button"
 											(click)="ProfileModal()?.openModal()"
 										>
 											{{ 'edit' | transloco }}

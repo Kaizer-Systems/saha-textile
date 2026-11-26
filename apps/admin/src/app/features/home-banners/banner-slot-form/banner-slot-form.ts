@@ -4,24 +4,28 @@ import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { TranslocoModule } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import { type ContentBlock, ContentBlocksGateway, type ContentBlockInput } from '@core/media/content-blocks.gateway';
 import { MediaGateway } from '@core/media/media.gateway';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { NotificationService } from '@data-access/services/notification.service';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload } from '@shared/ui/image-upload/image-upload';
-
-/** Locales the storefront serves during development (en + fr; Bengali later, as data). */
-export const BANNER_LOCALES = ['en', 'fr'] as const;
+import { ImageUpload, type PickedAttachment, ImageUploadValue, onePicture } from '@shared/ui/image-upload/image-upload';
 
 type Band = 'desktop' | 'tablet' | 'phone';
-const WIDE_SLOTS = new Set(['hero:main', 'strip:main', 'bar:main', 'category_banner:main']);
+const WIDE_SLOTS = new Set([
+	'hero:main',
+	'hero:slide_2',
+	'hero:slide_3',
+	'strip:main',
+	'bar:main',
+	'category_banner:main',
+]);
 
-const localizedGroup = () =>
-	new FormGroup(
-		Object.fromEntries(BANNER_LOCALES.map((locale) => [locale, new FormControl('', { nonNullable: true })])),
-	);
+/** One text box per active language. */
+const localizedGroup = (locales: readonly string[]) =>
+	new FormGroup(Object.fromEntries(locales.map((locale) => [locale, new FormControl('', { nonNullable: true })])));
 
 const toLocal = (iso: string | null) => (iso ? iso.slice(0, 16) : '');
 const toIso = (local: string) => (local ? new Date(local).toISOString() : null);
@@ -44,14 +48,16 @@ export class BannerSlotForm implements OnInit {
 	private readonly notifications = inject(NotificationService);
 
 	readonly ownerType = input<'home' | 'global'>('home');
-	readonly position = input<'hero' | 'newsletter_popup'>('hero');
+	readonly position = input<'hero' | 'promo_wide' | 'newsletter_popup'>('hero');
 	readonly slot = input.required<string>();
 	readonly existing = input<ContentBlock | null>(null);
 	readonly saved = output<void>();
 
-	readonly locales = BANNER_LOCALES;
+	readonly locales = inject(ActiveLanguages).list();
 	readonly bands: Band[] = ['desktop', 'tablet', 'phone'];
 	readonly previews = signal<Record<Band, IAttachment | null>>({ desktop: null, tablet: null, phone: null });
+	/** The version each chosen picture shows (R4-1; media step 4d), by photo id. */
+	readonly imageVersions = signal<Record<string, string>>({});
 	readonly saving = signal(false);
 
 	readonly form = new FormGroup({
@@ -59,10 +65,10 @@ export class BannerSlotForm implements OnInit {
 		tablet: new FormControl<string | null>(null),
 		phone: new FormControl<string | null>(null),
 		containsText: new FormControl(false, { nonNullable: true }),
-		heading: localizedGroup(),
-		subheading: localizedGroup(),
-		ctaLabel: localizedGroup(),
-		alt: localizedGroup(),
+		heading: localizedGroup(this.locales),
+		subheading: localizedGroup(this.locales),
+		ctaLabel: localizedGroup(this.locales),
+		alt: localizedGroup(this.locales),
 		linkHref: new FormControl('', { nonNullable: true }),
 		linkExternal: new FormControl(false, { nonNullable: true }),
 		status: new FormControl<'draft' | 'active' | 'archived'>('draft', { nonNullable: true }),
@@ -93,18 +99,25 @@ export class BannerSlotForm implements OnInit {
 			startsAt: toLocal(block.startsAt),
 			endsAt: toLocal(block.endsAt),
 		});
+		this.imageVersions.set({ ...(block.imageVersions ?? {}) });
 		const previews = { ...this.previews() };
 		for (const band of this.bands) {
 			const id = block.images[band];
-			if (id) previews[band] = await firstValueFrom(this.media.get(id)).catch(() => null);
+			const versionId = id ? block.imageVersions?.[id] : undefined;
+			const image = id ? await firstValueFrom(this.media.get(id)).catch(() => null) : null;
+			if (image) previews[band] = versionId ? ({ ...image, versionId } as IAttachment) : image;
 		}
 		this.previews.set(previews);
 	}
 
-	pick(band: Band, selection: IAttachment | IAttachment[] | null): void {
+	pick(band: Band, value: ImageUploadValue): void {
+		const selection = Array.isArray(value) ? value : onePicture(value);
 		const image = Array.isArray(selection) ? (selection[0] ?? null) : selection;
 		this.form.controls[band].setValue(image ? String(image.id) : null);
 		this.previews.update((current) => ({ ...current, [band]: image }));
+		const versionId = (image as PickedAttachment | null)?.versionId;
+		if (image && versionId)
+			this.imageVersions.update((versions) => ({ ...versions, [String(image.id)]: versionId }));
 	}
 
 	async save(): Promise<void> {
@@ -118,6 +131,7 @@ export class BannerSlotForm implements OnInit {
 			position: this.position(),
 			slot: this.slot(),
 			images: { desktop: value.desktop, tablet: value.tablet, phone: value.phone },
+			imageVersions: this.imageVersions(),
 			containsText: value.containsText,
 			localeImages: this.existing()?.localeImages ?? {},
 			heading: value.containsText ? {} : clean(value.heading),

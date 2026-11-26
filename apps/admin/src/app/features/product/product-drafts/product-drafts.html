@@ -1,0 +1,37 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'product_drafts'"
+>
+	<!-- Mine / Everyone's: the Media page's favourites switch. -->
+	<ul class="nav nav-tabs mb-3">
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				href="javascript:void(0)"
+				id="drafts_mine"
+				[class.active]="who() === 'mine'"
+				(click)="setWho('mine')"
+			>
+				{{ 'fm_fav_mine' | transloco }}
+			</a>
+		</li>
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				href="javascript:void(0)"
+				id="drafts_everyone"
+				[class.active]="who() === 'everyone'"
+				(click)="setWho('everyone')"
+			>
+				{{ 'fm_fav_everyone' | transloco }}
+			</a>
+		</li>
+	</ul>
+	<app-table
+		[tableConfig]="tableConfig()"
+		[deleteMessage]="'draft_discard_body'"
+		(tableChanged)="onTableChange($event)"
+		(rowClicked)="open($event)"
+		(action)="onActionClicked($event)"
+	/>
+</app-page-wrapper>

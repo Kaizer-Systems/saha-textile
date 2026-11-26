@@ -1,0 +1,107 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'caro_title'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<!-- The page title is title-cased by the theme, so the clause (3(ii)(a)) is written here instead. -->
+			<h5 class="mb-1">{{ 'caro_clause' | transloco }}</h5>
+			<small class="text-muted">{{ 'caro_sub' | transloco }}</small>
+		</div>
+		<div class="d-flex align-items-center gap-2">
+			<input
+				class="form-control w-auto"
+				id="caro_from"
+				type="date"
+				[attr.aria-label]="'export_from' | transloco"
+				[ngModel]="from()"
+				(ngModelChange)="from.set($event)"
+			/>
+			<input
+				class="form-control w-auto"
+				id="caro_to"
+				type="date"
+				[attr.aria-label]="'export_to' | transloco"
+				[ngModel]="to()"
+				(ngModelChange)="to.set($event)"
+			/>
+			<select
+				class="form-select w-auto"
+				id="caro_location"
+				[attr.aria-label]="'caro_location' | transloco"
+				[ngModel]="locationId()"
+				(ngModelChange)="locationId.set($event)"
+			>
+				<option value="">{{ 'count_every_location' | transloco }}</option>
+				@for (l of locations.data() ?? []; track l.id) {
+				<option [value]="l.id">{{ l.name }}</option>
+				}
+			</select>
+			<app-export-menu
+				id="caro_export"
+				[disabled]="!report.data()"
+				[source]="exportSource"
+			/>
+			<a
+				class="btn btn-outline"
+				routerLink="/accounts/reports"
+			>
+				{{ 'accounts_reports' | transloco }}
+			</a>
+		</div>
+	</div>
+	@if (report.data(); as r) {
+	<div
+		class="alert py-2"
+		[class.alert-warning]="r.reportable > 0"
+		[class.alert-success]="r.reportable === 0"
+	>
+		{{ (r.reportable ? 'caro_reportable' : 'caro_none_reportable') | transloco: { n: r.reportable } }}
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'caro_col_count' | transloco }}</th>
+					<th>{{ 'caro_col_posted' | transloco }}</th>
+					<th>{{ 'caro_col_class' | transloco }}</th>
+					<th>{{ 'caro_col_book' | transloco }}</th>
+					<th>{{ 'caro_col_counted' | transloco }}</th>
+					<th>{{ 'caro_col_difference' | transloco }}</th>
+					<th>%</th>
+					<th>{{ 'caro_col_value' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (c of r.counts; track c.id) { @for (k of c.classes; track k.soldBy) {
+				<tr>
+					<td>{{ c.number }} · {{ c.label }}</td>
+					<td>{{ day(c.postedAt) }}</td>
+					<td>{{ 'caro_class_' + k.soldBy | transloco }}</td>
+					<td>{{ qty(k, k.bookQty) }}</td>
+					<td>{{ qty(k, k.countedQty) }}</td>
+					<td>{{ qty(k, k.differenceQty) }}</td>
+					<td>{{ k.percent ?? '—' }}</td>
+					<td class="text-nowrap">₹{{ k.differenceINR.toLocaleString('en-IN') }}</td>
+					<td>
+						@if (k.reportable) {
+						<span class="badge bg-light text-dark border">{{ 'caro_report_it' | transloco }}</span>
+						}
+					</td>
+				</tr>
+				} } @empty {
+				<tr>
+					<td
+						colspan="9"
+						class="text-muted"
+					>
+						{{ 'caro_no_counts' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	}
+</app-page-wrapper>

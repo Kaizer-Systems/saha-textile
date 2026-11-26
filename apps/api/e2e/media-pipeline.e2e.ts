@@ -11,12 +11,7 @@
  */
 import 'dotenv/config';
 
-import {
-	MongoMediaAssetRepository,
-	MongoMediaRoleRepository,
-	connectMongo,
-	disconnectMongo,
-} from '@saha-textile/adapters-db-mongo';
+import { MongoMediaAssetRepository, connectMongo, disconnectMongo } from '@saha-textile/adapters-db-mongo';
 import { BullMqMediaJobQueue } from '@saha-textile/adapters-queue-bullmq';
 import { SpacesStorageAdapter } from '@saha-textile/adapters-storage-spaces';
 import { type MediaAsset } from '@saha-textile/contracts';
@@ -24,7 +19,9 @@ import { purgeAsset } from '@saha-textile/core-domain';
 import sharp from 'sharp';
 
 import { loadConfig } from '../src/config/app-config';
-import { MediaService, type MediaUploader } from '../src/media/media.service';
+import { composeMongoMediaService } from '../src/media/compose-media-service';
+import type { MediaUploader } from '../src/media/media.service';
+import { LanguageStore } from '../src/languages/language-store';
 
 const config = loadConfig();
 const { key, secret, bucket, region, endpoint, cdnUrl } = config.spaces;
@@ -38,7 +35,12 @@ const audit = {
 	list: async () => ({ items: [], total: 0, page: 1, pageSize: 1 }),
 	purgeOlderThan: async () => 0,
 };
-const media = new MediaService(assets, new MongoMediaRoleRepository(), storage, queue, audit as never, config);
+const media = composeMongoMediaService({
+	storage,
+	queue,
+	audit: audit as never,
+	languages: LanguageStore.fixed(config.locales),
+});
 
 const check = (ok: boolean, label: string) => {
 	console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`);

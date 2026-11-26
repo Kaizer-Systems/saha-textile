@@ -1,10 +1,13 @@
 import { z } from 'zod';
 
 import { AttributeDefinition } from './attribute';
-import { Slug } from './common';
-import { BundleGroup, BundlePricePolicy, BundleType } from './product-bundle';
-import { ProductShippingDefaults, ProductStatus, ProductType } from './product';
+import { LocaleCode, Slug } from './common';
+import { FreeWith } from './free-with';
+import { BundleStockSummary } from './product-bundle';
+import { ProductShippingDefaults, ProductStatus, ProductType, QuickLength } from './product';
+import { CategoryShipping, ProductShippingCharges } from './shipping-rules';
 import { ProductOptionGroupSet } from './product-options';
+import { ProductVideo, ProductVideos } from './site-settings';
 
 /** Every badge a card can show. Pinning wins inside its own slot; hiding skips it. */
 export const CatalogBadgeCode = z.enum([
@@ -21,10 +24,29 @@ export type CatalogBadgeCode = z.infer<typeof CatalogBadgeCode>;
 const WholeRupee = z.number().int().nonnegative();
 const Measure = z.number().nonnegative().nullable();
 const OptionalText = z.string().trim().min(1).max(64).nullable();
+/** An HSN has 4, 6 or 8 digits (F02C); checked in the form and again here. */
+const OptionalHsn = z
+	.string()
+	.trim()
+	.regex(/^(\d{4}|\d{6}|\d{8})$/, { message: 'hsn_digits' })
+	.nullable();
+
+/** The fields a product sold by the metre carries (A01). Ignored for products sold by the piece. */
+export const MetreFieldsWrite = z.object({
+	shortestCutTenths: z.number().int().min(1).max(1000),
+	quickLengths: z.array(QuickLength).max(4),
+	widthInches: z.number().positive().max(200).nullable(),
+	weightPerMetreGrams: z.number().int().positive().max(100_000),
+});
+export type MetreFieldsWrite = z.infer<typeof MetreFieldsWrite>;
 
 const TextByLocale = z.record(z.string(), z.string().max(20_000));
 
 /** Everything on the product form that is not merchandising: the language-bound text and images. */
+/** A photo and the version a field shows (media R4-1): the product's share picture, a variant's own picture. */
+export const PictureRef = z.object({ assetId: z.string().min(1), versionId: z.string().min(1).nullable() });
+export type PictureRef = z.infer<typeof PictureRef>;
+
 export const ProductContentWrite = z.object({
 	title: TextByLocale,
 	shortDescription: TextByLocale,
@@ -42,6 +64,23 @@ export const ProductContentWrite = z.object({
 	gallery: z.array(z.string().min(1)).max(40),
 	compound: z.array(z.object({ selectionHash: z.string().min(1), gallery: z.array(z.string().min(1)).max(40) })),
 	altOverrides: z.record(z.string(), TextByLocale),
+	/** The version each photo shows on this product, per asset id (media step 4b). */
+	versions: z.record(z.string(), z.string().min(1)).default({}),
+	/** The link-preview picture when it isn't the main photo's own share card (owner, 17 Nov: "Meta image"). */
+	shareImage: PictureRef.nullable().optional(),
+	/** The FAQ tab: the switch, and this product's own questions in display order. */
+	faqEnabled: z.boolean().default(false),
+	faq: z
+		.array(
+			z.object({
+				/** Present for a question already saved; a new one gets an id on save. */
+				id: z.string().min(1).optional(),
+				question: z.record(z.string(), z.string().max(500)),
+				answer: z.record(z.string(), z.string().max(4000)),
+			}),
+		)
+		.max(30)
+		.default([]),
 });
 export type ProductContentWrite = z.infer<typeof ProductContentWrite>;
 
@@ -70,7 +109,9 @@ export const AdminVariantWrite = z
 		widthCm: Measure,
 		heightCm: Measure,
 		barcode: OptionalText,
-		hsnCode: OptionalText,
+		hsnCode: OptionalHsn,
+		/** The variant's own picture, shown first when it is chosen (owner, 17 Nov: "Variation image"); absent keeps it. */
+		image: PictureRef.nullable().optional(),
 	})
 	.refine((row) => row.mrpINR === null || row.sellingINR <= row.mrpINR, {
 		path: ['sellingINR'],
@@ -96,13 +137,29 @@ export const ProductMerchandisingWrite = z
 		hiddenBadges: z.array(CatalogBadgeCode),
 		addonPriceINR: WholeRupee.nullable(),
 		shipping: ProductShippingDefaults,
-		hsnCode: OptionalText,
+		/** The product's own shipping charges; empty uses the category's. Absent keeps them (shipping brief prd01). */
+		shippingCharges: ProductShippingCharges.optional(),
+		/** Ships free in both zones, whatever the rule sets say. Absent keeps it. */
+		freeShipping: z.boolean().optional(),
+		hsnCode: OptionalHsn,
+		/** Piece or metre (P11); refused once the product has stock, stock history or orders. Absent keeps it. */
+		soldBy: z.enum(['piece', 'metre']).optional(),
+		/** Null follows the main category; true or false overrides it. Absent keeps it. */
+		returnable: z.boolean().nullable().optional(),
+		/** Required when sold by the metre (shortest cut and weight per metre); absent keeps them. */
+		metre: MetreFieldsWrite.optional(),
 		variants: z.array(AdminVariantWrite).min(1),
 		/** Language-bound text, categories, options and images. Absent leaves them as they are. */
 		content: ProductContentWrite.optional(),
 		relatedProductIds: z.array(z.string().min(1)).max(12).optional(),
 		upsellProductIds: z.array(z.string().min(1)).max(12).optional(),
 		crossSellProductIds: z.array(z.string().min(1)).max(12).optional(),
+		/** YouTube videos and Shorts for the product page, as checked in admin. Absent leaves them. */
+		videos: ProductVideos.optional(),
+		/** Off: live and stocked, but never listed or shown on its own (D5). Absent keeps it. */
+		showOnShop: z.boolean().optional(),
+		/** Free with this product (P8). Null removes them; absent keeps them. */
+		freeWith: FreeWith.nullable().optional(),
 	})
 	.superRefine((body, ctx) => {
 		if (body.madeToOrder && body.status !== 'live') {
@@ -133,6 +190,12 @@ export type ProductMerchandisingWrite = z.infer<typeof ProductMerchandisingWrite
 export const AdminProductListQuery = z.object({
 	search: z.string().trim().max(100).optional(),
 	status: ProductStatus.optional(),
+	/** Only items the shop shows that still lack text in this language (Settings › Languages). */
+	missing: LocaleCode.optional(),
+	/** Products › Bundles lists only bundles; All products lists everything. */
+	type: ProductType.optional(),
+	/** "shown" or "hidden" from the shop (Show on shop, D5). */
+	shop: z.enum(['shown', 'hidden']).optional(),
 	page: z.coerce.number().int().min(1).default(1),
 	pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -149,6 +212,21 @@ export const AdminProductRow = z.object({
 	stock: z.number().int(),
 	variantCount: z.number().int().nonnegative(),
 	thumbnailUrl: z.string().nullable(),
+	/** True once the product has been live: "Off shop" rather than "Not live yet" when it isn't. */
+	wasLive: z.boolean().default(false),
+	type: ProductType.default('simple'),
+	showOnShop: z.boolean().default(true),
+	/** Bundles only: how many levels, its set price today, and its worked-out stock. */
+	bundle: z
+		.object({
+			levels: z.number().int().nonnegative(),
+			choices: z.boolean(),
+			setPriceINR: z.number().nonnegative().nullable(),
+			fromPrice: z.boolean(),
+			stock: BundleStockSummary.nullable(),
+		})
+		.nullable()
+		.default(null),
 });
 export type AdminProductRow = z.infer<typeof AdminProductRow>;
 
@@ -167,7 +245,14 @@ export const AdminVariantView = z.object({
 	isBase: z.boolean(),
 	mrpINR: z.number().int().nullable(),
 	sellingINR: z.number().int(),
+	/** On hand, in stock units (pieces, or tenths of a metre). */
 	quantity: z.number().int(),
+	/** On hand but not for sale (P3). */
+	held: z.number().int().nonnegative().default(0),
+	/** Paid, not yet shipped: 0 until DEC-STOCK-RESERVE is built. */
+	inOrders: z.number().int().nonnegative().default(0),
+	/** On hand − held − in orders: the only number the shop uses. */
+	freeToSell: z.number().int().default(0),
 	available: z.boolean(),
 	weightGrams: z.number().nullable(),
 	lengthCm: z.number().nullable(),
@@ -175,6 +260,7 @@ export const AdminVariantView = z.object({
 	heightCm: z.number().nullable(),
 	barcode: z.string().nullable(),
 	hsnCode: z.string().nullable(),
+	image: PictureRef.nullable().default(null),
 });
 export type AdminVariantView = z.infer<typeof AdminVariantView>;
 
@@ -183,11 +269,14 @@ export const AdminProductDetail = z.object({
 	slug: z.string(),
 	sku: z.string(),
 	title: z.string(),
-	type: z.enum(['simple', 'variable']),
+	/** Bundles open in the same form (its Bundle tab), so the detail must carry them too. */
+	type: ProductType,
 	status: ProductStatus,
 	/** True once the product has ever been live: its SKUs are then frozen. */
 	published: z.boolean(),
 	featured: z.boolean(),
+	showOnShop: z.boolean().default(true),
+	freeWith: FreeWith.nullable().default(null),
 	madeToOrder: z.boolean(),
 	estimatedDeliveryText: z.string().nullable(),
 	lowStockThreshold: z.number().int().nullable(),
@@ -196,7 +285,34 @@ export const AdminProductDetail = z.object({
 	addonPriceINR: z.number().int().nullable(),
 	replacementPath: z.string().nullable(),
 	shipping: ProductShippingDefaults,
+	shippingCharges: ProductShippingCharges.nullable().default(null),
+	freeShipping: z.boolean().default(false),
 	hsnCode: z.string().nullable(),
+	soldBy: z.enum(['piece', 'metre']).default('piece'),
+	/** True once the product has stock, stock history or orders: Sold by is then fixed (P11). */
+	soldByLocked: z.boolean().default(false),
+	/** Null follows the main category. */
+	returnable: z.boolean().nullable().default(null),
+	/** The main category's defaults, for "From Tant (5208)" and the HSN popup (F02). */
+	mainCategory: z
+		.object({
+			id: z.string(),
+			name: z.string(),
+			hsnCode: z.string().nullable(),
+			returnable: z.boolean(),
+			/** The category's own shipping values, for "Use Sarees's value" (prd01); null when it sets none. */
+			shipping: CategoryShipping.nullable().default(null),
+		})
+		.nullable()
+		.default(null),
+	metre: z
+		.object({
+			shortestCutTenths: z.number().int().nullable(),
+			quickLengths: z.array(QuickLength),
+			widthInches: z.number().nullable(),
+			weightPerMetreGrams: z.number().int().nullable(),
+		})
+		.default({ shortestCutTenths: null, quickLengths: [], widthInches: null, weightPerMetreGrams: null }),
 	/** The form's language-bound text, options and images, as stored. */
 	content: ProductContentWrite,
 	/** Picture of each attached image, for the form's tiles. */
@@ -205,6 +321,9 @@ export const AdminProductDetail = z.object({
 	upsellProductIds: z.array(z.string()),
 	crossSellProductIds: z.array(z.string()),
 	variants: z.array(AdminVariantView),
+	videos: z.array(ProductVideo).default([]),
+	/** The product's last save, for a draft of changes' conflict check. */
+	updatedAt: z.string().nullable().default(null),
 });
 export type AdminProductDetail = z.infer<typeof AdminProductDetail>;
 
@@ -218,8 +337,8 @@ export type AdminReplacementTarget = z.infer<typeof AdminReplacementTarget>;
 export const FaqWrite = z
 	.object({
 		id: z.string().min(1).optional(),
-		question: z.object({ en: z.string().min(1), fr: z.string().optional() }),
-		answer: z.object({ en: z.string().min(1), fr: z.string().optional() }),
+		question: z.object({ en: z.string().min(1), bn: z.string().optional() }),
+		answer: z.object({ en: z.string().min(1), bn: z.string().optional() }),
 		scope: z.enum(['global', 'category', 'product', 'mixed']).default('global'),
 		categoryIds: z.array(z.string()).default([]),
 		productIds: z.array(z.string()).default([]),
@@ -227,10 +346,10 @@ export const FaqWrite = z
 		displayOrder: z.number().int().default(0),
 	})
 	.superRefine((row, ctx) => {
-		if (row.status === 'live' && (!row.question.fr?.trim() || !row.answer.fr?.trim())) {
+		if (row.status === 'live' && (!row.question.bn?.trim() || !row.answer.bn?.trim())) {
 			ctx.addIssue({
 				code: 'custom',
-				message: 'English and French are required before publish',
+				message: 'English and Bengali are required before publish',
 				path: ['question'],
 			});
 		}
@@ -257,6 +376,7 @@ export type StockAlertWrite = z.infer<typeof StockAlertWrite>;
 /** A new product starts disabled, with one base variant, and is finished on the form. */
 export const ProductCreate = z.object({
 	type: ProductType,
+	/** A bundle's own number is given by the server ("BND-0001", for search only: V2); anything sent is ignored. */
 	sku: z.string().trim().min(1).max(64),
 	title: z.object({ en: z.string().trim().min(1).max(300) }).catchall(z.string().max(300)),
 	basePriceINR: WholeRupee.default(0),
@@ -284,8 +404,29 @@ export const AdminCategoryWrite = z.object({
 	displayOrder: z.number().int().optional(),
 	imageId: z.string().min(1).nullable().optional(),
 	iconId: z.string().min(1).nullable().optional(),
+	/** The version each chosen picture shows, by photo id (R4-1; media step 4d). */
+	imageVersions: z.record(z.string(), z.string()).optional(),
+	/** The HSN its products inherit (F03). Left out, a saved category keeps it. */
+	hsnCode: OptionalHsn.optional(),
+	/** Whether its products can be returned by default (F03). Left out, a saved category keeps it. */
+	returnable: z.boolean().optional(),
+	/** Shipping charges, weight and box its products inherit (shipping brief cat01). Left out, a saved category keeps them. */
+	shipping: CategoryShipping.optional(),
+	/**
+	 * When the HSN changes: also give the new code to the products whose main category this is and
+	 * whose HSN is the category's old one (or empty). Products with their own HSN are left alone.
+	 */
+	updateProductsHsn: z.boolean().default(false),
 });
 export type AdminCategoryWrite = z.infer<typeof AdminCategoryWrite>;
+
+/** F03: which products a category HSN change would reach, and which keep their own code. */
+export const CategoryHsnImpact = z.object({
+	categoryHsn: z.string().nullable(),
+	using: z.number().int().nonnegative(),
+	own: z.array(z.object({ id: z.string(), sku: z.string(), title: z.string(), hsnCode: z.string() })),
+});
+export type CategoryHsnImpact = z.infer<typeof CategoryHsnImpact>;
 
 const CategoryImageRow = z.object({ id: z.string(), url: z.string() });
 
@@ -302,17 +443,13 @@ export const AdminCategoryRow = z.object({
 	productCount: z.number().int().nonnegative(),
 	image: CategoryImageRow.nullable(),
 	icon: CategoryImageRow.nullable(),
+	/** The version each picture shows, by photo id (media step 4d). */
+	imageVersions: z.record(z.string(), z.string()).default({}),
+	hsnCode: z.string().nullable().default(null),
+	returnable: z.boolean().default(true),
+	shipping: CategoryShipping.nullable().default(null),
 });
 export type AdminCategoryRow = z.infer<typeof AdminCategoryRow>;
 
 export const AdminAttributeWrite = AttributeDefinition.omit({ createdAt: true, updatedAt: true, id: true });
 export type AdminAttributeWrite = z.infer<typeof AdminAttributeWrite>;
-
-/** The bundle tab. Its id and product come from the address. */
-export const ProductBundleWrite = z.object({
-	bundleType: BundleType,
-	pricePolicy: BundlePricePolicy,
-	fixedPriceINR: WholeRupee.nullable().default(null),
-	groups: z.array(BundleGroup).min(1),
-});
-export type ProductBundleWrite = z.infer<typeof ProductBundleWrite>;

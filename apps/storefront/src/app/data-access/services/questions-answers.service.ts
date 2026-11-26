@@ -19,23 +19,23 @@ export class QuestionsAnswersService {
 	getQuestionAnswers(slug: Params): Observable<IQnAModel> {
 		const productSlug = String(slug['slug'] ?? slug['productSlug'] ?? '');
 		return this.http
-			.get<Array<{ id: string; question: string; askerName: string | null; answer: string | null }>>(
-				`${environment.apiUrl}/catalog/questions`,
-				{ params: { productSlug } },
-			)
+			.get<
+				Array<{
+					id: string;
+					question: string;
+					askerName: string | null;
+					answer: string | null;
+					answeredAt: string | null;
+				}>
+			>(`${environment.apiUrl}/catalog/questions`, { params: { productSlug } })
 			.pipe(
 				map((rows) => ({
-					data: rows.map((row, index) => ({
-						id: index + 1,
-						answer: row.answer ?? '',
-						product_id: 0,
-						product: { id: 0, name: '' },
-						store: { id: 0, store_name: row.askerName ?? '' },
-						reaction: null,
+					data: rows.map((row) => ({
+						id: row.id,
 						question: row.question,
-						total_dislikes: 0,
-						total_likes: 0,
-						consumer_id: 0,
+						answer: row.answer ?? '',
+						askerName: row.askerName,
+						answeredAt: row.answeredAt,
 					})),
 					total: rows.length,
 				})),

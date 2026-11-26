@@ -1,0 +1,340 @@
+// Store Front › Page Builder (brief revision 2, accepted 17 Nov 2026). Only what the brief lists as custom: the
+// layout outline pictures and the card text around them. Colours come from the Media screens' tokens, which carry
+// their own dark values, so nothing here needs the dark file.
+.pb-crumb {
+	font-size: 13px;
+	color: var(--fm-muted);
+	margin-bottom: 8px;
+
+	a {
+		color: var(--fm-theme-ink);
+		text-decoration: underline;
+	}
+}
+
+.pb-thumb {
+	display: block;
+	width: 100%;
+	height: 100%;
+
+	.bg {
+		fill: var(--fm-soft);
+	}
+
+	.bar {
+		fill: var(--fm-line);
+	}
+
+	.hi {
+		fill: var(--theme-color);
+		opacity: 0.85;
+	}
+
+	.lo {
+		fill: var(--theme-color);
+		opacity: 0.45;
+	}
+
+	.crd {
+		fill: var(--fm-surface);
+		stroke: var(--fm-line);
+	}
+}
+
+.layout-selection-sec .theme-card {
+	// The theme box has a fixed height; here the width leads and the 4:3 shape follows, so it never spills.
+	.library-box.pb-lib {
+		width: 100%;
+		height: auto;
+		aspect-ratio: 4 / 3;
+		padding: 12px 12px 0;
+		overflow: hidden;
+	}
+
+	// Layout names and dates read as written: the theme capitalises every word in this strip.
+	.content-sec.pb-content {
+		flex-wrap: wrap;
+		gap: 6px 8px;
+		text-transform: none;
+	}
+
+	// Icon actions are plain icons (A1), not the theme's outlined link buttons, in every card state.
+	.content-sec.pb-content .pb-card-actions a,
+	&.active .content-sec.pb-content .pb-card-actions a {
+		padding: 2px 4px;
+		border: 0;
+		background: none;
+		font-size: 17px;
+		color: var(--fm-muted);
+
+		&:hover {
+			background: none;
+			color: var(--fm-theme-ink);
+		}
+	}
+}
+
+.pb-card-actions {
+	display: flex;
+	gap: 4px;
+	margin-left: auto;
+}
+
+.pb-when {
+	width: 100%;
+	font-size: 12.5px;
+	color: var(--fm-muted);
+}
+
+// The theme's dark file styles card links as filled buttons too; the card's plain icons stay plain in dark mode.
+body.dark-only .layout-selection-sec .theme-card .content-sec.pb-content .pb-card-actions a {
+	background: none;
+	color: var(--fm-muted);
+
+	&:hover {
+		background: none;
+		color: var(--fm-theme-ink);
+	}
+}
+
+// SG-7 (approved custom): how a search result would read, in Page settings. A few lines of text in a box, in the
+// Media screens' colour tokens (light and dark). The title is the shop colour as text, the address and words muted.
+.pb-serp {
+	display: grid;
+	gap: 2px;
+	max-width: 600px;
+	padding: 12px 14px;
+	border: 1px solid var(--fm-line);
+	border-radius: 8px;
+	background: var(--fm-surface);
+
+	.pb-serp-address {
+		font-size: 12.5px;
+		color: var(--fm-muted);
+	}
+
+	.pb-serp-title {
+		font-size: 18px;
+		line-height: 1.3;
+		color: var(--fm-theme-ink);
+	}
+
+	.pb-serp-text {
+		font-size: 13.5px;
+		line-height: 1.45;
+		color: var(--fm-muted);
+	}
+}
+
+// The builder (brief B1, B9; approved custom: the frame, its three panes, the outline rows, the piece tiles and the
+// word-spot grid). Colours from the Media tokens, so dark mode needs nothing of its own.
+.pb-topbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px 16px;
+	margin-bottom: 12px;
+}
+
+.pb-topbar-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-left: auto;
+}
+
+.pb-save {
+	font-size: 13px;
+	color: var(--fm-muted);
+
+	&[data-state='retrying'],
+	&[data-state='conflict'] {
+		color: var(--fm-warn-ink);
+	}
+}
+
+.pb-panes {
+	display: grid;
+	grid-template-columns: minmax(240px, 300px) minmax(0, 1fr) minmax(280px, 360px);
+	gap: 16px;
+	align-items: start;
+
+	@media (max-width: 991.98px) {
+		grid-template-columns: minmax(0, 1fr);
+
+		.pb-pane-hidden {
+			display: none;
+		}
+	}
+}
+
+.pb-rows {
+	display: grid;
+	gap: 6px;
+}
+
+.pb-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 10px;
+	border: 1px solid var(--fm-line);
+	border-radius: 8px;
+	background: var(--fm-surface);
+	cursor: pointer;
+
+	&.active {
+		border-color: var(--theme-color);
+		box-shadow: inset 3px 0 0 var(--theme-color);
+	}
+
+	&.lifted {
+		outline: 2px dashed var(--theme-color);
+		outline-offset: 2px;
+	}
+
+	&.muted .pb-row-name {
+		color: var(--fm-muted);
+		text-decoration: line-through;
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--theme-color);
+		outline-offset: 2px;
+	}
+
+	.pb-handle {
+		cursor: grab;
+		color: var(--fm-muted);
+	}
+
+	.pb-row-name {
+		flex: 1;
+		min-width: 0;
+		font-size: 14px;
+	}
+}
+
+.pb-canvas-outline {
+	max-width: 520px;
+	margin: 0 auto;
+	aspect-ratio: 4 / 3;
+}
+
+.pb-arrangements li {
+	width: calc(50% - 8px);
+}
+
+.pb-pictures {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	padding: 0;
+	list-style: none;
+
+	> li {
+		width: 104px;
+	}
+}
+
+.pb-picture-tile {
+	display: grid;
+	gap: 4px;
+}
+
+.pb-picture-open,
+.pb-picture-add {
+	position: relative;
+	display: grid;
+	place-items: center;
+	gap: 2px;
+	width: 104px;
+	height: 78px;
+	padding: 4px;
+	border: 1px solid var(--fm-line);
+	border-radius: 8px;
+	background: var(--fm-soft);
+	color: var(--fm-muted);
+	font-size: 12px;
+}
+
+.pb-picture-number {
+	position: absolute;
+	top: 4px;
+	left: 6px;
+	font-weight: 600;
+	color: var(--fm-theme-ink);
+}
+
+.pb-picture-words {
+	max-width: 96px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pb-picture-actions {
+	display: flex;
+	justify-content: center;
+	gap: 6px;
+}
+
+.pb-spots {
+	display: grid;
+	grid-template-columns: repeat(3, 40px);
+	gap: 6px;
+}
+
+// The words map (brief P5; approved custom): the picture's version with its nine word spots over it. A shaded box is
+// where the words chosen would be hard to read; the ringed one is where they sit. Pictures keep their colours in dark
+// mode, as on the shop, so only the ring and the shade follow the admin's named colours.
+.pb-words-map {
+	position: relative;
+	overflow: hidden;
+	border: 1px solid var(--fm-line);
+	border-radius: 6px;
+	background: var(--fm-soft);
+
+	img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+}
+
+.pb-words-grid {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	grid-template-rows: repeat(3, 1fr);
+}
+
+.pb-words-cell {
+	border: 1px dashed rgba(255, 255, 255, 0.55);
+
+	&.is-hard {
+		background: repeating-linear-gradient(45deg, rgba(214, 51, 108, 0.55) 0 6px, rgba(214, 51, 108, 0.25) 6px 12px);
+	}
+
+	&.is-here {
+		outline: 3px solid var(--fm-theme-ink);
+		outline-offset: -3px;
+	}
+}
+
+// The preview frame (brief C1–C6; approved custom: the device frame that shows the shop at an exact size and scales it).
+.pb-frame-box {
+	position: relative;
+	overflow: hidden;
+	border: 1px solid var(--fm-line);
+	border-radius: 8px;
+	background: var(--fm-soft);
+}
+
+.pb-frame {
+	display: block;
+	border: 0;
+	transform-origin: 0 0;
+}

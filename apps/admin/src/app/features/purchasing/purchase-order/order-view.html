@@ -1,0 +1,310 @@
+@if (order(); as current) {
+<div class="container-fluid">
+	<div class="mb-4">
+		<div class="tracking-panel">
+			<ul>
+				@for (item of steps; track item.status; let i = $index) {
+				<li [class.active]="i <= step()">
+					<div class="panel-content">
+						<div class="icon">
+							<img
+								src="assets/svg/tracking/{{ item.svg }}.svg"
+								class="img-fluid"
+								alt=""
+							/>
+						</div>
+						<div class="status">{{ item.label | transloco }}</div>
+					</div>
+				</li>
+				} @if (closed()) {
+				<li class="active cancelled-box">
+					<div class="panel-content">
+						<div class="icon">
+							<img
+								src="assets/svg/tracking/cancelled.svg"
+								class="img-fluid"
+								alt=""
+							/>
+						</div>
+						<div class="status">{{ 'po_status_' + current.status | transloco }}</div>
+					</div>
+				</li>
+				}
+			</ul>
+		</div>
+	</div>
+</div>
+<div class="row g-2">
+	<div class="col-xxl-9">
+		<app-page-wrapper
+			[gridClass]="'col-sm-12'"
+			[title]="'purchase_order_number'"
+		>
+			<span
+				option
+				class="ms-2"
+			>
+				{{ current.number }}
+			</span>
+			<div
+				button
+				class="d-flex flex-wrap gap-2"
+			>
+				@if (current.status === 'draft') {
+				<button
+					*hasPermission="'purchase_order.create'"
+					type="button"
+					class="btn btn-outline btn-sm"
+					(click)="edit()"
+				>
+					<i class="ri-pencil-line me-1"></i>
+					{{ 'edit' | transloco }}
+				</button>
+				} @if (current.status === 'draft' || current.status === 'sent') {
+				<button
+					*hasPermission="'purchase_order.send'"
+					type="button"
+					class="btn btn-outline btn-sm"
+					(click)="send()"
+				>
+					<i class="ri-mail-send-line me-1"></i>
+					{{ (current.status === 'draft' ? 'send_to_supplier' : 'send_again') | transloco }}
+				</button>
+				} @if (canReceive()) {
+				<button
+					*hasPermission="'purchase.create'"
+					type="button"
+					class="btn btn-theme btn-sm"
+					id="po_receive"
+					(click)="receive()"
+				>
+					<i class="ri-inbox-archive-line me-1"></i>
+					{{ 'receive_goods' | transloco }}
+				</button>
+				} @if (canClose()) {
+				<button
+					*hasPermission="'purchase_order.cancel'"
+					type="button"
+					class="btn btn-outline btn-sm"
+					(click)="closeShort()"
+				>
+					<i class="ri-checkbox-circle-line me-1"></i>
+					{{ 'po_close_with_short' | transloco: { short: shortText() } }}
+				</button>
+				}
+				<button
+					type="button"
+					class="btn btn-outline btn-sm"
+					(click)="pdf()"
+				>
+					<i class="ri-file-pdf-2-line me-1"></i>
+					{{ 'download_pdf' | transloco }}
+				</button>
+				<button
+					*hasPermission="'purchase_order.create'"
+					type="button"
+					class="btn btn-outline btn-sm"
+					(click)="copy()"
+				>
+					<i class="ri-file-copy-line me-1"></i>
+					{{ 'copy_as_new_draft' | transloco }}
+				</button>
+				@if (canCancel()) {
+				<button
+					*hasPermission="'purchase_order.cancel'"
+					type="button"
+					class="btn btn-outline btn-sm"
+					(click)="cancelOrder()"
+				>
+					<i class="ri-forbid-line me-1"></i>
+					{{ 'po_cancel_order' | transloco }}
+				</button>
+				}
+			</div>
+			<ul class="nav nav-tabs mb-3">
+				<li class="nav-item">
+					<a
+						href="javascript:void(0)"
+						class="nav-link"
+						[class.active]="tab() === 'lines'"
+						(click)="tab.set('lines')"
+					>
+						{{ 'lines' | transloco }}
+					</a>
+				</li>
+				<li class="nav-item">
+					<a
+						href="javascript:void(0)"
+						class="nav-link"
+						[class.active]="tab() === 'activity'"
+						(click)="tab.set('activity')"
+					>
+						{{ 'supplier_tab_activity' | transloco }}
+					</a>
+				</li>
+			</ul>
+			@if (tab() === 'lines') {
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th style="width: 300px">{{ 'item' | transloco }}</th>
+							<th class="text-end">{{ 'ordered' | transloco }}</th>
+							<th class="text-end">{{ 'received' | transloco }}</th>
+							<th class="text-end">{{ 'still_to_come' | transloco }}</th>
+							<th>{{ 'received_on' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (line of current.lines; track line.lineId) {
+						<tr [class.table-warning]="current.status === 'part_received' && still(line) > 0">
+							<td>
+								<h6 class="mb-0">{{ line.title }}</h6>
+								<small class="text-muted">
+									{{ line.sku }}@if (line.optionsLabel) { · {{ line.optionsLabel }} }
+								</small>
+							</td>
+							<td class="text-end text-nowrap">{{ line.quantity | stockQty: line.soldBy }}</td>
+							<td class="text-end text-nowrap">{{ line.receivedQuantity | stockQty: line.soldBy }}</td>
+							<td class="text-end text-nowrap">
+								@if (still(line) > 0) {
+								<strong>{{ still(line) | stockQty: line.soldBy }}</strong>
+								} @else {
+								<span class="text-muted">0</span>
+								}
+							</td>
+							<td>
+								@for (received of line.receivedOn; track received.entryId; let last = $last) {
+								<a [routerLink]="['/purchase-entries', received.entryId]">
+									{{ received.number ?? '—' }}
+								</a>
+								@if (!last) {, } } @empty {
+								<span class="text-muted">—</span>
+								}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<p class="small text-muted mt-3 mb-0">{{ 'po_received_note' | transloco }}</p>
+			} @else {
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th style="width: 190px">{{ 'when' | transloco }}</th>
+							<th style="width: 140px">{{ 'who' | transloco }}</th>
+							<th>{{ 'what_happened' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of activity.data() ?? []; track row.id) {
+						<tr>
+							<td>{{ row.at | shortDateTime }}</td>
+							<td>{{ row.actorName }}</td>
+							<td>{{ row.text }}</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td colspan="3">
+								<div class="no-data-added">
+									<h4>{{ 'no_records_found' | transloco }}</h4>
+								</div>
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			}
+		</app-page-wrapper>
+	</div>
+	<div class="col-xxl-3">
+		<div class="sticky-top-sec">
+			<app-page-wrapper
+				[gridClass]="'col-sm-12'"
+				[title]="'summary'"
+			>
+				<div class="tracking-total tracking-wrapper">
+					<ul>
+						<li>
+							{{ 'ordered' | transloco }}
+							<span>{{ totals().ordered }} · {{ current.orderedValueINR | rupees }}</span>
+						</li>
+						<li>
+							{{ 'received' | transloco }}
+							<span>{{ totals().received }}</span>
+						</li>
+						<li>
+							{{ 'still_to_come' | transloco }}
+							<span>{{ totals().toCome }}</span>
+						</li>
+						<li>
+							{{ 'expected_by' | transloco }}
+							<span>
+								{{ current.expectedBy | shortDate }}@if (daysLate() > 0) { ·
+								<span class="text-danger">{{ 'days_late' | plural: daysLate() }}</span>
+								}
+							</span>
+						</li>
+					</ul>
+				</div>
+			</app-page-wrapper>
+			<app-page-wrapper
+				[gridClass]="'col-sm-12'"
+				[title]="'supplier'"
+			>
+				<div class="customer-detail tracking-wrapper">
+					<ul>
+						<li>
+							<label>{{ 'supplier' | transloco }}:</label>
+							<h4>
+								<a [routerLink]="['/suppliers', current.supplierId]">{{ current.supplierName }}</a>
+							</h4>
+						</li>
+						<li>
+							<label>{{ 'deliver_to' | transloco }}:</label>
+							<h4>{{ current.deliverTo }}</h4>
+						</li>
+						@if (current.sentAt) {
+						<li>
+							<label>{{ 'sent' | transloco }}:</label>
+							<h4>
+								{{ current.sentAt | shortDate }} · {{ (current.sentVia === 'email' ? 'sent_by_email' :
+								'sent_as_pdf') | transloco }}
+							</h4>
+						</li>
+						} @if (entries().length) {
+						<li>
+							<label>{{ 'linked_entries' | transloco }}:</label>
+							<h4>
+								@for (entry of entries(); track entry.id; let last = $last) {
+								<a [routerLink]="['/purchase-entries', entry.id]">{{ entry.number }}</a>
+								@if (!last) {, } }
+							</h4>
+						</li>
+						} @if (current.closedReason) {
+						<li>
+							<label>{{ 'reason' | transloco }}:</label>
+							<h4>{{ current.closedReason }}</h4>
+						</li>
+						} @if (current.noteToSupplier) {
+						<li>
+							<label>{{ 'note_to_supplier' | transloco }}:</label>
+							<h4>{{ current.noteToSupplier }}</h4>
+						</li>
+						}
+					</ul>
+				</div>
+			</app-page-wrapper>
+		</div>
+	</div>
+</div>
+} @else if (query.isError()) {
+<div class="container-fluid">
+	<div class="no-data-added">
+		<h4>{{ 'po_not_found' | transloco }}</h4>
+	</div>
+</div>
+}

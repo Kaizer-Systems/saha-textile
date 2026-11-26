@@ -5,10 +5,16 @@ import {
 	DisplayStyle,
 	IAddonGroup,
 	IBundle,
+	IFreeWith,
 	IMeasurementField,
+	ISetItem,
 	ISemanticAttribute,
 } from '@data-access/interfaces/product-detail.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
+import { IVideo } from '@data-access/interfaces/video.interface';
+
+import type { MetreRule } from '@core/catalog/metre-length';
+import type { CatalogPageBundle, CatalogPageBundleItem, CatalogPageFreeWith } from '@saha-textile/contracts';
 
 interface ApiSource {
 	url: string;
@@ -38,6 +44,9 @@ export interface ApiCard {
 	image: ApiImage | null;
 	inStock: boolean;
 	madeToOrder: boolean;
+	soldBy?: 'piece' | 'metre';
+	/** A set's card (bundle builder brief G02): its pieces, and whether the shopper must choose. */
+	set?: { pieces: number; choose: boolean } | null;
 }
 
 export interface ApiHome {
@@ -57,11 +66,15 @@ export interface ApiPlacement {
 	pageSize: number;
 	facets: Array<{ code: string; label: string; terms: Array<{ code: string; label: string; count: number }> }>;
 	indexable: boolean;
+	/** The category FAQ, on the plain first page only. */
+	faq?: Array<{ question: string; answer: string }>;
 }
 
 interface ApiOptionTerm {
 	code: string;
 	label: string;
+	/** The second line in the page language; older API builds leave it out. */
+	subLabel?: string | null;
 	isBase: boolean;
 	hex: string | null;
 	image: ApiImage | null;
@@ -91,9 +104,23 @@ export interface ApiProductPage {
 	price: ApiCard['price'];
 	badges: { primary: string | null; secondary: string | null };
 	madeToOrder: boolean;
+	/** When a running sale on this product ends; null with no sale. */
+	saleEndsAt?: string | null;
+	/** The link-preview picture: the one chosen in the admin, else the main photo's 1200×630 card, once made. */
+	shareImageUrl?: string | null;
+	/** That picture's own size and type. */
+	shareImageSize?: { width: number; height: number; type: string } | null;
+	/** The main photo's 1080×1920 Status/Story card, with its word band empty, once made. */
+	shareStoryUrl?: string | null;
+	/** The product code, behind the short `/p/<code>` address. */
+	code?: string;
+	/** YouTube videos and Shorts in admin order. */
+	videos?: IVideo[];
 	estimatedDeliveryText: string | null;
 	sareeLengthM: number | null;
 	blousePieceM: number | null;
+	soldBy?: 'piece' | 'metre';
+	metre?: MetreRule | null;
 	selected: { sku: string; sellingINR: number; mrpINR: number | null; quantity: number; buyable: boolean } | null;
 	unknownVariant: boolean;
 	gallery: ApiImage[];
@@ -111,6 +138,8 @@ export interface ApiProductPage {
 	}>;
 	measurements: {
 		templateCode: string | null;
+		/** The template's name ("Suit measurements"); older API builds leave it out. */
+		title?: string | null;
 		priceINR: number;
 		fields: Array<{
 			code: string;
@@ -122,28 +151,14 @@ export interface ApiProductPage {
 		}>;
 		sizeGuide: Array<{ size: string; values: Record<string, number> }>;
 	} | null;
-	bundle: {
-		bundleType: 'fixed_kit' | 'choose_one_per_group' | 'optional_addons';
-		pricePolicy: 'sum_components' | 'fixed_bundle_price' | 'discounted_components';
-		priceINR: number;
-		groups: Array<{
-			code: string;
-			label: string;
-			minSelections: number;
-			maxSelections: number;
-			components: Array<{
-				productId: string;
-				slug: string;
-				title: string;
-				sku: string;
-				sellingINR: number;
-				quantity: number;
-				required: boolean;
-				inStock: boolean;
-			}>;
-		}>;
-	} | null;
+	bundle: CatalogPageBundle | null;
+	/** Free with this product (P8); older API builds leave it out. */
+	freeWith?: CatalogPageFreeWith | null;
 	breadcrumb: Array<{ name: string; path: string }>;
+	/** From approved reviews only. */
+	rating?: { average: number; count: number };
+	/** The FAQ section, empty while the product's FAQ is off. */
+	faq?: Array<{ question: string; answer: string }>;
 }
 
 /** Two card slots, in the order the API returns them: one promotion, then one stock fact. */
@@ -166,6 +181,13 @@ export function cardBadges(badges: readonly string[]): CardBadges {
 const cardUrl = (image: ApiImage | null): string =>
 	image?.roles['card']?.find((source) => source.width >= 400)?.url ?? image?.roles['card']?.[0]?.url ?? '';
 
+/** The smallest card picture, for small rows such as a set's pieces in the cart. */
+export const smallCardUrl = (image: ApiImage | null): string | null =>
+	image?.roles['card']?.reduce<ApiSource | null>(
+		(low, source) => (!low || source.width < low.width ? source : low),
+		null,
+	)?.url ?? null;
+
 const attachment = (image: ApiImage | null, id: string): IAttachment | undefined => {
 	if (!image || !cardUrl(image)) return undefined;
 	return { id, original_url: cardUrl(image), image } as unknown as IAttachment;
@@ -176,6 +198,22 @@ export const galleryAttachment = (image: ApiImage, index: number): IAttachment =
 	const url = gallery?.find((source) => source.width >= 900)?.url ?? gallery?.[0]?.url ?? '';
 	return { id: index + 1, original_url: url, image } as unknown as IAttachment;
 };
+
+/** The link-preview picture with its size when the API sends one, else the first gallery photo. */
+const shareAttachment = (
+	url: string | null | undefined,
+	size: ApiProductPage['shareImageSize'],
+	fallback: IAttachment | undefined,
+): IAttachment | undefined =>
+	// The size and type tell the page it can state them in og:image:width, og:image:height and og:image:type.
+	url
+		? ({
+				id: 0,
+				original_url: url,
+				mime_type: size?.type ?? '',
+				pixels: size ? { width: size.width, height: size.height } : undefined,
+			} as unknown as IAttachment)
+		: fallback;
 
 const swatchAttachment = (image: ApiImage | null, id: number): IAttachment | undefined => {
 	const url = image?.roles['swatch_image']?.at(-1)?.url;
@@ -192,6 +230,10 @@ const STYLE: Record<string, DisplayStyle> = {
 	dropdown: 'dropdown',
 	image_tile: 'image_tile',
 	radio_bar: 'radio_bar',
+	picture_row: 'picture_row',
+	picture_chip: 'picture_chip',
+	size_v2: 'size_v2',
+	colour_chip: 'colour_chip',
 };
 
 const FACT_ICONS: Record<string, string> = {
@@ -238,6 +280,8 @@ export function cardToProduct(card: ApiCard): IProduct {
 		quantity: card.inStock ? 1 : 0,
 		stock_status: card.inStock ? 'in_stock' : 'out_of_stock',
 		product_thumbnail: attachment(card.image, card.id),
+		sold_by: card.soldBy ?? 'piece',
+		set_card: card.set ?? null,
 		variations,
 		categories: [],
 		related_products: [],
@@ -268,33 +312,111 @@ export function placementToCatalog(page: ApiPlacement): ICatalogResponse {
 			]),
 		),
 		price_range: { min: prices.length ? Math.min(...prices) : 0, max: prices.length ? Math.max(...prices) : 0 },
+		faq: page.faq ?? [],
 	};
 }
 
-const BUNDLE_TYPE: Record<string, IBundle['bundle_type']> = {
-	fixed_kit: 'fixed-kit',
-	choose_one_per_group: 'choose-one-per-group',
-	optional_addons: 'optional-addons',
-};
+/** Free with this product (P8), in the shop's shape. */
+export function freeWithFromApi(free: CatalogPageFreeWith | null | undefined): IFreeWith | undefined {
+	if (!free || free.items.length === 0) return undefined;
+	return {
+		take: free.take,
+		count: free.count,
+		from: free.from,
+		required: free.required,
+		given: free.given,
+		min: free.min,
+		max: free.max,
+		none_or_exactly: free.noneOrExactly,
+		items: free.items.map((item) => ({
+			product_id: item.productId,
+			name: item.title,
+			...(item.image ? { image: cardUrl(item.image as ApiImage) || undefined } : {}),
+			mrp: item.mrpINR,
+			selling: item.sellingINR,
+			quantity: item.quantity,
+			in_stock: item.inStock,
+			variant_id: item.variantId,
+			variant_label: item.variantLabel,
+			variants: item.variants.map((v) => ({ id: v.id, label: v.label, in_stock: v.inStock })),
+		})),
+	};
+}
 
-const PRICE_POLICY: Record<string, IBundle['price_policy']> = {
-	sum_components: 'sum-components',
-	fixed_bundle_price: 'fixed-bundle-price',
-	discounted_components: 'discounted-components',
-};
+/** One set item (a piece or an extra), in the shop's shape. */
+function setItemFromApi(item: CatalogPageBundleItem): ISetItem {
+	return {
+		key: item.key,
+		product_id: item.productId,
+		slug: item.slug,
+		name: item.title,
+		sku: item.sku,
+		...(item.image ? { image: cardUrl(item.image as ApiImage) || undefined } : {}),
+		mrp: item.mrpINR,
+		selling: item.sellingINR,
+		sale: item.saleINR,
+		price_in_set: item.priceInSetINR,
+		today: item.todayINR,
+		quantity: item.quantity,
+		sold_by: item.soldBy,
+		in_stock: item.inStock,
+		available: item.available,
+		variant_id: item.variantId,
+		variant_label: item.variantLabel,
+		variants: item.variants.map((v) => ({ id: v.id, label: v.label, in_stock: v.inStock })),
+		free_with: freeWithFromApi(item.freeWith) ?? null,
+	};
+}
 
 function optionTerms(group: ApiOptionGroup) {
 	return group.terms.map((term, index) => ({
 		code: term.code,
 		label: term.label,
+		...(term.subLabel ? { sub_label: term.subLabel } : {}),
 		price_delta: term.priceDeltaINR ?? 0,
 		image: swatchAttachment(term.image, index + 1)?.original_url,
+		...(term.hex ? { hex: term.hex } : {}),
 		is_default: term.code === group.defaultTermCode,
 		requires_measurements: term.requiresMeasurements,
 	}));
 }
 
 /** Maps the product page read model into the shape the existing configurator and gallery read. */
+/**
+ * A set's block in the shop's shape, from the API's (or the bundle builder's live preview). Product-level option
+ * groups and measurements are added by the page.
+ */
+export function bundleFromApi(set: CatalogPageBundle, sku: string): IBundle {
+	return {
+		sku,
+		heading: set.heading,
+		bundle_price: set.priceINR,
+		separately: set.separatelyINR,
+		save: set.saveINR,
+		from_price: set.fromPrice,
+		low: set.lowINR,
+		high: set.highINR,
+		levels: set.levels.map((level) => ({
+			code: level.code,
+			label: level.label,
+			take: level.take,
+			choice: level.choice,
+			price_mode: level.priceMode,
+			items: level.items.map(setItemFromApi),
+		})),
+		extras: set.extras.map(setItemFromApi),
+		pricing: set.pricing,
+		stock: {
+			sets_possible: set.stock.setsPossible,
+			state: set.stock.state,
+			sold_out_pieces: set.stock.soldOutPieces,
+			sold_out_choices: set.stock.soldOutChoices,
+		},
+		buyable: set.buyable,
+		option_groups: [],
+	};
+}
+
 export function pageToProduct(page: ApiProductPage): IProduct {
 	// The selected SKU's price and photo come first, so `?variant=` is right in the first HTML.
 	const selling =
@@ -326,6 +448,7 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 				id: attributeId * 1000 + termIndex + 1,
 				name: term.label,
 				value: term.label,
+				...(term.subLabel ? { sub_label: term.subLabel } : {}),
 				slug: term.code,
 				status: true,
 				hex_color: term.hex ?? '',
@@ -392,23 +515,10 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 		...(field.max !== null ? { max: field.max } : {}),
 	}));
 
+	// A set (bundle builder brief, approved 2026-11-22): levels, extras and the rules the page prices choices with.
 	const bundle: IBundle | undefined = page.bundle
 		? {
-				sku: page.selected?.sku ?? page.slug,
-				bundle_type: BUNDLE_TYPE[page.bundle.bundleType] ?? 'fixed-kit',
-				price_policy: PRICE_POLICY[page.bundle.pricePolicy] ?? 'fixed-bundle-price',
-				bundle_price: page.bundle.priceINR,
-				components: page.bundle.groups.flatMap((group) =>
-					group.components.map((component) => ({
-						code: component.productId,
-						name: component.title,
-						sku: component.sku,
-						quantity: component.quantity,
-						consumes: '1 unit',
-						stock_status: component.inStock ? 'in_stock' : 'out_of_stock',
-						price: component.sellingINR,
-					})),
-				),
+				...bundleFromApi(page.bundle, page.selected?.sku ?? page.slug),
 				option_groups: page.optionGroups
 					.filter((group) => group.role === 'bundle_component_option')
 					.map((group) => ({
@@ -422,6 +532,7 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 				...(measurementFields?.length ? { measurement_fields: measurementFields } : {}),
 			}
 		: undefined;
+	const freeWith = freeWithFromApi(page.freeWith);
 
 	const hasBundle = Boolean(bundle);
 	return {
@@ -440,8 +551,13 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 		quantity: page.selected?.quantity ?? 0,
 		stock_status: page.selected?.buyable === false ? 'out_of_stock' : 'in_stock',
 		estimated_delivery_text: page.estimatedDeliveryText ?? '',
+		sale_expired_at: page.saleEndsAt ?? '',
 		saree_length_m: page.sareeLengthM,
 		blouse_piece_m: page.blousePieceM,
+		sold_by: page.soldBy ?? 'piece',
+		made_to_order: page.madeToOrder,
+		metre_rule: page.soldBy === 'metre' ? (page.metre ?? null) : null,
+		...(page.measurements?.title ? { measurement_title: page.measurements.title } : {}),
 		size_guide: page.measurements?.sizeGuide.length
 			? {
 					fields: page.measurements.fields.map(({ code, label, unit }) => ({ code, label, unit })),
@@ -449,14 +565,20 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 				}
 			: undefined,
 		product_thumbnail: galleries[0],
-		product_meta_image: galleries[0],
+		product_meta_image: shareAttachment(page.shareImageUrl, page.shareImageSize, ordered[0]),
+		product_code: page.code || undefined,
+		share_story_image: page.shareStoryUrl
+			? ({ id: 0, original_url: page.shareStoryUrl, mime_type: 'image/jpeg' } as unknown as IAttachment)
+			: undefined,
 		product_galleries: galleries,
+		videos: page.videos ?? [],
 		attributes,
 		variations,
 		semantic_attributes: facts.length ? facts : undefined,
 		addon_groups: addonGroups.length ? addonGroups : undefined,
 		measurement_fields: !hasBundle && measurementFields?.length ? measurementFields : undefined,
 		bundle,
+		...(freeWith ? { free_with: freeWith } : {}),
 		categories: [],
 		related_products: [],
 		cross_sell_products: [],
@@ -464,5 +586,8 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 		meta_description: page.metaDescription,
 		unknown_variant: page.unknownVariant,
 		breadcrumb_trail: page.breadcrumb,
+		rating_count: page.rating?.average ?? 0,
+		reviews_count: page.rating?.count ?? 0,
+		faq: page.faq ?? [],
 	} as unknown as IProduct;
 }

@@ -1,0 +1,337 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'shop_details'"
+>
+	@if (form(); as current) { @let view = query.data(); @if (canEdit()) {
+	<p class="text-muted">{{ 'shop_details_intro' | transloco }}</p>
+	} @else {
+	<!-- X04D: the same page read only, naming the permission (S1 A). -->
+	<div
+		class="alert alert-info d-flex align-items-start gap-2"
+		role="note"
+		id="shop_details_read_only"
+	>
+		<i
+			class="ri-lock-line"
+			aria-hidden="true"
+		></i>
+		<span>
+			<strong>{{ 'read_only_label' | transloco }}</strong>
+			{{ 'shop_details_read_only' | transloco }}
+		</span>
+	</div>
+	} @if (missingText() && canEdit()) {
+	<div
+		class="alert alert-warning d-flex align-items-start gap-2"
+		role="note"
+		id="shop_details_missing"
+	>
+		<i
+			class="ri-error-warning-line"
+			aria-hidden="true"
+		></i>
+		<span>{{ 'shop_details_missing' | transloco: { fields: missingText() } }}</span>
+	</div>
+	}
+	<div class="theme-form theme-form-2 mega-form">
+		<app-form-fields
+			[label]="'gstin'"
+			[for]="'shop_gstin'"
+			[required]="canEdit()"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<input
+				class="form-control"
+				id="shop_gstin"
+				maxlength="20"
+				autocomplete="off"
+				[class.is-invalid]="!!problemOf('gstin')"
+				[readonly]="!canEdit()"
+				[ngModel]="current.gstin"
+				(ngModelChange)="set('gstin', $event)"
+				(blur)="touch('gstin')"
+			/>
+			@if (problemOf('gstin'); as key) {
+			<div class="invalid-feedback d-block">
+				{{ key | transloco: (verdict().kind === 'problem' ? $any(verdict()).params : {}) }}
+			</div>
+			} @else if (canEdit() && verdict().kind === 'ok') { @let ok = $any(verdict());
+			<p
+				class="help-text text-success"
+				id="shop_gstin_ok"
+			>
+				<i
+					class="ri-checkbox-circle-line"
+					aria-hidden="true"
+				></i>
+				{{ 'shop_gstin_ok' | transloco: { code: ok.stateCode, state: ok.stateName } }}
+			</p>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'legal_name'"
+			[for]="'shop_legal_name'"
+			[required]="canEdit()"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<input
+				class="form-control"
+				id="shop_legal_name"
+				maxlength="200"
+				[class.is-invalid]="!!problemOf('legalName')"
+				[readonly]="!canEdit()"
+				[ngModel]="current.legalName"
+				(ngModelChange)="set('legalName', $event)"
+				(blur)="touch('legalName')"
+			/>
+			@if (problemOf('legalName'); as key) {
+			<div class="invalid-feedback d-block">{{ key | transloco }}</div>
+			} @else if (canEdit()) {
+			<p class="help-text">{{ 'shop_legal_name_help' | transloco }}</p>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'trade_name'"
+			[for]="'shop_trade_name'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<input
+				class="form-control"
+				id="shop_trade_name"
+				maxlength="200"
+				[readonly]="!canEdit()"
+				[ngModel]="current.tradeName"
+				(ngModelChange)="set('tradeName', $event)"
+			/>
+			@if (canEdit()) {
+			<p class="help-text">{{ 'shop_trade_name_help' | transloco }}</p>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'address'"
+			[for]="'shop_address'"
+			[required]="canEdit()"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<textarea
+				class="form-control"
+				id="shop_address"
+				rows="2"
+				maxlength="400"
+				[class.is-invalid]="!!problemOf('address')"
+				[readonly]="!canEdit()"
+				[ngModel]="current.address"
+				(ngModelChange)="set('address', $event)"
+				(blur)="touch('address')"
+			></textarea>
+			@if (problemOf('address'); as key) {
+			<div class="invalid-feedback d-block">{{ key | transloco }}</div>
+			} @else if (canEdit()) {
+			<p class="help-text">{{ 'shop_address_help' | transloco }}</p>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'city'"
+			[for]="'shop_city'"
+			[required]="canEdit()"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<input
+				class="form-control"
+				id="shop_city"
+				maxlength="100"
+				[class.is-invalid]="!!problemOf('city')"
+				[readonly]="!canEdit()"
+				[ngModel]="current.city"
+				(ngModelChange)="set('city', $event)"
+				(blur)="touch('city')"
+			/>
+			@if (problemOf('city'); as key) {
+			<div class="invalid-feedback d-block">{{ key | transloco }}</div>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'pin_code'"
+			[for]="'shop_pin'"
+			[required]="canEdit()"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<input
+				class="form-control"
+				id="shop_pin"
+				inputmode="numeric"
+				maxlength="6"
+				[class.is-invalid]="!!problemOf('pin')"
+				[readonly]="!canEdit()"
+				[ngModel]="current.pin"
+				(ngModelChange)="set('pin', $event)"
+				(blur)="touch('pin')"
+			/>
+			@if (problemOf('pin'); as key) {
+			<div class="invalid-feedback d-block">{{ key | transloco }}</div>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'state'"
+			[for]="'shop_state'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<!-- Read from the GSTIN; until one reads, the home State purchase tax uses (West Bengal). -->
+			<select
+				class="form-select"
+				id="shop_state"
+				disabled
+			>
+				@if (verdict().kind === 'ok') { @let ok = $any(verdict());
+				<option>{{ ok.stateName }} ({{ ok.stateCode }})</option>
+				} @else {
+				<option>{{ view?.homeStateName }} ({{ view?.homeStateCode }})</option>
+				}
+			</select>
+			<p class="help-text">{{ 'shop_state_help' | transloco }}</p>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'pan'"
+			[for]="'shop_pan'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<input
+				class="form-control"
+				id="shop_pan"
+				type="text"
+				readonly
+				[value]="verdict().kind === 'ok' ? $any(verdict()).pan : ''"
+			/>
+			<p class="help-text">{{ 'shop_pan_help' | transloco }}</p>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'phone_on_documents'"
+			[for]="'shop_phone'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<input
+				class="form-control"
+				id="shop_phone"
+				type="tel"
+				maxlength="30"
+				[class.is-invalid]="!!problemOf('phone')"
+				[readonly]="!canEdit()"
+				[ngModel]="current.phone"
+				(ngModelChange)="set('phone', $event)"
+				(blur)="touch('phone')"
+			/>
+			@if (problemOf('phone'); as key) {
+			<div class="invalid-feedback d-block">{{ key | transloco }}</div>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'email_on_documents'"
+			[for]="'shop_email'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<input
+				class="form-control"
+				id="shop_email"
+				type="email"
+				maxlength="200"
+				[class.is-invalid]="!!problemOf('email')"
+				[readonly]="!canEdit()"
+				[ngModel]="current.email"
+				(ngModelChange)="set('email', $event)"
+				(blur)="touch('email')"
+			/>
+			@if (problemOf('email'); as key) {
+			<div class="invalid-feedback d-block">{{ key | transloco }}</div>
+			} @else if (canEdit()) {
+			<p class="help-text">{{ 'shop_email_help' | transloco }}</p>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'logo_on_documents'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<div class="d-flex align-items-center flex-wrap gap-3">
+				@if (view?.logoUrl; as logo) {
+				<!-- The full logo on white in dark mode too (Brand Kit rule). -->
+				<span class="d-inline-flex rounded bg-white p-1">
+					<img
+						[src]="logo"
+						[alt]="view?.brandShopName ?? ''"
+						height="32"
+					/>
+				</span>
+				} @else {
+				<span class="text-muted">{{ view?.brandShopName }}</span>
+				}
+				<a
+					class="text-decoration-underline small"
+					routerLink="/setting/brand"
+					id="shop_open_brand_kit"
+				>
+					{{ 'open_brand_kit' | transloco }}
+				</a>
+			</div>
+			<p class="help-text">{{ 'shop_logo_help' | transloco }}</p>
+		</app-form-fields>
+	</div>
+	<p
+		class="small text-muted mb-3"
+		id="shop_details_history"
+	>
+		<i
+			class="ri-history-line"
+			aria-hidden="true"
+		></i>
+		{{ 'shop_details_history' | transloco }} @if (view?.updatedAt; as at) { {{ 'shop_details_last_changed' |
+		transloco: { date: (at | shortDateTime), name: view?.updatedByName ?? '' } }} } {{ 'shop_details_audit_note' |
+		transloco }}
+	</p>
+	@if (error(); as message) {
+	<div
+		class="alert alert-warning"
+		role="alert"
+		id="shop_details_error"
+	>
+		{{ message }}
+	</div>
+	} @if (canEdit()) {
+	<div class="d-flex justify-content-end flex-wrap gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			id="shop_details_cancel"
+			[disabled]="busy() || !changed()"
+			(click)="cancel()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="shop_details_save"
+			[disabled]="busy() || !changed() || blocked()"
+			(click)="save()"
+		>
+			{{ 'save' | transloco }}
+		</button>
+	</div>
+	} } @else if (query.isError()) {
+	<div
+		class="alert alert-warning"
+		role="alert"
+	>
+		{{ 'purchasing_action_failed' | transloco }}
+	</div>
+	}
+</app-page-wrapper>

@@ -1,0 +1,32 @@
+// The product page's photo gallery as the server draws it, before the browser starts its carousels (shop speed round 4).
+// Owl cannot measure on the server, so it writes every slide and the loop's copies one under another at no width, and
+// gives every thumbnail after the first the auto-height plugin's closed state. Started, the main carousel shows the
+// first photo, and the strip (only for more than five tiles; fewer are a plain row) shows five thumbnails, each
+// (strip - 40px) / 5 wide, with owl's own 10px right margin. Until ProductGallery adds `.st-gallery-started`, these rules lay the server's HTML
+// out the same way, so the first paint is the started gallery and nothing below it moves.
+.product-left-box:not(.st-gallery-started) {
+	.product-main-1 .owl-item.cloned,
+	.product-main-1 .owl-item:not(.cloned) ~ .owl-item {
+		display: none;
+	}
+
+	// Owl floats each slide; with no width a float shrinks to its content, and a full-width photo inside it has nothing
+	// to size against until its file arrives, so the box had no height at first paint (traced: 0 -> 471 px at 279 ms).
+	// A full-width block lets the photo's width and height attributes keep its box from the start.
+	.product-main-1 .owl-item {
+		float: none;
+		width: 100%;
+	}
+
+	.left-slider .owl-stage {
+		display: flex;
+	}
+
+	.left-slider .owl-item {
+		flex: 0 0 calc((100% - 40px) / 5);
+	}
+
+	.left-slider .owl-item.owl-height.height-0 {
+		max-height: 2000px;
+	}
+}

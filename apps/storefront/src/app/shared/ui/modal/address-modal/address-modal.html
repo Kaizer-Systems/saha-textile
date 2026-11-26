@@ -57,6 +57,9 @@
 						/>
 						@if (form.controls['street'].touched && form.controls['street'].errors?.['required']) {
 						<div class="invalid-feedback">{{ 'street_address_is_required' | transloco }}</div>
+						} @else if (form.controls['street'].touched &&
+						form.controls['street'].errors?.['englishLetters']) {
+						<div class="invalid-feedback">{{ 'english_letters_only' | transloco }}</div>
 						}
 					</div>
 				</div>
@@ -119,6 +122,8 @@
 						/>
 						@if (form.controls['city'].touched && form.controls['city'].errors?.['required']) {
 						<div class="invalid-feedback">{{ 'city_is_required' | transloco }}</div>
+						} @else if (form.controls['city'].touched && form.controls['city'].errors?.['englishLetters']) {
+						<div class="invalid-feedback">{{ 'english_letters_only' | transloco }}</div>
 						}
 					</div>
 				</div>

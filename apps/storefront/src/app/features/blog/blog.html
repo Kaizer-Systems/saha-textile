@@ -1,32 +1,23 @@
-<app-breadcrumb [breadcrumb]="breadcrumb" />
+<app-breadcrumb [breadcrumb]="breadcrumb()" />
 <section class="blog-section section-b-space">
 	<div class="container-fluid-lg">
 		<div class="row g-4">
-			<div
-				class="col-xxl-9 col-xl-8 col-lg-7"
-				[class.order-lg-2]="sidebar === 'left_sidebar'"
-				[class]="sidebar === 'no_sidebar' ?
-                        'col-xxl-12 col-xl-12 col-lg-12' : 'col-xxl-9 col-xl-8 col-lg-7'"
-			>
-				@if (blogService.skeletonLoader) {
+			<div class="col-xxl-9 col-xl-8 col-lg-7 order-lg-2">
+				@if (blogService.skeletonLoader && !(blog$ | async)?.data?.length) {
 				<div class="row g-4">
 					@for (item of skeletonItems; track item) {
-					<div [class]="style === 'list_view' ? 'col-12 list_view' : 'col-xxl-4 col-sm-6'">
+					<div class="list_view col-12">
 						<app-skeleton-blog />
 					</div>
 					}
 				</div>
 				} @else { @if ((blog$ | async)?.data?.length) {
-				<div
-					class="row g-4"
-					[class.ratio_65]="style === 'list_view'"
-				>
-					@for (blog of (blog$ | async)?.data; track blog) {
-					<div [class]="style === 'list_view' ? 'col-12' : 'col-xxl-4 col-sm-6'">
+				<div class="row g-4 ratio_65">
+					@for (blog of (blog$ | async)?.data; track blog.id) {
+					<div class="col-12">
 						<div
-							class="blog-box"
-							[class.blog-list]="style === 'list_view'"
-							[class]="blog.is_sticky === 1 ? 'sticky-blog-box' : ''"
+							class="blog-box blog-list"
+							[class.sticky-blog-box]="blog.is_sticky === 1"
 						>
 							@if (blog.is_featured) {
 							<div class="blog-label-tag">
@@ -34,41 +25,44 @@
 							</div>
 							}
 							<div class="blog-image">
-								<a [routerLink]="['/blog/', blog?.slug]">
+								<a [routerLink]="['/blog/', blog.slug]">
 									<img
-										[src]="blog?.blog_thumbnail?.original_url
-                                                ? blog?.blog_thumbnail?.original_url
-                                                : 'assets/images/blog.png'"
-										[alt]="blog?.title"
+										[src]="blog.blog_thumbnail?.original_url || 'assets/images/blog.png'"
+										[attr.srcset]="blog.blog_thumbnail?.srcset || null"
+										sizes="(min-width: 1400px) 420px, (min-width: 992px) 30vw, 100vw"
+										[attr.width]="blog.blog_thumbnail?.width || null"
+										[attr.height]="blog.blog_thumbnail?.height || null"
+										[alt]="blog.blog_thumbnail?.alt || blog.title"
+										[attr.loading]="$first ? 'eager' : 'lazy'"
+										[attr.fetchpriority]="$first ? 'high' : null"
 									/>
 								</a>
 							</div>
-							<div
-								class="blog-contain blog-contain-2"
-								[class.blog-contain-2]="style === 'list_view'"
-							>
+							<div class="blog-contain blog-contain-2">
 								<div class="blog-label">
 									<span class="time">
 										<i class="ri-time-line"></i>
-										<span>{{ blog?.created_at | date: 'dd MMM yyyy hh:mm:a'}}</span>
+										<span>{{ blog.published_at | shopDate }}</span>
 									</span>
-									@if ((siteConfig$ | async)?.blog?.blog_author_enable) {
+									@if ((siteConfig$ | async)?.blog?.blog_author_enable !== false) {
 									<span class="super">
 										<i class="ri-user-line"></i>
-										<span>{{ blog?.created_by?.name }}</span>
+										<span>{{ blog.author }}</span>
 									</span>
 									}
 								</div>
-								<a [routerLink]="['/blog/', blog?.slug]">
-									<h3>{{ blog?.title }}</h3>
+								<a [routerLink]="['/blog/', blog.slug]">
+									<h3>{{ blog.title }}</h3>
 								</a>
-								<p [innerHTML]="blog.description | summary:200"></p>
-								@if ((siteConfig$ | async)?.blog?.read_more_enable) {
+								<p>{{ blog.description }}</p>
+								@if ((siteConfig$ | async)?.blog?.read_more_enable !== false) {
 								<a
-									[routerLink]="['/blog/', blog?.slug]"
+									[routerLink]="['/blog/', blog.slug]"
 									class="blog-button"
 								>
 									{{ 'read_more' | transloco }}
+									<!-- The post title, for screen readers and search engines: "Read More" alone names no page. -->
+									<span class="visually-hidden">: {{ blog.title }}</span>
 									<i class="ri-arrow-right-fill"></i>
 								</a>
 								}
@@ -77,14 +71,14 @@
 					</div>
 					}
 				</div>
-				} @else { @if (!(blog$ | async)?.data?.length) {
+				} @else {
 				<app-no-data
 					[class]="'no-data-added'"
 					[image]="'assets/svg/empty-items.svg'"
 					[text]="'no_blogs_found' | transloco"
 					[description]="'no_blogs_description' | transloco"
 				/>
-				} } } @if ((blog$ | async)?.data?.length && !blogService.skeletonLoader) {
+				} } @if (totalItems() > filter()['paginate']) {
 				<nav class="custome-pagination">
 					<app-pagination
 						[total]="totalItems()"
@@ -95,11 +89,7 @@
 				</nav>
 				}
 			</div>
-			<div
-				class="col-xxl-3 col-xl-4 col-lg-5"
-				[class.order-lg-1]="sidebar === 'left_sidebar'"
-				[class]="sidebar === 'no_sidebar' ? 'd-none' : ''"
-			>
+			<div class="col-xxl-3 col-xl-4 col-lg-5 order-lg-1">
 				<div class="left-sidebar-box wow fadeInUp">
 					<app-blog-sidebar />
 				</div>

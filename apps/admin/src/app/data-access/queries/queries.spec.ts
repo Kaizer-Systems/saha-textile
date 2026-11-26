@@ -27,7 +27,6 @@ import { RefundService } from '@data-access/services/refund.service';
 import { ReviewService } from '@data-access/services/review.service';
 import { ShippingService } from '@data-access/services/shipping.service';
 import { StateService } from '@data-access/services/state.service';
-import { StoreService } from '@data-access/services/store.service';
 import { TagService } from '@data-access/services/tag.service';
 import { TaxService } from '@data-access/services/tax.service';
 
@@ -49,7 +48,18 @@ import { injectCategoriesQuery } from './category.queries';
 import { injectCountriesQuery } from './country.queries';
 import { injectCouponQuery, injectCouponsQuery } from './coupon.queries';
 import { injectCurrenciesQuery } from './currency.queries';
-import { injectRevenueChartQuery, injectStatisticsQuery } from './dashboard.queries';
+import {
+	injectDashboardCustomersQuery,
+	injectDashboardMonthlyRevenueQuery,
+	injectDashboardOrdersQuery,
+	injectDashboardRecentOrdersQuery,
+	injectDashboardReviewsQuery,
+	injectDashboardRevenueQuery,
+	injectDashboardStockQuery,
+	injectDashboardTopProductsQuery,
+	injectRevenueChartQuery,
+	injectStatisticsQuery,
+} from './dashboard.queries';
 import { injectFaqsQuery } from './faq.queries';
 import { injectNotificationsQuery } from './notification.queries';
 import { injectOrderStatusQuery } from './order-status.queries';
@@ -68,7 +78,6 @@ import {
 } from './role.queries';
 import { injectShippingsQuery } from './shipping.queries';
 import { injectStatesQuery } from './state.queries';
-import { injectStoresQuery } from './store.queries';
 import { injectTagQuery, injectTagsQuery } from './tag.queries';
 import { injectTaxesQuery } from './tax.queries';
 
@@ -109,19 +118,32 @@ beforeEach(() => {
 			{ provide: CountryService, useValue: service('getCountries') },
 			{ provide: CouponService, useValue: service('getCoupons') },
 			{ provide: CurrencyService, useValue: service('getCurrencies') },
-			{ provide: DashboardService, useValue: service('getStatisticsCount', 'getRevenueChart') },
+			{
+				provide: DashboardService,
+				useValue: service(
+					'getStatisticsCount',
+					'getRevenueChart',
+					'getRevenue',
+					'getMonthlyRevenue',
+					'getOrders',
+					'getRecentOrders',
+					'getCustomers',
+					'getTopProducts',
+					'getStock',
+					'getReviews',
+				),
+			},
 			{ provide: FaqService, useValue: service('getFaqs') },
 			{ provide: NotificationService, useValue: service('getNotifications') },
 			{ provide: OrderStatusService, useValue: service('getOrderStatus') },
 			{ provide: OrderService, useValue: service('getOrders') },
 			{ provide: PageService, useValue: service('getPages') },
 			{ provide: ProductService, useValue: service('getProducts', 'getCatalogProducts') },
-			{ provide: QuestionsAnswersService, useValue: service('getQuestionAnswers') },
+			{ provide: QuestionsAnswersService, useValue: service('list') },
 			{ provide: RefundService, useValue: service('getRefunds') },
 			{ provide: ReviewService, useValue: service('getReviews') },
 			{ provide: ShippingService, useValue: service('getShippings') },
 			{ provide: StateService, useValue: service('getStates') },
-			{ provide: StoreService, useValue: service('getStores') },
 			{ provide: TagService, useValue: service('getTags') },
 			{ provide: TaxService, useValue: service('getTaxes') },
 		],
@@ -130,6 +152,9 @@ beforeEach(() => {
 
 const options = (build: () => unknown): Options => (TestBed.runInInjectionContext(build) as unknown as () => Options)();
 const params = () => ({ status: 1 });
+
+const period = () => ({ period: 'last_month' }) as const;
+const on = () => true;
 
 describe('list queries', () => {
 	it.each<[string, () => unknown, unknown[]]>([
@@ -147,6 +172,26 @@ describe('list queries', () => {
 		['currencies', () => injectCurrenciesQuery(params), ['currencies', { status: 1 }]],
 		['statistics', () => injectStatisticsQuery(), ['dashboard-statistics']],
 		['revenue', () => injectRevenueChartQuery(), ['dashboard-revenue-chart']],
+		[
+			'dashboard revenue',
+			() => injectDashboardRevenueQuery(period, on),
+			['dashboard-revenue', { period: 'last_month' }],
+		],
+		['dashboard months', () => injectDashboardMonthlyRevenueQuery(on), ['dashboard-monthly-revenue']],
+		[
+			'dashboard orders',
+			() => injectDashboardOrdersQuery(period, on),
+			['dashboard-orders', { period: 'last_month' }],
+		],
+		['dashboard recent orders', () => injectDashboardRecentOrdersQuery(on), ['dashboard-recent-orders']],
+		['dashboard customers', () => injectDashboardCustomersQuery(on), ['dashboard-customers']],
+		[
+			'dashboard top products',
+			() => injectDashboardTopProductsQuery(period, on),
+			['dashboard-top-products', { period: 'last_month' }],
+		],
+		['dashboard stock', () => injectDashboardStockQuery(() => 'c1', on), ['dashboard-stock', 'c1']],
+		['dashboard reviews', () => injectDashboardReviewsQuery(on), ['dashboard-reviews']],
 		['FAQs', () => injectFaqsQuery(params), ['faqs', { status: 1 }]],
 		['notifications', () => injectNotificationsQuery(params), ['notifications', { status: 1 }]],
 		['default notifications', () => injectNotificationsQuery(), ['notifications', {}]],
@@ -155,12 +200,15 @@ describe('list queries', () => {
 		['pages', () => injectPagesQuery(params), ['pages', { status: 1 }]],
 		['products', () => injectProductsQuery(params), ['products', { status: 1 }]],
 		['catalog products', () => injectCatalogProductsQuery(() => ({ page: 1 })), ['catalog-products', { page: 1 }]],
-		['questions', () => injectQuestionAnswersQuery(params), ['question-answers', { status: 1 }]],
+		[
+			'questions',
+			() => injectQuestionAnswersQuery(() => ({ status: 'pending' })),
+			['admin-questions', { status: 'pending' }],
+		],
 		['refunds', () => injectRefundsQuery(params), ['refunds', { status: 1 }]],
 		['reviews', () => injectReviewsQuery(params), ['reviews', { status: 1 }]],
 		['shipping', () => injectShippingsQuery(params), ['shippings', { status: 1 }]],
 		['states', () => injectStatesQuery(), ['states']],
-		['stores', () => injectStoresQuery(params), ['stores', { status: 1 }]],
 		['tags', () => injectTagsQuery(params), ['tags', { status: 1 }]],
 		['taxes', () => injectTaxesQuery(params), ['taxes', { status: 1 }]],
 	])('%s has its key and fetches', async (_name, build, key) => {
@@ -168,6 +216,11 @@ describe('list queries', () => {
 		expect(query.queryKey).toEqual(key);
 		await expect(query.queryFn()).resolves.toEqual({ ok: true });
 		expect(answer).toHaveBeenCalledOnce();
+	});
+
+	it('blogs ask only when enabled', () => {
+		expect(options(() => injectBlogsQuery(params)).enabled).toBe(true);
+		expect(options(() => injectBlogsQuery(params, () => false)).enabled).toBe(false);
 	});
 });
 

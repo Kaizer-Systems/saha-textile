@@ -4,27 +4,37 @@ import { ApplicationConfig, isDevMode, provideZoneChangeDetection } from '@angul
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 
+import { provideToastr } from '@damjantonkli/ngx-toastr';
 import { provideTransloco } from '@jsverse/transloco';
 import { provideEffects } from '@ngrx/effects';
 import { provideStore } from '@ngrx/store';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
-import { provideToastr } from '@damjantonkli/ngx-toastr';
 
-import { AdminAuthGateway } from '@core/auth/auth-gateway';
-import { HttpAdminAuthGateway } from '@core/auth/http-auth.gateway';
-import { provideAdminSessionBootstrap } from '@core/auth/session-bootstrap';
+import { AdminCommunicationsGateway } from '@core/admin-communications/admin-communications.gateway';
+import { HttpAdminCommunicationsGateway } from '@core/admin-communications/http-admin-communications.gateway';
 import { AdminCustomersGateway } from '@core/admin-customers/admin-customers.gateway';
 import { HttpAdminCustomersGateway } from '@core/admin-customers/http-admin-customers.gateway';
+import { AdminLanguagesGateway } from '@core/admin-languages/admin-languages.gateway';
+import { HttpAdminLanguagesGateway } from '@core/admin-languages/http-admin-languages.gateway';
 import { AdminNotificationsGateway } from '@core/admin-notifications/admin-notifications.gateway';
 import { HttpAdminNotificationsGateway } from '@core/admin-notifications/http-admin-notifications.gateway';
 import { AdminRolesGateway } from '@core/admin-roles/admin-roles.gateway';
 import { HttpAdminRolesGateway } from '@core/admin-roles/http-admin-roles.gateway';
 import { AdminUsersGateway } from '@core/admin-users/admin-users.gateway';
 import { HttpAdminUsersGateway } from '@core/admin-users/http-admin-users.gateway';
+import { AdminAuthGateway } from '@core/auth/auth-gateway';
+import { HttpAdminAuthGateway } from '@core/auth/http-auth.gateway';
+import { provideAdminSessionBootstrap } from '@core/auth/session-bootstrap';
 import { provideRuntimeConfig } from '@core/config/runtime-config';
+import { provideActiveLanguages, savedLanguages } from '@core/i18n/active-languages';
 import { AuthInterceptor } from '@core/interceptors/auth.interceptor';
+import { ClientBuildInterceptor } from '@core/interceptors/client-build.interceptor';
 import { GlobalErrorHandlerInterceptor } from '@core/interceptors/global-error-handler.interceptor';
 import { LoaderInterceptor } from '@core/interceptors/loader.interceptor';
+import { HttpMediaLibraryGateway } from '@core/media-library/http-media-library.gateway';
+import { MediaLibraryGateway } from '@core/media-library/media-library.gateway';
+import { HttpMediaProfilesGateway } from '@core/media-profiles/http-media-profiles.gateway';
+import { MediaProfilesGateway } from '@core/media-profiles/media-profiles.gateway';
 import { CartEffects } from '@core/state/cart/cart.effects';
 import { cartReducer } from '@core/state/cart/cart.reducer';
 
@@ -37,6 +47,7 @@ export const appConfig: ApplicationConfig = {
 		// Public runtime config: fetches /config.json before the app starts and
 		// fills the mutable environment (no fileReplacements for deploy URLs).
 		provideRuntimeConfig(),
+		provideActiveLanguages(),
 		// The one binding that decides how this app talks to the auth API. Components,
 		// guards and stores depend on the abstract gateway, so swapping the transport (or
 		// faking it in a test) is this line, not a search across features.
@@ -47,6 +58,10 @@ export const appConfig: ApplicationConfig = {
 		{ provide: AdminCustomersGateway, useClass: HttpAdminCustomersGateway },
 		// Non-secret notification Settings (MSG91 Authkey stays in API env).
 		{ provide: AdminNotificationsGateway, useClass: HttpAdminNotificationsGateway },
+		{ provide: AdminCommunicationsGateway, useClass: HttpAdminCommunicationsGateway },
+		{ provide: MediaProfilesGateway, useClass: HttpMediaProfilesGateway },
+		{ provide: AdminLanguagesGateway, useClass: HttpAdminLanguagesGateway },
+		{ provide: MediaLibraryGateway, useClass: HttpMediaLibraryGateway },
 		// Admin roles + permission registry gateway (auth pass 5c.3 UI wiring).
 		{ provide: AdminRolesGateway, useClass: HttpAdminRolesGateway },
 		// Resolves the admin cookie session before routing, so the guard protecting the
@@ -66,6 +81,11 @@ export const appConfig: ApplicationConfig = {
 		},
 		{
 			provide: HTTP_INTERCEPTORS,
+			useClass: ClientBuildInterceptor,
+			multi: true,
+		},
+		{
+			provide: HTTP_INTERCEPTORS,
 			useClass: GlobalErrorHandlerInterceptor,
 			multi: true,
 		},
@@ -79,7 +99,8 @@ export const appConfig: ApplicationConfig = {
 		// it through TranslocoService.setActiveLang.
 		provideTransloco({
 			config: {
-				availableLangs: ['en', 'fr'],
+				// The API's list replaces this once it arrives (`ActiveLanguages`).
+				availableLangs: [...savedLanguages()],
 				defaultLang: 'en',
 				fallbackLang: 'en',
 				reRenderOnLangChange: true,

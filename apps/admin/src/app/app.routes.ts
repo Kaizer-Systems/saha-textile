@@ -6,9 +6,14 @@ import { content } from './routes/content.routes';
 import { full } from './routes/full.routes';
 
 export const routes: Routes = [
+	/**
+	 * The bare address opens the dashboard. Signed in, that is where the operator belongs;
+	 * signed out, `AuthGuard` on the dashboard's shell sends them to the login screen. It used to
+	 * point at `auth/login` directly, which showed the login form to someone already signed in.
+	 */
 	{
 		path: '',
-		redirectTo: 'auth/login',
+		redirectTo: 'dashboard',
 		pathMatch: 'full',
 	},
 	/**

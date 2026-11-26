@@ -100,6 +100,8 @@ function log(message) {
 
 function isIgnoredPath(filename) {
 	if (!filename) return false;
+	// `*.gen.css` is written by each build's own `styles` step; watching it would rebuild forever.
+	if (/\.gen\.css$/u.test(filename)) return true;
 	return filename
 		.split(/[\\/]/u)
 		.filter(Boolean)

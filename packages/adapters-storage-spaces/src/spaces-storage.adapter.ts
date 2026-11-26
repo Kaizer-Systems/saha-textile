@@ -1,10 +1,16 @@
 import {
+	AbortMultipartUploadCommand,
+	CompleteMultipartUploadCommand,
+	CreateMultipartUploadCommand,
 	DeleteObjectCommand,
 	DeleteObjectsCommand,
 	GetObjectCommand,
+	ListObjectsV2Command,
+	ListPartsCommand,
 	PutObjectAclCommand,
 	PutObjectCommand,
 	S3Client,
+	UploadPartCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { ObjectVisibility, SignedUpload, StoragePort, StoredObject } from '@saha-textile/core-domain';
@@ -15,6 +21,8 @@ import { SpacesStorageError, type SpacesObjectAcl, type SpacesStorageConfig } fr
 const DEFAULT_UPLOAD_EXPIRY_SECONDS = 900;
 /** S3's DeleteObjects ceiling per request. */
 const DELETE_BATCH = 1000;
+/** Parts of a streamed upload: at least S3's 5 MB, and 16 MB like the browser's big uploads. */
+const STREAM_PART_BYTES = 16 * 1024 * 1024;
 
 const aclFor = (visibility: ObjectVisibility): SpacesObjectAcl => (visibility === 'public' ? 'public-read' : 'private');
 /** Spaces rejects presigned lifetimes beyond seven days; fail here rather than at upload. */
@@ -163,13 +171,27 @@ export class SpacesStorageAdapter implements StoragePort {
 	 * A short-lived GET for a private object. Signed against the ORIGIN, never the CDN: a
 	 * private object must not be cached at an edge, and the CDN cannot verify a signature.
 	 */
-	async createSignedDownloadUrl(input: { key: string; expiresInSeconds: number }): Promise<string> {
+	async createSignedDownloadUrl(input: {
+		key: string;
+		expiresInSeconds: number;
+		fileName?: string;
+		disposition?: 'inline' | 'attachment';
+	}): Promise<string> {
 		assertValidStorageKey(input.key);
 		this.assertExpiry(input.expiresInSeconds);
 		try {
-			return await getSignedUrl(this.client, new GetObjectCommand({ Bucket: this.bucket, Key: input.key }), {
-				expiresIn: input.expiresInSeconds,
-			});
+			return await getSignedUrl(
+				this.client,
+				new GetObjectCommand({
+					Bucket: this.bucket,
+					Key: input.key,
+					// Opens in the browser where it can (a PDF, a picture) and saves under its own name.
+					...(input.fileName
+						? { ResponseContentDisposition: contentDisposition(input.fileName, input.disposition) }
+						: {}),
+				}),
+				{ expiresIn: input.expiresInSeconds },
+			);
 		} catch (err) {
 			throw new SpacesStorageError(`Failed to presign download for "${input.key}"`, err);
 		}
@@ -226,6 +248,214 @@ export class SpacesStorageAdapter implements StoragePort {
 			);
 		}
 	}
+
+	async startMultipartUpload(input: { key: string; contentType: string }): Promise<{ uploadId: string }> {
+		assertValidStorageKey(input.key);
+		try {
+			const answer = await this.client.send(
+				new CreateMultipartUploadCommand({
+					Bucket: this.bucket,
+					Key: input.key,
+					ContentType: input.contentType,
+					ACL: aclFor('private'),
+				}),
+			);
+			if (!answer.UploadId) throw new Error('no upload id');
+			return { uploadId: answer.UploadId };
+		} catch (err) {
+			throw new SpacesStorageError(`Failed to start a multipart upload for "${input.key}"`, err);
+		}
+	}
+
+	async createSignedPartUrl(input: {
+		key: string;
+		uploadId: string;
+		partNumber: number;
+		expiresInSeconds: number;
+	}): Promise<string> {
+		assertValidStorageKey(input.key);
+		this.assertExpiry(input.expiresInSeconds);
+		if (!Number.isInteger(input.partNumber) || input.partNumber < 1 || input.partNumber > 10_000)
+			throw new SpacesStorageError(`Part number ${input.partNumber} is outside 1–10000`);
+		try {
+			return await getSignedUrl(
+				this.client,
+				new UploadPartCommand({
+					Bucket: this.bucket,
+					Key: input.key,
+					UploadId: input.uploadId,
+					PartNumber: input.partNumber,
+				}),
+				{ expiresIn: input.expiresInSeconds },
+			);
+		} catch (err) {
+			throw new SpacesStorageError(`Failed to presign part ${input.partNumber} of "${input.key}"`, err);
+		}
+	}
+
+	/** An object's bytes as they arrive (the .zip job): a file of any size, never held whole. */
+	async *readStream(key: string): AsyncIterable<Uint8Array> {
+		assertValidStorageKey(key);
+		let body: unknown;
+		try {
+			body = (await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }))).Body;
+		} catch (err) {
+			throw new SpacesStorageError(`Failed to read object "${key}"`, err);
+		}
+		if (!body || typeof (body as AsyncIterable<unknown>)[Symbol.asyncIterator] !== 'function') {
+			throw new SpacesStorageError(`Object "${key}" has no readable body`);
+		}
+		for await (const chunk of body as AsyncIterable<Uint8Array | string>) {
+			yield typeof chunk === 'string' ? new TextEncoder().encode(chunk) : chunk;
+		}
+	}
+
+	/**
+	 * Stores bytes as they are made, private, in parts of `STREAM_PART_BYTES` (the .zip job): S3 takes at most 10,000
+	 * parts, so up to about 160 GB. A failure or an abort ends the upload and leaves nothing stored.
+	 */
+	async uploadStream(input: {
+		key: string;
+		contentType: string;
+		body: AsyncIterable<Uint8Array>;
+		signal?: { readonly aborted: boolean };
+	}): Promise<{ bytes: number }> {
+		assertValidStorageKey(input.key);
+		const started = await this.client.send(
+			new CreateMultipartUploadCommand({
+				Bucket: this.bucket,
+				Key: input.key,
+				ContentType: input.contentType,
+				ACL: aclFor('private'),
+			}),
+		);
+		const uploadId = started.UploadId;
+		if (!uploadId) throw new SpacesStorageError(`No upload id for "${input.key}"`);
+		const parts: { ETag: string; PartNumber: number }[] = [];
+		let pending: Uint8Array[] = [];
+		let pendingBytes = 0;
+		let total = 0;
+		const send = async () => {
+			const body = new Uint8Array(pendingBytes);
+			let at = 0;
+			for (const chunk of pending) {
+				body.set(chunk, at);
+				at += chunk.byteLength;
+			}
+			pending = [];
+			pendingBytes = 0;
+			const partNumber = parts.length + 1;
+			const answer = await this.client.send(
+				new UploadPartCommand({
+					Bucket: this.bucket,
+					Key: input.key,
+					UploadId: uploadId,
+					PartNumber: partNumber,
+					Body: body,
+				}),
+			);
+			if (!answer.ETag) throw new SpacesStorageError(`No ETag for part ${partNumber} of "${input.key}"`);
+			parts.push({ ETag: answer.ETag, PartNumber: partNumber });
+		};
+		try {
+			for await (const chunk of input.body) {
+				if (input.signal?.aborted) throw new SpacesStorageError(`Upload of "${input.key}" was stopped`);
+				pending.push(chunk);
+				pendingBytes += chunk.byteLength;
+				total += chunk.byteLength;
+				if (pendingBytes >= STREAM_PART_BYTES) await send();
+			}
+			if (pendingBytes > 0 || parts.length === 0) await send();
+			await this.client.send(
+				new CompleteMultipartUploadCommand({
+					Bucket: this.bucket,
+					Key: input.key,
+					UploadId: uploadId,
+					MultipartUpload: { Parts: parts },
+				}),
+			);
+			return { bytes: total };
+		} catch (err) {
+			await this.client
+				.send(new AbortMultipartUploadCommand({ Bucket: this.bucket, Key: input.key, UploadId: uploadId }))
+				.catch(() => undefined);
+			throw err instanceof SpacesStorageError
+				? err
+				: new SpacesStorageError(`Failed to store "${input.key}"`, err);
+		}
+	}
+
+	/** Every stored file under a prefix, a thousand at a time (ListObjectsV2). */
+	async *listKeys(prefix: string): AsyncIterable<{ key: string; bytes: number }> {
+		let token: string | undefined;
+		do {
+			const page = await this.client.send(
+				new ListObjectsV2Command({
+					Bucket: this.bucket,
+					Prefix: prefix,
+					...(token ? { ContinuationToken: token } : {}),
+				}),
+			);
+			for (const item of page.Contents ?? []) if (item.Key) yield { key: item.Key, bytes: item.Size ?? 0 };
+			token = page.IsTruncated ? page.NextContinuationToken : undefined;
+		} while (token);
+	}
+
+	async listUploadedParts(input: {
+		key: string;
+		uploadId: string;
+	}): Promise<{ partNumber: number; etag: string; size: number }[]> {
+		assertValidStorageKey(input.key);
+		const parts: { partNumber: number; etag: string; size: number }[] = [];
+		let marker: string | undefined;
+		try {
+			do {
+				const page = await this.client.send(
+					new ListPartsCommand({
+						Bucket: this.bucket,
+						Key: input.key,
+						UploadId: input.uploadId,
+						...(marker ? { PartNumberMarker: marker } : {}),
+					}),
+				);
+				for (const part of page.Parts ?? [])
+					if (part.PartNumber && part.ETag)
+						parts.push({ partNumber: part.PartNumber, etag: part.ETag, size: part.Size ?? 0 });
+				marker = page.IsTruncated ? page.NextPartNumberMarker : undefined;
+			} while (marker);
+			return parts.sort((a, b) => a.partNumber - b.partNumber);
+		} catch (err) {
+			throw new SpacesStorageError(`Failed to list the parts of "${input.key}"`, err);
+		}
+	}
+
+	/** Joins the stored parts, as storage lists them, into the object. */
+	async completeMultipartUpload(input: { key: string; uploadId: string }): Promise<void> {
+		const parts = await this.listUploadedParts(input);
+		try {
+			await this.client.send(
+				new CompleteMultipartUploadCommand({
+					Bucket: this.bucket,
+					Key: input.key,
+					UploadId: input.uploadId,
+					MultipartUpload: { Parts: parts.map((part) => ({ PartNumber: part.partNumber, ETag: part.etag })) },
+				}),
+			);
+		} catch (err) {
+			throw new SpacesStorageError(`Failed to finish the multipart upload of "${input.key}"`, err);
+		}
+	}
+
+	async abortMultipartUpload(input: { key: string; uploadId: string }): Promise<void> {
+		assertValidStorageKey(input.key);
+		try {
+			await this.client.send(
+				new AbortMultipartUploadCommand({ Bucket: this.bucket, Key: input.key, UploadId: input.uploadId }),
+			);
+		} catch (err) {
+			throw new SpacesStorageError(`Failed to stop the multipart upload of "${input.key}"`, err);
+		}
+	}
 }
 
 /**
@@ -242,4 +472,17 @@ function resolvePublicBaseUrl(config: SpacesStorageConfig): string {
 	}
 	const endpoint = new URL(config.endpoint);
 	return `${endpoint.protocol}//${config.bucket}.${endpoint.host}`;
+}
+
+/**
+ * `inline` (or `attachment`, to always save) with the name twice: a plain ASCII fallback for old
+ * clients and the exact UTF-8 name (RFC 6266), so a বাংলা file name survives. Quotes, backslashes
+ * and line breaks never reach the header.
+ */
+export function contentDisposition(fileName: string, disposition: 'inline' | 'attachment' = 'inline'): string {
+	const clean = fileName.replace(/[\r\n"\\]/g, '').slice(0, 200) || 'file';
+	const ascii = clean.replace(/[^\x20-\x7e]/g, '_');
+	// RFC 5987 leaves ' ( ) * out of a value, and encodeURIComponent keeps them, so encode them too.
+	const utf8 = encodeURIComponent(clean).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+	return `${disposition}; filename="${ascii}"; filename*=UTF-8''${utf8}`;
 }

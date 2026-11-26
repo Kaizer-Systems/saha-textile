@@ -1,0 +1,120 @@
+import { type Repository, VENDOR_NAMES, vendorScreens } from '@saha-textile/release-console-contracts';
+
+import { CONSOLE_MENU } from './console-menu.data';
+
+import type { ConsoleMenu, MenuGroup, ScreenInfo } from './menu.types';
+
+const groupOf = (label: string): MenuGroup | undefined => CONSOLE_MENU.menu.find((g) => g.label === label);
+
+/** The screen key of a cloud or edge slot whose vendor has no screens yet. */
+export const laterKey = (slotId: string): string => `later-${slotId}`;
+
+function laterScreen(
+	vendorName: string,
+	shows = 'Its environments, servers and costs show here once its adapter reads them.',
+): ScreenInfo {
+	const caption = `${vendorName} screens are built the way ${vendorName} works when this repository first needs them. ${shows}`;
+	return {
+		label: 'Screens later',
+		states: { list: 'Screens later' },
+		off: false,
+		tip: null,
+		part: null,
+		offStates: null,
+		partStates: null,
+		captions: { list: caption },
+	};
+}
+
+/**
+ * One repository's menu: Overview, its own menus (from `.release-console.json`), Ship, Watch,
+ * Run, one group per cloud slot, edge slot and secrets manager, and Governance. The screens map holds only
+ * what this menu shows, so search never finds another repository's screens.
+ */
+export function repositoryMenu(repo: Repository): ConsoleMenu {
+	const groups: MenuGroup[] = [];
+	const extra: Record<string, ScreenInfo> = {};
+	const own = repo.menus.filter((k) => CONSOLE_MENU.screens[k]);
+	if (own.length)
+		groups.push({ label: repo.name, own: true, subs: [{ label: 'only in this repository', items: own }] });
+	// The console's own menu data always has these groups, and a screen for every item (console-menu.data.ts).
+	for (const label of ['Ship', 'Watch', 'Run']) groups.push(groupOf(label) as MenuGroup);
+	for (const slot of repo.cloud) {
+		const name = VENDOR_NAMES[slot.vendor];
+		const full = slot.vendor === 'digitalocean' ? groupOf('DigitalOcean') : undefined;
+		if (full && vendorScreens(slot.vendor) === 'full')
+			groups.push({ ...full, label: `Cloud · ${name}`, vendor: slot.vendor });
+		else {
+			extra[laterKey(slot.id)] = laterScreen(name);
+			groups.push({
+				label: `Cloud · ${name}`,
+				vendor: slot.vendor,
+				subs: [{ label: null, items: [laterKey(slot.id)] }],
+			});
+		}
+	}
+	for (const slot of repo.edge) {
+		const name = VENDOR_NAMES[slot.vendor];
+		const full = slot.vendor === 'cloudflare' ? groupOf('Cloudflare') : undefined;
+		if (full && vendorScreens(slot.vendor) === 'full')
+			groups.push({
+				label: `Edge · ${name}`,
+				vendor: slot.vendor,
+				subs: full.subs.map((s) =>
+					s.label?.startsWith('Domain:') ? { ...s, label: `Domain: ${slot.zones[0] ?? 'none'} ▾` } : s,
+				),
+			});
+		else {
+			extra[laterKey(slot.id)] = laterScreen(name);
+			groups.push({
+				label: `Edge · ${name}`,
+				vendor: slot.vendor,
+				subs: [{ label: null, items: [laterKey(slot.id)] }],
+			});
+		}
+	}
+	for (const slot of repo.secrets) {
+		const name = VENDOR_NAMES[slot.vendor];
+		// Infisical Cloud's screen is built: Run › Secrets, the same screen, under its own group too.
+		if (vendorScreens(slot.vendor) === 'full') {
+			groups.push({
+				label: `Secrets · ${name}`,
+				vendor: slot.vendor,
+				subs: [{ label: null, items: ['secrets'] }],
+			});
+			continue;
+		}
+		extra[laterKey(slot.id)] = laterScreen(
+			name,
+			'Each environment’s secret names, when each was last changed and which are missing show here, never their values.',
+		);
+		groups.push({
+			label: `Secrets · ${name}`,
+			vendor: slot.vendor,
+			subs: [{ label: null, items: [laterKey(slot.id)] }],
+		});
+	}
+	groups.push(groupOf('Governance') as MenuGroup);
+
+	const keys = new Set(['overview', ...groups.flatMap((g) => g.subs.flatMap((s) => s.items))]);
+	const screens: Record<string, ScreenInfo> = {};
+	for (const k of keys) screens[k] = (CONSOLE_MENU.screens[k] ?? extra[k]) as ScreenInfo;
+	// Live deploy's tabs are the repository's environments, not the brief's sample states (Ship always has it).
+	const deploy = screens['deploy'] as ScreenInfo;
+	screens['deploy'] = {
+		...deploy,
+		states: Object.fromEntries(repo.environments.map((e) => [e.name, e.label])),
+		captions: Object.fromEntries(
+			repo.environments.map((e) => [
+				e.name,
+				e.cloudId === null
+					? `${e.label}: the local pipeline and stack, run from here`
+					: `${e.label}: deploys run by GitHub Actions with a 10-minute watch and rollback, once its server exists`,
+			]),
+		),
+		partStates: null,
+		offStates: null,
+	};
+	const aliases = Object.fromEntries(Object.entries(CONSOLE_MENU.aliases).filter(([k]) => keys.has(k)));
+	return { menu: groups, aliases, later: CONSOLE_MENU.later.filter((k) => keys.has(k)), screens };
+}

@@ -1,0 +1,120 @@
+import { Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
+import { firstValueFrom } from 'rxjs';
+
+import { booksWords } from '@core/accounts/books-refusal';
+import { OrdersGateway } from '@core/orders/orders.gateway';
+import { RupeesPipe, apiProblem, rupees } from '@core/purchasing/purchasing-format';
+import { parseRupees } from '@features/purchasing/shared/payment-popup';
+
+import { indiaToday } from './order-status-popup';
+
+import type { ManualPaymentMethod, Order } from '@saha-textile/contracts';
+
+/**
+ * Record payment (brief ck03–ck05, oo03–oo05, od08; concern K3): UPI, bank transfer or cash on
+ * delivery, always in ₹ at the order's ₹ total. The amount opens at what is due now; less leaves the
+ * rest due, more leaves the order paid ahead. A bank transfer not yet in the account waits as pending.
+ */
+@Component({
+	selector: 'app-order-payment-popup',
+	templateUrl: './order-payment-popup.html',
+	imports: [FormsModule, RupeesPipe, TranslocoModule],
+})
+export class OrderPaymentPopup {
+	readonly modal = inject(NgbActiveModal);
+	private readonly gateway = inject(OrdersGateway);
+	private readonly transloco = inject(TranslocoService);
+
+	readonly order = signal<Order | null>(null);
+	readonly dueINR = signal(0);
+	readonly method = signal<ManualPaymentMethod>('upi');
+	readonly amount = signal('');
+	readonly reference = signal('');
+	readonly receivedOn = signal(indiaToday());
+	readonly received = signal(true);
+	readonly note = signal('');
+	/** od08: who collected the cash on delivery. */
+	readonly collectedBy = signal('');
+	readonly busy = signal(false);
+	readonly error = signal<string | null>(null);
+	readonly today = indiaToday();
+	readonly methods: readonly ManualPaymentMethod[] = ['upi', 'bankTransfer', 'cashOnDelivery'];
+
+	readonly amountValue = computed(() => parseRupees(this.amount()));
+	/** What recording this amount does to the balance (oo03–oo05). */
+	readonly outcome = computed<{ tone: 'success' | 'info' | 'warning'; lead: string; rest: string } | null>(() => {
+		const value = this.amountValue();
+		if (value === null || value <= 0) return null;
+		const due = this.dueINR();
+		const order = this.order();
+		const open = !!order?.openedAt && !order.closedAt;
+		const t = (key: string, params?: Record<string, unknown>) => this.transloco.translate(key, params);
+		if (Math.abs(value - due) < 0.005)
+			return { tone: 'success', lead: t('ord_pay_lead_exact'), rest: open ? t('ord_pay_rest_exact_open') : '' };
+		if (value < due)
+			return {
+				tone: 'warning',
+				lead: t('ord_pay_lead_less', { amount: rupees(due - value) }),
+				rest: t('ord_pay_rest_less'),
+			};
+		return {
+			tone: 'info',
+			lead: t('ord_pay_lead_more', { amount: rupees(value - due) }),
+			rest: t(open ? 'ord_pay_rest_more_open' : 'ord_pay_rest_more'),
+		};
+	});
+
+	async start(order: Order): Promise<void> {
+		this.order.set(order);
+		try {
+			const prefill = await firstValueFrom(this.gateway.paymentPrefill(order.id));
+			this.dueINR.set(prefill.amountINR);
+		} catch {
+			this.dueINR.set(order.balance?.dueINR ?? order.totalINR);
+		}
+		this.amount.set(String(this.dueINR()));
+	}
+
+	canSave(): boolean {
+		const value = this.amountValue();
+		return !this.busy() && value !== null && value > 0 && !!this.reference().trim() && !!this.receivedOn();
+	}
+
+	async save(): Promise<void> {
+		const order = this.order();
+		const value = this.amountValue();
+		if (!order || value === null || !this.canSave()) return;
+		this.busy.set(true);
+		this.error.set(null);
+		try {
+			const saved = await firstValueFrom(
+				this.gateway.recordPayment(order.id, {
+					method: this.method(),
+					amountINR: value,
+					reference: this.reference().trim(),
+					receivedOn: this.receivedOn(),
+					received: this.method() === 'bankTransfer' ? this.received() : true,
+					note: this.note().trim() || null,
+					proofMediaId: null,
+					collector: this.method() === 'cashOnDelivery' ? 'staff' : null,
+					collectedBy: this.method() === 'cashOnDelivery' ? this.collectedBy().trim() || null : null,
+					revision: order.revision,
+				}),
+			);
+			this.modal.close(saved);
+		} catch (error) {
+			// A step the books refused says why in words (Postings and Convert brief AP2).
+			this.error.set(
+				booksWords(apiProblem(error, this.transloco.translate('ord_action_failed')), (key, params) =>
+					this.transloco.translate(key, params),
+				),
+			);
+		} finally {
+			this.busy.set(false);
+		}
+	}
+}

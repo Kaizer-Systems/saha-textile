@@ -1,0 +1,429 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="title()"
+>
+	<form
+		class="theme-form theme-form-2 mega-form"
+		id="profile_form"
+		[formGroup]="form"
+		(ngSubmit)="save()"
+	>
+		@if (profile(); as current) {
+		<p class="text-muted">
+			<strong>{{ displayName() }}</strong>
+			· {{ 'profile_used_by' | plural: photos() }}
+		</p>
+		}
+		<div class="row align-items-center mb-4">
+			<label
+				class="form-label-title col-sm-3 mb-0"
+				for="profile_name"
+			>
+				{{ 'name' | transloco }}
+			</label>
+			<div class="col-sm-9">
+				<input
+					class="form-control"
+					id="profile_name"
+					formControlName="name"
+					maxlength="60"
+				/>
+				<p class="help-text">{{ (builtIn() ? 'profile_name_built_in' : 'profile_name_help') | transloco }}</p>
+			</div>
+		</div>
+
+		<div class="row align-items-center mb-4">
+			<label
+				class="form-label-title col-sm-3 mb-0"
+				for="profile_shape_w"
+			>
+				{{ 'profile_shape' | transloco }}
+			</label>
+			<div class="col-sm-9">
+				<div class="d-flex align-items-center flex-wrap gap-2">
+					<input
+						class="form-control"
+						style="width: 90px"
+						type="number"
+						id="profile_shape_w"
+						formControlName="shapeWidth"
+						[attr.aria-label]="'profile_shape_width' | transloco"
+					/>
+					<span>:</span>
+					<input
+						class="form-control"
+						style="width: 90px"
+						type="number"
+						id="profile_shape_h"
+						formControlName="shapeHeight"
+						[attr.aria-label]="'profile_shape_height' | transloco"
+					/>
+					<div class="form-check ms-sm-3">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="profile_keep_shape"
+							formControlName="keepShape"
+						/>
+						<label
+							class="form-check-label"
+							for="profile_keep_shape"
+						>
+							{{ 'profile_keep_own_shape' | transloco }}
+						</label>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="row align-items-center mb-4">
+			<span class="form-label-title col-sm-3 mb-0">{{ 'profile_sizes_made' | transloco }}</span>
+			<div class="col-sm-9">
+				@for (role of families(); track role) {
+				<div
+					class="mb-2"
+					[attr.data-family]="role"
+				>
+					@if (families().length > 1) {
+					<div class="small text-muted mb-1">{{ familyKey(role) | transloco }}</div>
+					}
+					<div class="d-flex align-items-center flex-wrap gap-2">
+						@for (width of widths()[role]; track width) {
+						<span class="fm-chip muted">
+							{{ width }}
+							<button
+								type="button"
+								class="btn border-0 p-0"
+								[title]="'profile_remove_size' | transloco: { px: width }"
+								[attr.aria-label]="'profile_remove_size' | transloco: { px: width }"
+								[disabled]="(widths()[role]?.length ?? 0) <= 1"
+								(click)="removeSize(role, width)"
+							>
+								<i class="ri-close-line"></i>
+							</button>
+						</span>
+						}
+						<input
+							class="form-control"
+							style="width: 100px"
+							type="number"
+							[id]="'profile_add_size_' + role"
+							[attr.aria-label]="'profile_add_size' | transloco"
+							[placeholder]="'px'"
+							[value]="adding()[role] ?? ''"
+							(input)="setAdding(role, $any($event.target).value)"
+							(keydown.enter)="$event.preventDefault(); addSize(role)"
+						/>
+						<button
+							type="button"
+							class="btn btn-outline btn-sm"
+							[id]="'profile_add_size_btn_' + role"
+							(click)="addSize(role)"
+						>
+							+ {{ 'profile_add_size' | transloco }}
+						</button>
+					</div>
+				</div>
+				}
+				<p class="help-text">{{ 'profile_never_enlarged' | transloco }}</p>
+			</div>
+		</div>
+
+		<div class="row align-items-center mb-4">
+			<span class="form-label-title col-sm-3 mb-0">{{ 'profile_formats' | transloco }}</span>
+			<div class="col-sm-9">
+				<div class="d-flex align-items-center flex-wrap gap-3">
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="profile_format_main"
+							checked
+							disabled
+						/>
+						<label
+							class="form-check-label"
+							for="profile_format_main"
+						>
+							{{ icon() ? 'PNG' : 'WebP' }}
+						</label>
+					</div>
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="profile_format_jpeg"
+							disabled
+						/>
+						<label
+							class="form-check-label"
+							for="profile_format_jpeg"
+						>
+							{{ 'profile_format_jpeg' | transloco }}
+						</label>
+					</div>
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="profile_format_avif"
+							disabled
+						/>
+						<label
+							class="form-check-label"
+							for="profile_format_avif"
+						>
+							{{ 'profile_format_avif' | transloco }}
+						</label>
+					</div>
+					<div class="ms-sm-3 d-flex align-items-center gap-2">
+						<label for="profile_quality">{{ 'profile_quality' | transloco }}</label>
+						<input
+							class="form-control"
+							style="width: 170px"
+							type="number"
+							id="profile_quality"
+							formControlName="quality"
+							[placeholder]="'profile_quality_own' | transloco"
+						/>
+					</div>
+				</div>
+				<p class="help-text">{{ 'profile_formats_help' | transloco }}</p>
+			</div>
+		</div>
+
+		<div class="row align-items-center mb-4">
+			<label
+				class="form-label-title col-sm-3 mb-0"
+				for="profile_min_px"
+			>
+				{{ 'profile_smallest' | transloco }}
+			</label>
+			<div class="col-sm-9">
+				<div class="d-flex align-items-center flex-wrap gap-2">
+					<input
+						class="form-control"
+						style="width: 110px"
+						type="number"
+						id="profile_min_px"
+						formControlName="minPx"
+					/>
+					<select
+						class="form-select"
+						style="width: auto; min-width: 11rem"
+						id="profile_min_edge"
+						formControlName="minEdge"
+						[attr.aria-label]="'profile_min_edge' | transloco"
+					>
+						<option value="width">{{ 'profile_px_wide' | transloco }}</option>
+						<option value="short">{{ 'profile_px_short' | transloco }}</option>
+					</select>
+					<select
+						class="form-select"
+						style="width: auto; min-width: 9rem"
+						id="profile_min_mode"
+						formControlName="minMode"
+						[attr.aria-label]="'profile_min_mode' | transloco"
+					>
+						<option value="warn">{{ 'profile_warn_only' | transloco }}</option>
+						<option value="refuse">{{ 'profile_refuse' | transloco }}</option>
+					</select>
+				</div>
+				<p class="help-text">{{ 'profile_smallest_help' | transloco }}</p>
+			</div>
+		</div>
+
+		<div class="row align-items-center mb-4">
+			<span class="form-label-title col-sm-3 mb-0">{{ 'profile_fills' | transloco }}</span>
+			<div class="col-sm-9">
+				@if (keepShape()) {
+				<p class="mb-0">{{ 'profile_keep_shape_no_fills' | transloco }}</p>
+				} @else {
+				<div
+					class="fm-fit-demo"
+					id="profile_fills"
+				>
+					@for (fill of fillOptions(); track fill) {
+					<label [class.on]="fills().has(fill)">
+						<div
+							class="fm-fit-box"
+							[class.white]="fill === 'white'"
+							[class.dom]="fill === 'colour'"
+							[style.aspect-ratio]="ratio()"
+							[style.background]="fill === 'brand' ? brandColour() : null"
+						>
+							@if (fill === 'blur') {
+							<img
+								class="bg"
+								[src]="sample"
+								alt=""
+							/>
+							}
+							<img
+								[class.crop]="fill === 'crop'"
+								[src]="sample"
+								alt=""
+							/>
+						</div>
+						<input
+							class="form-check-input me-1"
+							type="checkbox"
+							[id]="'profile_fill_' + fill"
+							[checked]="fills().has(fill)"
+							(change)="toggleFill(fill)"
+						/>
+						{{ fillName(fill) | transloco }}
+					</label>
+					}
+				</div>
+				}
+				<p class="help-text">{{ 'profile_fills_help' | transloco }}</p>
+			</div>
+		</div>
+
+		<div class="row align-items-center mb-4">
+			<label
+				class="form-label-title col-sm-3 mb-0"
+				for="profile_max_mb"
+			>
+				{{ 'profile_max_upload' | transloco }}
+			</label>
+			<div class="col-sm-9">
+				<div class="d-flex align-items-center gap-2">
+					<input
+						class="form-control"
+						style="width: 110px"
+						type="number"
+						id="profile_max_mb"
+						formControlName="maxMb"
+					/>
+					<span>{{ 'profile_mb_per_image' | transloco }}</span>
+				</div>
+				<p class="help-text">{{ 'profile_max_upload_help' | transloco }}</p>
+			</div>
+		</div>
+
+		<div class="row align-items-center mb-4">
+			<span class="form-label-title col-sm-3 mb-0">{{ 'profile_types' | transloco }}</span>
+			<div class="col-sm-9">
+				<div
+					class="d-flex flex-wrap gap-3"
+					id="profile_types"
+				>
+					@for (type of types; track type.mime) {
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							[id]="'profile_type_' + $index"
+							[checked]="accepts().has(type.mime)"
+							(change)="toggleType(type.mime)"
+						/>
+						<label
+							class="form-check-label"
+							[for]="'profile_type_' + $index"
+						>
+							{{ type.label }}
+						</label>
+					</div>
+					}
+				</div>
+				<p class="help-text">{{ 'profile_types_help' | transloco }}</p>
+			</div>
+		</div>
+
+		<div class="row align-items-center mb-4">
+			<label
+				class="form-label-title col-sm-3 mb-0"
+				for="profile_enabled"
+			>
+				{{ 'status' | transloco }}
+			</label>
+			<div class="col-sm-9">
+				<div class="form-check form-switch ps-0">
+					<label class="switch">
+						<input
+							type="checkbox"
+							id="profile_enabled"
+							formControlName="enabled"
+						/>
+						<span class="switch-state"></span>
+					</label>
+				</div>
+				<p class="help-text">{{ 'profile_status_help' | transloco }}</p>
+			</div>
+		</div>
+
+		@if (error(); as message) {
+		<div
+			class="alert alert-danger"
+			id="profile_error"
+		>
+			{{ message }}
+		</div>
+		}
+		<div class="d-flex justify-content-end gap-2">
+			<a
+				class="btn btn-outline"
+				[routerLink]="['/setting/image-profiles']"
+			>
+				{{ 'cancel' | transloco }}
+			</a>
+			<button
+				type="submit"
+				class="btn btn-theme"
+				id="profile_save"
+				[disabled]="saving()"
+			>
+				{{ 'profile_save' | transloco }}
+			</button>
+		</div>
+		<p class="help-text mt-2 text-end">
+			{{ 'profile_changes_apply' | transloco }} @if (key()) {
+			<a
+				href="javascript:void(0)"
+				class="text-decoration-underline"
+				id="profile_refresh"
+				(click)="bringUpToDate()"
+			>
+				{{ 'profile_refresh_link' | transloco }}
+			</a>
+			}
+		</p>
+	</form>
+</app-page-wrapper>
+
+<!-- F02's “Bring older versions up to date”: the theme's confirm popup, as for removing a version. -->
+<ng-template
+	#profileRefresh
+	let-confirm
+>
+	<div
+		class="modal-body"
+		id="profile_refresh_confirm"
+	>
+		<i class="ri-refresh-line icon-box"></i>
+		<h5 class="modal-title">{{ 'profile_refresh_title' | transloco }}</h5>
+		@if (refreshing(); as preview) {
+		<p>{{ 'profile_refresh_body' | transloco: { photos: preview.photos, versions: preview.versions } }}</p>
+		<p>{{ 'profile_refresh_keep' | transloco: { size: (preview.bytes | fileSize) } }}</p>
+		}
+		<div class="button-box">
+			<button
+				type="button"
+				class="btn-md fw-bold btn btn-secondary"
+				(click)="confirm.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn-md fw-bold btn btn-theme"
+				id="profile_refresh_yes"
+				(click)="confirm.close('yes')"
+			>
+				{{ 'profile_refresh_yes' | transloco }}
+			</button>
+		</div>
+	</div>
+</ng-template>

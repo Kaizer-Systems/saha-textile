@@ -1,0 +1,114 @@
+<div class="modal-header">
+	<h2 id="fm_focal_title">{{ 'fm_focal_title' | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+@if (input(); as photo) {
+<div
+	class="modal-body"
+	id="fm_focal"
+>
+	<div class="row g-4">
+		<div class="col-md-5 text-center">
+			<div
+				class="fm-focal"
+				role="button"
+				tabindex="0"
+				[title]="'fm_focal_pick' | transloco"
+				[attr.aria-label]="'fm_focal_pick' | transloco"
+				(click)="pick($event)"
+				(keydown.enter)="save()"
+			>
+				<img
+					[src]="photo.picture"
+					alt=""
+				/>
+				<span
+					class="fm-dotmark"
+					[style.left.%]="point().x * 100"
+					[style.top.%]="point().y * 100"
+				></span>
+			</div>
+			<p class="small text-muted mt-2 mb-0">{{ 'fm_focal_pick' | transloco }}</p>
+		</div>
+		<div class="col-md-7">
+			<p class="text-muted small">
+				<strong class="text-body">{{ photo.name }}.</strong>
+				{{ 'fm_focal_only_crops' | transloco: { profiles: cropNames() } }}
+			</p>
+			<div class="row">
+				@for (crop of previews(); track crop.key) {
+				<div class="col-6">
+					<div class="mb-3">
+						<div class="small fw-semibold mb-1">
+							{{ 'fm_focal_with_point' | transloco: { name: crop.name } }}
+						</div>
+						<div
+							class="fm-crop"
+							[style.width.px]="crop.width"
+							[style.height.px]="crop.height"
+						>
+							<img
+								[src]="photo.picture"
+								alt=""
+								[style.object-position]="crop.withPoint"
+							/>
+						</div>
+					</div>
+				</div>
+				<div class="col-6">
+					<div class="mb-3">
+						<div class="small fw-semibold mb-1">
+							{{ 'fm_focal_today' | transloco: { name: crop.name } }}
+						</div>
+						<div
+							class="fm-crop"
+							[style.width.px]="crop.width"
+							[style.height.px]="crop.height"
+						>
+							<img
+								[src]="photo.picture"
+								alt=""
+								[style.object-position]="crop.today"
+							/>
+						</div>
+					</div>
+				</div>
+				}
+			</div>
+		</div>
+	</div>
+</div>
+}
+<div class="modal-footer">
+	<div class="left-part">
+		<span class="fm-footer-note info">
+			<i class="ri-information-line"></i>
+			{{ 'fm_focal_note' | transloco }}
+		</span>
+	</div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			id="fm_focal_reset"
+			(click)="reset()"
+		>
+			{{ 'fm_focal_reset' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="fm_focal_save"
+			(click)="save()"
+		>
+			{{ 'fm_focal_save' | transloco }}
+		</button>
+	</div>
+</div>

@@ -1,0 +1,179 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'accounts_banks'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">{{ 'bank_reconcile_title' | transloco: { name: account.data()?.shortName ?? '' } }}</h5>
+			<small class="text-muted">{{ 'bank_reconcile_sub' | transloco }}</small>
+		</div>
+		<div class="d-flex flex-wrap gap-2">
+			<a
+				class="btn btn-outline"
+				id="bank_brs_link"
+				[routerLink]="['/accounts/banks', id(), 'brs']"
+			>
+				{{ 'bank_brs_title' | transloco }}
+			</a>
+			<a
+				class="btn btn-outline"
+				id="bank_rules_link"
+				[routerLink]="['/accounts/banks/matching-rules']"
+			>
+				{{ 'bank_match_rules' | transloco }}
+			</a>
+			<button
+				*hasPermission="'accounts.edit'"
+				type="button"
+				class="btn btn-theme"
+				id="bank_accept_sure"
+				[disabled]="busy() || !view.data()?.sure"
+				(click)="acceptSure()"
+			>
+				<i class="ri-check-double-line"></i>
+				{{ 'bank_accept_sure' | transloco: { count: view.data()?.sure ?? 0 } }}
+			</button>
+		</div>
+	</div>
+	<div class="d-flex align-items-center mb-3 flex-wrap gap-2">
+		@for (t of tabs; track t) {
+		<button
+			type="button"
+			class="align-items-center btn btn-sm d-flex"
+			[id]="'bank_rec_tab_' + t"
+			[class.btn-theme]="tab() === t"
+			[class.btn-outline]="tab() !== t"
+			[attr.aria-pressed]="tab() === t"
+			(click)="tab.set(t)"
+		>
+			{{ 'bank_rec_tab_' + t | transloco }}
+			<span class="ms-1">{{ view.data()?.counts?.[t] ?? 0 }}</span>
+		</button>
+		}
+		<app-period-picker
+			[choices]="presets"
+			[start]="'this_month'"
+			[labelPrefix]="'period_'"
+			[hint]="hint"
+			(picked)="setPeriod($event)"
+		/>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'bank_col_line' | transloco }}</th>
+					<th class="text-end">{{ 'bank_col_amount' | transloco }}</th>
+					<th>{{ 'bank_col_match' | transloco }}</th>
+					<th>{{ 'bank_col_why' | transloco }}</th>
+					<th>{{ 'bank_col_sure' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of rows(); track row.id) {
+				<tr>
+					<td>
+						{{ row.description }}
+						<small class="text-muted d-block">{{ day(row.date) }}</small>
+					</td>
+					<td class="text-end text-nowrap">{{ amount(row) }}</td>
+					<td>{{ matchText(row) }}</td>
+					<td>{{ whyText(row) }}</td>
+					<td>
+						<div [class]="pill[sure(row)]">
+							<span>{{ 'bank_sure_' + sure(row) | transloco }}</span>
+						</div>
+					</td>
+					<td class="text-nowrap">
+						<ul
+							*hasPermission="'accounts.edit'"
+							class="list-unstyled d-flex mb-0 gap-2"
+						>
+							@switch (row.status) { @case ('suggested') {
+							<li>
+								<button
+									type="button"
+									class="btn btn-sm p-0"
+									[disabled]="busy()"
+									[title]="'bank_accept' | transloco"
+									(click)="accept(row)"
+								>
+									<i class="ri-check-line"></i>
+								</button>
+							</li>
+							<li>
+								@if (sure(row) === 'unsure') {
+								<button
+									type="button"
+									class="btn btn-sm p-0"
+									[disabled]="busy()"
+									[title]="'bank_relink' | transloco"
+									(click)="relink(row)"
+								>
+									<i class="ri-link-unlink"></i>
+								</button>
+								} @else {
+								<button
+									type="button"
+									class="btn btn-sm p-0"
+									[disabled]="busy()"
+									[title]="'bank_reject' | transloco"
+									(click)="reject(row)"
+								>
+									<i class="ri-close-line"></i>
+								</button>
+								}
+							</li>
+							} @case ('accepted') {
+							<li>
+								<button
+									type="button"
+									class="btn btn-sm p-0"
+									[disabled]="busy()"
+									[title]="'bank_unmatch' | transloco"
+									(click)="unmatch(row)"
+								>
+									<i class="ri-link-unlink-m"></i>
+								</button>
+							</li>
+							} @default {
+							<li>
+								<button
+									type="button"
+									class="btn btn-sm p-0"
+									[title]="'bank_make_entry' | transloco"
+									(click)="makeEntry(row)"
+								>
+									<i class="ri-add-line"></i>
+								</button>
+							</li>
+							<li>
+								<button
+									type="button"
+									class="btn btn-sm p-0"
+									[disabled]="busy()"
+									[title]="'bank_link' | transloco"
+									(click)="relink(row)"
+								>
+									<i class="ri-link"></i>
+								</button>
+							</li>
+							} }
+						</ul>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="6"
+						class="text-muted"
+					>
+						{{ 'bank_rec_empty' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+</app-page-wrapper>

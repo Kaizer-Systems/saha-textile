@@ -140,14 +140,15 @@ export class OAuthService {
 	}): Promise<{ identity: VerifiedOAuthIdentity; guestCartId: string | null }> {
 		if (!this.isConfigured(input.provider)) throw new OAuthProviderUnavailableError(input.provider);
 
-		const state = await this.states.consume(this.auth.hash(input.stateId));
+		const state = await this.auth.findByHash(input.stateId, (hash) => this.states.consume(hash));
 		if (!state) throw new OAuthStateInvalidError();
 		if (state.provider !== input.provider) throw new OAuthStateInvalidError();
 		if (Date.parse(state.expiresAt) <= Date.now()) throw new OAuthStateInvalidError();
 
 		// A state that expected a nonce must be answered with the matching one.
 		if (state.nonceHash) {
-			if (!input.nonce || this.auth.hash(input.nonce) !== state.nonceHash) throw new OAuthStateInvalidError();
+			if (!input.nonce || !this.auth.hashMatches(input.nonce, state.nonceHash))
+				throw new OAuthStateInvalidError();
 		}
 
 		const identity = await this.verifiers[input.provider].verify({

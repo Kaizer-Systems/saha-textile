@@ -2,9 +2,11 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, dev, qa, staging]
+    branches: [main, dev, staging]
+  # `staging` runs these through publish-images.yml, which calls this file first.
   push:
-    branches: [main, dev, qa, staging]
+    branches: [main, dev]
+  workflow_call:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -19,13 +21,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
 
       - name: Setup Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -33,11 +35,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The Release Console is checked by its own job below, only when it changes (owner, 2026-11-10).
       - name: Lint and repository guards
-        run: pnpm lint
+        run: pnpm lint:shop
+
+      # The Infisical renderer and its checks, tested with made-up values only.
+      - name: Script tests
+        run: pnpm test:scripts
 
       - name: Typecheck
-        run: pnpm turbo run typecheck
+        run: pnpm typecheck:shop
 
   coverage:
     name: Tests at 100% coverage
@@ -46,13 +53,13 @@ jobs:
       MONGODB_PORT: 27017
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
 
       - name: Setup Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -69,18 +76,33 @@ jobs:
       - name: Tests and coverage
         run: pnpm coverage
 
+      # What the Release Console's Coverage screen reads for this commit: every workspace's line data,
+      # each test's outcome and the run's description. Kept when tests fail too, since that is when it helps.
+      - name: Keep the coverage reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage
+          path: |
+            coverage/meta.json
+            coverage/*/coverage-final.json
+            coverage/*/coverage-summary.json
+            coverage/*/tests.json
+          if-no-files-found: ignore
+          retention-days: 90
+
   build:
     name: Production builds
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
 
       - name: Setup Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -98,6 +120,14 @@ jobs:
       MONGODB_PORT: 27017
       MEILISEARCH_HOST: http://127.0.0.1:7700
       MEILISEARCH_API_KEY: ci-only-search-key
+      # LocalStack's published test identity, accepted only by the runner's loopback endpoint.
+      SPACES_KEY: test
+      SPACES_SECRET: test
+      SPACES_BUCKET: saha-textile-e2e
+      SPACES_REGION: us-east-1
+      SPACES_ENDPOINT: https://127.0.0.1:9000
+      # Public catalogue and blog fixtures are already published here. Presigned reads and writes use the test bucket.
+      SPACES_CDN_URL: https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com
     services:
       meilisearch:
         image: getmeili/meilisearch:v1.16.0
@@ -108,13 +138,114 @@ jobs:
           MEILI_ENV: development
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
 
       - name: Setup Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start MongoDB and Redis
+        run: |
+          pnpm mongo:up
+          pnpm redis:up
+
+      - name: Local HTTPS certificates
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mkcert libnss3-tools
+          # Chrome's NSS database does not exist on a fresh runner. Service-worker
+          # registration needs a trusted origin, even when Playwright can load the page.
+          nss_db="sql:$HOME/.pki/nssdb"
+          mkdir -p "$HOME/.pki/nssdb"
+          certutil -L -d "$nss_db" >/dev/null 2>&1 || certutil -N --empty-password -d "$nss_db"
+          pnpm setup:local-https
+          certutil -A -d "$nss_db" -n saha-textile-e2e -t 'C,,' -i "$(mkcert -CAROOT)/rootCA.pem"
+
+      - name: API settings for this run
+        run: |
+          cp apps/api/.env.example apps/api/.env
+          echo "JWT_ACCESS_SECRET=$(openssl rand -hex 32)" >> apps/api/.env
+          echo "JWT_REFRESH_SECRET=$(openssl rand -hex 32)" >> apps/api/.env
+          echo "CSRF_SECRET=$(openssl rand -hex 32)" >> apps/api/.env
+          echo "GEO_DATA_DIR=$GITHUB_WORKSPACE/e2e/fixtures/geo" >> "$GITHUB_ENV"
+
+      - name: Start isolated media storage
+        run: |
+          umask 077
+          cat certs/localhost-cert.pem certs/localhost-key.pem > "$RUNNER_TEMP/storage-tls.pem"
+          docker run --detach --rm --name saha-textile-e2e-storage \
+            -p 127.0.0.1:9000:4566 \
+            -e SERVICES=s3 -e SKIP_SSL_CERT_DOWNLOAD=1 -e CUSTOM_SSL_CERT_PATH=/certs/server.pem \
+            -e S3_SKIP_SIGNATURE_VALIDATION=1 \
+            -v "$RUNNER_TEMP/storage-tls.pem:/certs/server.pem:ro" \
+            localstack/localstack:4.9.2@sha256:59373b4a27dba3ec15c4db0b7455f0cb68c8a42300e2cbbe362b440f9a131697
+          export AWS_MAX_ATTEMPTS=1
+          export AWS_CA_BUNDLE="$(mkcert -CAROOT)/rootCA.pem"
+          export AWS_ACCESS_KEY_ID="$SPACES_KEY" AWS_SECRET_ACCESS_KEY="$SPACES_SECRET"
+          for attempt in {1..30}; do
+            if aws --endpoint-url "$SPACES_ENDPOINT" --region "$SPACES_REGION" --cli-connect-timeout 2 \
+              --cli-read-timeout 2 s3api create-bucket --bucket "$SPACES_BUCKET"; then
+              break
+            fi
+            if [[ "$attempt" == 30 ]]; then
+              docker logs saha-textile-e2e-storage
+              exit 1
+            fi
+            sleep 1
+          done
+          aws --endpoint-url "$SPACES_ENDPOINT" --region "$SPACES_REGION" s3api put-bucket-cors \
+            --bucket "$SPACES_BUCKET" \
+            --cors-configuration '{"CORSRules":[{"AllowedOrigins":["https://localhost:4200","https://localhost:4300"],"AllowedMethods":["GET","HEAD","PUT"],"AllowedHeaders":["*"],"ExposeHeaders":["ETag"]}]}'
+
+      - name: Browser tests
+        run: pnpm e2e:stack
+
+  speed:
+    name: Speed gate (Lighthouse on the shop's Home, part ${{ matrix.part }})
+    # Page Builder SG-10. Report only until the repository variable SPEED_GATE_ENFORCE is `true`
+    # (a GitHub setting, switched by the owner once phone scores reach the floor).
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    # The same measurements as one long job, split over parallel jobs: part n measures every layout whose
+    # place in the list is n, n + 7, …, so a new layout is never left out. Each part builds its own stack.
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [1, 2, 3, 4, 5, 6, 7]
+    env:
+      MONGODB_PORT: 27017
+      MEILISEARCH_HOST: http://127.0.0.1:7700
+      MEILISEARCH_API_KEY: ci-only-search-key
+      SPEED_GATE_ENFORCE: ${{ vars.SPEED_GATE_ENFORCE }}
+      # Home with each template and the stress layout, each made live in turn (SG-10).
+      SPEED_GATE_LAYOUTS: '1'
+      SPEED_GATE_PART: ${{ matrix.part }}
+      SPEED_GATE_PARTS: ${{ strategy.job-total }}
+    services:
+      meilisearch:
+        image: getmeili/meilisearch:v1.16.0
+        ports:
+          - 7700:7700
+        env:
+          MEILI_MASTER_KEY: ci-only-search-key
+          MEILI_ENV: development
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -139,12 +270,56 @@ jobs:
           echo "JWT_ACCESS_SECRET=$(openssl rand -hex 32)" >> apps/api/.env
           echo "JWT_REFRESH_SECRET=$(openssl rand -hex 32)" >> apps/api/.env
           echo "CSRF_SECRET=$(openssl rand -hex 32)" >> apps/api/.env
-          # Reading a product builds image addresses, so storage must be set. Nothing here uploads,
-          # so the key pair is a placeholder; the bucket name and CDN address are public.
           echo "SPACES_KEY=ci-only-no-access" >> apps/api/.env
           echo "SPACES_SECRET=ci-only-no-access" >> apps/api/.env
           echo "SPACES_BUCKET=saha-textile-media" >> apps/api/.env
           echo "SPACES_CDN_URL=https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com" >> apps/api/.env
 
-      - name: Browser tests
-        run: pnpm e2e:stack
+      - name: Lighthouse on the production builds
+        run: pnpm e2e:stack -- --speed
+
+  console:
+    name: Release Console (only when it or shared setup changes)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+
+      - name: Did the console or shared setup change?
+        id: changed
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if git diff --name-only "$BASE" HEAD | grep -Eq '^(apps/release-console/|apps/release-console-api/|apps/release-agent/|packages/release-console-contracts/|\.release-console\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|package\.json$|turbo\.json$|tsconfig\.base\.json$|eslint\.config\.mjs$|\.github/workflows/ci\.yml$)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup pnpm
+        if: steps.changed.outputs.run == 'true'
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Setup Node
+        if: steps.changed.outputs.run == 'true'
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        if: steps.changed.outputs.run == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint, types, tests and build
+        if: steps.changed.outputs.run == 'true'
+        run: pnpm check:console
+
+      - name: Skipped
+        if: steps.changed.outputs.run != 'true'
+        run: echo "No console or shared setup change in this pull request; console checks skipped."

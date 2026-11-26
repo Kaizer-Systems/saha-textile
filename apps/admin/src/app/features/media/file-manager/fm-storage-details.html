@@ -1,0 +1,128 @@
+<div class="modal-header">
+	<h2 id="fm_storage_title">{{ 'fm_storage' | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div
+	class="modal-body"
+	id="fm_storage_popup"
+>
+	@if (error(); as message) {
+	<div class="alert alert-danger">{{ message }}</div>
+	} @if (summary(); as current) {
+	<div class="d-flex justify-content-between align-items-end mb-1">
+		<strong class="fs-5">
+			{{ current.usedBytes | fileSize }}
+			<span class="text-muted fw-normal fs-6">
+				{{ 'fm_storage_of_plan' | transloco: { plan: (current.planBytes | fileSize), percent: current.percent }
+				}}
+			</span>
+		</strong>
+		<span class="small text-muted">{{ 'fm_on_demand' | transloco }}: {{ current.onDemandBytes | fileSize }}</span>
+	</div>
+	<div
+		class="progress mb-3"
+		style="height: 8px"
+	>
+		<div
+			class="progress-bar"
+			[class]="barClass()"
+			[style.width.%]="current.percent > 100 ? 100 : current.percent"
+		></div>
+	</div>
+	<table class="table-sm mb-3 table">
+		<tbody>
+			@for (row of current.breakdown; track row.key) { @if (rows[row.key]; as words) {
+			<tr [attr.data-row]="row.key">
+				<td>
+					{{ words.label | transloco }}
+					<div class="small text-muted">{{ words.note | transloco }}</div>
+				</td>
+				<td class="text-end text-nowrap">{{ row.bytes | fileSize }}</td>
+			</tr>
+			} } @if (current.reservedBytes) {
+			<tr data-row="reserved">
+				<td>
+					{{ 'fm_storage_reserved' | transloco }}
+					<div class="small text-muted">{{ 'fm_storage_reserved_note' | transloco }}</div>
+				</td>
+				<td class="text-end text-nowrap">{{ current.reservedBytes | fileSize }}</td>
+			</tr>
+			} @if (nightly.data()?.unrecorded; as unrecorded) { @if (unrecorded.count) {
+			<tr data-row="unrecorded">
+				<td>
+					{{ 'fm_storage_unrecorded' | transloco }}
+					<div class="small text-muted">
+						{{ 'fm_storage_unrecorded_note' | transloco: { date: (nightly.data()?.checkedAt | date: 'd MMM
+						y') } }}
+					</div>
+				</td>
+				<td class="text-end text-nowrap">{{ unrecorded.bytes | fileSize }} · {{ unrecorded.count }}</td>
+			</tr>
+			} }
+		</tbody>
+	</table>
+	<table class="table-sm small mb-0 table">
+		<tbody>
+			<tr>
+				<td>
+					{{ 'fm_storage_plan' | transloco }}
+					<div class="small text-muted">
+						{{ 'fm_storage_plan_note' | transloco: { plan: (current.planBytes | fileSize) } }}
+					</div>
+				</td>
+				<td class="text-end text-nowrap">{{ 'fm_storage_plan_price' | transloco }}</td>
+			</tr>
+			<tr>
+				<td>
+					{{ 'fm_storage_past_plan' | transloco: { plan: (current.planBytes | fileSize) } }}
+					<div class="small text-muted">
+						{{ 'fm_storage_past_plan_note' | transloco: { plan: (current.planBytes | fileSize) } }}
+					</div>
+				</td>
+				<td class="text-end text-nowrap">{{ 'fm_storage_past_plan_price' | transloco }}</td>
+			</tr>
+			<tr>
+				<td>
+					{{ 'fm_storage_others' | transloco }}
+					<div class="small text-muted">{{ 'fm_storage_others_note' | transloco }}</div>
+				</td>
+				<td class="text-end text-nowrap">
+					<div class="form-check form-switch d-inline-block mb-0 ps-0">
+						<label class="switch switch-sm">
+							<input
+								type="checkbox"
+								id="fm_storage_others"
+								[attr.aria-label]="'fm_storage_others' | transloco"
+								[checked]="othersAllowed()"
+								[disabled]="!current.canChangeOnDemand || saving()"
+								(change)="toggleOthers()"
+							/>
+							<span class="switch-state"></span>
+						</label>
+					</div>
+					{{ (othersAllowed() ? 'fm_on' : 'fm_off') | transloco }}
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part">
+		<button
+			type="button"
+			class="btn btn-theme"
+			(click)="modal.close()"
+		>
+			{{ 'fm_done' | transloco }}
+		</button>
+	</div>
+</div>

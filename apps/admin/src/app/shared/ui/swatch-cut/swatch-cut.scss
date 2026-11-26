@@ -1,0 +1,110 @@
+// The swatch cut pop-up (brief P11, drawn in section 8): the photo with a draggable square on the left, the square in
+// every picture look on the right. Colours come from the admin's named colours and the theme colour (dark mode follows).
+.sc-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 24px;
+
+	@media (max-width: 767px) {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+.sc-photo {
+	position: relative;
+	overflow: hidden;
+	border-radius: 8px;
+	cursor: crosshair;
+	touch-action: none;
+	user-select: none;
+
+	img {
+		display: block;
+		width: 100%;
+		height: auto;
+		max-height: 64vh;
+		object-fit: contain;
+		pointer-events: none;
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--theme-color);
+		outline-offset: 2px;
+	}
+}
+
+// The square: bright, with everything outside it dimmed by its own shadow.
+.sc-square {
+	position: absolute;
+	border: 2px solid #fff;
+	border-radius: 4px;
+	box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.55);
+	cursor: move;
+	pointer-events: none;
+}
+
+.sc-zoom {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 12px;
+
+	.form-range {
+		flex: 1;
+	}
+}
+
+.sc-zoom-step {
+	padding: 2px 6px;
+	line-height: 1;
+}
+
+.sc-zoom-value {
+	min-width: 3em;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}
+
+.sc-help {
+	margin: 8px 0 0;
+	color: var(--admin-muted);
+	font-size: 13px;
+	font-style: italic;
+
+	&.is-soft {
+		color: var(--admin-warn);
+		font-style: normal;
+		font-weight: 600;
+	}
+}
+
+.sc-preview-title {
+	margin-bottom: 12px;
+	font-size: 15px;
+	font-weight: 600;
+}
+
+.sc-looks {
+	display: grid;
+	grid-template-columns: max-content minmax(0, 1fr);
+	gap: 14px 20px;
+	align-items: center;
+	margin: 0;
+
+	dt {
+		color: var(--admin-muted);
+		font-weight: 400;
+	}
+
+	dd {
+		margin: 0;
+	}
+}
+
+.sc-note {
+	margin: 18px 0 0;
+	padding: 12px 14px;
+	border-radius: 6px;
+	background-color: color-mix(in srgb, currentColor 6%, transparent);
+	font-size: 13px;
+}

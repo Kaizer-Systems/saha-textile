@@ -1,0 +1,67 @@
+<div
+	class="look-preview"
+	[class.is-compact]="compact()"
+	[attr.data-look]="look()"
+>
+	@if (!compact()) {
+	<div class="look-preview-head">
+		<span class="look-preview-title">
+			{{ 'look_preview_title' | transloco: { look: ('look_name_' + look() | transloco) } }}
+		</span>
+		@if (note()) {
+		<span class="look-preview-note">{{ note() | transloco }}</span>
+		}
+	</div>
+	} @if (look() === 'dropdown') {
+	<div class="lp-select">
+		<span>{{ shown()[0]?.label }}</span>
+		<span aria-hidden="true">▾</span>
+	</div>
+	} @else {
+	<ul
+		class="lp-list"
+		[class]="'lp-list lp-' + look()"
+	>
+		@for (value of shown(); track $index; let first = $first) {
+		<li
+			class="lp-item"
+			[class.is-on]="first"
+			[attr.title]="named() ? null : value.label"
+		>
+			@if (radio()) {
+			<span class="lp-ring"></span>
+			} @if (colour()) {
+			<span
+				class="lp-dot"
+				[style.background-color]="value.hex || null"
+			></span>
+			} @if (picture()) { @if (value.picture && value.crop) {
+			<span
+				class="lp-pic lp-cut"
+				[style]="cropStyle(value.crop, value.picture)"
+			></span>
+			} @else if (value.picture) {
+			<img
+				class="lp-pic"
+				[src]="value.picture"
+				alt=""
+			/>
+			} @else {
+			<span class="lp-pic lp-blank"></span>
+			} } @if (named()) {
+			<span class="lp-text">
+				<span class="lp-name">{{ value.label }}</span>
+				@if (look() === 'size_v2' && value.subLabel) {
+				<span class="lp-note">{{ value.subLabel }}</span>
+				} @if (priced() && value.price !== null && value.price !== undefined) {
+				<span class="lp-note">+₹{{ value.price | number }}</span>
+				}
+			</span>
+			}
+		</li>
+		}
+	</ul>
+	} @if (help() && !compact()) {
+	<p class="look-preview-help">{{ help() | transloco }}</p>
+	}
+</div>

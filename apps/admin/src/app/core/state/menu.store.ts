@@ -29,16 +29,39 @@ function updateBadgeValueRecursive(menuItems: IMenu[], path: string, badgeValue:
 	}
 }
 
+function findBadge(menuItems: IMenu[], path: string): IMenu['badgeValue'] {
+	for (const item of menuItems) {
+		if (item.path === path) return item.badgeValue;
+		const found = item.children ? findBadge(item.children, path) : undefined;
+		if (found !== undefined) return found;
+	}
+	return undefined;
+}
+
 export const MenuStore = signalStore(
 	{ providedIn: 'root' },
 	withState(initialState),
 	withMethods((store, navService = inject(NavService)) => ({
+		/** A menu group's number (groups have no path), such as Stock's approvals waiting. */
+		setGroupBadge(id: number, value: number) {
+			const menu = store.menu();
+			const group = menu.find((item) => item.id === id);
+			if (!group || group.badgeValue === value) return;
+			group.badgeValue = value;
+			patchState(store, { menu: [...menu] });
+		},
+		/** One menu entry's number, such as the Inbox's unread conversations. */
+		setBadge(path: string, value: number) {
+			const menu = store.menu();
+			if (findBadge(menu, path) === value) return;
+			updateBadgeValueRecursive(menu, path, value);
+			patchState(store, { menu: [...menu] });
+		},
 		loadBadges(payload?: Params) {
 			navService.getBadges(payload).subscribe({
 				next: (result) => {
 					const menu = store.menu();
 					updateBadgeValueRecursive(menu, '/product', result?.product?.total_in_approved_products);
-					updateBadgeValueRecursive(menu, '/store', result?.store?.total_in_approved_stores);
 					updateBadgeValueRecursive(menu, '/refund', result?.refund?.total_pending_refunds);
 					patchState(store, { badges: result, menu: [...menu] });
 				},

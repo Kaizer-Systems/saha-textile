@@ -64,10 +64,13 @@ describe('MediaAsset', () => {
 		expect(parsed.text).toEqual({ alt: {}, title: {}, caption: {} });
 	});
 
-	it('accepts only JPEG/PNG uploads — AVIF is deliberately absent', () => {
+	it('accepts every photo type the worker reads (media step 5, owner 16 Nov), and not HEIC, which the browser converts', () => {
 		expect(MediaAsset.safeParse(image({ originalFormat: 'image/png' })).success).toBe(true);
-		expect(MediaAsset.safeParse(image({ originalFormat: 'image/avif' })).success).toBe(false);
-		expect(MediaAsset.safeParse(image({ originalFormat: 'image/webp' })).success).toBe(false);
+		expect(MediaAsset.safeParse(image({ originalFormat: 'image/webp' })).success).toBe(true);
+		expect(MediaAsset.safeParse(image({ originalFormat: 'image/gif' })).success).toBe(true);
+		expect(MediaAsset.safeParse(image({ originalFormat: 'image/avif' })).success).toBe(true);
+		expect(MediaAsset.safeParse(image({ originalFormat: 'image/vnd.adobe.photoshop' })).success).toBe(true);
+		expect(MediaAsset.safeParse(image({ originalFormat: 'image/heic' })).success).toBe(false);
 	});
 
 	it('holds several widths per role, unique by (role, width), in WebP or JPEG only', () => {

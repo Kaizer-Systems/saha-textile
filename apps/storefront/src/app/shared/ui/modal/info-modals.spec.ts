@@ -1,8 +1,8 @@
 import { PLATFORM_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TranslocoService } from '@jsverse/transloco';
+import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SiteConfigStore } from '@core/state/site-config.store';
@@ -27,7 +27,10 @@ const render = <T>(type: new () => T, platform = 'browser', result: Promise<unkn
 	return { modal: TestBed.createComponent(type).componentInstance, open, dismissAll };
 };
 
-const guide = { fields: [{ code: 'bust', label: 'Bust', unit: 'in' as const }], rows: [{ size: 'M', values: { bust: 36 } }] };
+const guide = {
+	fields: [{ code: 'bust', label: 'Bust', unit: 'in' as const }],
+	rows: [{ size: 'M', values: { bust: 36 } }],
+};
 
 const cases = [
 	{ name: 'DealsModal', type: DealsModal, call: (modal: DealsModal) => modal.openModal() },

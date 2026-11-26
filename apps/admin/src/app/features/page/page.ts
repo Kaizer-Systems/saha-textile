@@ -1,86 +1,79 @@
-import { Component, effect, inject, signal } from '@angular/core';
-import { Router, RouterModule } from '@angular/router';
+import { DatePipe } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
+import { lastValueFrom } from 'rxjs';
 
-import { Params } from '@data-access/interfaces/core.interface';
-import { IPage } from '@data-access/interfaces/page.interface';
+import { type AdminLegalPage, LegalPagesGateway } from '@core/legal-pages/legal-pages.gateway';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
-import { injectPagesQuery } from '@data-access/queries/page.queries';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { Table } from '@shared/ui/table/table';
 
+/** One row of the list: the page's English title, its address and the date of the last save. */
+interface PageRow {
+	id: string;
+	title: string;
+	address: string;
+	updated_at: string;
+}
+
+/**
+ * Admin › Pages (Legal Pages brief, P1): the four legal pages from the API. The pencil opens a page's form. Their
+ * addresses are fixed and they are always on the shop, so there is no Add Page, Delete, tick box or Status switch
+ * (choice A, owner's OK 16 Nov). `?missing=<language>` (Settings › Languages) lists only pages missing that
+ * language's Title or Content.
+ */
 @Component({
 	selector: 'app-page',
 	templateUrl: './page.html',
 	styleUrls: ['./page.scss'],
-	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
+	imports: [PageWrapper, Table, TranslocoModule],
+	providers: [DatePipe],
 })
 export class Page {
-	router = inject(Router);
+	private readonly router = inject(Router);
+	private readonly gateway = inject(LegalPagesGateway);
+	readonly missing = (inject(ActivatedRoute).snapshot.queryParams['missing'] as string | undefined) ?? null;
+	readonly pages = signal<AdminLegalPage[]>([]);
 
-	private readonly params = signal<Params>({});
-	readonly pagesQuery = injectPagesQuery(() => this.params());
-
-	public tableConfig: ITableConfig = {
-		columns: [
-			{ title: 'No.', dataField: 'no', type: 'no' },
-			{ title: 'title', dataField: 'title', sortable: true, sort_direction: 'desc' },
-			{
-				title: 'created_at',
-				dataField: 'created_at',
-				type: 'date',
-				sortable: true,
-				sort_direction: 'desc',
-			},
-			{ title: 'status', dataField: 'status', type: 'switch' },
-		],
-		rowActions: [
-			{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'page.edit' },
-			{
-				label: 'Delete',
-				actionToPerform: 'delete',
-				icon: 'ri-delete-bin-line',
-				permission: 'page.destroy',
-			},
-		],
-		data: [] as IPage[],
-		total: 0,
-	};
+	readonly tableConfig = computed<ITableConfig<PageRow>>(() => {
+		const rows: PageRow[] = this.pages()
+			.filter((row) => !this.missing || (row.gaps[this.missing]?.length ?? 0) > 0)
+			.map((row) => ({
+				id: row.page.slug,
+				title: row.page.title['en'] ?? row.page.slug,
+				address: `/${row.page.slug}`,
+				updated_at: row.page.updatedAt,
+			}));
+		return {
+			columns: [
+				{ title: 'No.', dataField: 'no', type: 'no' },
+				{ title: 'title', dataField: 'title' },
+				{ title: 'page_address', dataField: 'address' },
+				{ title: 'updated_at', dataField: 'updated_at', type: 'date' },
+			],
+			rowActions: [{ label: 'edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'page.edit' }],
+			data: rows,
+			total: rows.length,
+		};
+	});
 
 	constructor() {
-		effect(() => {
-			const page = this.pagesQuery.data();
-			this.tableConfig.data = page ? page.data : [];
-			this.tableConfig.total = page ? page.total : 0;
-		});
+		void lastValueFrom(this.gateway.list()).then(
+			(rows) => this.pages.set(rows),
+			() => this.pages.set([]),
+		);
 	}
 
-	onTableChange(data?: Params) {
-		this.params.set({ ...data });
+	onActionClicked(action: ITableClickedAction): void {
+		if (action.actionToPerform === 'edit') this.edit(action.data as PageRow);
 	}
 
-	onActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform == 'edit') this.edit(action.data);
-		else if (action.actionToPerform == 'status') this.status(action.data);
-		else if (action.actionToPerform == 'delete') this.delete(action.data);
-		else if (action.actionToPerform == 'deleteAll') this.deleteAll(action.data);
-	}
-
-	edit(data: IPage) {
-		void this.router.navigateByUrl(`/page/edit/${data.id}`);
-	}
-
-	status(_data: IPage) {
-		// Mock: status toggle has no backend yet.
-	}
-
-	delete(_data: IPage) {
-		// Mock: delete has no backend yet.
-	}
-
-	deleteAll(_ids: number[]) {
-		// Mock: bulk delete has no backend yet.
+	edit(row: PageRow): void {
+		void this.router.navigate(
+			['/page/edit', row.id],
+			this.missing ? { queryParams: { missing: this.missing } } : {},
+		);
 	}
 }

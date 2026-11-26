@@ -631,6 +631,12 @@ footer {
 
 		.main-footer {
 			.footer-logo {
+				// Without a logo picture the shop's name stands in: white like this footer's titles, not the link colour
+				// (the Brand Kit colour read 3.1 : 1 on this dark ground, under AA at phone size).
+				.theme-logo a h2 {
+					color: #fff;
+				}
+
 				.footer-logo-contain {
 					.address {
 						li {

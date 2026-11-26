@@ -7,6 +7,7 @@ import type {
 	NotificationTemplate,
 } from '@saha-textile/contracts';
 import type {
+	CommunicationSendGate,
 	ConsentRepository,
 	MessageOutboxRepository,
 	NotificationMessage,
@@ -26,6 +27,8 @@ export interface Msg91NotificationAdapterDeps {
 	templates: NotificationTemplateRepository;
 	outbox: MessageOutboxRepository;
 	consent: ConsentRepository;
+	/** Settings › Communications: a message switched off on a channel is not sent. */
+	gate?: Pick<CommunicationSendGate, 'allows'>;
 	fetchImpl?: Msg91Fetch;
 	now?: () => Date;
 	idFactory?: () => string;
@@ -44,6 +47,7 @@ export class Msg91NotificationAdapter implements NotificationPort {
 	private readonly templates: NotificationTemplateRepository;
 	private readonly outbox: MessageOutboxRepository;
 	private readonly consent: ConsentRepository;
+	private readonly gate: Pick<CommunicationSendGate, 'allows'> | null;
 	private readonly now: () => Date;
 	private readonly idFactory: () => string;
 
@@ -53,6 +57,7 @@ export class Msg91NotificationAdapter implements NotificationPort {
 		this.templates = deps.templates;
 		this.outbox = deps.outbox;
 		this.consent = deps.consent;
+		this.gate = deps.gate ?? null;
 		this.now = deps.now ?? (() => new Date());
 		this.idFactory = deps.idFactory ?? (() => `outbox_${randomUUID()}`);
 		this.client = new Msg91HttpClient({
@@ -104,6 +109,11 @@ export class Msg91NotificationAdapter implements NotificationPort {
 			return this.finish(outboxEntryId, 'suppressed_channel_disabled', null, null);
 		}
 
+		// The channel kill switch above wins; then the per-message switch.
+		if (this.gate && !(await this.gate.allows(message.templateKey, message.channel))) {
+			return this.finish(outboxEntryId, 'suppressed_use_disabled', null, null);
+		}
+
 		const settings = await this.settings.findSettings(message.channel, message.category);
 		if (
 			settings?.planLimit !== null &&
@@ -143,6 +153,7 @@ export class Msg91NotificationAdapter implements NotificationPort {
 
 		const toolResult = await dispatchMsg91Tool(this.client, this.config, {
 			tool: CHANNEL_TOOL[message.channel],
+			templateKey: message.templateKey,
 			providerTemplateId,
 			destination: message.destination,
 			variables: message.variables ?? {},

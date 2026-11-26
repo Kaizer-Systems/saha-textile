@@ -6,6 +6,7 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { ClickOutsideDirective } from '@shared/directives/out-side-directive';
 
 import { DropdownList } from './dropdown-list/dropdown-list';
+import { childrenOf, type DropdownOption, type DropdownOptionId, labelOf } from './dropdown-option';
 
 @Component({
 	selector: 'app-advanced-dropdown',
@@ -14,7 +15,7 @@ import { DropdownList } from './dropdown-list/dropdown-list';
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	imports: [ClickOutsideDirective, ReactiveFormsModule, DropdownList, TranslocoModule],
 })
-export class AdvancedDropdown {
+export class AdvancedDropdown<T extends DropdownOption = DropdownOption> {
 	readonly dropdownContainer = viewChild.required<ElementRef>('dropdownContainer');
 	readonly toggleButton = viewChild<ElementRef>('toggleButton');
 	readonly items = viewChild<ElementRef>('items');
@@ -22,26 +23,25 @@ export class AdvancedDropdown {
 	readonly selectSingle = input<boolean>(false);
 	readonly displayKey = input<string>('name');
 	readonly subArrayKey = input<string>('');
-	readonly options = input<any[]>([]);
-	readonly selectedOption = input<any[]>([]);
+	readonly options = input<readonly T[]>([]);
+	/** The ids already chosen; compared as text. */
+	readonly selectedOption = input<readonly unknown[]>([]);
 	readonly position = input<string>('bottom');
 
-	readonly selectedItem = output<any>();
+	readonly selectedItem = output<DropdownOptionId<T>[]>();
 
 	public isOpen = false;
-	public optionsData: any[] = [];
-	public selectedPills: any[] = [];
-	public selectedIds: number[] = [];
-	public breadCrumbValues: any[] = [];
+	public optionsData: readonly T[] = [];
+	public selectedPills: T[] = [];
+	public selectedIds: DropdownOptionId<T>[] = [];
+	public breadCrumbValues: T[] = [];
 	public term = new FormControl('');
 
 	constructor() {
-		this.term.valueChanges.subscribe((data: any) => {
+		this.term.valueChanges.subscribe((data) => {
 			if (data) {
-				this.optionsData = [];
-				this.options().forEach((item) => {
-					this.hasValue(item) && this.optionsData.push(item);
-				});
+				const term = data.toLowerCase();
+				this.optionsData = this.options().filter((item) => this.hasValue(item, term));
 			} else {
 				this.optionsData = this.options();
 			}
@@ -61,40 +61,33 @@ export class AdvancedDropdown {
 		}
 	}
 
-	getSelectedData(value: any) {
-		this.options().forEach((item) => {
-			this.recursiveSelected(
-				item,
-				value.map(function (x: any) {
-					return parseInt(x);
-				}),
-			);
-		});
+	/** Ids are compared as text: the catalogue's ids are words such as `cat_2051`, not numbers. */
+	getSelectedData(value: readonly unknown[]) {
+		const ids = value.map((x) => String(x));
+		this.options().forEach((item) => this.recursiveSelected(item, ids));
 	}
 
-	recursiveSelected(item: any, value: any) {
-		if (item.id && value.includes(item.id)) {
+	recursiveSelected(item: T, value: readonly string[]) {
+		if (item.id && value.includes(String(item.id))) {
 			this.onSelect(item);
 		}
-		if (item[this.subArrayKey()]?.length) {
-			item[this.subArrayKey()].forEach((child: any) => {
-				this.recursiveSelected(child, value);
-			});
-		}
+		this.children(item).forEach((child) => this.recursiveSelected(child, value));
 	}
 
-	hasValue(item: any) {
-		let valueToReturn = false;
-		if (item[this.displayKey()].toLowerCase().includes(this.term?.value?.toLowerCase())) {
-			valueToReturn = true;
-		}
-		item[this.subArrayKey()]?.length &&
-			item[this.subArrayKey()].forEach((child: any) => {
-				if (this.hasValue(child)) {
-					valueToReturn = true;
-				}
-			});
-		return valueToReturn;
+	/** A row matches the search (`term`, lower case) when its label does, or any row under it. */
+	hasValue(item: T, term: string): boolean {
+		return (
+			this.label(item).toLowerCase().includes(term) ||
+			this.children(item).some((child) => this.hasValue(child, term))
+		);
+	}
+
+	label(item: T): string {
+		return labelOf(item, this.displayKey());
+	}
+
+	children(item: T): T[] {
+		return childrenOf(item, this.subArrayKey());
 	}
 
 	toggleDropdown(_event: Event) {
@@ -109,15 +102,15 @@ export class AdvancedDropdown {
 		}
 	}
 
-	onSelect(data: any) {
+	onSelect(data: T) {
 		if (this.selectSingle()) {
 			this.selectedPills = [];
 			this.selectedIds = [];
 			this.selectedPills.push(data);
-			this.selectedIds.push(data.id);
+			this.selectedIds.push(data.id as DropdownOptionId<T>);
 		} else if (this.selectedPills.indexOf(data) < 0) {
 			this.selectedPills.push(data);
-			this.selectedIds.push(data.id);
+			this.selectedIds.push(data.id as DropdownOptionId<T>);
 		} else {
 			if (!data.selected) {
 				this.removeItem(data);
@@ -127,22 +120,24 @@ export class AdvancedDropdown {
 		this.selectedItem.emit(this.selectedIds);
 	}
 
-	removeItem(data: any) {
+	removeItem(data: T) {
 		this.selectedPills.splice(this.selectedPills.indexOf(data), 1);
-		this.selectedIds.splice(this.selectedIds.indexOf(data.id), 1);
+		this.selectedIds.splice(this.selectedIds.indexOf(data.id as DropdownOptionId<T>), 1);
 		this.selectedItem.emit(this.selectedIds);
 	}
 
-	subItemClicked(data: any) {
+	subItemClicked(data: T) {
 		this.isOpen = true;
-		data[this.subArrayKey()]?.length && this.breadCrumbValues.push(data);
-		data[this.subArrayKey()]?.length && (this.optionsData = data[this.subArrayKey()]);
+		const children = this.children(data);
+		if (!children.length) return;
+		this.breadCrumbValues.push(data);
+		this.optionsData = children;
 	}
 
-	changeTo(data: any) {
+	changeTo(data: T) {
 		const subArrayKey = this.subArrayKey();
 		if (subArrayKey) {
-			this.optionsData = data[subArrayKey];
+			this.optionsData = this.children(data);
 			this.breadCrumbValues.splice(
 				this.breadCrumbValues.indexOf(data) + 1,
 				this.breadCrumbValues.length - this.breadCrumbValues.indexOf(data),

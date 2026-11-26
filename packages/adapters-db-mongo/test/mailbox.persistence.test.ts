@@ -1,0 +1,191 @@
+import { ContactMessage, Mailbox } from '@saha-textile/contracts';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { connectMongo, disconnectMongo } from '../src/connection';
+import {
+	CONTACT_MESSAGE_RETENTION_SECONDS,
+	ContactMessageModel,
+	MailboxAccessModel,
+	MailboxModel,
+} from '../src/models/index';
+import {
+	MongoContactMessageRepository,
+	MongoMailboxAccessRepository,
+	MongoMailboxRepository,
+	MongoMailboxTokenStore,
+} from '../src/repositories/mailbox.repository';
+import { hasMongoEnv, runPrefix } from './mongo-test-env';
+
+describe('MongoMailboxTokenStore key', () => {
+	it('refuses a key that is not 32 bytes', () => {
+		expect(() => new MongoMailboxTokenStore(new Uint8Array(16))).toThrow('32 bytes');
+		expect(() => new MongoMailboxTokenStore(new Uint8Array(32), new Uint8Array(8))).toThrow(
+			'MAILBOX_TOKEN_KEY_PREVIOUS must be 32 bytes',
+		);
+	});
+});
+
+/**
+ * Mailboxes, access lists, encrypted tokens and Contact Us messages against the replica set.
+ *
+ *   MONGODB_PORT=27018 MONGODB_DB_NAME=saha_textile_test RUN_DB_IT=1 pnpm --filter @saha-textile/adapters-db-mongo test
+ */
+describe.runIf(hasMongoEnv())('mailbox persistence (rs0)', () => {
+	const mailboxes = new MongoMailboxRepository();
+	const access = new MongoMailboxAccessRepository();
+	const messages = new MongoContactMessageRepository();
+	const key = new Uint8Array(32).fill(7);
+	const tokens = new MongoMailboxTokenStore(key);
+	const prefix = runPrefix('mbx');
+
+	const mailbox = (name: string) =>
+		Mailbox.parse({
+			id: `${prefix}${name}`,
+			address: `${prefix}${name}@Shop.test`,
+			status: 'connected',
+			connectedBy: 'admin_1',
+			connectedAt: '2026-11-09T10:00:00.000Z',
+			sendAs: [{ address: `${prefix}${name}@shop.test`, displayName: 'Care', isPrimary: true }],
+		});
+
+	beforeAll(async () => {
+		await connectMongo();
+		await Promise.all([
+			MailboxModel.syncIndexes(),
+			MailboxAccessModel.syncIndexes(),
+			ContactMessageModel.syncIndexes(),
+		]);
+	});
+
+	afterAll(async () => {
+		await MailboxModel.deleteMany({ _id: { $regex: `^${prefix}` } });
+		await MailboxAccessModel.deleteMany({ mailboxId: { $regex: `^${prefix}` } });
+		await ContactMessageModel.deleteMany({ _id: { $regex: `^${prefix}` } });
+		await disconnectMongo();
+	});
+
+	it('saves a mailbox with its address in lower case, and finds it by id or address', async () => {
+		const saved = await mailboxes.save(mailbox('care'));
+		expect(saved.address).toBe(`${prefix}care@shop.test`);
+		expect(saved.connectedAt).toBe('2026-11-09T10:00:00.000Z');
+		expect(saved.lastSyncAt).toBeNull();
+		expect(saved.sendAs).toEqual([
+			{ address: `${prefix}care@shop.test`, displayName: 'Care', signature: '', isPrimary: true },
+		]);
+		expect((await mailboxes.findByAddress(`${prefix}CARE@shop.test`))?.id).toBe(saved.id);
+		expect(await mailboxes.findById(`${prefix}none`)).toBeNull();
+		expect(await mailboxes.findByAddress('none@shop.test')).toBeNull();
+		await mailboxes.save({ ...saved, status: 'needs_reconnect', lastSyncAt: '2026-11-09T11:00:00.000Z' });
+		const mine = (await mailboxes.list()).filter((row) => row.id.startsWith(prefix));
+		expect(mine.map((row) => row.status)).toEqual(['needs_reconnect']);
+	});
+
+	it('keeps the refresh token encrypted, out of ordinary reads, and readable with the key only', async () => {
+		await mailboxes.save(mailbox('tokens'));
+		const id = `${prefix}tokens`;
+		expect(await tokens.get(id)).toBeNull();
+		await tokens.put(id, '1//refresh-token');
+		const raw = await MailboxModel.findById(id).select('+token').lean().exec();
+		expect(JSON.stringify(raw)).not.toContain('refresh-token');
+		expect(JSON.stringify(await MailboxModel.findById(id).lean().exec())).not.toContain('"token"');
+		expect(await tokens.get(id)).toBe('1//refresh-token');
+		// Another key, or a hand-edited row, reads as no token: the mailbox needs reconnecting.
+		expect(await new MongoMailboxTokenStore(new Uint8Array(32).fill(8)).get(id)).toBeNull();
+		await tokens.remove(id);
+		expect(await tokens.get(id)).toBeNull();
+		expect(await tokens.get(`${prefix}missing`)).toBeNull();
+	});
+
+	it('opens a token locked with the previous key and locks it again with the new one (grace key)', async () => {
+		await mailboxes.save(mailbox('grace'));
+		const id = `${prefix}grace`;
+		await tokens.put(id, '1//grace-token');
+		const newKey = new Uint8Array(32).fill(9);
+		const rotated = new MongoMailboxTokenStore(newKey, key);
+		expect(await rotated.get(id)).toBe('1//grace-token');
+		// Stored again under the new key: the new key alone now opens it, the old one no longer does.
+		expect(await new MongoMailboxTokenStore(newKey).get(id)).toBe('1//grace-token');
+		expect(await tokens.get(id)).toBeNull();
+		await tokens.remove(id);
+	});
+
+	it("replaces a mailbox's access list as a whole, only from the version it was read at", async () => {
+		const id = `${prefix}access`;
+		await mailboxes.save(Mailbox.parse({ id, address: `${id}@shop.test`, status: 'connected' }));
+		expect(await access.version(id)).toBe(0);
+		expect(
+			await access.replaceForMailbox(
+				id,
+				[
+					{ mailboxId: id, adminUserId: 'u1', rights: ['send'] },
+					{ mailboxId: id, adminUserId: 'u2', rights: ['read'] },
+				],
+				0,
+			),
+		).toBe(1);
+		expect(
+			await access.replaceForMailbox(
+				id,
+				[
+					{ mailboxId: id, adminUserId: 'u2', rights: ['delete_forever'] },
+					{ mailboxId: id, adminUserId: 'u3', rights: ['read'] },
+				],
+				1,
+			),
+		).toBe(2);
+		// A save made from an older version writes nothing.
+		expect(await access.replaceForMailbox(id, [], 1)).toBeNull();
+		const rows = await access.listForMailbox(id);
+		expect(rows.map((row) => `${row.adminUserId}:${row.rights.join('+')}`).sort()).toEqual([
+			'u2:read+bin+delete_forever',
+			'u3:read',
+		]);
+		expect((await access.listForAdminUser('u3')).some((row) => row.mailboxId === id)).toBe(true);
+		expect(await access.replaceForMailbox(id, [], 2)).toBe(3);
+		expect(await access.listForMailbox(id)).toEqual([]);
+	});
+
+	it('reads a row saved before rights existed as what it allowed then', async () => {
+		const id = `${prefix}legacy`;
+		await MailboxAccessModel.create({ _id: `${id}:u9`, mailboxId: id, adminUserId: 'u9', canSend: true });
+		expect((await access.listForMailbox(id))[0]?.rights).toEqual(['read', 'send', 'organise', 'bin']);
+	});
+
+	it('stores Contact Us messages, finds a recent repeat and lists those still to deliver', async () => {
+		const message = (name: string, createdAt: string, status: ContactMessage['status']) =>
+			ContactMessage.parse({
+				id: `${prefix}${name}`,
+				name: 'Rina',
+				email: 'rina@x.test',
+				phone: null,
+				subject: 'Blouse',
+				message: 'Hello there',
+				locale: 'bn',
+				status,
+				ipHash: 'h1',
+				contentHash: `${prefix}hash-${name}`,
+				createdAt,
+			});
+		const queued = await messages.save(message('q', '2026-11-09T09:00:00.000Z', 'queued'));
+		expect(queued.deliveredAt).toBeNull();
+		await messages.save(message('f', '2026-11-09T09:30:00.000Z', 'failed'));
+		const delivered = await messages.save({
+			...message('d', '2026-11-09T08:00:00.000Z', 'delivered'),
+			deliveredAt: '2026-11-09T08:01:00.000Z',
+			gmailMessageId: 'g1',
+		});
+		expect(delivered.deliveredAt).toBe('2026-11-09T08:01:00.000Z');
+		expect(await messages.findById(`${prefix}none`)).toBeNull();
+		expect((await messages.findRecentByHash(`${prefix}hash-q`, '2026-11-09T00:00:00.000Z'))?.id).toBe(queued.id);
+		expect(await messages.findRecentByHash(`${prefix}hash-q`, '2026-11-09T10:00:00.000Z')).toBeNull();
+		const pending = (await messages.listPending(500)).filter((row) => row.id.startsWith(prefix));
+		expect(pending.map((row) => row.id)).toEqual([`${prefix}q`, `${prefix}f`]);
+	});
+
+	it('lets the database delete a message twelve months after it arrived', async () => {
+		const indexes = await ContactMessageModel.collection.indexes();
+		const ttl = indexes.find((index) => index.expireAfterSeconds !== undefined);
+		expect(ttl?.key).toEqual({ createdAt: 1 });
+		expect(ttl?.expireAfterSeconds).toBe(CONTACT_MESSAGE_RETENTION_SECONDS);
+	});
+});

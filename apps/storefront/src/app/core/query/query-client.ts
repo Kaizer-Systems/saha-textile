@@ -28,6 +28,17 @@ const PUBLIC_QUERY_ROOTS = new Set([
 	'currencies',
 	'reviews',
 	'qna',
+	// Contact Us store cards: without them the browser's first render differs from the
+	// server's and hydration can leave a card on the page twice.
+	'store-locations',
+	// The builder's preview (step 6): fetched on the server only (its session cookie is not readable by scripts).
+	'page-preview',
+	// The Brand Kit logo and seal in the header, footer and store cards.
+	'brand',
+	// The channel's videos and Shorts on /videos and the home rail.
+	'youtube',
+	// A page's live Page Builder layout: the browser must draw what the server drew, or it redraws the page.
+	'page-layout',
 ]);
 
 export const isPublicQuery = (queryKey: readonly unknown[]): boolean =>
@@ -38,7 +49,7 @@ export const isPublicQuery = (queryKey: readonly unknown[]): boolean =>
  */
 const PUBLIC_REQUESTS = [
 	/\/catalog\//,
-	/\/storefront\/(banners|youtube)\b/,
+	/\/storefront\/(banners|youtube|pages|preview\/layout)\b/,
 	/\/config\.json$/,
 	/\/assets\/i18n\/[a-z]{2}\.json$/,
 	/\/assets\/data\/(setting|site-config|theme-option|menu|category|currency|blog|tag|country|state|attribute|page)\.json$/,

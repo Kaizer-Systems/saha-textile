@@ -1,18 +1,14 @@
-import { IPaginateModel } from './core.interface';
-
-export interface IQnAModel extends IPaginateModel {
-	data: IQuestionAnswers[];
-}
+/** An answered product question as the shop shows it (`PublicProductQuestion` in the contracts). */
 export interface IQuestionAnswers {
-	id: number;
-	answer: string;
-	product_id: number;
-	reaction: string | null;
+	id: string;
 	question: string;
-	total_dislikes: number;
-	total_likes: number;
-	consumer_id: number;
-	created_at?: string;
-	updated_at?: string;
-	deleted_at?: string;
+	answer: string;
+	/** Null when the asker chose to stay anonymous. */
+	askerName: string | null;
+	answeredAt: string | null;
+}
+
+export interface IQnAModel {
+	data: IQuestionAnswers[];
+	total: number;
 }

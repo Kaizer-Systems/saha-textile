@@ -18,13 +18,83 @@
       "types": "./dist/catalog/listing.d.ts",
       "import": "./dist/esm/listing.js",
       "default": "./dist/catalog/listing.js"
+    },
+    "./ist-time": {
+      "types": "./dist/catalog/ist-time.d.ts",
+      "import": "./dist/esm/ist-time.js",
+      "default": "./dist/catalog/ist-time.js"
+    },
+    "./languages": {
+      "types": "./dist/catalog/languages.d.ts",
+      "import": "./dist/esm/languages.js",
+      "default": "./dist/catalog/languages.js"
+    },
+    "./media-files": {
+      "types": "./dist/catalog/media-files.d.ts",
+      "import": "./dist/esm/media-files.js",
+      "default": "./dist/catalog/media-files.js"
+    },
+    "./media-placeholder": {
+      "types": "./dist/catalog/media-placeholder.d.ts",
+      "import": "./dist/esm/media-placeholder.js",
+      "default": "./dist/catalog/media-placeholder.js"
+    },
+    "./photo-header": {
+      "types": "./dist/catalog/photo-header.d.ts",
+      "import": "./dist/esm/photo-header.js",
+      "default": "./dist/catalog/photo-header.js"
+    },
+    "./set-price": {
+      "types": "./dist/catalog/set-price.d.ts",
+      "import": "./dist/esm/set-price.js",
+      "default": "./dist/catalog/set-price.js"
+    },
+    "./purchasing": {
+      "types": "./dist/purchasing/index.d.ts",
+      "import": "./dist/esm/purchasing/index.js",
+      "default": "./dist/purchasing/index.js"
+    },
+    "./shipping": {
+      "types": "./dist/shipping/index.d.ts",
+      "import": "./dist/esm/shipping/index.js",
+      "default": "./dist/shipping/index.js"
+    },
+    "./company": {
+      "types": "./dist/company/index.d.ts",
+      "import": "./dist/esm/company/index.js",
+      "default": "./dist/company/index.js"
+    },
+    "./bank-statement": {
+      "types": "./dist/bank/statement-rules.d.ts",
+      "import": "./dist/esm/bank/statement-rules.js",
+      "default": "./dist/bank/statement-rules.js"
+    },
+    "./self-invoice": {
+      "types": "./dist/invoicing/self-invoice-rules.d.ts",
+      "import": "./dist/esm/self-invoice/invoicing/self-invoice-rules.js",
+      "default": "./dist/invoicing/self-invoice-rules.js"
+    },
+    "./expense-bills": {
+      "types": "./dist/ledger/expense-bills.d.ts",
+      "import": "./dist/esm/expense-bills/ledger/expense-bills.js",
+      "default": "./dist/ledger/expense-bills.js"
+    },
+    "./bundle": {
+      "types": "./dist/bundle/index.d.ts",
+      "import": "./dist/esm/bundle/index.js",
+      "default": "./dist/bundle/index.js"
+    },
+    "./payroll-rules": {
+      "types": "./dist/payroll/payroll-rules-entry.d.ts",
+      "import": "./dist/esm/payroll-rules/payroll/payroll-rules-entry.js",
+      "default": "./dist/payroll/payroll-rules-entry.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.legacy-esm.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.legacy-esm.json && tsc -p tsconfig.purchasing-esm.json && tsc -p tsconfig.shipping-esm.json && tsc -p tsconfig.bundle-esm.json && tsc -p tsconfig.company-esm.json && tsc -p tsconfig.self-invoice-esm.json && tsc -p tsconfig.bank-statement-esm.json && tsc -p tsconfig.expense-bills-esm.json && tsc -p tsconfig.payroll-rules-esm.json",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "lint": "eslint .",
     "test": "vitest run"

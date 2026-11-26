@@ -1,0 +1,61 @@
+<!-- A23: a new folder, in the folder shown or the one whose menu said New folder inside. -->
+<div class="modal-header">
+	<h2 id="fm_new_folder_title">{{ 'fm_new_folder' | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body">
+	<p class="text-muted mb-3">
+		{{ 'fm_inside' | transloco }}
+		<strong>{{ place() }}</strong>
+	</p>
+	<div class="theme-form">
+		<label
+			class="form-label-title mb-2"
+			for="fm_new_folder_name"
+		>
+			{{ 'fm_folder_name' | transloco }}
+		</label>
+		<input
+			class="form-control"
+			id="fm_new_folder_name"
+			maxlength="120"
+			ngbAutofocus
+			[value]="name()"
+			[class.is-invalid]="!!error()"
+			(input)="name.set($any($event.target).value); error.set(null)"
+			(keydown.enter)="create()"
+		/>
+		@if (error(); as error) {
+		<div class="invalid-feedback d-block">{{ error }}</div>
+		}
+		<p class="help-text mt-2">{{ 'fm_folder_name_help' | transloco }}</p>
+	</div>
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="fm_create_folder"
+			[disabled]="!name().trim() || creating()"
+			(click)="create()"
+		>
+			{{ 'fm_create_folder' | transloco }}
+		</button>
+	</div>
+</div>

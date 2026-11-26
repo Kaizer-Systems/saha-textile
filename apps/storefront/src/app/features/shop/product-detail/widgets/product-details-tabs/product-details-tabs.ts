@@ -7,12 +7,11 @@ import { Observable } from 'rxjs';
 
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { IQnAModel } from '@data-access/interfaces/questions-answers.interface';
-import { IReviewModel } from '@data-access/interfaces/review.interface';
 import { injectQuestionAnswersQuery } from '@data-access/queries/questions-answers.queries';
-import { injectReviewQuery } from '@data-access/queries/review.queries';
 import { QuestionsAnswersService } from '@data-access/services/questions-answers.service';
 
 import { ProductReview } from '../product-review/product-review';
+import { ProductVideos } from '../product-videos/product-videos';
 import { QuestionsAnswers } from '../questions-answers/questions-answers';
 
 /**
@@ -26,7 +25,7 @@ import { QuestionsAnswers } from '../questions-answers/questions-answers';
 	selector: 'app-product-details-tabs',
 	templateUrl: './product-details-tabs.html',
 	styleUrls: ['./product-details-tabs.scss'],
-	imports: [ProductReview, QuestionsAnswers, AsyncPipe, TranslocoModule],
+	imports: [ProductReview, QuestionsAnswers, ProductVideos, AsyncPipe, TranslocoModule],
 })
 export class ProductDetailsTabs {
 	private questionsAnswersService = inject(QuestionsAnswersService);
@@ -35,8 +34,6 @@ export class ProductDetailsTabs {
 
 	private readonly qnaQuery = injectQuestionAnswersQuery(() => this.product()?.slug);
 	question$: Observable<IQnAModel> = toObservable(computed(() => this.qnaQuery.data() ?? { data: [], total: 0 }));
-	private readonly reviewQuery = injectReviewQuery(() => this.product()?.id);
-	review$: Observable<IReviewModel> = toObservable(computed(() => this.reviewQuery.data() ?? { data: [], total: 0 }));
 
 	public active = 'description';
 

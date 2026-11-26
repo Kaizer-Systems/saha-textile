@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 
-import { Checkout } from './checkout/checkout';
+import { OrderCheckout } from './checkout/order-checkout';
 import { CreateOrder } from './create-order/create-order';
 import { Details } from './details/details';
 import { Order } from './order';
@@ -20,6 +20,6 @@ export default [
 	},
 	{
 		path: 'checkout',
-		component: Checkout,
+		component: OrderCheckout,
 	},
 ] as Routes;

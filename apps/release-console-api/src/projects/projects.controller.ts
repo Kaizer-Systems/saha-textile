@@ -1,0 +1,230 @@
+import { NotFoundException, Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
+import {
+	type AttentionCount,
+	type AttentionItem,
+	type AuditEntry,
+	type CloudAccount,
+	type DoCatalog,
+	type ConsoleView,
+	type DnsRecord,
+	type Droplet,
+	type EdgeZone,
+	type KeyRef,
+	type KeySource,
+	newProjectSchema,
+	type Project,
+	type RepositoryFileFound,
+	repositoryFileQuerySchema,
+	type Branches,
+	type DomainsView,
+	type SecurityView,
+	type ReleasesView,
+	branchesQuerySchema,
+	repositorySchema,
+	slotKeysSchema,
+	linkKeySchema,
+	type VendorAnswer,
+	type WorkflowRun,
+} from '@saha-textile/release-console-contracts';
+
+import { AttentionService } from './attention.service.js';
+import { ProjectsService } from './projects.service.js';
+import { VendorReadsService } from './vendor-reads.service.js';
+import { parseBody } from '../common/parse.js';
+import { KeySourceService } from '../keys/key-source.js';
+import { ConsoleStore } from '../store/console-store.js';
+
+@Controller('api')
+export class ProjectsController {
+	constructor(
+		private readonly projects: ProjectsService,
+		private readonly reads: VendorReadsService,
+		private readonly attention: AttentionService,
+		private readonly store: ConsoleStore,
+		private readonly keyFile: KeySourceService,
+	) {}
+
+	@Get('projects')
+	view(): ConsoleView {
+		return this.projects.view();
+	}
+
+	@Post('projects')
+	add(@Body() body: unknown): Project {
+		return this.projects.add(parseBody(newProjectSchema, body));
+	}
+
+	@Delete('projects/:id')
+	@HttpCode(200)
+	async remove(@Param('id') id: string): Promise<{ ok: true }> {
+		await this.projects.remove(id);
+		this.attention.forget(id);
+		return { ok: true };
+	}
+
+	@Post('projects/:id/keys')
+	async storeKey(@Param('id') id: string, @Body() body: unknown): Promise<KeyRef> {
+		const ref = await this.projects.linkKey(id, parseBody(linkKeySchema, body));
+		this.attention.forget(id);
+		return ref;
+	}
+
+	@Post('projects/:id/keys/:keyId/check')
+	@HttpCode(200)
+	async checkKey(@Param('id') id: string, @Param('keyId') keyId: string): Promise<KeyRef> {
+		const ref = await this.projects.checkKeyNow(id, keyId);
+		this.attention.forget(id);
+		return ref;
+	}
+
+	@Delete('projects/:id/keys/:keyId')
+	@HttpCode(200)
+	async removeKey(@Param('id') id: string, @Param('keyId') keyId: string): Promise<{ ok: true }> {
+		await this.projects.removeKey(id, keyId);
+		this.attention.forget(id);
+		return { ok: true };
+	}
+
+	@Put('projects/:id/slots')
+	slots(@Param('id') id: string, @Body() body: unknown): Project {
+		const project = this.projects.setSlotKeys(id, parseBody(slotKeysSchema, body));
+		this.attention.forget(id);
+		return project;
+	}
+
+	@Post('projects/:id/repositories')
+	addRepository(@Param('id') id: string, @Body() body: unknown): Project {
+		const project = this.projects.addRepository(id, parseBody(repositorySchema, body));
+		this.attention.forget(id);
+		return project;
+	}
+
+	@Put('projects/:id/repositories/:repoId')
+	updateRepository(@Param('id') id: string, @Param('repoId') repoId: string, @Body() body: unknown): Project {
+		const project = this.projects.updateRepository(id, repoId, parseBody(repositorySchema, body));
+		this.attention.forget(id);
+		return project;
+	}
+
+	@Delete('projects/:id/repositories/:repoId')
+	@HttpCode(200)
+	removeRepository(@Param('id') id: string, @Param('repoId') repoId: string): Project {
+		const project = this.projects.removeRepository(id, repoId);
+		this.attention.forget(id);
+		return project;
+	}
+
+	@Get('repository-branches')
+	repositoryBranches(@Query() query: unknown): Promise<Branches> {
+		return this.reads.branches(parseBody(branchesQuerySchema, query));
+	}
+
+	@Post('repository-file')
+	@HttpCode(200)
+	repositoryFile(@Body() body: unknown): Promise<VendorAnswer<RepositoryFileFound>> {
+		return this.reads.repositoryFile(parseBody(repositoryFileQuerySchema, body));
+	}
+
+	@Get('key-source')
+	keySource(): KeySource {
+		return this.keyFile.describe();
+	}
+
+	@Get('attention')
+	counts(): Promise<AttentionCount[]> {
+		return this.attention.counts();
+	}
+
+	@Get('projects/:id/attention')
+	projectAttention(@Param('id') id: string): Promise<AttentionItem[]> {
+		return this.attention.forProject(id);
+	}
+
+	@Get('audit')
+	audit(@Query('project') project?: string): AuditEntry[] {
+		if (project) this.projects.project(project);
+		return this.store.auditEntries(project ?? null).slice(0, 500);
+	}
+
+	@Get('projects/:p/repos/:r/github/runs')
+	runs(@Param('p') p: string, @Param('r') r: string): Promise<VendorAnswer<WorkflowRun[]>> {
+		return this.reads.runs(p, r);
+	}
+
+	@Get('projects/:p/repos/:r/cloud/:slot/droplets')
+	droplets(
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Param('slot') slot: string,
+	): Promise<VendorAnswer<Droplet[]>> {
+		return this.reads.droplets(p, r, slot);
+	}
+
+	@Get('projects/:p/repos/:r/cloud/:slot/account')
+	cloudAccount(
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Param('slot') slot: string,
+	): Promise<VendorAnswer<CloudAccount>> {
+		return this.reads.cloudAccount(p, r, slot);
+	}
+
+	@Get('projects/:p/repos/:r/cloud/:slot/catalog')
+	doCatalog(
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Param('slot') slot: string,
+	): Promise<VendorAnswer<DoCatalog>> {
+		return this.reads.doCatalog(p, r, slot);
+	}
+
+	@Get('projects/:p/repos/:r/releases')
+	releases(@Param('p') p: string, @Param('r') r: string): Promise<VendorAnswer<ReleasesView>> {
+		return this.reads.releases(p, r);
+	}
+
+	@Get('projects/:p/repos/:r/security')
+	security(@Param('p') p: string, @Param('r') r: string): Promise<VendorAnswer<SecurityView>> {
+		return this.reads.security(p, r);
+	}
+
+	/** One environment's shop operations (Jobs and queues, Messages) from its API's `/ops`. */
+	@Get('projects/:p/repos/:r/ops/:env/:kind')
+	ops(
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Param('env') env: string,
+		@Param('kind') kind: string,
+	): Promise<VendorAnswer<unknown>> {
+		if (kind !== 'jobs' && kind !== 'messages') throw new NotFoundException();
+		return this.reads.ops(p, r, env, kind);
+	}
+
+	@Get('projects/:p/repos/:r/edge/:slot/certificates')
+	certificates(
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Param('slot') slot: string,
+	): Promise<VendorAnswer<DomainsView>> {
+		return this.reads.domains(p, r, slot);
+	}
+
+	@Get('projects/:p/repos/:r/edge/:slot/zones')
+	zones(
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Param('slot') slot: string,
+	): Promise<VendorAnswer<EdgeZone[]>> {
+		return this.reads.zones(p, r, slot);
+	}
+
+	@Get('projects/:p/repos/:r/edge/:slot/zones/:zone/dns')
+	dns(
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Param('slot') slot: string,
+		@Param('zone') zone: string,
+	): Promise<VendorAnswer<DnsRecord[]>> {
+		return this.reads.records(p, r, slot, zone);
+	}
+}

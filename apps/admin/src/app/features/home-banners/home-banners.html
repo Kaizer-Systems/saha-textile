@@ -2,6 +2,8 @@
 	[gridClass]="'col-xxl-8 col-xl-10 m-auto'"
 	[title]="'home_banners'"
 >
+	<app-missing-language-notice [code]="missing.code()" />
+	@if (!missing.code()) {
 	<h5 class="mb-3">{{ 'hero_layout' | transloco }}</h5>
 	<ul class="radio-type-sec mb-4">
 		@for (option of layouts; track option) {
@@ -29,16 +31,25 @@
 		</li>
 		}
 	</ul>
-
-	@if (loaded()) { @for (slot of slots(); track slot + layout()) {
+	} @if (loaded()) { @for (slot of slots(); track slot + layout()) { @if (shows(block(slot))) {
 	<h5 class="mt-4 mb-3">{{ 'hero_slot_' + slot | transloco }}</h5>
 	<app-banner-slot-form
 		[slot]="slot"
 		[existing]="block(slot)"
 		(saved)="reload()"
 	/>
-	}
+	} }
 
+	<h5 class="mt-5 mb-3">{{ 'promo_banners' | transloco }}</h5>
+	@for (slot of promoSlots; track slot) { @if (shows(promoBlock(slot))) {
+	<h5 class="mt-4 mb-3">{{ 'promo_slot_' + slot | transloco }}</h5>
+	<app-banner-slot-form
+		[position]="'promo_wide'"
+		[slot]="slot"
+		[existing]="promoBlock(slot)"
+		(saved)="reload()"
+	/>
+	} } @if (shows(popupBlock())) {
 	<h5 class="mt-5 mb-3">{{ 'newsletter_popup_image' | transloco }}</h5>
 	<app-banner-slot-form
 		[ownerType]="'global'"
@@ -47,5 +58,5 @@
 		[existing]="popupBlock()"
 		(saved)="reload()"
 	/>
-	}
+	} }
 </app-page-wrapper>

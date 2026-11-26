@@ -1,0 +1,70 @@
+@let o = order();
+<a
+	class="st-order-card"
+	[routerLink]="['/account/order/details', o.orderNumber]"
+	[attr.aria-label]="'my_orders_view_number' | transloco: { number: o.orderNumber }"
+>
+	<span class="st-order-card-top">
+		<span class="st-order-card-id">
+			<span class="st-order-card-number">#{{ o.orderNumber }}</span>
+			@if (o.placedAt) {
+			<span class="st-order-card-date">{{ o.placedAt | date: 'd MMM yyyy' }}</span>
+			}
+		</span>
+		<i
+			class="ri-arrow-right-s-line st-order-card-go"
+			aria-hidden="true"
+		></i>
+	</span>
+
+	<!-- What it holds: the pictures fanned out beside the first line's name. -->
+	<span class="st-order-card-items">
+		<app-thumb-stack
+			[images]="thumbs()"
+			[more]="morePictures()"
+			[max]="2"
+		/>
+		<span class="st-order-card-title">
+			{{ o.firstTitle }} @if (more()) {
+			<span class="st-order-card-more">{{ 'my_orders_and_more' | transloco: { count: more() } }}</span>
+			}
+		</span>
+	</span>
+
+	<span class="st-order-card-chips">
+		@if (o.sets) {
+		<span class="st-piece-chip is-set">
+			{{ (o.sets === 1 ? 'my_orders_sets_one' : 'my_orders_sets') | transloco: { count: o.sets } }}
+		</span>
+		}
+		<span class="st-piece-chip">
+			{{ (o.pieces === 1 ? 'my_orders_pieces_one' : 'my_orders_pieces') | transloco: { count: o.pieces } }}
+		</span>
+		@if (o.freeItems) {
+		<span class="st-piece-chip is-free">
+			{{ (o.freeItems === 1 ? 'cart_set_free_one' : 'cart_set_free') | transloco: { count: o.freeItems } }}
+		</span>
+		}
+	</span>
+
+	<span class="st-order-card-status">
+		<span [class]="'status-' + pill(o.status)">
+			<span>{{ 'shop_order_status_' + o.status | transloco }}</span>
+		</span>
+		@if (o.statusAt) {
+		<span class="st-order-card-since">
+			{{ (settled() ? 'my_orders_on' : 'my_orders_since') | transloco: { date: (o.statusAt | date: 'd MMM') } }}
+		</span>
+		}
+	</span>
+	<app-order-progress
+		class="st-order-card-progress"
+		[status]="o.status"
+		[label]="'shop_order_status_' + o.status | transloco"
+	/>
+
+	<span class="st-order-card-foot">
+		<span>{{ 'total' | transloco }}</span>
+		<b>{{ money(o.total, o.currency) }}</b>
+	</span>
+</a>

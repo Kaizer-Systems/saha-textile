@@ -1,0 +1,166 @@
+import { type Model, Schema, model, models } from 'mongoose';
+
+import { COLLECTION_NAMES } from '../collection-names';
+import type { AggregateDoc } from './purchasing.model';
+
+/** Bank accounts (accounts brief BA): one per bank ledger; an IFSC and number only once. */
+const BankAccountSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true }, ledgerId: { type: String, required: true } },
+	{
+		strict: false,
+		strictQuery: false,
+		versionKey: false,
+		timestamps: false,
+		collection: COLLECTION_NAMES.BankAccount,
+	},
+);
+BankAccountSchema.index({ ledgerId: 1 }, { unique: true });
+BankAccountSchema.index({ ifsc: 1, number: 1 }, { unique: true });
+export const BankAccountModel: Model<AggregateDoc> =
+	(models['BankAccount'] as Model<AggregateDoc>) ?? model<AggregateDoc>('BankAccount', BankAccountSchema);
+
+const loose = { strict: false, strictQuery: false, versionKey: false, timestamps: false } as const;
+const reuse = (name: string, schema: Schema<AggregateDoc>): Model<AggregateDoc> =>
+	(models[name] as Model<AggregateDoc>) ?? model<AggregateDoc>(name, schema);
+
+/** BA5: a bank's statement layout, matched once. */
+export const BankLayoutModel = reuse(
+	'BankLayout',
+	new Schema<AggregateDoc>(
+		{ _id: { type: String, required: true } },
+		{ ...loose, collection: COLLECTION_NAMES.BankLayout },
+	),
+);
+
+/** BA6: a statement's lines, each once per account. */
+const BankLineSchema = new Schema<AggregateDoc>(
+	{
+		_id: { type: String, required: true },
+		bankAccountId: { type: String, required: true },
+		key: { type: String, required: true },
+	},
+	{ ...loose, collection: COLLECTION_NAMES.BankLine },
+);
+BankLineSchema.index({ bankAccountId: 1, key: 1 }, { unique: true });
+BankLineSchema.index({ bankAccountId: 1, date: -1, status: 1 });
+export const BankLineModel = reuse('BankLine', BankLineSchema);
+
+/** Each statement import. */
+export const BankImportModel = reuse(
+	'BankImport',
+	new Schema<AggregateDoc>(
+		{ _id: { type: String, required: true } },
+		{ ...loose, collection: COLLECTION_NAMES.BankImport },
+	),
+);
+
+/** BA10: the matching rules a person added or switched; the app's own rules are kept here once changed. */
+export const BankMatchRuleModel = reuse(
+	'BankMatchRule',
+	new Schema<AggregateDoc>(
+		{ _id: { type: String, required: true } },
+		{ ...loose, collection: COLLECTION_NAMES.BankMatchRule },
+	),
+);
+
+/** Q10: gateway payouts and courier COD remittances, each payout once per provider. */
+const SettlementSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true }, kind: String, provider: String, payoutReference: String },
+	{ ...loose, collection: COLLECTION_NAMES.Settlement },
+);
+SettlementSchema.index({ kind: 1, provider: 1, payoutReference: 1 }, { unique: true });
+SettlementSchema.index({ kind: 1, date: -1 });
+SettlementSchema.index({ 'rows.paymentId': 1 });
+export const SettlementModel = reuse('Settlement', SettlementSchema);
+
+/** G4: GST return drafts, one per registration, return and month. */
+const GstReturnDraftSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true }, gstRegistrationId: String, returnType: String, month: String },
+	{ ...loose, collection: COLLECTION_NAMES.GstReturnDraft },
+);
+GstReturnDraftSchema.index({ gstRegistrationId: 1, returnType: 1, month: 1 }, { unique: true });
+export const GstReturnDraftModel = reuse('GstReturnDraft', GstReturnDraftSchema);
+
+/**
+ * G5: imported GSTR-2B files, one per registration and month. `minimize: false` keeps empty objects (a first import's
+ * decisions are `{}`), which the contract requires when the file is read back.
+ */
+const Gstr2bImportSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true }, gstRegistrationId: String, month: String },
+	{ ...loose, collection: COLLECTION_NAMES.Gstr2bImport, minimize: false },
+);
+Gstr2bImportSchema.index({ gstRegistrationId: 1, month: 1 }, { unique: true });
+export const Gstr2bImportModel = reuse('Gstr2bImport', Gstr2bImportSchema);
+
+/** G9: why each GSTR-9 table differs from the books; `_id` is `<registration>|<year>`. */
+const GstAnnualNoteSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true } },
+	{ ...loose, collection: COLLECTION_NAMES.GstAnnualNote },
+);
+export const GstAnnualNoteModel = reuse('GstAnnualNote', GstAnnualNoteSchema);
+
+/** V2: reports saved from the builder. */
+const ReportDefinitionSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true } },
+	{ ...loose, collection: COLLECTION_NAMES.ReportDefinition },
+);
+export const ReportDefinitionModel = reuse('ReportDefinition', ReportDefinitionSchema);
+
+/** R1: fixed assets, one per tag. */
+const FixedAssetSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true }, tag: String },
+	{ ...loose, collection: COLLECTION_NAMES.FixedAsset },
+);
+FixedAssetSchema.index({ tag: 1 }, { unique: true });
+export const FixedAssetModel = reuse('FixedAsset', FixedAssetSchema);
+
+/** R5: rent and recurring entries. */
+const RecurringEntrySchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true } },
+	{ ...loose, collection: COLLECTION_NAMES.RecurringEntry },
+);
+export const RecurringEntryModel = reuse('RecurringEntry', RecurringEntrySchema);
+
+/** S3, S5, S8: payroll. */
+export const EmployeeModel = reuse(
+	'Employee',
+	new Schema<AggregateDoc>(
+		{ _id: { type: String, required: true } },
+		{ ...loose, collection: COLLECTION_NAMES.Employee },
+	),
+);
+export const PayrollAttendanceModel = reuse(
+	'PayrollAttendance',
+	new Schema<AggregateDoc>(
+		{ _id: { type: String, required: true } },
+		{ ...loose, collection: COLLECTION_NAMES.PayrollAttendance },
+	),
+);
+/** Brief 26 AT: one person's day, keyed `${employeeId}_${day}`; read by person and month, or store and month. */
+const AttendanceDaySchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true } },
+	{ ...loose, collection: COLLECTION_NAMES.AttendanceDay },
+);
+AttendanceDaySchema.index({ employeeId: 1, day: 1 });
+AttendanceDaySchema.index({ locationId: 1, day: 1 });
+export const AttendanceDayModel = reuse('AttendanceDay', AttendanceDaySchema);
+/** S5: one run a month; the unique month keeps two people preparing the same month at once from making two runs. */
+const PayrollRunSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true }, month: String },
+	{ ...loose, collection: COLLECTION_NAMES.PayrollRun },
+);
+PayrollRunSchema.index({ month: 1 }, { unique: true });
+export const PayrollRunModel = reuse('PayrollRun', PayrollRunSchema);
+
+/** S1, S4, S7, S9: payroll rule versions, structure templates, returns marked filed and advances. */
+const payrollModel = (name: string, collection: string) =>
+	reuse(name, new Schema<AggregateDoc>({ _id: { type: String, required: true } }, { ...loose, collection }));
+export const PayrollRulesModel = payrollModel('PayrollRules', COLLECTION_NAMES.PayrollRules);
+export const SalaryTemplateModel = payrollModel('SalaryTemplate', COLLECTION_NAMES.SalaryTemplate);
+/** Brief 26 SR3: increment plans saved by name. */
+export const IncrementPlanModel = payrollModel('IncrementPlan', COLLECTION_NAMES.IncrementPlan);
+export const StatutoryFilingModel = payrollModel('StatutoryFiling', COLLECTION_NAMES.StatutoryFiling);
+export const PayrollAdvanceModel = payrollModel('PayrollAdvance', COLLECTION_NAMES.PayrollAdvance);
+export const YearCloseModel = payrollModel('YearClose', COLLECTION_NAMES.YearClose);
+export const BooksImportModel = payrollModel('BooksImport', COLLECTION_NAMES.BooksImport);
+export const ExpenseBillModel = payrollModel('ExpenseBill', COLLECTION_NAMES.ExpenseBill);

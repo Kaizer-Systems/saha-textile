@@ -16,7 +16,6 @@ export interface RuntimeConfig {
 	/** Public storefront origin, e.g. https://localhost:4200 */
 	siteUrl: string;
 	defaultLocale: string;
-	supportedLocales: string[];
 	/**
 	 * Public provider identifiers for the social sign-in buttons.
 	 *
@@ -36,11 +35,7 @@ const DEFAULTS: RuntimeConfig = {
 	apiUrl: 'https://localhost:4000',
 	siteUrl: 'https://localhost:4200',
 	defaultLocale: 'en',
-	// en + fr for the whole development phase — Fastkart shipped both and they stay.
-	// Bengali is added once development is complete, deliberately: building against two
-	// live locales keeps the i18n seams exercised, so a third is a data change rather
-	// than an architecture change. Must agree with `availableLangs` in `app.config.ts`.
-	supportedLocales: ['en', 'fr'],
+	// The languages themselves come from the API (`GET /storefront/languages`; core/i18n/locale.ts).
 	googleClientId: '',
 	facebookAppId: '',
 };
@@ -57,6 +52,22 @@ function applyConfig(loaded: Partial<RuntimeConfig>): void {
 	environment.URL = `${runtimeConfig.siteUrl}/assets/data`;
 }
 
+/** Local names, including the `*.localhost` hosts of the mode-3 stack. */
+const LOCAL_HOST = /(^|\.)localhost$|^127\.0\.0\.1$|^\[::1\]$/;
+
+/**
+ * Deployed, a missing or broken config must stop the app. Falling back would send every call to
+ * localhost, which looks like a broken site with no visible cause. Both addresses count: the
+ * translations load from `siteUrl`, so a local one breaks every page's text.
+ */
+function assertDeployedConfig(loaded: Partial<RuntimeConfig>): void {
+	for (const address of [loaded.apiUrl ?? '', loaded.siteUrl ?? '']) {
+		if (!URL.canParse(address) || LOCAL_HOST.test(new URL(address).hostname)) {
+			throw new Error('Runtime config is missing or points at localhost: check /config.json.');
+		}
+	}
+}
+
 let markReady: () => void;
 
 /**
@@ -64,29 +75,38 @@ let markReady: () => void;
  *
  * Angular starts app initializers concurrently, so anything that needs the API origin —
  * the session bootstrap, for one — must await this rather than assume it ran second. It
- * resolves from a `finally`, so a failed config fetch still unblocks boot with defaults
- * instead of hanging the application.
+ * resolves from a `finally`, so a failed config never hangs the application. On a local host a
+ * failed fetch boots with the defaults; a deployed host refuses to start instead.
  */
 export const runtimeConfigReady: Promise<void> = new Promise<void>((resolve) => {
 	markReady = resolve;
 });
 
+/** Offline, an installed app has no way to fetch the config, and that is not a broken deployment. */
+export async function loadServedConfig(hostname = location.hostname, online = navigator.onLine): Promise<void> {
+	let served: Partial<RuntimeConfig> = {};
+	try {
+		const res = await fetch('/config.json', { cache: 'no-store' });
+		if (res.ok) served = (await res.json()) as Partial<RuntimeConfig>;
+	} catch {
+		served = {};
+	}
+	if (!LOCAL_HOST.test(hostname) && online) assertDeployedConfig(served);
+	applyConfig(served);
+}
+
 export async function loadRuntimeConfig(): Promise<void> {
 	try {
 		if (typeof window === 'undefined') {
-			// SSR (Analog/Nitro): no browser fetch of a relative URL. Deploys may
-			// inject the same JSON via env; otherwise localhost defaults apply.
+			// SSR (Analog/Nitro): no browser fetch of a relative URL. Deploys inject the same
+			// JSON via env; only a local run may fall back to the localhost defaults.
 			const raw = process.env['SAHA_TEXTILE_PUBLIC_CONFIG'];
-			applyConfig(raw ? (JSON.parse(raw) as Partial<RuntimeConfig>) : {});
+			const injected = raw ? (JSON.parse(raw) as Partial<RuntimeConfig>) : {};
+			if (['staging', 'production'].includes(process.env['DEPLOY_ENV'] ?? '')) assertDeployedConfig(injected);
+			applyConfig(injected);
 			return;
 		}
-		try {
-			const res = await fetch('/config.json', { cache: 'no-store' });
-			applyConfig(res.ok ? ((await res.json()) as Partial<RuntimeConfig>) : {});
-		} catch {
-			// Config fetch must never block boot — fall back to localhost defaults.
-			applyConfig({});
-		}
+		await loadServedConfig();
 	} finally {
 		markReady();
 	}

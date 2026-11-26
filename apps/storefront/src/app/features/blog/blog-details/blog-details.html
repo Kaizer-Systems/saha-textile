@@ -1,35 +1,31 @@
-<app-breadcrumb [breadcrumb]="breadcrumb" />
+<app-breadcrumb [breadcrumb]="breadcrumb()" />
 <section class="blog-section section-b-space">
 	<div class="container-fluid-lg">
 		<div class="row g-sm-4 g-3">
-			<div
-				class="col-xxl-3 col-xl-4 col-lg-5 d-lg-block d-none"
-				[class.order-lg-1]="sidebar === 'right_sidebar'"
-				[ngClass]="sidebar === 'no_sidebar' ? 'd-none' : ''"
-			>
+			<div class="col-xxl-3 col-xl-4 col-lg-5 d-lg-block d-none">
 				<app-blog-sidebar />
 			</div>
 			<div class="col-xxl-9 col-xl-8 col-lg-7 ratio_50">
+				@if (blog(); as post) {
 				<div
 					class="blog-detail-image rounded-3 bg-size mb-4"
-					[style.background-image]="'url('
-                    + ((blog$ | async)?.blog_thumbnail
-                    ? (blog$ | async)?.blog_thumbnail?.original_url
-                    : 'assets/images/blog.png' ) + ')'"
+					role="img"
+					[attr.aria-label]="post.blog_thumbnail?.alt || post.title"
+					[style.background-image]="'url(' + (post.blog_thumbnail?.original_url || 'assets/images/blog.png') + ')'"
 				>
 					<div class="blog-image-contain">
-						<h2>{{ (blog$ | async)?.title }}</h2>
+						<h1>{{ post.title }}</h1>
 						<ul class="contain-comment-list">
 							<li>
 								<div class="user-list">
 									<i class="ri-user-line"></i>
-									<span>{{ (blog$ | async)?.created_by?.name }}</span>
+									<span>{{ post.author }}</span>
 								</div>
 							</li>
 							<li>
 								<div class="user-list">
 									<i class="ri-time-line"></i>
-									<span>{{ (blog$ | async)?.created_at | date: 'dd MMM yyyy hh:mm:a' }}</span>
+									<span>{{ post.published_at | shopDate }}</span>
 								</div>
 							</li>
 						</ul>
@@ -37,8 +33,9 @@
 				</div>
 				<div
 					class="blog-detail-contain ckeditor-content"
-					[innerHTML]="(blog$ | async)?.content"
+					[innerHTML]="post.content"
 				></div>
+				}
 			</div>
 		</div>
 	</div>

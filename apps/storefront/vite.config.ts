@@ -1,10 +1,15 @@
 /// <reference types="vitest" />
 
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { fileURLToPath, URL } from 'node:url';
 
 import analog from '@analogjs/platform';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
+
+import { consentAskPlugin } from './consent-ask.vite.ts';
+import { scriptPriorityPlugin } from './script-priority.vite.ts';
+import { serviceWorkerPlugins } from './service-worker.vite.ts';
 
 const appPath = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
@@ -32,7 +37,38 @@ const localHttps = (() => {
 // (Angular-CLI + @angular/ssr Express -> Analog Vite + Nitro); the app still
 // uses the Angular Router config + NGXS + ngx-translate. File-based routing and
 // the state-layer migration land in later phases on top of this platform.
-export default defineConfig(() => ({
+/**
+ * Angular skips browser-only work on the server (viewport and hover triggers of `@defer`, timers
+ * meant for the page) by testing the global `ngServerMode`. Analog's build optimizer sets it once
+ * from the top-level config, which carries no `build.ssr`, so the server bundle was compiled with
+ * `ngServerMode = false` and ran those browser paths on the server (`IntersectionObserver is not
+ * defined` from the product page's `@defer (on viewport)`). This sets it to `true` for every
+ * server-side build environment; the browser build keeps Analog's `false`.
+ */
+const angularServerMode = (): Plugin => ({
+	name: 'saha-textile:angular-server-mode',
+	apply: 'build',
+	configEnvironment(name, config) {
+		if (name === 'client' || config.consumer === 'client') return undefined;
+		return { define: { ngServerMode: 'true' } };
+	},
+});
+
+/**
+ * `ST_BUILD_DIR=<folder>` builds into that folder (client, server render and Nitro output under it) instead of
+ * `dist/`, so a build can be measured beside a running shop without replacing the files that shop serves. Unset
+ * (every normal build), nothing changes.
+ */
+const buildDir = process.env['ST_BUILD_DIR'] ? appPath(`./${process.env['ST_BUILD_DIR']}`) : null;
+
+/**
+ * The build this bundle comes from (Release Console, Client versions): `BUILD_ID` from the image
+ * build (a short commit), sent as `x-client-build`; any other value leaves the header off.
+ */
+const clientBuild = /^[a-z0-9]{7,40}$/.test(process.env['BUILD_ID'] ?? '') ? (process.env['BUILD_ID'] ?? '') : '';
+
+export default defineConfig(({ command }) => ({
+	define: { __CLIENT_BUILD__: JSON.stringify(clientBuild) },
 	// Pin the project root to this file's dir (as the Analog template does) so
 	// Vite behaves identically regardless of the launch cwd — otherwise resolution
 	// (incl. the sass importer) drifts when started from the workspace root vs the
@@ -79,6 +115,7 @@ export default defineConfig(() => ({
 	},
 	build: {
 		target: ['es2020'],
+		...(buildDir ? { outDir: `${buildDir}/client` } : {}),
 	},
 	resolve: {
 		mainFields: ['module'],
@@ -103,8 +140,16 @@ export default defineConfig(() => ({
 	// Full Analog platform: Vite + Nitro SSR (ssr defaults on). Nitro emits a
 	// node-server for production (`node dist/analog/server/index.mjs`).
 	plugins: [
+		// Production only: development has no `sw.js`, so a page there is never held by an old one.
+		...(command === 'build' ? serviceWorkerPlugins() : []),
+		// Application scripts at low fetch priority: the server-drawn page, its first picture and styles go first.
+		scriptPriorityPlugin(),
+		// A first-time visitor's cookie box shows with the page: a tiny script in the page head (decision D1).
+		consentAskPlugin(),
+		angularServerMode(),
 		analog({
 			ssr: true,
+			...(buildDir ? { ssrBuildDir: `${buildDir}/ssr` } : {}),
 			static: false,
 			// No prerendering: the shop is fully dynamic — every route self-fetches
 			// i18n + mock data over HTTP, which has no server to hit at build time.
@@ -121,10 +166,19 @@ export default defineConfig(() => ({
 				// the built server without affecting the client bundle.
 				externals: {
 					inline: ['tslib'],
+					// The critical-CSS worker loads Beasties by name (server/plugins/critical-css.ts), so the server
+					// output must carry it although no bundled module imports it.
+					traceInclude: [createRequire(import.meta.url).resolve('beasties')],
 				},
+				...(buildDir ? { output: { dir: `${buildDir}/analog`, publicDir: `${buildDir}/analog/public` } } : {}),
 				prerender: {
 					crawlLinks: false,
 					routes: [],
+				},
+				// The browser must always be able to see a new service worker. Without this, an
+				// edge cache could hold the old file back and shoppers would stay on the old build.
+				routeRules: {
+					'/sw.js': { headers: { 'Cache-Control': 'no-cache' } },
 				},
 			},
 		}),

@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
-import { injectBrandQuery } from './brand.queries';
+import { injectBrandQuery, NO_BRAND } from './brand.queries';
 
 const captured = vi.hoisted(() => ({ options: undefined as unknown as () => { queryFn: () => Promise<unknown> } }));
 vi.mock('@tanstack/angular-query-experimental', () => ({
@@ -34,6 +34,6 @@ describe('injectBrandQuery', () => {
 
 	it('answers with no brand when the API cannot be reached', async () => {
 		const get = () => throwError(() => new Error('down'));
-		expect(await read({ get })).toEqual({ shopName: '', logo: null, seal: null, icons: {} });
+		expect(await read({ get })).toEqual(NO_BRAND);
 	});
 });

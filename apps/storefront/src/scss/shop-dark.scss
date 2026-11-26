@@ -1,0 +1,168 @@
+// Dark-mode colours for the shop's own screens and fixes to the theme's dark mode. Compiled into the
+// dark file by the `styles` script (dark.scss imports it), so it loads only in dark mode. Colours
+// only: sizes and spacing always come from the light theme.
+
+// The shop's named colours (utils/_shop-colours.scss), dark values. Each text colour reaches at least
+// 4.5 : 1 on the dark theme's page (#2a2d2d) and card (#1d1d22) backgrounds.
+html.dark {
+	--st-surface: #1d1d22;
+	--st-surface-soft: #1d1d22;
+	--st-surface-subtle: #1d1d22;
+	--st-surface-hover: #33373a;
+	--st-text: #ffffff;
+	--st-text-body: #dddddd;
+	--st-text-muted: #b8b8b8;
+	--st-text-soft: #c4c4c4;
+	--st-text-faint: #b0b0b0;
+	--st-text-faint-2: #a8a8a8;
+	--st-text-disabled: #8c8c8c;
+	--st-text-disabled-2: #6f6f6f;
+	// An out-of-stock option's words: #8c8c8c measured 4.13 : 1 on the dark page (#2a2d2d), so the shop's dark grey,
+	// 5.9 : 1 and still clearly muted beside the white rows (D3, measured 17 Nov 2026).
+	--st-text-unavailable: #a8a8a8;
+	--st-border: rgba(255, 255, 255, 0.14);
+	--st-border-soft: rgba(255, 255, 255, 0.14);
+	--st-border-strong: rgba(255, 255, 255, 0.3);
+	--st-border-line: rgba(255, 255, 255, 0.12);
+	--st-border-cool: rgba(255, 255, 255, 0.12);
+	--st-success: #51cf66;
+	--st-warning: #ff922b;
+	--st-danger: #ff6b6b;
+	--st-danger-text: #ff8a80;
+	--st-accent-text: var(--theme-text-on-dark);
+}
+
+// D2: empty-list headings ("No Items Added") keep the theme's dark title colour otherwise.
+html.dark .no-data-added h4 {
+	color: var(--st-text);
+}
+
+// D3: the product options table follows the dark card, not Bootstrap's white table.
+html.dark .variation-table,
+html.dark .variation-table .table {
+	--bs-table-bg: var(--st-surface);
+	--bs-table-color: var(--st-text);
+	--bs-table-striped-bg: var(--st-surface-hover);
+	--bs-table-hover-bg: var(--st-surface-hover);
+	--bs-table-border-color: var(--st-border);
+	color: var(--st-text);
+}
+html.dark .text-danger {
+	color: #ff8a80 !important;
+}
+
+// D3: the gallery arrows keep their light look, a white circle with a dark arrow.
+html.dark .product-section .product-left-box .product-main-1 .owl-prev,
+html.dark .product-section .product-left-box .product-main-1 .owl-next {
+	color: #222222;
+}
+
+// D4: chips and badges on coloured backgrounds keep their light-mode text colour (the theme's dark
+// copy swaps white text for charcoal everywhere, which is wrong on a coloured chip).
+html.dark .stock-chip {
+	color: #ffffff;
+}
+
+// D6: the store photo box on Contact Us (Bootstrap's bg-white) takes the dark card colour.
+html.dark .ratio.bg-white {
+	background-color: var(--st-surface) !important;
+}
+
+// D7: text over photographs keeps its light-mode colours; the photo is the same in both modes.
+html.dark .home-contain .home-detail h1,
+html.dark .home-contain .home-detail h2 {
+	color: var(--theme-color) !important;
+}
+
+// Page Builder: a picture's words keep the colour chosen for them (SG-3, Q19 A) in dark mode too.
+html.dark .pb-ink-brand_dark .home-contain .home-detail h2 {
+	color: color-mix(in srgb, var(--theme-color) 62%, #000) !important;
+}
+
+html.dark .pb-ink-brand_dark .home-contain .home-detail h6 {
+	color: #2d3748 !important;
+}
+
+html.dark .pb-ink-ink .home-contain .home-detail :is(h2, h6) {
+	color: #1f2328 !important;
+}
+
+html.dark .pb-ink-white .home-contain .home-detail :is(h2, h6) {
+	color: #fff !important;
+}
+
+html.dark .pb-backing-soft_light .home-contain .home-detail > div {
+	background: rgba(255, 255, 255, 0.86) !important;
+}
+
+// Bootstrap tables are white by default; in dark mode they take the card behind them.
+html.dark .table {
+	--bs-table-bg: transparent;
+	--bs-table-color: var(--st-text);
+	--bs-table-border-color: var(--st-border);
+}
+
+// Text that falls back to Bootstrap's near-black body colour.
+html.dark .newsletter-modal .modal-content,
+html.dark .newsletter-modal .form-check-label {
+	color: var(--st-text-body);
+}
+html.dark .form-floating > label {
+	color: var(--st-text-muted);
+}
+
+// Status pills (orders, refunds, wallet, points) in colours that reach 4.5 : 1 on the dark page.
+html.dark .status-danger span,
+html.dark .status-out_of_stock span,
+html.dark .status-failed span,
+html.dark .status-debit span {
+	color: #ff6b6b;
+	border-color: #ff6b6b;
+}
+html.dark .status-success span,
+html.dark .status-in_stock span,
+html.dark .status-completed span,
+html.dark .status-approved span,
+html.dark .status-delivered span,
+html.dark .status-credit span {
+	color: #51cf66;
+	border-color: #51cf66;
+}
+html.dark .status-pending span,
+html.dark .status-draft span {
+	color: #ffa94d;
+	border-color: #ffa94d;
+}
+html.dark .status-processing span {
+	color: #4dabf7;
+	border-color: #4dabf7;
+}
+html.dark .status-refund span,
+html.dark .status-cancelled span,
+html.dark .status-rejected span {
+	color: #ff8a80;
+	border-color: #ff8a80;
+}
+
+// The item count on category tiles: the theme's dark grey was 3.7 : 1 on the dark card.
+html.dark .category-section-3 .category-box-list .category-name h6 {
+	color: var(--st-text-faint);
+}
+
+// The country dial code and the cart's Remove link, lighter on the dark page.
+html.dark .intl-tel-input .country .dial-code {
+	color: var(--st-text-faint);
+}
+html.dark .cart-section .cart-table tbody tr td .remove,
+html.dark .remove.close_button {
+	color: #ff8a80;
+}
+
+// Red alerts (sign-in errors, the share page's wrong password) kept the theme's dark-red text on
+// the dark card, which could not be read. A dark red surface with light red text (9.7 : 1), owner
+// OK 15 Nov (share link page brief).
+html.dark .alert-danger {
+	background-color: #3a1416;
+	border-color: #7a2a2f;
+	color: #ffb4ab;
+}

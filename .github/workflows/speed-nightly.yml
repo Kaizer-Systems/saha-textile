@@ -1,0 +1,79 @@
+# Page Builder SG-10: the speed gate's full table every night (report only). Same production builds as the
+# pull-request gate, started by `pnpm e2e:stack -- --speed`.
+name: Speed gate (nightly)
+
+on:
+  schedule:
+    # 03:00 India time.
+    - cron: '30 21 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  speed:
+    name: Speed gate, full table (Lighthouse on the shop's Home)
+    # Page Builder SG-10. Report only until the repository variable SPEED_GATE_ENFORCE is `true`
+    # (a GitHub setting, switched by the owner once phone scores reach the floor).
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      MONGODB_PORT: 27017
+      MEILISEARCH_HOST: http://127.0.0.1:7700
+      MEILISEARCH_API_KEY: ci-only-search-key
+      # The full size table, upright and on its side, light and dark, one run each; Home as seeded and the stress
+      # layout (each template is measured on every pull request). Live and scheduled layouts on staging join once
+      # staging exists.
+      SPEED_GATE_LAYOUTS: '1'
+      SPEED_GATE_LAYOUT_CASES: current,stress
+      SPEED_GATE_FULL: '1'
+      SPEED_GATE_RUNS: '1'
+    services:
+      meilisearch:
+        image: getmeili/meilisearch:v1.16.0
+        ports:
+          - 7700:7700
+        env:
+          MEILI_MASTER_KEY: ci-only-search-key
+          MEILI_ENV: development
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start MongoDB and Redis
+        run: |
+          pnpm mongo:up
+          pnpm redis:up
+
+      - name: Local HTTPS certificates
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mkcert libnss3-tools
+          pnpm setup:local-https
+
+      - name: API settings for this run
+        run: |
+          cp apps/api/.env.example apps/api/.env
+          echo "JWT_ACCESS_SECRET=$(openssl rand -hex 32)" >> apps/api/.env
+          echo "JWT_REFRESH_SECRET=$(openssl rand -hex 32)" >> apps/api/.env
+          echo "CSRF_SECRET=$(openssl rand -hex 32)" >> apps/api/.env
+          echo "SPACES_KEY=ci-only-no-access" >> apps/api/.env
+          echo "SPACES_SECRET=ci-only-no-access" >> apps/api/.env
+          echo "SPACES_BUCKET=saha-textile-media" >> apps/api/.env
+          echo "SPACES_CDN_URL=https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com" >> apps/api/.env
+
+      - name: Lighthouse on the production builds
+        run: pnpm e2e:stack -- --speed

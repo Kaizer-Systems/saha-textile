@@ -1,0 +1,109 @@
+---
+title: 'Tax & Compliance — Future Expansion'
+description: 'CA questions parked until a business switches export on. Not sent to the CA today.'
+audience: [engineering, product, operator, agent]
+document_role: canonical
+last_verified: '2026-11-19'
+search_keywords: 'export lut iec csb-v shipping bill paypal firc export invoice zero-rated future expansion parked ca questions'
+---
+
+**Status: parked.** Nothing here goes to the CA today. Saha Textile does not export (owner, 2026-11-19); its international orders follow the named "export off" path recorded in `owner-decisions-log.mdx` § 2026-11-19.
+
+**When to touch this document:** only when a business switches the export policy on in the admin, or the owner decides to register for exports (IEC, LUT, AD code). Then review these questions with the CA in the same format as round 2, and build the "export on" path from the answers. The questions keep their round-2 numbers so earlier references stay valid.
+
+---
+
+## Exports (moved from round 2, 2026-11-19)
+
+### B3. Exports
+
+**B3.1** Documents to obtain and keep for each export order: commercial invoice with the LUT endorsement, packing list, shipping bill or courier bill of export, airway bill, proof of foreign inward remittance (FIRC / FIRA / e-BRC).
+
+- **(a) This list is complete (Recommended, if true).** For: we build to it. Against: please confirm who obtains each.
+- **(b) Add or remove items.** Please correct the list.
+
+**B3.2** Our exports are single courier parcels (DHL, FedEx, India Post). Which route applies?
+
+- **(a) Courier shipping bill CSB-V, which keeps zero-rating and the ITC refund (Recommended, if true).** For: built for small courier exports. Against: please confirm any value limit.
+- **(b) A regular shipping bill.** For: no value limit. Against: more paperwork per parcel.
+
+**B3.3** PayPal receipts (net of fees, after PayPal's conversion):
+
+- (i) Proof of realisation: **(a) PayPal's FIRA / inward remittance advice (Recommended)**; (b) a bank FIRC only.
+- (ii) Export value declared: **(a) gross order value (Recommended)**; (b) net amount after PayPal fees.
+- (iii) PayPal's fee: **(a) an expense, with GST charged by PayPal's Indian entity and claimable (Recommended, if true)**; (b) import of service under reverse charge.
+- (iv) Exchange rate on the invoice and in the books: **(a) the CBIC-notified customs rate for the invoice date (Recommended)**; (b) RBI reference rate; (c) the rate PayPal applied.
+
+**B3.4** LUT (RFD-11): who files it, and when?
+
+- **(a) You file it each March for the next financial year; we remind you on 1 March (Recommended).** For: never ship without a valid LUT. Against: none.
+- **(b) We file it.** For: in our control. Against: we may get it wrong.
+- Please say what happens to orders shipped before a new year's LUT is filed.
+
+**B3.5** Deadline for receiving export money, and what happens if it is late or refunded.
+
+- **(a) You state the deadline; we build a "money not received" report that warns 60 days before it (Recommended).** For: no surprise loss of zero-rating. Against: none.
+- **(b) No report; you track it.** For: nothing to build. Against: easy to miss.
+
+**B3.6** Export invoice mechanics:
+
+- (i) No CGST, SGST or IGST, with the LUT endorsement: **(a) confirmed (Recommended)**; (b) correct it.
+- (ii) Series: **(a) a separate export series (Recommended)**; (b) shared with domestic.
+- (iii) Currency: **(a) INR invoice showing the foreign-currency amount and the rate (Recommended)**; (b) foreign-currency invoice with an INR equivalent.
+- (iv) Place of supply: **(a) "96 – Other Countries" (Recommended)**; (b) another code.
+- (v) Recipient: **(a) name, full address and country, no tax ID needed (Recommended)**; (b) a tax ID is needed.
+
+**B3.7** Price shown to a customer whose delivery address is outside India (domestic prices include GST):
+
+- **(a) The same price, converted, with no GST charged (Recommended).** For: one price list; the extra margin covers PayPal's costs. Against: foreign buyers do not see a tax saving.
+- **(b) The price with the GST element taken out.** For: a lower price abroad. Against: a second calculation on every page.
+- **(c) A separate export price list.** For: full control. Against: two price lists to maintain.
+
+**B3.8** A foreign customer returns a garment.
+
+- **(a) Re-import under the returned-goods exemption; credit note against the export invoice; adjust the ITC refund claim (Recommended, if true).** For: matches the domestic flow. Against: please confirm.
+- **(b) Your rule.** Please state the customs and GST steps.
+
+**B3.9** GSTR-1 Table 6A export data:
+
+- **(a) We export a monthly file where invoice, shipping bill and remittance must match on number, date, value and currency (Recommended).** For: catches mismatches before they break the refund. Against: none.
+- **(b) Your field list.** Please give it.
+
+**B3.10** ITC refund on exports (Route A):
+
+- **(a) A quarterly claim, from a monthly export register we send you (Recommended).** For: less filing work. Against: money returns later than monthly.
+- **(b) A monthly claim.** For: faster cash. Against: more filings.
+- Please list the documents you need from us.
+
+**B3.11** An order from Nepal or Bhutan paid in INR:
+
+- **(a) It still counts as an export (Recommended, if true).** For: same flow as other exports. Against: please confirm.
+- **(b) It does not.** Please state the treatment.
+
+**B3.12** Anything a first-time exporter of apparel must also do (EDPMS closure, AD bank intimation, DGFT filings, RoDTEP or another scheme)? Please list it with who does each.
+
+### Other export items
+
+**B6.3** Domestic and export invoices in separate series:
+
+- **(a) Separate (Recommended).** For: cleaner export matching. Against: two series.
+- **(b) Shared.** Please say if separate is only good practice.
+
+**B8.6** Anything extra at purchase time to protect the export ITC refund?
+
+- **(a) Nothing beyond the capture list we already keep (Recommended, if true).**
+- **(b) Yes.** Please list it.
+
+**C3.4** Export invoices in foreign currency:
+
+- **(a) No round-off; two decimals (Recommended).**
+- **(b) Round as domestic.**
+
+**D14 (export row)** For the cancellation and fulfilment matrix in round 2:
+
+| Scenario                          | Document(s)                            | Reported where                |
+| --------------------------------- | -------------------------------------- | ----------------------------- |
+| Export order returned from abroad | Credit note against the export invoice | GSTR-1; refund claim adjusted |
+
+- **(a) Correct as shown (Recommended, if true).**
+- **(b) Correct it.**

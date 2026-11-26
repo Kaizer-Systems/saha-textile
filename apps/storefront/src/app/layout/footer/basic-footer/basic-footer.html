@@ -19,7 +19,7 @@
 						class="footer-title"
 						[class.show]="active['categories']"
 					>
-						<h4>{{ 'categories' | transloco }}</h4>
+						<h3 class="h4">{{ 'categories' | transloco }}</h3>
 					</div>
 					<div class="footer-contain">
 						<app-footer-categories />
@@ -34,7 +34,7 @@
 						class="footer-title"
 						[class.show]="active['useful_link']"
 					>
-						<h4>{{ 'useful_links' | transloco }}</h4>
+						<h3 class="h4">{{ 'useful_links' | transloco }}</h3>
 					</div>
 					<div class="footer-contain">
 						<app-footer-links [links]="data()?.footer?.useful_link || []" />
@@ -49,12 +49,12 @@
 						class="footer-title"
 						[class.show]="active['customer_service']"
 					>
-						<h4>{{ 'customer_service' | transloco }}</h4>
+						<h3 class="h4">{{ 'customer_service' | transloco }}</h3>
 					</div>
 					<div class="footer-contain">
 						<app-footer-links
 							[links]="data()?.footer?.customer_service || []"
-							[cookieSettings]="true"
+							[customerService]="true"
 						/>
 					</div>
 				</div>
@@ -67,17 +67,17 @@
 						class="footer-title"
 						[class.show]="active['help_center']"
 					>
-						<h4>{{ 'help_center' | transloco }}</h4>
+						<h3 class="h4">{{ 'help_center' | transloco }}</h3>
 					</div>
 					<div class="footer-contain">
 						<app-footer-links [links]="data()?.footer?.help_center || []" />
 					</div>
 				</div>
-				} @if (data()?.footer?.support_email || data()?.footer?.support_number || data()?.footer?.play_store_url
-				|| data()?.footer?.app_store_url) {
+				} @if (data()?.footer?.support_email || data()?.footer?.support_number || apps().android || apps().ios)
+				{
 				<div class="col-xl-2 col-lg-4 col-sm-6">
 					<div class="footer-title contact-title">
-						<h4>{{ 'contact_us' | transloco }}</h4>
+						<h3 class="h4">{{ 'contact_us' | transloco }}</h3>
 					</div>
 					<app-footer-contact [data]="data()" />
 				</div>
@@ -94,7 +94,7 @@
 				<app-footer-payment-options />
 			</div>
 			@if (data()?.footer?.social_media_enable) {
-			<app-footer-social-links [data]="data()" />
+			<app-footer-social-links />
 			}
 		</div>
 	</div>

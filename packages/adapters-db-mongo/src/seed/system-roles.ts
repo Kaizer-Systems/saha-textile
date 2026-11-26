@@ -3,14 +3,15 @@ import { PERMISSION_CODES, type Role } from '@saha-textile/contracts';
 import { RoleModel } from '../models/index';
 
 /**
- * The one role the platform cannot be administered without.
+ * The roles whose content is not a judgement call.
  *
- * ## Why exactly one
+ * ## Why so few
  *
- * Composing a `staff` role — which of the 33 codes an ordinary operator should hold — is a
- * business decision, and seeding a guess would make it look ratified. `administrator` is the
- * only role whose content is not a judgement call: it is the one that can do everything, so
- * it holds every code by definition and stays correct as the registry grows.
+ * Composing an operator's role — which codes a cashier or a store manager should hold — is a
+ * business decision, and seeding a guess would make it look ratified. `administrator` holds
+ * every code by definition and stays correct as the registry grows. `staff` (brief 26 AT-D1,
+ * approved by the owner 2026-11-26) holds only marking one's own attendance, so a shop-floor
+ * login opens My attendance and nothing else; any other access comes from a second role.
  *
  * ## Why it is `isSystem`
  *
@@ -20,7 +21,10 @@ import { RoleModel } from '../models/index';
  */
 export const ADMINISTRATOR_ROLE_KEY = 'administrator';
 
-export const SYSTEM_ROLE_IDS = { administrator: 'role_system_administrator' } as const;
+/** Not `staff`: a role a business made itself may already carry that key, which is unique. */
+export const STAFF_ROLE_KEY = 'staff_attendance';
+
+export const SYSTEM_ROLE_IDS = { administrator: 'role_system_administrator', staff: 'role_system_staff' } as const;
 
 function administratorRole(now: string): Role {
 	return {
@@ -31,6 +35,20 @@ function administratorRole(now: string): Role {
 		baseRole: 'admin',
 		// Every code, so the role does not silently fall behind a registry that grows.
 		permissions: [...PERMISSION_CODES],
+		isSystem: true,
+		createdAt: now,
+		updatedAt: now,
+	};
+}
+
+function staffRole(now: string): Role {
+	return {
+		id: SYSTEM_ROLE_IDS.staff,
+		key: STAFF_ROLE_KEY,
+		label: 'Staff',
+		description: 'Marks their own attendance and asks for leave (My attendance). Seeded, and not editable.',
+		baseRole: 'staff',
+		permissions: ['attendance.use'],
 		isSystem: true,
 		createdAt: now,
 		updatedAt: now,
@@ -57,7 +75,7 @@ export interface SystemRoleSeedResult {
 export async function ensureSystemRoles(now = new Date().toISOString()): Promise<SystemRoleSeedResult> {
 	const result: SystemRoleSeedResult = { created: [], updated: [] };
 
-	for (const role of [administratorRole(now)]) {
+	for (const role of [administratorRole(now), staffRole(now)]) {
 		const existing = await RoleModel.findById(role.id).lean<{ _id: string }>().exec();
 
 		await RoleModel.updateOne(

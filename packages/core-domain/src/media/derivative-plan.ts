@@ -7,6 +7,8 @@ export interface PlannedDerivative {
 	role: string;
 	roleVersion: number;
 	spec: ImageRenderSpec;
+	/** The render takes the Brand Kit logo strip when the shop has a logo. */
+	brandStrip: boolean;
 }
 
 export interface DerivativePlan {
@@ -38,7 +40,10 @@ export const planDerivatives = (input: {
 	const target = MEDIA_INGEST_POLICY.targetAspect[asset.purpose];
 	const letterboxed =
 		!!target &&
-		(asset.purpose === 'product' || asset.purpose === 'category' || asset.purpose === 'blog') &&
+		(asset.purpose === 'product' ||
+			asset.purpose === 'category' ||
+			asset.purpose === 'blog' ||
+			asset.purpose === 'store') &&
 		aspectDeviation(source.width, source.height, target) > MEDIA_INGEST_POLICY.aspectWarnTolerance;
 
 	const derivatives: PlannedDerivative[] = [];
@@ -56,8 +61,14 @@ export const planDerivatives = (input: {
 				skipped.push({ role: role.key, width });
 				continue;
 			}
-			const keepAlpha = asset.purpose === 'brand' ? { keepAlpha: true } : {};
-			derivatives.push({ role: role.key, roleVersion: role.version, spec: { ...spec, ...keepAlpha } });
+			// A padded image sits on white. Left see-through, an iPhone home screen fills it with black.
+			const keepAlpha = asset.purpose === 'brand' && role.fit !== 'pad' ? { keepAlpha: true } : {};
+			derivatives.push({
+				role: role.key,
+				roleVersion: role.version,
+				spec: { ...spec, ...keepAlpha, ...(role.fit === 'pad' && role.inset ? { inset: role.inset } : {}) },
+				brandStrip: role.brandStrip === true,
+			});
 		}
 	}
 
@@ -83,7 +94,7 @@ const specFor = (
 	}
 
 	const height = Math.round((width * role.aspect.height) / role.aspect.width);
-	// `cover` must fill the box from the source; `pad` and `blur` only need the photo to fit inside.
+	// `cover` must fill the box from the source; `pad`, `blur` and `story` only need the photo to fit inside.
 	const scale =
 		role.fit === 'cover'
 			? Math.max(width / source.width, height / source.height)

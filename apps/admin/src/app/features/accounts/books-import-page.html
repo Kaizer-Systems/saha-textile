@@ -1,0 +1,378 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'accounts_import'"
+>
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">{{ 'import_title' | transloco }}</h5>
+			<small class="text-muted">
+				{{ 'import_step_of' | transloco: { n: steps.indexOf(step()) + 1 } }} @if (step() === 'match' &&
+				preview(); as p) { · {{ 'import_match_sub' | transloco: { total: p.rows.length, matched: p.matched,
+				check: p.toCheck } }} } @if (step() === 'check') { · {{ 'import_nothing_saved' | transloco }} }
+			</small>
+		</div>
+		<div class="d-flex gap-2">
+			<a
+				class="btn btn-outline"
+				routerLink="/accounts/export"
+			>
+				{{ 'export_title' | transloco }}
+			</a>
+			@switch (step()) { @case ('source') {
+			<button
+				*hasPermission="'accounts.post'"
+				type="button"
+				class="btn btn-theme"
+				id="import_next"
+				[disabled]="busy() || !text() || !locationId()"
+				(click)="check()"
+			>
+				{{ 'import_next' | transloco }}
+			</button>
+			} @case ('match') {
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="step.set('source')"
+			>
+				{{ 'import_back' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				[disabled]="toChoose() > 0"
+				(click)="step.set('check')"
+			>
+				{{ 'import_next' | transloco }}
+			</button>
+			} @case ('check') {
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="step.set('match')"
+			>
+				{{ 'import_back' | transloco }}
+			</button>
+			<button
+				*hasPermission="'accounts.post'"
+				type="button"
+				class="btn btn-theme"
+				id="import_bring_in"
+				[disabled]="busy() || !preview()?.balanced || toChoose() > 0"
+				(click)="bringIn()"
+			>
+				{{ 'import_bring_in' | transloco }}
+			</button>
+			} @default {} }
+		</div>
+	</div>
+	<div class="card">
+		<div class="card-body d-flex flex-wrap gap-2">
+			@for (s of steps; track s; let i = $index) {
+			<div
+				class="rounded border px-3 py-2"
+				[class.border-warning]="s === step()"
+			>
+				<i
+					[class]="i < steps.indexOf(step()) ? 'ri-checkbox-circle-line text-success' : s === step() ? 'ri-time-line text-warning' : 'ri-checkbox-blank-circle-line text-muted'"
+				></i>
+				<b class="ms-1">{{ 'import_step_' + s | transloco }}</b>
+			</div>
+			}
+		</div>
+	</div>
+	@switch (step()) { @case ('source') {
+	<div class="card">
+		<div class="card-body theme-form theme-form-2">
+			<div class="row g-4">
+				<div class="col-md-6">
+					<h6>{{ 'import_from' | transloco }}</h6>
+					@for (s of ['tally_xml', 'zoho_csv', 'busy_csv', 'template_csv']; track s) {
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="radio"
+							name="imp_source"
+							[id]="'imp_' + s"
+							[checked]="source() === s"
+							(change)="source.set($any(s))"
+						/>
+						<label
+							class="form-check-label"
+							[for]="'imp_' + s"
+						>
+							{{ 'import_source_' + s | transloco }}
+						</label>
+					</div>
+					}
+					<small class="text-muted d-block mt-2">{{ 'import_template_hint' | transloco }}</small>
+				</div>
+				<div class="col-md-6">
+					<h6>{{ 'import_start' | transloco }}</h6>
+					@for (s of ['year_start', 'date']; track s) {
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="radio"
+							name="imp_start"
+							[id]="'imp_start_' + s"
+							[checked]="start() === s"
+							(change)="start.set($any(s))"
+						/>
+						<label
+							class="form-check-label"
+							[for]="'imp_start_' + s"
+						>
+							{{ 'import_start_' + s | transloco }}
+						</label>
+					</div>
+					}
+					<div class="form-check">
+						<input
+							class="form-check-input"
+							type="radio"
+							name="imp_start"
+							id="imp_start_history"
+							disabled
+						/>
+						<label
+							class="form-check-label text-muted"
+							for="imp_start_history"
+						>
+							{{ 'import_start_history' | transloco }}
+						</label>
+					</div>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="imp_on"
+					>
+						{{ 'import_books_start_on' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="imp_on"
+						type="date"
+						[ngModel]="startOn()"
+						(ngModelChange)="startOn.set($event)"
+					/>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="imp_loc"
+					>
+						{{ 'import_location' | transloco }}
+					</label>
+					<select
+						class="form-select"
+						id="imp_loc"
+						[ngModel]="locationId()"
+						(ngModelChange)="locationId.set($event)"
+					>
+						<option value="">—</option>
+						@for (l of locations.data() ?? []; track l.id) {
+						<option [value]="l.id">{{ l.name }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="imp_file"
+					>
+						{{ 'import_file' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="imp_file"
+						type="file"
+						accept=".xml,.csv,.txt"
+						(change)="read($event)"
+					/>
+				</div>
+			</div>
+		</div>
+	</div>
+	} @case ('match') {
+	<div class="form-check form-switch mb-2">
+		<input
+			class="form-check-input"
+			type="checkbox"
+			id="imp_only"
+			[ngModel]="onlyToCheck()"
+			(ngModelChange)="onlyToCheck.set($event)"
+		/>
+		<label
+			class="form-check-label"
+			for="imp_only"
+		>
+			{{ 'import_only_to_check' | transloco }}
+		</label>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'import_col_their_ledger' | transloco }}</th>
+					<th>{{ 'import_col_their_group' | transloco }}</th>
+					<th>{{ 'import_col_ours' | transloco }}</th>
+					<th>{{ 'import_col_how' | transloco }}</th>
+					<th>{{ 'import_col_balance' | transloco: { date: day(startOn()) } }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (r of rows(); track r.name) {
+				<tr>
+					<td>{{ r.name }}</td>
+					<td>{{ r.group }}</td>
+					<td>
+						@if (r.how === 'choose' || r.how === 'new') {
+						<select
+							class="form-select"
+							[attr.aria-label]="'import_col_ours' | transloco"
+							[ngModel]="chosen()[r.name] ?? (r.groupKey ? 'g:' + r.groupKey : '')"
+							(ngModelChange)="choose(r.name, $event)"
+						>
+							<option value="">{{ 'import_choose' | transloco }}</option>
+							<optgroup [label]="'import_existing_ledger' | transloco">
+								@for (l of ledgers(); track l.id) {
+								<option [value]="'l:' + l.id">{{ l.name }}</option>
+								}
+							</optgroup>
+							<optgroup [label]="'import_new_ledger_in' | transloco">
+								@for (g of groups(); track g.id) {
+								<option [value]="'g:' + g.systemKey">{{ g.name }}</option>
+								}
+							</optgroup>
+						</select>
+						} @else { {{ ourName(r) }} }
+					</td>
+					<td>{{ 'import_how_' + r.how | transloco }}</td>
+					<td class="text-end text-nowrap">{{ balance(r.openingPaise) }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	} @case ('check') { @if (preview(); as p) {
+	<div class="row g-3">
+		<div class="col-xl-8">
+			<div class="card">
+				<div class="card-body d-flex flex-wrap gap-4">
+					<div>
+						<small class="text-muted d-block">{{ 'import_ledgers' | transloco }}</small>
+						<b>{{ p.rows.length }}</b>
+					</div>
+					<div>
+						<small class="text-muted d-block">{{ 'import_with_balance' | transloco }}</small>
+						<b>{{ withBalance() }}</b>
+					</div>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-body">
+					<div class="d-flex justify-content-between border-bottom py-2">
+						<span>
+							<i
+								[class]="p.balanced ? 'ri-checkbox-circle-line text-success' : 'ri-close-circle-line text-danger'"
+							></i>
+							<b>{{ 'import_check_balanced' | transloco }}</b>
+						</span>
+						<small>
+							{{ 'import_each_side' | transloco: { dr: money(p.debitPaise), cr: money(p.creditPaise) } }}
+						</small>
+					</div>
+					<div class="d-flex justify-content-between border-bottom py-2">
+						<span>
+							<i
+								[class]="toChoose() ? 'ri-close-circle-line text-danger' : 'ri-checkbox-circle-line text-success'"
+							></i>
+							<b>{{ 'import_check_placed' | transloco }}</b>
+						</span>
+						<small>{{ 'import_to_choose' | transloco: { n: toChoose() } }}</small>
+					</div>
+					<div class="d-flex justify-content-between py-2">
+						<span>
+							<i class="ri-error-warning-line text-warning"></i>
+							<b>{{ 'import_check_not_brought' | transloco }}</b>
+						</span>
+					</div>
+					<small class="text-muted d-block">{{ 'import_check_not_brought_body' | transloco }}</small>
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-4">
+			<div class="card">
+				<div class="card-body">
+					<h5>{{ 'import_bring_in' | transloco }}</h5>
+					<p class="small mb-2">
+						<i class="ri-file-list-3-line"></i>
+						<b>{{ 'import_does_opening' | transloco }}</b>
+						· {{ 'import_does_opening_body' | transloco }}
+					</p>
+					<p class="small mb-0">
+						<i class="ri-arrow-go-back-line"></i>
+						<b>{{ 'import_does_undo' | transloco }}</b>
+						· {{ 'import_does_undo_body' | transloco }}
+					</p>
+				</div>
+			</div>
+		</div>
+	</div>
+	} } @case ('done') { @if (done(); as d) {
+	<div class="alert alert-success">
+		{{ 'import_done_line' | transloco: { amount: money(d.debitPaise), made: d.ledgersMade.length } }}
+		<a [routerLink]="['/accounts/vouchers', d.voucherId]">{{ 'import_open_voucher' | transloco }}</a>
+	</div>
+	} } }
+	<h6 class="mt-4">{{ 'import_past' | transloco }}</h6>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'import_col_when' | transloco }}</th>
+					<th>{{ 'import_col_file' | transloco }}</th>
+					<th>{{ 'import_books_start_on' | transloco }}</th>
+					<th>{{ 'import_col_each_side' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (e of imports.data() ?? []; track e.id) {
+				<tr>
+					<td>{{ day(e.createdAt) }}</td>
+					<td>{{ e.fileName || ('import_source_' + e.source | transloco) }}</td>
+					<td>{{ day(e.startOn) }}</td>
+					<td class="text-nowrap">{{ money(e.debitPaise) }}</td>
+					<td>
+						@if (e.undoneAt) {
+						<small class="text-muted">{{ 'import_was_undone' | transloco }}</small>
+						} @else {
+						<button
+							*hasPermission="'accounts.lock'"
+							type="button"
+							class="btn btn-sm btn-outline"
+							[disabled]="busy()"
+							(click)="undo(e)"
+						>
+							{{ 'import_undo' | transloco }}
+						</button>
+						}
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="5"
+						class="text-muted"
+					>
+						{{ 'import_none' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+</app-page-wrapper>

@@ -7,6 +7,7 @@ import {
 	NotFoundException,
 	UnauthorizedException,
 } from '@nestjs/common';
+import type { SearchCheckResult } from '@saha-textile/core-domain';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { assertOwnership, Principal } from '../src/auth/ownership';
@@ -15,11 +16,13 @@ import { CartService, toPublicCart } from '../src/cart/cart.service';
 import { CurrencyController } from '../src/currency/currency.controller';
 import { CurrencyService } from '../src/currency/currency.service';
 import { HealthController } from '../src/health/health.controller';
+import { readinessProbes } from '../src/health/readiness-probe';
 import { OrdersController } from '../src/orders/orders.controller';
 import { OrdersService } from '../src/orders/orders.service';
 import { PrivacyController } from '../src/privacy/privacy.controller';
 import { PromotionsController } from '../src/promotions/promotions.controller';
 import { PromotionsService } from '../src/promotions/promotions.service';
+import { LanguageStore } from '../src/languages/language-store';
 
 const { readyState } = vi.hoisted(() => ({ readyState: { value: 1 } }));
 
@@ -115,7 +118,7 @@ describe('OrdersService', () => {
 			attributes: { size: 's' },
 			addons: [{ code: 'fall', value: 'yes' }],
 		});
-		expect(order).toMatchObject({ subtotalINR: 4300, totalINR: 4300, status: 'pending', currency: 'INR' });
+		expect(order).toMatchObject({ subtotalINR: 4300, totalINR: 4300, status: 'awaiting_payment', currency: 'INR' });
 		expect(h.carts.consumeCart).toHaveBeenCalledTimes(1);
 	});
 
@@ -179,14 +182,14 @@ describe('OrdersController', () => {
 	});
 
 	it('needs a session', () => {
-		const controller = new OrdersController(service() as never, config);
+		const controller = new OrdersController(service() as never, config, LanguageStore.fixed(['en', 'bn']));
 		expect(() => controller.create(undefined, {} as never, {} as never)).toThrow(UnauthorizedException);
 		expect(() => controller.listMine(undefined)).toThrow(UnauthorizedException);
 	});
 
 	it('creates with the guest cookie when there is one', async () => {
 		const orders = service();
-		const controller = new OrdersController(orders as never, config);
+		const controller = new OrdersController(orders as never, config, LanguageStore.fixed(['en', 'bn']));
 		await controller.create(shopper, { cartId: 'c' } as never, { cookies: { st_guest: 'g' } } as never);
 		expect(orders.createFromCart).toHaveBeenLastCalledWith(expect.objectContaining({ guestToken: 'g' }));
 		await controller.create(shopper, { cartId: 'c' } as never, {} as never);
@@ -195,7 +198,7 @@ describe('OrdersController', () => {
 
 	it('pages, reads with ownership, and updates a status', async () => {
 		const orders = service();
-		const controller = new OrdersController(orders as never, config);
+		const controller = new OrdersController(orders as never, config, LanguageStore.fixed(['en', 'bn']));
 		await controller.listMine(shopper, '2', '5');
 		expect(orders.listByUser).toHaveBeenLastCalledWith('cus_1', { page: 2, pageSize: 5 });
 		await controller.listMine(shopper);
@@ -411,7 +414,9 @@ describe('PrivacyController', () => {
 		expect(limits.enforce).toHaveBeenCalledWith('consent_write', { ip: '1.1.1.1' });
 		expect(consent.append).toHaveBeenLastCalledWith(expect.objectContaining({ userId: 'cus_1', guestId: null }));
 		await controller.updateConsent(body, { cookies: { st_guest: 'g' } } as never, undefined);
-		expect(consent.append).toHaveBeenLastCalledWith(expect.objectContaining({ userId: null, guestId: hashed('g') }));
+		expect(consent.append).toHaveBeenLastCalledWith(
+			expect.objectContaining({ userId: null, guestId: hashed('g') }),
+		);
 		await controller.updateConsent({ ...(body as object), consentId: 'c-1' } as never, {} as never, undefined);
 		expect(consent.append).toHaveBeenLastCalledWith(expect.objectContaining({ guestId: hashed('c-1') }));
 		await controller.updateConsent(body, {} as never, undefined);
@@ -463,16 +468,47 @@ describe('currency', () => {
 		await expect(build(null).convert(Number.NaN, 'USD')).rejects.toBeInstanceOf(BadRequestException);
 		await expect(build(null).convert(-1, 'USD')).rejects.toBeInstanceOf(BadRequestException);
 		await expect(build(null).convert(1, 'usd')).rejects.toBeInstanceOf(NotFoundException);
+		// Another currency carries the PayPal markup (6% by default; brief fx01).
 		expect(await build({ code: 'USD', rateFromINR: 0.5 }).convert(100, 'usd')).toEqual({
 			amountINR: 100,
 			currency: 'USD',
 			rateFromINR: 0.5,
-			amount: 50,
+			markupPercent: 6,
+			amount: 53,
 		});
+		// Rupees never do.
+		expect(await build({ code: 'INR', rateFromINR: 1 }).convert(100, 'INR')).toMatchObject({
+			amount: 100,
+			markupPercent: 0,
+		});
+		// The markup set in Admin › Currencies.
+		const repo = {
+			listEnabled: vi.fn(),
+			findByCode: vi.fn(async () => ({ code: 'GBP', rateFromINR: 1 / 116.95 })),
+		};
+		const settings = { get: vi.fn(async () => ({ paypalMarkupPercent: 6 })) };
+		expect((await new CurrencyService(repo as never, settings as never).convert(10_000, 'GBP')).amount).toBe(90.64);
+	});
+
+	it('lists each currency with the rate the shop shows prices at, rupees as they are', async () => {
+		const repo = {
+			listEnabled: vi.fn(async () => [
+				{ code: 'INR', rateFromINR: 1 },
+				{ code: 'USD', rateFromINR: 0.012 },
+			]),
+		};
+		const rows = await new CurrencyService(repo as never).listForShop();
+		expect(rows.map((row) => [row.code, row.shopRateFromINR])).toEqual([
+			['INR', 1],
+			['USD', 0.012 * 1.06],
+		]);
+		const settings = { get: vi.fn(async () => ({ paypalMarkupPercent: 10 })) };
+		const marked = await new CurrencyService(repo as never, settings as never).listForShop();
+		expect(marked[1]?.shopRateFromINR).toBeCloseTo(0.0132, 10);
 	});
 
 	it('serves the controller, defaulting to rupees', async () => {
-		const service = { listEnabled: vi.fn(async () => 'list'), convert: vi.fn(async () => 'converted') };
+		const service = { listForShop: vi.fn(async () => 'list'), convert: vi.fn(async () => 'converted') };
 		const controller = new CurrencyController(service as never);
 		expect(await controller.list()).toBe('list');
 		await controller.convert('100', 'USD');
@@ -489,22 +525,28 @@ describe('HealthController', () => {
 		return value;
 	};
 
+	const probe = (name: string, required: boolean, up: boolean) => ({
+		name,
+		required,
+		check: async () => ({ up, detail: up ? 'fine' : 'broken' }),
+	});
+
 	it('stays alive whatever the database does', () => {
-		const controller = new HealthController();
+		const controller = new HealthController([]);
 		expect(controller.live()).toMatchObject({ status: 'ok' });
 		expect(controller.check()).toMatchObject({ status: 'ok' });
 	});
 
-	it('reports ready only with Mongo', () => {
-		const controller = new HealthController();
+	it('reports ready only with Mongo', async () => {
+		const controller = new HealthController([]);
 		readyState.value = 1;
 		const up = reply();
-		controller.ready(up as never);
+		await controller.ready(up as never);
 		expect(up.status).toHaveBeenCalledWith(200);
 		expect(up.send).toHaveBeenCalledWith(expect.objectContaining({ status: 'ready' }));
 		readyState.value = 0;
 		const down = reply();
-		controller.ready(down as never);
+		await controller.ready(down as never);
 		expect(down.status).toHaveBeenCalledWith(503);
 		expect(down.send).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -513,5 +555,77 @@ describe('HealthController', () => {
 			}),
 		);
 		readyState.value = 1;
+	});
+
+	it('a required dependency down answers 503', async () => {
+		const down = reply();
+		await new HealthController([probe('redis', true, false)]).ready(down as never);
+		expect(down.status).toHaveBeenCalledWith(503);
+		expect(down.send).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'not_ready',
+				dependencies: expect.arrayContaining([{ name: 'redis', status: 'down', detail: 'broken' }]),
+			}),
+		);
+	});
+
+	it('an optional dependency down is reported but still serves', async () => {
+		const degraded = reply();
+		await new HealthController([probe('redis', true, true), probe('search', false, false)]).ready(
+			degraded as never,
+		);
+		expect(degraded.status).toHaveBeenCalledWith(200);
+		expect(degraded.send).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'ready',
+				dependencies: expect.arrayContaining([
+					{ name: 'redis', status: 'up', detail: 'fine' },
+					{ name: 'search', status: 'degraded', detail: 'broken' },
+				]),
+			}),
+		);
+	});
+});
+
+describe('readinessProbes', () => {
+	const search = { indexStatus: async () => ({ up: true, detail: 'index ready' }) };
+
+	it('needs Redis and only reports search', async () => {
+		const [redis, index] = readinessProbes({ isReachable: async () => true }, search);
+		expect(redis).toMatchObject({ name: 'redis', required: true });
+		await expect(redis!.check()).resolves.toEqual({ up: true, detail: 'connected' });
+		expect(index).toMatchObject({ name: 'search', required: false });
+		await expect(index!.check()).resolves.toEqual({ up: true, detail: 'index ready' });
+	});
+
+	it('names an unreachable Redis', async () => {
+		const [redis] = readinessProbes({ isReachable: async () => false }, search);
+		await expect(redis!.check()).resolves.toEqual({ up: false, detail: 'unreachable' });
+	});
+
+	it('adds the search change queue and the last nightly check to the search line', async () => {
+		const outbox = {
+			stats: vi.fn(async (): Promise<{ waiting: number; failing: number; oldestWaitingAt: Date | null }> => ({
+				waiting: 3,
+				failing: 1,
+				oldestWaitingAt: new Date(0),
+			})),
+			lastCheck: vi.fn(
+				async (): Promise<SearchCheckResult | null> =>
+					({ checkedAt: new Date('2026-11-10T03:00:00Z') }) as SearchCheckResult,
+			),
+		};
+		const index = () => readinessProbes({ isReachable: async () => true }, search, outbox)[1]!;
+		await expect(index().check()).resolves.toEqual({
+			up: true,
+			detail: 'index ready; 3 changes waiting, 1 failing; last check 2026-11-10T03:00:00.000Z',
+		});
+		outbox.stats.mockResolvedValueOnce({ waiting: 0, failing: 0, oldestWaitingAt: null });
+		outbox.lastCheck.mockResolvedValueOnce(null);
+		await expect(index().check()).resolves.toMatchObject({
+			detail: 'index ready; 0 changes waiting; no check yet',
+		});
+		outbox.stats.mockRejectedValueOnce(new Error('mongo down'));
+		await expect(index().check()).resolves.toMatchObject({ detail: 'index ready; change queue unreadable' });
 	});
 });

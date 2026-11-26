@@ -1,6 +1,6 @@
 /** The API's admin catalogue shapes (`AdminProductList`, `AdminProductDetail`, `ProductMerchandisingWrite`). */
 
-import type { ProductContentWrite } from '@saha-textile/contracts';
+import type { FreeWith, ProductContentWrite, ProductVideo, QuickLength } from '@saha-textile/contracts';
 
 export type CatalogBadgeCode = 'sale' | 'featured' | 'bestseller' | 'trending' | 'new' | 'low_stock' | 'back_in_stock';
 
@@ -24,6 +24,9 @@ export interface CatalogShipping {
 }
 
 export interface CatalogProductRow {
+	/** Show on shop (D5); absent from older API builds means shown. */
+	showOnShop?: boolean;
+	type?: 'simple' | 'variable' | 'bundle';
 	id: string;
 	slug: string;
 	sku: string;
@@ -34,6 +37,8 @@ export interface CatalogProductRow {
 	stock: number;
 	variantCount: number;
 	thumbnailUrl: string | null;
+	/** True once the product has been live: "Off shop" rather than "Not live yet" when it isn't. */
+	wasLive?: boolean;
 }
 
 export interface CatalogProductList {
@@ -50,17 +55,55 @@ export interface CatalogVariantView extends CatalogShipping {
 	isBase: boolean;
 	mrpINR: number | null;
 	sellingINR: number;
+	/** On hand, in stock units (pieces, or tenths of a metre). */
 	quantity: number;
+	/** On hand but not for sale (P3). */
+	held: number;
+	/** Paid, not yet shipped (0 until DEC-STOCK-RESERVE). */
+	inOrders: number;
+	freeToSell: number;
 	available: boolean;
 	barcode: string | null;
 	hsnCode: string | null;
+	/** The variant's own picture and its version (owner, 17 Nov: "Variation image"). */
+	image?: { assetId: string; versionId: string | null } | null;
+}
+
+/** The main category's defaults for HSN and returnability (F02). */
+export interface CatalogMainCategory {
+	id: string;
+	name: string;
+	hsnCode: string | null;
+	returnable: boolean;
+	/** The category's own shipping charges, for "Use Sarees's value" (prd01). */
+	shipping?: Pick<CatalogShippingCharges, 'domesticINR' | 'internationalFirstINR' | 'internationalFurtherINR'> | null;
+}
+
+/** A product sold by the metre (shop brief A01); lengths in tenths of a metre. */
+export interface CatalogMetreFields {
+	shortestCutTenths: number | null;
+	quickLengths: QuickLength[];
+	widthInches: number | null;
+	weightPerMetreGrams: number | null;
+}
+
+/** A product's own shipping charges in rupees; null follows the category. */
+export interface CatalogShippingCharges {
+	domesticINR: number | null;
+	internationalFirstINR: number | null;
+	internationalFurtherINR: number | null;
 }
 
 export interface CatalogProductDetail {
+	/** Show on shop (D5) and Free with this product (P8). */
+	showOnShop?: boolean;
+	freeWith?: FreeWith | null;
 	id: string;
 	slug: string;
 	sku: string;
 	title: string;
+	/** The product's last save, for a draft of changes' conflict check. */
+	updatedAt?: string | null;
 	type: 'simple' | 'variable' | 'bundle';
 	status: CatalogProductStatus;
 	published: boolean;
@@ -73,13 +116,26 @@ export interface CatalogProductDetail {
 	addonPriceINR: number | null;
 	replacementPath: string | null;
 	shipping: CatalogShipping;
+	/** The product's own shipping charges; null follows its main category (shipping brief prd01). */
+	shippingCharges?: CatalogShippingCharges | null;
+	/** Ships free in both zones, whatever the rule sets say. */
+	freeShipping?: boolean;
 	hsnCode: string | null;
+	soldBy: 'piece' | 'metre';
+	/** True once it has stock, stock history or orders: Sold by is then fixed. */
+	soldByLocked: boolean;
+	/** Null follows the main category. */
+	returnable: boolean | null;
+	mainCategory: CatalogMainCategory | null;
+	metre: CatalogMetreFields;
 	content: ProductContentWrite;
 	images: Array<{ assetId: string; url: string; width: number; height: number }>;
 	relatedProductIds: string[];
 	upsellProductIds: string[];
 	crossSellProductIds: string[];
 	variants: CatalogVariantView[];
+	/** Checked YouTube videos and Shorts, in order. */
+	videos: ProductVideo[];
 }
 
 export interface CatalogVariantWrite extends CatalogShipping {
@@ -94,6 +150,9 @@ export interface CatalogVariantWrite extends CatalogShipping {
 }
 
 export interface CatalogProductWrite {
+	/** Show on shop (D5); absent keeps it. Free with this product (P8): null removes them, absent keeps them. */
+	showOnShop?: boolean;
+	freeWith?: FreeWith | null;
 	sku: string;
 	status: 'live' | 'disabled';
 	featured: boolean;
@@ -104,13 +163,27 @@ export interface CatalogProductWrite {
 	hiddenBadges: CatalogBadgeCode[];
 	addonPriceINR: number | null;
 	shipping: CatalogShipping;
+	/** The product's own shipping charges; null follows its main category (shipping brief prd01). */
+	shippingCharges?: CatalogShippingCharges | null;
+	/** Ships free in both zones, whatever the rule sets say. */
+	freeShipping?: boolean;
 	hsnCode: string | null;
+	soldBy?: 'piece' | 'metre';
+	returnable?: boolean | null;
+	metre?: {
+		shortestCutTenths: number;
+		quickLengths: QuickLength[];
+		widthInches: number | null;
+		weightPerMetreGrams: number;
+	};
 	variants: CatalogVariantWrite[];
 	slug?: string;
 	content?: ProductContentWrite;
 	relatedProductIds?: string[];
 	upsellProductIds?: string[];
 	crossSellProductIds?: string[];
+	/** Replaces the product's videos when sent. */
+	videos?: ProductVideo[];
 }
 
 export interface CatalogReplacementTarget {

@@ -35,7 +35,7 @@ import {
 	ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY,
 } from '../infra/tokens';
 import { SessionRefusal } from './session-refusal';
-import { SessionService } from './session.service';
+import { isAdminSessionLocked, SessionService } from './session.service';
 
 export const PUBLIC_ROUTE_KEY = 'auth:public';
 /** `GET /me`-style identity probe: a true guest is 200, not 401. */
@@ -46,6 +46,13 @@ export const PERMISSIONS_KEY = 'auth:permissions';
 
 /** Marks a route as reachable without a session. */
 export const Public = () => SetMetadata(PUBLIC_ROUTE_KEY, true);
+
+export const ALLOW_WHILE_LOCKED_KEY = 'auth:allow-while-locked';
+/**
+ * The few admin routes that work behind the 15-minute lock: who am I (so a reload can show the lock),
+ * resume (the PIN or password), and lock itself. Everything else answers `session_locked`.
+ */
+export const AllowWhileLocked = () => SetMetadata(ALLOW_WHILE_LOCKED_KEY, true);
 
 /**
  * Identity probe (`GET /me`): "who is this visitor?", not "prove you may see this page".
@@ -209,6 +216,17 @@ export class SessionGuard implements CanActivate {
 		request.principal = principal;
 
 		if (isPublic) return true;
+
+		// The 15-minute lock is the server's, so a reload or a new tab cannot skip it. A lock that
+		// came from inactivity alone is written down, so the next activity signal cannot undo it.
+		if (audience === 'admin' && isAdminSessionLocked(session)) {
+			const allowWhileLocked = this.reflector.getAllAndOverride<boolean | undefined>(ALLOW_WHILE_LOCKED_KEY, [
+				context.getHandler(),
+				context.getClass(),
+			]);
+			if (!session.lockedAt) await this.sessions.lockAdminSession(session);
+			if (!allowWhileLocked) throw new SessionRefusal('session_locked', 'Session is locked');
+		}
 
 		const requiredRoles = this.reflector.getAllAndOverride<AdminRole[] | undefined>(ROLES_KEY, [
 			context.getHandler(),

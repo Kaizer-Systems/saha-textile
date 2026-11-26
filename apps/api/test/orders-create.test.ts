@@ -33,7 +33,9 @@ function ownedCart(): Cart {
 		userId: 'user_a',
 		guestToken: null,
 		currency: 'INR',
-		lines: [{ id: 'line_1', productId: 'prod_1', variationId: null, quantity: 1, addons: [] }],
+		lines: [
+			{ id: 'line_1', productId: 'prod_1', variationId: null, quantity: 1, addons: [], bundle: null, free: [] },
+		],
 	};
 }
 

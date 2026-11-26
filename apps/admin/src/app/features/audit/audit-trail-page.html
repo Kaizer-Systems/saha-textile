@@ -1,0 +1,211 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'atr_title'"
+>
+	<div class="d-flex align-items-end justify-content-between theme-form theme-form-2 mb-3 flex-wrap gap-2">
+		<div class="d-flex flex-wrap gap-2">
+			<div>
+				<label
+					class="form-label-title"
+					for="au_module"
+				>
+					{{ 'atr_module' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="au_module"
+					[ngModel]="module()"
+					(ngModelChange)="set('module', $event)"
+				>
+					<option value="">{{ 'atr_every_module' | transloco }}</option>
+					@for (m of modules; track m) {
+					<option [value]="m">{{ 'atr_module_' + m | transloco }}</option>
+					}
+				</select>
+			</div>
+			<div>
+				<label
+					class="form-label-title"
+					for="au_action"
+				>
+					{{ 'atr_action' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="au_action"
+					maxlength="80"
+					[ngModel]="action()"
+					(ngModelChange)="set('action', $event)"
+				/>
+			</div>
+			<div>
+				<label
+					class="form-label-title"
+					for="au_actor"
+				>
+					{{ 'atr_who' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="au_actor"
+					[ngModel]="actor()"
+					(ngModelChange)="set('actor', $event)"
+				>
+					<option value="">{{ 'atr_anyone' | transloco }}</option>
+					@for (p of people.data() ?? []; track p.id) {
+					<option [value]="p.id">{{ p.name }}</option>
+					}
+				</select>
+			</div>
+			<div>
+				<label
+					class="form-label-title"
+					for="au_from"
+				>
+					{{ 'att_from' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					type="date"
+					id="au_from"
+					[ngModel]="from()"
+					(ngModelChange)="set('from', $event)"
+				/>
+			</div>
+			<div>
+				<label
+					class="form-label-title"
+					for="au_to"
+				>
+					{{ 'att_to' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					type="date"
+					id="au_to"
+					[ngModel]="to()"
+					(ngModelChange)="set('to', $event)"
+				/>
+			</div>
+		</div>
+		<app-export-menu
+			id="au_export"
+			[source]="exportSource"
+		/>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'atr_when' | transloco }}</th>
+					<th>{{ 'atr_who' | transloco }}</th>
+					<th>{{ 'atr_module' | transloco }} · {{ 'atr_action' | transloco }}</th>
+					<th>{{ 'atr_record' | transloco }}</th>
+					<th>{{ 'atr_what' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (e of list.data()?.items ?? []; track e.id) {
+				<tr
+					[id]="'atr_row_' + e.id"
+					(click)="show(detail, e)"
+				>
+					<td class="text-nowrap">{{ when(e.createdAt) }}</td>
+					<td>{{ who(e) }}</td>
+					<td>{{ moduleOf(e) }} · {{ e.action }}</td>
+					<td>{{ e.entityType }} {{ e.entityId }}</td>
+					<td>{{ changeLine(e) || '—' }}</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="5"
+						class="text-muted"
+					>
+						{{ 'atr_none' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<div class="d-flex justify-content-between align-items-center mt-2">
+		<small class="text-muted">{{ 'atr_note' | transloco }}</small>
+		<div class="d-flex align-items-center gap-2">
+			<button
+				type="button"
+				class="btn btn-sm btn-outline"
+				id="au_prev"
+				[disabled]="page() <= 1"
+				(click)="page.set(page() - 1)"
+			>
+				{{ 'atr_prev' | transloco }}
+			</button>
+			<small>{{ page() }} / {{ pages() }}</small>
+			<button
+				type="button"
+				class="btn btn-sm btn-outline"
+				id="au_next"
+				[disabled]="page() >= pages()"
+				(click)="page.set(page() + 1)"
+			>
+				{{ 'atr_next' | transloco }}
+			</button>
+		</div>
+	</div>
+	<ng-template
+		#detail
+		let-modal
+	>
+		@let e = open();
+		<div class="modal-header">
+			<h5 class="modal-title">{{ e?.action }} · {{ when(e?.createdAt) }}</h5>
+			<button
+				type="button"
+				class="btn btn-close"
+				[title]="'close' | transloco"
+				(click)="modal.dismiss()"
+			></button>
+		</div>
+		<div class="modal-body">
+			<p class="mb-2">
+				{{ 'atr_who' | transloco }}: {{ e ? who(e) : '' }} · {{ 'atr_record' | transloco }}: {{ e?.entityType }}
+				{{ e?.entityId }}
+			</p>
+			<div class="table-responsive">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'atr_field' | transloco }}</th>
+							<th>{{ 'atr_before' | transloco }}</th>
+							<th>{{ 'atr_after' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (d of e?.diffs ?? []; track $index) {
+						<tr>
+							<td>{{ d.field }}</td>
+							<td>{{ shown(d.before) }}</td>
+							<td>{{ shown(d.after) }}</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td
+								colspan="3"
+								class="text-muted"
+							>
+								{{ 'atr_no_fields' | transloco }}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<pre
+				class="small mb-0"
+				id="au_metadata"
+			>
+{{ shown(e?.metadata) }}</pre>
+		</div>
+	</ng-template>
+</app-page-wrapper>

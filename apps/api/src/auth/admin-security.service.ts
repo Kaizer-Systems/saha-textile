@@ -136,6 +136,14 @@ export class AdminSecurityService {
 	}
 
 	/**
+	 * The recent-password proof for another surface's sensitive change (Settings › Communications
+	 * switching on a cell with a warning). Password only, never the PIN; refuses with the same 403.
+	 */
+	async confirmCurrentPassword(userId: string, currentPassword: string): Promise<void> {
+		await this.requireRecentPasswordProof(userId, currentPassword);
+	}
+
+	/**
 	 * The recent-password proof itself.
 	 *
 	 * Answers the same refusal whether the account is missing or the password is wrong. These

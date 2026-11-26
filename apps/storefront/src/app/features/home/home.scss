@@ -48,19 +48,49 @@
 		right: 20px;
 	}
 
-	// Bottom dots, centred and overlaid on the banner.
+	// Slide headings read exactly as typed in admin. The theme capitalises every word of a
+	// heading, which turns "woven in Varanasi" into "Woven In Varanasi".
+	.home-detail h2 {
+		text-transform: none;
+	}
+
+	// The slide text starts clear of the arrows: 20 px edge, 44 px arrow, 20 px gap. Phones
+	// have no arrows (people swipe, and the dots stay), so they keep the theme's spacing.
+	@media (min-width: 768px) {
+		.home-detail {
+			padding-inline: 84px;
+		}
+	}
+
+	@media (max-width: 767.98px) {
+		.owl-prev,
+		.owl-next {
+			display: none !important;
+		}
+	}
+
+	// Bottom dots, centred and overlaid on the banner. Each dot is a 24 px tap area (WCAG 2.5.8 target size,
+	// accessibility decision D5, 17 Nov 2026) with the dot drawn in its middle: the dots look the same, and since two
+	// tap areas may not overlap, the dots sit 24 px apart (the gap between two small dots grows from 8 to 15 px). The
+	// row sits 7.5 px lower so each dot stays where it was.
 	.owl-dots {
 		position: absolute;
 		left: 0;
 		right: 0;
-		bottom: 18px;
+		bottom: 10.5px;
 		margin: 0;
 		display: flex;
 		justify-content: center;
-		gap: 8px;
+		gap: 0;
 		z-index: 2;
 
 		.owl-dot {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			min-width: 24px;
+			min-height: 24px;
+
 			span {
 				width: 9px;
 				height: 9px;

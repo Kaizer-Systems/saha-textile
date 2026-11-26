@@ -1,5 +1,5 @@
-<!-- filter_only descriptive attributes (display-only) -->
-@if (hasFilterAttrs()) {
+<!-- filter_only descriptive attributes (display-only); the product page shows them below its buttons -->
+@if (hasFilterAttrs() && showFacts()) {
 <app-attributes-info [attributes]="product().semantic_attributes || []" />
 }
 
@@ -8,6 +8,7 @@
 <app-variation-axis
 	[product]="product()"
 	[owlCar]="owlCar()"
+	[showTable]="showTable()"
 	(selectVariation)="selectVariation($event)"
 />
 } @if (hasAddon()) {
@@ -21,8 +22,19 @@
 } @if (hasBundle()) {
 <app-bundle-configurator
 	[product]="product()"
+	[showSummary]="showSetSummary()"
 	[initialSelections]="bundleSeed()"
 	[initialMeasurements]="measurementSeed()"
+	[initialSet]="setSeed()"
 	(stateChange)="onBundleChange($event)"
+/>
+}
+<!-- Free with this product (brief P8.1–P8.8): given rows or a choice, above the buttons; a required choice waits. -->
+@if (!hasBundle() && product().free_with; as free) {
+<app-free-items
+	[freeWith]="free"
+	[forName]="''"
+	[initial]="freeSeed()"
+	(stateChange)="freeState.set($event)"
 />
 }

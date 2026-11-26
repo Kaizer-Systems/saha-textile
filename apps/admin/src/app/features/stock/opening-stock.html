@@ -1,0 +1,219 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'opening_stock'"
+>
+	<p class="text-muted">{{ 'opening_intro' | transloco }}</p>
+	<div class="d-flex align-items-center mb-3 flex-wrap gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="template()"
+		>
+			<i class="ri-download-2-line me-1"></i>
+			{{ 'download_template' | transloco }}
+		</button>
+		<label
+			class="btn btn-theme mb-0"
+			for="opening_file"
+		>
+			<i class="ri-file-upload-line me-1"></i>
+			{{ 'upload_filled_sheet' | transloco }}
+		</label>
+		<input
+			#sheet
+			class="d-none"
+			id="opening_file"
+			type="file"
+			accept=".csv,.tsv,.txt,text/csv"
+			(change)="read(sheet)"
+		/>
+		@if (fileName()) {
+		<span class="small text-muted">{{ fileName() }}</span>
+		}
+	</div>
+	<p class="help-text mb-3">{{ 'opening_sheet_help' | transloco }}</p>
+	@if (error(); as message) {
+	<div
+		class="alert alert-warning"
+		role="alert"
+	>
+		{{ message }}
+	</div>
+	} @if (check(); as result) {
+	<section class="dashboard-tiles mb-3">
+		<div class="row g-3">
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'import_ready' | transloco }}</h6>
+						<h3>{{ result.counts.ready }}</h3>
+						<p class="small text-muted mb-0">
+							{{ 'opening_ready_sub' | transloco: { units: readyUnits() } }}
+						</p>
+					</div>
+					<div class="icon-box"><i class="ri-checkbox-circle-line"></i></div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'opening_result_cost_missing' | transloco }}</h6>
+						<h3>{{ result.counts.costMissing }}</h3>
+						<p class="small text-muted mb-0">{{ 'opening_fill_cost' | transloco }}</p>
+					</div>
+					<div class="icon-box"><i class="ri-question-line"></i></div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'opening_result_unknown_sku' | transloco }}</h6>
+						<h3>{{ result.counts.unknownSku }}</h3>
+						@if (result.counts.invalid) {
+						<p class="small text-muted mb-0">
+							{{ 'opening_other_problems' | plural: result.counts.invalid }}
+						</p>
+						}
+					</div>
+					<div class="icon-box"><i class="ri-error-warning-line"></i></div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'opening_result_already_has_stock' | transloco }}</h6>
+						<h3>{{ result.counts.alreadyHasStock }}</h3>
+					</div>
+					<div class="icon-box"><i class="ri-lock-line"></i></div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th style="width: 70px">{{ 'row' | transloco }}</th>
+					<th style="width: 150px">SKU</th>
+					<th style="width: 260px">{{ 'item' | transloco }}</th>
+					<th
+						class="text-end"
+						style="width: 100px"
+					>
+						{{ 'pieces' | transloco }}
+					</th>
+					<th
+						class="text-end"
+						style="width: 140px"
+					>
+						{{ 'cost_each' | transloco }}
+					</th>
+					<th style="width: 130px">{{ 'received_on_date' | transloco }}</th>
+					<th style="width: 190px">{{ 'result' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of result.rows; track row.row) {
+				<tr
+					[class.table-warning]="row.result === 'cost_missing'"
+					[class.table-danger]="row.result !== 'ready' && row.result !== 'cost_missing'"
+				>
+					<td>{{ row.row }}</td>
+					<td>{{ row.sku }}</td>
+					<td>
+						@if (row.title) { {{ row.title }} } @else {
+						<span class="text-muted">{{ 'no_such_sku' | transloco }}</span>
+						}
+					</td>
+					<td class="text-end text-nowrap">
+						{{ row.quantity }}@if (row.soldBy === 'metre') { {{ 'unit_m' | transloco }} }
+					</td>
+					<td class="text-end">
+						@if (row.result === 'cost_missing') {
+						<input
+							class="form-control d-inline-block text-end"
+							inputmode="decimal"
+							style="width: 110px"
+							[placeholder]="'cost' | transloco"
+							[attr.aria-label]="'cost_each' | transloco"
+							[disabled]="busy()"
+							(change)="setCost(row.row, $any($event.target).value)"
+						/>
+						} @else { {{ row.unitCostINR === null ? '—' : (row.unitCostINR | rupees) }} }
+					</td>
+					<td>{{ row.receivedOn ? (row.receivedOn | shortDate) : ('opening_today' | transloco) }}</td>
+					<td>
+						<div [class]="'status-' + pill[row.result]">
+							<span>{{ 'opening_result_' + row.result | transloco }}</span>
+						</div>
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<div class="d-flex justify-content-end mt-3 flex-wrap gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			[disabled]="busy()"
+			(click)="reset()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="opening_post"
+			[disabled]="!allReady() || busy()"
+			(click)="post()"
+		>
+			{{ 'post_n_skus' | plural: result.rows.length }}
+		</button>
+	</div>
+	<p class="small text-muted mt-2 mb-0 text-end">
+		{{ 'opening_post_note' | transloco: { number: result.nextNumber } }}
+	</p>
+	} @if (loads.data()?.length) {
+	<h6 class="mt-4 mb-2">{{ 'opening_loads' | transloco }}</h6>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'document' | transloco }}</th>
+					<th>{{ 'posted' | transloco }}</th>
+					<th>{{ 'by' | transloco }}</th>
+					<th class="text-end">SKUs</th>
+					@if (loads.data()?.[0]?.totalValueINR !== null) {
+					<th class="text-end">{{ 'value_at_cost' | transloco }}</th>
+					}
+				</tr>
+			</thead>
+			<tbody>
+				@for (load of loads.data() ?? []; track load.id) {
+				<tr>
+					<td>
+						{{ load.number }}
+						<a
+							href="javascript:void(0)"
+							class="ms-1"
+							[title]="'print_document' | transloco"
+							[attr.aria-label]="'print_document' | transloco"
+							(click)="printLoad(load.id)"
+						>
+							<i class="ri-printer-line"></i>
+						</a>
+					</td>
+					<td>{{ load.postedAt | shortDateTime }}</td>
+					<td>{{ load.postedByName ?? '—' }}</td>
+					<td class="text-end">{{ load.skus }}</td>
+					@if (load.totalValueINR !== null) {
+					<td class="text-end text-nowrap">{{ load.totalValueINR | rupees }}</td>
+					}
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	}
+</app-page-wrapper>

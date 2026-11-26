@@ -3,14 +3,18 @@ import { Component, HostListener, PLATFORM_ID, inject, input } from '@angular/co
 
 import { TranslocoModule } from '@jsverse/transloco';
 
+import { ThemeModeStore } from '@core/brand/theme-mode';
+import { ShopEvents } from '@core/events/shop-events';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import { Button } from '@shared/ui/button/button';
 import { Menu } from '@shared/ui/menu/menu';
 
 import { Cart } from '../widgets/cart/cart';
 import { Logo } from '../widgets/logo/logo';
+import { Mode } from '../widgets/mode/mode';
 import { MyAccount } from '../widgets/my-account/my-account';
 import { NavbarMenuButton } from '../widgets/navbar-menu-button/navbar-menu-button';
+import { Notice } from '../widgets/notice/notice';
 import { Search } from '../widgets/search/search';
 import { Topbar } from '../widgets/topbar/topbar';
 import { Wishlist } from '../widgets/wishlist/wishlist';
@@ -19,10 +23,25 @@ import { Wishlist } from '../widgets/wishlist/wishlist';
 	selector: 'app-minimal-header',
 	templateUrl: './minimal-header.html',
 	styleUrls: ['./minimal-header.scss'],
-	imports: [Topbar, NavbarMenuButton, Logo, Button, Menu, Search, Wishlist, Cart, MyAccount, TranslocoModule],
+	imports: [
+		Topbar,
+		NavbarMenuButton,
+		Logo,
+		Mode,
+		Button,
+		Menu,
+		Search,
+		Wishlist,
+		Cart,
+		MyAccount,
+		Notice,
+		TranslocoModule,
+	],
 })
 export class MinimalHeader {
 	private platformId = inject<Object>(PLATFORM_ID);
+	readonly events = inject(ShopEvents);
+	readonly themeMode = inject(ThemeModeStore);
 
 	// TODO: Skipped for migration because:
 	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)

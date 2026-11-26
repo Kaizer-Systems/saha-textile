@@ -21,7 +21,7 @@
 							<a [routerLink]="['/blog/', blog?.slug]">
 								<img
 									[src]="blog?.blog_thumbnail?.original_url || 'assets/images/blog.png'"
-									[alt]="blog?.title"
+									[alt]="blog.blog_thumbnail?.alt || blog.title"
 								/>
 							</a>
 						</div>
@@ -32,7 +32,7 @@
 							<div class="blog-label">
 								<span class="time">
 									<i class="ri-time-line"></i>
-									<span>{{ blog?.created_at | date: 'dd MMM yyyy' }}</span>
+									<span>{{ blog.published_at | shopDate }}</span>
 								</span>
 							</div>
 							<a [routerLink]="['/blog/', blog?.slug]">
@@ -44,6 +44,8 @@
 								class="blog-button"
 							>
 								{{ 'read_more' | transloco }}
+								<!-- The post title, for screen readers and search engines: "Read More" alone names no page. -->
+								<span class="visually-hidden">: {{ blog?.title }}</span>
 								<i class="ri-arrow-right-fill"></i>
 							</a>
 						</div>

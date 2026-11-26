@@ -5,6 +5,11 @@ import { describe, expect, it } from 'vitest';
 import { AdvancedDropdown } from './advanced-dropdown';
 import { DropdownList } from './dropdown-list/dropdown-list';
 
+import type { DropdownOption } from './dropdown-option';
+
+/** A test row: a category with a name and its subcategories. */
+type Row = DropdownOption & { name?: string; subcategories?: Row[] };
+
 const options = () => [
 	{ id: 1, name: 'Sarees', subcategories: [{ id: 2, name: 'Silk', subcategories: [] }] },
 	{ id: 3, name: 'Dress', subcategories: [] },
@@ -19,14 +24,14 @@ const render = (inputs: Record<string, unknown> = {}) => {
 			template: '<div #dropdownContainer><div class="dropdown-open"></div></div>',
 		},
 	});
-	const fixture = TestBed.createComponent(AdvancedDropdown);
+	const fixture = TestBed.createComponent<AdvancedDropdown<Row>>(AdvancedDropdown);
 	fixture.componentRef.setInput('options', options());
 	fixture.componentRef.setInput('subArrayKey', 'subcategories');
 	for (const [name, value] of Object.entries(inputs)) fixture.componentRef.setInput(name, value);
 	fixture.detectChanges();
 	const dropdown = fixture.componentInstance;
 	dropdown.ngOnChanges();
-	const seen: number[][] = [];
+	const seen: (string | number)[][] = [];
 	dropdown.selectedItem.subscribe((value) => seen.push([...value]));
 	return { fixture, dropdown, seen };
 };
@@ -35,6 +40,22 @@ describe('AdvancedDropdown selection', () => {
 	it('starts with nothing selected', () => {
 		expect(render().dropdown.selectedIds).toEqual([]);
 		expect(render({ selectedOption: null }).dropdown.selectedIds).toEqual([]);
+	});
+
+	it('shows catalogue categories, whose ids are words, as selected', () => {
+		TestBed.resetTestingModule();
+		TestBed.overrideComponent(AdvancedDropdown, {
+			set: { imports: [], template: '<div #dropdownContainer><div class="dropdown-open"></div></div>' },
+		});
+		const fixture = TestBed.createComponent<AdvancedDropdown<Row>>(AdvancedDropdown);
+		fixture.componentRef.setInput('options', [
+			{ id: 'cat_1', name: 'Sarees', subcategories: [{ id: 'cat_2', name: 'Red & White', subcategories: [] }] },
+		]);
+		fixture.componentRef.setInput('subArrayKey', 'subcategories');
+		fixture.componentRef.setInput('selectedOption', ['cat_2']);
+		fixture.detectChanges();
+		fixture.componentInstance.ngOnChanges();
+		expect(fixture.componentInstance.selectedPills.map((pill) => pill.name)).toEqual(['Red & White']);
 	});
 
 	it('finds the selected options at any depth', () => {

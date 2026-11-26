@@ -14,14 +14,15 @@ import { PageService } from '@data-access/services/page.service';
  */
 export function injectFaqsQuery() {
 	const pageService = inject(PageService);
+	const locale = inject(ACTIVE_LOCALE);
 	return injectQuery(() => ({
-		queryKey: ['faqs'],
-		queryFn: () => firstValueFrom(pageService.getFaqs()),
+		queryKey: ['faqs', locale],
+		queryFn: () => firstValueFrom(pageService.getFaqs(locale)),
 	}));
 }
 
 /** A single static content page (privacy policy, terms, etc.) keyed on slug.
- *  Fetches assets/data/pages/<slug>.json via PageService.getPage(). */
+ *  Fetches a legal page from the API (`GET /catalog/pages/:slug`) via PageService.getPage(). */
 export function injectStaticPageQuery(slug: () => string | undefined) {
 	const pageService = inject(PageService);
 	const locale = inject(ACTIVE_LOCALE);

@@ -60,6 +60,10 @@ const ROLE_ONLY_ROUTES = {
 		'Revokes one of the caller’s OWN sessions; ownership is re-checked in the service and a stranger’s id answers 404.',
 	"auth/admin-auth.controller.ts POST 'sessions/revoke-others'": 'Revokes the caller’s OWN other sessions.',
 	"auth/admin-auth.controller.ts POST 'resume'": 'Re-proves presence on the caller’s OWN already-open session.',
+	"auth/admin-auth.controller.ts POST 'lock'":
+		'Locks the caller’s OWN session behind the 15-minute lock; it can only take access away.',
+	"auth/admin-auth.controller.ts POST 'activity'":
+		'Records that the caller is present on their OWN session; refused while that session is locked.',
 	"auth/admin-auth.controller.ts PATCH 'profile'":
 		'Updates the caller’s OWN display name/phone under a live admin session; no other account is addressable.',
 	// Invites create/list/revoke use @RequirePermissions('admin_user.create') — not role-only.

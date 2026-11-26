@@ -25,5 +25,8 @@ export class SettingStore {
 		this.selectedCurrency.set(currency);
 	}
 
+	/** The shop's currencies arrived; stories keep the chosen one as it is. */
+	useCurrencies(_list: readonly ICurrency[]): void {}
+
 	update(_payload?: unknown): void {}
 }

@@ -139,9 +139,9 @@ describe('CollectionSidebar', () => {
 		expect(widget.facetLabels()).toEqual({ fabric: 'Tissu' });
 	});
 
-	it('mirrors the first load and closes the panel', () => {
+	it('shows the skeleton on the first load and closes the panel', () => {
 		const { widget, service } = render();
-		expect(service.skeletonLoader).toBe(true);
+		expect(widget.loading()).toBe(true);
 		widget.closeCanvasMenu();
 		expect(service.offCanvasMenu).toBe(false);
 	});

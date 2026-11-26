@@ -1,0 +1,64 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'reports_title'"
+>
+	<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+		<h5 class="mb-0">{{ 'reports_title' | transloco }}</h5>
+		<div class="d-flex align-items-center gap-2">
+			<input
+				class="form-control w-auto"
+				id="reports_find"
+				[placeholder]="'reports_find' | transloco"
+				[attr.aria-label]="'reports_find' | transloco"
+				[ngModel]="find()"
+				(ngModelChange)="find.set($event)"
+			/>
+			<a
+				class="btn btn-theme"
+				id="reports_new"
+				routerLink="/accounts/reports/new"
+			>
+				<i class="ri-add-line"></i>
+				{{ 'reports_new' | transloco }}
+			</a>
+		</div>
+	</div>
+	<div class="row g-3">
+		@for (g of groups(); track g.group) {
+		<div class="col-xl-4 col-md-6">
+			<div class="card h-100">
+				<div class="card-body">
+					<h6 class="mb-3">{{ 'report_group_' + g.group | transloco }}</h6>
+					<ul class="list-unstyled mb-0">
+						@for (i of g.items; track i.key) {
+						<li class="py-1">
+							<a
+								[routerLink]="i.link"
+								[queryParams]="i.query ?? null"
+							>
+								{{ 'report_' + i.key | transloco }}
+							</a>
+						</li>
+						}
+					</ul>
+				</div>
+			</div>
+		</div>
+		} @for (f of folders(); track f.folder) {
+		<div class="col-xl-4 col-md-6">
+			<div class="card h-100">
+				<div class="card-body">
+					<h6 class="mb-3">{{ f.folder }}</h6>
+					<ul class="list-unstyled mb-0">
+						@for (i of f.items; track i.id) {
+						<li class="py-1">
+							<a [routerLink]="['/accounts/reports/saved', i.id]">{{ i.name }}</a>
+						</li>
+						}
+					</ul>
+				</div>
+			</div>
+		</div>
+		}
+	</div>
+</app-page-wrapper>

@@ -87,6 +87,8 @@ export const MessageOutboxStatus = z.enum([
 	'suppressed_channel_disabled',
 	'suppressed_no_consent',
 	'suppressed_plan_limit',
+	/** Settings › Communications has this message switched off on this channel. */
+	'suppressed_use_disabled',
 ]);
 export type MessageOutboxStatus = z.infer<typeof MessageOutboxStatus>;
 

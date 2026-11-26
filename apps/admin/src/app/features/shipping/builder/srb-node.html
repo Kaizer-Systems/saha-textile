@@ -1,0 +1,534 @@
+@let current = node(); @if (current === null) {
+<div
+	class="srb-line"
+	[attr.data-slot-id]="slotId()"
+>
+	@if (readOnly()) {
+	<span class="text-muted small">{{ 'ship_slot_empty' | transloco }}</span>
+	} @else {
+	<div
+		ngbDropdown
+		container="body"
+	>
+		<button
+			type="button"
+			class="btn btn-outline btn-sm srb-add"
+			[class.srb-err]="errorIds().has(slotId())"
+			ngbDropdownToggle
+		>
+			<i
+				class="ri-add-line me-1"
+				aria-hidden="true"
+			></i>
+			{{ 'ship_add_block' | transloco }}
+		</button>
+		<div
+			ngbDropdownMenu
+			class="srb-menu"
+			style="width: min(600px, 92vw); column-count: 2; column-gap: 16px"
+		>
+			@for (group of menu; track group.group) {
+			<h6
+				class="dropdown-header"
+				style="break-after: avoid"
+			>
+				{{ 'ship_menu_' + group.group | transloco }}
+			</h6>
+			@for (kind of group.kinds; track kind) {
+			<button
+				ngbDropdownItem
+				type="button"
+				style="break-inside: avoid"
+				[attr.data-add-kind]="kind"
+				(click)="add(kind)"
+			>
+				{{ 'ship_block_' + kind | transloco }}
+				<small>{{ 'ship_block_' + kind + '_help' | transloco }}</small>
+			</button>
+			} }
+		</div>
+	</div>
+	} @if (errorIds().has(slotId())) {
+	<span class="text-danger small">
+		<i
+			class="ri-error-warning-line"
+			aria-hidden="true"
+		></i>
+		{{ 'ship_slot_empty_error' | transloco }}
+	</span>
+	}
+</div>
+} @else { @switch (current.kind) { @case ('if') { @let n = asIf(current);
+<div [attr.data-block-id]="n.id">
+	<app-srb-group
+		[group]="n.when"
+		[readOnly]="readOnly()"
+		[lineFacts]="scope() !== 'wholeCart'"
+		[errorIds]="errorIds()"
+		[categories]="categories()"
+		[controls]="false"
+		(groupChange)="patchIf(n, { when: $event })"
+	/>
+	<div class="srb-branch">
+		<app-srb-node
+			[node]="n.then"
+			[scope]="scope()"
+			[readOnly]="readOnly()"
+			[errorIds]="errorIds()"
+			[categories]="categories()"
+			[languages]="languages()"
+			[hints]="hints()"
+			[slot]="'ship_kw_then'"
+			[slotId]="n.id"
+			(nodeChange)="patchIf(n, { then: $event })"
+		/>
+	</div>
+	<div class="srb-line">
+		<span class="srb-kw else">{{ 'ship_kw_otherwise' | transloco }}</span>
+		@if (!readOnly()) {
+		<a
+			href="javascript:void(0)"
+			class="small text-danger ms-auto"
+			[title]="'ship_remove_block' | transloco"
+			[attr.aria-label]="'ship_remove_block' | transloco"
+			(click)="remove()"
+		>
+			<i class="ri-delete-bin-line"></i>
+		</a>
+		}
+	</div>
+	<div class="srb-branch">
+		<app-srb-node
+			[node]="n.otherwise"
+			[scope]="scope()"
+			[readOnly]="readOnly()"
+			[errorIds]="errorIds()"
+			[categories]="categories()"
+			[languages]="languages()"
+			[hints]="hints()"
+			[slot]="'ship_kw_then'"
+			[slotId]="n.id"
+			(nodeChange)="patchIf(n, { otherwise: $event })"
+		/>
+	</div>
+	@if (!readOnly()) {
+	<div class="srb-line">
+		<div
+			ngbDropdown
+			container="body"
+		>
+			<button
+				type="button"
+				class="btn btn-outline btn-sm srb-add"
+				ngbDropdownToggle
+			>
+				<i
+					class="ri-add-line me-1"
+					aria-hidden="true"
+				></i>
+				{{ 'ship_add_condition' | transloco }}
+			</button>
+			<div ngbDropdownMenu>
+				<button
+					ngbDropdownItem
+					type="button"
+					(click)="addCondition(n)"
+				>
+					{{ 'ship_add_one_condition' | transloco }}
+				</button>
+				<button
+					ngbDropdownItem
+					type="button"
+					(click)="addGroup(n)"
+				>
+					{{ (n.when.join === 'all' ? 'ship_add_any_group' : 'ship_add_all_group') | transloco }}
+				</button>
+			</div>
+		</div>
+		@if (n.when.items.length > 1) {
+		<select
+			class="form-select"
+			[attr.aria-label]="'ship_join' | transloco"
+			[ngModel]="n.when.join"
+			(ngModelChange)="setJoin(n, $event)"
+		>
+			<option value="all">{{ 'ship_join_all' | transloco }}</option>
+			<option value="any">{{ 'ship_join_any' | transloco }}</option>
+		</select>
+		}
+	</div>
+	}
+</div>
+} @case ('bands') { @let n = asBands(current); @let unit = bandUnit(n);
+<div [attr.data-block-id]="n.id">
+	<div class="srb-line">
+		<span class="srb-kw if">{{ 'ship_kw_choose_by' | transloco }}</span>
+		<select
+			class="form-select"
+			[attr.aria-label]="'ship_band_field' | transloco"
+			[class.srb-err]="errorIds().has(n.id)"
+			[disabled]="readOnly()"
+			[ngModel]="n.field"
+			(ngModelChange)="patchBands(n, { field: $event })"
+		>
+			@for (field of bandFields; track field) {
+			<option
+				[ngValue]="field"
+				[disabled]="scope() === 'wholeCart' && field.startsWith('line.')"
+			>
+				{{ 'ship_fg_' + field.split('.')[0] | transloco }} › {{ fieldKey(field) | transloco }}
+			</option>
+			}
+		</select>
+		@if (!readOnly()) {
+		<a
+			href="javascript:void(0)"
+			class="small text-danger ms-auto"
+			[title]="'ship_remove_block' | transloco"
+			[attr.aria-label]="'ship_remove_block' | transloco"
+			(click)="remove()"
+		>
+			<i class="ri-delete-bin-line"></i>
+		</a>
+		}
+	</div>
+	<div class="table-responsive datatable-wrapper border-table mb-2">
+		<table class="all-package theme-table no-footer mb-0 table">
+			<thead>
+				<tr>
+					<th>{{ 'ship_band_from_col' | transloco: { unit } }}</th>
+					<th>{{ 'ship_band_to_col' | transloco: { unit } }}</th>
+					<th>{{ 'ship_band_charge_col' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (band of n.bands; track band.id; let b = $index; let last = $last) { @let simple =
+				simpleAmount(band.then);
+				<tr
+					[attr.data-block-id]="band.id"
+					[class.table-danger]="errorIds().has(band.id)"
+				>
+					<td>
+						<input
+							class="form-control"
+							style="width: 115px"
+							type="number"
+							min="0"
+							[class.srb-err]="errorIds().has(band.id)"
+							[attr.aria-label]="'ship_band_from' | transloco"
+							[readonly]="readOnly()"
+							[ngModel]="band.from"
+							(ngModelChange)="patchBand(n, b, { from: numberOrNull($event) })"
+						/>
+					</td>
+					<td>
+						<input
+							class="form-control"
+							style="width: 115px"
+							type="number"
+							min="0"
+							[placeholder]="'ship_band_and_above' | transloco"
+							[attr.aria-label]="'ship_band_to' | transloco"
+							[readonly]="readOnly()"
+							[ngModel]="band.to"
+							(ngModelChange)="patchBand(n, b, { to: numberOrNull($event) })"
+						/>
+					</td>
+					<td>
+						@if (simple) {
+						<div
+							class="input-group flex-nowrap"
+							style="width: 150px"
+						>
+							<span class="input-group-text">₹</span>
+							<input
+								class="form-control"
+								type="number"
+								min="0"
+								[attr.aria-label]="'ship_amount' | transloco"
+								[readonly]="readOnly()"
+								[ngModel]="simple.amount"
+								(ngModelChange)="setBandAmount(n, b, simple, $event)"
+							/>
+						</div>
+						@if (simple.per !== 'once') {
+						<small class="text-muted">{{ 'ship_band_per_' + simple.per | transloco }}</small>
+						} } @else {
+						<app-srb-node
+							[node]="band.then"
+							[scope]="scope()"
+							[readOnly]="readOnly()"
+							[errorIds]="errorIds()"
+							[categories]="categories()"
+							[languages]="languages()"
+							[hints]="hints()"
+							[slotId]="band.id"
+							(nodeChange)="patchBand(n, b, { then: $event })"
+						/>
+						}
+					</td>
+					<td class="text-end">
+						@if (!readOnly() && n.bands.length > 1) {
+						<a
+							href="javascript:void(0)"
+							class="text-danger"
+							[title]="'ship_remove_band' | transloco"
+							[attr.aria-label]="'ship_remove_band' | transloco"
+							(click)="removeBand(n, b)"
+						>
+							<i class="ri-delete-bin-line"></i>
+						</a>
+						}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<p class="help-text mb-2">{{ 'ship_band_to_help' | transloco }}</p>
+	@if (!readOnly()) {
+	<div class="srb-line">
+		<button
+			type="button"
+			class="btn btn-outline btn-sm srb-add"
+			(click)="addBand(n)"
+		>
+			<i
+				class="ri-add-line me-1"
+				aria-hidden="true"
+			></i>
+			{{ 'ship_add_band' | transloco }}
+		</button>
+	</div>
+	}
+	<div class="srb-line">
+		<span class="srb-kw else">{{ 'ship_kw_otherwise' | transloco }}</span>
+	</div>
+	<div class="srb-branch">
+		<app-srb-node
+			[node]="n.otherwise"
+			[scope]="scope()"
+			[readOnly]="readOnly()"
+			[errorIds]="errorIds()"
+			[categories]="categories()"
+			[languages]="languages()"
+			[hints]="hints()"
+			[slotId]="n.id"
+			(nodeChange)="patchBands(n, { otherwise: $event })"
+		/>
+	</div>
+</div>
+} @case ('result') { @let n = asResult(current); @let r = asAny(n.result);
+<div
+	class="srb-line"
+	[attr.data-block-id]="n.id"
+>
+	<span class="srb-kw then">{{ slot() | transloco }}</span>
+	<select
+		class="form-select"
+		[attr.aria-label]="'ship_result_kind' | transloco"
+		[disabled]="readOnly()"
+		[ngModel]="kindOf(n.result)"
+		(ngModelChange)="setKindChoice(n, $event)"
+	>
+		@for (choice of kindChoices; track choice) {
+		<option [ngValue]="choice">{{ 'ship_kind_' + choice | transloco }}</option>
+		}
+	</select>
+	@switch (n.result.kind) { @case ('amount') {
+	<select
+		class="form-select"
+		[attr.aria-label]="'ship_which_charge' | transloco"
+		[disabled]="readOnly()"
+		[ngModel]="chargeSource(n.result)"
+		(ngModelChange)="setChargeSource(n, $event)"
+	>
+		@for (charge of charges; track charge) {
+		<option [value]="'product:' + charge">{{ 'ship_src_' + charge | transloco }}</option>
+		}
+		<option value="amount">{{ 'ship_src_amount' | transloco }}</option>
+	</select>
+	<div
+		class="input-group flex-nowrap"
+		style="width: 150px"
+	>
+		<span class="input-group-text">₹</span>
+		<input
+			class="form-control srb-amt"
+			type="number"
+			min="0"
+			[class.srb-err]="errorIds().has(n.id)"
+			[attr.aria-label]="'ship_amount' | transloco"
+			[readonly]="readOnly()"
+			[ngModel]="r['amount']"
+			(ngModelChange)="patchResult(n, $any({ amount: numberOrNull($event) }))"
+		/>
+	</div>
+	<select
+		class="form-select"
+		[attr.aria-label]="'ship_per' | transloco"
+		[disabled]="readOnly()"
+		[ngModel]="r['per']"
+		(ngModelChange)="patchResult(n, $any({ per: $event }))"
+	>
+		<option value="once">{{ (scope() === 'wholeCart' ? 'ship_per_order' : 'ship_per_line') | transloco }}</option>
+		<option value="unit">{{ 'ship_per_unit' | transloco }}</option>
+		<option value="kg">{{ 'ship_per_kg' | transloco }}</option>
+	</select>
+	} @case ('productCharge') { @let hint = hints()[$any(r['charge'])];
+	<select
+		class="form-select"
+		[attr.aria-label]="'ship_which_charge' | transloco"
+		[disabled]="readOnly()"
+		[ngModel]="chargeSource(n.result)"
+		(ngModelChange)="setChargeSource(n, $event)"
+	>
+		@for (charge of charges; track charge) {
+		<option [value]="'product:' + charge">{{ 'ship_src_' + charge | transloco }}</option>
+		}
+		<option value="amount">{{ 'ship_src_amount' | transloco }}</option>
+	</select>
+	@if (hint) {
+	<span class="text-muted small">{{ hint }}</span>
+	}
+	<select
+		class="form-select"
+		[attr.aria-label]="'ship_per' | transloco"
+		[disabled]="readOnly()"
+		[ngModel]="r['per']"
+		(ngModelChange)="patchResult(n, $any({ per: $event }))"
+	>
+		<option value="unit">{{ 'ship_per_unit' | transloco }}</option>
+		<option value="once">
+			{{ (scope() === 'wholeCart' ? 'ship_highest_once' : 'ship_per_line') | transloco }}
+		</option>
+	</select>
+	} @case ('percent') {
+	<div class="input-group w-auto flex-nowrap">
+		<input
+			class="form-control srb-amt"
+			type="number"
+			min="0"
+			max="100"
+			[class.srb-err]="errorIds().has(n.id)"
+			[attr.aria-label]="'ship_percent' | transloco"
+			[readonly]="readOnly()"
+			[ngModel]="r['percent']"
+			(ngModelChange)="patchResult(n, $any({ percent: numberOrNull($event) }))"
+		/>
+		<span class="input-group-text">%</span>
+	</div>
+	<select
+		class="form-select"
+		[attr.aria-label]="'ship_percent_of' | transloco"
+		[disabled]="readOnly()"
+		[ngModel]="r['of']"
+		(ngModelChange)="patchResult(n, $any({ of: $event }))"
+	>
+		<option
+			value="line"
+			[disabled]="scope() === 'wholeCart'"
+		>
+			{{ 'ship_of_line' | transloco }}
+		</option>
+		<option value="cart">{{ 'ship_of_cart' | transloco }}</option>
+	</select>
+	} @case ('free') {
+	<span class="text-muted small">{{ 'ship_free_help' | transloco }}</span>
+	} @case ('courierQuote') {
+	<span class="text-muted small">{{ 'ship_block_courierQuote_help' | transloco }}</span>
+	} } @if (!readOnly()) {
+	<a
+		href="javascript:void(0)"
+		class="small text-danger ms-auto"
+		[title]="'ship_remove_block' | transloco"
+		[attr.aria-label]="'ship_remove_block' | transloco"
+		(click)="remove()"
+	>
+		<i class="ri-delete-bin-line"></i>
+	</a>
+	}
+</div>
+@if (n.result.kind === 'firstAndFurther') {
+<div class="srb-branch">
+	@for (side of ['first', 'further']; track side) { @let source = $any(r[side]);
+	<div class="srb-line">
+		<span
+			class="text-muted"
+			style="min-width: 150px"
+		>
+			{{ 'ship_' + side + '_unit' | transloco }}
+		</span>
+		<select
+			class="form-select"
+			[attr.aria-label]="'ship_' + side + '_unit' | transloco"
+			[disabled]="readOnly()"
+			[ngModel]="sourceValue(source)"
+			(ngModelChange)="setSource(n, $any(side), $event, source)"
+		>
+			@for (charge of charges; track charge) {
+			<option [value]="charge">
+				{{ (side === 'first' && scope() === 'wholeCart' ? 'ship_highest_of' : 'ship_its_own') | transloco: {
+				charge: ('ship_pw_charge_' + charge | transloco) } }}
+			</option>
+			}
+			<option value="fixed">{{ 'ship_typed_amount' | transloco }}</option>
+		</select>
+		@if (source.from === 'product' && hints()[source.charge]) {
+		<span class="text-muted small">{{ hints()[source.charge] }}</span>
+		} @if (source.from === 'fixed') {
+		<div class="input-group w-auto flex-nowrap">
+			<span class="input-group-text">₹</span>
+			<input
+				class="form-control srb-amt"
+				type="number"
+				min="0"
+				[class.srb-err]="errorIds().has(n.id) && source.amount === null"
+				[attr.aria-label]="'ship_amount' | transloco"
+				[readonly]="readOnly()"
+				[ngModel]="source.amount"
+				(ngModelChange)="setSourceAmount(n, $any(side), $event)"
+			/>
+		</div>
+		}
+	</div>
+	} @if (scope() === 'wholeCart') {
+	<div class="srb-line">
+		<span
+			class="text-muted"
+			style="min-width: 150px"
+		>
+			{{ 'ship_count' | transloco }}
+		</span>
+		<select
+			class="form-select"
+			[attr.aria-label]="'ship_count' | transloco"
+			[disabled]="readOnly()"
+			[ngModel]="r['count']"
+			(ngModelChange)="patchResult(n, $any({ count: $event }))"
+		>
+			<option value="acrossCart">{{ 'ship_count_acrossCart' | transloco }}</option>
+			<option value="perProduct">{{ 'ship_count_perProduct' | transloco }}</option>
+		</select>
+	</div>
+	}
+</div>
+} @if (n.result.kind === 'cantShip') { @let message = $any(r['message']);
+<div class="srb-branch">
+	@for (language of languages(); track language) {
+	<div class="srb-line">
+		<span class="text-muted">{{ 'ship_message_in' | transloco: { language: languageName(language) } }}</span>
+		<input
+			class="form-control"
+			maxlength="160"
+			[class.srb-err]="errorIds().has(n.id) && !(message[language] ?? '').trim()"
+			[attr.aria-label]="'ship_cant_ship_message' | transloco"
+			[readonly]="readOnly()"
+			[ngModel]="message[language] ?? ''"
+			(ngModelChange)="setMessage(n, language, $event, message)"
+		/>
+	</div>
+	}
+</div>
+} } } }

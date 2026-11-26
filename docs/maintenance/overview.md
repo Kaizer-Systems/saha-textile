@@ -3,7 +3,7 @@ title: Maintenance Overview
 description: Routine maintenance for dependencies, schemas, permissions and translations.
 status: planned
 audience: [frontend, backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-10'
 source_of_truth:
     - package.json
     - docs/engineering-live-context/execution-roadmap.mdx
@@ -43,7 +43,9 @@ Follow the [evolution rules](/backend/contracts-and-validation#evolution-rules).
 
 ## Translations
 
-Add every key to both `en.json` and `fr.json`. `pnpm check:i18n-parity` enforces this.
+Add every key to both `en.json` and `bn.json`. `pnpm check:i18n-parity` enforces this.
+
+An icon-only admin action takes its hover name from a translation key. `pnpm check:icon-titles` fails the lint when one is missing.
 
 ## Security
 

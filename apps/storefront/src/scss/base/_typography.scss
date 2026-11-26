@@ -164,6 +164,13 @@ h6 {
 	font-weight: 400;
 }
 
+// Moved here from base/_reset.scss so it comes after the h6 rule: on text with the `.h6` look (heading classes, D4)
+// the class form of `h6 { margin: 0 }` weighs the same as this rule, and the later one wins, as it did for an h6.
+.ls-expanded {
+	letter-spacing: 12px;
+	margin-right: -12px;
+}
+
 span {
 	display: inline-block;
 }

@@ -1,0 +1,95 @@
+@if (entry(); as current) { @if (preview(); as plan) {
+<div class="modal-body">
+	<i class="ri-inbox-archive-line icon-box"></i>
+	<h5
+		class="modal-title"
+		id="post_confirm_title"
+	>
+		{{ 'post_to_stock_question' | transloco: { what: intoStock() } }}
+	</h5>
+	<p>{{ current.supplierName }} · {{ 'bill' | transloco }} {{ current.billNumber }} · {{ plan.totalINR | rupees }}</p>
+	<div
+		class="mx-auto text-start"
+		style="max-width: 520px"
+	>
+		<table class="table-sm mb-3 table">
+			<tbody>
+				<tr>
+					<td class="text-muted">{{ 'stock_goes_up' | transloco }}</td>
+					<td class="text-end">{{ 'across_skus' | plural: plan.skus : { what: intoStock() } }}</td>
+				</tr>
+				<tr>
+					<td class="text-muted">{{ 'gets_the_number' | transloco }}</td>
+					<td class="text-end">{{ plan.numberPreview }}</td>
+				</tr>
+				@if (plan.costIntoStockINR !== null) {
+				<tr>
+					<td class="text-muted">{{ 'cost_added_to_stock' | transloco }}</td>
+					<td class="text-end">
+						{{ plan.costIntoStockINR | rupees }}
+						<small class="text-muted">
+							({{ (plan.itcClaimable ? 'cost_before_gst_claimable' : 'cost_full_price_no_itc') | transloco
+							}})
+						</small>
+					</td>
+				</tr>
+				}
+				<tr>
+					<td class="text-muted">{{ 'payment_due' | transloco }}</td>
+					<td class="text-end">
+						{{ plan.dueOn | shortDate }} ({{ 'days_count' | plural: plan.paymentTermsDays }})
+					</td>
+				</tr>
+				@if (plan.hasDamaged || plan.hasMissing) {
+				<tr>
+					<td class="text-muted">{{ 'back_to_supplier' | transloco }}</td>
+					<td class="text-end">
+						@if (plan.hasDamaged) { {{ 'return_draft_made' | transloco }} } @if (plan.hasDamaged &&
+						plan.hasMissing) { · } @if (plan.hasMissing) { {{ 'debit_note_draft_made' | transloco }} }
+					</td>
+				</tr>
+				}
+				<tr>
+					<td class="text-muted">{{ 'warnings_you_accept' | transloco }}</td>
+					<td class="text-end">{{ plan.warnings.length }}</td>
+				</tr>
+			</tbody>
+		</table>
+		@if (warningLines().length) {
+		<ul class="small text-muted ps-3">
+			@for (line of warningLines(); track $index) {
+			<li>{{ line }}</li>
+			}
+		</ul>
+		}
+		<p class="small text-muted">{{ 'post_locks_entry' | transloco }}</p>
+		@if (error(); as problem) {
+		<div
+			class="alert alert-warning d-flex align-items-start gap-2 text-start"
+			role="alert"
+		>
+			<i class="ri-error-warning-line mt-1"></i>
+			<div>{{ problem }}</div>
+		</div>
+		}
+	</div>
+	<div class="button-box">
+		<button
+			type="button"
+			class="btn-md fw-bold btn btn-secondary"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn-theme btn-md fw-bold btn"
+			id="post_confirm_yes"
+			[disabled]="busy()"
+			(click)="post()"
+		>
+			{{ 'post_to_stock' | transloco }}
+		</button>
+	</div>
+</div>
+} }

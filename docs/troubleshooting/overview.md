@@ -3,7 +3,7 @@ title: Troubleshooting Overview
 description: Common local problems and how to fix them.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-10'
 source_of_truth:
     - docs/engineering-live-context/execution-roadmap.mdx
     - docs/getting-started/local-development.md
@@ -33,6 +33,17 @@ This page lists common local problems and how to fix them. For failures in busin
 | Server rendering fails on TLS               | Node does not trust the local certificate    | Start with `NODE_OPTIONS=--use-system-ca`                               |
 | The browser calls `localhost` in the stack  | `/config.json` did not parse                 | Check that Nginx serves the file                                        |
 | No code arrives locally                     | The console provider logs instead of sending | Set `OTP_LOCAL_FIXED_CODE`                                              |
+| Database tests time out in setup hooks      | Too many index builds on a fresh database    | Connect with `autoIndex: false` and sync only the file's own indexes    |
+
+## Installable app
+
+| Symptom                                           | Likely cause                                                                                   | Fix                                                                         |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| A deployed manifest shows the built-in icons      | The storefront container has no `SAHA_TEXTILE_PUBLIC_CONFIG`, so the manifest asks `localhost` | Set the variable on the storefront container                                |
+| Get the App opens the how-to popup in Chrome      | Chrome has not offered to install: the app is installed already, or the page is not on HTTPS   | Test a production build over HTTPS in a profile without the app             |
+| No service worker on the local development server | The worker registers in production builds only                                                 | Build the storefront and serve the production output                        |
+| Shoppers stay on an old build after a release     | A cache holds `/sw.js`                                                                         | Keep `Cache-Control: no-cache` on `/sw.js` through Nginx and Cloudflare     |
+| Clicks do nothing on a deployed page              | A request blocked by the content security policy keeps the page from finishing start-up        | Check the browser console for policy violations and allow the needed origin |
 
 ## Sessions
 

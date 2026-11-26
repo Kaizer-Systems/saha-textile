@@ -1,6 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
+import {
+	HEIC_QUALITY_STEPS,
+	heicColourProfile,
+	sniffPhoto,
+	withColourProfile,
+} from '@saha-textile/core-domain/media-files';
 import { firstValueFrom } from 'rxjs';
 
 import { runtimeConfig, runtimeConfigReady } from '@core/config/runtime-config';
@@ -37,14 +43,28 @@ export class ReviewPhotoRefusal extends Error {
 	}
 }
 
-/** What the bytes really are, whatever the file name or the picker claimed. */
-const sniff = (head: Uint8Array): 'jpeg' | 'png' | 'heic' | null => {
-	if (head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff) return 'jpeg';
-	if (head[0] === 0x89 && head[1] === 0x50 && head[2] === 0x4e && head[3] === 0x47) return 'png';
-	const brand = String.fromCharCode(...head.slice(4, 12));
-	if (brand.startsWith('ftyp') && /heic|heix|hevc|heim|heis|mif1|msf1/.test(brand.slice(4))) return 'heic';
-	return null;
-};
+/** What the bytes really are, whatever the file name or the picker claimed (shared with the admin). */
+const sniff = sniffPhoto;
+
+/**
+ * A HEIC from a phone as a JPEG: the same converter the admin's Media page uses (media step 2d) — top quality first,
+ * then 95 and 90 until it fits 25 MB, with the photo's own colour profile put back so reds and pinks stay true.
+ */
+async function heicAsJpeg(file: File): Promise<Blob> {
+	const { heicTo } = await import('heic-to');
+	const icc = heicColourProfile(new Uint8Array(await file.arrayBuffer()));
+	let made: Blob = file;
+	for (const quality of HEIC_QUALITY_STEPS) {
+		const jpeg = await heicTo({ blob: file, type: 'image/jpeg', quality });
+		made = icc
+			? new Blob([withColourProfile(new Uint8Array(await jpeg.arrayBuffer()), icc) as Uint8Array<ArrayBuffer>], {
+					type: 'image/jpeg',
+				})
+			: jpeg;
+		if (made.size <= MAX_BYTES) break;
+	}
+	return made;
+}
 
 /**
  * A customer's review photo, end to end in the browser: check the real bytes are a JPEG, PNG
@@ -61,10 +81,7 @@ export class ReviewPhotoUploadService {
 		const kind = sniff(new Uint8Array(await file.slice(0, 16).arrayBuffer()));
 		if (!kind) throw new ReviewPhotoRefusal('not_an_image');
 		let photo: Blob = file;
-		if (kind === 'heic') {
-			const { heicTo } = await import('heic-to');
-			photo = await heicTo({ blob: file, type: 'image/jpeg', quality: 0.9 });
-		}
+		if (kind === 'heic') photo = await heicAsJpeg(file);
 		if (photo.size > MAX_BYTES) throw new ReviewPhotoRefusal('too_large');
 		const contentType = kind === 'png' ? 'image/png' : 'image/jpeg';
 		const bitmap = await createImageBitmap(photo);

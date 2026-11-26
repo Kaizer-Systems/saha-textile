@@ -24,16 +24,15 @@ const group = (
 	name: [string, string],
 ) => ({
 	attributeCode,
-	label: { en: name[0], fr: name[1] },
+	label: { en: name[0], bn: name[1] },
 	semanticRole: role,
 	displayStyle: 'rectangle',
 	requiredSelection: false,
-	terms: labels.map(([code, en, fr]) => ({ code, label: { en, fr } })),
+	terms: labels.map(([code, en, bn]) => ({ code, label: { en, bn } })),
 });
-const fabric = (code: string, en: string, fr: string) =>
-	group('fabric', 'filter_only', [[code, en, fr]], ['Fabric', 'Tissu']);
-const color = (...codes: Array<[string, string, string]>) =>
-	group('color', 'variation_axis', codes, ['Color', 'Couleur']);
+const fabric = (code: string, en: string, bn: string) =>
+	group('fabric', 'filter_only', [[code, en, bn]], ['Fabric', 'কাপড়']);
+const color = (...codes: Array<[string, string, string]>) => group('color', 'variation_axis', codes, ['Color', 'রং']);
 
 const rows: Array<[string, string, string, number, number, number, unknown[]]> = [
 	[
@@ -43,7 +42,7 @@ const rows: Array<[string, string, string, number, number, number, unknown[]]> =
 		5000,
 		4000,
 		4.5,
-		[fabric('silk', 'Silk', 'Soie'), color(['red', 'Red', 'Rouge'])],
+		[fabric('silk', 'Silk', 'সিল্ক'), color(['red', 'Red', 'লাল'])],
 	],
 	[
 		'prd_2',
@@ -52,7 +51,7 @@ const rows: Array<[string, string, string, number, number, number, unknown[]]> =
 		1500,
 		1500,
 		3,
-		[fabric('cotton', 'Cotton', 'Coton'), color(['blue', 'Blue', 'Bleu'])],
+		[fabric('cotton', 'Cotton', 'সুতি'), color(['blue', 'Blue', 'নীল'])],
 	],
 	[
 		'prd_10',
@@ -61,9 +60,9 @@ const rows: Array<[string, string, string, number, number, number, unknown[]]> =
 		9000,
 		9000,
 		5,
-		[fabric('silk', 'Silk', 'Soie'), color(['red', 'Red', 'Rouge'], ['blue', 'Blue', 'Bleu'])],
+		[fabric('silk', 'Silk', 'সিল্ক'), color(['red', 'Red', 'লাল'], ['blue', 'Blue', 'নীল'])],
 	],
-	['prd_11', 'Plain Kurti', 'Kurti uni', 800, 800, 0, [fabric('cotton', 'Cotton', 'Coton')]],
+	['prd_11', 'Plain Kurti', 'Kurti uni', 800, 800, 0, [fabric('cotton', 'Cotton', 'সুতি')]],
 	[
 		'prd_3',
 		'Silk Dupatta',
@@ -71,19 +70,16 @@ const rows: Array<[string, string, string, number, number, number, unknown[]]> =
 		2500,
 		2000,
 		4,
-		[
-			fabric('silk', 'Silk', 'Soie'),
-			group('color', 'filter_only', [['red', 'Red', 'Rouge']], ['Color', 'Couleur']),
-		],
+		[fabric('silk', 'Silk', 'সিল্ক'), group('color', 'filter_only', [['red', 'Red', 'লাল']], ['Color', 'রং'])],
 	],
 ];
 
-const products = rows.map(([id, en, fr, , selling, avg, optionGroups], index) =>
+const products = rows.map(([id, en, bn, , selling, avg, optionGroups], index) =>
 	Product.parse({
 		id,
 		type: 'simple',
 		sku: id,
-		title: { en, fr },
+		title: { en, bn },
 		slug: id.replace('_', '-'),
 		categoryIds: index < 3 ? ['cat_sarees'] : ['cat_other'],
 		basePriceINR: selling,
@@ -168,11 +164,11 @@ const cases: Array<[string, Partial<ListingQuery>]> = [
 	['id ascending', { sort: 'asc' }],
 	['id descending', { sort: 'desc' }],
 	['the second page', { page: 2, pageSize: 2, sort: 'asc' }],
-	['French labels', { locale: 'fr', sort: 'a-z' }],
+	['Bengali labels', { locale: 'bn', sort: 'a-z' }],
 ];
 
 describe.skipIf(!process.env['RUN_SEARCH_IT'] || !host)('Meilisearch and Mongo give the same listing', () => {
-	const search = new MeilisearchSearch(host, key, async () => [], INDEX, ['en', 'fr']);
+	const search = new MeilisearchSearch(host, key, async () => [], INDEX, ['en', 'bn']);
 	const meili = new MeilisearchListing(search);
 	const send = (path: string, method: string) =>
 		fetch(`${host}${path}`, { method, ...(key ? { headers: { authorization: `Bearer ${key}` } } : {}) });
@@ -184,7 +180,8 @@ describe.skipIf(!process.env['RUN_SEARCH_IT'] || !host)('Meilisearch and Mongo g
 	}, 60_000);
 
 	afterAll(async () => {
-		await send(`/indexes/${INDEX}`, 'DELETE');
+		await send(`/indexes/${search.index}`, 'DELETE');
+		await send(`/indexes/${INDEX}_builds`, 'DELETE');
 	});
 
 	it.each(cases)('%s', async (_name, over) => {

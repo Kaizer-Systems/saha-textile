@@ -1,6 +1,5 @@
 import { PaymentOption } from '../../../storefront/src/app/features/shop/product-detail/widgets/payment-option/payment-option';
 import { ProductAction } from '../../../storefront/src/app/features/shop/product-detail/widgets/product-action/product-action';
-import { ProductBanner } from '../../../storefront/src/app/features/shop/product-detail/widgets/product-banner/product-banner';
 import { ProductBundle } from '../../../storefront/src/app/features/shop/product-detail/widgets/product-bundle/product-bundle';
 import { ProductDeliveryInformation } from '../../../storefront/src/app/features/shop/product-detail/widgets/product-delivery-information/product-delivery-information';
 import { ProductDetailsTabs } from '../../../storefront/src/app/features/shop/product-detail/widgets/product-details-tabs/product-details-tabs';
@@ -12,6 +11,7 @@ import { SaleTimer } from '../../../storefront/src/app/features/shop/product-det
 import { StickyCheckout } from '../../../storefront/src/app/features/shop/product-detail/widgets/sticky-checkout/sticky-checkout';
 import { StoreInformation } from '../../../storefront/src/app/features/shop/product-detail/widgets/store-information/store-information';
 import { TrendingProducts } from '../../../storefront/src/app/features/shop/product-detail/widgets/trending-products/trending-products';
+import { FaqAccordion } from '../../../storefront/src/app/shared/ui/faq-accordion/faq-accordion';
 
 import { moduleMetadata, type Meta, type StoryObj } from '@storybook/angular';
 
@@ -25,7 +25,6 @@ const bundleProduct = {
 const detailImports = [
 	PaymentOption,
 	ProductAction,
-	ProductBanner,
 	ProductBundle,
 	ProductDeliveryInformation,
 	ProductDetailsTabs,
@@ -37,6 +36,7 @@ const detailImports = [
 	StickyCheckout,
 	StoreInformation,
 	TrendingProducts,
+	FaqAccordion,
 ];
 
 const meta = {
@@ -114,8 +114,8 @@ export const DetailsTabs: Story = {
 
 export const ReviewSummary: Story = {
 	render: () => ({
-		props: { product: simpleProduct, reviews: [] },
-		template: '<app-product-review [product]="product" [reviews]="reviews" />',
+		props: { product: simpleProduct },
+		template: '<app-product-review [product]="product" />',
 	}),
 };
 
@@ -143,9 +143,21 @@ export const StickyCheckoutBar: Story = {
 	}),
 };
 
-export const PromotionalBanner: Story = {
+export const Faq: Story = {
 	render: () => ({
-		template: '<app-product-banner image="/assets/images/product.png" />',
+		props: {
+			items: [
+				{
+					question: 'How long is the saree, and does it come with a blouse piece?',
+					answer: 'The saree is 5.5 metres long and comes with a 0.8 metre unstitched blouse piece.',
+				},
+				{
+					question: 'How should I store a saree between wears?',
+					answer: 'Fold it in soft cotton or muslin, away from damp and direct sun.',
+				},
+			],
+		},
+		template: '<div class="faq-box-contain"><app-faq-accordion [items]="items" /></div>',
 	}),
 };
 
@@ -158,6 +170,7 @@ export const StoreCard: Story = {
 
 export const TrendingRail: Story = {
 	render: () => ({
-		template: '<app-trending-products />',
+		props: { product: simpleProduct },
+		template: '<app-trending-products [product]="product" />',
 	}),
 };

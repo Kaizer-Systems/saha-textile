@@ -1,7 +1,13 @@
 <app-breadcrumb [breadcrumb]="breadcrumb()" />
 <section class="cart-section section-b-space">
 	<div class="container-fluid-lg">
-		@if ((cartItem$ | async)?.length) { @if (!online()) {
+		<!-- The cart lives in the browser: the server holds the space, never a false "No Items Added"
+			 (see Cart.ready). One read of the cart and one @if/@else, so the two states never show together. -->
+		@if (!ready()) {
+		<!-- The theme's loader box (as on the account pages) only holds the space: its inner overlay is
+			 white with no dark-mode rule, so it is left out and nothing flashes in either mode. -->
+		<div class="custom-box-loader"></div>
+		} @else { @let items = (cartItem$ | async) ?? []; @if (items.length) { @if (!online()) {
 		<div
 			class="alert alert-warning d-flex align-items-center gap-2"
 			role="status"
@@ -19,8 +25,12 @@
 					<div class="table-responsive">
 						<table class="table">
 							<tbody>
-								@for (item of cartItem$ | async; track item.id) {
-								<tr class="product-box-contain">
+								@for (item of items; track item.id) { @let rows = childRows(item); @let counts =
+								childCounts(item);
+								<tr
+									class="product-box-contain"
+									[class.st-cart-group]="rows.length"
+								>
 									<td class="product-detail">
 										<div class="product border-0">
 											<a
@@ -43,19 +53,52 @@
 														<a [routerLink]="['/product/', item.product.slug]">
 															{{ item.product.name }}
 														</a>
+														<!-- A set's kind and count, and its saving; a product's free items with Change (E02). -->
+														@if (item.set_heading) {
+														<span class="st-cart-sub text-content">
+															{{ (item.set_heading === 'choose' ? 'choose_your_set' :
+															'bundle_components') | transloco }} · {{ countText(counts)
+															}}
+														</span>
+														@if (saving(item)) {
+														<span class="st-cart-sub text-success">
+															{{ 'cart_you_save' | transloco: { amount: (saving(item) |
+															currencySymbol) } }}
+														</span>
+														} } @else if (counts.free) {
+														<span class="st-cart-sub text-content">
+															{{ (counts.free === 1 ? 'cart_set_free_one' :
+															'cart_set_free') | transloco: { count: counts.free } }} ·
+															<a
+																class="theme-color text-decoration-underline"
+																href="javascript:void(0)"
+																role="button"
+																(click)="configModal.openModal(item)"
+															>
+																{{ 'change' | transloco }}
+															</a>
+														</span>
+														}
 													</li>
 													@if (item.problem) {
 													<li class="text-danger">
-														{{ 'cart_line_' + item.problem | transloco: { count: item.available } }}
+														{{ 'cart_line_' + item.problem + (isMetre(item) && item.problem
+														=== 'limited' ? '_metre' : '') | transloco: { count:
+														isMetre(item) ? lengthOf(item.available ?? 0) : item.available,
+														cut: lengthOf(item.shortest_cut_tenths ?? 0) } }}
 													</li>
 													} @if (item.line_config) {
 													<li><app-cart-line-config [config]="item.line_config" /></li>
 													}
-													<li>
+													<!-- A set's price shows in the Price column on laptops, so its row leaves this line to phones. -->
+													<li [class.d-lg-none]="item.set_heading">
 														<h5 class="text-content d-inline-block">
 															{{ 'price' | transloco }} :
 														</h5>
-														<span>{{ unitPrice(item) | currencySymbol }}</span>
+														<span>
+															{{ unitPrice(item) | currencySymbol }}@if (isMetre(item)) {
+															{{ 'per_m_short' | transloco }} }
+														</span>
 														@if (item.product.discount) {
 														<span class="text-content">
 															{{ (item.variation ? item.variation!.price :
@@ -63,7 +106,8 @@
 														</span>
 														}
 													</li>
-													@if (item.product.discount) {
+													<!-- A set shows its saving under its name instead. -->
+													@if (item.product.discount && !item.set_heading) {
 													<li>
 														<h5 class="saving theme-color">
 															{{ 'saving' | transloco }}: {{ ((item.variation ?
@@ -73,7 +117,10 @@
 														</h5>
 													</li>
 													}
-													<li class="cart-line-qty">
+													<!-- Phones and tablets only: from 992px the Quantity column shows this stepper.
+														 The theme hides these rows by position (li:nth-child(n + 4)), which missed it
+														 on items without a discount (owner, 2026-11-15). -->
+													<li class="cart-line-qty d-lg-none">
 														<!-- theme off-canvas cart qty stepper, reused verbatim (.qty-box) -->
 														<div class="cart_qty qty-box product-qty">
 															<div class="input-group h-100">
@@ -81,26 +128,43 @@
 																	[class]="'btn qty-left-minus'"
 																	[id]="'minus_quantity'+item.product.id"
 																	[spinner]="false"
-																	(click)="updateQuantity(item, -1)"
+																	(click)="step(item, -1)"
 																>
-																	@if (item.quantity > 1) {
+																	@if (!minusDeletes(item)) {
 																	<i class="ri-subtract-line"></i>
-																	} @if (item.quantity <= 1) {
+																	} @else {
 																	<i class="ri-delete-bin-line"></i>
 																	}
 																</app-button>
+																@if (isMetre(item)) {
+																<!-- A metre line's box is text so it can show "2.5 m", and grows to fit it (M09). -->
+																<input
+																	#phoneLength
+																	class="form-control input-number qty-input"
+																	type="text"
+																	inputmode="decimal"
+																	name="quantity"
+																	style="min-width: 64px"
+																	[value]="qtyText(item)"
+																	[attr.aria-label]="'length' | transloco"
+																	(change)="typeLength(item, phoneLength)"
+																/>
+																} @else {
 																<input
 																	class="form-control input-number qty-input"
 																	type="number"
 																	name="quantity"
 																	[value]="item?.quantity"
 																	readonly
+																	[attr.aria-label]="'quantity' | transloco"
 																/>
+																}
 																<app-button
 																	[class]="'btn qty-left-minus'"
 																	[id]="'qty-left-minus'+item.product.id"
 																	[spinner]="false"
-																	(click)="updateQuantity(item, 1)"
+																	(click)="step(item, 1)"
+																	[ariaLabel]="'increase_quantity' | transloco"
 																>
 																	<i class="ri-add-line"></i>
 																</app-button>
@@ -114,20 +178,51 @@
 														</h5>
 													</li>
 												</ul>
+												<!-- Cart option A (accounts brief G, approved 23 Nov): on laptops the row's own
+													 actions sit under its name; phones and tablets keep the Action cell. -->
+												<div class="st-line-actions d-none d-lg-flex">
+													@if (item.line_config) {
+													<a
+														href="javascript:void(0)"
+														role="button"
+														(click)="configModal.openModal(item)"
+													>
+														{{ 'edit' | transloco }}
+													</a>
+													}
+													<a
+														href="javascript:void(0)"
+														role="button"
+														(click)="addToWishlist(item.product.id)"
+													>
+														{{ 'add_to_wishlist' | transloco }}
+													</a>
+													<a
+														class="st-line-remove"
+														href="javascript:void(0)"
+														role="button"
+														(click)="delete(item.id)"
+													>
+														{{ 'remove' | transloco }}
+													</a>
+												</div>
 											</div>
 										</div>
 									</td>
 									<td class="price">
 										<h4 class="table-title text-content">{{ 'price' | transloco }}</h4>
 										<h5>
-											{{ unitPrice(item) | currencySymbol }} @if (item.product.discount) {
-											<del class="text-content">
+											<span class="text-nowrap">{{ unitPrice(item) | currencySymbol }}</span>
+											@if (isMetre(item)) {
+											<span class="text-content">{{ 'per_m_short' | transloco }}</span>
+											} @if (item.product.discount) {
+											<del class="text-content text-nowrap">
 												{{ (item.variation ? item.variation.price : item.product.price) |
 												currencySymbol }}
 											</del>
 											}
 										</h5>
-										@if (item.product.discount) {
+										@if (item.product.discount && !item.set_heading) {
 										<h6 class="theme-color">
 											{{ 'you_save' | transloco }} : {{ ((item.variation ? item.variation.price :
 											item.product.price) - (item.variation ? item.variation.sale_price :
@@ -145,23 +240,40 @@
 														[id]="'minus_quantity'"
 														[spinner]="false"
 														[type]="'button'"
-														(click)="updateQuantity(item, -1)"
+														(click)="step(item, -1)"
+														[ariaLabel]="'decrease_quantity' | transloco"
 													>
 														<i class="ri-subtract-fill ms-0"></i>
 													</app-button>
+													@if (isMetre(item)) {
+													<input
+														#wideLength
+														class="form-control input-number qty-input"
+														type="text"
+														inputmode="decimal"
+														name="quantity"
+														style="min-width: 64px"
+														[value]="qtyText(item)"
+														[attr.aria-label]="'length' | transloco"
+														(change)="typeLength(item, wideLength)"
+													/>
+													} @else {
 													<input
 														class="form-control input-number qty-input"
 														type="text"
 														name="quantity"
 														value="{{ item.quantity }}"
 														readonly
+														[attr.aria-label]="'quantity' | transloco"
 													/>
+													}
 													<app-button
 														[class]="'btn qty-left-minus'"
 														[id]="'plus_quantity'"
 														[spinner]="false"
 														[type]="'button'"
-														(click)="updateQuantity(item, 1)"
+														(click)="step(item, 1)"
+														[ariaLabel]="'increase_quantity' | transloco"
 													>
 														<i class="ri-add-line ms-0"></i>
 													</app-button>
@@ -171,43 +283,173 @@
 									</td>
 									<td class="subtotal">
 										<h4 class="table-title text-content">{{ 'total' | transloco }}</h4>
-										<h5>{{ item.sub_total | currencySymbol }}</h5>
+										<h5 class="text-nowrap">{{ item.sub_total | currencySymbol }}</h5>
 									</td>
-									<td class="save-remove">
+									<td class="save-remove d-lg-none">
 										<h4 class="table-title text-content">{{ 'action' | transloco }}</h4>
-										@if (item.line_config) {
-										<a
-											class="save"
-											href="javascript:void(0)"
-											(click)="configModal.openModal(item)"
-										>
-											{{ 'edit' | transloco }}
-										</a>
 										<app-product-config-modal
 											#configModal
 											[product]="item.product"
 										/>
+										@if (item.line_config) {
+										<a
+											class="save"
+											href="javascript:void(0)"
+											role="button"
+											(click)="configModal.openModal(item)"
+										>
+											{{ 'edit' | transloco }}
+										</a>
 										}
 										<a
 											class="save notifi-wishlist"
 											href="javascript:void(0)"
+											role="button"
 											(click)="addToWishlist(item.product.id)"
 										>
-											{{ 'save_for_later' | transloco }}
+											{{ 'add_to_wishlist' | transloco }}
 										</a>
 										<a
 											class="remove close_button"
 											href="javascript:void(0)"
+											role="button"
 											(click)="delete(item.id)"
 										>
 											{{ 'remove' | transloco }}
 										</a>
 									</td>
 								</tr>
-								}
+								<!-- Beneath the line (bundle builder brief E02–E03): a set's pieces, their free items and its
+									 extras, then a product's own free items. Phones fold a set's rows behind one link. -->
+								@if (counts.folded) {
+								<tr class="product-box-contain st-cart-child st-cart-fold d-lg-none">
+									<td colspan="5">
+										<a
+											class="theme-color text-decoration-underline"
+											href="javascript:void(0)"
+											role="button"
+											[attr.aria-expanded]="isOpen(item)"
+											(click)="toggle(item)"
+										>
+											{{ (isOpen(item) ? 'cart_hide_set_items' : 'cart_show_set_items') |
+											transloco: { count: counts.folded } }}
+											<i
+												[class]="isOpen(item) ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'"
+											></i>
+										</a>
+									</td>
+								</tr>
+								} @for (row of rows; track row.child.key) {
+								<tr
+									class="product-box-contain st-cart-child"
+									[class.is-free]="row.child.role === 'free'"
+									[class.is-depth-2]="row.depth === 2"
+									[class.d-none]="row.folds && !isOpen(item)"
+									[class.d-lg-table-row]="row.folds && !isOpen(item)"
+								>
+									<td class="product-detail">
+										<div class="product border-0">
+											<span
+												class="st-cart-elbow"
+												aria-hidden="true"
+											></span>
+											<span class="product-image">
+												<img
+													[src]="row.child.image_url ?? 'assets/images/product.png'"
+													class="img-fluid"
+													[alt]="row.child.title"
+												/>
+											</span>
+											<div class="product-detail">
+												<ul>
+													<li class="name">
+														@if (row.child.role === 'free') {
+														<span class="st-piece-chip is-free">
+															{{ 'free' | transloco }}
+														</span>
+														} @else if (row.child.role === 'extra') {
+														<span class="st-piece-chip">
+															{{ 'cart_extra' | transloco }}
+														</span>
+														}
+														<span class="st-cart-child-name">
+															@if (row.number) { {{ row.number }}. } {{ row.child.title
+															}}@if (row.child.variant_label) { · {{
+															row.child.variant_label }} }
+														</span>
+													</li>
+													<li class="st-cart-sub d-lg-none">
+														<ng-container
+															*ngTemplateOutlet="childValue; context: { $implicit: row.child }"
+														/>
+													</li>
+												</ul>
+												@if (row.child.role === 'extra') {
+												<div class="st-line-actions d-none d-lg-flex">
+													<a
+														class="st-line-remove"
+														href="javascript:void(0)"
+														role="button"
+														(click)="removeExtra(item, row.child.key)"
+													>
+														{{ 'cart_remove_extra' | transloco }}
+													</a>
+												</div>
+												}
+											</div>
+										</div>
+									</td>
+									<td class="price">
+										<h5>
+											<ng-container
+												*ngTemplateOutlet="childValue; context: { $implicit: row.child }"
+											/>
+										</h5>
+									</td>
+									<td class="quantity">
+										<h5 class="text-content">
+											{{ (row.child.role === 'free' ? 'cart_child_each' : 'cart_child_per_set') |
+											transloco: { count: row.child.quantity } }}
+										</h5>
+									</td>
+									<td class="subtotal"></td>
+									<!-- Only an extra has an action; phones leave the empty strip out of the other cards.
+										 Laptops show it under the name instead (cart option A), so the cell hides there. -->
+									<td
+										class="save-remove d-lg-none"
+										[class.d-none]="row.child.role !== 'extra'"
+									>
+										@if (row.child.role === 'extra') {
+										<a
+											class="remove close_button"
+											href="javascript:void(0)"
+											role="button"
+											(click)="removeExtra(item, row.child.key)"
+										>
+											{{ 'cart_remove_extra' | transloco }}
+										</a>
+										}
+									</td>
+								</tr>
+								} }
 							</tbody>
 						</table>
 					</div>
+					<ng-template
+						#childValue
+						let-child
+					>
+						@if (child.role === 'free') { @if (child.mrp) {
+						<del class="text-content">{{ child.mrp | currencySymbol }}</del>
+						}
+						<b class="text-success">{{ 'free' | transloco }}</b>
+						} @else if (child.role === 'extra') { +{{ child.price | currencySymbol }} } @else {
+						<span class="text-content">{{ 'included' | transloco }}</span>
+						}
+					</ng-template>
+					@if (hasMetre(items)) {
+					<p class="text-content mt-2 mb-0">{{ 'metre_step_note' | transloco }}</p>
+					}
 				</div>
 			</div>
 			<div class="col-xxl-3 col-xl-4">
@@ -261,13 +503,13 @@
 				</div>
 			</div>
 		</div>
-		} @if (!(cartItem$ | async)?.length) {
+		} @else {
 		<app-no-data
 			[class]="'no-data-added'"
 			[image]="'assets/svg/empty-items.svg'"
 			[text]="'no_items_added' | transloco"
 			[description]="'empty_cart_description' | transloco"
 		/>
-		}
+		} }
 	</div>
 </section>

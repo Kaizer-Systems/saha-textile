@@ -24,8 +24,8 @@ const VALID_SCHEMA_COLLECTION_STATES = new Set(['existing', 'planned']);
 const VALID_SCHEMA_TARGET_ACTIONS = new Set(['refactor', 'add']);
 const VALID_COMMAND_TARGET_SOURCES = new Set(['journey-pages', 'decision-gates', 'document-status']);
 const SCHEMA_NEBULA_ROUTE = '/database/schema-nebula';
-const SCHEMA_NEBULA_NODE_COUNT = 70;
-const SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 43;
+const SCHEMA_NEBULA_NODE_COUNT = 115;
+const SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 96;
 const SCHEMA_NEBULA_GROUPED_MODEL_FILES = new Map([
 	['categoryPlacements', 'catalog-structure.model.ts'],
 	['categoryFacetConfigs', 'catalog-structure.model.ts'],
@@ -35,8 +35,60 @@ const SCHEMA_NEBULA_GROUPED_MODEL_FILES = new Map([
 	['productRelations', 'merchandising.model.ts'],
 	['mediaAssets', 'media.model.ts'],
 	['mediaRoles', 'media.model.ts'],
+	['mediaProfiles', 'media.model.ts'],
+	['emailPictures', 'media-library.model.ts'],
+	['mediaZips', 'media-library.model.ts'],
+	['legalPages', 'legal-page.model.ts'],
+	['legalPageRevisions', 'legal-page.model.ts'],
+	['productDrafts', 'product-draft.model.ts'],
+	['shippingRuleSets', 'shipping.model.ts'],
+	['shippingRuleSetVersions', 'shipping.model.ts'],
+	['shippingExceptions', 'shipping.model.ts'],
+	['shippingProviderConfigs', 'shipping.model.ts'],
+	['builderPages', 'page-layout.model.ts'],
+	['pageLayouts', 'page-layout.model.ts'],
+	['pageLayoutRevisions', 'page-layout.model.ts'],
+	['savedBlocks', 'page-layout.model.ts'],
 	['contentBlocks', 'content-block.model.ts'],
+	['blogPosts', 'blog.model.ts'],
+	['blogCategories', 'blog.model.ts'],
+	['blogTags', 'blog.model.ts'],
 	['siteSettings', 'content-block.model.ts'],
+	['searchQueryAggregates', 'search-analytics.model.ts'],
+	['analyticsDailyAggregates', 'search-analytics.model.ts'],
+	['storeLocations', 'store-location.model.ts'],
+	['communicationSwitches', 'communication-switch.model.ts'],
+	['mediaFolders', 'media-library.model.ts'],
+	['mediaFavourites', 'media-library.model.ts'],
+	['mediaShareLinks', 'media-library.model.ts'],
+	['shopEvents', 'shop-event.model.ts'],
+	['mailboxes', 'mailbox.model.ts'],
+	['mailboxAccess', 'mailbox.model.ts'],
+	['contactMessages', 'mailbox.model.ts'],
+	['savedReplies', 'mailbox.model.ts'],
+	['wishlistItems', 'wishlist-item.model.ts'],
+	['searchDictionary', 'search-dictionary.model.ts'],
+	['purchaseInvoices', 'purchasing.model.ts'],
+	['sequences', 'purchasing.model.ts'],
+	['suppliers', 'purchasing.model.ts'],
+	['supplierItemCodes', 'purchasing.model.ts'],
+	['purchaseOrders', 'purchasing.model.ts'],
+	['supplierPayments', 'purchasing.model.ts'],
+	['purchaseReturns', 'purchasing.model.ts'],
+	['stockHolds', 'purchasing.model.ts'],
+	['payments', 'orders-build.model.ts'],
+	['paymentRequests', 'orders-build.model.ts'],
+	['paymentAttempts', 'orders-build.model.ts'],
+	['shipments', 'orders-build.model.ts'],
+	['ledgerEntries', 'orders-build.model.ts'],
+	['priceZones', 'orders-build.model.ts'],
+	['coupons', 'orders-build.model.ts'],
+	['couponUses', 'orders-build.model.ts'],
+	['stockAdjustments', 'purchasing.model.ts'],
+	['stockCounts', 'purchasing.model.ts'],
+	['openingStocks', 'purchasing.model.ts'],
+	['inventorySettings', 'purchasing.model.ts'],
+	['shopDetails', 'purchasing.model.ts'],
 	['faqEntries', 'content.model.ts'],
 	['reviews', 'content.model.ts'],
 	['productQuestions', 'content.model.ts'],
@@ -69,6 +121,10 @@ const SCHEMA_NEBULA_NON_TARGET_MODEL_FILES = new Set([
 	'auth-rate-limit.model.ts',
 	'pending-signup.model.ts',
 	'pending-contact-change.model.ts',
+	// The release-steps runner's record of which data migrations ran: machinery, not shop data.
+	'release-migration.model.ts',
+	// The search change queue and the nightly search check's runs.
+	'search-outbox.model.ts',
 ]);
 const COMMAND_VERBS_ROUTE = '/frontend/portal-experience-layer';
 const COMMAND_VERB_ORDER = ['trace', 'gate', 'status'];

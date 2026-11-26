@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-11-07",
+	"lastVerified": "2026-11-10",
 	"sourceOfTruth": [
 		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx",
 		"docs/engineering-live-context/owner-decisions-log.mdx",
@@ -9,7 +9,7 @@
 	],
 	"decisionRegister": {
 		"openCount": 14,
-		"newlyLocked": ["DEC-SKU", "DEC-PRODUCT-RELATIONS", "DEC-BUNDLE-NESTING", "DEC-DELETE-RETENTION"]
+		"newlyLocked": ["DEC-PAYPAL-FX", "DEC-STOCK-RESERVE", "DEC-INR-GATEWAY-TIMING", "DEC-BACKORDER"]
 	},
 	"gates": [
 		{

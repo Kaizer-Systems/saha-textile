@@ -7,17 +7,17 @@ import { z } from 'zod';
 export const PRIMARY_LOCALE = 'en';
 
 /**
- * A locale code: BCP-47 primary subtag plus an optional region (`en`, `fr`, `bn`, `en-IN`).
+ * A locale code: BCP-47 primary subtag plus an optional region (`en`, `bn`, `en-IN`).
  *
  * Deliberately NOT an enum. Which locales a deployment actually serves is
- * CONFIGURATION, not a contract constant — the active set has already moved once
- * (en+bn → en+fr, with Bengali now only an illustrative next candidate). Keeping the
+ * CONFIGURATION, not a contract constant — the active set has already moved twice
+ * (en+bn → en+fr → en+bn, Bengali replacing French on 2026-11-08). Keeping the
  * set in `ActiveLocaleConfig` means adding, swapping, or retiring a locale is a config
  * change, never a contracts/API change.
  */
 export const LocaleCode = z
 	.string()
-	.regex(/^[a-z]{2,3}(?:-[A-Z]{2})?$/, 'must be a locale code such as `en`, `fr`, or `en-IN`');
+	.regex(/^[a-z]{2,3}(?:-[A-Z]{2})?$/, 'must be a locale code such as `en`, `bn`, or `en-IN`');
 export type LocaleCode = z.infer<typeof LocaleCode>;
 
 /**
@@ -27,7 +27,15 @@ export type LocaleCode = z.infer<typeof LocaleCode>;
 export const ActiveLocaleConfig = z
 	.object({
 		default: LocaleCode.default(PRIMARY_LOCALE),
+		/** The languages the shop shows. */
 		active: z.array(LocaleCode).min(1),
+		/** The languages staff may turn the admin into (Settings › Languages, Admin switch). */
+		admin: z.array(LocaleCode).optional(),
+		/**
+		 * Languages the shop showed once and no longer shows: their `/xx/…` addresses answer 301
+		 * to the same page in English.
+		 */
+		redirect: z.array(LocaleCode).optional(),
 	})
 	.refine((config) => config.active.includes(config.default), {
 		message: '`active` must contain the `default` locale',
@@ -41,7 +49,7 @@ export type ActiveLocaleConfig = z.infer<typeof ActiveLocaleConfig>;
 
 /**
  * Localized string. Requires `en` (the fallback locale) and allows any other
- * locale key (e.g. `fr`). Mirrors the i18n objects stored in the DB.
+ * locale key (e.g. `bn`). Mirrors the i18n objects stored in the DB.
  */
 export const I18nString = z.object({ en: z.string() }).catchall(z.string());
 export type I18nString = z.infer<typeof I18nString>;
@@ -49,6 +57,48 @@ export type I18nString = z.infer<typeof I18nString>;
 /** Loose localized map (may be empty / partial) — used for optional SEO fields. */
 export const LocalizedText = z.record(z.string(), z.string());
 export type LocalizedText = z.infer<typeof LocalizedText>;
+
+/** Bengali digits (০–৯) as English digits, so a PIN code or phone typed on a Bengali keyboard works (BN-3). */
+export const toLatinDigits = (value: string): string =>
+	value.replace(/[\u09E6-\u09EF]/g, (digit) => String(digit.charCodeAt(0) - 0x09e6));
+
+/**
+ * Text as it is stored: one Unicode form, trimmed, repeated spaces collapsed, and invisible
+ * characters removed apart from the two joiners Bengali needs (U+200C, U+200D).
+ */
+export const cleanText = (value: string): string =>
+	value
+		.normalize('NFC')
+		.replace(/[\u200B\u2060\uFEFF\u00AD]/g, '')
+		.replace(/\s+/g, ' ')
+		.trim();
+
+/** The message code a form shows as "Please use English letters" in every language. */
+export const ENGLISH_LETTERS_ONLY = 'english_letters_only';
+
+/**
+ * A person's name in English letters (BN-12): every stored name, profile, recipient and billing,
+ * is what couriers, invoices and staff searches read, so it is never in Bengali script.
+ */
+export const EnglishName = z
+	.string()
+	.transform(cleanText)
+	.pipe(
+		z
+			.string()
+			.min(1)
+			.max(120)
+			.regex(/^[A-Za-z][A-Za-z .'-]*$/, ENGLISH_LETTERS_ONLY),
+	);
+
+/** A delivery detail in English letters and digits (BN-12), Bengali digits converted first. */
+export const EnglishDeliveryText = z
+	.string()
+	.transform((value) => toLatinDigits(cleanText(value)))
+	.pipe(z.string().regex(/^[A-Za-z0-9 .,'’\-/#&()]*$/, ENGLISH_LETTERS_ONLY));
+
+/** Digits only after conversion: PIN codes and phone numbers. */
+export const LatinDigits = z.string().transform((value) => toLatinDigits(cleanText(value)));
 
 /** Domain identifier (string ids such as `cat_pure_silk`, `prod_5557`). */
 export const Id = z.string().min(1);
@@ -193,6 +243,11 @@ export const AuthRefusalReason = z.enum([
 	'account_inactive',
 	/** The CSRF token was missing or stale (403). Fetch a new one and retry once. */
 	'csrf_rejected',
+	/**
+	 * Admin only: the session is behind the 15-minute lock. Not recoverable by rotation, and not
+	 * a sign-out: the operator proves presence with the PIN or password, then the request can run.
+	 */
+	'session_locked',
 ]);
 export type AuthRefusalReason = z.infer<typeof AuthRefusalReason>;
 
@@ -201,6 +256,11 @@ export const FieldIssue = z.object({
 	path: z.array(z.union([z.string(), z.number()])).default([]),
 	message: z.string().min(1),
 	code: z.string().optional(),
+	/**
+	 * Plain values a coded refusal hands the screen for its own words, set only by server code that
+	 * chose them (a stale save's `changedBy` name and `changedAt` time). Never a raw error payload.
+	 */
+	params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
 });
 export type FieldIssue = z.infer<typeof FieldIssue>;
 

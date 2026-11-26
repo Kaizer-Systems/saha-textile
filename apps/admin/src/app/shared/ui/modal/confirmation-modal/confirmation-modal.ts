@@ -20,11 +20,12 @@ export class ConfirmationModal {
 	public modalOpen: boolean = false;
 	public userAction: ITableClickedAction;
 
-	readonly ConfirmationModal = viewChild<TemplateRef<any>>('confirmationModal');
+	readonly ConfirmationModal = viewChild<TemplateRef<unknown>>('confirmationModal');
 
 	readonly confirmed = output<ITableClickedAction>();
 
-	async openModal(action: string, data?: any, value?: any) {
+	/** `data` and `value` go back unchanged with the answer, for the screen that asked. */
+	async openModal(action: string, data?: unknown, value?: unknown) {
 		this.modalOpen = true;
 		this.userAction = {
 			actionToPerform: action,

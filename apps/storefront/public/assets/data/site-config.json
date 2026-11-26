@@ -64,12 +64,6 @@
 			"top_bar_content": [
 				{
 					"content": "<strong class=\"me-1\">Welcome to Saha Textile!</strong>"
-				},
-				{
-					"content": "Something you love is now on sale <strong>Buy Now!</strong>"
-				},
-				{
-					"content": "Your must-have item is calling – <strong>Buy Now!</strong>"
 				}
 			],
 			"page_top_bar_dark": false,
@@ -126,6 +120,7 @@
 					"label": "Blogs",
 					"link": "blogs"
 				},
+				{ "label": "Videos", "link": "videos" },
 				{
 					"label": "Offers",
 					"link": "offer"
@@ -156,9 +151,12 @@
 			"support_number": "+91 98366 63137",
 			"support_email": "wecare@sahatextile.com",
 			"social_media_enable": true,
+			"play_store_url": "https://play.google.com/",
+			"app_store_url": "https://apple.com/",
 			"facebook": "https://www.facebook.com/SahaTextile/",
 			"instagram": "https://www.instagram.com/saha_textile/",
-			"twitter": "https://x.com/saha_textile"
+			"twitter": "https://x.com/saha_textile",
+			"pinterest": "https://pinterest.com/"
 		},
 		"collection": {
 			"collection_layout": "collection_category_slider",
@@ -167,7 +165,7 @@
 		"product": {
 			"product_layout": "product_thumbnail",
 			"is_trending_product": true,
-			"banner_enable": false,
+			"banner_enable": true,
 			"banner_image_url": "assets/images/data/banner-1.png",
 			"safe_checkout": true,
 			"safe_checkout_image": "assets/images/data/payments.png",

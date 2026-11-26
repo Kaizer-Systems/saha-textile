@@ -19,8 +19,6 @@ import { portalThemeDecorator } from './decorators/theme';
 import { installPreviewExperience } from './preview-experience';
 import { CART_FEATURE_KEY } from '../../storefront/src/app/core/state/cart/cart.models';
 import { cartReducer } from '../../storefront/src/app/core/state/cart/cart.reducer';
-import { COMPARE_FEATURE_KEY, compareReducer } from '../../storefront/src/app/core/state/compare/compare.store';
-import { WISHLIST_FEATURE_KEY, wishlistReducer } from '../../storefront/src/app/core/state/wishlist/wishlist.store';
 
 installPreviewExperience();
 
@@ -48,8 +46,6 @@ const preview: Preview = {
 				provideRouter([{ path: '**', component: StorybookRouteSink }], withDisabledInitialNavigation()),
 				provideStore(),
 				provideState(CART_FEATURE_KEY, cartReducer),
-				provideState(COMPARE_FEATURE_KEY, compareReducer),
-				provideState(WISHLIST_FEATURE_KEY, wishlistReducer),
 				provideTanStackQuery(storybookQueryClient),
 				provideHttpClient(
 					withInterceptors([

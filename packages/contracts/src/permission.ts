@@ -41,6 +41,11 @@ import { z } from 'zod';
  * would fit any other code with the name swapped, the entry does not belong here yet.
  */
 export const PermissionCode = z.enum([
+	'accounts_template.edit',
+	'accounts.edit',
+	'accounts.index',
+	'accounts.lock',
+	'accounts.post',
 	'admin_user_role.assign',
 	'admin_user_role.revoke',
 	'admin_user.create',
@@ -50,6 +55,10 @@ export const PermissionCode = z.enum([
 	'attachment.destroy',
 	'attachment.edit',
 	'attachment.index',
+	'attendance.approve',
+	'attendance.edit',
+	'attendance.index',
+	'attendance.use',
 	'attribute.create',
 	'attribute.destroy',
 	'attribute.edit',
@@ -59,11 +68,24 @@ export const PermissionCode = z.enum([
 	'blog.destroy',
 	'blog.edit',
 	'blog.index',
+	'business.approve',
+	'business.assign',
+	'business.create',
+	'business.credit',
+	'business.edit',
+	'business.hold',
+	'business.index',
+	'business.settle',
 	'cart.index',
+	'cash.count',
+	'cash.index',
+	'cash.manage',
+	'cash.settings',
 	'category.create',
 	'category.destroy',
 	'category.edit',
 	'category.index',
+	'company.edit',
 	'coupon.create',
 	'coupon.destroy',
 	'coupon.edit',
@@ -77,14 +99,41 @@ export const PermissionCode = z.enum([
 	'customer.index',
 	'customer.restore',
 	'customer.update',
+	'dashboard.customers',
+	'dashboard.orders',
+	'dashboard.revenue',
+	'dashboard.reviews',
+	'dashboard.stock',
+	'dashboard.top_products',
+	'edocs.cancel',
+	'edocs.generate',
+	'edocs.settings',
+	'event.cancel',
+	'event.create',
+	'event.destroy',
+	'event.edit',
+	'event.index',
+	'event.publish',
+	'expense_claim.create',
 	'faq.create',
 	'faq.destroy',
 	'faq.edit',
 	'faq.index',
+	'language.manage',
+	'location.edit',
+	'mailbox.manage',
+	'mailbox.use',
+	'order.address',
 	'order.create',
 	'order.edit',
 	'order.index',
+	'order.open',
+	'order.payment',
+	'order.send',
 	'order.update',
+	'page_builder.draft_home',
+	'page_builder.go_live',
+	'page_builder.go_live_home',
 	'page.create',
 	'page.destroy',
 	'page.edit',
@@ -93,10 +142,28 @@ export const PermissionCode = z.enum([
 	'point.credit',
 	'point.debit',
 	'point.index',
+	'price_zone.create',
+	'price_zone.destroy',
+	'price_zone.edit',
+	'price_zone.index',
 	'product.create',
 	'product.destroy',
 	'product.edit',
 	'product.index',
+	'purchase_order.cancel',
+	'purchase_order.create',
+	'purchase_order.index',
+	'purchase_order.send',
+	'purchase_return.create',
+	'purchase_return.index',
+	'purchase_return.send',
+	'purchase_return.settle',
+	'purchase.check',
+	'purchase.create',
+	'purchase.index',
+	'purchase.payment',
+	'purchase.post',
+	'purchase.void',
 	'question_and_answer.create',
 	'question_and_answer.destroy',
 	'question_and_answer.edit',
@@ -112,16 +179,32 @@ export const PermissionCode = z.enum([
 	'role.destroy',
 	'role.index',
 	'role.update',
+	'search_term.create',
+	'search_term.destroy',
+	'search_term.edit',
+	'search_term.index',
 	'setting.edit',
 	'setting.index',
 	'shipping.create',
 	'shipping.destroy',
 	'shipping.edit',
 	'shipping.index',
-	'store.create',
-	'store.destroy',
-	'store.edit',
-	'store.index',
+	'shop_details.edit',
+	'stock_count.count',
+	'stock_count.create',
+	'stock_count.post',
+	'stock_report.export',
+	'stock_report.index',
+	'stock.adjust',
+	'stock.approve',
+	'stock.cost',
+	'stock.hold',
+	'stock.index',
+	'stock.opening',
+	'supplier.create',
+	'supplier.destroy',
+	'supplier.edit',
+	'supplier.index',
 	'tag.create',
 	'tag.destroy',
 	'tag.edit',
@@ -132,6 +215,9 @@ export const PermissionCode = z.enum([
 	'tax.index',
 	'theme_option.edit',
 	'theme_option.index',
+	'transfer.create',
+	'transfer.index',
+	'transfer.manage',
 	'withdraw_request.action',
 ]);
 export type PermissionCode = z.infer<typeof PermissionCode>;
@@ -155,6 +241,49 @@ export const PERMISSION_CODES: readonly PermissionCode[] = PermissionCode.option
  * real answer. A template is not.
  */
 export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCode, string>>> = {
+	'business.approve':
+		"Allow an order on account over a business's credit limit, once, with a reason (brief K9, ck06; POST /admin/orders with creditOverrideReason). Super admin by default; separate from business.credit so setting a limit and exceeding it are different grants.",
+	'business.assign':
+		'Zone field on the business form and the business list (DEC-B2B-ZONES, owner 2026-11-20: "permission to assign"); PUT /admin/businesses/:id/zone.',
+	'business.create': 'Add business on Customers › Businesses (brief bz02); POST /admin/businesses.',
+	'business.credit':
+		"Credit limit and credit days on the business form's Buys from us block (bz02); the fields are read-only without it.",
+	'business.edit':
+		'Business page Edit and the form Save (bz02), its addresses and contacts; PUT /admin/businesses/:id.',
+	'business.hold':
+		'Change standing on the business page (bz05): Active, Credit on hold, Blocked, with a reason; POST /admin/businesses/:id/standing.',
+	'business.settle':
+		"Record a set-off between a business's two accounts under a written agreement, and its reversal (so02–so04); POST /admin/businesses/:id/set-offs. Off for Saha Textile.",
+	'order.address':
+		'Add the invoice address on an order with "Invoice address needed" (od04); POST /admin/orders/:id/invoice-address.',
+	'order.open':
+		'Keep an admin order open, add and remove its pieces, and close it (brief oo01–oo08); the open-order routes under /admin/orders/:id/lines.',
+	'order.payment':
+		'Record payment on the order page and the admin checkout (ck03–ck05, oo03–oo05, od08); POST /admin/orders/:id/payments.',
+	'order.send':
+		'Request online payment, Resend, Cancel, Send as SMS and Send as email on a payment request (pl01–pl05, pr01, pr02, oo07); /admin/orders/:id/payment-requests.',
+	'price_zone.create': 'New zone on Customers › Zones (DEC-B2B-ZONES); POST /admin/zones.',
+	'price_zone.destroy':
+		'Delete on a zone that no business uses; RETAIL can never be deleted (DELETE /admin/zones/:id).',
+	'price_zone.edit': 'Zone price list editing, Go live and the zone settings (DEC-B2B-ZONES); PUT /admin/zones/:id.',
+	'dashboard.customers':
+		'Total Customers tile on the admin home page (dashboard.html, GET /admin/dashboard/customers). The tile is a count only, so it is separate from customer.index, which opens personal records.',
+	'dashboard.orders':
+		'Total Orders tile and Recent Orders table on the admin home page (dashboard.html, GET /admin/dashboard/orders and /orders/recent). Separate from order.index so home page access can be set apart from the Orders page.',
+	'dashboard.revenue':
+		'Total Revenue tile and Monthly Revenue chart on the admin home page (dashboard.html, GET /admin/dashboard/revenue and /revenue/monthly). Its own code so money can be hidden from staff who still see order counts.',
+	'dashboard.reviews':
+		'Latest Reviews panel on the admin home page (dashboard.html, GET /admin/dashboard/reviews). Read-only: moderating stays on review.edit.',
+	'page_builder.go_live':
+		'Go Live, Schedule, Put back and Cancel a switch in the Page Builder (pb-go-live.html, POST /admin/page-builder/layouts/:id/go-live), on every page. Drafts stay on theme_option.edit, so staff can build and Ask for review while only the owner and super admins change what shoppers see (Page Builder Q10 A).',
+	'page_builder.draft_home':
+		'Build drafts of the Home page only in the Page Builder (layouts, the builder, Page settings, import, Ask for review), for a role without theme_option.edit, which drafts every page (Page Builder SG-19).',
+	'page_builder.go_live_home':
+		'Go Live, Schedule, Put back and Cancel a switch on the Home page only, for a role without page_builder.go_live, which covers every page (Page Builder SG-19).',
+	'dashboard.stock':
+		'Product Stock Report on the admin home page (dashboard.html, GET /admin/dashboard/stock). Row Edit still needs product.edit.',
+	'dashboard.top_products':
+		'Top Selling Products panel on the admin home page (dashboard.html, GET /admin/dashboard/top-products). It shows sales figures per product, so it is separate from dashboard.stock.',
 	'admin_user_role.assign':
 		'Granting authority (auth pass 5c.4) on the operator edit screen (form-user.html). Deliberately not part of admin_user.update: editing a colleague and enlarging their authority are different risks.',
 	'admin_user_role.revoke':
@@ -169,12 +298,14 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 		'Media library SEO edits (slug, alt, title, caption) and the Reprocess action (PATCH /admin/media/:id, POST /admin/media/:id/reprocess). No Media navigation entry exists to gate.',
 	'attribute.create':
 		'Add-attribute button on the Attributes page. menu.ts gates attribute.index beneath Products; creation is in-page only.',
+	'attendance.approve':
+		'Approve or turn down a change to a day, or leave asked for, that a manager without attendance.edit asked for (brief 26 AT3, WL1); POST /admin/attendance/requests/:id/approve|reject and the worklist row’s ✓ ✕. It acts on the Attendance page and the worklist, which their own codes open; nobody approves their own.',
+	'attendance.edit':
+		'Change a day at once with a reason, mark for someone else and lock the month (brief 26 AT2, AT3); PUT /admin/attendance/days/:employeeId/:day and POST /admin/attendance/lock/:month. Without it a change becomes a request. It acts inside Payroll › Attendance, which attendance.index opens.',
 	'attribute.destroy':
 		'Attributes table row Delete action, configured in attribute.ts. Row actions never appear in navigation.',
 	'attribute.edit':
 		'Attributes table row Edit action, configured in attribute.ts. The Fastkart-era .edit spelling is kept because the row action still sends it.',
-	'audit.index':
-		'Reads the audit trail every admin mutation writes (GET /admin/audit-logs). Deliberately its own code rather than folded into admin_user.index or setting.index. No screen gates it yet.',
 	'blog.create': 'Add-blog button on the Blog page. menu.ts gates blog.index only.',
 	'blog.destroy': 'Blog table row Delete action (blog.ts).',
 	'blog.edit': 'Blog table row Edit action (blog.ts).',
@@ -196,6 +327,12 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 		'Deleted filter on the Customer CRM list and its Restore row action (DEC-CUSTOMER-SOFT-DELETE-OPS). Also the only code that lists deleted customers at the API. Menu gates create/index only.',
 	'customer.update':
 		'Admin Customer CRM profile/address edits and activation resend. Menu gates create/index only; edit screens check this code at the API.',
+	'event.cancel':
+		'Cancel and End now on a published launch or sale (events list and form). Kept apart from edit because it stops a running sale for every shopper.',
+	'event.destroy': 'Events table row Delete action, offered on drafts only; a published event is cancelled instead.',
+	'event.edit': 'Events table row Edit action and the event form Save (events.ts, event form).',
+	'event.publish':
+		'Publish and Unpublish on the event form. Separate from edit so a staff member can prepare an event that only the owner sends to customers and the shop.',
 	'faq.create': 'Add-FAQ button on the FAQ page. No FAQ navigation entry exists.',
 	'faq.destroy': 'FAQ table row Delete action (faq.ts).',
 	'faq.edit': 'FAQ table row Edit action (faq.ts).',
@@ -214,6 +351,45 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 	'product.destroy': 'Products table row Delete action (product.ts).',
 	'product.edit':
 		"Product row Edit action on the Products page and on the dashboard's product tables (product.ts, dashboard.ts). Navigation gates product.index and product.create only.",
+	'purchase.check':
+		'Check goods on a purchase entry (p08 desktop, g01 phone) and POST /admin/purchases/entries/:id/goods-check. Separate from create so godown staff can count a parcel without typing bills (brief X01).',
+	'purchase.create':
+		'New entry, Copy as new draft, Import lines and Make a draft product on the purchase entries screens (p01–p05, p13), and draft saves (POST/PUT /admin/purchases/entries). Navigation gates purchase.index only.',
+	'purchase.payment':
+		'Record payment on a purchase entry and on the supplier page (p11, s03), and reversing one (POST /admin/purchases/entries/:id/payments). Money out is its own grant.',
+	'purchase.post':
+		'Post to stock on a checked purchase entry (p09) and POST /admin/purchases/entries/:id/post: the step that moves stock, cost and what is owed.',
+	'purchase.void':
+		'Void on a posted purchase entry (p10, p12) and POST /admin/purchases/entries/:id/void. Restricted: it takes stock back out and cancels what is owed.',
+	'purchase_order.cancel':
+		'Close with what is short and Cancel order on a purchase order (po04) and POST /admin/purchase-orders/:id/close and /cancel.',
+	'purchase_order.create':
+		'New purchase order, Copy as new draft, edits to a draft, and the reorder list making draft orders (po01, po02, i07); POST/PUT /admin/purchase-orders.',
+	'purchase_order.send':
+		'Send to the supplier by email or PDF (po03) and POST /admin/purchase-orders/:id/send. Separate from create so an order can be prepared and sent by someone else.',
+	'purchase_return.create':
+		'New return from a posted entry, from Held stock and from the ageing report (r02, i06, i08); POST/PUT /admin/purchase-returns.',
+	'purchase_return.send':
+		'Send on a purchase return (r04) and POST /admin/purchase-returns/:id/send: gives the debit note its number and takes the goods out of stock.',
+	'purchase_return.settle':
+		'Settle on a sent purchase return (r04) and POST /admin/purchase-returns/:id/settle: records the credit note, refund, later-bill deduction or write-off.',
+	'stock.adjust':
+		'Adjust stock window from All stock, Stock history and the product Inventory tab (i04, f01) and POST /admin/stock/adjustments. Without stock.approve every write-off becomes a request (P2).',
+	'stock.cost':
+		'Every cost and stock-value column, the Cost layers tab, margin on purchase lines and report values (i01, i03, p06, i08, i09). The API leaves these fields out entirely without it (P8).',
+	'stock.hold':
+		'Move to held and Release in the Adjust window and on Held stock (i04, i06); POST /admin/stock/adjustments with hold or release. Holds never need approval.',
+	'stock_count.create':
+		'Start a count on the counts list (c01, c02) and POST /admin/stock-counts. Counting itself is stock_count.count.',
+	'stock_count.post':
+		'Review differences, Recount and Post on a count (c03) and POST /admin/stock-counts/:id/post. Without stock.approve a posted count waits for approval (P2).',
+	'stock_report.export':
+		'Excel and PDF downloads on the stock reports (i08, i09, i10) and GET /admin/stock-reports/*/export. Seeing a report and taking a copy away are separate grants.',
+	'supplier.create': 'Add supplier on the Suppliers list (s01, s02) and POST /admin/suppliers.',
+	'supplier.destroy':
+		'Suppliers table row Delete action (s01) and DELETE /admin/suppliers/:id: a soft delete, refused while the supplier has purchase entries.',
+	'supplier.edit':
+		'Suppliers table row Edit action and the supplier form Save (s01, s02) and PUT /admin/suppliers/:id.',
 	'question_and_answer.create':
 		'Reserved for the kept Questions & Answers page, which has no create surface or API yet. Retained so the code exists when that page is wired; nothing gates on it today.',
 	'question_and_answer.destroy':
@@ -233,13 +409,42 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 	'role.create': 'Role management surface (auth pass 5c.3); the navigation gates only role.index today.',
 	'role.destroy': 'Role management surface (auth pass 5c.3); deleting a role is separate from editing one.',
 	'role.update': 'Role management surface (auth pass 5c.3); editing a role changes what everyone holding it can do.',
+	'search_term.create': 'Add-search-word button on the Search words page.',
+	'search_term.destroy': 'Search words table row Delete action (search-term.ts).',
+	'search_term.edit':
+		"Search word form Save, and the list's bulk Go Live and Take off shop (POST /admin/search-terms/status).",
 	'setting.edit':
 		'Every write on the settings surfaces: the Save control on the main Settings page, and the two audited notification mutations (PATCH /admin/notifications/channels, PUT /admin/notifications/templates). Reads use setting.index, which is the navigation code; writes deliberately do not.',
-	'shipping.create': 'Add-shipping button on the Shipping page. No Shipping navigation entry exists.',
-	'shipping.destroy': 'Delete control on a shipping rule row (shipping.html).',
-	'shipping.edit': 'Edit control on a shipping rule row (shipping.html).',
-	'store.destroy': 'Stores table row Delete action (stores.ts). menu.ts gates store.index and store.create only.',
-	'store.edit': 'Stores table row Edit action (stores.ts).',
+	'shipping.create':
+		'New rule set and Add exception on Admin › Shipping; POST /admin/shipping/rule-sets and /exceptions.',
+	'shop_details.edit':
+		'The open boxes and Save on Settings › Shop details (X04) and PUT /admin/settings/shop-details: the legal name, GSTIN and address printed on business documents. Reading the page is setting.index (read only, X04D). Held by the Administrator role.',
+	'company.edit':
+		'Save on Settings › Company, Registrations and Features (accounts brief J, CT, G1–G2) and PUT /admin/company, /admin/company/registrations, /admin/company/features. Reading them is setting.index. Held by the Administrator role.',
+	'accounts.post':
+		'Post a journal, receipt, payment or contra voucher by hand on Accounts › Vouchers (accounts brief Q3, Q4); POST /admin/accounts/vouchers. Reversing a posted voucher also needs the Administrator role (brief tests: a store manager cannot reverse).',
+	'accounts.lock':
+		'Close a month for staff or lock it, part by part, with a reason, and reopen it, on Accounts › Periods and locks (T1, T2); POST /admin/accounts/periods. Held by the Administrator role.',
+	'cash.manage':
+		'See a cash sheet’s amounts and expected figures, close a sheet for another person, settle a difference (O8, the ten ways), refill a fixed float (O13) and approve or reject expense claims (O12); POST /admin/cash/sheets/:id/settle, /admin/cash/boxes/:id/refill, /admin/cash/claims/:id/decide. A box reviewed by the owner also needs the Administrator role.',
+	'transfer.create':
+		'Request stock from another location (accounts brief N1, N2) on Stock › Stock by location; POST /admin/transfers. For the location the person works at.',
+	'transfer.manage':
+		'Approve or reject a request at the sending location, pack and dispatch it (N5), receive it at the receiving location (N6), or cancel it before dispatch; POST /admin/transfers/:id/*. Within the locations the person works at.',
+	'expense_claim.create':
+		'New expense claim on Cash › Expense claims: a staff member’s own-pocket spend with its bill (accounts brief O12); POST /admin/cash/claims. Deciding it is cash.manage.',
+	'accounts_template.edit':
+		'Make, edit, publish and install accounts templates (charts of accounts, tax rule sets, report layouts) on Settings › Accounts templates (accounts templates AT-D4). Reading the library is accounts.index. Held by the Administrator role and the CA login.',
+	'location.edit':
+		'Add, edit and switch off locations (warehouses, stores, offices) and set where each admin user works (accounts brief K, L). Held by the Administrator role.',
+	'edocs.generate':
+		'Generate e-invoice and Generate e-way bill on an order or invoice, by hand or through a connected path, and update an e-way bill’s Part B or extend it (accounts brief addendum 2). Held by the Administrator role.',
+	'edocs.cancel':
+		'Cancel an e-invoice (within 24 hours, no active e-way bill) or an e-way bill (within 24 hours). Held by the Administrator role.',
+	'edocs.settings':
+		'Settings › E-invoice and e-way bill: the path per document, enabled-from date, threshold, and the keys of the automatic paths. Held by the Administrator role.',
+	'shipping.destroy': 'Delete an own rule set not used anywhere, or remove an exception (Admin › Shipping).',
+	'shipping.edit': 'Save and make active a rule set, change an exception, save the zone settings (Admin › Shipping).',
 	'tag.create': 'Add-tag button on the Tags page, reached from Products rather than from navigation.',
 	'tag.destroy': 'Tags table row Delete action (tag.ts).',
 	'tag.edit': 'Tags table row Edit action (tag.ts).',
@@ -253,33 +458,57 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 
 /** The resource half of a code — the noun a permission is about. */
 export const PermissionResource = z.enum([
-	'admin_user_role',
+	'accounts',
+	'accounts_template',
 	'admin_user',
+	'admin_user_role',
 	'attachment',
+	'attendance',
 	'attribute',
 	'audit',
 	'blog',
+	'business',
 	'cart',
+	'cash',
 	'category',
+	'company',
 	'coupon',
 	'currency',
 	'customer',
+	'dashboard',
+	'edocs',
+	'event',
+	'expense_claim',
 	'faq',
+	'language',
+	'location',
+	'mailbox',
 	'order',
 	'page',
+	'page_builder',
 	'permission',
 	'point',
+	'price_zone',
 	'product',
+	'purchase',
+	'purchase_order',
+	'purchase_return',
 	'question_and_answer',
 	'refund',
 	'review',
 	'role',
+	'search_term',
 	'setting',
 	'shipping',
-	'store',
+	'shop_details',
+	'stock',
+	'stock_count',
+	'stock_report',
+	'supplier',
 	'tag',
 	'tax',
 	'theme_option',
+	'transfer',
 	'withdraw_request',
 ]);
 export type PermissionResource = z.infer<typeof PermissionResource>;
@@ -293,20 +522,53 @@ export type PermissionResource = z.infer<typeof PermissionResource>;
  * `update` is what the API's own routes use. `credit` and `debit` cover the points controls,
  * `action` covers the payout approve/reject chrome, and `restore` undoes a soft delete — kept
  * apart from `destroy` and `update` so bringing a departed customer back is its own grant
- * (`DEC-CUSTOMER-SOFT-DELETE-OPS`).
+ * (`DEC-CUSTOMER-SOFT-DELETE-OPS`). `customers`, `orders`, `revenue`, `reviews`, `stock` and
+ * `top_products` belong to the `dashboard` resource alone: each names one widget on the admin
+ * home page, so a super admin can grant that widget by itself (`DEC-ADMIN-HOME-WIDGETS`).
  */
 export const PermissionAction = z.enum([
 	'action',
+	'address',
+	'adjust',
+	'approve',
 	'assign',
+	'cancel',
+	'check',
+	'cost',
+	'count',
 	'create',
 	'credit',
+	'customers',
 	'debit',
 	'destroy',
+	'draft_home',
 	'edit',
+	'export',
+	'generate',
+	'go_live',
+	'go_live_home',
+	'hold',
 	'index',
+	'lock',
+	'manage',
+	'open',
+	'opening',
+	'orders',
+	'payment',
+	'post',
+	'publish',
 	'restore',
+	'revenue',
+	'reviews',
 	'revoke',
+	'send',
+	'settings',
+	'settle',
+	'stock',
+	'top_products',
 	'update',
+	'use',
+	'void',
 ]);
 export type PermissionAction = z.infer<typeof PermissionAction>;
 

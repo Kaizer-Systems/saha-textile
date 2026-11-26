@@ -1,0 +1,208 @@
+<div class="modal-header">
+	<h5
+		class="mb-0"
+		id="stl_import_title"
+	>
+		{{ 'stl_import' | transloco }}
+	</h5>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	></button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	@if (problem(); as key) {
+	<div class="alert alert-danger py-2">{{ key | transloco }}</div>
+	} @switch (step()) { @case ('map') {
+	<div class="row g-3 mb-3">
+		<div class="col-md-3">
+			<span class="form-label-title d-block">{{ 'stl_kind' | transloco }}</span>
+			@for (k of ['gateway', 'cod']; track k) {
+			<div class="form-check">
+				<input
+					class="form-check-input"
+					type="radio"
+					name="stl_kind"
+					[id]="'stl_kind_' + k"
+					[checked]="kind() === k"
+					(change)="setKind($any(k))"
+				/>
+				<label
+					class="form-check-label"
+					[for]="'stl_kind_' + k"
+				>
+					{{ 'stl_tab_' + k | transloco }}
+				</label>
+			</div>
+			}
+		</div>
+		<div class="col-md-3">
+			<label
+				class="form-label-title"
+				for="stl_provider"
+			>
+				{{ 'stl_provider' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="stl_provider"
+				[ngModel]="provider()"
+				(ngModelChange)="provider.set($event)"
+			/>
+		</div>
+		<div class="col-md-3">
+			<label
+				class="form-label-title"
+				for="stl_bank"
+			>
+				{{ 'stl_bank' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="stl_bank"
+				[ngModel]="bankAccountId()"
+				(ngModelChange)="bankAccountId.set($event)"
+			>
+				<option value="">—</option>
+				@for (a of accounts.data()?.items ?? []; track a.id) {
+				<option [value]="a.id">{{ a.shortName }}</option>
+				}
+			</select>
+		</div>
+		<div class="col-md-3">
+			<label
+				class="form-label-title"
+				for="stl_file"
+			>
+				{{ 'bank_import_file' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="stl_file"
+				type="file"
+				accept=".csv,.tsv,.txt,text/csv,.xlsx,.xls"
+				(change)="readFile($any($event.target).files?.[0])"
+			/>
+			<small class="text-muted">{{ 'stl_file_help' | transloco }}</small>
+		</div>
+	</div>
+	@if (table().length) {
+	<div class="row g-3 mb-2">
+		<div class="col-md-3">
+			<label
+				class="form-label-title"
+				for="stl_date_format"
+			>
+				{{ 'bank_columns_date_format' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="stl_date_format"
+				[ngModel]="dateFormat()"
+				(ngModelChange)="dateFormat.set($event)"
+			>
+				@for (f of dateFormats; track f) {
+				<option [value]="f">{{ f }}</option>
+				}
+			</select>
+		</div>
+		@for (field of fields; track field) {
+		<div class="col-md-3">
+			<label
+				class="form-label-title"
+				[for]="'stl_col_' + field"
+			>
+				{{ 'stl_field_' + field | transloco }}
+			</label>
+			<select
+				class="form-select"
+				[id]="'stl_col_' + field"
+				[ngModel]="columns()[field] === null ? '' : '' + columns()[field]"
+				(ngModelChange)="setColumn(field, $event)"
+			>
+				<option value="">—</option>
+				@for (h of heading(); track $index) {
+				<option [value]="'' + $index">{{ h || ('bank_column_n' | transloco: { n: $index + 1 }) }}</option>
+				}
+			</select>
+		</div>
+		}
+	</div>
+	<small class="text-muted d-block">
+		{{ 'stl_rows_read' | transloco: { count: read().rows.length } }} @if (read().problems.length) {
+		<span class="text-danger">{{ 'stl_rows_skipped' | transloco: { rows: read().problems.join(', ') } }}</span>
+		}
+	</small>
+	} } @case ('check') {
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'stl_col_payout' | transloco }}</th>
+					<th>{{ 'date' | transloco }}</th>
+					<th class="text-end">{{ 'stl_col_gross' | transloco }}</th>
+					<th class="text-end">{{ 'stl_col_charges' | transloco }}</th>
+					<th class="text-end">{{ 'stl_col_net' | transloco }}</th>
+					<th>{{ 'stl_col_matched' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (p of preview()?.payouts ?? []; track p.payoutReference) {
+				<tr [class.text-muted]="p.already">
+					<td>
+						{{ p.payoutReference }} @if (p.already) {
+						<small class="d-block">{{ 'stl_already' | transloco }}</small>
+						}
+					</td>
+					<td class="text-nowrap">{{ day(p.date) }}</td>
+					<td class="text-end text-nowrap">{{ rupees(p.grossPaise) }}</td>
+					<td class="text-end text-nowrap">{{ rupees(p.chargesPaise + p.gstPaise) }}</td>
+					<td class="text-end text-nowrap">{{ rupees(p.netPaise) }}</td>
+					<td>{{ 'stl_matched_n' | transloco: { matched: p.matched, total: p.rows.length } }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	} }
+</div>
+<div class="modal-footer">
+	@if (step() === 'map') {
+	<button
+		type="button"
+		class="btn btn-outline"
+		(click)="modal.dismiss()"
+	>
+		{{ 'cancel' | transloco }}
+	</button>
+	<button
+		type="button"
+		class="btn btn-theme"
+		id="stl_check"
+		[disabled]="busy() || !ready()"
+		(click)="check()"
+	>
+		{{ 'ord_req_next' | transloco }}
+	</button>
+	} @else {
+	<button
+		type="button"
+		class="btn btn-outline"
+		id="stl_back"
+		(click)="back()"
+	>
+		{{ 'back' | transloco }}
+	</button>
+	<button
+		type="button"
+		class="btn btn-theme"
+		id="stl_save"
+		[disabled]="busy() || !fresh()"
+		(click)="save()"
+	>
+		{{ 'stl_save' | transloco: { count: fresh() } }}
+	</button>
+	}
+</div>

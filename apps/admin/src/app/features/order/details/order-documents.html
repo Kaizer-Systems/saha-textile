@@ -1,0 +1,72 @@
+@if (documents().length) {
+<div class="card">
+	<div class="card-body">
+		<div class="title-header">
+			<h5>{{ 'doc_card_title' | transloco }}</h5>
+		</div>
+		<div class="table-responsive datatable-wrapper border-table">
+			<table class="all-package theme-table no-footer table">
+				<thead>
+					<tr>
+						<th class="text-start">{{ 'doc_document' | transloco }}</th>
+						<th>{{ 'doc_number' | transloco }}</th>
+						<th>{{ 'date' | transloco }}</th>
+						<th class="text-end">{{ 'doc_amount' | transloco }}</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody>
+					@for (doc of documents(); track doc.kind + doc.id) {
+					<tr>
+						<td class="text-start">{{ 'doc_kind_' + doc.kind | transloco }}</td>
+						<td class="text-nowrap">
+							{{ doc.number ?? ('doc_draft' | transloco) }} @if (doc.status && doc.number) {
+							<small class="text-muted d-block">{{ statusKey(doc) | transloco }}</small>
+							}
+						</td>
+						<td class="text-nowrap">{{ doc.date ? day(doc.date) : '—' }}</td>
+						<td class="text-end text-nowrap">{{ doc.amountINR === null ? '' : inr(doc.amountINR) }}</td>
+						<td>
+							<ul class="d-flex justify-content-end mb-0 gap-2">
+								@if (link(doc); as to) {
+								<li>
+									<a
+										[routerLink]="to"
+										[title]="'view' | transloco"
+									>
+										<i class="ri-eye-line"></i>
+									</a>
+								</li>
+								} @else if (doc.kind === 'receipt') {
+								<li>
+									<a
+										href="javascript:void(0)"
+										[title]="'view' | transloco"
+										[class.disabled]="busy()"
+										(click)="print(doc)"
+									>
+										<i class="ri-eye-line"></i>
+									</a>
+								</li>
+								} @if (printable(doc)) {
+								<li>
+									<a
+										href="javascript:void(0)"
+										[title]="'inv_print' | transloco"
+										[class.disabled]="busy()"
+										(click)="print(doc)"
+									>
+										<i class="ri-printer-line"></i>
+									</a>
+								</li>
+								}
+							</ul>
+						</td>
+					</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+}

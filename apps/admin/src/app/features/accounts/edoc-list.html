@@ -1,0 +1,120 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="kind() === 'eInvoice' ? 'edoc_list_einvoices' : 'edoc_list_ewaybills'"
+>
+	<ul class="nav nav-tabs mb-3">
+		@for (t of tabs(); track t) {
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				href="javascript:void(0)"
+				[id]="'edoc_tab_' + t"
+				[class.active]="tab() === t"
+				(click)="setTab(t)"
+			>
+				{{ 'edoc_tab_' + (kind() === 'eInvoice' && t === 'active' ? 'generated' : t) | transloco }}
+			</a>
+		</li>
+		}
+	</ul>
+	<div class="d-flex align-items-center mb-3 flex-wrap gap-2">
+		<input
+			class="form-control w-auto"
+			type="search"
+			id="edoc_search"
+			[placeholder]="'edoc_search' | transloco"
+			[ngModel]="search()"
+			(ngModelChange)="search.set($event); page.set(1)"
+		/>
+		<app-period-picker (changed)="setPeriod($event)" />
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'edoc_col_document' | transloco }}</th>
+					<th>{{ 'date' | transloco }}</th>
+					<th>{{ 'edoc_col_buyer' | transloco }}</th>
+					@if (kind() === 'eInvoice') {
+					<th>IRN</th>
+					<th>{{ 'edoc_col_ack' | transloco }}</th>
+					} @else {
+					<th>{{ 'edoc_col_number' | transloco }}</th>
+					<th>{{ 'edoc_col_valid_until' | transloco }}</th>
+					}
+					<th class="text-end">{{ 'edoc_col_value' | transloco }}</th>
+					<th>{{ 'edoc_col_how' | transloco }}</th>
+					@if (kind() === 'eInvoice') {
+					<th>QR</th>
+					}
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of rows(); track row.id) {
+				<tr>
+					<td class="text-nowrap">
+						{{ row.documentNumber }}
+						<small class="d-block text-muted">{{ 'edoc_doc_' + row.documentType | transloco }}</small>
+					</td>
+					<td class="text-nowrap">{{ row.documentDate | date: 'd MMM y' }}</td>
+					<td>
+						{{ row.partyName ?? '—' }}
+						<small class="d-block text-muted">{{ row.partyGstin ?? ('edoc_no_gstin' | transloco) }}</small>
+					</td>
+					@if (kind() === 'eInvoice') {
+					<td class="text-nowrap"><code>{{ shortIrn(row.irn) }}</code></td>
+					<td class="text-nowrap">{{ row.ackNo ?? '—' }}</td>
+					} @else {
+					<td class="text-nowrap">{{ row.ewbNumber ?? '—' }}</td>
+					<td class="text-nowrap">{{ row.validUntil ? (row.validUntil | date: 'd MMM, h:mm a') : '—' }}</td>
+					}
+					<td class="text-end text-nowrap">
+						{{ row.valueINR === null ? '—' : '₹' + (row.valueINR | number: '1.2-2') }}
+					</td>
+					<td>{{ 'edoc_how_' + (row.path === 'manual' ? 'manual' : 'connection') | transloco }}</td>
+					@if (kind() === 'eInvoice') {
+					<td>
+						<div
+							class="d-inline-block"
+							[class.status-success]="!!row.signedQr"
+							[class.status-pending]="!row.signedQr"
+						>
+							<span>{{ (row.signedQr ? 'edoc_qr_signed' : 'edoc_qr_pending') | transloco }}</span>
+						</div>
+					</td>
+					}
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="8"
+						class="text-muted py-4 text-center"
+					>
+						{{ 'edoc_list_empty' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if (pages() > 1) {
+	<nav class="custom-pagination">
+		<ul class="pagination justify-content-center">
+			@for (p of [].constructor(pages()); track $index) {
+			<li
+				class="page-item"
+				[class.active]="page() === $index + 1"
+			>
+				<a
+					class="page-link"
+					href="javascript:void(0)"
+					(click)="page.set($index + 1)"
+				>
+					{{ $index + 1 }}
+				</a>
+			</li>
+			}
+		</ul>
+	</nav>
+	}
+</app-page-wrapper>

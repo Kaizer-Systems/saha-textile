@@ -1,0 +1,33 @@
+// CUSTOM (owner-approved 2026-11-08, stores brief): drag-to-reorder on the Stores list. Nothing in the
+// theme drags, so these few rules give the dragged row a lifted look, mark the gap it leaves, and
+// animate the other rows. Everything else on this screen is the theme's own table.
+.store-drag-handle {
+	cursor: grab;
+	touch-action: none;
+
+	&:active {
+		cursor: grabbing;
+	}
+}
+
+.cdk-drag-preview {
+	display: table;
+	background: #fff;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.cdk-drag-placeholder {
+	opacity: 0.35;
+}
+
+.cdk-drag-animating,
+.cdk-drop-list-dragging tr:not(.cdk-drag-placeholder) {
+	transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.cdk-drag-animating,
+	.cdk-drop-list-dragging tr:not(.cdk-drag-placeholder) {
+		transition: none;
+	}
+}

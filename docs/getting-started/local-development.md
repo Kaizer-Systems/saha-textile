@@ -4,14 +4,19 @@ description: Local setup checklist for the monorepo and developer portal.
 search_keywords: 'mongo rs0 config.json env docker setup pnpm mongo:up check:naming replica set'
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-20'
 source_of_truth:
     - package.json
     - pnpm-workspace.yaml
     - docker/mongo/docker-compose.yml
     - scripts/mongo-up.sh
+    - scripts/secrets/test-login.mjs
+    - scripts/pipeline/local.mjs
+    - scripts/pipeline/stages.mjs
+    - scripts/secrets/release.mjs
     - apps/api/src/reset-local-customer.ts
     - apps/api/src/set-local-test-credentials.ts
+    - apps/api/src/invite-local-admin.ts
     - apps/api/src/seed-local-auth-accounts.ts
     - apps/api/src/seed-local-catalog-photos.ts
     - apps/api/src/worker.ts
@@ -46,8 +51,11 @@ pnpm turbo run lint typecheck test
 | `check:route-contracts`     | Unnamed controller-local request shapes and unstable operation identifiers    |
 | `check:route-authorization` | Admin routes without a declared permission                                    |
 | `check:permission-registry` | Permission codes outside the registry                                         |
+| `check:e2e-types`           | Type errors in the Playwright specs and their helpers                         |
 
 Each script documents its allow marker for deliberate exceptions. Run the root lint command before you finish a change.
+
+`pnpm typecheck` compiles each app's code with `ngc` and then its test files with `tsconfig.spec.json`, so a test written against an old shape fails the check even though Vitest, which strips types, still runs it.
 
 ## Other commands
 
@@ -65,15 +73,78 @@ Each script documents its allow marker for deliberate exceptions. Run the root l
 | `pnpm mongo:reconcile-indexes`                                                                               | Bring database indexes in line with the models          |
 | `pnpm mongo:split-admin-users`, `pnpm mongo:rename-admin-user-permissions`, `pnpm mongo:extract-credentials` | One-off data migrations                                 |
 
+## The local pipeline
+
+`pnpm pipeline:local` walks a change through the same stages it goes through on GitHub, and ends with the result running on the full local stack with the dev project's real values.
+
+| Stage     | What it does                                                                                                                                                                                                                                                                        |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checks`  | The CI jobs' commands, in order (`scripts/pipeline/stages.mjs`). A test in `pnpm test:scripts` fails when this list and the workflows drift apart.                                                                                                                                  |
+| `proof`   | `pnpm production:proof`: deploy, rollback, backup and restore on throwaway values, then its stack is removed.                                                                                                                                                                       |
+| `images`  | The four images, built from the last commit as GitHub builds them, tagged `sha-<commit>` and `tree-<tree>` and pinned by digest in a registry on the machine (port 5056). Uncommitted changes are not in them; the stage says how many there are.                                   |
+| `release` | A full release folder from the dev project's real values (`scripts/secrets/release.mjs`), laid out like a droplet's, then the droplet's own `deploy.sh --check-only` on it. The folder describes the full stack: its hosts and port, its services and the proxy header it forwards. |
+| `deploy`  | `pnpm stack:env`, then the full stack runs exactly those image digests.                                                                                                                                                                                                             |
+| `record`  | Readiness and both `config.json` files checked through the stack's edge, and one line in `.local-release/runs.log`.                                                                                                                                                                 |
+
+```bash
+pnpm pipeline:local
+pnpm pipeline:local -- --from images
+pnpm pipeline:local -- --only release
+pnpm pipeline:local -- --json
+```
+
+- The release stage stops on any setting a release needs that the dev project leaves blank, such as `MSG91_AUTH_KEY`, and on any address whose URL and host forms disagree. Anything filled in the dev project's `/deployment` folder must agree with the stack's addresses.
+- The `checks` stage builds the apps inside the folder it runs in, so run it where no server is using those builds.
+- `.local-release/` (gitignored) keeps the newest three release folders, the image list and the run log. Every message names settings and stages, never a value.
+
 ## Environment and services
 
 ### API environment file
 
-The real `.env` is gitignored; copy the template and fill it for local use:
+The real `.env` is gitignored. Its values come from the `saha-textile-dev` Infisical project, folder `/api`. Install the Infisical CLI, sign in once, then write the file:
 
 ```bash
-cp apps/api/.env.example apps/api/.env
+brew install infisical/get-cli/infisical
+infisical login
+pnpm secrets:pull
 ```
+
+`pnpm dev` refreshes the file the same way before it starts. When Infisical cannot be reached, the CLI's copy from its last successful read is used; when the CLI is missing or signed out, the existing file is used as it is.
+
+- **Personal changes** go in `apps/api/.env.overrides` (gitignored), laid on top after each refresh. A line with an empty value, such as `CSRF_SECRET=`, removes that setting.
+- **The previous file** is kept as `apps/api/.env.previous` after each refresh.
+- **A hand-written file** is never replaced silently. `pnpm secrets:pull --dry-run` lists the setting names that would be added, removed or changed. When the file has settings that the dev project leaves blank, the pull stops and names them; `pnpm secrets:pull --replace` switches anyway and keeps the old file as `apps/api/.env.before-infisical`.
+- **Names only:** every `secrets:*` command prints setting names and counts, never a value. `pnpm secrets:status` shows which names are still blank in each project.
+
+Without access to the Infisical project, copy the template and fill it by hand instead: `cp apps/api/.env.example apps/api/.env`.
+
+### Local logins for MongoDB, Redis and search
+
+The machine's own MongoDB, Redis and search server use real logins, in the same shape as a droplet's. `pnpm secrets:setup-local` makes them once:
+
+- It fills every blank service setting in `apps/api/.env` with a strong random value (`MONGODB_USERNAME` and `MONGODB_PASSWORD`, `REDIS_PASSWORD`, `CSRF_SECRET` and similar), plus the local settings `REDIS_HOST`, `REDIS_PORT`, `DEPLOY_ENV=local` and `COOKIE_SECURE=true`. A setting that already has a value is never changed, and the file before is kept as `apps/api/.env.before-local-setup`.
+- It writes the gitignored `docker/dev-secrets/`: the replica-set keyfile, the database administrator's name and password, and the search server's `meilisearch.toml`. These are the dev project's `/infrastructure` entries.
+- It creates the administrator (`root`, in `admin`) and the app login (`readWrite` on its own database only) in the running MongoDB, plus a test login for the test runners' own databases, and checks that all three log in.
+- It writes `docker/dev-secrets/for-infisical.env`, the `/api` settings the dev project still lacks, ready to drop onto the project's `/api` folder.
+
+Logins are required with `MONGO_AUTH=on` in `docker/mongo/.env` and `REDIS_AUTH=on` in `docker/redis/.env`, followed by `pnpm mongo:up` and `pnpm redis:up`. A folder without the switch refuses to restart a container that requires logins. `pnpm local-auth:proof` proves the switch on throwaway copies. Every folder that runs the API needs the logins and the search key in its `apps/api/.env`.
+
+The search server (the full stack's Meilisearch on port 7700, which `pnpm dev` also uses) takes its master key from the dev project's `/infrastructure/meilisearch.toml` through `pnpm stack:env`. Its admin key is the API's `MEILISEARCH_API_KEY`.
+
+#### The test login
+
+Test runners work on databases of their own (`saha_textile_e2e`, `saha_textile_it`, `saha_textile_test` and names derived from them), which the app login cannot reach. They log in with the machine's test login, `saha_textile_tests`, whose password `pnpm secrets:setup-local` makes once in `docker/dev-secrets/mongo-test-password`. MongoDB grants rights per database, not per name prefix, so this login can read, write and drop any database on the machine; each runner still refuses a database that is not a test database. The test login exists only on a developer machine, never in Infisical or on a droplet. Worktrees read the main folder's file.
+
+- `pnpm coverage`, `pnpm e2e`, `pnpm e2e:stack` and `pnpm e2e:session-rotation` use it on their own.
+- An opt-in database suite runs through `scripts/secrets/test-login.mjs run`, which gives the command the test address, `MONGODB_DB_NAME` and `RUN_DB_IT=1`, and accepts only a test database name:
+
+```bash
+node scripts/secrets/test-login.mjs run saha_textile_test -- pnpm --filter @saha-textile/adapters-db-mongo test
+```
+
+Two guards keep the working database out of reach. The Mongo adapter's test setup refuses `RUN_DB_IT=1` on any database that is not a test database, and the adapter itself refuses the test login on any other database; an address without `MONGODB_DB_NAME` opens the database the address names, never `saha_textile_local`. `node scripts/secrets/test-login.mjs <database>` prints the address alone, into a pipe only, for a tool that needs it.
+
+Without the file, as on CI, the address carries no login.
 
 Local defaults target the Docker MongoDB replica set below, `console` notifications (no real sends), and CORS for the storefront (`:4200`), admin (`:4300`), and persistent developer portal (`127.0.0.1:3457` / `localhost:3457`) so approved Scalar Test Requests can reach the local API.
 
@@ -107,13 +178,16 @@ The storefront and admin applications load `public/config.json` at startup. The 
 
 With the `console` notification provider no message leaves your machine, so you can fix the one-time code. Set `OTP_LOCAL_FIXED_CODE=123456` in `apps/api/.env`, and every signup, one-time-code login, step-up and contact-change code takes that value. Only generation changes: the code is still hashed, single-use, attempt-capped and short-lived. The API refuses to start with this setting under `NODE_ENV=production` or with any provider other than `console`.
 
-Three local-only tools keep accounts testable; each refuses to run without `--i-am-local`, under `NODE_ENV=production`, or against a non-loopback MongoDB:
+Four local-only tools keep accounts testable; each refuses to run without `--i-am-local`, under `NODE_ENV=production`, or against a non-loopback MongoDB:
 
 ```bash
 pnpm --filter @saha-textile/api seed:local-auth-accounts -- --i-am-local
 pnpm --filter @saha-textile/api reset:local-customer -- --i-am-local --email you@example.com
 pnpm --filter @saha-textile/api set:local-credentials -- --i-am-local --audience admin --email you@example.com
+pnpm --filter @saha-textile/api invite:local-admin -- --i-am-local --email you@example.com [--role staff|admin]
 ```
+
+`invite:local-admin` runs the real invite service, with the same token, hash and audit record, and prints the accept link once (`--admin-url` overrides the default `https://localhost:4300`). It exists because an invite link only ever travels in the `admin_invite` email, and locally there is no MSG91. The accepted account has no permissions until you assign a role on the user's edit screen. It also refuses databases whose names do not end in `_local`.
 
 `seed:local-auth-accounts` writes one account per sign-in shape. `reset:local-customer` returns a real Google or Facebook account to "never signed up" (soft delete plus unlinking its identities) between test rounds. `set:local-credentials` sets a known password, and for admins optionally a PIN, using the API's own argon2 hasher.
 
@@ -146,6 +220,14 @@ pnpm --filter @saha-textile/api seed:local-catalog-photos -- --i-am-local ~/phot
 ```
 
 On macOS, convert a phone HEIC first with `sips -s format jpeg photo.heic --out photo.jpg`. The tool uploads each photo as an admin upload would, waits for the worker, then rewrites the demo JSON. Photos do not enter Git; only their CDN URLs do. `--assets=med_…,med_…` reuses uploaded photos, and `--clean` removes them and restores the placeholder. The tool refuses to run without `--i-am-local`, under `NODE_ENV=production`, against a non-loopback MongoDB, or against a database whose name does not end in `_local`.
+
+The home page banners use stand-in images until real art arrives. To fill every empty hero and promo slot through the pipeline:
+
+```bash
+pnpm --filter @saha-textile/api seed:local-home-banners -- --i-am-local
+```
+
+It leaves a slot that already holds a banner alone, and it has the same safety checks as the photo tool.
 
 ## Developer portal commands
 

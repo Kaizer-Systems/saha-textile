@@ -1,0 +1,86 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'assets_title'"
+>
+	<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+		<div class="d-flex flex-wrap gap-2">
+			@for (c of ['active', 'disposed']; track c) {
+			<button
+				type="button"
+				class="align-items-center btn btn-sm d-flex"
+				[id]="'assets_chip_' + c"
+				[class.btn-theme]="chip() === c"
+				[class.btn-outline]="chip() !== c"
+				(click)="chip.set($any(c))"
+			>
+				{{ 'assets_chip_' + c | transloco }}
+				<span class="ms-1">{{ c === 'active' ? counts().active : counts().disposed }}</span>
+			</button>
+			}
+		</div>
+		<div class="d-flex gap-2">
+			<a
+				class="btn btn-outline"
+				id="assets_depreciation"
+				routerLink="/accounts/assets/depreciation"
+			>
+				{{ 'assets_depreciation' | transloco }}
+			</a>
+			<a
+				class="btn btn-theme"
+				id="assets_add"
+				routerLink="/accounts/assets/new"
+			>
+				<i class="ri-add-line"></i>
+				{{ 'assets_add' | transloco }}
+			</a>
+		</div>
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'assets_col_tag' | transloco }}</th>
+					<th>{{ 'assets_col_name' | transloco }}</th>
+					<th>{{ 'assets_col_kind' | transloco }}</th>
+					<th>{{ 'assets_col_cost' | transloco }}</th>
+					<th>{{ 'assets_col_in_use' | transloco }}</th>
+					<th>{{ 'assets_col_taken' | transloco }}</th>
+					<th>{{ 'assets_col_book_value' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (a of rows(); track a.id) {
+				<tr>
+					<td>{{ a.tag }}</td>
+					<td>{{ a.name }}</td>
+					<td>{{ 'asset_kind_' + a.categoryKey | transloco }}</td>
+					<td class="text-nowrap">{{ money(a.costINR * 100) }}</td>
+					<td class="text-nowrap">{{ day(a.putToUseOn) }}</td>
+					<td class="text-nowrap">{{ money(a.accumulatedPaise) }}</td>
+					<td class="text-nowrap">{{ money(value(a)) }}</td>
+					<td>
+						<a
+							class="btn btn-sm p-0"
+							[routerLink]="['/accounts/assets', a.id]"
+							[title]="'view' | transloco"
+						>
+							<i class="ri-eye-line"></i>
+						</a>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="8"
+						class="text-muted"
+					>
+						{{ 'assets_none' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+</app-page-wrapper>

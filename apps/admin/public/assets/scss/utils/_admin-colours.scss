@@ -1,0 +1,38 @@
+// The side menu's slow-moving gradient, in deep shades of the theme colour only, so its white text
+// reaches AA at every moment of the animation (R6-3; the old light orange end was 1.96 : 1). Dark
+// mode keeps the theme's own dark menu.
+$sidebar-gradient: linear-gradient(
+	-45deg,
+	color-mix(in srgb, var(--theme-color) 75%, #000),
+	color-mix(in srgb, var(--theme-color) 60%, #000),
+	color-mix(in srgb, var(--theme-color) 65%, #0b3d5c)
+);
+
+// Named admin colours, light mode. Dark values: themes/_dark-colours.scss (dark file only).
+//
+// Every value reaches WCAG AA (4.5 : 1 for text) on the surfaces it is used on, in its mode;
+// `e2e/dark-mode.admin.spec.ts` checks every admin screen. Theme pieces and our own components
+// use these names instead of typing a colour, so a contrast fix happens in one place.
+:root {
+	// The theme colour, deeper: fills under white text. 75% theme + 25% black (#0da487 → #0a7b65,
+	// 5.2 : 1 with white). Worked out from `--theme-color`, so a Brand Kit colour change follows.
+	--theme-strong: color-mix(in srgb, var(--theme-color) 75%, #000);
+	--theme-strong-hover: color-mix(in srgb, var(--theme-color) 65%, #000);
+	// The theme colour as text on white and light grey. Dark mode uses the bright theme colour.
+	--theme-ink: var(--theme-strong);
+	// The theme colour as text on its own pale tints (the dashboard tiles).
+	--theme-ink-on-tint: color-mix(in srgb, var(--theme-color) 66%, #000);
+	// Secondary text: dates, sub-headings, tile labels.
+	--admin-ink-2: #4a5568;
+	// Muted text: help lines, placeholders, empty states, the breadcrumb's last step.
+	--admin-muted: #5f6b7a;
+	// Status text: done or in stock, waiting or draft, failed or out of stock, in progress.
+	--admin-ok: #15803d;
+	--admin-warn: #8a5a00;
+	--admin-bad: #b42318;
+	--admin-info: #0369a1;
+	// Text on yellow badges and banners.
+	--admin-on-yellow: #3d2a00;
+	// The bell's count.
+	--admin-alert: #d92d20;
+}

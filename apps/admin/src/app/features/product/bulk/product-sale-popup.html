@@ -1,0 +1,280 @@
+<div class="modal-header">
+	<h2 id="product_sale_title">{{ 'sale_put_title' | plural: picks().length }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	<div class="row align-items-center g-2 mb-3">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="product_sale_event"
+		>
+			{{ 'sale' | transloco }}
+		</label>
+		<div class="col-sm-9">
+			<select
+				class="form-select"
+				id="product_sale_event"
+				[value]="eventId()"
+				(change)="pickSale($any($event.target).value)"
+			>
+				@for (sale of sales(); track sale.id) {
+				<option [value]="sale.id">
+					{{ sale.name }} · {{ 'event_status_' + sale.status | transloco }} @if (sale.endsAt) { · {{
+					'sale_ends_on' | transloco }} {{ sale.endsAt | date: 'd MMM, h:mm a' : '+0530' }} IST }
+				</option>
+				}
+				<option [value]="NEW_SALE">{{ 'sale_new_with_products' | transloco }}</option>
+			</select>
+			@if (eventId() === NEW_SALE) {
+			<p class="help-text">{{ 'sale_new_help' | transloco }}</p>
+			} @else if (chosenSale()?.status === 'live') {
+			<p class="help-text">{{ 'sale_running_help' | transloco }}</p>
+			}
+		</div>
+	</div>
+	<div class="row align-items-center g-2 mb-3">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="product_sale_rule"
+		>
+			{{ 'event_rule' | transloco }}
+		</label>
+		<div class="col-sm-9 d-flex align-items-center flex-wrap gap-2">
+			<select
+				class="form-select"
+				style="max-width: 220px"
+				id="product_sale_rule"
+				[value]="kind()"
+				(change)="setKind($any($event.target).value)"
+			>
+				<option value="percent">{{ 'event_rule_percent' | transloco }}</option>
+				<option value="amount">{{ 'event_rule_amount' | transloco }}</option>
+				<option value="fixed">{{ 'event_rule_fixed' | transloco }}</option>
+			</select>
+			@if (kind() !== 'fixed') {
+			<div class="input-group w-auto">
+				<span class="input-group-text">{{ kind() === 'percent' ? '%' : '₹' }}</span>
+				<input
+					class="form-control"
+					type="number"
+					min="0"
+					id="product_sale_value"
+					[value]="value()"
+					(input)="setValue($any($event.target).value)"
+				/>
+			</div>
+			} @else {
+			<span class="help-text mb-0">{{ 'sale_fixed_help' | transloco }}</span>
+			}
+		</div>
+	</div>
+	@if (kind() === 'fixed') {
+	<div class="row align-items-center g-2 mb-3">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="product_sale_fill"
+		>
+			{{ 'sale_same_price' | transloco }}
+		</label>
+		<div class="col-sm-9 d-flex align-items-center flex-wrap gap-2">
+			<div class="input-group w-auto">
+				<span class="input-group-text">₹</span>
+				<input
+					class="form-control"
+					type="number"
+					min="0"
+					id="product_sale_fill"
+					[value]="fillAll()"
+					(input)="fillAll.set($any($event.target).value)"
+				/>
+			</div>
+			<button
+				type="button"
+				class="btn btn-outline btn-sm"
+				id="product_sale_fill_btn"
+				(click)="fillEmpty()"
+			>
+				{{ 'sale_fill_empty' | transloco }}
+			</button>
+			<span class="help-text mb-0">{{ 'sale_fill_help' | transloco }}</span>
+		</div>
+	</div>
+	} @if (loading()) {
+	<p class="help-text">{{ 'please_wait' | transloco }}…</p>
+	} @else {
+	<div class="table-responsive">
+		<table
+			class="mb-0 table align-middle text-nowrap"
+			id="product_sale_preview"
+		>
+			<thead>
+				<tr>
+					<th>{{ 'product' | transloco }}</th>
+					<th class="text-end">{{ 'sale_now' | transloco }}</th>
+					<th class="text-end">
+						{{ (kind() === 'fixed' ? 'event_sale_price' : 'sale_on_sale') | transloco }}
+					</th>
+					@if (kind() === 'fixed') {
+					<th class="text-end">{{ 'sale_off' | transloco }}</th>
+					}
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of rows(); track row.pick.id) {
+				<tr [class.text-muted]="!usable(row)">
+					<td class="text-wrap">
+						<div class="d-flex align-items-center gap-2">
+							@if (row.pick.thumbnailUrl) {
+							<img
+								[src]="row.pick.thumbnailUrl"
+								alt=""
+								width="24"
+								height="30"
+								class="flex-shrink-0 rounded"
+							/>
+							}
+							<div>
+								<div>
+									{{ row.pick.title }} @if (hasColours(row)) {
+									<span class="help-text">
+										· {{ 'sale_colours' | transloco: { count: row.skus.length } }}
+									</span>
+									}
+								</div>
+								@if (row.result?.reason; as reason) {
+								<small class="text-warning d-block">
+									{{ 'sale_left_out_' + reason | transloco }} @if (row.result?.detail) { · {{
+									row.result?.detail }} }
+								</small>
+								} @else if (row.result?.status === 'disabled' || row.result?.status === 'draft') {
+								<small class="text-warning d-block">{{ 'sale_once_live' | transloco }}</small>
+								} @if (row.result?.viaCategory) {
+								<small class="help-text d-block">{{ 'sale_own_rule_wins' | transloco }}</small>
+								} @if (kind() === 'fixed' && usable(row) && hasColours(row)) {
+								<a
+									href="javascript:void(0)"
+									class="small"
+									(click)="togglePerColour(row.pick.id)"
+								>
+									{{ (perColour().has(row.pick.id) ? 'sale_one_price' : 'sale_each_colour') |
+									transloco }}
+								</a>
+								}
+							</div>
+						</div>
+					</td>
+					<td class="text-end">{{ nowINR(row) === null ? '—' : inr(nowINR(row)) }}</td>
+					@if (kind() !== 'fixed') {
+					<td class="text-end">
+						@if (row.result?.outcome === 'done' && saleFrom(row) !== null) {
+						<strong>{{ inr(saleFrom(row)) }}</strong>
+						} @else { — }
+					</td>
+					} @else if (!usable(row)) {
+					<td class="text-end">—</td>
+					<td></td>
+					} @else if (perColour().has(row.pick.id)) {
+					<td class="help-text text-end">{{ 'sale_per_colour' | transloco }}</td>
+					<td></td>
+					} @else {
+					<td class="text-end">
+						<div class="input-group input-group-sm ms-auto w-auto">
+							<span class="input-group-text">₹</span>
+							<input
+								class="form-control"
+								type="number"
+								min="0"
+								[class.is-invalid]="priceAbove(nowINR(row) ?? 0, productPrice()[row.pick.id] ?? '')"
+								[attr.aria-label]="'event_sale_price' | transloco"
+								[value]="productPrice()[row.pick.id] ?? ''"
+								(input)="setProductPrice(row.pick.id, $any($event.target).value)"
+							/>
+						</div>
+						@if (priceAbove(nowINR(row) ?? 0, productPrice()[row.pick.id] ?? '')) {
+						<small class="text-danger">{{ 'sale_above_price' | transloco }}</small>
+						}
+					</td>
+					<td class="text-end">
+						@if (offPercent(nowINR(row), productPrice()[row.pick.id] ?? ''); as off) { {{ off }}% @if
+						(overWarning(off)) {
+						<div class="status-pending">
+							<span>{{ 'event_over_60' | transloco }}</span>
+						</div>
+						} } @else { – }
+					</td>
+					}
+				</tr>
+				@if (kind() === 'fixed' && usable(row) && perColour().has(row.pick.id)) { @for (sku of row.skus; track
+				sku.sku) {
+				<tr>
+					<td class="help-text ps-5">{{ sku.label || sku.sku }} · {{ sku.sku }}</td>
+					<td class="text-end">{{ inr(sku.normalINR) }}</td>
+					<td class="text-end">
+						<div class="input-group input-group-sm ms-auto w-auto">
+							<span class="input-group-text">₹</span>
+							<input
+								class="form-control"
+								type="number"
+								min="0"
+								[class.is-invalid]="priceAbove(sku.normalINR, skuPrice()[sku.sku] ?? '')"
+								[attr.aria-label]="'event_sale_price' | transloco"
+								[value]="skuPrice()[sku.sku] ?? ''"
+								(input)="setSkuPrice(sku.sku, $any($event.target).value)"
+							/>
+						</div>
+						@if (priceAbove(sku.normalINR, skuPrice()[sku.sku] ?? '')) {
+						<small class="text-danger">{{ 'sale_above_price' | transloco }}</small>
+						}
+					</td>
+					<td class="text-end">
+						@if (offPercent(sku.normalINR, skuPrice()[sku.sku] ?? ''); as off) { {{ off }}% } @else { – }
+					</td>
+				</tr>
+				} } }
+			</tbody>
+		</table>
+	</div>
+	} @if (failed()) {
+	<div
+		class="alert alert-warning d-flex align-items-start mt-3 mb-0 gap-2"
+		role="alert"
+	>
+		<i class="ri-error-warning-line mt-1"></i>
+		<div>{{ 'bulk_failed' | transloco }}</div>
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part help-text">
+		@if (toFix()) {
+		<span class="text-danger">{{ 'sale_prices_to_fix' | transloco: { count: toFix() } }}</span>
+		} @else { {{ 'sale_joining' | transloco: { count: joining(), total: picks().length } }} }
+	</div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="product_sale_confirm"
+			[disabled]="!canConfirm()"
+			(click)="confirm()"
+		>
+			@if (eventId() === NEW_SALE) { {{ 'sale_make_draft' | transloco }} } @else if (chosenSale()?.status ===
+			'live') { {{ 'sale_add_running' | transloco: { count: joining() } }} } @else { {{ 'sale_add' | transloco: {
+			count: joining() } }} }
+		</button>
+	</div>
+</div>

@@ -1,10 +1,11 @@
-import { isPlatformBrowser, AsyncPipe } from '@angular/common';
+import { isPlatformBrowser, AsyncPipe, DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import {
 	Component,
 	computed,
 	DOCUMENT,
 	effect,
+	forwardRef,
 	inject,
 	input,
 	PLATFORM_ID,
@@ -24,7 +25,7 @@ import {
 	ValidationErrors,
 	Validators,
 } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import {
@@ -47,23 +48,19 @@ import {
 	NgbNavLink,
 	NgbNavLinkBase,
 	NgbNavOutlet,
+	NgbModal,
 } from '@ng-bootstrap/ng-bootstrap';
-import type {
-	AttributeDefinition,
-	GoLiveGap,
-	ProductBundleWrite,
-	ProductContentWrite,
-	ProductCreate,
-	ProductOptionGroup,
-} from '@saha-textile/contracts';
+import { languageName } from '@saha-textile/core-domain/languages';
+import { chargeableGrams, volumetricGrams } from '@saha-textile/core-domain/shipping';
 import { Select2, Select2Data, Select2SearchEvent } from 'ng-select2-component';
 import { Editor, NgxEditorModule } from 'ngx-editor';
-import { Observable, of, Subject } from 'rxjs';
+import { firstValueFrom, Observable, of, Subject } from 'rxjs';
 import { debounceTime, switchMap, takeUntil } from 'rxjs/operators';
 
 import { goLiveLabels, goLiveToast } from '@core/catalog/go-live-report';
+import { nextInProductQueue } from '@core/catalog/product-queue';
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import {
-	ADMIN_LOCALES,
 	focusField,
 	gapsByLocale,
 	type LanguageGap,
@@ -71,12 +68,15 @@ import {
 	type LocalizedText,
 	SOURCE_LOCALE,
 } from '@core/i18n/localized-fields';
-import { IAttachment } from '@data-access/interfaces/attachment.interface';
+import { StockGateway } from '@core/purchasing/stock.gateway';
+import { injectShippingExceptionsQuery, injectShippingOverviewQuery } from '@core/shipping/shipping.gateway';
+import { MenuStore } from '@core/state/menu.store';
 import {
 	CATALOG_BADGE_CODES,
 	CatalogBadgeCode,
 	CatalogProductDetail,
 	CatalogProductWrite,
+	CatalogVariantView,
 } from '@data-access/interfaces/catalog-product.interface';
 import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
 import { Params } from '@data-access/interfaces/core.interface';
@@ -88,25 +88,81 @@ import { injectTaxesQuery } from '@data-access/queries/tax.queries';
 import { AddonTemplateRow, AddonTemplateService } from '@data-access/services/addon-template.service';
 import { AttributeService } from '@data-access/services/attribute.service';
 import { NotificationService } from '@data-access/services/notification.service';
+import { ProductDraftService } from '@data-access/services/product-draft.service';
 import { ProductService } from '@data-access/services/product.service';
+import { askConfirm } from '@features/purchasing/shared/popups';
+import { metresText } from '@features/purchasing/shared/purchasing-labels';
+import { AdjustPopup } from '@features/stock/adjust-popup';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload, type PickedAttachment, ImageUploadValue, onePicture } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
-import { YouTubeVideoField } from '@shared/ui/youtube-video-field/youtube-video-field';
+import { YouTubeVideosField } from '@shared/ui/youtube-videos-field/youtube-videos-field';
 import { priceValidator } from '@shared/validators/price-validator';
 
+import { DRAFT_MARKS, DraftMarkDirective, type DraftMarks } from './draft-mark';
+import { type DraftConflict, type LeaveChoice, ProductConflictPopup, ProductLeavePopup } from './draft-popups';
+import { HsnPopup, hsnValid } from './hsn-popup';
+import {
+	type CategoryDefaults,
+	categoryRefill,
+	metreProblem,
+	metresToTenths,
+	type SoldBy,
+	stockFigures,
+	stockStatusKey,
+	tenthsToMetres,
+} from './inventory-fields';
 import { OptionGroups } from './option-groups/option-groups';
 import { ProductBundleForm } from './product-bundle/product-bundle';
+import {
+	DRAFT_VERSION,
+	changedPaths,
+	describeValue,
+	draftTab,
+	fingerprint,
+	flattenSnapshot,
+	type ProductFormSnapshot,
+	stable,
+} from './product-draft-state';
+import { FaqValue, ProductFaq } from './product-faq/product-faq';
 import { ImageCombination, ProductImages } from './product-images/product-images';
+import { categoryChain, inheritedCharge, type InheritedCharge, productExceptions } from './shipping-tab';
 import { variantCombinations } from './variant-combinations';
-import { environment } from '../../../../../public/environments/environment';
 
-const LANGUAGE_FIELDS = ['name', 'short_description', 'description', 'meta_title', 'meta_description', 'estimated_delivery_text'];
+import type {
+	AttributeDefinition,
+	GoLiveGap,
+	ProductDraft,
+	ProductContentWrite,
+	ProductCreate,
+	ProductOptionGroup,
+	PictureRef,
+	ProductVideo,
+	QuickLength,
+	ShippingChargeKind,
+	ShippingExceptionChoice,
+} from '@saha-textile/contracts';
+
+const LANGUAGE_FIELDS = [
+	'name',
+	'short_description',
+	'description',
+	'meta_title',
+	'meta_description',
+	'estimated_delivery_text',
+];
 
 const SAREE_ROOT_SLUG = 'sarees';
+
+/** An HSN has 4, 6 or 8 digits (F02C), spaces round it ignored as the API does; empty is allowed. */
+function hsnField(control: AbstractControl): ValidationErrors | null {
+	const value = control.value === null || control.value === undefined ? '' : String(control.value).trim();
+	return value === '' || hsnValid(value) ? null : { hsn: true };
+}
 
 /** The Sarees category and everything under it. */
 function sareeCategoryIds(tree: readonly ICategory[], inside = false): Set<string> {
@@ -133,6 +189,8 @@ const GAP_TABS: Readonly<Record<string, string>> = {
 	image_alt: 'images',
 	image_sizes: 'images',
 	lead_time: 'shipping',
+	faq_question: 'faq',
+	faq_answer: 'faq',
 };
 
 const blankToNull = (value: unknown): number | null =>
@@ -173,19 +231,26 @@ function sellingWithinMrp(group: AbstractControl): ValidationErrors | null {
 		NgbAccordionCollapse,
 		NgbAccordionBody,
 		ImageUpload,
+		ProductFaq,
 		LanguageSwitch,
 		OptionGroups,
 		ProductBundleForm,
 		ProductImages,
-		YouTubeVideoField,
+		YouTubeVideosField,
 		AdvancedDropdown,
 		NgbNavOutlet,
 		TranslocoModule,
 		AsyncPipe,
+		DatePipe,
 		CurrencySymbolPipe,
+		HasPermissionDirective,
+		RouterLink,
+		DraftMarkDirective,
 	],
+	providers: [{ provide: DRAFT_MARKS, useExisting: forwardRef(() => FormProduct) }],
+	host: { '(window:beforeunload)': 'onBeforeUnload($event)' },
 })
-export class FormProduct {
+export class FormProduct implements DraftMarks {
 	private productService = inject(ProductService);
 	private route = inject(ActivatedRoute);
 	private router = inject(Router);
@@ -199,8 +264,156 @@ export class FormProduct {
 	private attributes = inject(AttributeService);
 	private templates = inject(AddonTemplateService);
 	private notifier = inject(NotificationService);
+	private modals = inject(NgbModal);
+	private stockGateway = inject(StockGateway);
+	private drafts = inject(ProductDraftService);
+	private menu = inject(MenuStore);
+
+	// ── Save as draft (product bulk actions brief § 7) ──────────────────────────────────────
+	/** The draft open on the form, if any. */
+	readonly draft = signal<{ id: string; kind: 'new' | 'edit'; savedAt: string; createdAt: string } | null>(null);
+	/** A draft of this product that is not open: yours (Continue or Discard) or a colleague's (a note). */
+	readonly waitingDraft = signal<{ id: string; mine: boolean; updatedAt: string; changed: number } | null>(null);
+	/** Fields both you and someone else changed after your draft began: asked on Update Product. */
+	readonly conflicts = signal<DraftConflict[]>([]);
+	/** The changed fields of a draft of changes, with their values in the product. */
+	readonly changes = signal<ReadonlyMap<string, unknown>>(new Map());
+	readonly changedTabs = computed(() =>
+		this.draft()?.kind === 'edit' ? new Set([...this.changes().keys()].map(draftTab)) : new Set<string>(),
+	);
+	/** The product as it was when the form opened: what a draft of changes is compared with. */
+	private base: ProductFormSnapshot | null = null;
+	/** The form as last saved (or opened), for "anything unsaved?". */
+	private savedPrint: string | null = null;
+	/** Set on the way out after a save, so the leave question is not asked. */
+	private leaving = false;
 
 	readonly type = input<string>(undefined);
+
+	/**
+	 * F01: the typed Stock quantity box is replaced by the stock figures and their buttons. Its
+	 * markup and form control stay until the owner types its removal (end-of-project cleanup list).
+	 */
+	readonly typedStockBox = false;
+	/** Piece or metre (P11); fixed once the product has stock, stock history or orders. */
+	readonly soldBy = signal<SoldBy>('piece');
+	readonly soldByLocked = signal(false);
+	/** '' follows the main category; 'yes' or 'no' is this product's own answer (P13). */
+	readonly returnableChoice = signal<'' | 'yes' | 'no'>('');
+	/** The metre fields (A01), as typed: metres, inches and grams. */
+	readonly metreCut = signal('1.0');
+	readonly metreWidth = signal('');
+	readonly metreWeight = signal('');
+	readonly quickLengths = signal<Array<{ length: string; label: Record<string, string> }>>([]);
+	readonly metreError = signal<string | null>(null);
+	/** "Changed from 5007" under the HSN after a category change (F02). */
+	readonly hsnChangedFrom = signal<string | null>(null);
+	/** Each variant's stock as the API last sent it (F01). */
+	readonly variantStock = signal<ReadonlyMap<string, CatalogVariantView>>(new Map());
+	/** Every category's HSN and returnability, from the category tree the form already reads. */
+	readonly categoryDefaults = computed<ReadonlyMap<string, CategoryDefaults>>(() => {
+		const flat = (rows: readonly ICategory[]): ICategory[] =>
+			rows.flatMap((row) => [row, ...flat(row.subcategories ?? [])]);
+		return new Map(
+			flat(this.categoriesQuery.data()?.data ?? []).map((row) => [
+				String(row.id),
+				{
+					id: String(row.id),
+					name: row.name,
+					hsnCode: row.row?.hsnCode ?? null,
+					returnable: row.row?.returnable ?? true,
+					parentId: row.row?.parentId ?? row.parent_id ?? null,
+					shipping: row.row?.shipping ?? null,
+				},
+			]),
+		);
+	});
+	/** The main (first) category's defaults: HSN and "Can be returned" follow it (F02, PD3). */
+	readonly mainCategory = computed<CategoryDefaults | null>(() => {
+		const id = this.chosenCategories()[0];
+		return (id ? this.categoryDefaults().get(String(id)) : null) ?? this.catalogProduct?.mainCategory ?? null;
+	});
+	/** The product's own shipping charges (shipping brief prd01); null follows its main category. */
+	readonly ownCharges = signal<Record<ShippingChargeKind, number | null>>({
+		domestic: null,
+		internationalFirst: null,
+		internationalFurther: null,
+	});
+	readonly chargeKinds: ShippingChargeKind[] = ['domestic', 'internationalFirst', 'internationalFurther'];
+
+	/** Shop-wide default charges and the exceptions, for what this product inherits (shipping brief prd01). */
+	private readonly shippingOverview = injectShippingOverviewQuery();
+	private readonly shippingExceptions = injectShippingExceptionsQuery();
+	/** The main category, then its parents nearest first. */
+	private readonly shippingChain = computed(() =>
+		categoryChain(
+			this.chosenCategories()[0] ?? this.catalogProduct?.mainCategory?.id ?? null,
+			this.categoryDefaults(),
+		),
+	);
+
+	/** What a charge follows while its switch is on: the nearest category's value, else the shop default. */
+	inheritedCharge(kind: ShippingChargeKind): InheritedCharge {
+		const overview = this.shippingOverview.data();
+		const shopDefault = overview ? (overview.settings ?? overview.defaults).defaultCharges : null;
+		return inheritedCharge(kind, this.shippingChain(), this.categoryDefaults(), shopDefault);
+	}
+
+	/** The zones an exception decides for this product, for the "Shipping rules" row. */
+	readonly zoneExceptions = computed(() => {
+		const overview = this.shippingOverview.data();
+		return productExceptions(
+			this.id ?? null,
+			this.shippingChain(),
+			overview ? (overview.settings ?? overview.defaults) : null,
+			this.shippingExceptions.data() ?? [],
+		);
+	});
+
+	exceptionLabel(choice: ShippingExceptionChoice): string {
+		if (choice.kind !== 'ruleSet') return this.transloco.translate(`ship_choice_${choice.kind}`);
+		return this.shippingOverview.data()?.ruleSets.find((r) => r.id === choice.ruleSetId)?.name ?? choice.ruleSetId;
+	}
+
+	rupees(amountINR: number): string {
+		return `₹${amountINR.toLocaleString('en-IN')}`;
+	}
+
+	/** The "use the category's value" switch: on clears the product's own value; off starts from the category's. */
+	followCategoryCharge(kind: ShippingChargeKind, follow: boolean) {
+		this.ownCharges.update((own) => ({
+			...own,
+			[kind]: follow ? null : (this.inheritedCharge(kind).amountINR ?? 0),
+		}));
+		this.form.markAsDirty();
+	}
+
+	setOwnCharge(kind: ShippingChargeKind, value: unknown) {
+		const n = Number(value);
+		this.ownCharges.update((own) => ({
+			...own,
+			[kind]: value === '' || value === null || !Number.isFinite(n) || n < 0 ? 0 : n,
+		}));
+		this.form.markAsDirty();
+	}
+
+	/** Volumetric and chargeable weight for the box and weight typed on this tab (grams). */
+	shippingWeights(): { volumetric: number | null; chargeable: number | null } {
+		const raw = this.form.getRawValue() as Record<string, unknown>;
+		const box = {
+			weightGrams: blankToNull(raw['weight']),
+			lengthCm: blankToNull(raw['length_cm']),
+			widthCm: blankToNull(raw['width_cm']),
+			heightCm: blankToNull(raw['height_cm']),
+		};
+		return { volumetric: volumetricGrams(box), chargeable: chargeableGrams(box) };
+	}
+
+	readonly totals = computed(() => stockFigures([...this.variantStock().values()]));
+	/** F01: In stock, Low stock or Out of stock, from free to sell; made to order keeps selling. */
+	stockStatus(): string {
+		return stockStatusKey(this.totals().free, this.lowLevelUnits(), Boolean(this.form.get('made_to_order')?.value));
+	}
 
 	readonly nav = viewChild<NgbNav>('nav');
 
@@ -232,6 +445,20 @@ export class FormProduct {
 				})),
 		),
 	);
+	/**
+	 * Free with this product (P8): any product but a set, sizes included (the shopper or the table picks one), plus
+	 * the items already chosen, so their chips show before any search finds them.
+	 */
+	readonly freeWithData = computed<Select2Data>(() => {
+		const found = (this.productsQuery.data()?.items ?? [])
+			.filter((row) => row.id !== this.id && row.type !== 'bundle')
+			.map((row) => ({ label: row.title, value: row.id }));
+		const seen = new Set(found.map((option) => option.value));
+		const chosen = [...this.freeItemInfo()]
+			.filter(([id]) => !seen.has(id))
+			.map(([id, info]) => ({ label: info.title, value: id }));
+		return [...chosen, ...found];
+	});
 	private readonly categoriesQuery = injectCategoriesQuery(() => ({ type: 'product', status: 1 }));
 	category$: Observable<ICategoryModel | undefined> = toObservable(this.categoriesQuery.data);
 	readonly tagsQuery = injectTagsQuery(() => ({ type: 'product', status: 1 }));
@@ -303,7 +530,7 @@ export class FormProduct {
 	public editor: Editor;
 	public html = '';
 
-	readonly locales = ADMIN_LOCALES;
+	readonly locales = inject(ActiveLanguages).list();
 	/** Language-bound fields behind the Language switch. */
 	readonly fields: LocalizedFields;
 	readonly gaps = signal<Record<string, LanguageGap[]>>({});
@@ -314,21 +541,49 @@ export class FormProduct {
 	readonly addonTemplates = signal<AddonTemplateRow[]>([]);
 	readonly addonTemplateCode = signal<string | null>(null);
 	readonly optionGroups = signal<ProductOptionGroup[]>([]);
-	readonly images = signal<Pick<ProductContentWrite, 'imageMode' | 'gallery' | 'compound' | 'altOverrides'>>({
+	/** The FAQ tab: the switch and this product's own questions, every language. */
+	readonly faq = signal<FaqValue>({ enabled: false, rows: [] });
+	readonly images = signal<
+		Pick<ProductContentWrite, 'imageMode' | 'gallery' | 'compound' | 'altOverrides' | 'versions' | 'shareImage'>
+	>({
 		imageMode: 'simple',
 		gallery: [],
 		compound: [],
 		altOverrides: {},
+		versions: {},
+		shareImage: null,
 	});
+	/** Each variant's own picture, by variant id (owner, 17 Nov: "Variation image"). */
+	readonly variantImages = signal<ReadonlyMap<string, PictureRef | null>>(new Map());
 	readonly tiles = signal<ReadonlyMap<string, string>>(new Map());
-	readonly bundle = signal<ProductBundleWrite>({
-		bundleType: 'fixed_kit',
-		pricePolicy: 'sum_components',
-		fixedPriceINR: null,
-		groups: [],
+	/** The product's photos in Images-tab order, offered as swatch pictures in the Options tab. */
+	readonly swatchPhotos = computed(() => {
+		const { imageMode, gallery, compound } = this.images();
+		return imageMode === 'simple' ? gallery : [...new Set(compound.flatMap((row) => row.gallery))];
 	});
 	readonly goLiveGaps = signal<GoLiveGap[]>([]);
-	readonly bundleProducts = signal<Select2Data>([]);
+	/** Saving a new bundle's name before the builder opens (brief A03). */
+	readonly openingBuilder = signal(false);
+	/** Type is Bundle: the rest of the form steps aside; the builder holds every part of a bundle (V1). */
+	readonly isBundle = signal(false);
+
+	/** Opens the bundle builder: a new bundle is made from its name first, with a BND number of its own. */
+	openBuilder(): void {
+		const existing = this.catalogProduct;
+		if (existing) {
+			void this.router.navigate(['/product/bundle', existing.id]);
+			return;
+		}
+		const name = this.fields.text('name') as LocalizedText;
+		if (!name['en']?.trim()) return;
+		this.openingBuilder.set(true);
+		this.productService
+			.createCatalogProduct({ type: 'bundle', sku: 'BND', title: { en: name['en'].trim() }, basePriceINR: 0 })
+			.subscribe({
+				next: ({ id }) => void this.router.navigate(['/product/bundle', id]),
+				error: () => this.openingBuilder.set(false),
+			});
+	}
 
 	/** Every combination of the variation axes, for the compound image galleries. */
 	readonly combinations = computed<ImageCombination[]>(() => {
@@ -351,8 +606,8 @@ export class FormProduct {
 		this.isBrowser = isPlatformBrowser(platformId);
 
 		this.form = this.formBuilder.group({
-			/** Validated YouTube video id for the PDP (catalog chunk persists it). */
-			youtube_video_id: new FormControl<string | null>(null),
+			/** Checked YouTube videos and Shorts for the product page, in order (up to five). */
+			videos: new FormControl<ProductVideo[]>([], { nonNullable: true }),
 			name: new FormControl(''),
 			short_description: new FormControl(''),
 			description: new FormControl(''),
@@ -363,17 +618,24 @@ export class FormProduct {
 			weight: new FormControl(),
 			stock_status: new FormControl('in_stock', []),
 			sku: new FormControl('', [Validators.required]),
-			quantity: new FormControl('', [Validators.required]),
+			// Kept with the typed Stock quantity box (F01): stock now moves only through documents.
+			quantity: new FormControl(0),
 			price: new FormControl('', [Validators.required, priceValidator]),
 			discount: new FormControl(),
 			sale_starts_at: new FormControl(),
 			sale_expired_at: new FormControl(),
 			tags: new FormControl(),
 			categories: new FormControl([]),
-			is_random_related_products: new FormControl(0),
 			related_products: new FormControl(),
 			upsell_products: new FormControl([]),
 			cross_sell_products: new FormControl([]),
+			free_with_products: new FormControl<string[]>([]),
+			/** Each free item's quantity and pinned size or colour (P8.1); null lets the shopper choose. */
+			free_with_items: new FormControl<Record<string, FreeItemSetting>>({}),
+			free_take: new FormControl<'all' | 'exactly' | 'upto' | 'between'>('all'),
+			free_count: new FormControl<number | null>(null),
+			free_from: new FormControl<number | null>(null),
+			free_required: new FormControl(true),
 			product_thumbnail_id: new FormControl(),
 			product_galleries_id: new FormControl(),
 			variations: this.formBuilder.array([], []),
@@ -396,19 +658,38 @@ export class FormProduct {
 			length_cm: new FormControl(),
 			width_cm: new FormControl(),
 			height_cm: new FormControl(),
-			hsn_code: new FormControl(),
+			hsn_code: new FormControl<string | null>(null, [hsnField]),
 			addon_price_inr: new FormControl(null),
 			return_policy_text: new FormControl(),
 			is_featured: new FormControl(0),
-			is_return: new FormControl(1),
+			show_on_shop: new FormControl(true),
 			status: new FormControl<string>('disabled'),
 		});
 		this.fields = new LocalizedFields(this.form, LANGUAGE_FIELDS, ['estimated_delivery_text']);
 		this.form.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => this.refreshMissing());
 		effect(() => {
 			this.optionGroups();
+			this.faq();
 			this.goLiveGaps();
+			this.quickLengths();
+			this.soldBy();
 			untracked(() => this.refreshMissing());
+		});
+		// A draft of changes follows the lists and choices kept beside the form too.
+		effect(() => {
+			this.optionGroups();
+			this.faq();
+			this.images();
+			this.quickLengths();
+			this.soldBy();
+			this.returnableChoice();
+			this.ownCharges();
+			this.metreCut();
+			this.metreWidth();
+			this.metreWeight();
+			this.variantImages();
+			this.addonTemplateCode();
+			untracked(() => this.recomputeChanges());
 		});
 
 		this.transloco.selectTranslation().subscribe(() => this.buildOptions());
@@ -491,10 +772,23 @@ export class FormProduct {
 				replacement_path: detail.replacementPath,
 				addon_price_inr: detail.addonPriceINR,
 				is_featured: detail.featured,
+				show_on_shop: detail.showOnShop !== false,
 				status: detail.status,
 				related_products: detail.relatedProductIds,
 				upsell_products: detail.upsellProductIds,
 				cross_sell_products: detail.crossSellProductIds,
+				free_with_products: detail.freeWith?.items.map((item) => item.productId) ?? [],
+				free_with_items: Object.fromEntries(
+					(detail.freeWith?.items ?? []).map((item) => [
+						item.productId,
+						{ quantity: item.quantity, variantId: item.variantId },
+					]),
+				),
+				free_take: detail.freeWith?.take ?? 'all',
+				free_count: detail.freeWith?.count ?? null,
+				free_from: detail.freeWith?.from ?? null,
+				free_required: detail.freeWith?.required ?? true,
+				videos: detail.videos,
 			},
 			{ emitEvent: false },
 		);
@@ -508,6 +802,43 @@ export class FormProduct {
 			estimated_delivery_text: content.estimatedDeliveryText,
 		});
 		this.form.get('type')?.disable({ emitEvent: false });
+		this.soldBy.set(detail.soldBy ?? 'piece');
+		this.soldByLocked.set(detail.soldByLocked ?? false);
+		this.returnableChoice.set(
+			detail.returnable === null || detail.returnable === undefined ? '' : detail.returnable ? 'yes' : 'no',
+		);
+		this.form.patchValue({ is_free_shipping: detail.freeShipping ?? false }, { emitEvent: false });
+		this.ownCharges.set({
+			domestic: detail.shippingCharges?.domesticINR ?? null,
+			internationalFirst: detail.shippingCharges?.internationalFirstINR ?? null,
+			internationalFurther: detail.shippingCharges?.internationalFurtherINR ?? null,
+		});
+		this.metreCut.set(tenthsToMetres(detail.metre?.shortestCutTenths ?? 10));
+		this.metreWidth.set(
+			detail.metre?.widthInches === null || detail.metre?.widthInches === undefined
+				? ''
+				: String(detail.metre.widthInches),
+		);
+		this.metreWeight.set(
+			detail.metre?.weightPerMetreGrams === null || detail.metre?.weightPerMetreGrams === undefined
+				? ''
+				: String(detail.metre.weightPerMetreGrams),
+		);
+		this.quickLengths.set(
+			(detail.metre?.quickLengths ?? []).map((row) => ({
+				length: tenthsToMetres(row.tenths),
+				label: { ...row.label },
+			})),
+		);
+		this.hsnChangedFrom.set(null);
+		this.variantStock.set(new Map(detail.variants.map((row) => [row.id, row])));
+		// A metre product's low-stock level is stored in tenths and typed in metres.
+		if (detail.soldBy === 'metre' && detail.lowStockThreshold !== null) {
+			this.form.patchValue(
+				{ low_stock_threshold: tenthsToMetres(detail.lowStockThreshold) },
+				{ emitEvent: false },
+			);
+		}
 		this.form.patchValue({ categories: content.categoryIds }, { emitEvent: false });
 		this.selectedCategories = content.categoryIds;
 		this.chosenCategories.set(content.categoryIds);
@@ -516,25 +847,26 @@ export class FormProduct {
 			{ emitEvent: false },
 		);
 		this.optionGroups.set(content.optionGroups);
+		this.faq.set({ enabled: content.faqEnabled ?? false, rows: content.faq ?? [] });
 		this.addonTemplateCode.set(content.addonTemplateCode);
 		this.images.set({
 			imageMode: content.imageMode,
 			gallery: content.gallery,
 			compound: content.compound,
 			altOverrides: content.altOverrides,
+			versions: content.versions ?? {},
+			shareImage: content.shareImage ?? null,
 		});
+		this.variantImages.set(new Map(detail.variants.map((row) => [row.id, row.image ?? null])));
 		this.tiles.set(new Map(detail.images.map((image) => [image.assetId, image.url])));
 		this.imageSizes.set(new Map(detail.images.map((image) => [image.assetId, [image.width, image.height]])));
 		this.savedAxes.set(
 			content.optionGroups.filter((row) => row.semanticRole === 'variation_axis').map((row) => row.attributeCode),
 		);
+		// A bundle is edited in its builder (V1, option 1): All Products' Edit lands there.
 		if (detail.type === 'bundle') {
-			this.productService
-				.getBundle(detail.id)
-				.pipe(takeUntil(this.destroy$))
-				.subscribe((saved) => {
-					if (saved) this.bundle.set(saved);
-				});
+			void this.router.navigate(['/product/bundle', detail.id], { replaceUrl: true });
+			return;
 		}
 		// Price and stock live on the variant rows; the product-level inputs do not apply.
 		for (const name of ['price', 'quantity']) this.form.removeControl(name, { emitEvent: false });
@@ -556,7 +888,7 @@ export class FormProduct {
 					width_cm: new FormControl(row.widthCm),
 					height_cm: new FormControl(row.heightCm),
 					barcode: new FormControl(row.barcode),
-					hsn: new FormControl(row.hsnCode),
+					hsn: new FormControl(row.hsnCode, [hsnField]),
 					availability: new FormControl(row.available ? 'available' : 'unavailable', [Validators.required]),
 					variation_image_id: new FormControl(),
 					variation_image: new FormControl(),
@@ -579,19 +911,42 @@ export class FormProduct {
 				this.productParams.set({ ...this.filter });
 			});
 
+		// The variant grid's "New colour not listed" and stock links open a tab directly (?tab=inventory).
+		const tab = this.route.snapshot?.queryParamMap?.get('tab');
+		if (tab && ['general', 'inventory', 'setup', 'images', 'seo', 'faq', 'shipping', 'status'].includes(tab)) {
+			this.active = tab;
+		}
 		this.route.params
 			.pipe(
 				switchMap((params) => (params['id'] ? this.productService.getCatalogProduct(params['id']) : of(null))),
 				takeUntil(this.destroy$),
 			)
 			.subscribe((detail) => {
-				if (detail) this.applyCatalogProduct(detail);
+				if (!detail) return;
+				this.applyCatalogProduct(detail);
+				this.afterProductLoaded();
 			});
+		// Products › Bundles › Add bundle (B1): the form opens as a bundle, so it steps aside at once (A03).
+		if (this.route.snapshot?.queryParamMap?.get('type') === 'bundle') this.form.controls['type'].setValue('bundle');
+		const draftId = this.route.snapshot?.queryParamMap?.get('draft') ?? null;
+		if (this.type() === 'create') {
+			if (draftId) void this.openNewDraft(draftId);
+			else setTimeout(() => this.markClean());
+		}
+		this.form.valueChanges
+			.pipe(debounceTime(250), takeUntil(this.destroy$))
+			.subscribe(() => this.recomputeChanges());
+		this.form.controls['free_with_products'].valueChanges
+			.pipe(takeUntil(this.destroy$))
+			.subscribe((ids) => void this.loadFreeItems(ids ?? []));
 		this.attributes
 			.getDefinitions()
 			.pipe(takeUntil(this.destroy$))
 			.subscribe((rows) => this.definitions.set(rows));
-		this.templates.list().pipe(takeUntil(this.destroy$)).subscribe((rows) => this.addonTemplates.set(rows));
+		this.templates
+			.list()
+			.pipe(takeUntil(this.destroy$))
+			.subscribe((rows) => this.addonTemplates.set(rows));
 		this.productService
 			.getReplacementTargets()
 			.pipe(takeUntil(this.destroy$))
@@ -608,7 +963,6 @@ export class FormProduct {
 			this.collectionProduct = product.filter(
 				(res) => res?.data?.type == 'simple' && res?.data?.stock_status == 'in_stock',
 			);
-			this.bundleProducts.set(product.filter((res) => res?.data?.type === 'simple'));
 		});
 
 		// Made to order is live-only, and its switch locks once the status leaves live.
@@ -617,9 +971,10 @@ export class FormProduct {
 		});
 
 		this.form.controls['type'].valueChanges.subscribe((value) => {
+			this.isBundle.set(value === 'bundle');
 			if (this.catalogProduct) return;
 			if (value == 'simple') {
-				this.form.setControl('quantity', new FormControl('', [Validators.required]));
+				this.form.setControl('quantity', new FormControl(0));
 				this.form.setControl('price', new FormControl('', [Validators.required]));
 				this.form.setControl('discount', new FormControl());
 			} else {
@@ -635,7 +990,8 @@ export class FormProduct {
 	}
 
 	productFilter(filter: Params) {
-		this.filter['search'] = filter['search'];
+		const search = filter['search'];
+		this.filter['search'] = typeof search === 'string' ? search : '';
 		this.filter['ids'] = this.filter['search'].length ? '' : this.product?.related_products?.join();
 		this.filter['paginate'] =
 			this.product?.related_products?.length >= 15 ? this.product?.related_products?.length : 15;
@@ -709,28 +1065,169 @@ export class FormProduct {
 	}
 
 	selectCategoryItem(data: string[]) {
-		if (Array.isArray(data)) {
-			this.form.controls['categories'].setValue(data);
-			this.chosenCategories.set(data);
+		if (!Array.isArray(data)) return;
+		const previousMain = this.chosenCategories()[0] ?? null;
+		// Read before the list changes: the popup names what "Can be returned" was (P13).
+		const returnableBefore = this.returnableNow();
+		this.form.controls['categories'].setValue(data);
+		this.chosenCategories.set(data);
+		const currentHsn = textOrNull(this.form.get('hsn_code')?.value);
+		const refill = categoryRefill({
+			previousMain: previousMain === null ? null : String(previousMain),
+			nextMain: data[0] === undefined ? null : String(data[0]),
+			currentHsn,
+			categories: this.categoryDefaults(),
+		});
+		// P13: "Can be returned" refills from the new category, named in the same popup.
+		if (refill.followCategory) this.returnableChoice.set('');
+		if (refill.hsn !== currentHsn) {
+			this.form.get('hsn_code')?.setValue(refill.hsn);
+			this.hsnChangedFrom.set(currentHsn);
+		}
+		if (refill.popup) void this.askHsn({ ...refill.popup, returnableBefore, returnableNow: this.returnableNow() });
+	}
+
+	/** F02: the HSN popup; its answer goes into the HSN field, saved only with Save. */
+	private async askHsn(change: Parameters<HsnPopup['start']>[0]): Promise<void> {
+		const popup = this.modals.open(HsnPopup, {
+			centered: true,
+			backdrop: 'static',
+			keyboard: false,
+			windowClass: 'theme-modal text-center',
+			ariaLabelledBy: 'hsn_popup_title',
+		});
+		(popup.componentInstance as HsnPopup).start(change);
+		const code = (await popup.result.catch(() => null)) as string | null;
+		if (!code || !hsnValid(code)) return;
+		this.form.get('hsn_code')?.setValue(code);
+		this.hsnChangedFrom.set(code === change.oldHsn ? null : change.oldHsn);
+	}
+
+	/** Flipping the switch makes it this product's own answer; "Follow … again" clears it (null = follow). */
+	setReturnable(on: boolean): void {
+		this.returnableChoice.set(on ? 'yes' : 'no');
+	}
+
+	/** Whether buyers can return it now: the product's own answer, else the main category's. */
+	returnableNow(): boolean {
+		const choice = this.returnableChoice();
+		if (choice) return choice === 'yes';
+		return this.mainCategory()?.returnable ?? true;
+	}
+
+	/** F01: Sold by, refused once the unit is fixed; a new metre product starts at 1.0 m (M2). */
+	setSoldBy(value: string): void {
+		if (this.soldByLocked() || (value !== 'piece' && value !== 'metre')) return;
+		this.soldBy.set(value);
+		if (value === 'metre' && !this.metreCut().trim()) this.metreCut.set('1.0');
+		this.metreError.set(null);
+	}
+
+	addQuickLength(): void {
+		if (this.quickLengths().length >= 4) return;
+		this.quickLengths.update((rows) => [...rows, { length: '', label: {} }]);
+	}
+
+	removeQuickLength(index: number): void {
+		this.quickLengths.update((rows) => rows.filter((_, at) => at !== index));
+	}
+
+	setQuickLength(index: number, field: 'length' | 'label', value: string): void {
+		const locale = this.fields.locale();
+		this.quickLengths.update((rows) =>
+			rows.map((row, at) =>
+				at !== index
+					? row
+					: field === 'length'
+						? { ...row, length: value }
+						: { ...row, label: { ...row.label, [locale]: value } },
+			),
+		);
+	}
+
+	/** A stock figure as shown: pieces as a number, metres with their unit. */
+	qty(units: number): string {
+		return this.soldBy() === 'metre'
+			? metresText(units, (key, params) => this.transloco.translate(key, params))
+			: String(units);
+	}
+
+	variantFigures(id: string) {
+		const row = this.variantStock().get(id);
+		return row ? stockFigures([row]) : null;
+	}
+
+	/** The low-stock level in stock units (tenths for metres), for the status line. */
+	lowLevelUnits(): number | null {
+		const typed = this.form?.get('low_stock_threshold')?.value;
+		if (typed === null || typed === undefined || typed === '') return null;
+		return this.soldBy() === 'metre' ? metresToTenths(String(typed)) : Number(typed);
+	}
+
+	/** F01 Adjust: the stock adjust popup for one variant; figures refresh after. */
+	async adjustStock(variantId: string): Promise<void> {
+		const detail = await firstValueFrom(this.stockGateway.detail(variantId, 1, 1)).catch(() => null);
+		if (!detail) return;
+		const popup = this.modals.open(AdjustPopup, {
+			size: 'lg',
+			windowClass: 'theme-modal modal-lg',
+			ariaLabelledBy: 'adjust_popup_title',
+		});
+		await (popup.componentInstance as AdjustPopup).start(detail.row);
+		if (!(await popup.result.catch(() => null)) || !this.catalogProduct) return;
+		const fresh = await firstValueFrom(this.productService.getCatalogProduct(this.catalogProduct.id)).catch(
+			() => null,
+		);
+		if (fresh) {
+			this.variantStock.set(new Map(fresh.variants.map((row) => [row.id, row])));
+			this.soldByLocked.set(fresh.soldByLocked);
 		}
 	}
 
-	selectTagItem(data: Number[]) {
+	selectTagItem(data: (string | number)[]) {
 		if (Array.isArray(data)) {
 			this.form.controls['tags'].setValue(data);
 		}
 	}
 
-	selectMetaImage(data: IAttachment) {
-		if (!Array.isArray(data)) {
-			this.form.controls['product_meta_image_id'].setValue(data ? data.id : null);
-		}
+	/** "Meta image": the link-preview picture and the version chosen, kept for the save (owner, 17 Nov). */
+	selectMetaImage(value: ImageUploadValue) {
+		if (Array.isArray(value)) return;
+		const data = onePicture(value);
+		this.form.controls['product_meta_image_id'].setValue(data ? data.id : null);
+		this.rememberTile(data);
+		this.images.update((images) => ({
+			...images,
+			shareImage: data ? { assetId: String(data.id), versionId: data.versionId ?? null } : null,
+		}));
 	}
 
-	selectVariationImage(data: IAttachment, index: number) {
+	/** "Variation image": the variant's own picture and version, shown first when it is chosen (owner, 17 Nov). */
+	selectVariationImage(value: ImageUploadValue, index: number) {
+		const data = onePicture(value);
 		const variationControl = this.form.get('variations') as FormArray;
 		const control = variationControl.at(+index);
 		control.patchValue({ variation_image_id: data ? data.id : '' });
+		const variantId = control.value?.id as string | undefined;
+		if (!variantId) return;
+		this.rememberTile(data);
+		const next = new Map(this.variantImages());
+		next.set(variantId, data ? { assetId: String(data.id), versionId: data.versionId ?? null } : null);
+		this.variantImages.set(next);
+	}
+
+	/** A picked picture's thumbnail, so its field shows it at once and after a save. */
+	private rememberTile(data: PickedAttachment | null) {
+		if (!data?.original_url) return;
+		this.tiles.set(new Map(this.tiles()).set(String(data.id), data.original_url));
+	}
+
+	/** A stored picture as its field shows it: the photo's thumbnail and the version chosen. */
+	pictureTile(ref: PictureRef | null | undefined): PickedAttachment | null {
+		if (!ref) return null;
+		const url = this.tiles().get(ref.assetId);
+		if (!url) return null;
+		return { id: ref.assetId, original_url: url, versionId: ref.versionId } as PickedAttachment;
 	}
 
 	switchLanguage(locale: string) {
@@ -739,7 +1236,7 @@ export class FormProduct {
 	}
 
 	private refreshMissing() {
-		this.gaps.set(gapsByLocale((locale) => this.languageGaps(locale)));
+		this.gaps.set(gapsByLocale(this.locales, (locale) => this.languageGaps(locale)));
 	}
 
 	/** What Go Live would refuse for a language: fields as typed, option names and values. */
@@ -758,11 +1255,37 @@ export class FormProduct {
 				}));
 			return [...label, ...values];
 		});
+		// With the FAQ on, each question needs its question and answer in every language.
+		const faq = this.faq().enabled
+			? this.faq().rows.flatMap((row, index) => {
+					const name = String(index + 1);
+					return [
+						...(row.question[locale]?.trim()
+							? []
+							: [{ key: `faq_question:${name}`, label: 'gap_faq_question', name }]),
+						...(row.answer[locale]?.trim()
+							? []
+							: [{ key: `faq_answer:${name}`, label: 'gap_faq_answer', name }]),
+					];
+				})
+			: [];
 		// The image's own alt text lives in the library, so only a Go Live attempt can report it.
 		const images = this.goLiveGaps()
 			.filter((gap) => gap.field === 'image_alt' && gap.locale === locale)
 			.map(() => ({ key: 'image_alt', label: 'gap_image_alt' }));
-		return [...this.fields.gaps(locale), ...options, ...images];
+		// Quick-length buttons of fabric by the metre show their label in every language (M5).
+		const lengths =
+			this.soldBy() === 'metre'
+				? this.quickLengths()
+						.map((row, index) => ({ row, index }))
+						.filter(({ row }) => !row.label[locale]?.trim())
+						.map(({ row, index }) => ({
+							key: `quick_length_${index}`,
+							label: 'gap_quick_length',
+							name: `${row.length} m`,
+						}))
+				: [];
+		return [...this.fields.gaps(locale), ...options, ...faq, ...images, ...lengths];
 	}
 
 	openLanguageGap({ key, locale }: { key: string; locale: string }) {
@@ -785,6 +1308,8 @@ export class FormProduct {
 			optionGroups: this.optionGroups(),
 			addonTemplateCode: this.addonTemplateCode(),
 			...this.images(),
+			faqEnabled: this.faq().enabled,
+			faq: this.faq().rows,
 		};
 	}
 
@@ -809,7 +1334,40 @@ export class FormProduct {
 		return goLiveLabels(this.goLiveGaps(), (key) => this.transloco.translate(key));
 	}
 
+	/** The next product in the list this one was opened from, for Save and next. */
+	nextProductId(): string | null {
+		return nextInProductQueue(this.isBrowser ? sessionStorage : null, this.catalogProduct?.id);
+	}
+
+	/** Saves, then opens the next product from the list (or the list after the last one). */
+	saveAndNext() {
+		this.afterSave = this.nextProductId();
+		this.submit();
+	}
+
+	/** Where a successful save goes: the next product for Save and next, else the list. */
+	private afterSave: string | null = null;
+
+	private leaveAfterSave() {
+		const next = this.afterSave;
+		this.afterSave = null;
+		this.leaving = true;
+		// A saved product ends its draft; the product now holds everything the draft held.
+		const draft = this.draft();
+		if (draft) {
+			this.drafts.discard(draft.id).subscribe({ next: () => this.refreshDraftBadge(), error: () => undefined });
+			this.draft.set(null);
+		}
+		void Promise.resolve(this.router.navigateByUrl(next ? `/product/edit/${next}` : '/product')).then((moved) => {
+			if (moved === false) this.leaving = false;
+		});
+	}
+
 	submit() {
+		if (this.conflicts().length) {
+			void this.resolveConflicts();
+			return;
+		}
 		this.form.markAllAsTouched();
 		const raw = this.form.getRawValue() as Record<string, unknown>;
 		if (!this.fields.text('name')['en']?.trim()) {
@@ -822,6 +1380,21 @@ export class FormProduct {
 		const leadTime = textOrNull(this.fields.text('estimated_delivery_text')['en']);
 		const leadTimeControl = this.form.get('estimated_delivery_text');
 		if (raw['made_to_order'] && !leadTime) leadTimeControl?.setErrors({ leadTimeRequired: true });
+		const metre =
+			this.soldBy() === 'metre'
+				? metreProblem({
+						shortestCut: this.metreCut(),
+						weightPerMetre: this.metreWeight(),
+						width: this.metreWidth(),
+						quickLengths: this.quickLengths(),
+					})
+				: null;
+		this.metreError.set(metre);
+		if (metre) {
+			this.nav()?.select('inventory');
+			this.tabError = 'inventory';
+			return;
+		}
 		if (!this.form.valid) {
 			this.showInvalidTab();
 			return;
@@ -833,7 +1406,7 @@ export class FormProduct {
 		}
 		if (this.isDiscontinuing) {
 			this.productService.discontinueCatalogProduct(product.id, textOrNull(raw['replacement_path'])).subscribe({
-				next: () => void this.router.navigateByUrl('/product'),
+				next: () => this.leaveAfterSave(),
 			});
 			return;
 		}
@@ -845,6 +1418,14 @@ export class FormProduct {
 		const typed = Object.fromEntries(LANGUAGE_FIELDS.map((field) => [field, this.fields.text(field)]));
 		const groups = this.optionGroups();
 		const images = this.images();
+		const kept = {
+			soldBy: this.soldBy(),
+			returnable: this.returnableChoice(),
+			cut: this.metreCut(),
+			width: this.metreWidth(),
+			weight: this.metreWeight(),
+			lengths: this.quickLengths(),
+		};
 		const body: ProductCreate = {
 			type: raw['type'] === 'classified' ? 'variable' : (raw['type'] as ProductCreate['type']),
 			sku: String(raw['sku']).trim(),
@@ -859,6 +1440,12 @@ export class FormProduct {
 				this.fields.load({ ...typed });
 				this.optionGroups.set(groups);
 				this.images.set(images);
+				this.soldBy.set(kept.soldBy);
+				this.returnableChoice.set(kept.returnable);
+				this.metreCut.set(kept.cut);
+				this.metreWidth.set(kept.width);
+				this.metreWeight.set(kept.weight);
+				this.quickLengths.set(kept.lengths);
 				this.variationControl.at(0)?.patchValue({ quantity: blankToNull(raw['quantity']) ?? 0 });
 				this.save(detail, this.form.getRawValue() as Record<string, unknown>);
 			});
@@ -872,9 +1459,13 @@ export class FormProduct {
 			...(slug && slug !== product.slug ? { slug } : {}),
 			status: product.status === 'live' && raw['status'] === 'live' ? 'live' : 'disabled',
 			featured: Boolean(raw['is_featured']),
+			showOnShop: raw['show_on_shop'] !== false,
 			madeToOrder: Boolean(raw['made_to_order']),
 			estimatedDeliveryText: textOrNull(this.fields.text('estimated_delivery_text')['en']),
-			lowStockThreshold: blankToNull(raw['low_stock_threshold']),
+			lowStockThreshold:
+				this.soldBy() === 'metre'
+					? metresToTenths(String(raw['low_stock_threshold'] ?? ''))
+					: blankToNull(raw['low_stock_threshold']),
 			pinnedBadges: ids(raw['pinned_badges']) as CatalogBadgeCode[],
 			hiddenBadges: ids(raw['hidden_badges']) as CatalogBadgeCode[],
 			addonPriceINR: blankToNull(raw['addon_price_inr']),
@@ -884,7 +1475,31 @@ export class FormProduct {
 				widthCm: blankToNull(raw['width_cm']),
 				heightCm: blankToNull(raw['height_cm']),
 			},
+			shippingCharges: {
+				domesticINR: this.ownCharges().domestic,
+				internationalFirstINR: this.ownCharges().internationalFirst,
+				internationalFurtherINR: this.ownCharges().internationalFurther,
+			},
+			freeShipping: Boolean(raw['is_free_shipping']),
 			hsnCode: textOrNull(raw['hsn_code']),
+			...(product.soldByLocked ? {} : { soldBy: this.soldBy() }),
+			returnable: this.returnableChoice() === '' ? null : this.returnableChoice() === 'yes',
+			// submit() saves a metre product only once metreProblem() found the cut and every quick length whole.
+			...(this.soldBy() === 'metre'
+				? {
+						metre: {
+							shortestCutTenths: metresToTenths(this.metreCut()) as number,
+							quickLengths: this.quickLengths().map((row) => ({
+								tenths: metresToTenths(row.length) as number,
+								label: Object.fromEntries(
+									Object.entries(row.label).filter(([, text]) => text.trim()),
+								) as QuickLength['label'],
+							})),
+							widthInches: this.metreWidth().trim() ? Number(this.metreWidth()) : null,
+							weightPerMetreGrams: Math.round(Number(this.metreWeight())),
+						},
+					}
+				: {}),
 			variants: this.variationControl.controls.map((group) => {
 				const row = (group as FormGroup).getRawValue() as Record<string, unknown>;
 				return {
@@ -900,22 +1515,21 @@ export class FormProduct {
 					heightCm: blankToNull(row['height_cm']),
 					barcode: textOrNull(row['barcode']),
 					hsnCode: textOrNull(row['hsn']),
+					image: this.variantImages().get(String(row['id'])) ?? null,
 				};
 			}),
 			content: this.content(raw),
 			relatedProductIds: ids(raw['related_products']),
 			upsellProductIds: ids(raw['upsell_products']),
 			crossSellProductIds: ids(raw['cross_sell_products']),
+			freeWith: freeWithOf(raw),
+			videos: (raw['videos'] as ProductVideo[] | undefined) ?? [],
 		};
-		const saved: Observable<unknown> = this.productService.saveCatalogProduct(product.id, body);
-		const bundled = product.type === 'bundle' && this.bundle().groups.length > 0;
-		const finished = bundled
-			? saved.pipe(switchMap(() => this.productService.saveBundle(product.id, this.bundle())))
-			: saved;
+		const finished: Observable<unknown> = this.productService.saveCatalogProduct(product.id, body);
 		finished.subscribe({
 			next: () => {
 				this.tabError = null;
-				void this.router.navigateByUrl('/product');
+				this.leaveAfterSave();
 			},
 		});
 	}
@@ -933,4 +1547,467 @@ export class FormProduct {
 			this.tabError = tab;
 		}
 	}
+
+	// ── Save as draft (product bulk actions brief § 7) ──────────────────────────────────────
+
+	/** Everything on the form, unchecked: what Save as draft keeps. */
+	snapshot(): ProductFormSnapshot {
+		return {
+			v: DRAFT_VERSION,
+			raw: this.form.getRawValue() as Record<string, unknown>,
+			text: Object.fromEntries(LANGUAGE_FIELDS.map((field) => [field, { ...this.fields.text(field) }])),
+			state: {
+				soldBy: this.soldBy(),
+				returnable: this.returnableChoice(),
+				metreCut: this.metreCut(),
+				metreWidth: this.metreWidth(),
+				metreWeight: this.metreWeight(),
+				quickLengths: this.quickLengths(),
+				ownCharges: this.ownCharges(),
+				optionGroups: this.optionGroups(),
+				faq: this.faq(),
+				addonTemplateCode: this.addonTemplateCode(),
+				images: this.images(),
+				variantImages: Object.fromEntries(this.variantImages()),
+				tiles: Object.fromEntries(this.tiles()),
+				imageSizes: Object.fromEntries(this.imageSizes()),
+			},
+		};
+	}
+
+	/** Puts a draft's values back on the form: all of them, or only the paths named. */
+	private restore(snapshot: ProductFormSnapshot, only?: ReadonlySet<string>): void {
+		const wanted = (path: string) => !only || only.has(path);
+		const raw = snapshot.raw ?? {};
+		// The type first: on a new product it adds or removes the price boxes the rest fills.
+		if (!this.catalogProduct && wanted('raw.type') && typeof raw['type'] === 'string') {
+			this.form.get('type')?.setValue(raw['type']);
+		}
+		for (const [key, value] of Object.entries(raw)) {
+			if (key === 'type' || key === 'variations' || LANGUAGE_FIELDS.includes(key)) continue;
+			if (wanted(`raw.${key}`)) this.form.get(key)?.setValue(value, { emitEvent: false });
+		}
+		if (Array.isArray(raw['variations'])) {
+			for (const row of raw['variations'] as Record<string, unknown>[]) {
+				const id = String(row?.['id'] ?? '');
+				const group = this.variationControl.controls.find((control) => control.value?.id === id);
+				if (!group) continue;
+				for (const [field, value] of Object.entries(row)) {
+					if (field !== 'id' && wanted(`raw.variations.${id}.${field}`)) {
+						group.get(field)?.setValue(value, { emitEvent: false });
+					}
+				}
+			}
+		}
+		if (wanted('raw.categories')) {
+			const ids = Array.isArray(raw['categories']) ? raw['categories'].map(String) : [];
+			this.selectedCategories = ids;
+			this.chosenCategories.set(ids);
+		}
+		if (wanted('raw.tags')) this.selectedTags = Array.isArray(raw['tags']) ? (raw['tags'] as Number[]) : [];
+		const text = Object.fromEntries(LANGUAGE_FIELDS.map((field) => [field, this.fields.text(field)]));
+		for (const [field, byLocale] of Object.entries(snapshot.text ?? {})) {
+			for (const [locale, value] of Object.entries(byLocale ?? {})) {
+				if (wanted(`text.${field}.${locale}`) && text[field]) text[field][locale] = value;
+			}
+		}
+		this.fields.load(text);
+		const state = snapshot.state ?? {};
+		const take = <T>(name: string, apply: (value: T) => void) => {
+			if (name in state && wanted(`state.${name}`)) apply(state[name] as T);
+		};
+		take<SoldBy>('soldBy', (value) => this.soldBy.set(value));
+		take<'' | 'yes' | 'no'>('returnable', (value) => this.returnableChoice.set(value));
+		take<string>('metreCut', (value) => this.metreCut.set(value));
+		take<string>('metreWidth', (value) => this.metreWidth.set(value));
+		take<string>('metreWeight', (value) => this.metreWeight.set(value));
+		take<Array<{ length: string; label: Record<string, string> }>>('quickLengths', (value) =>
+			this.quickLengths.set(value),
+		);
+		take<Record<ShippingChargeKind, number | null>>('ownCharges', (value) => this.ownCharges.set(value));
+		take<ProductOptionGroup[]>('optionGroups', (value) => this.optionGroups.set(value));
+		take<FaqValue>('faq', (value) => this.faq.set(value));
+		take<string | null>('addonTemplateCode', (value) => this.addonTemplateCode.set(value));
+		take<ReturnType<typeof this.images>>('images', (value) => this.images.set(value));
+		take<Record<string, PictureRef | null>>('variantImages', (value) =>
+			this.variantImages.set(new Map(Object.entries(value ?? {}))),
+		);
+		const tiles = state['tiles'] as Record<string, string> | undefined;
+		if (tiles) this.tiles.set(new Map([...this.tiles(), ...Object.entries(tiles)]));
+		const sizes = state['imageSizes'] as Record<string, readonly [number, number]> | undefined;
+		if (sizes) this.imageSizes.set(new Map([...this.imageSizes(), ...Object.entries(sizes)]));
+		this.form.updateValueAndValidity();
+		this.refreshMissing();
+	}
+
+	/** What still stops Save, counted for the Drafts list ("4 things to fix before Save"). */
+	private countToFix(): number {
+		let count = this.fields.text('name')['en']?.trim() ? 0 : 1;
+		const walk = (control: AbstractControl) => {
+			if (control instanceof FormGroup || control instanceof FormArray) {
+				Object.values(control.controls).forEach(walk);
+			} else if (control.invalid && control.enabled) count += 1;
+		};
+		walk(this.form);
+		if (
+			this.soldBy() === 'metre' &&
+			metreProblem({
+				shortestCut: this.metreCut(),
+				weightPerMetre: this.metreWeight(),
+				width: this.metreWidth(),
+				quickLengths: this.quickLengths(),
+			})
+		) {
+			count += 1;
+		}
+		return count;
+	}
+
+	/** The product as it opened is what a draft of changes is compared with. */
+	private afterProductLoaded(): void {
+		this.base = this.snapshot();
+		this.changes.set(new Map());
+		this.conflicts.set([]);
+		this.draft.set(null);
+		this.waitingDraft.set(null);
+		this.markClean();
+		// applyCatalogProduct() has just filled the free items with a list (none is []).
+		void this.loadFreeItems(this.form.controls['free_with_products'].value as string[]);
+		const draftId = this.route.snapshot?.queryParamMap?.get('draft') ?? null;
+		if (draftId) void this.openEditDraft(draftId);
+		else void this.lookForDrafts();
+	}
+
+	private markClean(): void {
+		this.savedPrint = fingerprint(this.snapshot());
+	}
+
+	/** The free items' names and sizes, read once per product (P8.1). */
+	readonly freeItemInfo = signal<ReadonlyMap<string, FreeItemInfo>>(new Map());
+
+	private async loadFreeItems(ids: readonly string[]): Promise<void> {
+		const missing = ids.filter((id) => !this.freeItemInfo().has(id));
+		for (const id of missing) {
+			const detail = await firstValueFrom(this.productService.getCatalogProduct(id)).catch(() => null);
+			if (!detail) continue;
+			const variants = detail.variants.filter((variant) => !variant.isBase);
+			this.freeItemInfo.update((map) =>
+				new Map(map).set(id, {
+					title: detail.title,
+					sku: detail.sku,
+					variants: variants.map((variant) => ({ id: variant.id, label: variant.label })),
+				}),
+			);
+		}
+	}
+
+	freeSetting(productId: string): FreeItemSetting {
+		return this.form.controls['free_with_items'].value?.[productId] ?? { quantity: 1, variantId: null };
+	}
+
+	private patchFreeSetting(productId: string, change: Partial<FreeItemSetting>): void {
+		const control = this.form.controls['free_with_items'];
+		control.setValue({ ...(control.value ?? {}), [productId]: { ...this.freeSetting(productId), ...change } });
+		control.markAsDirty();
+	}
+
+	setFreeQuantity(productId: string, value: string): void {
+		this.patchFreeSetting(productId, { quantity: Math.min(20, Math.max(1, Math.round(Number(value)) || 1)) });
+	}
+
+	setFreeVariant(productId: string, value: string): void {
+		this.patchFreeSetting(productId, { variantId: value || null });
+	}
+
+	/** Anything on the form not saved anywhere yet. */
+	isDirty(): boolean {
+		return this.savedPrint !== null && fingerprint(this.snapshot()) !== this.savedPrint;
+	}
+
+	private recomputeChanges(): void {
+		if (!this.base || !this.catalogProduct) return;
+		this.changes.set(new Map(changedPaths(this.base, this.snapshot()).map((change) => [change.path, change.from])));
+	}
+
+	/** DraftMarks: the "Changed · was: …" line under a field of a draft of changes. */
+	wasFor(path: readonly string[] | null): string | null {
+		if (this.draft()?.kind !== 'edit' || !path?.length) return null;
+		const key = this.pathKey(path);
+		const changes = this.changes();
+		if (!key || !changes.has(key)) return null;
+		return this.transloco.translate('draft_was', { value: describeValue(changes.get(key)) });
+	}
+
+	private pathKey(path: readonly string[]): string | null {
+		const [head = '', index, field] = path;
+		if (head === 'variations') {
+			const id = this.variationControl.at(Number(index))?.value?.id;
+			return id && field ? `raw.variations.${id}.${field}` : null;
+		}
+		if (LANGUAGE_FIELDS.includes(head)) return `text.${head}.${this.fields.locale()}`;
+		return `raw.${head}`;
+	}
+
+	/** A field's name in words, with its language and tab, for the conflict question. */
+	private fieldLabel(path: string): string {
+		const t = (key: string) => this.transloco.translate(key);
+		const [part, name = '', first = '', second = ''] = path.split('.');
+		const tab = t(draftTab(path));
+		if (part === 'text') return `${t(name)} · ${languageName(first)} · ${tab}`;
+		if (part === 'raw' && name === 'variations') {
+			const row = this.variationControl.controls.find((control) => control.value?.id === first);
+			return `${row?.value?.variation_name ?? first} · ${t(second)} · ${tab}`;
+		}
+		return part === 'raw' ? `${t(name)} · ${tab}` : tab;
+	}
+
+	/** Save as draft: keeps whatever is on the form, mistakes included; runs no checks. */
+	async saveDraft(updateUrl = true): Promise<boolean> {
+		const t = (key: string) => this.transloco.translate(key);
+		const product = this.catalogProduct;
+		const snapshot = this.snapshot();
+		const changes = product && this.base ? changedPaths(this.base, snapshot) : [];
+		if (product && !changes.length && !this.draft()) {
+			this.notifier.showError(t('draft_nothing_changed'));
+			return false;
+		}
+		const current = this.draft();
+		try {
+			const saved: ProductDraft = await firstValueFrom(
+				this.drafts.save(current?.id ?? null, {
+					kind: product ? 'edit' : 'new',
+					productId: product?.id ?? null,
+					title: this.fields.text('name')['en']?.trim() ?? '',
+					imageAssetId: this.swatchPhotos()[0] ?? null,
+					form: snapshot as unknown as Record<string, unknown>,
+					changes,
+					toFix: this.countToFix(),
+					baseSavedAt: product?.updatedAt ?? null,
+				}),
+			);
+			this.draft.set({ id: saved.id, kind: saved.kind, savedAt: saved.updatedAt, createdAt: saved.createdAt });
+			this.waitingDraft.set(null);
+			this.markClean();
+			this.recomputeChanges();
+			if (updateUrl) {
+				// The address becomes the draft's own, so refreshing or bookmarking keeps it (brief 7b).
+				void this.router.navigate([], {
+					relativeTo: this.route,
+					queryParams: { draft: saved.id },
+					queryParamsHandling: 'merge',
+					replaceUrl: true,
+				});
+			}
+			this.notifier.showSuccess(t('draft_saved'));
+			this.refreshDraftBadge();
+			return true;
+		} catch {
+			this.notifier.showError(t('draft_not_saved'));
+			return false;
+		}
+	}
+
+	private async openNewDraft(id: string): Promise<void> {
+		const draft = await firstValueFrom(this.drafts.get(id)).catch(() => null);
+		if (!draft || draft.kind !== 'new') {
+			this.notifier.showError(this.transloco.translate('draft_not_found'));
+			return;
+		}
+		this.restore(draft.form as unknown as ProductFormSnapshot);
+		this.draft.set({ id: draft.id, kind: 'new', savedAt: draft.updatedAt, createdAt: draft.createdAt });
+		setTimeout(() => this.markClean());
+	}
+
+	/** A draft of changes: the product as it is now, with the draft's changed fields laid on top. */
+	private async openEditDraft(id: string): Promise<void> {
+		const product = this.catalogProduct;
+		const draft = await firstValueFrom(this.drafts.get(id)).catch(() => null);
+		if (!draft || draft.kind !== 'edit' || !product || draft.productId !== product.id || !this.base) {
+			this.notifier.showError(this.transloco.translate('draft_not_found'));
+			return;
+		}
+		const mine = draft.form as unknown as ProductFormSnapshot;
+		const now = flattenSnapshot(this.base);
+		const drafted = flattenSnapshot(mine);
+		// Someone saved the field after the draft began, and to something other than the draft's value.
+		this.conflicts.set(
+			draft.changes
+				.filter(
+					(change) =>
+						stable(now.get(change.path)) !== stable(change.from) &&
+						stable(now.get(change.path)) !== stable(drafted.get(change.path)),
+				)
+				.map((change) => ({
+					path: change.path,
+					label: this.fieldLabel(change.path),
+					theirs: describeValue(now.get(change.path)),
+					mine: describeValue(drafted.get(change.path)),
+				})),
+		);
+		this.restore(mine, new Set(draft.changes.map((change) => change.path)));
+		this.draft.set({ id: draft.id, kind: 'edit', savedAt: draft.updatedAt, createdAt: draft.createdAt });
+		this.waitingDraft.set(null);
+		this.recomputeChanges();
+		setTimeout(() => this.markClean());
+	}
+
+	/** Brief 7f: a product with a draft says so, and the draft is never applied without asking. */
+	private async lookForDrafts(): Promise<void> {
+		const product = this.catalogProduct;
+		if (!product || !this.isBrowser) return;
+		let list: Awaited<ReturnType<typeof this.loadProductDrafts>> = null;
+		try {
+			list = await this.loadProductDrafts(product.id);
+		} catch {
+			// The note is a help, not a step: without it the form works as before.
+		}
+		const row = list?.items.find((item) => item.mine) ?? list?.items[0];
+		if (row)
+			this.waitingDraft.set({ id: row.id, mine: row.mine, updatedAt: row.updatedAt, changed: row.changedCount });
+	}
+
+	private loadProductDrafts(productId: string) {
+		return firstValueFrom(this.drafts.list({ scope: 'everyone', productId, pageSize: 10 })).catch(() => null);
+	}
+
+	continueDraft(): void {
+		const waiting = this.waitingDraft();
+		if (!waiting?.mine) return;
+		void this.router.navigate([], {
+			relativeTo: this.route,
+			queryParams: { draft: waiting.id },
+			queryParamsHandling: 'merge',
+			replaceUrl: true,
+		});
+		void this.openEditDraft(waiting.id);
+	}
+
+	/** Discard draft: the copy only; the product stays exactly as it is. */
+	async discardDraft(): Promise<void> {
+		const open = this.draft();
+		const waiting = this.waitingDraft();
+		const id = open?.id ?? (waiting?.mine ? waiting.id : null);
+		if (!id) return;
+		const yes = await askConfirm(this.modals, {
+			icon: 'ri-delete-bin-line',
+			title: 'draft_discard_title',
+			body: 'draft_discard_body',
+			yes: 'draft_discard',
+		});
+		if (!yes) return;
+		try {
+			await firstValueFrom(this.drafts.discard(id));
+		} catch {
+			this.notifier.showError(this.transloco.translate('draft_not_saved'));
+			return;
+		}
+		this.waitingDraft.set(null);
+		this.refreshDraftBadge();
+		this.notifier.showSuccess(this.transloco.translate('draft_discarded'));
+		if (open?.id !== id) return;
+		this.draft.set(null);
+		this.leaving = true;
+		const product = this.catalogProduct;
+		void this.router.navigateByUrl(product ? `/product/edit/${product.id}` : '/product/drafts', {
+			onSameUrlNavigation: 'reload',
+		});
+		if (product) {
+			const fresh = await firstValueFrom(this.productService.getCatalogProduct(product.id)).catch(() => null);
+			if (fresh) {
+				this.applyCatalogProduct(fresh);
+				this.afterProductLoaded();
+			}
+			this.leaving = false;
+		}
+	}
+
+	/** The menu's count of your drafts. */
+	private refreshDraftBadge(): void {
+		try {
+			this.drafts.list({ scope: 'mine', pageSize: 1 }).subscribe({
+				next: (list) => this.menu.setBadge('/product/drafts', list.mine),
+				error: () => undefined,
+			});
+		} catch {
+			// The count catches up on the next visit to the list.
+		}
+	}
+
+	/** Brief 7g: the fields both changed are asked about; "theirs" puts the product's value back. */
+	private async resolveConflicts(): Promise<void> {
+		const popup = this.modals.open(ProductConflictPopup, {
+			centered: true,
+			size: 'lg',
+			windowClass: 'theme-modal',
+			ariaLabelledBy: 'product_conflict_title',
+		});
+		(popup.componentInstance as ProductConflictPopup).conflicts.set(this.conflicts());
+		const choice = (await popup.result.catch(() => null)) as Record<string, 'mine' | 'theirs'> | null;
+		if (!choice) return;
+		const theirs = new Set(
+			Object.entries(choice)
+				.filter(([, side]) => side === 'theirs')
+				.map(([path]) => path),
+		);
+		if (theirs.size && this.base) this.restore(this.base, theirs);
+		this.conflicts.set([]);
+		this.recomputeChanges();
+		this.submit();
+	}
+
+	/** The route's leave guard asks this first: unsaved work is kept, left or saved (brief 7c). */
+	async confirmLeave(): Promise<boolean> {
+		if (this.leaving || !this.isDirty()) return true;
+		const popup = this.modals.open(ProductLeavePopup, {
+			centered: true,
+			windowClass: 'theme-modal',
+			ariaLabelledBy: 'product_leave_title',
+		});
+		(popup.componentInstance as ProductLeavePopup).name.set(this.fields.text('name')['en'] ?? '');
+		const choice = (await popup.result.catch(() => 'stay')) as LeaveChoice;
+		if (choice === 'leave') return true;
+		if (choice === 'draft') return this.saveDraft(false);
+		return false;
+	}
+
+	/** Closing the tab with unsaved work: the browser's own "Leave site?" box, as the Inbox does. */
+	onBeforeUnload(event: BeforeUnloadEvent): void {
+		if (this.leaving || !this.isDirty()) return;
+		event.preventDefault();
+		event.returnValue = '';
+	}
+}
+
+/** One free item's quantity and pinned size or colour on the Setup tab (P8.1). */
+interface FreeItemSetting {
+	quantity: number;
+	variantId: string | null;
+}
+
+interface FreeItemInfo {
+	title: string;
+	sku: string;
+	variants: { id: string; label: string }[];
+}
+
+/** Free with this product (P8) from the Setup tab's fields; none chosen removes them. */
+function freeWithOf(raw: Record<string, unknown>): CatalogProductWrite['freeWith'] {
+	const ids = Array.isArray(raw['free_with_products']) ? raw['free_with_products'].map(String).filter(Boolean) : [];
+	if (ids.length === 0) return null;
+	const take = ids.length > 1 ? ((raw['free_take'] as 'all' | 'exactly' | 'upto' | 'between') ?? 'all') : 'all';
+	const count = take === 'all' ? null : Math.min(ids.length, Math.max(1, Number(raw['free_count']) || 1));
+	// "between" is not "all", so it always has a count.
+	const from = take === 'between' ? Math.min(count as number, Math.max(0, Number(raw['free_from']) || 0)) : null;
+	const settings = (raw['free_with_items'] as Record<string, FreeItemSetting> | null) ?? {};
+	return {
+		items: ids.map((productId) => ({
+			productId,
+			variantId: settings[productId]?.variantId ?? null,
+			quantity: Math.min(20, Math.max(1, settings[productId]?.quantity ?? 1)),
+		})),
+		take,
+		count,
+		from,
+		required: raw['free_required'] !== false,
+	};
 }

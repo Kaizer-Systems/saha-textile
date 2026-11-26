@@ -12,6 +12,11 @@
 		"src/set-local-test-credentials.ts",
 		"src/reset-local-customer.ts",
 		"src/seed-local-catalog-photos.ts",
+		"src/seed-local-home-banners.ts",
+		"src/seed-local-product-questions.ts",
+		"src/seed-local-opening-stock.ts",
+		"src/seed-local-auth-accounts.ts",
+		"src/seed-e2e-blog.ts",
 		"src/invite-local-admin.ts"
 	]
 }

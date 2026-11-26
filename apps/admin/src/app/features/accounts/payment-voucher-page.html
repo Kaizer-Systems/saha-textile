@@ -1,0 +1,136 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'pv_title'"
+>
+	@if (voucher.data(); as v) {
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">
+				{{ v.number }}
+				<div
+					class="d-inline-block ms-2"
+					[class.status-success]="v.status === 'paid'"
+					[class.status-danger]="v.status === 'cancelled'"
+				>
+					<span>{{ 'pv_status_' + v.status | transloco }}</span>
+				</div>
+			</h5>
+			<small class="text-muted">
+				{{ 'pv_title_line' | transloco: { date: day(v.date), payee: v.payeeName } }}
+			</small>
+		</div>
+		<div class="d-flex flex-wrap gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="pv_print"
+				[disabled]="busy()"
+				(click)="print()"
+			>
+				<i class="ri-printer-line"></i>
+				{{ 'inv_print' | transloco }}
+			</button>
+			@if (canCancel()) {
+			<button
+				type="button"
+				class="btn btn-outline text-danger"
+				id="pv_cancel_open"
+				(click)="cancel(v)"
+			>
+				<i class="ri-close-circle-line"></i>
+				{{ 'cancel' | transloco }}
+			</button>
+			}
+		</div>
+	</div>
+	<div class="card">
+		<div class="card-body">
+			<div class="title-header">
+				<h5>{{ 'details' | transloco }}</h5>
+			</div>
+			<div class="row g-3 small">
+				<div class="col-md-3 col-6">
+					<span class="text-muted d-block">{{ 'pv_against' | transloco }}</span>
+					<a [routerLink]="againstLink(v)">
+						<b>{{ v.against.number }}</b>
+					</a>
+				</div>
+				<div class="col-md-3 col-6">
+					<span class="text-muted d-block">{{ 'rf_paid_to' | transloco }}</span>
+					<b>{{ v.payeeName }}</b>
+				</div>
+				<div class="col-md-3 col-6">
+					<span class="text-muted d-block">{{ 'doc_amount' | transloco }}</span>
+					<b>{{ inr(v.amountINR) }}</b>
+				</div>
+				<div class="col-md-3 col-6">
+					<span class="text-muted d-block">{{ 'payment_how' | transloco }}</span>
+					<b>{{ 'payment_mode_' + v.mode | transloco }} @if (v.reference) { · {{ v.reference }} }</b>
+				</div>
+				<div class="col-md-3 col-6">
+					<span class="text-muted d-block">{{ 'pv_rcm_tax' | transloco }}</span>
+					<b>
+						@if (v.reverseChargeTaxINR !== null) { {{ 'pv_rcm_tax_paid' | transloco: { amount:
+						inr(v.reverseChargeTaxINR) } }} } @else { {{ 'pv_rcm_tax_none' | transloco }} }
+					</b>
+				</div>
+				<div class="col-md-3 col-6">
+					<span class="text-muted d-block">{{ 'rf_can_cancel' | transloco }}</span>
+					<b>{{ 'pv_never_edited' | transloco }}</b>
+				</div>
+				@if (v.cancelReason) {
+				<div class="col-md-6">
+					<span class="text-muted d-block">{{ 'si_cancelled_because' | transloco }}</span>
+					<b>{{ v.cancelReason }}</b>
+				</div>
+				}
+			</div>
+		</div>
+	</div>
+	<div class="card">
+		<div class="card-body">
+			<div class="title-header">
+				<h5>{{ 'cn_edit_log' | transloco }}</h5>
+			</div>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th>{{ 'log_when' | transloco }}</th>
+							<th>{{ 'log_who' | transloco }}</th>
+							<th>{{ 'log_what' | transloco }}</th>
+							<th>{{ 'log_field' | transloco }}</th>
+							<th>{{ 'log_before' | transloco }}</th>
+							<th>{{ 'log_after' | transloco }}</th>
+							<th>{{ 'log_why' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of logRows(); track $index) {
+						<tr>
+							<td class="text-nowrap">{{ row.when }}</td>
+							<td>{{ row.who }}</td>
+							<td>{{ row.what }}</td>
+							<td>{{ row.field }}</td>
+							<td>{{ row.before }}</td>
+							<td>{{ row.after }}</td>
+							<td>{{ row.why }}</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td
+								colspan="7"
+								class="text-muted"
+							>
+								{{ 'log_empty' | transloco }}
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<p class="help-text mt-2 mb-0">{{ 'log_caption' | transloco }}</p>
+		</div>
+	</div>
+	}
+</app-page-wrapper>

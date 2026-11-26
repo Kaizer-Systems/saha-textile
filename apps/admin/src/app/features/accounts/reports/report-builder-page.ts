@@ -275,7 +275,8 @@ export class ReportBuilderPage {
 		};
 		this.busy.set(true);
 		try {
-			const id = this.id();
+			// A starting report (brief 26 AU2, no maker) is never changed: saving it makes the person's own copy.
+			const id = this.definition.data()?.createdBy === null ? null : this.id();
 			const saved = id
 				? await firstValueFrom(
 						this.gateway.update(id, { ...write, version: this.definition.data()?.version ?? 0 }),

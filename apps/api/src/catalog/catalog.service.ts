@@ -732,11 +732,21 @@ export class CatalogService {
 		if (body.content) await this.syncProductFaq(product.id, body.content.faq);
 		await this.promotePrimaryImage(next);
 		await this.syncSearch(next);
-		await this.record(actorUserId, 'catalog.product.save', product.id, {
-			sku: next.sku,
-			status: next.status,
-			variants: nextRows.map((row) => ({ sku: row.sku, priceINR: row.priceINR, salePriceINR: row.salePriceINR })),
-		});
+		await this.record(
+			actorUserId,
+			'catalog.product.save',
+			product.id,
+			{
+				sku: next.sku,
+				status: next.status,
+				variants: nextRows.map((row) => ({
+					sku: row.sku,
+					priceINR: row.priceINR,
+					salePriceINR: row.salePriceINR,
+				})),
+			},
+			priceDiffs(rows, nextRows),
+		);
 		await this.replaceManualRelations(product.id, 'related', body.relatedProductIds);
 		await this.replaceManualRelations(product.id, 'upsell', body.upsellProductIds);
 		await this.replaceManualRelations(product.id, 'cross_sell', body.crossSellProductIds);
@@ -987,7 +997,13 @@ export class CatalogService {
 		await this.record(actorUserId, 'catalog.addon-template.remove', code, { code });
 	}
 
-	async record(actorUserId: string | null, action: string, entityId: string, metadata: Record<string, unknown>) {
+	async record(
+		actorUserId: string | null,
+		action: string,
+		entityId: string,
+		metadata: Record<string, unknown>,
+		diffs: AuditLog['diffs'] = [],
+	) {
 		if (!this.audit) return;
 		const entry: AuditLog = {
 			id: `audit_${randomUUID()}`,
@@ -999,7 +1015,7 @@ export class CatalogService {
 			entityId,
 			severity: 'info',
 			retentionTier: 'catalog_admin',
-			diffs: [],
+			diffs,
 			metadata,
 			requestId: null,
 			ipHash: null,
@@ -1035,4 +1051,25 @@ function isPublished(product: Product): boolean {
 
 function isBadgeCode(code: string): code is CatalogBadgeCode {
 	return CatalogBadgeCode.safeParse(code).success;
+}
+
+/**
+ * Brief 26 AU2: each variant's price and sale price changed by a save, before and after, so the audit trail and its
+ * "Price changes" report show them (a new variant's prices count as changed from nothing).
+ */
+export function priceDiffs(
+	before: ReadonlyMap<string, Pick<ProductVariant, 'priceINR' | 'salePriceINR'>>,
+	after: readonly Pick<ProductVariant, 'id' | 'sku' | 'priceINR' | 'salePriceINR'>[],
+): AuditLog['diffs'] {
+	return after.flatMap((row) => {
+		const was = before.get(row.id);
+		return (
+			[
+				['price', 'priceINR'],
+				['sale price', 'salePriceINR'],
+			] as const
+		)
+			.map(([name, key]) => ({ field: `${row.sku}: ${name}`, before: was?.[key] ?? null, after: row[key] }))
+			.filter((d) => d.before !== d.after);
+	});
 }

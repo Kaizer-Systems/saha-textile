@@ -20,6 +20,7 @@ import {
 	type ReportTable,
 } from '@saha-textile/contracts';
 import {
+	AUDIT_REPORT_TEMPLATES,
 	REPORT_DATASETS,
 	resolveRole,
 	runReport,
@@ -56,6 +57,40 @@ export const PREVIEW_LIMIT = 50;
 export const RUN_LIMIT = 5_000;
 /** How many vouchers a period may read before the report is refused (narrow the period). */
 const MAX_VOUCHERS = 20_000;
+/** Brief 26 AU2: the audit trail, its source and its starting reports are for those who may see the audit trail. */
+const AUDIT_PERMISSION = 'audit.index';
+const BUILT_IN_PREFIX = 'rpt_audit_';
+const mayAudit = (principal: AuthenticatedPrincipal | undefined) => !!principal?.permissions.includes(AUDIT_PERMISSION);
+
+/** AU2: the starting audit reports as saved reports, for this month (a moving period), never edited or deleted. */
+export function auditTemplates(now: Date): ReportDefinition[] {
+	const ist = new Date(now.getTime() + 5.5 * 3_600_000);
+	const month = ist.toISOString().slice(0, 7);
+	const last = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth() + 1, 0)).getUTCDate();
+	return AUDIT_REPORT_TEMPLATES.map((t) => ({
+		id: `${BUILT_IN_PREFIX}${t.code.slice(3).toLowerCase()}`,
+		name: `${t.code} · ${t.name}`,
+		folder: t.kind === 'business' ? 'Audit: for this business' : 'Audit: for any business',
+		spec: {
+			dataset: 'auditLines',
+			columns: [...t.columns],
+			filters: t.filters.map((f) => ({ ...f, values: [...f.values] })),
+			groupBy: [...t.groupBy],
+			totals: [...t.totals],
+			sort: t.sort,
+		},
+		periodPreset: 'this_month',
+		from: `${month}-01`,
+		to: `${month}-${String(last).padStart(2, '0')}`,
+		openTo: 'all',
+		roleIds: [],
+		createdBy: null,
+		createdByName: 'Saha Textile',
+		createdAt: '2026-11-26T00:00:00.000Z',
+		updatedAt: '2026-11-26T00:00:00.000Z',
+		version: 0,
+	}));
+}
 
 /**
  * The custom report builder (accounts brief V1, V2). Rows of the chosen data are read for the period, only at the
@@ -248,6 +283,7 @@ export class ReportBuilderService {
 		if (!this.audit) return [];
 		const rows: ReportRow[] = [];
 		const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+		const names = new Map<string, string>();
 		for (let page = 1; page <= 25; page++) {
 			const found = await this.audit.list({
 				audience: 'admin',
@@ -264,7 +300,7 @@ export class ReportBuilderService {
 					month: ist.slice(0, 7),
 					time: ist.slice(11, 16),
 					weekday: days[new Date(ist).getUTCDay()] as string,
-					who: e.actorUserId ?? '',
+					who: await this.nameOf(e.actorUserId, names),
 					module: e.action.split('.')[0] as string,
 					action: e.action,
 					record: `${e.entityType ?? ''} ${e.entityId ?? ''}`.trim(),
@@ -292,9 +328,22 @@ export class ReportBuilderService {
 		return rows;
 	}
 
+	/** AU1: the person's name for the audit source (display name, else username, else email, else their id). */
+	private async nameOf(id: string | null, names: Map<string, string>): Promise<string> {
+		if (!id) return '';
+		const known = names.get(id);
+		if (known !== undefined) return known;
+		const user = await this.admins.findById(id).catch(() => null);
+		const name = user?.displayName || user?.username || user?.email || id;
+		names.set(id, name);
+		return name;
+	}
+
 	/** V1 preview, or a run: the table for the spec over the period. */
 	async run(run: ReportRun, principal: AuthenticatedPrincipal | undefined): Promise<ReportTable> {
 		if (run.from > run.to) throw refuse('report_period_backwards');
+		if (run.spec.dataset === 'auditLines' && !mayAudit(principal))
+			throw new ForbiddenException(accountsRefusal('report_audit_not_allowed'));
 		const problems = specProblems(run.spec.dataset, run.spec);
 		if (problems.length) throw refuse(problems[0] as string);
 		const rows = await this.rows(run.spec.dataset, run.from, run.to, await this.visible(principal));
@@ -314,13 +363,19 @@ export class ReportBuilderService {
 	}
 
 	/** U1 "Saved by you" and the folders: the saved reports this person may open. */
-	async list(principal: AuthenticatedPrincipal | undefined): Promise<ReportDefinition[]> {
+	async list(principal: AuthenticatedPrincipal | undefined, now = new Date()): Promise<ReportDefinition[]> {
 		const all = await this.definitions.list();
 		const open = await Promise.all(all.map((d) => this.mayOpen(d, principal)));
-		return all.filter((_, i) => open[i]);
+		return [...(mayAudit(principal) ? auditTemplates(now) : []), ...all.filter((_, i) => open[i])];
 	}
 
-	async get(id: string, principal: AuthenticatedPrincipal | undefined): Promise<ReportDefinition> {
+	async get(id: string, principal: AuthenticatedPrincipal | undefined, now = new Date()): Promise<ReportDefinition> {
+		if (id.startsWith(BUILT_IN_PREFIX)) {
+			const template = auditTemplates(now).find((t) => t.id === id);
+			if (!template) throw new NotFoundException(accountsRefusal('report_definition_not_found'));
+			if (!mayAudit(principal)) throw new ForbiddenException(accountsRefusal('report_audit_not_allowed'));
+			return template;
+		}
 		const definition = await this.definitions.get(id);
 		if (!definition) throw new NotFoundException(accountsRefusal('report_definition_not_found'));
 		if (!(await this.mayOpen(definition, principal)))
@@ -357,6 +412,7 @@ export class ReportBuilderService {
 
 	/** Only its maker changes or deletes a saved report. */
 	private async own(id: string, principal: AuthenticatedPrincipal | undefined): Promise<ReportDefinition> {
+		if (id.startsWith(BUILT_IN_PREFIX)) throw new ForbiddenException(accountsRefusal('report_definition_built_in'));
 		const definition = await this.definitions.get(id);
 		if (!definition) throw new NotFoundException(accountsRefusal('report_definition_not_found'));
 		if (!principal || definition.createdBy !== principal.userId)

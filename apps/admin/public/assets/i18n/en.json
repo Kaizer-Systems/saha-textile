@@ -10096,6 +10096,8 @@
 	"report_problem_report_roles_needed": "Pick at least one role.",
 	"report_problem_report_definition_not_found": "This report isn't found.",
 	"report_problem_report_definition_not_yours": "Only the person who saved it can change or delete it.",
+	"report_problem_report_audit_not_allowed": "Audit reports need permission to see the audit trail.",
+	"report_problem_report_definition_built_in": "A starting report can’t be changed or deleted; save it as your own copy.",
 	"report_problem_report_definition_changed": "Someone else changed it. Reload the page.",
 	"report_field_date": "Date",
 	"report_field_month": "Month",

@@ -10096,6 +10096,8 @@
 	"report_problem_report_roles_needed": "অন্তত একটি রোল বাছুন।",
 	"report_problem_report_definition_not_found": "এই রিপোর্ট পাওয়া গেল না।",
 	"report_problem_report_definition_not_yours": "যিনি সেভ করেছেন শুধু তিনিই বদলাতে বা মুছতে পারেন।",
+	"report_problem_report_audit_not_allowed": "অডিট রিপোর্ট দেখতে অডিট ট্রেল দেখার অনুমতি লাগে।",
+	"report_problem_report_definition_built_in": "শুরুর রিপোর্ট বদলানো বা মোছা যায় না; নিজের কপি হিসেবে সেভ করুন।",
 	"report_problem_report_definition_changed": "অন্য কেউ এটি বদলেছেন। পেজটা আবার লোড করুন।",
 	"report_field_date": "তারিখ",
 	"report_field_month": "মাস",

@@ -134,7 +134,7 @@ describe('salary structure templates (S4)', () => {
 				return { ...t, version: expectedVersion + 1 };
 			}),
 		};
-		return { service: new SalaryTemplatesService(store as never), store };
+		return { service: new SalaryTemplatesService(store as never, { forMonth: vi.fn() } as never), store };
 	};
 
 	it('previews ₹20,000 on the template: the fixed amount typed in rupees, the rest taking what is left', () => {
@@ -209,7 +209,7 @@ describe('the payroll setup routes', () => {
 			proxyOf('advances') as never,
 		);
 		const rules = { from: '2026-11-01' } as never;
-		const preview = { components: [], payINR: 20_000 };
+		const preview = { components: [], payINR: 20_000, ctc: false };
 		const structure = { name: 'Shop staff' } as never;
 		const change = { name: 'Shop staff', version: 1 } as never;
 		const filing = { filedOn: '2026-12-14', reference: 'TRRN-1', stateCode: null };

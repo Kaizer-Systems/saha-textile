@@ -13,7 +13,8 @@ describe('the Worklist menu entry', () => {
 			path: '/worklist',
 			active: false,
 			icon: 'ri-task-line',
-			type: 'link',
+			// A top-level page link, drawn like Dashboard and Inbox (the 'link' type is a submenu's and lost contrast).
+			type: 'sub',
 			level: 1,
 		});
 	});

@@ -119,8 +119,10 @@ const PRIYA = employee('emp_priya', 'loc_kolkata', {
 	ctcYearINR: 360_000,
 	templateId: 'tpl_store',
 });
-const ask = (over: SalaryRevisionInputValue) =>
-	SalaryRevisionInput.parse({ from: '2026-12-01', reason: 'Annual increment, rating A', ...over });
+const ask = (
+	over: Omit<SalaryRevisionInputValue, 'from' | 'reason'> &
+		Partial<Pick<SalaryRevisionInputValue, 'from' | 'reason'>>,
+) => SalaryRevisionInput.parse({ from: '2026-12-01', reason: 'Annual increment, rating A', ...over });
 
 describe('revising one person (SR2)', () => {
 	it('gives the brief’s breakup for 8%: the heads re-split under the structure, the CTC up ₹2,400', async () => {
@@ -308,11 +310,11 @@ describe('accepting a revision (SR2)', () => {
 			(e) => status(e) === 404,
 		);
 		const conflict = build(PRIYA, { saveFails: new Error('employee_changed') }).service;
-		await expect(conflict.accept('emp_priya', ask({ way: { kind: 'percent', pct: 5 } }))).rejects.toSatisfy(
-			(e) => status(e) === 409,
-		);
+		await expect(
+			conflict.accept('emp_priya', ask({ way: { kind: 'percent', pct: 5 } }), undefined),
+		).rejects.toSatisfy((e) => status(e) === 409);
 		const broken = build(PRIYA, { saveFails: new Error('disk full') }).service;
-		await expect(broken.accept('emp_priya', ask({ way: { kind: 'percent', pct: 5 } }))).rejects.toThrow(
+		await expect(broken.accept('emp_priya', ask({ way: { kind: 'percent', pct: 5 } }), undefined)).rejects.toThrow(
 			'disk full',
 		);
 	});

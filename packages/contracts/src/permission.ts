@@ -298,12 +298,14 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 		'Media library SEO edits (slug, alt, title, caption) and the Reprocess action (PATCH /admin/media/:id, POST /admin/media/:id/reprocess). No Media navigation entry exists to gate.',
 	'attribute.create':
 		'Add-attribute button on the Attributes page. menu.ts gates attribute.index beneath Products; creation is in-page only.',
+	'attendance.approve':
+		'Approve or turn down a change to a day, or leave asked for, that a manager without attendance.edit asked for (brief 26 AT3, WL1); POST /admin/attendance/requests/:id/approve|reject and the worklist row’s ✓ ✕. It acts on the Attendance page and the worklist, which their own codes open; nobody approves their own.',
+	'attendance.edit':
+		'Change a day at once with a reason, mark for someone else and lock the month (brief 26 AT2, AT3); PUT /admin/attendance/days/:employeeId/:day and POST /admin/attendance/lock/:month. Without it a change becomes a request. It acts inside Payroll › Attendance, which attendance.index opens.',
 	'attribute.destroy':
 		'Attributes table row Delete action, configured in attribute.ts. Row actions never appear in navigation.',
 	'attribute.edit':
 		'Attributes table row Edit action, configured in attribute.ts. The Fastkart-era .edit spelling is kept because the row action still sends it.',
-	'audit.index':
-		'Reads the audit trail every admin mutation writes (GET /admin/audit-logs). Deliberately its own code rather than folded into admin_user.index or setting.index. No screen gates it yet.',
 	'blog.create': 'Add-blog button on the Blog page. menu.ts gates blog.index only.',
 	'blog.destroy': 'Blog table row Delete action (blog.ts).',
 	'blog.edit': 'Blog table row Edit action (blog.ts).',
@@ -421,8 +423,6 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 		'Save on Settings › Company, Registrations and Features (accounts brief J, CT, G1–G2) and PUT /admin/company, /admin/company/registrations, /admin/company/features. Reading them is setting.index. Held by the Administrator role.',
 	'accounts.post':
 		'Post a journal, receipt, payment or contra voucher by hand on Accounts › Vouchers (accounts brief Q3, Q4); POST /admin/accounts/vouchers. Reversing a posted voucher also needs the Administrator role (brief tests: a store manager cannot reverse).',
-	'accounts.edit':
-		'Add ledgers and groups and rename or switch off ledgers on Accounts › Chart of accounts (Q1); POST/PUT /admin/accounts/chart/*. System groups and ledgers keep their place.',
 	'accounts.lock':
 		'Close a month for staff or lock it, part by part, with a reason, and reopen it, on Accounts › Periods and locks (T1, T2); POST /admin/accounts/periods. Held by the Administrator role.',
 	'cash.manage':

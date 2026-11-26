@@ -32,7 +32,7 @@ describe('a structure from the CTC (SR1)', () => {
 
 	it('says when the other heads take more than the CTC', async () => {
 		const p = await service().previewCtc(
-			[...STORE_STAFF.slice(0, 4), { head: 'other', how: 'fixed', value: 50_000 }, STORE_STAFF[4]],
+			[...STORE_STAFF.slice(0, 4), { head: 'other', how: 'fixed', value: 50_000 }, ...STORE_STAFF.slice(4, 5)],
 			360_000,
 		);
 		expect(p.fits).toBe(false);

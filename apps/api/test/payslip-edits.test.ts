@@ -200,7 +200,7 @@ describe('a payslip edited on a draft (PE2)', () => {
 		await expect(
 			payroll.step(
 				'2026-11',
-				{ to: 'approved', version: again.version },
+				{ to: 'approved', bankLedgerId: null, paidOn: null, version: again.version },
 				{ userId: 'adm_owner', permissions: ['accounts.lock'] } as never,
 				now,
 			),
@@ -223,8 +223,18 @@ describe('a payslip edited on a draft (PE2)', () => {
 			now,
 		);
 		const owner = { userId: 'adm_owner', permissions: ['accounts.lock'] } as never;
-		const approved = await payroll.step('2026-11', { to: 'approved', version: run.version }, owner, now);
-		await payroll.step('2026-11', { to: 'posted', version: approved.version }, owner, now);
+		const approved = await payroll.step(
+			'2026-11',
+			{ to: 'approved', bankLedgerId: null, paidOn: null, version: run.version },
+			owner,
+			now,
+		);
+		await payroll.step(
+			'2026-11',
+			{ to: 'posted', bankLedgerId: null, paidOn: null, version: approved.version },
+			owner,
+			now,
+		);
 		const lines = (
 			ledger.post.mock.calls[0] as unknown as [
 				{ lines: { ledger: { id: string }; debitPaise?: number; creditPaise?: number }[] },

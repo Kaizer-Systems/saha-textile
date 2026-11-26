@@ -30,10 +30,17 @@ function build(pages: unknown[][], audit = true, stored: unknown[] = []) {
 	});
 	const definitions = { list: async () => stored, get: async () => null, save: vi.fn(), remove: vi.fn() };
 	const service = new ReportBuilderService(
-		...([{}, {}, {}, {}, definitions, {}, { findById }, { list: async () => [] }] as never as []),
-		...((audit ? [{ list }] : []) as []),
+		{} as never,
+		{} as never,
+		{} as never,
+		{} as never,
+		definitions as never,
+		{} as never,
+		{ findById } as never,
+		{ list: async () => [] } as never,
+		(audit ? { list } : null) as never,
 	);
-	return { service: service as unknown as Rows & ReportBuilderService, list, findById };
+	return { service, rows: (service as unknown as Rows).rows.bind(service), list, findById };
 }
 const auditor = { userId: 'adm_acc', permissions: ['accounts.index', 'audit.index'] } as never;
 const accountant = { userId: 'adm_acc', permissions: ['accounts.index'] } as never;
@@ -46,7 +53,7 @@ describe('the audit trail as a report source (AU2)', () => {
 	});
 
 	it('makes a row per field changed, in India’s date and time, with a numeric change in % and the reason', async () => {
-		const { service, list } = build([
+		const { rows: read, list } = build([
 			[
 				entry('a', {
 					diffs: [
@@ -64,12 +71,9 @@ describe('the audit trail as a report source (AU2)', () => {
 				}),
 			],
 		]);
-		const rows = (await service.rows('auditLines', '2026-11-01', '2026-11-30', new Map())) as Record<
-			string,
-			unknown
-		>[];
+		const found = (await read('auditLines', '2026-11-01', '2026-11-30', new Map())) as Record<string, unknown>[];
 		expect(list).toHaveBeenCalledWith(expect.objectContaining({ audience: 'admin', page: 1, pageSize: 200 }));
-		expect(rows[0]).toMatchObject({
+		expect(found[0]).toMatchObject({
 			who: 'Asha Das',
 			date: '2026-12-01',
 			time: '02:00',
@@ -83,25 +87,25 @@ describe('the audit trail as a report source (AU2)', () => {
 			reason: 'Diwali',
 			changes: 1,
 		});
-		expect(rows.slice(1, 3).map((r) => [r['field'], r['before'], r['after'], r['changePercent']])).toEqual([
+		expect(found.slice(1, 3).map((r) => [r['field'], r['before'], r['after'], r['changePercent']])).toEqual([
 			['name', 'Old', '', null],
 			['mrp', '0', '10', null],
 		]);
-		expect(rows[3]).toMatchObject({ who: '', record: '', field: '', before: '', after: '', reason: '' });
+		expect(found[3]).toMatchObject({ who: '', record: '', field: '', before: '', after: '', reason: '' });
 	});
 
 	it('reads page after page up to the total, and nothing without the trail', async () => {
 		const full = Array.from({ length: 200 }, (_, i) => entry(`p${i}`));
-		const { service, list } = build([full, [entry('last')]]);
-		expect(await service.rows('auditLines', '2026-11-01', '2026-11-30', new Map())).toHaveLength(201);
+		const { rows: read, list } = build([full, [entry('last')]]);
+		expect(await read('auditLines', '2026-11-01', '2026-11-30', new Map())).toHaveLength(201);
 		expect(list).toHaveBeenCalledTimes(2);
-		expect(await build([], false).service.rows('auditLines', '2026-11-01', '2026-11-30', new Map())).toEqual([]);
+		expect(await build([], false).rows('auditLines', '2026-11-01', '2026-11-30', new Map())).toEqual([]);
 	});
 });
 
 describe('who, by name (AU1)', () => {
 	it('names each person once, by display name, username or email, else their id', async () => {
-		const { service, findById } = build([
+		const { rows: read, findById } = build([
 			[
 				entry('a'),
 				entry('b'),
@@ -111,11 +115,8 @@ describe('who, by name (AU1)', () => {
 				entry('f', { actorUserId: 'adm_broken' }),
 			],
 		]);
-		const rows = (await service.rows('auditLines', '2026-11-01', '2026-11-30', new Map())) as Record<
-			string,
-			unknown
-		>[];
-		expect(rows.map((r) => r['who'])).toEqual([
+		const found = (await read('auditLines', '2026-11-01', '2026-11-30', new Map())) as Record<string, unknown>[];
+		expect(found.map((r) => r['who'])).toEqual([
 			'Asha Das',
 			'Asha Das',
 			'mitali',

@@ -461,7 +461,8 @@ export const menu: IMenu[] = [
 		path: '/worklist',
 		active: false,
 		icon: 'ri-task-line',
-		type: 'link',
+		// 'sub' with a path and no children is a top-level page link (as Dashboard and Inbox), in the sidebar's own colours.
+		type: 'sub',
 		level: 1,
 	},
 	// Payroll (accounts brief S5: its own top menu): employees, attendance and leave, payroll runs.

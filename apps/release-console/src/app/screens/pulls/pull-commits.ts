@@ -77,7 +77,7 @@ const CHECKS: Record<PullCommit['checks'], { tone: string; icon: string; said: s
 								@for (c of d.commits; track c.sha) {
 									<tr
 										tabindex="0"
-										style="cursor: pointer"
+										class="row"
 										[title]="'Open the changes of ' + c.sha.slice(0, 8)"
 										(click)="open(c)"
 										(keydown.enter)="open(c)"

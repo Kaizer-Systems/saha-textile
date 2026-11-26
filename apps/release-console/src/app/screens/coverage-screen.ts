@@ -37,6 +37,7 @@ import { VendorState } from './vendor-screens';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { when } from '../pages/format-time';
+import { Icon } from '../shared/icons';
 
 type Flag = 'below' | 'measured' | 'low';
 interface Chosen {
@@ -58,7 +59,7 @@ export function firstRun(runs: CoverageRuns | undefined): { source: CoverageSour
  */
 @Component({
 	selector: 'rc-coverage-screen',
-	imports: [VendorState, CoverageFile, CoverageMap],
+	imports: [VendorState, CoverageFile, CoverageMap, Icon],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	// The keys work wherever focus is on the page while this screen is open (a pressed button may be gone).
 	host: { '(document:keydown)': 'keys($event)' },
@@ -321,6 +322,9 @@ export function firstRun(runs: CoverageRuns | undefined): { source: CoverageSour
 															>
 																{{ row.folder ? '▸' : '' }}
 															</span>
+															<rc-icon
+																[name]="row.folder ? 'tabler/folder' : 'tabler/file'"
+															/>
 															@if (row.path === '') {
 																<b>{{ row.name }}</b>
 																<span class="muted">whole codebase</span>

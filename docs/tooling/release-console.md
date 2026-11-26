@@ -175,6 +175,14 @@ The console never makes a token or signs in for the owner. A browser sign-in for
 | Cloudflare › Domains (Registrations tab)    | Every site (zone) the token sees                                                                                                        | Not connected                                                                                                                 |
 | Cloudflare › DNS (Records tab)              | Every record in the edge slot's first domain                                                                                            | Not connected                                                                                                                 |
 
+### Layout rules every page shares
+
+- **Spacing.** Two of the console's parts (panels, rows, tiles, tables, notes, tabs) one after the other keep 12 px apart on every page. One rule in `styles.css` does it: a component that holds parts is a block, and consecutive parts inside it get `.rc-content`'s gap, so a new screen needs nothing of its own. The loaders browser test checks every page for parts that sit on each other.
+- **Scrolling.** A box that scrolls inside the page (a file tree, code, a description) hands the scroll to the page at its end. Floating dropdown lists keep theirs, so the page does not move under an open list.
+- **Hover names.** Every `data-tip` name is drawn in one box above the page (`shared/tip-layer.ts`): under its element, above it when there is no room below, beside a menu item, never past the window's edges, and never cut by a button's shape or a scrolling box. It shows for the keyboard as well as the pointer, follows a change of name ("Copy" → "Copied") and goes with Escape.
+- **Clickable rows.** A table row that opens something (`tr.row`) shows the pointer and a faint cyan wash on hover and keyboard focus.
+- **File trees.** Every file tree shows a folder or file icon before each name, as GitHub does; folders keep their ▸.
+
 ### Loading
 
 A screen's first read covers the content area with its own loader, one of 29 drawings picked by the

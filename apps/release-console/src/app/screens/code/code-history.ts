@@ -18,6 +18,7 @@ import { CodeSwitcher } from './code-switcher';
 import { checkMark } from './code-view';
 import { ConsoleApi } from '../../data/console-api';
 import { when } from '../../pages/format-time';
+import { Icon } from '../../shared/icons';
 import { Loading } from '../../shared/loading';
 import { byDay, diffRows, fileRows } from '../pulls/pull-view';
 
@@ -247,7 +248,7 @@ export class CodeHistoryTab {
  */
 @Component({
 	selector: 'rc-code-commit',
-	imports: [Loading],
+	imports: [Icon, Loading],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@if (cq.isPending()) {
@@ -317,8 +318,9 @@ export class CodeHistoryTab {
 												class="rc-cov-arrow"
 												[class.open]="r.open"
 											>
-												{{ r.folder ? '▸' : '·' }}
+												{{ r.folder ? '▸' : '' }}
 											</span>
+											<rc-icon [name]="r.folder ? 'tabler/folder' : 'tabler/file'" />
 											{{ r.name }}
 										</span>
 									</td>

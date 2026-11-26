@@ -27,6 +27,7 @@ type Check =
 	| 'amber at 8 s'
 	| 'Keep waiting at 10 s'
 	| 'data arrives'
+	| 'spacing'
 	| 'refresh';
 interface Result {
 	place: string;
@@ -146,6 +147,44 @@ const invalidate = (page: Page) =>
 		void c?.client?.invalidateQueries({ type: 'active' });
 	});
 
+/**
+ * Runs in the page: the console's parts that sit on the next part's border, as "parent > part + part" (owner, 26 Nov:
+ * the one spacing rule in styles.css keeps 12 px between them on every page).
+ */
+function touchingParts(): string[] {
+	const parts =
+		'.rc-panel,.rc-row,.rc-g2,.rc-g3,.rc-g4,.rc-tiles,.rc-banner,.rc-tw,.rc-kv,.rc-content,.rc-tabs,.rc-mergebox,.rc-cov-split,.rc-cov-body,.rc-log';
+	const shown = (el: Element) => {
+		const r = el.getBoundingClientRect();
+		const c = getComputedStyle(el);
+		return r.height > 0 && r.width > 0 && c.visibility !== 'hidden' && !['absolute', 'fixed'].includes(c.position);
+	};
+	const part = (el: Element) =>
+		el.matches(parts) || (el.tagName.includes('-') && !!el.querySelector(`:scope > :is(${parts})`));
+	const edged = (el: Element) => {
+		const c = getComputedStyle(el);
+		return (
+			parseFloat(c.borderTopWidth) > 0 ||
+			parseFloat(c.borderBottomWidth) > 0 ||
+			c.backgroundColor !== 'rgba(0, 0, 0, 0)'
+		);
+	};
+	const named = (el: Element) => `${el.tagName.toLowerCase()}.${[...el.classList].slice(0, 2).join('.')}`;
+	const found: string[] = [];
+	for (const el of document.querySelectorAll('.rc-main *')) {
+		if (!part(el) || !shown(el)) continue;
+		let prev = el.previousElementSibling;
+		while (prev && !shown(prev)) prev = prev.previousElementSibling;
+		if (!prev || !part(prev)) continue;
+		const a = prev.getBoundingClientRect();
+		const b = el.getBoundingClientRect();
+		if (b.top < a.bottom - 1 || b.left >= a.right || a.left >= b.right) continue;
+		if (b.top - a.bottom < 4 && (edged(prev) || edged(el)))
+			found.push(`${named(el.parentElement as Element)} > ${named(prev)} + ${named(el)}`);
+	}
+	return found;
+}
+
 async function checkScreen(
 	page: Page,
 	hold: { ms: number },
@@ -243,6 +282,8 @@ async function checkScreen(
 		await expect(page.locator('rc-load-overlay.on:not(.full)')).toHaveCount(0, { timeout: 26_000 });
 		const text = ((await page.locator('.rc-main').innerText()) ?? '').replace(/Refreshing…/g, '').trim();
 		r.checks['data arrives'] = text.length > 10 ? 'ok' : 'the screen stayed empty';
+		const touching = await page.evaluate(touchingParts);
+		r.checks.spacing = touching.length ? `parts sit on each other: ${touching.join(' · ')}` : 'ok';
 	} catch {
 		r.checks['data arrives'] = 'the cover stayed';
 	}

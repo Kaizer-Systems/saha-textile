@@ -248,13 +248,18 @@ import type { RepoInfo } from '@saha-textile/release-console-contracts';
 							>
 								<tbody>
 									@if (nav.path()) {
+										<!-- GitHub's way up a level: a folder named "..", with where it leads on hover. -->
 										<tr
 											class="row"
 											tabindex="0"
+											[title]="'Up to ' + (parent() || info().name)"
 											(click)="nav.at(ref(), parent(), 'tree')"
 											(keydown.enter)="nav.at(ref(), parent(), 'tree')"
 										>
-											<td colspan="3">..</td>
+											<td colspan="3">
+												<rc-icon name="tabler/folder" />
+												..
+											</td>
 										</tr>
 									}
 									@for (e of t.entries; track e.path) {

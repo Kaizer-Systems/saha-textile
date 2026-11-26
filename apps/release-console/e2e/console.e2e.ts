@@ -1802,6 +1802,19 @@ test('Code: the repository’s home, a folder, a file with marked lines, Go to f
 		.first()
 		.click();
 	await expect(page).toHaveURL(/path=scripts(&|$)/);
+	// Up a level is GitHub's folder named "..", saying where it leads; every row lights up under the pointer.
+	const up = page.getByRole('table', { name: 'Files' }).getByRole('row', { name: /^\.\.$/ });
+	await expect(up).toHaveAttribute('title', 'Up to saha-textile');
+	await expect(up.locator('rc-icon')).toHaveCount(1);
+	const wash = (row: typeof up) =>
+		row
+			.locator('td')
+			.first()
+			.evaluate((td) => getComputedStyle(td).backgroundColor);
+	const resting = await wash(up);
+	await up.hover();
+	await expect.poll(() => wash(up)).not.toBe(resting);
+	expect(await up.evaluate((tr) => getComputedStyle(tr).cursor)).toBe('pointer');
 	await page
 		.getByRole('table', { name: 'Files' })
 		.getByRole('row', { name: /coverage\.mjs/ })
@@ -1813,6 +1826,28 @@ test('Code: the repository’s home, a folder, a file with marked lines, Go to f
 	await page.locator('.rc-cov-code .n').nth(34).click();
 	await expect(page).toHaveURL(/#L35$/);
 	await expect(page.locator('.rc-cov-code .l.part')).toHaveCount(1);
+	// The file tree and the code hand the scroll over to the page at their end (owner, 26 Nov).
+	for (const box of [page.locator('.rc-cov-tree').first(), page.locator('.rc-cov-code').first()])
+		expect(await box.evaluate((el) => getComputedStyle(el).overscrollBehaviorY)).toBe('auto');
+	// The file tree tells folders from files by their icons, as the file list does.
+	const treeIcons = page.locator('.rc-cov-tree tr.row rc-icon');
+	// On a phone the tree folds away behind Files ▾; its rows still carry the icons.
+	await expect(treeIcons.first()).toBeAttached();
+	const drawn = await treeIcons.evaluateAll(
+		(icons) => new Set(icons.map((icon) => (icon as HTMLElement).style.getPropertyValue('--rc-icon'))).size,
+	);
+	expect(drawn).toBe(2);
+	// A hover name sits above the page, whole, under its button and inside the window (owner, 26 Nov).
+	const copyPath = page.getByRole('button', { name: 'Copy the path' });
+	await copyPath.hover();
+	const tip = page.locator('.rc-tipbox');
+	await expect(tip).toHaveText('Copy the path');
+	const [named, under] = await Promise.all([tip.boundingBox(), copyPath.boundingBox()]);
+	expect(named?.x ?? -1).toBeGreaterThanOrEqual(0);
+	expect((named?.x ?? 0) + (named?.width ?? 0)).toBeLessThanOrEqual(page.viewportSize()?.width ?? 0);
+	expect(named?.y ?? 0).toBeGreaterThanOrEqual((under?.y ?? 0) + (under?.height ?? 0));
+	await page.mouse.move(0, 0);
+	await expect(tip).toBeHidden();
 	await expect(page.locator('rc-load-overlay.on')).toHaveCount(0);
 	await noSideScroll();
 	await page.screenshot({ path: info.outputPath('code-file.png'), fullPage: true });

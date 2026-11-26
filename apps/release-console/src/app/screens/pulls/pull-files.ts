@@ -20,6 +20,7 @@ import { FOLD_AT, changeStarts, diffRows, fileRows, filesInOrder } from './pull-
 import { ConsoleApi } from '../../data/console-api';
 import { ConsoleContext } from '../../data/console-context';
 import { when } from '../../pages/format-time';
+import { Icon } from '../../shared/icons';
 import { Loading } from '../../shared/loading';
 
 import type { FileRow } from './pull-view';
@@ -36,7 +37,7 @@ const OPEN_ALL_UP_TO = 80;
  */
 @Component({
 	selector: 'rc-pull-files',
-	imports: [Loading],
+	imports: [Icon, Loading],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	host: { '(document:keydown)': 'key($event)' },
 	template: `
@@ -149,6 +150,7 @@ const OPEN_ALL_UP_TO = 80;
 													{{ viewed().has(r.path) ? '✓' : '·' }}
 												</span>
 											}
+											<rc-icon [name]="r.folder ? 'tabler/folder' : 'tabler/file'" />
 											{{ r.name }}
 										</span>
 									</td>

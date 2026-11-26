@@ -195,6 +195,77 @@ body {
 	gap: 12px;
 	min-width: 0;
 }
+/* ===== One spacing rule for every page (owner, 26 Nov: "find every such occurrence on every console page and fix
+   them properly in one go … with a global rule"). Angular's components are not registered custom elements, so
+   :not(:defined) is each component's own element. A component that holds the console's parts is a block, and two
+   parts one after the other inside it, or inside a plain wrapper, keep .rc-content's 12 px apart, so no part sits on
+   the next one's border. :where() keeps both rules weaker than any part's own style, and a container that spaces its
+   children with a gap (.rc-content, .rc-main, .rc-row, the grids) is not touched. */
+:where(
+	.rc-main
+		:not(:defined):has(
+			> :is(
+				.rc-panel,
+				.rc-row,
+				.rc-g2,
+				.rc-g3,
+				.rc-g4,
+				.rc-tiles,
+				.rc-banner,
+				.rc-tw,
+				.rc-kv,
+				.rc-content,
+				.rc-tabs,
+				.rc-mergebox,
+				.rc-cov-split,
+				.rc-cov-body,
+				.rc-log
+			)
+		)
+) {
+	display: block;
+}
+:where(
+	:where(.rc-main :not(:defined), .rc-main div:not([class]))
+		> :is(
+			.rc-panel,
+			.rc-row,
+			.rc-g2,
+			.rc-g3,
+			.rc-g4,
+			.rc-tiles,
+			.rc-banner,
+			.rc-tw,
+			.rc-kv,
+			.rc-content,
+			.rc-tabs,
+			.rc-mergebox,
+			.rc-cov-split,
+			.rc-cov-body,
+			.rc-log,
+			:not(:defined)
+		)
+		+ :is(
+			.rc-panel,
+			.rc-row,
+			.rc-g2,
+			.rc-g3,
+			.rc-g4,
+			.rc-tiles,
+			.rc-banner,
+			.rc-tw,
+			.rc-kv,
+			.rc-content,
+			.rc-tabs,
+			.rc-mergebox,
+			.rc-cov-split,
+			.rc-cov-body,
+			.rc-log,
+			:not(:defined)
+		)
+) {
+	margin-top: 12px;
+}
 .rc-label {
 	font-size: 10.5px;
 	letter-spacing: 0.18em;
@@ -3141,11 +3212,12 @@ figure.gif img {
 [data-tip] {
 	position: relative;
 }
-[data-tip]:hover::after,
-[data-tip].tip-on::after {
-	content: attr(data-tip);
-	position: absolute;
-	z-index: 60;
+/* Hover names (data-tip) are drawn by rc-tip-layer in one box above the page, so a button's angled shape or a
+   box that scrolls can no longer cut them (owner, 26 Nov: "Copy" was cut off). Same look as before. */
+.rc-tipbox {
+	position: fixed;
+	z-index: 100;
+	pointer-events: none;
 	width: max-content;
 	max-width: 280px;
 	white-space: normal;
@@ -3161,25 +3233,12 @@ figure.gif img {
 	box-shadow: 0 0 16px rgba(255, 181, 71, 0.35);
 	clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
 }
-.rc-nav[data-tip]:hover::after,
-.rc-nav[data-tip].tip-on::after {
-	left: calc(100% + 10px);
-	top: 50%;
-	transform: translateY(-50%);
-}
-.rc-nav.off[data-tip]:hover::after,
-.rc-nav.off[data-tip].tip-on::after,
-.rc-chip.off[data-tip]:hover::after,
-.rc-chip.off[data-tip].tip-on::after {
+/* Something switched off says why in red. */
+.rc-tipbox.red {
 	background: #1a0606;
 	color: #ffb3b3;
 	border-color: var(--hud-red);
 	box-shadow: 0 0 16px rgba(255, 93, 93, 0.35);
-}
-.rc-chip[data-tip]:hover::after,
-.rc-chip[data-tip].tip-on::after {
-	top: calc(100% + 8px);
-	right: 0;
 }
 .rc-portal {
 	position: relative;
@@ -3654,7 +3713,6 @@ figure.gif img {
 .rc-cov-tree {
 	max-height: 600px;
 	overflow: auto;
-	overscroll-behavior: contain;
 }
 .rc-cov-tree .rc-t {
 	min-width: 420px;
@@ -3664,14 +3722,16 @@ figure.gif img {
 	top: 0;
 	z-index: 1;
 }
-.rc-cov-tree tr.row {
+/* A row that opens something, in any table (the file trees, Code's file list, commits, pull requests): the
+   pointer and the faint cyan wash on hover and keyboard focus, as Coverage's tree first drew it (owner, 26 Nov). */
+.rc-t tr.row {
 	cursor: pointer;
 }
-.rc-cov-tree tr.row:hover td,
-.rc-cov-tree tr.row:focus td {
+.rc-t tr.row:hover td,
+.rc-t tr.row:focus td {
 	background: rgba(94, 214, 255, 0.06);
 }
-.rc-cov-tree tr.row:focus {
+.rc-t tr.row:focus {
 	outline: none;
 }
 .rc-cov-tree td.num {
@@ -3725,7 +3785,6 @@ figure.gif img {
 	align-content: start;
 	max-height: none;
 	overflow: auto;
-	overscroll-behavior: contain;
 }
 .rc-cov-code .l {
 	grid-template-columns: 44px 40px max-content;
@@ -3954,7 +4013,6 @@ figure.gif img {
 .rc-md {
 	max-height: 70vh;
 	overflow: auto;
-	overscroll-behavior: contain;
 	padding: 4px 4px 8px;
 	color: #cfe6f3;
 	font-family: var(--font-body);

@@ -83,7 +83,7 @@ import { VendorState } from '../vendor-screens';
 									@let r = review(p.review);
 									<tr
 										tabindex="0"
-										style="cursor: pointer"
+										class="row"
 										[title]="'Open #' + p.number"
 										(click)="open(p.number)"
 										(keydown.enter)="open(p.number)"

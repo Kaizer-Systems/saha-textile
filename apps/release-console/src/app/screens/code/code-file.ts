@@ -133,8 +133,9 @@ import type { PullFile, RepoInfo } from '@saha-textile/release-console-contracts
 											class="rc-cov-arrow"
 											[class.open]="r.open"
 										>
-											{{ r.folder ? '▸' : '·' }}
+											{{ r.folder ? '▸' : '' }}
 										</span>
+										<rc-icon [name]="r.folder ? 'tabler/folder' : 'tabler/file'" />
 										{{ r.name }}
 									</span>
 								</td>

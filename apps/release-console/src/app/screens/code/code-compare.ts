@@ -8,6 +8,7 @@ import { CodeNav } from './code-nav';
 import { CodeSwitcher } from './code-switcher';
 import { ConsoleApi } from '../../data/console-api';
 import { when } from '../../pages/format-time';
+import { Icon } from '../../shared/icons';
 import { Loading } from '../../shared/loading';
 import { byDay, diffRows, fileRows } from '../pulls/pull-view';
 
@@ -19,7 +20,7 @@ import type { RepoInfo } from '@saha-textile/release-console-contracts';
  */
 @Component({
 	selector: 'rc-code-compare',
-	imports: [Loading, CodeChange, CodeSwitcher],
+	imports: [Icon, Loading, CodeChange, CodeSwitcher],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<div class="rc-row">
@@ -200,8 +201,9 @@ import type { RepoInfo } from '@saha-textile/release-console-contracts';
 													class="rc-cov-arrow"
 													[class.open]="r.open"
 												>
-													{{ r.folder ? '▸' : '·' }}
+													{{ r.folder ? '▸' : '' }}
 												</span>
+												<rc-icon [name]="r.folder ? 'tabler/folder' : 'tabler/file'" />
 												{{ r.name }}
 											</span>
 										</td>

@@ -112,6 +112,10 @@ function measure(name, { dir, angular, mongo, generated }) {
 		// The usual output, plus each test's outcome for the Release Console's Coverage screen.
 		'--reporter=default',
 		`--reporter=${join(ROOT, 'scripts/test-report/tests-reporter.mjs')}`,
+		// The Angular apps' tests run in Analog's `vmThreads` pool, where a worker's memory only grows until it is
+		// replaced at this limit. On CI's 4-core machine a worker reached its thread's own heap ceiling first and
+		// died ("Worker exited unexpectedly", 26 Nov), so it is replaced at 1 GB, well below that ceiling.
+		...(angular ? ['--vmMemoryLimit=1GB'] : []),
 	];
 	// Where the suite's MongoDB is: CI's environment, else this Mac's apps/api/.env (port 27018).
 	const target = mongo ? localMongoTarget('saha_textile_it') : null;

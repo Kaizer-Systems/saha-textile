@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { withDatabase } from './database';
-import { ADMIN, API_URL, SHOP } from './support';
+import { ADMIN, API_URL, SHOP, buyBoxReady } from './support';
 
 test.skip(!process.env['E2E_ADMIN_EMAIL'], 'needs `pnpm e2e:stack`');
 
@@ -663,8 +663,14 @@ test.describe('Size guide', () => {
 		await page.getByRole('button', { name: /save/i }).first().click();
 		await expect(page).toHaveURL(/\/measurement$/);
 		await page.goto(`${SHOP}/en/product/${slug}`);
-		await page.locator('.size-delivery-info a', { hasText: 'Size Chart' }).click();
+		await buyBoxReady(page);
+		// A press before the page is interactive is lost (CI, 26 Nov): press again until the chart opens.
+		const chart = page.locator('.size-delivery-info a', { hasText: 'Size Chart' });
 		const table = page.locator('.modal-body table');
+		await expect(async () => {
+			if (!(await table.isVisible())) await chart.click();
+			await expect(table).toBeVisible({ timeout: 2000 });
+		}).toPass({ timeout: 20_000 });
 		await expect(table).toContainText('36');
 		await page.locator('.modal-body .btn-group button', { hasText: 'Centimetres' }).click();
 		await expect(table).toContainText('91.4');

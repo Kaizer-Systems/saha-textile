@@ -52,6 +52,23 @@ async function open(
 			.filter((host) => host.getBoundingClientRect().width > 0)
 			.every((host) => host.querySelector('.owl-carousel')?.classList.contains('owl-loaded')),
 	);
+	// A page still reading (the cart from the server, a product's skeleton) keeps still while it waits, so the network
+	// going quiet is not enough on a busy machine (CI, 26 Nov: one cart drawn, the other not yet): wait for its
+	// placeholders to go and for the page to stop changing.
+	await page
+		.waitForFunction(() => !document.querySelector('.common-skeleton, [aria-busy="true"]'), undefined, {
+			timeout: 20_000,
+		})
+		.catch(() => undefined);
+	const shape = () =>
+		page.evaluate(() => `${document.body.innerHTML.length}:${document.documentElement.scrollHeight}`);
+	let before = await shape();
+	for (let tries = 0; tries < 20; tries++) {
+		await page.waitForTimeout(250);
+		const now = await shape();
+		if (now === before) break;
+		before = now;
+	}
 	return page;
 }
 
